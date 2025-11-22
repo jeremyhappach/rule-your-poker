@@ -16,7 +16,8 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error('Failed to fetch players');
   }
 
-  // Create round
+  // Create round with 10-second deadline
+  const deadline = new Date(Date.now() + 10000); // 10 seconds from now
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
@@ -24,7 +25,8 @@ export async function startRound(gameId: string, roundNumber: number) {
       round_number: roundNumber,
       cards_dealt: cardsToDeal,
       status: 'betting',
-      pot: 0
+      pot: 0,
+      decision_deadline: deadline.toISOString()
     })
     .select()
     .single();
@@ -150,6 +152,39 @@ async function checkAllDecisionsIn(gameId: string) {
       await endRound(gameId);
     }
   }
+}
+
+export async function autoFoldUndecided(gameId: string) {
+  // Get players who haven't decided yet
+  const { data: undecidedPlayers } = await supabase
+    .from('players')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('status', 'active')
+    .is('decision_locked', false);
+
+  if (!undecidedPlayers) return;
+
+  // Auto-fold all undecided players
+  for (const player of undecidedPlayers) {
+    await supabase
+      .from('players')
+      .update({ 
+        current_decision: 'fold',
+        decision_locked: true,
+        status: 'folded'
+      })
+      .eq('id', player.id);
+  }
+
+  // Mark all decisions as in
+  await supabase
+    .from('games')
+    .update({ all_decisions_in: true })
+    .eq('id', gameId);
+
+  // End the round
+  await endRound(gameId);
 }
 
 export async function revealAndContinue(gameId: string) {

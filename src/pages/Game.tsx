@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
-import { startRound, makeDecision, endRound, revealAndContinue } from "@/lib/gameLogic";
+import { startRound, makeDecision, endRound, revealAndContinue, autoFoldUndecided } from "@/lib/gameLogic";
 import { Card as CardType } from "@/lib/cardUtils";
 
 interface Player {
@@ -31,6 +31,17 @@ interface GameData {
   current_round: number | null;
   all_decisions_in: boolean | null;
   dealer_position: number | null;
+  rounds?: Round[];
+}
+
+interface Round {
+  id: string;
+  game_id: string;
+  round_number: number;
+  cards_dealt: number;
+  pot: number;
+  status: string;
+  decision_deadline: string | null;
 }
 
 interface PlayerCards {
@@ -46,6 +57,7 @@ const Game = () => {
   const [game, setGame] = useState<GameData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -106,12 +118,35 @@ const Game = () => {
     };
   }, [gameId]);
 
+  // Timer countdown effect
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev === null || prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  // Auto-fold when timer reaches 0
+  useEffect(() => {
+    if (timeLeft === 0 && game && !game.all_decisions_in) {
+      autoFoldUndecided(gameId!);
+    }
+  }, [timeLeft, game, gameId]);
+
   const fetchGameData = async () => {
     if (!gameId) return;
 
     const { data: gameData, error: gameError } = await supabase
       .from('games')
-      .select('*')
+      .select('*, rounds(*)')
       .eq('id', gameId)
       .single();
 
@@ -168,6 +203,18 @@ const Game = () => {
 
     setGame(gameData);
     setPlayers(playersData || []);
+    
+    // Calculate time left if there's a deadline
+    if (gameData.rounds && gameData.rounds.length > 0) {
+      const currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
+      if (currentRound?.decision_deadline) {
+        const deadline = new Date(currentRound.decision_deadline).getTime();
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+        setTimeLeft(remaining);
+      }
+    }
+    
     setLoading(false);
   };
 
@@ -438,6 +485,7 @@ const Game = () => {
               currentRound={game.current_round || 1}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
+              timeLeft={timeLeft}
               onStay={handleStay}
               onFold={handleFold}
             />
