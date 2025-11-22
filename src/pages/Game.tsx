@@ -161,6 +161,32 @@ const Game = () => {
     navigate("/");
   };
 
+  const addChips = async (amount: number = 100) => {
+    if (!gameId || !user) return;
+
+    const currentPlayer = players.find(p => p.user_id === user.id);
+    if (!currentPlayer) return;
+
+    const { error } = await supabase
+      .from('players')
+      .update({ chips: currentPlayer.chips + amount })
+      .eq('id', currentPlayer.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add chips",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: `Added ${amount} chips!`,
+    });
+  };
+
   if (loading || !game) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -231,9 +257,20 @@ const Game = () => {
                         <Badge variant="secondary">You</Badge>
                       )}
                     </div>
-                    <div className="text-sm">
-                      <span className="font-semibold">{player.chips}</span>
-                      <span className="text-muted-foreground ml-1">chips</span>
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm">
+                        <span className="font-semibold">{player.chips}</span>
+                        <span className="text-muted-foreground ml-1">chips</span>
+                      </div>
+                      {player.user_id === user?.id && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => addChips(100)}
+                        >
+                          Add 100
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
