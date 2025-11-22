@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
+import { GameTable } from "@/components/GameTable";
 
 interface Player {
   id: string;
@@ -303,14 +304,15 @@ const Game = () => {
         )}
 
         {game.status === 'in_progress' && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-lg font-semibold">Game is in progress!</p>
-                <p className="text-muted-foreground">Game mechanics coming soon...</p>
-              </div>
-            </CardContent>
-          </Card>
+          <GameTable
+            players={players}
+            currentUserId={user?.id}
+            pot={game.pot || 0}
+            currentRound={game.current_round || 1}
+            onBet={() => toast({ title: "Bet", description: "Betting coming soon" })}
+            onFold={() => toast({ title: "Fold", description: "Folding coming soon" })}
+            onCall={() => toast({ title: "Call", description: "Calling coming soon" })}
+          />
         )}
       </div>
     </div>
