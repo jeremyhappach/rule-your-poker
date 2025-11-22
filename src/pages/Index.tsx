@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
+import { GameLobby } from "@/components/GameLobby";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -35,17 +36,13 @@ const Index = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
-      <div className="text-center space-y-6 max-w-2xl">
-        <h1 className="text-5xl font-bold">Three, Five, Seven</h1>
-        <p className="text-xl text-muted-foreground">
-          Welcome, {user.email}
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Button size="lg">Create Game</Button>
-          <Button size="lg" variant="outline">Join Game</Button>
+    <div className="min-h-screen p-4 bg-background">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-4xl font-bold">Three, Five, Seven</h1>
           <Button variant="ghost" onClick={handleLogout}>Logout</Button>
         </div>
+        <GameLobby userId={user.id} />
       </div>
     </div>
   );
