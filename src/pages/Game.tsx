@@ -143,9 +143,10 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
+      console.error('Start game error:', error);
       toast({
         title: "Error",
-        description: "Failed to start game",
+        description: error.message || "Failed to start game",
         variant: "destructive",
       });
       return;
