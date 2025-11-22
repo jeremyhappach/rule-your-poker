@@ -5,6 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 interface Game {
   id: string;
@@ -13,6 +24,7 @@ interface Game {
   pot: number | null;
   created_at: string;
   player_count?: number;
+  is_creator?: boolean;
 }
 
 interface GameLobbyProps {
@@ -22,6 +34,7 @@ interface GameLobbyProps {
 export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -53,7 +66,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .from('games')
       .select(`
         *,
-        players(count)
+        players(count, user_id, position)
       `)
       .eq('status', 'waiting')
       .order('created_at', { ascending: false });
@@ -67,10 +80,16 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    const gamesWithCount = gamesData?.map(game => ({
-      ...game,
-      player_count: game.players?.[0]?.count || 0
-    })) || [];
+    const gamesWithCount = gamesData?.map(game => {
+      const players = game.players as any[] || [];
+      const creator = players.find((p: any) => p.position === 1);
+      
+      return {
+        ...game,
+        player_count: players.length,
+        is_creator: creator?.user_id === userId
+      };
+    }) || [];
 
     setGames(gamesWithCount);
     setLoading(false);
@@ -187,6 +206,30 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     navigate(`/game/${gameId}`);
   };
 
+  const deleteGame = async (gameId: string) => {
+    const { error } = await supabase
+      .from('games')
+      .delete()
+      .eq('id', gameId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete game",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: "Game deleted",
+    });
+
+    setDeleteGameId(null);
+    fetchGames();
+  };
+
   if (loading) {
     return <div className="text-center">Loading games...</div>;
   }
@@ -230,15 +273,46 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                   <div className="text-sm text-muted-foreground">
                     Players: {game.player_count} / 4
                   </div>
-                  <Button onClick={() => joinGame(game.id)}>
-                    Join Game
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={() => joinGame(game.id)}>
+                      Join Game
+                    </Button>
+                    {game.is_creator && (
+                      <Button 
+                        variant="destructive" 
+                        size="icon"
+                        onClick={() => setDeleteGameId(game.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deleteGameId} onOpenChange={() => setDeleteGameId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Game?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this game? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteGameId && deleteGame(deleteGameId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
