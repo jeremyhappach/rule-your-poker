@@ -66,7 +66,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .from('games')
       .select(`
         *,
-        players(count, user_id, position)
+        players(user_id, position)
       `)
       .eq('status', 'waiting')
       .order('created_at', { ascending: false });
