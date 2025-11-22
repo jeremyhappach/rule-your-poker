@@ -15,6 +15,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
 
 interface Game {
@@ -35,6 +45,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [buyIn, setBuyIn] = useState(100);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -98,10 +110,19 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const createGame = async () => {
+    if (buyIn < 10 || buyIn > 10000) {
+      toast({
+        title: "Invalid buy-in",
+        description: "Buy-in must be between 10 and 10,000 chips",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
-        buy_in: 100,
+        buy_in: buyIn,
         status: 'waiting'
       })
       .select()
@@ -121,7 +142,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .insert({
         game_id: game.id,
         user_id: userId,
-        chips: 100,
+        chips: buyIn,
         position: 1
       });
 
@@ -139,6 +160,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       description: "Game created!",
     });
 
+    setShowCreateDialog(false);
+    setBuyIn(100); // Reset to default
     navigate(`/game/${game.id}`);
   };
 
@@ -240,7 +263,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Game Lobby</h2>
-        <Button onClick={createGame} size="lg">
+        <Button onClick={() => setShowCreateDialog(true)} size="lg">
           Create New Game
         </Button>
       </div>
@@ -295,6 +318,42 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           ))}
         </div>
       )}
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Game</DialogTitle>
+            <DialogDescription>
+              Configure your game settings
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="buyIn">Buy-in Amount (chips)</Label>
+              <Input
+                id="buyIn"
+                type="number"
+                min="10"
+                max="10000"
+                value={buyIn}
+                onChange={(e) => setBuyIn(parseInt(e.target.value) || 100)}
+                placeholder="100"
+              />
+              <p className="text-sm text-muted-foreground">
+                Each player starts with this many chips (10-10,000)
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createGame}>
+              Create Game
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteGameId} onOpenChange={() => setDeleteGameId(null)}>
         <AlertDialogContent>
