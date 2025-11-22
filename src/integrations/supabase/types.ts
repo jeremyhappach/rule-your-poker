@@ -14,7 +14,169 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      games: {
+        Row: {
+          buy_in: number
+          created_at: string
+          current_round: number | null
+          id: string
+          pot: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buy_in?: number
+          created_at?: string
+          current_round?: number | null
+          id?: string
+          pot?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buy_in?: number
+          created_at?: string
+          current_round?: number | null
+          id?: string
+          pot?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      player_actions: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          player_id: string
+          round_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          player_id: string
+          round_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          round_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_actions_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_actions_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          chips: number
+          created_at: string
+          game_id: string
+          id: string
+          position: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          chips?: number
+          created_at?: string
+          game_id: string
+          id?: string
+          position: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          chips?: number
+          created_at?: string
+          game_id?: string
+          id?: string
+          position?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      rounds: {
+        Row: {
+          cards_dealt: number
+          created_at: string
+          game_id: string
+          id: string
+          pot: number | null
+          round_number: number
+          status: string
+        }
+        Insert: {
+          cards_dealt: number
+          created_at?: string
+          game_id: string
+          id?: string
+          pot?: number | null
+          round_number: number
+          status?: string
+        }
+        Update: {
+          cards_dealt?: number
+          created_at?: string
+          game_id?: string
+          id?: string
+          pot?: number | null
+          round_number?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rounds_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
