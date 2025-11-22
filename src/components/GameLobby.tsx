@@ -122,6 +122,20 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const joinGame = async (gameId: string) => {
+    // First check if user is already in the game
+    const { data: existingPlayer } = await supabase
+      .from('players')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existingPlayer) {
+      // User is already in the game, just navigate to it
+      navigate(`/game/${gameId}`);
+      return;
+    }
+
     const { data: players, error: playersError } = await supabase
       .from('players')
       .select('position')
@@ -131,6 +145,15 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       toast({
         title: "Error",
         description: "Failed to check game",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (players.length >= 4) {
+      toast({
+        title: "Game Full",
+        description: "This game already has 4 players",
         variant: "destructive",
       });
       return;
