@@ -16,10 +16,9 @@ export type Database = {
     Tables: {
       games: {
         Row: {
+          all_decisions_in: boolean | null
           buy_in: number
           created_at: string
-          current_bet: number | null
-          current_player_position: number | null
           current_round: number | null
           dealer_position: number | null
           id: string
@@ -28,10 +27,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          all_decisions_in?: boolean | null
           buy_in?: number
           created_at?: string
-          current_bet?: number | null
-          current_player_position?: number | null
           current_round?: number | null
           dealer_position?: number | null
           id?: string
@@ -40,10 +38,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          all_decisions_in?: boolean | null
           buy_in?: number
           created_at?: string
-          current_bet?: number | null
-          current_player_position?: number | null
           current_round?: number | null
           dealer_position?: number | null
           id?: string
@@ -135,6 +132,8 @@ export type Database = {
         Row: {
           chips: number
           created_at: string
+          current_decision: string | null
+          decision_locked: boolean | null
           game_id: string
           id: string
           position: number
@@ -144,6 +143,8 @@ export type Database = {
         Insert: {
           chips?: number
           created_at?: string
+          current_decision?: string | null
+          decision_locked?: boolean | null
           game_id: string
           id?: string
           position: number
@@ -153,6 +154,8 @@ export type Database = {
         Update: {
           chips?: number
           created_at?: string
+          current_decision?: string | null
+          decision_locked?: boolean | null
           game_id?: string
           id?: string
           position?: number
@@ -196,6 +199,7 @@ export type Database = {
       }
       rounds: {
         Row: {
+          bet_amount: number | null
           cards_dealt: number
           created_at: string
           game_id: string
@@ -205,6 +209,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          bet_amount?: number | null
           cards_dealt: number
           created_at?: string
           game_id: string
@@ -214,6 +219,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          bet_amount?: number | null
           cards_dealt?: number
           created_at?: string
           game_id?: string

@@ -13,6 +13,8 @@ interface Player {
   chips: number;
   position: number;
   status: string;
+  current_decision: string | null;
+  decision_locked: boolean | null;
   profiles?: {
     username: string;
   };
@@ -28,12 +30,10 @@ interface GameTableProps {
   currentUserId: string | undefined;
   pot: number;
   currentRound: number;
-  currentPlayerPosition: number;
-  currentBet: number;
+  allDecisionsIn: boolean;
   playerCards: PlayerCards[];
-  onBet: (amount: number) => void;
+  onStay: () => void;
   onFold: () => void;
-  onCall: () => void;
 }
 
 export const GameTable = ({
@@ -41,16 +41,13 @@ export const GameTable = ({
   currentUserId,
   pot,
   currentRound,
-  currentPlayerPosition,
-  currentBet,
+  allDecisionsIn,
   playerCards,
-  onBet,
+  onStay,
   onFold,
-  onCall,
 }: GameTableProps) => {
-  const [betAmount, setBetAmount] = useState(currentBet || 10);
   const currentPlayer = players.find(p => p.user_id === currentUserId);
-  const isCurrentPlayerTurn = currentPlayer?.position === currentPlayerPosition;
+  const hasDecided = currentPlayer?.decision_locked;
 
   return (
     <div className="relative p-8">
@@ -72,8 +69,9 @@ export const GameTable = ({
               <Badge className="mt-2 bg-poker-gold text-black border-0 shadow-lg">
                 Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
               </Badge>
-              {currentBet > 0 && (
-                <p className="text-sm text-white/90 mt-3 font-semibold">Current Bet: {currentBet}</p>
+              <p className="text-sm text-white/90 mt-3 font-semibold">Bet: 10 chips to stay</p>
+              {allDecisionsIn && (
+                <Badge className="mt-2 bg-green-500 text-white animate-pulse">All decisions in!</Badge>
               )}
             </div>
           </div>
@@ -81,7 +79,8 @@ export const GameTable = ({
           {/* Players around table */}
           {players.map((player, index) => {
             const isCurrentUser = player.user_id === currentUserId;
-            const isActivePlayer = player.position === currentPlayerPosition;
+            const hasPlayerDecided = player.decision_locked;
+            const playerDecision = allDecisionsIn ? player.current_decision : null;
             const angle = (index / players.length) * 2 * Math.PI - Math.PI / 2;
             const radius = 45;
             const x = 50 + radius * Math.cos(angle);
@@ -96,7 +95,8 @@ export const GameTable = ({
               >
                 <Card className={`
                   ${isCurrentUser ? "border-poker-gold border-4 shadow-2xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
-                  ${isActivePlayer ? "ring-4 ring-poker-gold ring-offset-2 ring-offset-poker-felt animate-pulse" : ""}
+                  ${hasPlayerDecided ? "ring-4 ring-green-500 ring-offset-2 ring-offset-poker-felt" : ""}
+                  ${playerDecision === 'fold' ? "opacity-50" : ""}
                   bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                 `}>
                   <CardContent className="p-4 text-center min-w-[160px]">
@@ -108,11 +108,17 @@ export const GameTable = ({
                         {isCurrentUser && (
                           <Badge variant="secondary" className="text-xs bg-poker-gold text-black border-0">You</Badge>
                         )}
-                        {isActivePlayer && (
-                          <Badge className="text-xs bg-green-500 text-white border-0 animate-pulse">Turn</Badge>
+                        {hasPlayerDecided && !allDecisionsIn && (
+                          <Badge className="text-xs bg-green-500 text-white border-0">Decided ✓</Badge>
+                        )}
+                        {playerDecision === 'stay' && allDecisionsIn && (
+                          <Badge className="text-xs bg-green-500 text-white border-0">Stayed</Badge>
+                        )}
+                        {playerDecision === 'fold' && allDecisionsIn && (
+                          <Badge variant="destructive" className="text-xs">Folded</Badge>
                         )}
                         {player.status === 'folded' && (
-                          <Badge variant="destructive" className="text-xs opacity-75">Folded</Badge>
+                          <Badge variant="destructive" className="text-xs opacity-75">Out</Badge>
                         )}
                       </div>
                       <div className="flex justify-center min-h-[70px] items-center">
@@ -138,50 +144,45 @@ export const GameTable = ({
         </div>
       </div>
 
-      {/* Action buttons */}
-      {isCurrentPlayerTurn && currentPlayer?.status === 'active' && (
-        <div className="space-y-4 mt-8 bg-gradient-to-br from-amber-900/50 to-amber-950/50 p-6 rounded-xl border-2 border-poker-gold/30 backdrop-blur-sm">
-          <div className="flex gap-4 justify-center items-center">
-            <div className="flex items-center gap-2">
-              <ChipStack amount={Math.min(betAmount, 100)} />
-              <Input
-                type="number"
-                min={currentBet || 10}
-                value={betAmount}
-                onChange={(e) => setBetAmount(parseInt(e.target.value) || 0)}
-                className="w-32 bg-amber-950/50 border-poker-gold/30 text-white"
-              />
-            </div>
-            <Button 
-              onClick={() => onBet(betAmount)} 
-              disabled={betAmount < (currentBet || 10) || betAmount > (currentPlayer?.chips || 0)}
-              className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold shadow-lg"
-            >
-              {currentBet > 0 ? `Raise to ${betAmount}` : `Bet ${betAmount}`}
-            </Button>
+      {/* Decision buttons */}
+      {!hasDecided && currentPlayer?.status === 'active' && !allDecisionsIn && (
+        <div className="mt-8 bg-gradient-to-br from-amber-900/50 to-amber-950/50 p-6 rounded-xl border-2 border-poker-gold/30 backdrop-blur-sm">
+          <div className="text-center mb-4">
+            <p className="text-amber-100 text-lg font-bold">Make your decision!</p>
+            <p className="text-amber-300/70 text-sm">All players decide simultaneously</p>
+            <p className="text-poker-gold text-sm mt-2">Cost to stay: 10 chips</p>
           </div>
           <div className="flex gap-4 justify-center">
-            <Button variant="destructive" onClick={onFold} className="font-bold shadow-lg">
+            <Button 
+              variant="destructive" 
+              onClick={onFold} 
+              className="font-bold shadow-lg text-lg px-8 py-6"
+            >
               Fold
             </Button>
-            {currentBet > 0 && (
-              <Button 
-                variant="outline" 
-                onClick={onCall} 
-                disabled={(currentPlayer?.chips || 0) < currentBet}
-                className="bg-poker-chip-blue hover:bg-poker-chip-blue/80 text-white border-0 font-bold shadow-lg"
-              >
-                Call {currentBet}
-              </Button>
-            )}
+            <Button 
+              onClick={onStay}
+              disabled={(currentPlayer?.chips || 0) < 10}
+              className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold shadow-lg text-lg px-8 py-6"
+            >
+              Stay (10 chips)
+            </Button>
           </div>
         </div>
       )}
 
-      {!isCurrentPlayerTurn && (
-        <div className="text-center mt-8 bg-amber-900/30 p-4 rounded-lg border border-poker-gold/20">
-          <p className="text-amber-200 font-semibold">
-            Waiting for {players.find(p => p.position === currentPlayerPosition)?.profiles?.username || 'player'}...
+      {hasDecided && !allDecisionsIn && (
+        <div className="text-center mt-8 bg-green-900/30 p-4 rounded-lg border border-green-500/40">
+          <p className="text-green-200 font-semibold flex items-center justify-center gap-2">
+            <span className="text-2xl">✓</span> Decision locked! Waiting for other players...
+          </p>
+        </div>
+      )}
+
+      {allDecisionsIn && (
+        <div className="text-center mt-8 bg-poker-gold/20 p-4 rounded-lg border border-poker-gold/40">
+          <p className="text-poker-gold font-bold text-lg">
+            All decisions are in! Host can reveal results.
           </p>
         </div>
       )}
