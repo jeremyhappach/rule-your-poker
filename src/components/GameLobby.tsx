@@ -101,7 +101,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         game_id: game.id,
         user_id: userId,
         chips: 100,
-        position: 0
+        position: 1
       });
 
     if (playerError) {
@@ -136,7 +136,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    const nextPosition = players.length;
+    const nextPosition = players.length + 1;
 
     const { error } = await supabase
       .from('players')
