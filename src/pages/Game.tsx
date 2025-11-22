@@ -324,8 +324,8 @@ const Game = () => {
   const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
 
   return (
-    <div className="min-h-screen p-4 bg-background">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Three, Five, Seven</h1>
