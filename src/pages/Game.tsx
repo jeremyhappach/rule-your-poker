@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
-import { startRound, placeBet, foldPlayer, endRound } from "@/lib/gameLogic";
+import { startRound, makeDecision, endRound, revealAndContinue } from "@/lib/gameLogic";
 import { Card as CardType } from "@/lib/cardUtils";
 
 interface Player {
@@ -16,6 +16,8 @@ interface Player {
   chips: number;
   position: number;
   status: string;
+  current_decision: string | null;
+  decision_locked: boolean | null;
   profiles?: {
     username: string;
   };
@@ -27,8 +29,8 @@ interface GameData {
   buy_in: number;
   pot: number | null;
   current_round: number | null;
-  current_player_position: number | null;
-  current_bet: number | null;
+  all_decisions_in: boolean | null;
+  dealer_position: number | null;
 }
 
 interface PlayerCards {
@@ -233,17 +235,19 @@ const Game = () => {
     });
   };
 
-  const handleBet = async (amount: number) => {
+  const handleStay = async () => {
     if (!gameId || !user) return;
     
     const currentPlayer = players.find(p => p.user_id === user.id);
     if (!currentPlayer) return;
 
+    const betAmount = 10; // Fixed bet per round
+
     try {
-      await placeBet(gameId, currentPlayer.id, amount);
+      await makeDecision(gameId, currentPlayer.id, 'stay', betAmount);
       toast({
-        title: "Bet placed",
-        description: `You bet ${amount} chips`,
+        title: "Decision locked",
+        description: "You chose to stay in!",
       });
     } catch (error: any) {
       toast({
@@ -261,10 +265,10 @@ const Game = () => {
     if (!currentPlayer) return;
 
     try {
-      await foldPlayer(gameId, currentPlayer.id);
+      await makeDecision(gameId, currentPlayer.id, 'fold');
       toast({
-        title: "Folded",
-        description: "You folded your hand",
+        title: "Decision locked",
+        description: "You folded",
       });
     } catch (error: any) {
       toast({
@@ -275,19 +279,14 @@ const Game = () => {
     }
   };
 
-  const handleCall = async () => {
-    if (!gameId || !user || !game) return;
-    
-    const currentPlayer = players.find(p => p.user_id === user.id);
-    if (!currentPlayer) return;
-
-    const callAmount = game.current_bet || 0;
+  const handleReveal = async () => {
+    if (!gameId) return;
 
     try {
-      await placeBet(gameId, currentPlayer.id, callAmount);
+      await revealAndContinue(gameId);
       toast({
-        title: "Called",
-        description: `You called ${callAmount} chips`,
+        title: "Decisions revealed",
+        description: "Continuing to next betting round",
       });
     } catch (error: any) {
       toast({
@@ -437,17 +436,22 @@ const Game = () => {
               currentUserId={user?.id}
               pot={game.pot || 0}
               currentRound={game.current_round || 1}
-              currentPlayerPosition={game.current_player_position || 1}
-              currentBet={game.current_bet || 0}
+              allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
-              onBet={handleBet}
+              onStay={handleStay}
               onFold={handleFold}
-              onCall={handleCall}
             />
+            {game.all_decisions_in && user && players.find(p => p.user_id === user.id)?.position === 1 && (
+              <div className="text-center">
+                <Button onClick={handleReveal} variant="outline" className="bg-poker-gold text-black font-bold">
+                  Reveal & Continue
+                </Button>
+              </div>
+            )}
             {user && players.find(p => p.user_id === user.id)?.position === 1 && (
               <div className="text-center">
                 <Button onClick={handleEndRound} variant="outline">
-                  End Round & Show Hands
+                  End Round & Determine Winner
                 </Button>
               </div>
             )}

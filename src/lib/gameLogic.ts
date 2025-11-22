@@ -50,28 +50,39 @@ export async function startRound(gameId: string, roundNumber: number) {
       });
   }
 
-  // Update game state
+  // Update game state for new round
   await supabase
     .from('games')
     .update({
       current_round: roundNumber,
-      current_player_position: 1,
-      current_bet: 0
+      all_decisions_in: false
     })
     .eq('id', gameId);
+
+  // Reset all player decisions
+  await supabase
+    .from('players')
+    .update({ 
+      current_decision: null,
+      decision_locked: false 
+    })
+    .eq('game_id', gameId);
 
   return round;
 }
 
-export async function placeBet(gameId: string, playerId: string, amount: number) {
-  // Get current game state
+export async function makeDecision(gameId: string, playerId: string, decision: 'stay' | 'fold', betAmount: number = 10) {
+  // Get current game and round
   const { data: game } = await supabase
     .from('games')
-    .select('*, players(*)')
+    .select('*, rounds(*)')
     .eq('id', gameId)
     .single();
 
   if (!game) throw new Error('Game not found');
+
+  const currentRound = (game.rounds as any[]).find((r: any) => r.round_number === game.current_round);
+  if (!currentRound) throw new Error('Round not found');
 
   const { data: player } = await supabase
     .from('players')
@@ -79,73 +90,101 @@ export async function placeBet(gameId: string, playerId: string, amount: number)
     .eq('id', playerId)
     .single();
 
-  if (!player || player.chips < amount) {
-    throw new Error('Insufficient chips');
+  if (!player) throw new Error('Player not found');
+
+  // Lock in decision
+  if (decision === 'stay') {
+    if (player.chips < betAmount) {
+      throw new Error('Insufficient chips');
+    }
+
+    await supabase
+      .from('players')
+      .update({ 
+        current_decision: 'stay',
+        decision_locked: true,
+        chips: player.chips - betAmount 
+      })
+      .eq('id', playerId);
+
+    // Add to pot
+    await supabase
+      .from('games')
+      .update({ pot: (game.pot || 0) + betAmount })
+      .eq('id', gameId);
+  } else {
+    await supabase
+      .from('players')
+      .update({ 
+        current_decision: 'fold',
+        decision_locked: true,
+        status: 'folded'
+      })
+      .eq('id', playerId);
   }
 
-  // Update player chips and pot
-  await supabase
-    .from('players')
-    .update({ chips: player.chips - amount })
-    .eq('id', playerId);
-
-  await supabase
-    .from('games')
-    .update({ 
-      pot: (game.pot || 0) + amount,
-      current_bet: Math.max(game.current_bet || 0, amount)
-    })
-    .eq('id', gameId);
-
-  // Move to next player
-  await nextPlayer(gameId);
+  // Check if all players have decided
+  await checkAllDecisionsIn(gameId);
 }
 
-export async function foldPlayer(gameId: string, playerId: string) {
-  await supabase
-    .from('players')
-    .update({ status: 'folded' })
-    .eq('id', playerId);
-
-  await nextPlayer(gameId);
-  await checkRoundEnd(gameId);
-}
-
-async function nextPlayer(gameId: string) {
-  const { data: game } = await supabase
-    .from('games')
-    .select('current_player_position, players(*)')
-    .eq('id', gameId)
-    .single();
-
-  if (!game) return;
-
-  const activePlayers = (game.players as any[])
-    .filter((p: any) => p.status === 'active')
-    .sort((a: any, b: any) => a.position - b.position);
-
-  const currentIndex = activePlayers.findIndex(
-    (p: any) => p.position === game.current_player_position
-  );
-
-  const nextIndex = (currentIndex + 1) % activePlayers.length;
-  const nextPosition = activePlayers[nextIndex]?.position || 1;
-
-  await supabase
-    .from('games')
-    .update({ current_player_position: nextPosition })
-    .eq('id', gameId);
-}
-
-async function checkRoundEnd(gameId: string) {
+async function checkAllDecisionsIn(gameId: string) {
   const { data: players } = await supabase
     .from('players')
     .select('*')
     .eq('game_id', gameId)
     .eq('status', 'active');
 
-  if (!players || players.length <= 1) {
-    await endGame(gameId);
+  if (!players) return;
+
+  const allDecided = players.every(p => p.decision_locked);
+
+  if (allDecided) {
+    await supabase
+      .from('games')
+      .update({ all_decisions_in: true })
+      .eq('id', gameId);
+
+    // Check if only one player left (all others folded)
+    const playersStaying = players.filter(p => p.current_decision === 'stay');
+    if (playersStaying.length <= 1) {
+      await endRound(gameId);
+    }
+  }
+}
+
+export async function revealAndContinue(gameId: string) {
+  const { data: game } = await supabase
+    .from('games')
+    .select('*')
+    .eq('id', gameId)
+    .single();
+
+  if (!game) return;
+
+  // Reset decisions for next round
+  await supabase
+    .from('players')
+    .update({ 
+      current_decision: null,
+      decision_locked: false 
+    })
+    .eq('game_id', gameId)
+    .eq('status', 'active');
+
+  await supabase
+    .from('games')
+    .update({ all_decisions_in: false })
+    .eq('id', gameId);
+
+  // Check if we should continue or end the round
+  const { data: activePlayers } = await supabase
+    .from('players')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('status', 'active');
+
+  if (!activePlayers || activePlayers.length <= 1) {
+    await endRound(gameId);
   }
 }
 
@@ -160,7 +199,7 @@ export async function endRound(gameId: string) {
 
   const currentRound = game.current_round;
 
-  // Get all player hands
+  // Get all player hands for this round
   const { data: round } = await supabase
     .from('rounds')
     .select('*')
