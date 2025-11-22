@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
+import { startRound, placeBet, foldPlayer, endRound } from "@/lib/gameLogic";
+import { Card as CardType } from "@/lib/cardUtils";
 
 interface Player {
   id: string;
@@ -25,6 +27,13 @@ interface GameData {
   buy_in: number;
   pot: number | null;
   current_round: number | null;
+  current_player_position: number | null;
+  current_bet: number | null;
+}
+
+interface PlayerCards {
+  player_id: string;
+  cards: CardType[];
 }
 
 const Game = () => {
@@ -34,6 +43,7 @@ const Game = () => {
   const [user, setUser] = useState<User | null>(null);
   const [game, setGame] = useState<GameData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -130,6 +140,30 @@ const Game = () => {
       return;
     }
 
+    // Fetch player cards if game is in progress
+    if (gameData.status === 'in_progress' && gameData.current_round) {
+      const { data: roundData } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('round_number', gameData.current_round)
+        .single();
+
+      if (roundData) {
+        const { data: cardsData } = await supabase
+          .from('player_cards')
+          .select('player_id, cards')
+          .eq('round_id', roundData.id);
+
+        if (cardsData) {
+          setPlayerCards(cardsData.map(cd => ({
+            player_id: cd.player_id,
+            cards: cd.cards as unknown as CardType[]
+          })));
+        }
+      }
+    }
+
     setGame(gameData);
     setPlayers(playersData || []);
     setLoading(false);
@@ -153,10 +187,20 @@ const Game = () => {
       return;
     }
 
-    toast({
-      title: "Success",
-      description: "Game started!",
-    });
+    // Start first round
+    try {
+      await startRound(gameId, 1);
+      toast({
+        title: "Success",
+        description: "Game started! Cards dealt.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const leaveGame = () => {
@@ -187,6 +231,89 @@ const Game = () => {
       title: "Success",
       description: `Added ${amount} chips!`,
     });
+  };
+
+  const handleBet = async (amount: number) => {
+    if (!gameId || !user) return;
+    
+    const currentPlayer = players.find(p => p.user_id === user.id);
+    if (!currentPlayer) return;
+
+    try {
+      await placeBet(gameId, currentPlayer.id, amount);
+      toast({
+        title: "Bet placed",
+        description: `You bet ${amount} chips`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFold = async () => {
+    if (!gameId || !user) return;
+    
+    const currentPlayer = players.find(p => p.user_id === user.id);
+    if (!currentPlayer) return;
+
+    try {
+      await foldPlayer(gameId, currentPlayer.id);
+      toast({
+        title: "Folded",
+        description: "You folded your hand",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCall = async () => {
+    if (!gameId || !user || !game) return;
+    
+    const currentPlayer = players.find(p => p.user_id === user.id);
+    if (!currentPlayer) return;
+
+    const callAmount = game.current_bet || 0;
+
+    try {
+      await placeBet(gameId, currentPlayer.id, callAmount);
+      toast({
+        title: "Called",
+        description: `You called ${callAmount} chips`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEndRound = async () => {
+    if (!gameId) return;
+
+    try {
+      await endRound(gameId);
+      toast({
+        title: "Round ended",
+        description: "Moving to next round",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading || !game) {
@@ -304,15 +431,27 @@ const Game = () => {
         )}
 
         {game.status === 'in_progress' && (
-          <GameTable
-            players={players}
-            currentUserId={user?.id}
-            pot={game.pot || 0}
-            currentRound={game.current_round || 1}
-            onBet={() => toast({ title: "Bet", description: "Betting coming soon" })}
-            onFold={() => toast({ title: "Fold", description: "Folding coming soon" })}
-            onCall={() => toast({ title: "Call", description: "Calling coming soon" })}
-          />
+          <div className="space-y-4">
+            <GameTable
+              players={players}
+              currentUserId={user?.id}
+              pot={game.pot || 0}
+              currentRound={game.current_round || 1}
+              currentPlayerPosition={game.current_player_position || 1}
+              currentBet={game.current_bet || 0}
+              playerCards={playerCards}
+              onBet={handleBet}
+              onFold={handleFold}
+              onCall={handleCall}
+            />
+            {user && players.find(p => p.user_id === user.id)?.position === 1 && (
+              <div className="text-center">
+                <Button onClick={handleEndRound} variant="outline">
+                  End Round & Show Hands
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
