@@ -18,7 +18,10 @@ export type Database = {
         Row: {
           buy_in: number
           created_at: string
+          current_bet: number | null
+          current_player_position: number | null
           current_round: number | null
+          dealer_position: number | null
           id: string
           pot: number | null
           status: string
@@ -27,7 +30,10 @@ export type Database = {
         Insert: {
           buy_in?: number
           created_at?: string
+          current_bet?: number | null
+          current_player_position?: number | null
           current_round?: number | null
+          dealer_position?: number | null
           id?: string
           pot?: number | null
           status?: string
@@ -36,7 +42,10 @@ export type Database = {
         Update: {
           buy_in?: number
           created_at?: string
+          current_bet?: number | null
+          current_player_position?: number | null
           current_round?: number | null
+          dealer_position?: number | null
           id?: string
           pot?: number | null
           status?: string
@@ -76,6 +85,45 @@ export type Database = {
           },
           {
             foreignKeyName: "player_actions_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_cards: {
+        Row: {
+          cards: Json
+          created_at: string
+          id: string
+          player_id: string
+          round_id: string
+        }
+        Insert: {
+          cards?: Json
+          created_at?: string
+          id?: string
+          player_id: string
+          round_id: string
+        }
+        Update: {
+          cards?: Json
+          created_at?: string
+          id?: string
+          player_id?: string
+          round_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_cards_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_cards_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false
             referencedRelation: "rounds"
