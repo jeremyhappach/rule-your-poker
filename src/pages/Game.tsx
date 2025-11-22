@@ -139,7 +139,7 @@ const Game = () => {
 
     const { error } = await supabase
       .from('games')
-      .update({ status: 'active' })
+      .update({ status: 'in_progress' })
       .eq('id', gameId);
 
     if (error) {
@@ -204,8 +204,8 @@ const Game = () => {
             <p className="text-muted-foreground">Game #{game.id.slice(0, 8)}</p>
           </div>
           <div className="flex gap-2">
-            <Badge variant={game.status === 'active' ? 'default' : 'secondary'}>
-              {game.status}
+            <Badge variant={game.status === 'in_progress' ? 'default' : 'secondary'}>
+              {game.status === 'in_progress' ? 'In Progress' : game.status}
             </Badge>
             <Button variant="outline" onClick={leaveGame}>
               Leave Game
@@ -302,7 +302,7 @@ const Game = () => {
           </Card>
         )}
 
-        {game.status === 'active' && (
+        {game.status === 'in_progress' && (
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
