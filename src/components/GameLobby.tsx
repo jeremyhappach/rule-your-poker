@@ -83,11 +83,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     const gamesWithCount = gamesData?.map(game => {
       const players = game.players as any[] || [];
       const creator = players.find((p: any) => p.position === 1);
+      const playerCount = players.length;
       
       return {
         ...game,
-        player_count: players.length,
-        is_creator: creator?.user_id === userId
+        player_count: playerCount,
+        // Can delete if creator OR if no players
+        is_creator: creator?.user_id === userId || playerCount === 0
       };
     }) || [];
 
