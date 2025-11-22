@@ -202,6 +202,7 @@ export type Database = {
           bet_amount: number | null
           cards_dealt: number
           created_at: string
+          decision_deadline: string | null
           game_id: string
           id: string
           pot: number | null
@@ -212,6 +213,7 @@ export type Database = {
           bet_amount?: number | null
           cards_dealt: number
           created_at?: string
+          decision_deadline?: string | null
           game_id: string
           id?: string
           pot?: number | null
@@ -222,6 +224,7 @@ export type Database = {
           bet_amount?: number | null
           cards_dealt?: number
           created_at?: string
+          decision_deadline?: string | null
           game_id?: string
           id?: string
           pot?: number | null

@@ -32,6 +32,7 @@ interface GameTableProps {
   currentRound: number;
   allDecisionsIn: boolean;
   playerCards: PlayerCards[];
+  timeLeft: number | null;
   onStay: () => void;
   onFold: () => void;
 }
@@ -43,6 +44,7 @@ export const GameTable = ({
   currentRound,
   allDecisionsIn,
   playerCards,
+  timeLeft,
   onStay,
   onFold,
 }: GameTableProps) => {
@@ -70,6 +72,11 @@ export const GameTable = ({
                 Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
               </Badge>
               <p className="text-sm text-white/90 mt-3 font-semibold">Bet: 10 chips to stay</p>
+              {timeLeft !== null && timeLeft > 0 && !allDecisionsIn && (
+                <Badge className={`mt-2 ${timeLeft <= 3 ? 'bg-red-500 animate-pulse' : 'bg-blue-500'} text-white border-0 shadow-lg`}>
+                  Time: {timeLeft}s
+                </Badge>
+              )}
               {allDecisionsIn && (
                 <Badge className="mt-2 bg-green-500 text-white animate-pulse">All decisions in!</Badge>
               )}
