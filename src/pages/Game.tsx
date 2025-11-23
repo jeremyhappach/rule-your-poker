@@ -64,6 +64,9 @@ const Game = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
+        // Store the game URL to redirect back after auth
+        const currentPath = window.location.pathname;
+        sessionStorage.setItem('redirectAfterAuth', currentPath);
         navigate("/auth");
       } else {
         setUser(session.user);
@@ -72,6 +75,9 @@ const Game = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
+        // Store the game URL to redirect back after auth
+        const currentPath = window.location.pathname;
+        sessionStorage.setItem('redirectAfterAuth', currentPath);
         navigate("/auth");
       } else {
         setUser(session.user);
