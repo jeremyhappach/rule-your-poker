@@ -246,6 +246,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }
     }
     Enums: {
