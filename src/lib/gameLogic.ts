@@ -246,7 +246,7 @@ export async function endRound(gameId: string) {
 
   const { data: playerCards } = await supabase
     .from('player_cards')
-    .select('*, players(*)')
+    .select('*')
     .eq('round_id', round.id);
 
   if (!playerCards) return;
@@ -276,6 +276,12 @@ export async function endRound(gameId: string) {
       .update({ chips: winningPlayer.chips + (game.pot || 0) })
       .eq('id', winner.playerId);
   }
+
+  // Reset pot
+  await supabase
+    .from('games')
+    .update({ pot: 0 })
+    .eq('id', gameId);
 
   // Mark round as completed
   await supabase
