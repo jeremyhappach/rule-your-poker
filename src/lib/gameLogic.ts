@@ -90,7 +90,7 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     .from('players')
     .select('*')
     .eq('id', playerId)
-    .single();
+    .maybeSingle();
 
   if (!player) throw new Error('Player not found');
 
