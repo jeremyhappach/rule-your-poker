@@ -9,6 +9,7 @@ import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
 import { startRound, makeDecision, endRound, revealAndContinue, autoFoldUndecided } from "@/lib/gameLogic";
 import { Card as CardType } from "@/lib/cardUtils";
+import { Share2 } from "lucide-react";
 
 interface Player {
   id: string;
@@ -81,7 +82,7 @@ const Game = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (!gameId) return;
+    if (!gameId || !user) return;
 
     fetchGameData();
 
@@ -116,7 +117,7 @@ const Game = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [gameId]);
+  }, [gameId, user]);
 
   // Timer countdown effect
   useEffect(() => {
@@ -142,7 +143,7 @@ const Game = () => {
   }, [timeLeft, game, gameId]);
 
   const fetchGameData = async () => {
-    if (!gameId) return;
+    if (!gameId || !user) return;
 
     const { data: gameData, error: gameError } = await supabase
       .from('games')
@@ -175,6 +176,37 @@ const Game = () => {
         variant: "destructive",
       });
       return;
+    }
+
+    // Auto-join if user is not in the game and game is waiting
+    const isPlayerInGame = playersData?.some(p => p.user_id === user.id);
+    if (!isPlayerInGame && gameData.status === 'waiting' && playersData && playersData.length < 4) {
+      const nextPosition = Math.max(...playersData.map(p => p.position), 0) + 1;
+      
+      const { error: joinError } = await supabase
+        .from('players')
+        .insert({
+          game_id: gameId,
+          user_id: user.id,
+          chips: gameData.buy_in,
+          position: nextPosition
+        });
+
+      if (joinError) {
+        toast({
+          title: "Could not join game",
+          description: joinError.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Joined game!",
+          description: "You've been added to the game",
+        });
+        // Refetch to get updated player list
+        setTimeout(() => fetchGameData(), 500);
+        return;
+      }
     }
 
     // Fetch player cards if game is in progress
@@ -362,6 +394,22 @@ const Game = () => {
     }
   };
 
+  const handleInvite = () => {
+    const gameUrl = window.location.href;
+    navigator.clipboard.writeText(gameUrl).then(() => {
+      toast({
+        title: "Link copied!",
+        description: "Share this link with other players to invite them",
+      });
+    }).catch(() => {
+      toast({
+        title: "Failed to copy",
+        description: "Please copy the URL manually from your browser",
+        variant: "destructive",
+      });
+    });
+  };
+
   if (loading || !game) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -381,6 +429,12 @@ const Game = () => {
             <Badge variant={game.status === 'in_progress' ? 'default' : 'secondary'}>
               {game.status === 'in_progress' ? 'In Progress' : game.status}
             </Badge>
+            {game.status === 'waiting' && (
+              <Button variant="default" onClick={handleInvite}>
+                <Share2 className="w-4 h-4 mr-2" />
+                Invite Players
+              </Button>
+            )}
             <Button variant="outline" onClick={leaveGame}>
               Leave Game
             </Button>
