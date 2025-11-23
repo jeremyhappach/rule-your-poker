@@ -261,9 +261,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Game Lobby</h2>
-        <Button onClick={() => setShowCreateDialog(true)} size="lg">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold">Game Lobby</h2>
+        <Button onClick={() => setShowCreateDialog(true)} size="lg" className="w-full sm:w-auto">
           Create New Game
         </Button>
       </div>
@@ -294,12 +294,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <div className="text-sm text-muted-foreground">
                     Players: {game.player_count} / 4
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={() => joinGame(game.id)}>
+                    <Button onClick={() => joinGame(game.id)} className="flex-1 sm:flex-none">
                       Join Game
                     </Button>
                     {game.is_creator && (
