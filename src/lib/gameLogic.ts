@@ -207,11 +207,9 @@ async function checkAllDecisionsIn(gameId: string) {
       .update({ all_decisions_in: true })
       .eq('id', gameId);
 
-    // Check if only one player left (all others folded)
-    const playersStaying = players.filter(p => p.current_decision === 'stay');
-    if (playersStaying.length <= 1) {
-      await endRound(gameId);
-    }
+    // Automatically end the round when all decisions are in
+    // This handles both solo win and showdown scenarios
+    await endRound(gameId);
   }
 }
 
@@ -248,41 +246,6 @@ export async function autoFoldUndecided(gameId: string) {
   await endRound(gameId);
 }
 
-export async function revealAndContinue(gameId: string) {
-  const { data: game } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
-
-  if (!game) return;
-
-  // Reset decisions for next round
-  await supabase
-    .from('players')
-    .update({ 
-      current_decision: null,
-      decision_locked: false 
-    })
-    .eq('game_id', gameId)
-    .eq('status', 'active');
-
-  await supabase
-    .from('games')
-    .update({ all_decisions_in: false })
-    .eq('id', gameId);
-
-  // Check if we should continue or end the round
-  const { data: activePlayers } = await supabase
-    .from('players')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('status', 'active');
-
-  if (!activePlayers || activePlayers.length <= 1) {
-    await endRound(gameId);
-  }
-}
 
 export async function endRound(gameId: string) {
   const { data: game } = await supabase
