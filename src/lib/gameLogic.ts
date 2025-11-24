@@ -53,9 +53,43 @@ export async function startRound(gameId: string, roundNumber: number) {
   const deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
+  // Get previous round cards if this isn't round 1
+  let previousRoundCards: Map<string, Card[]> = new Map();
+  if (roundNumber > 1) {
+    const previousRoundNumber = roundNumber - 1;
+    const { data: previousRound } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('round_number', previousRoundNumber)
+      .single();
+
+    if (previousRound) {
+      const { data: previousCards } = await supabase
+        .from('player_cards')
+        .select('*')
+        .eq('round_id', previousRound.id);
+
+      if (previousCards) {
+        previousCards.forEach(pc => {
+          previousRoundCards.set(pc.player_id, pc.cards as unknown as Card[]);
+        });
+      }
+    }
+  }
+
+  const newCardsToDeal = roundNumber === 1 ? 3 : 2; // Round 1 gets 3, rounds 2 & 3 get 2 new cards
+
   for (const player of players) {
-    const playerCards = deck.slice(cardIndex, cardIndex + cardsToDeal);
-    cardIndex += cardsToDeal;
+    // Get existing cards from previous round (if any)
+    const existingCards = previousRoundCards.get(player.id) || [];
+    
+    // Deal new cards
+    const newCards = deck.slice(cardIndex, cardIndex + newCardsToDeal);
+    cardIndex += newCardsToDeal;
+
+    // Combine existing and new cards
+    const playerCards = [...existingCards, ...newCards];
 
     await supabase
       .from('player_cards')
