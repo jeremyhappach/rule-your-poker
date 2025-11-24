@@ -14,16 +14,25 @@ export async function startRound(gameId: string, roundNumber: number) {
 
     if (oldRounds && oldRounds.length > 0) {
       // Delete player cards for old rounds
-      await supabase
+      const { error: cardsDeleteError } = await supabase
         .from('player_cards')
         .delete()
         .in('round_id', oldRounds.map(r => r.id));
 
-      // Delete old rounds
-      await supabase
+      if (cardsDeleteError) {
+        console.error('Error deleting player cards:', cardsDeleteError);
+      }
+
+      // Delete old rounds - ensure this completes before continuing
+      const { error: roundsDeleteError } = await supabase
         .from('rounds')
         .delete()
         .eq('game_id', gameId);
+
+      if (roundsDeleteError) {
+        console.error('Error deleting rounds:', roundsDeleteError);
+        throw new Error(`Failed to delete old rounds: ${roundsDeleteError.message}`);
+      }
     }
   }
 
