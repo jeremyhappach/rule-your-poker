@@ -269,7 +269,7 @@ export async function endRound(gameId: string) {
     current.evaluation.value > best.evaluation.value ? current : best
   );
 
-  // Award pot to winner
+  // Award pot to winner and increment legs
   const { data: winningPlayer } = await supabase
     .from('players')
     .select('*')
@@ -279,7 +279,10 @@ export async function endRound(gameId: string) {
   if (winningPlayer) {
     await supabase
       .from('players')
-      .update({ chips: winningPlayer.chips + (game.pot || 0) })
+      .update({ 
+        chips: winningPlayer.chips + (game.pot || 0),
+        legs: winningPlayer.legs + 1 
+      })
       .eq('id', winner.playerId);
   }
 
