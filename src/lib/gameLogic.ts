@@ -5,6 +5,28 @@ export async function startRound(gameId: string, roundNumber: number) {
   const betAmount = 10;
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
 
+  // If starting round 1 again, delete all old rounds and player cards to start fresh cycle
+  if (roundNumber === 1) {
+    const { data: oldRounds } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId);
+
+    if (oldRounds && oldRounds.length > 0) {
+      // Delete player cards for old rounds
+      await supabase
+        .from('player_cards')
+        .delete()
+        .in('round_id', oldRounds.map(r => r.id));
+
+      // Delete old rounds
+      await supabase
+        .from('rounds')
+        .delete()
+        .eq('game_id', gameId);
+    }
+  }
+
   // Reset all players to active for the new round (folding only applies to current round)
   await supabase
     .from('players')
