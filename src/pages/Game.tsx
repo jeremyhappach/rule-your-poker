@@ -554,22 +554,22 @@ const Game = () => {
                 <p className="text-muted-foreground">
                   Waiting for players to join...
                 </p>
-                {canStart && (
-                  <div className="flex gap-3 justify-center">
+                <div className="flex gap-3 justify-center flex-wrap">
+                  {canStart && (
                     <Button onClick={startGame} size="lg">
                       Start Game
                     </Button>
-                    {players.length < 4 && (
-                      <Button onClick={handleAddBot} size="lg" variant="outline">
-                        <Bot className="w-4 h-4 mr-2" />
-                        Add Bot Player
-                      </Button>
-                    )}
-                  </div>
-                )}
+                  )}
+                  {isCreator && players.length < 4 && (
+                    <Button onClick={handleAddBot} size="lg" variant="outline">
+                      <Bot className="w-4 h-4 mr-2" />
+                      Add Bot Player
+                    </Button>
+                  )}
+                </div>
                 {!canStart && players.length < 2 && (
                   <p className="text-sm text-muted-foreground">
-                    Need at least 2 players to start
+                    Need at least 2 players to start (add bots or invite friends!)
                   </p>
                 )}
               </div>
