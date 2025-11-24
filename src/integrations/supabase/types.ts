@@ -136,6 +136,8 @@ export type Database = {
           decision_locked: boolean | null
           game_id: string
           id: string
+          is_bot: boolean
+          legs: number
           position: number
           status: string
           user_id: string
@@ -147,6 +149,8 @@ export type Database = {
           decision_locked?: boolean | null
           game_id: string
           id?: string
+          is_bot?: boolean
+          legs?: number
           position: number
           status?: string
           user_id: string
@@ -158,6 +162,8 @@ export type Database = {
           decision_locked?: boolean | null
           game_id?: string
           id?: string
+          is_bot?: boolean
+          legs?: number
           position?: number
           status?: string
           user_id?: string

@@ -8,8 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
 import { startRound, makeDecision, endRound, revealAndContinue, autoFoldUndecided } from "@/lib/gameLogic";
+import { addBotPlayer, makeBotDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
-import { Share2 } from "lucide-react";
+import { Share2, Bot } from "lucide-react";
 
 interface Player {
   id: string;
@@ -19,6 +20,8 @@ interface Player {
   status: string;
   current_decision: string | null;
   decision_locked: boolean | null;
+  legs: number;
+  is_bot: boolean;
   profiles?: {
     username: string;
   };
@@ -140,6 +143,18 @@ const Game = () => {
 
     return () => clearInterval(timer);
   }, [timeLeft]);
+
+  // Trigger bot decisions when round starts
+  useEffect(() => {
+    if (game?.status === 'in_progress' && !game.all_decisions_in && timeLeft !== null) {
+      // Give bots a random delay before making decisions
+      const botDecisionTimer = setTimeout(() => {
+        makeBotDecisions(gameId!);
+      }, 2000 + Math.random() * 3000);
+
+      return () => clearTimeout(botDecisionTimer);
+    }
+  }, [game?.current_round, gameId]);
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
@@ -400,6 +415,24 @@ const Game = () => {
     }
   };
 
+  const handleAddBot = async () => {
+    if (!gameId) return;
+
+    try {
+      await addBotPlayer(gameId);
+      toast({
+        title: "Bot added",
+        description: "A computer player has joined the game",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleInvite = () => {
     const gameUrl = window.location.href;
     navigator.clipboard.writeText(gameUrl).then(() => {
@@ -486,9 +519,9 @@ const Game = () => {
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">P{index + 1}</Badge>
                       <span className="font-medium">
-                        {player.profiles?.username || `Player ${index + 1}`}
+                        {player.is_bot ? `🤖 Bot ${index + 1}` : (player.profiles?.username || `Player ${index + 1}`)}
                       </span>
-                      {player.user_id === user?.id && (
+                      {player.user_id === user?.id && !player.is_bot && (
                         <Badge variant="secondary">You</Badge>
                       )}
                     </div>
@@ -522,9 +555,17 @@ const Game = () => {
                   Waiting for players to join...
                 </p>
                 {canStart && (
-                  <Button onClick={startGame} size="lg">
-                    Start Game
-                  </Button>
+                  <div className="flex gap-3 justify-center">
+                    <Button onClick={startGame} size="lg">
+                      Start Game
+                    </Button>
+                    {players.length < 4 && (
+                      <Button onClick={handleAddBot} size="lg" variant="outline">
+                        <Bot className="w-4 h-4 mr-2" />
+                        Add Bot Player
+                      </Button>
+                    )}
+                  </div>
                 )}
                 {!canStart && players.length < 2 && (
                   <p className="text-sm text-muted-foreground">

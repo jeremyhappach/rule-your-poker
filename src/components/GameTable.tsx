@@ -15,6 +15,8 @@ interface Player {
   status: string;
   current_decision: string | null;
   decision_locked: boolean | null;
+  legs: number;
+  is_bot: boolean;
   profiles?: {
     username: string;
   };
@@ -108,11 +110,23 @@ export const GameTable = ({
                 `}>
                   <CardContent className="p-4 text-center min-w-[160px]">
                     <div className="space-y-2">
-                      <p className="font-bold text-sm text-amber-100">
-                        {player.profiles?.username || `P${index + 1}`}
-                      </p>
+                      <div className="flex items-center justify-center gap-2">
+                        <p className="font-bold text-sm text-amber-100">
+                          {player.profiles?.username || (player.is_bot ? `Bot ${index + 1}` : `P${index + 1}`)}
+                        </p>
+                        {player.is_bot && (
+                          <Badge className="text-xs bg-purple-500 text-white border-0">🤖</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-center gap-1">
+                        {/* Legs indicator */}
+                        <div className="flex items-center gap-1 bg-amber-900/30 px-2 py-1 rounded border border-amber-700">
+                          <ChipStack amount={50} size="sm" />
+                          <span className="text-poker-gold font-bold text-sm">{player.legs}</span>
+                        </div>
+                      </div>
                       <div className="flex gap-1 justify-center flex-wrap">
-                        {isCurrentUser && (
+                        {isCurrentUser && !player.is_bot && (
                           <Badge variant="secondary" className="text-xs bg-poker-gold text-black border-0">You</Badge>
                         )}
                         {hasPlayerDecided && !allDecisionsIn && (
