@@ -7,23 +7,28 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // If starting round 1 again, delete all old rounds and player cards to start fresh cycle
   if (roundNumber === 1) {
-    const { data: oldRounds } = await supabase
-      .from('rounds')
-      .select('id')
-      .eq('game_id', gameId);
+    // Keep trying to delete until successful
+    let retries = 0;
+    const maxRetries = 5;
+    
+    while (retries < maxRetries) {
+      const { data: oldRounds } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId);
 
-    if (oldRounds && oldRounds.length > 0) {
+      if (!oldRounds || oldRounds.length === 0) {
+        // No rounds to delete, we're good
+        break;
+      }
+
       // Delete player cards for old rounds
-      const { error: cardsDeleteError } = await supabase
+      await supabase
         .from('player_cards')
         .delete()
         .in('round_id', oldRounds.map(r => r.id));
 
-      if (cardsDeleteError) {
-        console.error('Error deleting player cards:', cardsDeleteError);
-      }
-
-      // Delete old rounds - ensure this completes before continuing
+      // Delete old rounds
       const { error: roundsDeleteError } = await supabase
         .from('rounds')
         .delete()
@@ -31,11 +36,28 @@ export async function startRound(gameId: string, roundNumber: number) {
 
       if (roundsDeleteError) {
         console.error('Error deleting rounds:', roundsDeleteError);
-        throw new Error(`Failed to delete old rounds: ${roundsDeleteError.message}`);
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 200 * retries));
+        continue;
       }
 
-      // Wait a moment to ensure deletion is fully processed
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Verify deletion succeeded
+      const { data: checkRounds } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId);
+
+      if (!checkRounds || checkRounds.length === 0) {
+        // Successfully deleted
+        break;
+      }
+
+      retries++;
+      await new Promise(resolve => setTimeout(resolve, 200 * retries));
+    }
+
+    if (retries >= maxRetries) {
+      throw new Error('Failed to delete old rounds after multiple attempts');
     }
   }
 
