@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 export async function startRound(gameId: string, roundNumber: number) {
+  const betAmount = 10;
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
 
   // Reset all players to active for the new round (folding only applies to current round)
@@ -29,6 +30,10 @@ export async function startRound(gameId: string, roundNumber: number) {
   if (!players || players.length === 0) {
     throw new Error('No active players found in game');
   }
+
+  // Calculate pot based on active players
+  const activePlayers = players.filter(p => p.status === 'active');
+  const potentialPot = activePlayers.length * betAmount;
 
   // Create round with 10-second deadline
   const deadline = new Date(Date.now() + 10000); // 10 seconds from now
@@ -101,12 +106,13 @@ export async function startRound(gameId: string, roundNumber: number) {
       });
   }
 
-  // Update game state for new round
+  // Update game state for new round with potential pot
   await supabase
     .from('games')
     .update({
       current_round: roundNumber,
-      all_decisions_in: false
+      all_decisions_in: false,
+      pot: potentialPot
     })
     .eq('id', gameId);
 
@@ -296,14 +302,20 @@ export async function endRound(gameId: string) {
     const soloStayer = playersWhoStayed[0];
     const username = soloStayer.profiles?.username || `Player ${soloStayer.position}`;
     
-    await supabase
-      .from('players')
-      .update({ 
-        legs: soloStayer.legs + 1 
-      })
-      .eq('id', soloStayer.id);
-      
-    resultMessage = `${username} won the leg (everyone else folded)`;
+    // Winning a leg costs 10 chips
+    if (soloStayer.chips < betAmount) {
+      resultMessage = `${username} won but doesn't have enough chips to claim the leg`;
+    } else {
+      await supabase
+        .from('players')
+        .update({ 
+          legs: soloStayer.legs + 1,
+          chips: soloStayer.chips - betAmount
+        })
+        .eq('id', soloStayer.id);
+        
+      resultMessage = `${username} won a leg (paid ${betAmount} chips)`;
+    }
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands and charge losers
     const { data: playerCards } = await supabase
