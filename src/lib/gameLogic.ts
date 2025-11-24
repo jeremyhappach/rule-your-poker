@@ -66,15 +66,16 @@ export async function startRound(gameId: string, roundNumber: number) {
     })
     .eq('id', gameId);
 
-  // Reset all player decisions and status for new round
+  // Reset player decisions for next round, but keep their status
+  // (folded players stay folded, they don't get new cards)
   await supabase
     .from('players')
     .update({ 
       current_decision: null,
-      decision_locked: false,
-      status: 'active'
+      decision_locked: false
     })
-    .eq('game_id', gameId);
+    .eq('game_id', gameId)
+    .eq('status', 'active');
 
   return round;
 }
