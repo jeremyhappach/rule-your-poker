@@ -249,40 +249,67 @@ export async function endRound(gameId: string) {
 
   if (!round) return;
 
-  const { data: playerCards } = await supabase
-    .from('player_cards')
-    .select('*')
-    .eq('round_id', round.id);
-
-  if (!playerCards) return;
-
-  // Evaluate hands
-  const hands = playerCards.map(pc => ({
-    playerId: pc.player_id,
-    cards: pc.cards as unknown as Card[],
-    evaluation: evaluateHand(pc.cards as unknown as Card[])
-  }));
-
-  // Find winner
-  const winner = hands.reduce((best, current) => 
-    current.evaluation.value > best.evaluation.value ? current : best
-  );
-
-  // Award pot to winner and increment legs
-  const { data: winningPlayer } = await supabase
+  // Get all players and their decisions
+  const { data: allPlayers } = await supabase
     .from('players')
     .select('*')
-    .eq('id', winner.playerId)
-    .single();
+    .eq('game_id', gameId);
 
-  if (winningPlayer) {
+  if (!allPlayers) return;
+
+  // Find players who stayed (didn't fold)
+  const playersWhoStayed = allPlayers.filter(p => p.current_decision === 'stay');
+
+  // Award leg only if exactly one player stayed
+  if (playersWhoStayed.length === 1) {
+    const soloStayer = playersWhoStayed[0];
     await supabase
       .from('players')
       .update({ 
-        chips: winningPlayer.chips + (game.pot || 0),
-        legs: winningPlayer.legs + 1 
+        chips: soloStayer.chips + (game.pot || 0),
+        legs: soloStayer.legs + 1 
       })
-      .eq('id', winner.playerId);
+      .eq('id', soloStayer.id);
+  } else if (playersWhoStayed.length > 1) {
+    // Multiple players stayed - evaluate hands
+    const { data: playerCards } = await supabase
+      .from('player_cards')
+      .select('*')
+      .eq('round_id', round.id);
+
+    if (playerCards) {
+      // Only evaluate hands of players who stayed
+      const hands = playerCards
+        .filter(pc => playersWhoStayed.some(p => p.id === pc.player_id))
+        .map(pc => ({
+          playerId: pc.player_id,
+          cards: pc.cards as unknown as Card[],
+          evaluation: evaluateHand(pc.cards as unknown as Card[])
+        }));
+
+      if (hands.length > 0) {
+        // Find winner
+        const winner = hands.reduce((best, current) => 
+          current.evaluation.value > best.evaluation.value ? current : best
+        );
+
+        // Award pot to winner (no leg awarded when multiple players stay)
+        const { data: winningPlayer } = await supabase
+          .from('players')
+          .select('*')
+          .eq('id', winner.playerId)
+          .single();
+
+        if (winningPlayer) {
+          await supabase
+            .from('players')
+            .update({ 
+              chips: winningPlayer.chips + (game.pot || 0)
+            })
+            .eq('id', winner.playerId);
+        }
+      }
+    }
   }
 
   // Reset pot
@@ -297,11 +324,21 @@ export async function endRound(gameId: string) {
     .update({ status: 'completed' })
     .eq('id', round.id);
 
-  // Start next round or end game
-  if (currentRound < 3) {
-    await startRound(gameId, currentRound + 1);
-  } else {
+  // Check if anyone has won 3 legs
+  const { data: updatedPlayers } = await supabase
+    .from('players')
+    .select('*')
+    .eq('game_id', gameId);
+
+  const gameWinner = updatedPlayers?.find(p => p.legs >= 3);
+
+  if (gameWinner) {
+    // Someone won the game
     await endGame(gameId);
+  } else {
+    // Continue to next round - cycle back to round 1 after round 3
+    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    await startRound(gameId, nextRound);
   }
 }
 
