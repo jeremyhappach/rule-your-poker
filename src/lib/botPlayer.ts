@@ -25,7 +25,22 @@ export async function addBotPlayer(gameId: string) {
 
   // Create a bot profile first
   const botId = crypto.randomUUID();
+  const botNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank'];
+  const botName = botNames[Math.floor(Math.random() * botNames.length)];
   
+  // Insert bot profile
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .insert({
+      id: botId,
+      username: `Bot ${botName}`
+    });
+
+  if (profileError) {
+    console.error('Profile creation error:', profileError);
+    throw new Error(`Failed to create bot profile: ${profileError.message}`);
+  }
+
   // Create bot player
   const { data: botPlayer, error } = await supabase
     .from('players')
