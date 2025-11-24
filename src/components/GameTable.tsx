@@ -118,10 +118,15 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex items-center justify-center gap-1">
-                        {/* Legs indicator */}
+                        {/* Legs indicator - show one chip per leg */}
                         <div className="flex items-center gap-1 bg-amber-900/30 px-2 py-1 rounded border border-amber-700">
-                          <ChipStack amount={50} size="sm" />
-                          <span className="text-poker-gold font-bold text-sm">{player.legs}</span>
+                          {player.legs === 0 ? (
+                            <span className="text-amber-500/50 text-xs">No legs</span>
+                          ) : (
+                            Array.from({ length: player.legs }).map((_, i) => (
+                              <ChipStack key={i} amount={10} size="sm" />
+                            ))
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-1 justify-center flex-wrap">
