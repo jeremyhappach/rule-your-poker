@@ -380,6 +380,24 @@ const Game = () => {
     }
   };
 
+  const handleRestartRound = async () => {
+    if (!gameId) return;
+
+    try {
+      await startRound(gameId, 1);
+      toast({
+        title: "New cycle started",
+        description: "Starting fresh at round 1",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const handleAddBot = async () => {
     if (!gameId) return;
@@ -565,6 +583,17 @@ const Game = () => {
               onStay={handleStay}
               onFold={handleFold}
             />
+            {isCreator && game.current_round === 3 && (
+              <div className="text-center">
+                <Button 
+                  onClick={handleRestartRound} 
+                  variant="outline" 
+                  className="bg-poker-gold text-black font-bold"
+                >
+                  Start New Cycle (Round 1)
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
