@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
-import { startRound, makeDecision, endRound, revealAndContinue, autoFoldUndecided } from "@/lib/gameLogic";
+import { startRound, makeDecision, autoFoldUndecided } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot } from "lucide-react";
@@ -380,41 +380,6 @@ const Game = () => {
     }
   };
 
-  const handleReveal = async () => {
-    if (!gameId) return;
-
-    try {
-      await revealAndContinue(gameId);
-      toast({
-        title: "Decisions revealed",
-        description: "Continuing to next betting round",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEndRound = async () => {
-    if (!gameId) return;
-
-    try {
-      await endRound(gameId);
-      toast({
-        title: "Round ended",
-        description: "Moving to next round",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleAddBot = async () => {
     if (!gameId) return;
@@ -600,20 +565,6 @@ const Game = () => {
               onStay={handleStay}
               onFold={handleFold}
             />
-            {game.all_decisions_in && user && players.find(p => p.user_id === user.id)?.position === 1 && (
-              <div className="text-center">
-                <Button onClick={handleReveal} variant="outline" className="bg-poker-gold text-black font-bold">
-                  Reveal & Continue
-                </Button>
-              </div>
-            )}
-            {user && players.find(p => p.user_id === user.id)?.position === 1 && (
-              <div className="text-center">
-                <Button onClick={handleEndRound} variant="outline">
-                  End Round & Determine Winner
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </div>
