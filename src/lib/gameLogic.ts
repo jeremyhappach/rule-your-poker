@@ -66,12 +66,13 @@ export async function startRound(gameId: string, roundNumber: number) {
     })
     .eq('id', gameId);
 
-  // Reset all player decisions
+  // Reset all player decisions and status for new round
   await supabase
     .from('players')
     .update({ 
       current_decision: null,
-      decision_locked: false 
+      decision_locked: false,
+      status: 'active'
     })
     .eq('game_id', gameId);
 
