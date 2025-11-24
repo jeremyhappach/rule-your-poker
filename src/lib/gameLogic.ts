@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createDeck, shuffleDeck, type Card, evaluateHand } from "./cardUtils";
+import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 export async function startRound(gameId: string, roundNumber: number) {
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
@@ -133,7 +133,7 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   if (!player) throw new Error('Player not found');
 
-  // Lock in decision
+  // Lock in decision - no chips deducted yet
   if (decision === 'stay') {
     if (player.chips < betAmount) {
       throw new Error('Insufficient chips');
@@ -143,16 +143,9 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       .from('players')
       .update({ 
         current_decision: 'stay',
-        decision_locked: true,
-        chips: player.chips - betAmount 
+        decision_locked: true
       })
       .eq('id', playerId);
-
-    // Add to pot
-    await supabase
-      .from('games')
-      .update({ pot: (game.pot || 0) + betAmount })
-      .eq('id', gameId);
   } else {
     await supabase
       .from('players')
@@ -272,6 +265,7 @@ export async function endRound(gameId: string) {
   if (!game || !game.current_round) return;
 
   const currentRound = game.current_round;
+  const betAmount = 10; // Fixed bet per round
 
   // Get all player hands for this round
   const { data: round } = await supabase
@@ -286,26 +280,31 @@ export async function endRound(gameId: string) {
   // Get all players and their decisions
   const { data: allPlayers } = await supabase
     .from('players')
-    .select('*')
+    .select('*, profiles(username)')
     .eq('game_id', gameId);
 
   if (!allPlayers) return;
 
   // Find players who stayed (didn't fold)
   const playersWhoStayed = allPlayers.filter(p => p.current_decision === 'stay');
+  
+  let resultMessage = '';
 
   // Award leg only if exactly one player stayed
   if (playersWhoStayed.length === 1) {
     const soloStayer = playersWhoStayed[0];
+    const username = soloStayer.profiles?.username || `Player ${soloStayer.position}`;
+    
     await supabase
       .from('players')
       .update({ 
-        chips: soloStayer.chips + (game.pot || 0),
         legs: soloStayer.legs + 1 
       })
       .eq('id', soloStayer.id);
+      
+    resultMessage = `${username} won the leg (everyone else folded)`;
   } else if (playersWhoStayed.length > 1) {
-    // Multiple players stayed - evaluate hands
+    // Multiple players stayed - evaluate hands and charge losers
     const { data: playerCards } = await supabase
       .from('player_cards')
       .select('*')
@@ -327,29 +326,57 @@ export async function endRound(gameId: string) {
           current.evaluation.value > best.evaluation.value ? current : best
         );
 
-        // Award pot to winner (no leg awarded when multiple players stay)
         const { data: winningPlayer } = await supabase
           .from('players')
-          .select('*')
+          .select('*, profiles(username)')
           .eq('id', winner.playerId)
           .single();
 
         if (winningPlayer) {
+          const winnerUsername = winningPlayer.profiles?.username || `Player ${winningPlayer.position}`;
+          const handName = formatHandRank(winner.evaluation.rank);
+          
+          // Calculate total pot from losers
+          let totalPot = 0;
+          
+          // Charge each loser and accumulate pot
+          for (const player of playersWhoStayed) {
+            if (player.id !== winner.playerId) {
+              const amountToCharge = Math.min(betAmount, player.chips);
+              totalPot += amountToCharge;
+              
+              await supabase
+                .from('players')
+                .update({ 
+                  chips: player.chips - amountToCharge
+                })
+                .eq('id', player.id);
+            }
+          }
+          
+          // Award pot to winner
           await supabase
             .from('players')
             .update({ 
-              chips: winningPlayer.chips + (game.pot || 0)
+              chips: winningPlayer.chips + totalPot
             })
             .eq('id', winner.playerId);
+            
+          resultMessage = `${winnerUsername} won ${totalPot} chips with ${handName}`;
         }
       }
     }
+  } else {
+    resultMessage = 'Everyone folded - no winner';
   }
 
-  // Reset pot
+  // Store result message and reset pot
   await supabase
     .from('games')
-    .update({ pot: 0 })
+    .update({ 
+      pot: 0,
+      last_round_result: resultMessage
+    })
     .eq('id', gameId);
 
   // Mark round as completed
