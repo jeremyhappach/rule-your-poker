@@ -35,6 +35,7 @@ interface GameTableProps {
   allDecisionsIn: boolean;
   playerCards: PlayerCards[];
   timeLeft: number | null;
+  lastRoundResult: string | null;
   onStay: () => void;
   onFold: () => void;
 }
@@ -47,6 +48,7 @@ export const GameTable = ({
   allDecisionsIn,
   playerCards,
   timeLeft,
+  lastRoundResult,
   onStay,
   onFold,
 }: GameTableProps) => {
@@ -73,7 +75,7 @@ export const GameTable = ({
               <Badge className="mt-2 bg-poker-gold text-black border-0 shadow-lg">
                 Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
               </Badge>
-              <p className="text-sm text-white/90 mt-3 font-semibold">Bet: 10 chips to stay</p>
+              <p className="text-sm text-white/90 mt-3 font-semibold">If you lose: pay 10 chips</p>
               {timeLeft !== null && timeLeft > 0 && !allDecisionsIn && (
                 <Badge className={`mt-2 ${timeLeft <= 3 ? 'bg-red-500 animate-pulse' : 'bg-blue-500'} text-white border-0 shadow-lg`}>
                   Time: {timeLeft}s
@@ -171,7 +173,7 @@ export const GameTable = ({
           <div className="text-center mb-4">
             <p className="text-amber-100 text-lg font-bold">Make your decision!</p>
             <p className="text-amber-300/70 text-sm">All players decide simultaneously</p>
-            <p className="text-poker-gold text-sm mt-2">Cost to stay: 10 chips</p>
+            <p className="text-poker-gold text-sm mt-2">If you stay and lose, you'll pay 10 chips to the winner</p>
           </div>
           <div className="flex gap-4 justify-center">
             <Button 
@@ -186,7 +188,7 @@ export const GameTable = ({
               disabled={(currentPlayer?.chips || 0) < 10}
               className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold shadow-lg text-lg px-8 py-6"
             >
-              Stay (10 chips)
+              Stay
             </Button>
           </div>
         </div>
@@ -201,10 +203,19 @@ export const GameTable = ({
       )}
 
       {allDecisionsIn && (
-        <div className="text-center mt-8 bg-poker-gold/20 p-4 rounded-lg border border-poker-gold/40">
-          <p className="text-poker-gold font-bold text-lg">
-            All decisions are in! Host can reveal results.
-          </p>
+        <div className="text-center mt-8 space-y-4">
+          {lastRoundResult && (
+            <div className="bg-poker-gold/20 p-4 rounded-lg border-2 border-poker-gold/60">
+              <p className="text-poker-gold font-bold text-xl">
+                {lastRoundResult}
+              </p>
+            </div>
+          )}
+          <div className="bg-poker-gold/20 p-4 rounded-lg border border-poker-gold/40">
+            <p className="text-poker-gold font-bold text-lg">
+              All decisions are in! Host can reveal results.
+            </p>
+          </div>
         </div>
       )}
     </div>

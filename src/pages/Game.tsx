@@ -587,6 +587,7 @@ const Game = () => {
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               timeLeft={timeLeft}
+              lastRoundResult={(game as any).last_round_result || null}
               onStay={handleStay}
               onFold={handleFold}
             />
