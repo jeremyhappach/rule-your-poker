@@ -204,18 +204,11 @@ export const GameTable = ({
         </div>
       )}
 
-      {allDecisionsIn && (
-        <div className="text-center mt-8 space-y-4">
-          {lastRoundResult && (
-            <div className="bg-poker-gold/20 p-4 rounded-lg border-2 border-poker-gold/60">
-              <p className="text-poker-gold font-bold text-xl">
-                {lastRoundResult}
-              </p>
-            </div>
-          )}
-          <div className="bg-poker-gold/20 p-4 rounded-lg border border-poker-gold/40">
-            <p className="text-poker-gold font-bold text-lg">
-              All decisions are in! Host can reveal results.
+      {lastRoundResult && (
+        <div className="text-center mt-8">
+          <div className="bg-poker-gold/20 p-4 rounded-lg border-2 border-poker-gold/60">
+            <p className="text-poker-gold font-bold text-xl">
+              {lastRoundResult}
             </p>
           </div>
         </div>
