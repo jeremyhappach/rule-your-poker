@@ -33,6 +33,9 @@ export async function startRound(gameId: string, roundNumber: number) {
         console.error('Error deleting rounds:', roundsDeleteError);
         throw new Error(`Failed to delete old rounds: ${roundsDeleteError.message}`);
       }
+
+      // Wait a moment to ensure deletion is fully processed
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
