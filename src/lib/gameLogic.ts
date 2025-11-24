@@ -4,12 +4,21 @@ import { createDeck, shuffleDeck, type Card, evaluateHand } from "./cardUtils";
 export async function startRound(gameId: string, roundNumber: number) {
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
 
-  // Get all active players
+  // Reset all players to active for the new round (folding only applies to current round)
+  await supabase
+    .from('players')
+    .update({ 
+      current_decision: null,
+      decision_locked: false,
+      status: 'active'
+    })
+    .eq('game_id', gameId);
+
+  // Get all players
   const { data: players, error: playersError } = await supabase
     .from('players')
     .select('*')
     .eq('game_id', gameId)
-    .eq('status', 'active')
     .order('position');
 
   if (playersError) {
@@ -65,17 +74,6 @@ export async function startRound(gameId: string, roundNumber: number) {
       all_decisions_in: false
     })
     .eq('id', gameId);
-
-  // Reset player decisions for next round, but keep their status
-  // (folded players stay folded, they don't get new cards)
-  await supabase
-    .from('players')
-    .update({ 
-      current_decision: null,
-      decision_locked: false
-    })
-    .eq('game_id', gameId)
-    .eq('status', 'active');
 
   return round;
 }
