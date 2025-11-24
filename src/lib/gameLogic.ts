@@ -46,7 +46,8 @@ export async function startRound(gameId: string, roundNumber: number) {
     .single();
 
   if (roundError || !round) {
-    throw new Error('Failed to create round');
+    console.error('Round creation error:', roundError);
+    throw new Error(`Failed to create round: ${roundError?.message || 'Unknown error'}`);
   }
 
   // Deal cards

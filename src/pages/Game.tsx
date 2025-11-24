@@ -62,6 +62,7 @@ const Game = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -130,7 +131,7 @@ const Game = () => {
 
   // Timer countdown effect
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0) return;
+    if (timeLeft === null || timeLeft <= 0 || isPaused) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -142,7 +143,7 @@ const Game = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, isPaused]);
 
   // Trigger bot decisions when round starts
   useEffect(() => {
@@ -158,10 +159,10 @@ const Game = () => {
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
-    if (timeLeft === 0 && game && !game.all_decisions_in) {
+    if (timeLeft === 0 && game && !game.all_decisions_in && !isPaused) {
       autoFoldUndecided(gameId!);
     }
-  }, [timeLeft, game, gameId]);
+  }, [timeLeft, game, gameId, isPaused]);
 
   const fetchGameData = async () => {
     if (!gameId || !user) return;
@@ -468,6 +469,14 @@ const Game = () => {
             <Badge variant={game.status === 'in_progress' ? 'default' : 'secondary'}>
               {game.status === 'in_progress' ? 'In Progress' : game.status}
             </Badge>
+            {game.status === 'in_progress' && (
+              <Button 
+                variant={isPaused ? "default" : "outline"} 
+                onClick={() => setIsPaused(!isPaused)}
+              >
+                {isPaused ? '▶️ Resume' : '⏸️ Pause'}
+              </Button>
+            )}
             {game.status === 'waiting' && (
               <Button variant="default" onClick={handleInvite}>
                 <Share2 className="w-4 h-4 mr-2" />
