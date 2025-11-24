@@ -569,6 +569,55 @@ const Game = () => {
           </Card>
         )}
 
+        {game.status === 'completed' && (
+          <Card className="border-poker-gold border-4">
+            <CardHeader>
+              <CardTitle className="text-center text-3xl text-poker-gold">Game Over!</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-poker-gold/20 p-6 rounded-lg border-2 border-poker-gold/60">
+                <p className="text-poker-gold font-bold text-2xl text-center">
+                  {(game as any).last_round_result || 'Game completed'}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Final Standings:</h3>
+                {players
+                  .sort((a, b) => b.legs - a.legs || b.chips - a.chips)
+                  .map((p, index) => (
+                    <div 
+                      key={p.id}
+                      className={`flex justify-between items-center p-3 rounded ${
+                        index === 0 ? 'bg-poker-gold/20 border border-poker-gold' : 'bg-card'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {index === 0 && <span className="text-2xl">🏆</span>}
+                        <span className={index === 0 ? 'font-bold text-poker-gold' : ''}>
+                          {p.profiles?.username || `Player ${p.position}`}
+                          {p.is_bot && ' 🤖'}
+                        </span>
+                      </div>
+                      <div className="flex gap-4">
+                        <Badge variant={index === 0 ? "default" : "secondary"}>
+                          {p.legs} legs
+                        </Badge>
+                        <Badge variant="outline">{p.chips} chips</Badge>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              
+              <div className="flex gap-2 justify-center">
+                <Button onClick={() => navigate('/')} variant="outline">
+                  Back to Lobby
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {game.status === 'in_progress' && (
           <div className="space-y-4">
             <GameTable
