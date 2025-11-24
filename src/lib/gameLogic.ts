@@ -12,8 +12,13 @@ export async function startRound(gameId: string, roundNumber: number) {
     .eq('status', 'active')
     .order('position');
 
-  if (playersError || !players || players.length === 0) {
-    throw new Error('Failed to fetch players');
+  if (playersError) {
+    console.error('Error fetching players:', playersError);
+    throw new Error(`Failed to fetch players: ${playersError.message}`);
+  }
+  
+  if (!players || players.length === 0) {
+    throw new Error('No active players found in game');
   }
 
   // Create round with 10-second deadline
