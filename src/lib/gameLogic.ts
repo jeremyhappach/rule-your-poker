@@ -420,24 +420,39 @@ export async function endRound(gameId: string) {
   // Check if anyone has won 3 legs
   const { data: updatedPlayers } = await supabase
     .from('players')
-    .select('*')
+    .select('*, profiles(username)')
     .eq('game_id', gameId);
 
   const gameWinner = updatedPlayers?.find(p => p.legs >= 3);
 
   if (gameWinner) {
-    // Someone won the game
-    await endGame(gameId);
+    // Someone won the game - award them all the chips from all legs
+    const winnerUsername = gameWinner.profiles?.username || `Player ${gameWinner.position}`;
+    
+    // Calculate total value: each leg is worth 10 chips
+    const legValue = gameWinner.legs * 10;
+    
+    // Award the winner
+    await supabase
+      .from('players')
+      .update({ 
+        chips: gameWinner.chips + legValue
+      })
+      .eq('id', gameWinner.id);
+    
+    const gameWinMessage = `🏆 ${winnerUsername} won ${gameWinner.legs} legs and won the game! (+${legValue} chips)`;
+    
+    // Update game status and set winner message
+    await supabase
+      .from('games')
+      .update({ 
+        status: 'completed',
+        last_round_result: gameWinMessage
+      })
+      .eq('id', gameId);
   } else {
     // Continue to next round - cycle back to round 1 after round 3
     const nextRound = currentRound < 3 ? currentRound + 1 : 1;
     await startRound(gameId, nextRound);
   }
-}
-
-async function endGame(gameId: string) {
-  await supabase
-    .from('games')
-    .update({ status: 'completed' })
-    .eq('id', gameId);
 }
