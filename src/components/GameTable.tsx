@@ -131,15 +131,12 @@ export const GameTable = ({
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
-            // Get cards for current player, or show placeholder cards for others
+            // Get actual cards for this player
             const actualCards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
             const shouldShowCards = player.status !== 'folded' && !player.sitting_out;
-            const cardCount = currentRound === 1 ? 3 : currentRound === 2 ? 5 : currentRound === 3 ? 7 : 0;
             
-            // For other players, create placeholder cards to show card backs
-            const cards = isCurrentUser ? actualCards : (shouldShowCards && cardCount > 0 ? 
-              Array(cardCount).fill({ rank: '2', suit: '♠' }) : 
-              []);
+            // Show actual cards for all players (for testing), or empty if folded/sitting out
+            const cards = shouldShowCards ? actualCards : [];
 
             return (
               <div
@@ -187,8 +184,8 @@ export const GameTable = ({
                           )}
                         </div>
                         
-                        {/* Hand evaluation hint - only for current user */}
-                        {isCurrentUser && cards.length > 0 && (
+                        {/* Hand evaluation hint - show for all players during testing */}
+                        {cards.length > 0 && (
                           <div className="bg-poker-gold/20 px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[10px] font-bold">
                               {formatHandRank(evaluateHand(cards).rank)}
