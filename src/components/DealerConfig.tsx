@@ -11,10 +11,11 @@ interface DealerConfigProps {
   gameId: string;
   dealerUsername: string;
   isBot: boolean;
+  dealerPlayerId: string;
   onConfigComplete: () => void;
 }
 
-export const DealerConfig = ({ gameId, dealerUsername, isBot, onConfigComplete }: DealerConfigProps) => {
+export const DealerConfig = ({ gameId, dealerUsername, isBot, dealerPlayerId, onConfigComplete }: DealerConfigProps) => {
   const { toast } = useToast();
   const [anteAmount, setAnteAmount] = useState(2);
   const [legValue, setLegValue] = useState(1);
@@ -28,6 +29,7 @@ export const DealerConfig = ({ gameId, dealerUsername, isBot, onConfigComplete }
   useEffect(() => {
     if (isBot) {
       const autoSubmit = async () => {
+        // Update game config
         const { error } = await supabase
           .from('games')
           .update({
@@ -46,13 +48,19 @@ export const DealerConfig = ({ gameId, dealerUsername, isBot, onConfigComplete }
           .eq('id', gameId);
 
         if (!error) {
+          // Automatically ante up the dealer (bot)
+          await supabase
+            .from('players')
+            .update({ ante_decision: 'ante_up' })
+            .eq('id', dealerPlayerId);
+            
           onConfigComplete();
         }
       };
       
       autoSubmit();
     }
-  }, [isBot, gameId, onConfigComplete]);
+  }, [isBot, gameId, dealerPlayerId, onConfigComplete]);
 
   const handleSubmit = async () => {
     // Validation
@@ -83,6 +91,7 @@ export const DealerConfig = ({ gameId, dealerUsername, isBot, onConfigComplete }
       return;
     }
 
+    // Update game config
     const { error } = await supabase
       .from('games')
       .update({
@@ -109,10 +118,16 @@ export const DealerConfig = ({ gameId, dealerUsername, isBot, onConfigComplete }
       return;
     }
 
+    // Automatically ante up the dealer
+    await supabase
+      .from('players')
+      .update({ ante_decision: 'ante_up' })
+      .eq('id', dealerPlayerId);
+
     if (!isBot) {
       toast({
         title: "Configuration saved",
-        description: "Players must now decide to ante up or sit out",
+        description: "Other players must now decide to ante up or sit out",
       });
     }
 
