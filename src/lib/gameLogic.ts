@@ -391,6 +391,8 @@ export async function endRound(gameId: string) {
     
     // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
+      console.log('Player won the game!', { username, newLegCount, legsToWin });
+      
       // Winner gets the entire pot (leg costs are already paid, not refunded)
       const totalPrize = game.pot || 0;
       
@@ -410,6 +412,30 @@ export async function endRound(gameId: string) {
       
       const gameWinMessage = `🏆 ${username} won the game with ${newLegCount} legs!${totalPrize > 0 ? ` (+$${totalPrize})` : ''}`;
       
+      // Calculate next dealer (clockwise from current dealer)
+      const totalPlayers = allPlayers?.length || 0;
+      const currentDealerPosition = game.dealer_position || 1;
+      const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
+      
+      console.log('Updating game to game_over status', { nextDealerPosition });
+      
+      // Update game to game_over status with 5 second delay before moving to configuration
+      const { error: gameOverError } = await supabase
+        .from('games')
+        .update({ 
+          status: 'game_over',
+          dealer_position: nextDealerPosition,
+          current_round: null,
+          awaiting_next_round: false,
+          all_decisions_in: false,
+          last_round_result: gameWinMessage
+        })
+        .eq('id', gameId);
+        
+      if (gameOverError) {
+        console.error('Error updating game to game_over:', gameOverError);
+      }
+      
       // Reset all players' legs for new game and keep chips
       await supabase
         .from('players')
@@ -422,24 +448,6 @@ export async function endRound(gameId: string) {
           ante_decision: null
         })
         .eq('game_id', gameId);
-      
-      // Calculate next dealer (clockwise from current dealer)
-      const totalPlayers = allPlayers?.length || 0;
-      const currentDealerPosition = game.dealer_position || 1;
-      const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
-      
-      // Update game to game_over status with 5 second delay before moving to configuration
-      await supabase
-        .from('games')
-        .update({ 
-          status: 'game_over',
-          dealer_position: nextDealerPosition,
-          current_round: null,
-          awaiting_next_round: false,
-          all_decisions_in: false,
-          last_round_result: gameWinMessage
-        })
-        .eq('id', gameId);
         
       // Mark round as completed
       await supabase
@@ -447,6 +455,7 @@ export async function endRound(gameId: string) {
         .update({ status: 'completed' })
         .eq('id', round.id);
         
+      console.log('Game over setup complete');
       return; // Exit early, starting new game
     }
   } else if (playersWhoStayed.length > 1) {
