@@ -351,6 +351,18 @@ export async function endRound(gameId: string) {
     return;
   }
 
+  // Immediately mark round as processing to prevent race conditions
+  const { error: lockError } = await supabase
+    .from('rounds')
+    .update({ status: 'processing' })
+    .eq('id', round.id)
+    .eq('status', 'betting'); // Only update if still in betting status
+
+  if (lockError) {
+    console.log('Round already being processed, skipping endRound');
+    return;
+  }
+
   // Get all players and their decisions
   const { data: allPlayers } = await supabase
     .from('players')
