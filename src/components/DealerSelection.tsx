@@ -35,10 +35,13 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
         if (spins >= maxSpins && next === selectedPosition) {
           setIsSpinning(false);
           clearInterval(spinInterval);
-          // Complete after a brief pause
+          // Freeze on the selected position
+          setCurrentPosition(selectedPosition);
+          // Complete after showing the announcement
           setTimeout(() => {
             onComplete(selectedPosition);
-          }, 1000);
+          }, 2000);
+          return selectedPosition;
         }
         
         return next;
