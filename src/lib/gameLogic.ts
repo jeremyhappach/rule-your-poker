@@ -175,13 +175,22 @@ export async function startRound(gameId: string, roundNumber: number) {
       });
   }
 
-  // Update game state for new round with initial pot and clear last result
+  // Get current pot value to preserve it
+  const { data: currentGame } = await supabase
+    .from('games')
+    .select('pot')
+    .eq('id', gameId)
+    .single();
+
+  const currentPot = currentGame?.pot || 0;
+
+  // Update game state for new round with accumulated pot and clear last result
   await supabase
     .from('games')
     .update({
       current_round: roundNumber,
       all_decisions_in: false,
-      pot: initialPot,
+      pot: currentPot + initialPot,  // Add antes to existing pot
       last_round_result: null
     })
     .eq('id', gameId);
@@ -346,6 +355,14 @@ export async function endRound(gameId: string) {
           chips: soloStayer.chips - betAmount
         })
         .eq('id', soloStayer.id);
+      
+      // Add leg payment to pot
+      await supabase
+        .from('games')
+        .update({ 
+          pot: (game.pot || 0) + betAmount
+        })
+        .eq('id', gameId);
         
       resultMessage = `${username} won a leg (paid ${betAmount} chips)`;
     }
@@ -407,6 +424,14 @@ export async function endRound(gameId: string) {
               chips: winningPlayer.chips + totalPot
             })
             .eq('id', winner.playerId);
+          
+          // Add winnings to game pot
+          await supabase
+            .from('games')
+            .update({ 
+              pot: (game.pot || 0) + totalPot
+            })
+            .eq('id', gameId);
             
           resultMessage = `${winnerUsername} won ${totalPot} chips with ${handName}`;
         }
@@ -436,7 +461,15 @@ export async function endRound(gameId: string) {
         .eq('id', player.id);
     }
     
-    resultMessage = `💸 PUSSY TAX INCURRED! Everyone folded. Each player paid ${pussyTax} chips. Pot: ${taxCollected} chips`;
+    // Add pussy tax to pot
+    await supabase
+      .from('games')
+      .update({ 
+        pot: (game.pot || 0) + taxCollected
+      })
+      .eq('id', gameId);
+    
+    resultMessage = `💸 PUSSY TAX INCURRED! Everyone folded. Each player paid ${pussyTax} chips. Pot: ${(game.pot || 0) + taxCollected} chips`;
   }
 
   // Store result message and keep pot (don't reset to 0 if pussy tax was collected)
