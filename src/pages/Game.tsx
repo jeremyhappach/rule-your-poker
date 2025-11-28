@@ -215,7 +215,7 @@ const Game = () => {
 
     // Auto-join if user is not in the game and game is waiting
     const isPlayerInGame = playersData?.some(p => p.user_id === user.id);
-    if (!isPlayerInGame && gameData.status === 'waiting' && playersData && playersData.length < 4) {
+    if (!isPlayerInGame && gameData.status === 'waiting' && playersData && playersData.length < 7) {
       const nextPosition = Math.max(...playersData.map(p => p.position), 0) + 1;
       
       const { error: joinError } = await supabase

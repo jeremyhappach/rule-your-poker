@@ -72,15 +72,23 @@ export const GameTable = ({
                 <ChipStack amount={pot > 0 ? Math.min(pot, 100) : 0} size="lg" />
                 <p className="text-3xl font-bold text-poker-gold drop-shadow-lg">{pot}</p>
               </div>
+              
+              {/* PROMINENT TIMER */}
+              {timeLeft !== null && timeLeft >= 0 && (
+                <div className={`mt-2 mb-2 text-center ${timeLeft <= 3 ? 'animate-pulse' : ''}`}>
+                  <p className={`text-5xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>
+                    {allDecisionsIn ? '⏰' : timeLeft}
+                  </p>
+                  <p className="text-xs text-white/70 mt-1">
+                    {allDecisionsIn ? 'Time\'s up!' : 'seconds left'}
+                  </p>
+                </div>
+              )}
+              
               <Badge className="mt-1 bg-poker-gold text-black border-0 shadow-lg text-xs">
                 Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
               </Badge>
               <p className="text-xs text-white/90 mt-2 font-semibold">If you lose: pay 10 chips</p>
-              {timeLeft !== null && timeLeft >= 0 && (
-                <Badge className={`mt-1 text-xs ${timeLeft <= 3 ? 'bg-red-500 animate-pulse' : timeLeft === 0 ? 'bg-gray-500' : 'bg-blue-500'} text-white border-0 shadow-lg`}>
-                  {allDecisionsIn ? 'Time\'s up!' : `Time: ${timeLeft}s`}
-                </Badge>
-              )}
             </div>
           </div>
 
