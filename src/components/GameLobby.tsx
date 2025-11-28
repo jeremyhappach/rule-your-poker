@@ -46,7 +46,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [loading, setLoading] = useState(true);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [buyIn, setBuyIn] = useState(100);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -113,19 +112,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const createGame = async () => {
-    if (buyIn < 10 || buyIn > 10000) {
-      toast({
-        title: "Invalid buy-in",
-        description: "Buy-in must be between 10 and 10,000 chips",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
-        buy_in: buyIn,
+        buy_in: 100, // Default value, not used anymore
         status: 'waiting'
       })
       .select()
@@ -164,7 +154,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     });
 
     setShowCreateDialog(false);
-    setBuyIn(100); // Reset to default
     navigate(`/game/${game.id}`);
   };
 
@@ -287,9 +276,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle>Game #{game.id.slice(0, 8)}</CardTitle>
-                    <CardDescription>
-                      Buy-in: {game.buy_in} chips
-                    </CardDescription>
                   </div>
                   <Badge variant={game.status === 'waiting' ? 'default' : 'secondary'}>
                     {game.status}
@@ -327,25 +313,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           <DialogHeader>
             <DialogTitle>Create New Game</DialogTitle>
             <DialogDescription>
-              Configure your game settings
+              Start a new game of Three, Five, Seven
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="buyIn">Buy-in Amount (chips)</Label>
-              <Input
-                id="buyIn"
-                type="number"
-                min="10"
-                max="10000"
-                value={buyIn}
-                onChange={(e) => setBuyIn(parseInt(e.target.value) || 100)}
-                placeholder="100"
-              />
-              <p className="text-sm text-muted-foreground">
-                Each player starts with this many chips (10-10,000)
-              </p>
-            </div>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Players start at $0 and can go into debt. Get 3 legs to win!
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>

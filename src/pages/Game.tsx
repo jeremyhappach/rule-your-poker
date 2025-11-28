@@ -514,10 +514,6 @@ const Game = () => {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Buy-in:</span>
-                <span className="font-semibold">${game.buy_in}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-muted-foreground">Pot:</span>
                 <span className="font-semibold">${game.pot || 0}</span>
               </div>
