@@ -1,10 +1,12 @@
 interface ChipStackProps {
   amount: number;
   size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'leg';
 }
 
-export const ChipStack = ({ amount, size = 'md' }: ChipStackProps) => {
+export const ChipStack = ({ amount, size = 'md', variant = 'default' }: ChipStackProps) => {
   const getChipColor = (value: number) => {
+    if (variant === 'leg') return 'bg-black';
     if (value >= 100) return 'bg-poker-chip-black';
     if (value >= 50) return 'bg-poker-chip-green';
     if (value >= 25) return 'bg-poker-chip-blue';
