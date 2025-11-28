@@ -194,10 +194,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    if (players.length >= 4) {
+    if (players.length >= 7) {
       toast({
         title: "Game Full",
-        description: "This game already has 4 players",
+        description: "This game already has 7 players",
         variant: "destructive",
       });
       return;
@@ -296,7 +296,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
               <CardContent>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <div className="text-sm text-muted-foreground">
-                    Players: {game.player_count} / 4
+                    Players: {game.player_count} / 7
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={() => joinGame(game.id)} className="flex-1 sm:flex-none">

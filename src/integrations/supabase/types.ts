@@ -26,6 +26,7 @@ export type Database = {
           last_round_result: string | null
           next_round_number: number | null
           pot: number | null
+          pussy_tax: number
           status: string
           updated_at: string
         }
@@ -40,6 +41,7 @@ export type Database = {
           last_round_result?: string | null
           next_round_number?: number | null
           pot?: number | null
+          pussy_tax?: number
           status?: string
           updated_at?: string
         }
@@ -54,6 +56,7 @@ export type Database = {
           last_round_result?: string | null
           next_round_number?: number | null
           pot?: number | null
+          pussy_tax?: number
           status?: string
           updated_at?: string
         }

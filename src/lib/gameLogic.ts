@@ -87,9 +87,22 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error('No active players found in game');
   }
 
-  // Calculate pot based on active players
+  // Calculate pot based on active players and ante for round 1
   const activePlayers = players.filter(p => p.status === 'active');
-  const potentialPot = activePlayers.length * betAmount;
+  let initialPot = 0;
+  
+  // Ante: Each player pays 10 chips into the pot at the start of round 1
+  if (roundNumber === 1) {
+    for (const player of activePlayers) {
+      const anteAmount = Math.min(betAmount, player.chips);
+      initialPot += anteAmount;
+      
+      await supabase
+        .from('players')
+        .update({ chips: player.chips - anteAmount })
+        .eq('id', player.id);
+    }
+  }
 
   // Create round with 10-second deadline
   const deadline = new Date(Date.now() + 10000); // 10 seconds from now
@@ -100,7 +113,7 @@ export async function startRound(gameId: string, roundNumber: number) {
       round_number: roundNumber,
       cards_dealt: cardsToDeal,
       status: 'betting',
-      pot: 0,
+      pot: initialPot,
       decision_deadline: deadline.toISOString()
     })
     .select()
@@ -162,13 +175,13 @@ export async function startRound(gameId: string, roundNumber: number) {
       });
   }
 
-  // Update game state for new round with potential pot
+  // Update game state for new round with initial pot
   await supabase
     .from('games')
     .update({
       current_round: roundNumber,
       all_decisions_in: false,
-      pot: potentialPot
+      pot: initialPot
     })
     .eq('id', gameId);
 
@@ -399,14 +412,36 @@ export async function endRound(gameId: string) {
       }
     }
   } else {
-    resultMessage = 'Everyone folded - no winner';
+    // Everyone folded - apply pussy tax
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('pussy_tax')
+      .eq('id', gameId)
+      .single();
+    
+    const pussyTax = gameData?.pussy_tax || 10;
+    let taxCollected = 0;
+    
+    // Charge each player the pussy tax
+    for (const player of allPlayers) {
+      const taxAmount = Math.min(pussyTax, player.chips);
+      taxCollected += taxAmount;
+      
+      await supabase
+        .from('players')
+        .update({ 
+          chips: player.chips - taxAmount
+        })
+        .eq('id', player.id);
+    }
+    
+    resultMessage = `💸 PUSSY TAX INCURRED! Everyone folded. Each player paid ${pussyTax} chips. Pot: ${taxCollected} chips`;
   }
 
-  // Store result message and reset pot
+  // Store result message and keep pot (don't reset to 0 if pussy tax was collected)
   await supabase
     .from('games')
     .update({ 
-      pot: 0,
       last_round_result: resultMessage
     })
     .eq('id', gameId);
