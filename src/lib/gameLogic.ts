@@ -375,9 +375,10 @@ export async function endRound(gameId: string) {
       return;
     }
     
-    // Winning a leg costs the leg value (can go negative)
+    // Winning a leg costs the leg value - add it to the pot
     const newLegCount = soloStayer.legs + 1;
     const newChips = soloStayer.chips - betAmount;
+    const currentPot = game.pot || 0;
     
     await supabase
       .from('players')
@@ -386,6 +387,12 @@ export async function endRound(gameId: string) {
         chips: newChips
       })
       .eq('id', soloStayer.id);
+    
+    // Add leg payment to pot
+    await supabase
+      .from('games')
+      .update({ pot: currentPot + betAmount })
+      .eq('id', gameId);
       
     resultMessage = `${username} won a leg`;
     
