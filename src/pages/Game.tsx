@@ -274,6 +274,17 @@ const Game = () => {
     }
   }, [timeLeft, game, gameId, isPaused]);
 
+  // Auto-proceed to next round when awaiting
+  useEffect(() => {
+    if (game?.awaiting_next_round && gameId) {
+      const timer = setTimeout(() => {
+        proceedToNextRound(gameId);
+      }, 3000); // 3 second delay to show results
+
+      return () => clearTimeout(timer);
+    }
+  }, [game?.awaiting_next_round, gameId]);
+
   const fetchGameData = async () => {
     if (!gameId || !user) return;
 
@@ -643,23 +654,6 @@ const Game = () => {
     }
   };
 
-  const handleProceedToNextRound = async () => {
-    if (!gameId) return;
-
-    try {
-      await proceedToNextRound(gameId);
-      toast({
-        title: "Proceeding to next round",
-        description: "Starting round " + (game?.next_round_number || ''),
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
 
   const handleAddBot = async () => {
@@ -947,24 +941,6 @@ const Game = () => {
 
         {game.status === 'in_progress' && (
           <div className="space-y-4">
-            {game.awaiting_next_round && (
-              <Card className="border-primary">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <p className="text-lg font-semibold">Round {game.current_round} Complete!</p>
-                    <p className="text-muted-foreground">{(game as any).last_round_result}</p>
-                    <Button 
-                      onClick={handleProceedToNextRound} 
-                      size="lg"
-                      className="bg-primary"
-                    >
-                      Proceed to Round {game.next_round_number}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
             <GameTable
               players={players}
               currentUserId={user?.id}
