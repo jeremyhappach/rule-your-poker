@@ -12,6 +12,7 @@ import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { DealerSelection } from "@/components/DealerSelection";
 import { DealerAnnouncement } from "@/components/DealerAnnouncement";
 import { PreGameLobby } from "@/components/PreGameLobby";
+import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -474,6 +475,31 @@ const Game = () => {
     setTimeout(() => fetchGameData(), 100);
   };
 
+  const handleGameOverComplete = async () => {
+    if (!gameId) return;
+
+    // Transition to configuring phase for next game
+    const { error } = await supabase
+      .from('games')
+      .update({ 
+        status: 'configuring',
+        config_complete: false
+      })
+      .eq('id', gameId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start configuration",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Manual refetch to update UI
+    setTimeout(() => fetchGameData(), 100);
+  };
+
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) return;
 
@@ -724,9 +750,33 @@ const Game = () => {
           />
         )}
 
-        {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement') && (
+        {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement' || game.status === 'game_over') && (
           <>
-            {game.status === 'dealer_selection' ? (
+            {game.status === 'game_over' ? (
+              <>
+                <GameTable
+                  players={players}
+                  currentUserId={user?.id}
+                  pot={game.pot || 0}
+                  currentRound={0}
+                  allDecisionsIn={false}
+                  playerCards={[]}
+                  timeLeft={null}
+                  lastRoundResult={null}
+                  dealerPosition={game.dealer_position}
+                  legValue={game.leg_value || 1}
+                  onStay={() => {}}
+                  onFold={() => {}}
+                />
+                {dealerPlayer && (
+                  <GameOverCountdown
+                    winnerMessage={game.last_round_result || 'Game over!'}
+                    nextDealer={dealerPlayer}
+                    onComplete={handleGameOverComplete}
+                  />
+                )}
+              </>
+            ) : game.status === 'dealer_selection' ? (
               <div className="relative">
                 <GameTable
                   players={players}
