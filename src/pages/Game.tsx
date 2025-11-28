@@ -765,6 +765,8 @@ const Game = () => {
                   lastRoundResult={null}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
+                  potMaxEnabled={game.pot_max_enabled ?? true}
+                  potMaxValue={game.pot_max_value || 10}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -789,6 +791,8 @@ const Game = () => {
                   lastRoundResult={null}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
+                  potMaxEnabled={game.pot_max_enabled ?? true}
+                  potMaxValue={game.pot_max_value || 10}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -812,6 +816,8 @@ const Game = () => {
                   lastRoundResult={game.last_round_result}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
+                  potMaxEnabled={game.pot_max_enabled ?? true}
+                  potMaxValue={game.pot_max_value || 10}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -963,6 +969,8 @@ const Game = () => {
               lastRoundResult={(game as any).last_round_result || null}
               dealerPosition={game.dealer_position}
               legValue={game.leg_value || 1}
+              potMaxEnabled={game.pot_max_enabled ?? true}
+              potMaxValue={game.pot_max_value || 10}
               onStay={handleStay}
               onFold={handleFold}
             />

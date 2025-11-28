@@ -39,6 +39,8 @@ interface GameTableProps {
   lastRoundResult: string | null;
   dealerPosition: number | null;
   legValue: number;
+  potMaxEnabled: boolean;
+  potMaxValue: number;
   onStay: () => void;
   onFold: () => void;
 }
@@ -54,11 +56,16 @@ export const GameTable = ({
   lastRoundResult,
   dealerPosition,
   legValue,
+  potMaxEnabled,
+  potMaxValue,
   onStay,
   onFold,
 }: GameTableProps) => {
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked;
+  
+  // Calculate the amount loser will pay: min of pot and pot max (if enabled)
+  const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
   
   // Reorder players so current user is always first (bottom position)
   const reorderedPlayers = currentPlayer 
@@ -101,7 +108,7 @@ export const GameTable = ({
                   <Badge className="mt-1 bg-poker-gold text-black border-0 shadow-lg text-xs">
                     Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
                   </Badge>
-                  <p className="text-xs text-white/90 mt-1 font-semibold">Lose: pay 10</p>
+                  <p className="text-xs text-white/90 mt-1 font-semibold">Lose: pay ${loseAmount}</p>
                 </div>
               </div>
               
