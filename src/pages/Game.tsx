@@ -11,6 +11,7 @@ import { DealerConfig } from "@/components/DealerConfig";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { DealerSelection } from "@/components/DealerSelection";
 import { DealerAnnouncement } from "@/components/DealerAnnouncement";
+import { PreGameLobby } from "@/components/PreGameLobby";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -711,33 +712,13 @@ const Game = () => {
 
 
         {game.status === 'waiting' && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center space-y-4">
-                <p className="text-muted-foreground">
-                  Waiting for players to join...
-                </p>
-                <div className="flex gap-3 justify-center flex-wrap">
-                  {canStart && (
-                    <Button onClick={startGame} size="lg">
-                      Start Game
-                    </Button>
-                  )}
-                  {isCreator && players.length < 7 && (
-                    <Button onClick={handleAddBot} size="lg" variant="outline">
-                      <Bot className="w-4 h-4 mr-2" />
-                      Add Bot Player
-                    </Button>
-                  )}
-                </div>
-                {!canStart && players.length < 2 && (
-                  <p className="text-sm text-muted-foreground">
-                    Need at least 2 players to start (add bots or invite friends!)
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <PreGameLobby
+            players={players}
+            currentUserId={user?.id}
+            onStartGame={startGame}
+            onAddBot={handleAddBot}
+            canStart={canStart}
+          />
         )}
 
         {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement') && (
