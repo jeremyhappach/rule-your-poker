@@ -496,11 +496,11 @@ export async function endRound(gameId: string) {
             const winnerUsername = winningPlayer.profiles?.username || `Player ${winningPlayer.position}`;
             const handName = formatHandRank(winner.evaluation.rank);
             
-            // Calculate total pot from losers
-            let totalPot = 0;
+            // Start with current pot (antes)
             const currentPot = game.pot || 0;
+            let totalPrize = currentPot;
             
-            // Charge each loser and accumulate pot
+            // Charge each loser and accumulate
             for (const player of playersWhoStayed) {
               if (player.id !== winner.playerId) {
                 let amountToCharge;
@@ -511,7 +511,7 @@ export async function endRound(gameId: string) {
                   // No pot max: charge entire current pot value
                   amountToCharge = currentPot;
                 }
-                totalPot += amountToCharge;
+                totalPrize += amountToCharge;
                 
                 await supabase
                   .from('players')
@@ -522,11 +522,11 @@ export async function endRound(gameId: string) {
               }
             }
             
-            // Award pot to winner
+            // Award total prize (pot + showdown payments) to winner
             await supabase
               .from('players')
               .update({ 
-                chips: winningPlayer.chips + totalPot
+                chips: winningPlayer.chips + totalPrize
               })
               .eq('id', winner.playerId);
             
@@ -536,7 +536,7 @@ export async function endRound(gameId: string) {
               .update({ pot: 0 })
               .eq('id', gameId);
               
-            const showdownResult = `${winnerUsername} won $${totalPot} with ${handName}`;
+            const showdownResult = `${winnerUsername} won $${totalPrize} with ${handName}`;
             
             // Store result message
             await supabase
