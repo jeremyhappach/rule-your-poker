@@ -321,6 +321,12 @@ export async function endRound(gameId: string) {
     .single();
 
   if (!round) return;
+  
+  // Prevent duplicate calls - if round is already completed, don't process again
+  if (round.status === 'completed') {
+    console.log('Round already completed, skipping endRound');
+    return;
+  }
 
   // Get all players and their decisions
   const { data: allPlayers } = await supabase
