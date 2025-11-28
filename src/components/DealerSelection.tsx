@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface Player {
   id: string;
@@ -18,6 +18,7 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
   const [currentPosition, setCurrentPosition] = useState(1);
   const [isSpinning, setIsSpinning] = useState(true);
   const [finalPosition, setFinalPosition] = useState<number | null>(null);
+  const hasStoppedRef = useRef(false);
 
   useEffect(() => {
     // Randomly select final dealer position
@@ -28,27 +29,34 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
     const maxSpins = 15 + selectedPosition; // Spin around at least once then land on selected
 
     const spinInterval = setInterval(() => {
-      setCurrentPosition(prev => {
-        const next = prev >= players.length ? 1 : prev + 1;
-        spins++;
+      // Check if we've already stopped - prevent any further updates
+      if (hasStoppedRef.current) {
+        return;
+      }
+
+      spins++;
+      const nextPosition = currentPosition >= players.length ? 1 : currentPosition + 1;
+      
+      if (spins >= maxSpins && nextPosition === selectedPosition) {
+        // Stop immediately
+        hasStoppedRef.current = true;
+        setIsSpinning(false);
+        setCurrentPosition(selectedPosition);
+        clearInterval(spinInterval);
         
-        if (spins >= maxSpins && next === selectedPosition) {
-          setIsSpinning(false);
-          clearInterval(spinInterval);
-          // Freeze on the selected position
-          setCurrentPosition(selectedPosition);
-          // Complete after showing the announcement
-          setTimeout(() => {
-            onComplete(selectedPosition);
-          }, 2000);
-          return selectedPosition;
-        }
-        
-        return next;
-      });
+        // Complete after showing the announcement
+        setTimeout(() => {
+          onComplete(selectedPosition);
+        }, 2000);
+      } else {
+        setCurrentPosition(nextPosition);
+      }
     }, spins < maxSpins - 5 ? 100 : 200); // Slow down near the end
 
-    return () => clearInterval(spinInterval);
+    return () => {
+      clearInterval(spinInterval);
+      hasStoppedRef.current = true;
+    };
   }, [players.length, onComplete]);
 
   return (
