@@ -94,7 +94,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   // Ante: Each player pays 10 chips into the pot at the start of round 1
   if (roundNumber === 1) {
     for (const player of activePlayers) {
-      const anteAmount = Math.min(betAmount, player.chips);
+      const anteAmount = betAmount; // Allow negative chips
       initialPot += anteAmount;
       
       await supabase
@@ -221,10 +221,6 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   // Lock in decision - no chips deducted yet
   if (decision === 'stay') {
-    if (player.chips < betAmount) {
-      throw new Error('Insufficient chips');
-    }
-
     await supabase
       .from('players')
       .update({ 
@@ -344,28 +340,24 @@ export async function endRound(gameId: string) {
     const soloStayer = playersWhoStayed[0];
     const username = soloStayer.profiles?.username || `Player ${soloStayer.position}`;
     
-    // Winning a leg costs 10 chips
-    if (soloStayer.chips < betAmount) {
-      resultMessage = `${username} won but doesn't have enough chips to claim the leg`;
-    } else {
-      await supabase
-        .from('players')
-        .update({ 
-          legs: soloStayer.legs + 1,
-          chips: soloStayer.chips - betAmount
-        })
-        .eq('id', soloStayer.id);
+    // Winning a leg costs 10 chips (can go negative)
+    await supabase
+      .from('players')
+      .update({ 
+        legs: soloStayer.legs + 1,
+        chips: soloStayer.chips - betAmount
+      })
+      .eq('id', soloStayer.id);
+    
+    // Add leg payment to pot
+    await supabase
+      .from('games')
+      .update({ 
+        pot: (game.pot || 0) + betAmount
+      })
+      .eq('id', gameId);
       
-      // Add leg payment to pot
-      await supabase
-        .from('games')
-        .update({ 
-          pot: (game.pot || 0) + betAmount
-        })
-        .eq('id', gameId);
-        
-      resultMessage = `${username} won a leg (paid ${betAmount} chips)`;
-    }
+    resultMessage = `${username} won a leg (paid ${betAmount} chips)`;
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands and charge losers
     const { data: playerCards } = await supabase
@@ -405,7 +397,7 @@ export async function endRound(gameId: string) {
           // Charge each loser and accumulate pot
           for (const player of playersWhoStayed) {
             if (player.id !== winner.playerId) {
-              const amountToCharge = Math.min(betAmount, player.chips);
+              const amountToCharge = betAmount; // Allow negative chips
               totalPot += amountToCharge;
               
               await supabase
@@ -450,7 +442,7 @@ export async function endRound(gameId: string) {
     
     // Charge each player the pussy tax
     for (const player of allPlayers) {
-      const taxAmount = Math.min(pussyTax, player.chips);
+      const taxAmount = pussyTax; // Allow negative chips
       taxCollected += taxAmount;
       
       await supabase

@@ -145,7 +145,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .insert({
         game_id: game.id,
         user_id: userId,
-        chips: buyIn,
+        chips: 0,
         position: 1
       });
 
@@ -213,7 +213,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .insert({
         game_id: gameId,
         user_id: userId,
-        chips: 100,
+        chips: 0,
         position: nextPosition
       });
 
