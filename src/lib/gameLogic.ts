@@ -260,9 +260,10 @@ async function checkAllDecisionsIn(gameId: string) {
       .update({ all_decisions_in: true })
       .eq('id', gameId);
 
-    // Automatically end the round when all decisions are in
-    // This handles both solo win and showdown scenarios
-    await endRound(gameId);
+    // Wait 3 seconds to show who stayed/folded before revealing results
+    setTimeout(async () => {
+      await endRound(gameId);
+    }, 3000);
   }
 }
 
@@ -295,8 +296,10 @@ export async function autoFoldUndecided(gameId: string) {
     .update({ all_decisions_in: true })
     .eq('id', gameId);
 
-  // End the round
-  await endRound(gameId);
+  // Wait 3 seconds to show who stayed/folded before revealing results
+  setTimeout(async () => {
+    await endRound(gameId);
+  }, 3000);
 }
 
 
@@ -370,7 +373,7 @@ export async function endRound(gameId: string) {
       })
       .eq('id', gameId);
       
-    resultMessage = `${username} won a leg (paid $${betAmount})`;
+    resultMessage = `${username} won a leg`;
     
     // If this is their 3rd leg, they win the game immediately
     if (newLegCount >= 3) {
