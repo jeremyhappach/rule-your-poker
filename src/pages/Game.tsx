@@ -124,6 +124,17 @@ const Game = () => {
           fetchGameData();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        () => {
+          fetchGameData();
+        }
+      )
       .subscribe();
 
     return () => {
