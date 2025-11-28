@@ -212,7 +212,7 @@ export const GameTable = ({
                       </div>
                       <div className="flex justify-center min-h-[60px] items-center">
                         {cards.length > 0 ? (
-                          <PlayerHand cards={cards} isHidden={!isCurrentUser} />
+                          <PlayerHand cards={cards} isHidden={false} />
                         ) : (
                           <div className="text-[10px] text-amber-300/50">Waiting...</div>
                         )}

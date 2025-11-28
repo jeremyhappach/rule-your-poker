@@ -391,17 +391,10 @@ export async function endRound(gameId: string) {
     
     // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
-      // Winner gets the entire pot plus value of all legs won by all players
-      const { data: allPlayersForPrize } = await supabase
-        .from('players')
-        .select('legs')
-        .eq('game_id', gameId);
+      // Winner gets the entire pot (leg costs are already paid, not refunded)
+      const totalPrize = game.pot || 0;
       
-      const totalLegs = allPlayersForPrize?.reduce((sum, p) => sum + p.legs, 0) || 0;
-      const totalLegValue = totalLegs * legValue;
-      const totalPrize = (game.pot || 0) + totalLegValue;
-      
-      // Award the winner the pot + all leg values
+      // Award the winner the pot
       await supabase
         .from('players')
         .update({ 
@@ -415,7 +408,7 @@ export async function endRound(gameId: string) {
         .update({ pot: 0 })
         .eq('id', gameId);
       
-      const gameWinMessage = `🏆 ${username} won the game with ${newLegCount} legs! (+$${totalPrize})`;
+      const gameWinMessage = `🏆 ${username} won the game with ${newLegCount} legs!${totalPrize > 0 ? ` (+$${totalPrize})` : ''}`;
       
       // Reset all players' legs for new game and keep chips
       await supabase
@@ -552,7 +545,7 @@ export async function endRound(gameId: string) {
       const gameWinner = updatedPlayers?.find(p => p.legs >= legsToWin);
 
       if (gameWinner) {
-        // Someone won the game - award them the pot and all leg values
+        // Someone won the game - award them the pot (leg costs already paid)
         const winnerUsername = gameWinner.profiles?.username || `Player ${gameWinner.position}`;
         
         // Get current pot
@@ -565,10 +558,8 @@ export async function endRound(gameId: string) {
         const currentPot = currentGameData?.pot || 0;
         const currentDealerPosition = currentGameData?.dealer_position || 1;
         
-        // Calculate value of all legs from all players
-        const totalLegs = updatedPlayers?.reduce((sum, p) => sum + p.legs, 0) || 0;
-        const totalLegValue = totalLegs * legValue;
-        const totalPrize = currentPot + totalLegValue;
+        // Award the winner just the pot
+        const totalPrize = currentPot;
         
         // Award the winner
         await supabase
@@ -584,7 +575,7 @@ export async function endRound(gameId: string) {
           .update({ pot: 0 })
           .eq('id', gameId);
         
-        const gameWinMessage = `🏆 ${winnerUsername} won the game with ${gameWinner.legs} legs! (+$${totalPrize})`;
+        const gameWinMessage = `🏆 ${winnerUsername} won the game with ${gameWinner.legs} legs!${totalPrize > 0 ? ` (+$${totalPrize})` : ''}`;
         
         // Reset all players' legs for new game and keep chips
         await supabase
