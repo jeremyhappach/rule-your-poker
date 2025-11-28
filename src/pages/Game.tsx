@@ -8,8 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
 import { DealerConfig } from "@/components/DealerConfig";
+import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
-import { addBotPlayer, makeBotDecisions } from "@/lib/botPlayer";
+import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot } from "lucide-react";
 
@@ -23,6 +24,8 @@ interface Player {
   decision_locked: boolean | null;
   legs: number;
   is_bot: boolean;
+  sitting_out: boolean;
+  ante_decision: string | null;
   profiles?: {
     username: string;
   };
@@ -38,6 +41,14 @@ interface GameData {
   dealer_position: number | null;
   awaiting_next_round?: boolean | null;
   next_round_number?: number | null;
+  ante_decision_deadline?: string | null;
+  ante_amount?: number;
+  leg_value?: number;
+  pussy_tax_enabled?: boolean;
+  pussy_tax_value?: number;
+  legs_to_win?: number;
+  pot_max_enabled?: boolean;
+  pot_max_value?: number;
   rounds?: Round[];
 }
 
@@ -67,6 +78,8 @@ const Game = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
+  const [showAnteDialog, setShowAnteDialog] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -158,6 +171,81 @@ const Game = () => {
 
     return () => clearInterval(timer);
   }, [timeLeft, isPaused]);
+
+  // Ante timer countdown effect
+  useEffect(() => {
+    if (anteTimeLeft === null || anteTimeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setAnteTimeLeft((prev) => {
+        if (prev === null || prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [anteTimeLeft]);
+
+  // Trigger bot ante decisions
+  useEffect(() => {
+    if (game?.status === 'ante_decision') {
+      const botAnteTimer = setTimeout(() => {
+        makeBotAnteDecisions(gameId!);
+      }, 1000 + Math.random() * 3000);
+
+      return () => clearTimeout(botAnteTimer);
+    }
+  }, [game?.status, gameId]);
+
+  // Check if ante dialog should show
+  useEffect(() => {
+    if (game?.status === 'ante_decision' && user) {
+      const currentPlayer = players.find(p => p.user_id === user.id);
+      if (currentPlayer && !currentPlayer.ante_decision) {
+        setShowAnteDialog(true);
+        
+        // Calculate ante time left
+        if (game.ante_decision_deadline) {
+          const deadline = new Date(game.ante_decision_deadline).getTime();
+          const now = Date.now();
+          const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+          setAnteTimeLeft(remaining);
+        }
+      } else {
+        setShowAnteDialog(false);
+      }
+    } else {
+      setShowAnteDialog(false);
+    }
+  }, [game?.status, game?.ante_decision_deadline, players, user]);
+
+  // Auto-sit-out when ante timer reaches 0
+  useEffect(() => {
+    if (anteTimeLeft === 0 && game?.status === 'ante_decision' && user) {
+      const currentPlayer = players.find(p => p.user_id === user.id);
+      if (currentPlayer && !currentPlayer.ante_decision) {
+        supabase
+          .from('players')
+          .update({
+            ante_decision: 'sit_out',
+            sitting_out: true,
+          })
+          .eq('id', currentPlayer.id);
+      }
+    }
+  }, [anteTimeLeft, game?.status, players, user]);
+
+  // Check if all ante decisions are in
+  useEffect(() => {
+    if (game?.status === 'ante_decision') {
+      const allDecided = players.every(p => p.ante_decision);
+      if (allDecided && players.length > 0) {
+        handleAllAnteDecisionsIn();
+      }
+    }
+  }, [players, game?.status]);
 
   // Trigger bot decisions when round starts
   useEffect(() => {
@@ -323,6 +411,31 @@ const Game = () => {
   const handleConfigComplete = async () => {
     if (!gameId) return;
 
+    // Just refetch - bots will start making decisions automatically
+    setTimeout(() => fetchGameData(), 500);
+  };
+
+  const handleAllAnteDecisionsIn = async () => {
+    if (!gameId) return;
+
+    // Get players who anted up
+    const antedPlayers = players.filter(p => p.ante_decision === 'ante_up');
+
+    if (antedPlayers.length === 0) {
+      toast({
+        title: "No players",
+        description: "Everyone sat out - game cancelled",
+        variant: "destructive",
+      });
+      
+      await supabase
+        .from('games')
+        .update({ status: 'waiting' })
+        .eq('id', gameId);
+      
+      return;
+    }
+
     // Update game status to in_progress
     const { error } = await supabase
       .from('games')
@@ -342,10 +455,9 @@ const Game = () => {
     try {
       await startRound(gameId, 1);
       toast({
-        title: "Success",
-        description: "Game started! Cards dealt.",
+        title: "Game Started!",
+        description: "Cards dealt. Good luck!",
       });
-      // Manual refetch to ensure UI updates immediately
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       toast({
@@ -579,6 +691,7 @@ const Game = () => {
               <DealerConfig 
                 gameId={gameId!} 
                 dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                isBot={dealerPlayer?.is_bot || false}
                 onConfigComplete={handleConfigComplete}
               />
             ) : (
@@ -590,6 +703,37 @@ const Game = () => {
                     </p>
                     <p className="text-muted-foreground">
                       Waiting for the dealer to configure game parameters...
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+
+        {game.status === 'ante_decision' && (
+          <>
+            {showAnteDialog && user && game.ante_amount !== undefined && (
+              <AnteUpDialog
+                gameId={gameId!}
+                playerId={players.find(p => p.user_id === user.id)?.id || ''}
+                anteAmount={game.ante_amount}
+                legValue={game.leg_value || 1}
+                pussyTaxEnabled={game.pussy_tax_enabled ?? true}
+                pussyTaxValue={game.pussy_tax_value || 1}
+                legsToWin={game.legs_to_win || 3}
+                potMaxEnabled={game.pot_max_enabled ?? true}
+                potMaxValue={game.pot_max_value || 10}
+                onDecisionMade={() => setShowAnteDialog(false)}
+              />
+            )}
+            {!showAnteDialog && (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <p className="text-lg font-semibold">Waiting for ante decisions...</p>
+                    <p className="text-muted-foreground">
+                      {players.filter(p => !p.ante_decision).length} player(s) still deciding
                     </p>
                   </div>
                 </CardContent>
