@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
-import { Card as CardType } from "@/lib/cardUtils";
+import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState } from "react";
 
 interface Player {
@@ -150,7 +150,7 @@ export const GameTable = ({
                           <Badge className="text-[10px] bg-purple-500 text-white border-0 px-1 py-0">🤖</Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-2">
                         {/* Legs indicator - show one chip per leg */}
                         <div className="flex items-center gap-0.5 bg-amber-900/30 px-1.5 py-0.5 rounded border border-amber-700">
                           {player.legs === 0 ? (
@@ -161,6 +161,15 @@ export const GameTable = ({
                             ))
                           )}
                         </div>
+                        
+                        {/* Hand evaluation hint - only for current user */}
+                        {isCurrentUser && cards.length > 0 && (
+                          <div className="bg-poker-gold/20 px-2 py-0.5 rounded border border-poker-gold/40">
+                            <span className="text-poker-gold text-[10px] font-bold">
+                              {formatHandRank(evaluateHand(cards).rank)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-1 justify-center flex-wrap">
                         {isCurrentUser && !player.is_bot && (
