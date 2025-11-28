@@ -2,7 +2,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 export async function startRound(gameId: string, roundNumber: number) {
-  const betAmount = 10;
+  // Fetch game configuration
+  const { data: gameConfig } = await supabase
+    .from('games')
+    .select('ante_amount, leg_value')
+    .eq('id', gameId)
+    .single();
+  
+  const anteAmount = gameConfig?.ante_amount || 2;
+  const legValue = gameConfig?.leg_value || 1;
+  const betAmount = legValue; // Bet amount per round equals leg value
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
 
   // If starting round 1 again, delete all old rounds and player cards to start fresh cycle
@@ -91,10 +100,9 @@ export async function startRound(gameId: string, roundNumber: number) {
   const activePlayers = players.filter(p => p.status === 'active');
   let initialPot = 0;
   
-  // Ante: Each player pays 10 chips into the pot at the start of round 1
+  // Ante: Each player pays ante amount into the pot at the start of round 1
   if (roundNumber === 1) {
     for (const player of activePlayers) {
-      const anteAmount = betAmount; // Allow negative chips
       initialPot += anteAmount;
       
       await supabase
@@ -198,7 +206,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   return round;
 }
 
-export async function makeDecision(gameId: string, playerId: string, decision: 'stay' | 'fold', betAmount: number = 10) {
+export async function makeDecision(gameId: string, playerId: string, decision: 'stay' | 'fold') {
   // Get current game and round
   const { data: game } = await supabase
     .from('games')
@@ -308,8 +316,22 @@ export async function endRound(gameId: string) {
 
   if (!game || !game.current_round) return;
 
+  // Fetch game configuration
+  const { data: gameConfig } = await supabase
+    .from('games')
+    .select('leg_value, legs_to_win, pot_max_enabled, pot_max_value, pussy_tax_enabled, pussy_tax_value')
+    .eq('id', gameId)
+    .single();
+  
+  const legValue = gameConfig?.leg_value || 1;
+  const legsToWin = gameConfig?.legs_to_win || 3;
+  const potMaxEnabled = gameConfig?.pot_max_enabled ?? true;
+  const potMaxValue = gameConfig?.pot_max_value || 10;
+  const pussyTaxEnabled = gameConfig?.pussy_tax_enabled ?? true;
+  const pussyTaxValue = gameConfig?.pussy_tax_value || 1;
+  const betAmount = legValue;
+
   const currentRound = game.current_round;
-  const betAmount = 10; // Fixed bet per round
 
   // Get all player hands for this round
   const { data: round } = await supabase
@@ -345,13 +367,13 @@ export async function endRound(gameId: string) {
     const soloStayer = playersWhoStayed[0];
     const username = soloStayer.profiles?.username || `Player ${soloStayer.position}`;
     
-    // Check if player already has 3 legs (game should have ended)
-    if (soloStayer.legs >= 3) {
-      console.log('Player already has 3+ legs, game should have ended');
+    // Check if player already has enough legs (game should have ended)
+    if (soloStayer.legs >= legsToWin) {
+      console.log(`Player already has ${legsToWin}+ legs, game should have ended`);
       return;
     }
     
-    // Winning a leg costs 10 chips (can go negative)
+    // Winning a leg costs the leg value (can go negative)
     const newLegCount = soloStayer.legs + 1;
     const newChips = soloStayer.chips - betAmount;
     
@@ -365,8 +387,8 @@ export async function endRound(gameId: string) {
       
     resultMessage = `${username} won a leg`;
     
-    // If this is their 3rd leg, they win the game immediately
-    if (newLegCount >= 3) {
+    // If this is their final leg, they win the game immediately
+    if (newLegCount >= legsToWin) {
       // Winner gets the entire pot plus value of all legs won by all players
       const { data: allPlayersForPrize } = await supabase
         .from('players')
@@ -374,8 +396,8 @@ export async function endRound(gameId: string) {
         .eq('game_id', gameId);
       
       const totalLegs = allPlayersForPrize?.reduce((sum, p) => sum + p.legs, 0) || 0;
-      const legValue = totalLegs * 10;
-      const totalPrize = (game.pot || 0) + legValue;
+      const totalLegValue = totalLegs * legValue;
+      const totalPrize = (game.pot || 0) + totalLegValue;
       
       // Award the winner the pot + all leg values
       await supabase
@@ -450,7 +472,14 @@ export async function endRound(gameId: string) {
             // Charge each loser and accumulate pot
             for (const player of playersWhoStayed) {
               if (player.id !== winner.playerId) {
-                const amountToCharge = betAmount; // Allow negative chips
+                let amountToCharge;
+                if (potMaxEnabled) {
+                  // With pot max: charge leg value, capped at pot max
+                  amountToCharge = Math.min(betAmount, potMaxValue);
+                } else {
+                  // No pot max: charge entire current pot value
+                  amountToCharge = game.pot || 0;
+                }
                 totalPot += amountToCharge;
                 
                 await supabase
@@ -489,13 +518,13 @@ export async function endRound(gameId: string) {
         .update({ status: 'completed' })
         .eq('id', round.id);
 
-      // Check if anyone has won 3 legs
+      // Check if anyone has won the required number of legs
       const { data: updatedPlayers } = await supabase
         .from('players')
         .select('*, profiles(username)')
         .eq('game_id', gameId);
 
-      const gameWinner = updatedPlayers?.find(p => p.legs >= 3);
+      const gameWinner = updatedPlayers?.find(p => p.legs >= legsToWin);
 
       if (gameWinner) {
         // Someone won the game - award them the pot and all leg values
@@ -512,8 +541,8 @@ export async function endRound(gameId: string) {
         
         // Calculate value of all legs from all players
         const totalLegs = updatedPlayers?.reduce((sum, p) => sum + p.legs, 0) || 0;
-        const legValue = totalLegs * 10;
-        const totalPrize = currentPot + legValue;
+        const totalLegValue = totalLegs * legValue;
+        const totalPrize = currentPot + totalLegValue;
         
         // Award the winner
         await supabase
@@ -555,38 +584,35 @@ export async function endRound(gameId: string) {
     }, 3000);
     return; // Exit early since we're using setTimeout
   } else {
-    // Everyone folded - apply pussy tax
-    const { data: gameData } = await supabase
-      .from('games')
-      .select('pussy_tax')
-      .eq('id', gameId)
-      .single();
-    
-    const pussyTax = gameData?.pussy_tax || 10;
-    let taxCollected = 0;
-    
-    // Charge each player the pussy tax
-    for (const player of allPlayers) {
-      const taxAmount = pussyTax; // Allow negative chips
-      taxCollected += taxAmount;
+    // Everyone folded - apply pussy tax if enabled
+    if (pussyTaxEnabled) {
+      let taxCollected = 0;
       
+      // Charge each player the pussy tax
+      for (const player of allPlayers) {
+        const taxAmount = pussyTaxValue;
+        taxCollected += taxAmount;
+        
+        await supabase
+          .from('players')
+          .update({ 
+            chips: player.chips - taxAmount
+          })
+          .eq('id', player.id);
+      }
+      
+      // Add pussy tax to pot
       await supabase
-        .from('players')
+        .from('games')
         .update({ 
-          chips: player.chips - taxAmount
+          pot: (game.pot || 0) + taxCollected
         })
-        .eq('id', player.id);
+        .eq('id', gameId);
+      
+      resultMessage = `PUSSY TAX INCURRED! ($${pussyTaxValue})`;
+    } else {
+      resultMessage = 'Everyone folded - no winner';
     }
-    
-    // Add pussy tax to pot
-    await supabase
-      .from('games')
-      .update({ 
-        pot: (game.pot || 0) + taxCollected
-      })
-      .eq('id', gameId);
-    
-    resultMessage = `PUSSY TAX INCURRED! ($${pussyTax})`;
   }
 
   // Store result message and keep pot (don't reset to 0 if pussy tax was collected)

@@ -17,46 +17,70 @@ export type Database = {
       games: {
         Row: {
           all_decisions_in: boolean | null
+          ante_amount: number
           awaiting_next_round: boolean | null
           buy_in: number
+          config_complete: boolean
           created_at: string
           current_round: number | null
           dealer_position: number | null
           id: string
           last_round_result: string | null
+          leg_value: number
+          legs_to_win: number
           next_round_number: number | null
           pot: number | null
+          pot_max_enabled: boolean
+          pot_max_value: number
           pussy_tax: number
+          pussy_tax_enabled: boolean
+          pussy_tax_value: number
           status: string
           updated_at: string
         }
         Insert: {
           all_decisions_in?: boolean | null
+          ante_amount?: number
           awaiting_next_round?: boolean | null
           buy_in?: number
+          config_complete?: boolean
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null
           id?: string
           last_round_result?: string | null
+          leg_value?: number
+          legs_to_win?: number
           next_round_number?: number | null
           pot?: number | null
+          pot_max_enabled?: boolean
+          pot_max_value?: number
           pussy_tax?: number
+          pussy_tax_enabled?: boolean
+          pussy_tax_value?: number
           status?: string
           updated_at?: string
         }
         Update: {
           all_decisions_in?: boolean | null
+          ante_amount?: number
           awaiting_next_round?: boolean | null
           buy_in?: number
+          config_complete?: boolean
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null
           id?: string
           last_round_result?: string | null
+          leg_value?: number
+          legs_to_win?: number
           next_round_number?: number | null
           pot?: number | null
+          pot_max_enabled?: boolean
+          pot_max_value?: number
           pussy_tax?: number
+          pussy_tax_enabled?: boolean
+          pussy_tax_value?: number
           status?: string
           updated_at?: string
         }

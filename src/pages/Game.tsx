@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
+import { DealerConfig } from "@/components/DealerConfig";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -288,9 +289,16 @@ const Game = () => {
   const startGame = async () => {
     if (!gameId) return;
 
+    // Randomly select a dealer position
+    const randomDealerPosition = Math.floor(Math.random() * players.length) + 1;
+    const dealerPlayer = players.find(p => p.position === randomDealerPosition);
+
     const { error } = await supabase
       .from('games')
-      .update({ status: 'in_progress' })
+      .update({ 
+        status: 'configuring',
+        dealer_position: randomDealerPosition 
+      })
       .eq('id', gameId);
 
     if (error) {
@@ -298,6 +306,33 @@ const Game = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to start game",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Dealer Selected",
+      description: `${dealerPlayer?.profiles?.username || 'Player ' + randomDealerPosition} is the dealer`,
+    });
+
+    // Manual refetch to ensure UI updates immediately
+    setTimeout(() => fetchGameData(), 500);
+  };
+
+  const handleConfigComplete = async () => {
+    if (!gameId) return;
+
+    // Update game status to in_progress
+    const { error } = await supabase
+      .from('games')
+      .update({ status: 'in_progress' })
+      .eq('id', gameId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to start game",
         variant: "destructive",
       });
       return;
@@ -357,10 +392,8 @@ const Game = () => {
     const currentPlayer = players.find(p => p.user_id === user.id);
     if (!currentPlayer) return;
 
-    const betAmount = 10; // Fixed bet per round
-
     try {
-      await makeDecision(gameId, currentPlayer.id, 'stay', betAmount);
+      await makeDecision(gameId, currentPlayer.id, 'stay');
       toast({
         title: "Decision locked",
         description: "You chose to stay in!",
@@ -474,6 +507,8 @@ const Game = () => {
 
   const isCreator = players[0]?.user_id === user?.id;
   const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
+  const dealerPlayer = players.find(p => p.position === game.dealer_position);
+  const isDealer = dealerPlayer?.user_id === user?.id;
 
   return (
     <div className="min-h-screen p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -536,6 +571,31 @@ const Game = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {game.status === 'configuring' && (
+          <>
+            {isDealer ? (
+              <DealerConfig 
+                gameId={gameId!} 
+                dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                onConfigComplete={handleConfigComplete}
+              />
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <p className="text-lg font-semibold">
+                      {dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`} is the dealer
+                    </p>
+                    <p className="text-muted-foreground">
+                      Waiting for the dealer to configure game parameters...
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
 
         {game.status === 'completed' && (
@@ -616,6 +676,7 @@ const Game = () => {
               playerCards={playerCards}
               timeLeft={timeLeft}
               lastRoundResult={(game as any).last_round_result || null}
+              dealerPosition={game.dealer_position}
               onStay={handleStay}
               onFold={handleFold}
             />

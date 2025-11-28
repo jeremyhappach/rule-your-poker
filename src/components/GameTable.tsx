@@ -36,6 +36,7 @@ interface GameTableProps {
   playerCards: PlayerCards[];
   timeLeft: number | null;
   lastRoundResult: string | null;
+  dealerPosition: number | null;
   onStay: () => void;
   onFold: () => void;
 }
@@ -49,6 +50,7 @@ export const GameTable = ({
   playerCards,
   timeLeft,
   lastRoundResult,
+  dealerPosition,
   onStay,
   onFold,
 }: GameTableProps) => {
@@ -147,6 +149,11 @@ export const GameTable = ({
                         <p className="font-bold text-xs text-amber-100 truncate max-w-[100px]">
                           {player.profiles?.username || (player.is_bot ? `Bot ${index + 1}` : `P${index + 1}`)}
                         </p>
+                        {player.position === dealerPosition && (
+                          <div className="w-5 h-5 rounded-full bg-poker-gold flex items-center justify-center border-2 border-black shadow-lg">
+                            <span className="text-black font-black text-[10px]">D</span>
+                          </div>
+                        )}
                         {isCurrentUser && !player.is_bot && (
                           <Badge variant="secondary" className="text-[10px] bg-poker-gold text-black border-0 px-1 py-0">You</Badge>
                         )}
