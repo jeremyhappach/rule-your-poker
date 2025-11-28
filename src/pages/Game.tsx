@@ -400,6 +400,9 @@ const Game = () => {
       title: "Game Starting",
       description: "Selecting dealer...",
     });
+
+    // Manual refetch to ensure UI updates immediately
+    setTimeout(() => fetchGameData(), 100);
   };
 
   const selectDealer = async (dealerPosition: number) => {
