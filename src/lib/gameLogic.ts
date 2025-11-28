@@ -470,17 +470,18 @@ export async function endRound(gameId: string) {
             
             // Calculate total pot from losers
             let totalPot = 0;
+            const currentPot = game.pot || 0;
             
             // Charge each loser and accumulate pot
             for (const player of playersWhoStayed) {
               if (player.id !== winner.playerId) {
                 let amountToCharge;
                 if (potMaxEnabled) {
-                  // With pot max: charge leg value, capped at pot max
-                  amountToCharge = Math.min(betAmount, potMaxValue);
+                  // With pot max: charge current pot value, capped at pot max
+                  amountToCharge = Math.min(currentPot, potMaxValue);
                 } else {
                   // No pot max: charge entire current pot value
-                  amountToCharge = game.pot || 0;
+                  amountToCharge = currentPot;
                 }
                 totalPot += amountToCharge;
                 
