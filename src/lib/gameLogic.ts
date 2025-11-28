@@ -516,6 +516,12 @@ export async function endRound(gameId: string) {
                 chips: winningPlayer.chips + totalPot
               })
               .eq('id', winner.playerId);
+            
+            // Clear the game pot since it was just awarded
+            await supabase
+              .from('games')
+              .update({ pot: 0 })
+              .eq('id', gameId);
               
             const showdownResult = `${winnerUsername} won $${totalPot} with ${handName}`;
             
