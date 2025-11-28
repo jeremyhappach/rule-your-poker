@@ -340,11 +340,18 @@ export async function endRound(gameId: string) {
     const soloStayer = playersWhoStayed[0];
     const username = soloStayer.profiles?.username || `Player ${soloStayer.position}`;
     
+    // Check if player already has 3 legs (game should have ended)
+    if (soloStayer.legs >= 3) {
+      console.log('Player already has 3+ legs, game should have ended');
+      return;
+    }
+    
     // Winning a leg costs 10 chips (can go negative)
+    const newLegCount = soloStayer.legs + 1;
     await supabase
       .from('players')
       .update({ 
-        legs: soloStayer.legs + 1,
+        legs: newLegCount,
         chips: soloStayer.chips - betAmount
       })
       .eq('id', soloStayer.id);
@@ -358,6 +365,39 @@ export async function endRound(gameId: string) {
       .eq('id', gameId);
       
     resultMessage = `${username} won a leg (paid $${betAmount})`;
+    
+    // If this is their 3rd leg, they win the game immediately
+    if (newLegCount >= 3) {
+      // Calculate total value: each leg is worth 10 chips
+      const legValue = newLegCount * 10;
+      
+      // Award the winner
+      await supabase
+        .from('players')
+        .update({ 
+          chips: soloStayer.chips - betAmount + legValue // Subtract leg payment, add prize
+        })
+        .eq('id', soloStayer.id);
+      
+      const gameWinMessage = `🏆 ${username} won ${newLegCount} legs and won the game! (+$${legValue})`;
+      
+      // Update game status and set winner message
+      await supabase
+        .from('games')
+        .update({ 
+          status: 'completed',
+          last_round_result: gameWinMessage
+        })
+        .eq('id', gameId);
+        
+      // Mark round as completed
+      await supabase
+        .from('rounds')
+        .update({ status: 'completed' })
+        .eq('id', round.id);
+        
+      return; // Exit early, game is over
+    }
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands and charge losers
     const { data: playerCards } = await supabase
