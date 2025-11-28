@@ -145,6 +145,9 @@ export const GameTable = ({
                         <p className="font-bold text-xs text-amber-100 truncate max-w-[100px]">
                           {player.profiles?.username || (player.is_bot ? `Bot ${index + 1}` : `P${index + 1}`)}
                         </p>
+                        {isCurrentUser && !player.is_bot && (
+                          <Badge variant="secondary" className="text-[10px] bg-poker-gold text-black border-0 px-1 py-0">You</Badge>
+                        )}
                         {player.is_bot && (
                           <Badge className="text-[10px] bg-purple-500 text-white border-0 px-1 py-0">🤖</Badge>
                         )}
@@ -171,9 +174,6 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex gap-1 justify-center flex-wrap">
-                        {isCurrentUser && !player.is_bot && (
-                          <Badge variant="secondary" className="text-[10px] bg-poker-gold text-black border-0 px-1 py-0">You</Badge>
-                        )}
                         {hasPlayerDecided && !allDecisionsIn && (
                           <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">✓</Badge>
                         )}
