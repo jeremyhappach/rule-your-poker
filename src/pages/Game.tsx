@@ -400,25 +400,18 @@ const Game = () => {
       title: "Game Starting",
       description: "Selecting dealer...",
     });
-
-    // Trigger dealer selection animation after 1 second
-    setTimeout(() => {
-      selectDealer();
-    }, 1000);
   };
 
-  const selectDealer = async () => {
+  const selectDealer = async (dealerPosition: number) => {
     if (!gameId) return;
 
-    // Randomly select a dealer position
-    const randomDealerPosition = Math.floor(Math.random() * players.length) + 1;
-    const dealerPlayer = players.find(p => p.position === randomDealerPosition);
+    const dealerPlayer = players.find(p => p.position === dealerPosition);
 
     const { error } = await supabase
       .from('games')
       .update({ 
         status: 'configuring',
-        dealer_position: randomDealerPosition 
+        dealer_position: dealerPosition 
       })
       .eq('id', gameId);
 
@@ -433,7 +426,7 @@ const Game = () => {
 
     toast({
       title: "Dealer Selected!",
-      description: `${dealerPlayer?.profiles?.username || 'Player ' + randomDealerPosition} is the dealer`,
+      description: `${dealerPlayer?.profiles?.username || 'Player ' + dealerPosition} is the dealer`,
     });
 
     // Manual refetch to ensure UI updates immediately
@@ -737,7 +730,7 @@ const Game = () => {
                 <DealerSelection 
                   players={players}
                   onComplete={(position) => {
-                    // This is handled by selectDealer function already
+                    selectDealer(position);
                   }}
                 />
               </div>
