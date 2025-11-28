@@ -71,7 +71,10 @@ export const DealerConfig = ({
           // Automatically ante up the dealer (bot)
           await supabase
             .from('players')
-            .update({ ante_decision: 'ante_up' })
+            .update({ 
+              ante_decision: 'ante_up',
+              sitting_out: false
+            })
             .eq('id', dealerPlayerId);
             
           onConfigComplete();
@@ -141,7 +144,10 @@ export const DealerConfig = ({
     // Automatically ante up the dealer
     await supabase
       .from('players')
-      .update({ ante_decision: 'ante_up' })
+      .update({ 
+        ante_decision: 'ante_up',
+        sitting_out: false
+      })
       .eq('id', dealerPlayerId);
 
     if (!isBot) {
