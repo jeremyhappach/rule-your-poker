@@ -310,6 +310,8 @@ const Game = () => {
         title: "Success",
         description: "Game started! Cards dealt.",
       });
+      // Manual refetch to ensure UI updates immediately
+      setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       toast({
         title: "Error",
