@@ -175,13 +175,14 @@ export async function startRound(gameId: string, roundNumber: number) {
       });
   }
 
-  // Update game state for new round with initial pot
+  // Update game state for new round with initial pot and clear last result
   await supabase
     .from('games')
     .update({
       current_round: roundNumber,
       all_decisions_in: false,
-      pot: initialPot
+      pot: initialPot,
+      last_round_result: null
     })
     .eq('id', gameId);
 
