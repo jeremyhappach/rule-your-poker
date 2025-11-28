@@ -12,35 +12,55 @@ interface DealerConfigProps {
   dealerUsername: string;
   isBot: boolean;
   dealerPlayerId: string;
+  currentAnteAmount: number;
+  currentLegValue: number;
+  currentPussyTaxEnabled: boolean;
+  currentPussyTaxValue: number;
+  currentLegsToWin: number;
+  currentPotMaxEnabled: boolean;
+  currentPotMaxValue: number;
   onConfigComplete: () => void;
 }
 
-export const DealerConfig = ({ gameId, dealerUsername, isBot, dealerPlayerId, onConfigComplete }: DealerConfigProps) => {
+export const DealerConfig = ({ 
+  gameId, 
+  dealerUsername, 
+  isBot, 
+  dealerPlayerId, 
+  currentAnteAmount,
+  currentLegValue,
+  currentPussyTaxEnabled,
+  currentPussyTaxValue,
+  currentLegsToWin,
+  currentPotMaxEnabled,
+  currentPotMaxValue,
+  onConfigComplete 
+}: DealerConfigProps) => {
   const { toast } = useToast();
-  const [anteAmount, setAnteAmount] = useState(2);
-  const [legValue, setLegValue] = useState(1);
-  const [pussyTaxEnabled, setPussyTaxEnabled] = useState(true);
-  const [pussyTaxValue, setPussyTaxValue] = useState(1);
-  const [legsToWin, setLegsToWin] = useState(3);
-  const [potMaxEnabled, setPotMaxEnabled] = useState(true);
-  const [potMaxValue, setPotMaxValue] = useState(10);
+  const [anteAmount, setAnteAmount] = useState(currentAnteAmount);
+  const [legValue, setLegValue] = useState(currentLegValue);
+  const [pussyTaxEnabled, setPussyTaxEnabled] = useState(currentPussyTaxEnabled);
+  const [pussyTaxValue, setPussyTaxValue] = useState(currentPussyTaxValue);
+  const [legsToWin, setLegsToWin] = useState(currentLegsToWin);
+  const [potMaxEnabled, setPotMaxEnabled] = useState(currentPotMaxEnabled);
+  const [potMaxValue, setPotMaxValue] = useState(currentPotMaxValue);
 
   // Auto-submit for bots
   useEffect(() => {
     if (isBot) {
       const autoSubmit = async () => {
-        // Update game config
+        // Update game config using current settings
         const { error } = await supabase
           .from('games')
           .update({
-            ante_amount: 2,
-            leg_value: 1,
-            pussy_tax_enabled: true,
-            pussy_tax_value: 1,
-            pussy_tax: 1,
-            legs_to_win: 3,
-            pot_max_enabled: true,
-            pot_max_value: 10,
+            ante_amount: currentAnteAmount,
+            leg_value: currentLegValue,
+            pussy_tax_enabled: currentPussyTaxEnabled,
+            pussy_tax_value: currentPussyTaxValue,
+            pussy_tax: currentPussyTaxValue,
+            legs_to_win: currentLegsToWin,
+            pot_max_enabled: currentPotMaxEnabled,
+            pot_max_value: currentPotMaxValue,
             config_complete: true,
             status: 'ante_decision',
             ante_decision_deadline: new Date(Date.now() + 10000).toISOString(),
@@ -60,7 +80,7 @@ export const DealerConfig = ({ gameId, dealerUsername, isBot, dealerPlayerId, on
       
       autoSubmit();
     }
-  }, [isBot, gameId, dealerPlayerId, onConfigComplete]);
+  }, [isBot, gameId, dealerPlayerId, currentAnteAmount, currentLegValue, currentPussyTaxEnabled, currentPussyTaxValue, currentLegsToWin, currentPotMaxEnabled, currentPotMaxValue, onConfigComplete]);
 
   const handleSubmit = async () => {
     // Validation
