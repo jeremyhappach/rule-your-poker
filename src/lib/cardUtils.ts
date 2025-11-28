@@ -96,13 +96,8 @@ export function evaluateHand(cards: Card[]): { rank: HandRank; value: number } {
   }
 
   // Full House (3 + 2)
+  // Note: wildcards are already added to bestCount, so don't double-count them
   if (bestCount >= 3 && secondCount >= 2) {
-    const highCard = sortedCards[0]?.rank || 'A';
-    return { rank: 'full-house', value: 6000 + RANK_VALUES[highCard] };
-  }
-
-  // Full House with wildcards (e.g., pair + pair + wildcard)
-  if (bestCount >= 3 && (secondCount + wildcardCount >= 2) && wildcardCount > 0) {
     const highCard = sortedCards[0]?.rank || 'A';
     return { rank: 'full-house', value: 6000 + RANK_VALUES[highCard] };
   }
