@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
-import { startRound, makeDecision, autoFoldUndecided } from "@/lib/gameLogic";
+import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot } from "lucide-react";
@@ -35,6 +35,8 @@ interface GameData {
   current_round: number | null;
   all_decisions_in: boolean | null;
   dealer_position: number | null;
+  awaiting_next_round?: boolean | null;
+  next_round_number?: number | null;
   rounds?: Round[];
 }
 
@@ -398,6 +400,24 @@ const Game = () => {
     }
   };
 
+  const handleProceedToNextRound = async () => {
+    if (!gameId) return;
+
+    try {
+      await proceedToNextRound(gameId);
+      toast({
+        title: "Proceeding to next round",
+        description: "Starting round " + (game?.next_round_number || ''),
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const handleAddBot = async () => {
     if (!gameId) return;
@@ -620,6 +640,24 @@ const Game = () => {
 
         {game.status === 'in_progress' && (
           <div className="space-y-4">
+            {game.awaiting_next_round && (
+              <Card className="border-primary">
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <p className="text-lg font-semibold">Round {game.current_round} Complete!</p>
+                    <p className="text-muted-foreground">{(game as any).last_round_result}</p>
+                    <Button 
+                      onClick={handleProceedToNextRound} 
+                      size="lg"
+                      className="bg-primary"
+                    >
+                      Proceed to Round {game.next_round_number}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <GameTable
               players={players}
               currentUserId={user?.id}
@@ -632,7 +670,7 @@ const Game = () => {
               onStay={handleStay}
               onFold={handleFold}
             />
-            {isCreator && game.current_round === 3 && (
+            {isCreator && game.current_round === 3 && !game.awaiting_next_round && (
               <div className="text-center">
                 <Button 
                   onClick={handleRestartRound} 

@@ -17,36 +17,42 @@ export type Database = {
       games: {
         Row: {
           all_decisions_in: boolean | null
+          awaiting_next_round: boolean | null
           buy_in: number
           created_at: string
           current_round: number | null
           dealer_position: number | null
           id: string
           last_round_result: string | null
+          next_round_number: number | null
           pot: number | null
           status: string
           updated_at: string
         }
         Insert: {
           all_decisions_in?: boolean | null
+          awaiting_next_round?: boolean | null
           buy_in?: number
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null
           id?: string
           last_round_result?: string | null
+          next_round_number?: number | null
           pot?: number | null
           status?: string
           updated_at?: string
         }
         Update: {
           all_decisions_in?: boolean | null
+          awaiting_next_round?: boolean | null
           buy_in?: number
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null
           id?: string
           last_round_result?: string | null
+          next_round_number?: number | null
           pot?: number | null
           status?: string
           updated_at?: string
