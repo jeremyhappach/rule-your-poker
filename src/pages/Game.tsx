@@ -837,6 +837,13 @@ const Game = () => {
                     dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
+                    currentAnteAmount={game.ante_amount}
+                    currentLegValue={game.leg_value || 1}
+                    currentPussyTaxEnabled={game.pussy_tax_enabled ?? true}
+                    currentPussyTaxValue={game.pussy_tax_value || 1}
+                    currentLegsToWin={game.legs_to_win || 3}
+                    currentPotMaxEnabled={game.pot_max_enabled ?? true}
+                    currentPotMaxValue={game.pot_max_value || 10}
                     onConfigComplete={handleConfigComplete}
                   />
                 ) : (
