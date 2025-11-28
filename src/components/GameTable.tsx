@@ -135,8 +135,8 @@ export const GameTable = ({
             const actualCards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
             const shouldShowCards = player.status !== 'folded' && !player.sitting_out;
             
-            // Show actual cards only for current user, or when all decisions are in (showdown)
-            const cards = isCurrentUser || allDecisionsIn ? (shouldShowCards ? actualCards : []) : [];
+            // Always get the cards to show card backs, visibility controlled by isHidden prop
+            const cards = shouldShowCards ? actualCards : [];
 
             return (
               <div
@@ -184,8 +184,8 @@ export const GameTable = ({
                           )}
                         </div>
                         
-                        {/* Hand evaluation hint - only for current user or during showdown */}
-                        {(isCurrentUser || allDecisionsIn) && cards.length > 0 && (
+                        {/* Hand evaluation hint - only for current user */}
+                        {isCurrentUser && cards.length > 0 && (
                           <div className="bg-poker-gold/20 px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[10px] font-bold">
                               {formatHandRank(evaluateHand(cards).rank)}
@@ -209,7 +209,7 @@ export const GameTable = ({
                       </div>
                       <div className="flex justify-center min-h-[60px] items-center">
                         {cards.length > 0 ? (
-                          <PlayerHand cards={cards} isHidden={!isCurrentUser && !allDecisionsIn} />
+                          <PlayerHand cards={cards} isHidden={!isCurrentUser} />
                         ) : (
                           <div className="text-[10px] text-amber-300/50">Waiting...</div>
                         )}
