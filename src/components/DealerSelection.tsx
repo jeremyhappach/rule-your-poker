@@ -24,6 +24,7 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
     // Randomly select final dealer position
     const selectedPosition = Math.floor(Math.random() * players.length) + 1;
     setFinalPosition(selectedPosition);
+    hasStoppedRef.current = false;
 
     let spins = 0;
     const maxSpins = 15 + selectedPosition; // Spin around at least once then land on selected
@@ -35,29 +36,33 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
       }
 
       spins++;
-      const nextPosition = currentPosition >= players.length ? 1 : currentPosition + 1;
       
-      if (spins >= maxSpins && nextPosition === selectedPosition) {
-        // Stop immediately
-        hasStoppedRef.current = true;
-        setIsSpinning(false);
-        setCurrentPosition(selectedPosition);
-        clearInterval(spinInterval);
+      setCurrentPosition(prev => {
+        const nextPosition = prev >= players.length ? 1 : prev + 1;
         
-        // Complete after showing the announcement
-        setTimeout(() => {
-          onComplete(selectedPosition);
-        }, 2000);
-      } else {
-        setCurrentPosition(nextPosition);
-      }
-    }, spins < maxSpins - 5 ? 100 : 200); // Slow down near the end
+        if (spins >= maxSpins && nextPosition === selectedPosition) {
+          // Stop immediately
+          hasStoppedRef.current = true;
+          setIsSpinning(false);
+          clearInterval(spinInterval);
+          
+          // Complete after showing the announcement
+          setTimeout(() => {
+            onComplete(selectedPosition);
+          }, 2000);
+          
+          return selectedPosition;
+        }
+        
+        return nextPosition;
+      });
+    }, 100); // Constant speed for now
 
     return () => {
       clearInterval(spinInterval);
       hasStoppedRef.current = true;
     };
-  }, [players.length, onComplete]);
+  }, [players.length]);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
