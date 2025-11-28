@@ -94,14 +94,17 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
     const gamesWithCount = gamesData?.map(game => {
       const players = game.players as any[] || [];
-      const creator = players.find((p: any) => p.position === 1);
       const playerCount = players.length;
+      
+      // Find creator - the player with position 1
+      const creatorPlayer = players.find((p: any) => p.position === 1);
+      const isCreator = creatorPlayer?.user_id === userId;
       
       return {
         ...game,
         player_count: playerCount,
-        // Can delete if creator OR if no players
-        is_creator: creator?.user_id === userId || playerCount === 0
+        // Show delete button if user is the creator (position 1) OR if there are no players
+        is_creator: isCreator || playerCount === 0
       };
     }) || [];
 
