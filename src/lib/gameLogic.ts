@@ -417,11 +417,33 @@ export async function endRound(gameId: string) {
       
       const gameWinMessage = `🏆 ${username} won the game with ${newLegCount} legs! (+$${totalPrize})`;
       
-      // Update game status and set winner message
+      // Reset all players' legs for new game and keep chips
+      await supabase
+        .from('players')
+        .update({ 
+          legs: 0,
+          status: 'active',
+          current_decision: null,
+          decision_locked: false,
+          sitting_out: false,
+          ante_decision: null
+        })
+        .eq('game_id', gameId);
+      
+      // Calculate next dealer (clockwise from current dealer)
+      const totalPlayers = allPlayers?.length || 0;
+      const currentDealerPosition = game.dealer_position || 1;
+      const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
+      
+      // Update game to dealer announcement phase
       await supabase
         .from('games')
         .update({ 
-          status: 'completed',
+          status: 'dealer_announcement',
+          dealer_position: nextDealerPosition,
+          current_round: null,
+          awaiting_next_round: false,
+          all_decisions_in: false,
           last_round_result: gameWinMessage
         })
         .eq('id', gameId);
@@ -432,7 +454,7 @@ export async function endRound(gameId: string) {
         .update({ status: 'completed' })
         .eq('id', round.id);
         
-      return; // Exit early, game is over
+      return; // Exit early, starting new game
     }
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - wait 3 seconds to show decisions, then evaluate hands
@@ -536,11 +558,12 @@ export async function endRound(gameId: string) {
         // Get current pot
         const { data: currentGameData } = await supabase
           .from('games')
-          .select('pot')
+          .select('pot, dealer_position')
           .eq('id', gameId)
           .single();
         
         const currentPot = currentGameData?.pot || 0;
+        const currentDealerPosition = currentGameData?.dealer_position || 1;
         
         // Calculate value of all legs from all players
         const totalLegs = updatedPlayers?.reduce((sum, p) => sum + p.legs, 0) || 0;
@@ -563,11 +586,32 @@ export async function endRound(gameId: string) {
         
         const gameWinMessage = `🏆 ${winnerUsername} won the game with ${gameWinner.legs} legs! (+$${totalPrize})`;
         
-        // Update game status and set winner message
+        // Reset all players' legs for new game and keep chips
+        await supabase
+          .from('players')
+          .update({ 
+            legs: 0,
+            status: 'active',
+            current_decision: null,
+            decision_locked: false,
+            sitting_out: false,
+            ante_decision: null
+          })
+          .eq('game_id', gameId);
+        
+        // Calculate next dealer (clockwise from current dealer)
+        const totalPlayers = updatedPlayers?.length || 0;
+        const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
+        
+        // Update game to dealer announcement phase
         await supabase
           .from('games')
           .update({ 
-            status: 'completed',
+            status: 'dealer_announcement',
+            dealer_position: nextDealerPosition,
+            current_round: null,
+            awaiting_next_round: false,
+            all_decisions_in: false,
             last_round_result: gameWinMessage
           })
           .eq('id', gameId);

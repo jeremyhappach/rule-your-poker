@@ -10,6 +10,7 @@ import { GameTable } from "@/components/GameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { DealerSelection } from "@/components/DealerSelection";
+import { DealerAnnouncement } from "@/components/DealerAnnouncement";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -50,6 +51,7 @@ interface GameData {
   legs_to_win?: number;
   pot_max_enabled?: boolean;
   pot_max_value?: number;
+  last_round_result?: string | null;
   rounds?: Round[];
 }
 
@@ -443,6 +445,31 @@ const Game = () => {
     setTimeout(() => fetchGameData(), 500);
   };
 
+  const handleDealerAnnouncementComplete = async () => {
+    if (!gameId) return;
+
+    // Transition to configuring phase
+    const { error } = await supabase
+      .from('games')
+      .update({ 
+        status: 'configuring',
+        config_complete: false
+      })
+      .eq('id', gameId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start configuration",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Manual refetch to update UI
+    setTimeout(() => fetchGameData(), 100);
+  };
+
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) return;
 
@@ -713,7 +740,7 @@ const Game = () => {
           </Card>
         )}
 
-        {(game.status === 'dealer_selection' || game.status === 'configuring') && (
+        {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement') && (
           <>
             {game.status === 'dealer_selection' ? (
               <div className="relative">
@@ -737,6 +764,29 @@ const Game = () => {
                     selectDealer(position);
                   }}
                 />
+              </div>
+            ) : game.status === 'dealer_announcement' ? (
+              <div className="relative">
+                <GameTable
+                  players={players}
+                  currentUserId={user?.id}
+                  pot={game.pot || 0}
+                  currentRound={0}
+                  allDecisionsIn={false}
+                  playerCards={[]}
+                  timeLeft={null}
+                  lastRoundResult={game.last_round_result}
+                  dealerPosition={game.dealer_position}
+                  legValue={game.leg_value || 1}
+                  onStay={() => {}}
+                  onFold={() => {}}
+                />
+                {dealerPlayer && (
+                  <DealerAnnouncement 
+                    newDealerPlayer={dealerPlayer}
+                    onComplete={handleDealerAnnouncementComplete}
+                  />
+                )}
               </div>
             ) : (
               // Configuring phase
