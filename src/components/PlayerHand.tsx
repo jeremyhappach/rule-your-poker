@@ -23,9 +23,17 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
         {sortedCards.map((_, index) => (
           <div
             key={index}
-            className="w-12 h-16 bg-gradient-to-br from-blue-900 to-blue-950 rounded border-2 border-white shadow-lg transform rotate-2"
+            className="w-12 h-16 bg-gradient-to-br from-red-900 via-red-950 to-black rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden"
             style={{ transform: `rotate(${index * 2 - 2}deg)` }}
-          />
+          >
+            {/* Card back pattern */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-10 h-14 border-2 border-amber-400/40 rounded" />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-6 h-10 border-2 border-amber-400/30 rounded" />
+            </div>
+          </div>
         ))}
       </div>
     );

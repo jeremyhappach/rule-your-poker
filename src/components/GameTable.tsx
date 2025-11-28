@@ -173,7 +173,7 @@ export const GameTable = ({
                             <span className="text-amber-500/50 text-[10px]">No legs</span>
                           ) : (
                             Array.from({ length: player.legs }).map((_, i) => (
-                              <ChipStack key={i} amount={legValue} size="sm" />
+                              <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
                             ))
                           )}
                         </div>
