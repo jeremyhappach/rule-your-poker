@@ -462,14 +462,6 @@ export async function endRound(gameId: string) {
               chips: winningPlayer.chips + totalPot
             })
             .eq('id', winner.playerId);
-          
-          // Add winnings to game pot
-          await supabase
-            .from('games')
-            .update({ 
-              pot: (game.pot || 0) + totalPot
-            })
-            .eq('id', gameId);
             
           resultMessage = `${winnerUsername} won $${totalPot} with ${handName}`;
         }
