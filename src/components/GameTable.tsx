@@ -148,7 +148,7 @@ export const GameTable = ({
                       </div>
                       <div className="flex justify-center min-h-[60px] items-center">
                         {cards.length > 0 ? (
-                          <PlayerHand cards={cards} isHidden={!isCurrentUser && player.status !== 'folded'} />
+                          <PlayerHand cards={cards} isHidden={!isCurrentUser && !allDecisionsIn} />
                         ) : (
                           <div className="text-[10px] text-amber-300/50">Waiting...</div>
                         )}
