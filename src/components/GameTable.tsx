@@ -38,6 +38,7 @@ interface GameTableProps {
   timeLeft: number | null;
   lastRoundResult: string | null;
   dealerPosition: number | null;
+  legValue: number;
   onStay: () => void;
   onFold: () => void;
 }
@@ -52,6 +53,7 @@ export const GameTable = ({
   timeLeft,
   lastRoundResult,
   dealerPosition,
+  legValue,
   onStay,
   onFold,
 }: GameTableProps) => {
@@ -165,13 +167,13 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex items-center justify-center gap-2">
-                        {/* Legs indicator - show chip per leg with $10 */}
+                        {/* Legs indicator - show chip per leg with configured value */}
                         <div className="flex items-center gap-0.5 bg-amber-900/30 px-1.5 py-0.5 rounded border border-amber-700">
                           {player.legs === 0 ? (
                             <span className="text-amber-500/50 text-[10px]">No legs</span>
                           ) : (
                             Array.from({ length: player.legs }).map((_, i) => (
-                              <ChipStack key={i} amount={10} size="sm" />
+                              <ChipStack key={i} amount={legValue} size="sm" />
                             ))
                           )}
                         </div>
