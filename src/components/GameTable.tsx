@@ -194,9 +194,11 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex gap-1 justify-center flex-wrap">
-                        {hasPlayerDecided && !allDecisionsIn && (
+                        {/* Only show current user's decision status before all decisions lock */}
+                        {isCurrentUser && hasPlayerDecided && !allDecisionsIn && (
                           <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">✓</Badge>
                         )}
+                        {/* Show all decisions only after all decisions are locked */}
                         {playerDecision === 'stay' && allDecisionsIn && (
                           <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">In</Badge>
                         )}
