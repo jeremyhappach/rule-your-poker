@@ -439,6 +439,8 @@ const Game = () => {
         title: "Bot added",
         description: "A computer player has joined the game",
       });
+      // Manual refetch to ensure bot shows up immediately
+      setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -523,7 +525,7 @@ const Game = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Players:</span>
-                <span className="font-semibold">{players.length} / 4</span>
+                <span className="font-semibold">{players.length} / 7</span>
               </div>
             </CardContent>
           </Card>
@@ -583,7 +585,7 @@ const Game = () => {
                       Start Game
                     </Button>
                   )}
-                  {isCreator && players.length < 4 && (
+                  {isCreator && players.length < 7 && (
                     <Button onClick={handleAddBot} size="lg" variant="outline">
                       <Bot className="w-4 h-4 mr-2" />
                       Add Bot Player
