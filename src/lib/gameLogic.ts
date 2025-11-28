@@ -96,11 +96,11 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error('No active players found in game');
   }
 
-  // Calculate pot based on active players and ante for round 1
-  const activePlayers = players.filter(p => p.status === 'active');
+  // Calculate pot based on active players who are not sitting out, and ante for round 1
+  const activePlayers = players.filter(p => p.status === 'active' && !p.sitting_out);
   let initialPot = 0;
   
-  // Ante: Each player pays ante amount into the pot at the start of round 1
+  // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
   if (roundNumber === 1) {
     for (const player of activePlayers) {
       initialPot += anteAmount;
@@ -163,7 +163,7 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   const newCardsToDeal = roundNumber === 1 ? 3 : 2; // Round 1 gets 3, rounds 2 & 3 get 2 new cards
 
-  for (const player of players) {
+  for (const player of activePlayers) {
     // Get existing cards from previous round (if any)
     const existingCards = previousRoundCards.get(player.id) || [];
     
@@ -256,7 +256,8 @@ async function checkAllDecisionsIn(gameId: string) {
     .from('players')
     .select('*')
     .eq('game_id', gameId)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .eq('sitting_out', false);
 
   if (!players) return;
 
@@ -274,12 +275,13 @@ async function checkAllDecisionsIn(gameId: string) {
 }
 
 export async function autoFoldUndecided(gameId: string) {
-  // Get players who haven't decided yet
+  // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers } = await supabase
     .from('players')
     .select('*')
     .eq('game_id', gameId)
     .eq('status', 'active')
+    .eq('sitting_out', false)
     .is('decision_locked', false);
 
   if (!undecidedPlayers) return;

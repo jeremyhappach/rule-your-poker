@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 interface DealerConfigProps {
   gameId: string;
   dealerUsername: string;
+  isBot: boolean;
   onConfigComplete: () => void;
 }
 
-export const DealerConfig = ({ gameId, dealerUsername, onConfigComplete }: DealerConfigProps) => {
+export const DealerConfig = ({ gameId, dealerUsername, isBot, onConfigComplete }: DealerConfigProps) => {
   const { toast } = useToast();
   const [anteAmount, setAnteAmount] = useState(2);
   const [legValue, setLegValue] = useState(1);
@@ -22,6 +23,13 @@ export const DealerConfig = ({ gameId, dealerUsername, onConfigComplete }: Deale
   const [legsToWin, setLegsToWin] = useState(3);
   const [potMaxEnabled, setPotMaxEnabled] = useState(true);
   const [potMaxValue, setPotMaxValue] = useState(10);
+
+  // Auto-submit for bots
+  useEffect(() => {
+    if (isBot) {
+      handleSubmit();
+    }
+  }, [isBot]);
 
   const handleSubmit = async () => {
     // Validation
@@ -64,6 +72,8 @@ export const DealerConfig = ({ gameId, dealerUsername, onConfigComplete }: Deale
         pot_max_enabled: potMaxEnabled,
         pot_max_value: potMaxValue,
         config_complete: true,
+        status: 'ante_decision',
+        ante_decision_deadline: new Date(Date.now() + 10000).toISOString(), // 10 seconds
       })
       .eq('id', gameId);
 
@@ -76,13 +86,32 @@ export const DealerConfig = ({ gameId, dealerUsername, onConfigComplete }: Deale
       return;
     }
 
-    toast({
-      title: "Configuration saved",
-      description: "Game rules have been set",
-    });
+    if (!isBot) {
+      toast({
+        title: "Configuration saved",
+        description: "Players must now decide to ante up or sit out",
+      });
+    }
 
     onConfigComplete();
   };
+
+  if (isBot) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <p className="text-lg font-semibold">
+              {dealerUsername} is the dealer
+            </p>
+            <p className="text-muted-foreground">
+              Configuring game with default settings...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="max-w-2xl mx-auto">

@@ -17,6 +17,7 @@ interface Player {
   decision_locked: boolean | null;
   legs: number;
   is_bot: boolean;
+  sitting_out: boolean;
   profiles?: {
     username: string;
   };
@@ -140,6 +141,7 @@ export const GameTable = ({
                   ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
                   ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
                   ${playerDecision === 'stay' ? "ring-4 ring-green-400 shadow-lg shadow-green-400/50 brightness-125" : ""}
+                  ${player.sitting_out ? "opacity-50 grayscale" : ""}
                   bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                   transition-all duration-500
                 `}>
@@ -148,6 +150,7 @@ export const GameTable = ({
                       <div className="flex items-center justify-center gap-1.5">
                         <p className="font-bold text-xs text-amber-100 truncate max-w-[100px]">
                           {player.profiles?.username || (player.is_bot ? `Bot ${index + 1}` : `P${index + 1}`)}
+                          {player.sitting_out && ' (Sitting Out)'}
                         </p>
                         {player.position === dealerPosition && (
                           <div className="w-5 h-5 rounded-full bg-poker-gold flex items-center justify-center border-2 border-black shadow-lg">

@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           all_decisions_in: boolean | null
           ante_amount: number
+          ante_decision_deadline: string | null
           awaiting_next_round: boolean | null
           buy_in: number
           config_complete: boolean
@@ -41,6 +42,7 @@ export type Database = {
         Insert: {
           all_decisions_in?: boolean | null
           ante_amount?: number
+          ante_decision_deadline?: string | null
           awaiting_next_round?: boolean | null
           buy_in?: number
           config_complete?: boolean
@@ -64,6 +66,7 @@ export type Database = {
         Update: {
           all_decisions_in?: boolean | null
           ante_amount?: number
+          ante_decision_deadline?: string | null
           awaiting_next_round?: boolean | null
           buy_in?: number
           config_complete?: boolean
@@ -166,6 +169,7 @@ export type Database = {
       }
       players: {
         Row: {
+          ante_decision: string | null
           chips: number
           created_at: string
           current_decision: string | null
@@ -175,10 +179,12 @@ export type Database = {
           is_bot: boolean
           legs: number
           position: number
+          sitting_out: boolean
           status: string
           user_id: string
         }
         Insert: {
+          ante_decision?: string | null
           chips?: number
           created_at?: string
           current_decision?: string | null
@@ -188,10 +194,12 @@ export type Database = {
           is_bot?: boolean
           legs?: number
           position: number
+          sitting_out?: boolean
           status?: string
           user_id: string
         }
         Update: {
+          ante_decision?: string | null
           chips?: number
           created_at?: string
           current_decision?: string | null
@@ -201,6 +209,7 @@ export type Database = {
           is_bot?: boolean
           legs?: number
           position?: number
+          sitting_out?: boolean
           status?: string
           user_id?: string
         }
