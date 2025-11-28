@@ -9,6 +9,7 @@ import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
+import { DealerSelection } from "@/components/DealerSelection";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -377,15 +378,11 @@ const Game = () => {
   const startGame = async () => {
     if (!gameId) return;
 
-    // Randomly select a dealer position
-    const randomDealerPosition = Math.floor(Math.random() * players.length) + 1;
-    const dealerPlayer = players.find(p => p.position === randomDealerPosition);
-
+    // Start game and show table immediately - dealer selection will happen on the table
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'configuring',
-        dealer_position: randomDealerPosition 
+        status: 'dealer_selection',
       })
       .eq('id', gameId);
 
@@ -400,7 +397,42 @@ const Game = () => {
     }
 
     toast({
-      title: "Dealer Selected",
+      title: "Game Starting",
+      description: "Selecting dealer...",
+    });
+
+    // Trigger dealer selection animation after 1 second
+    setTimeout(() => {
+      selectDealer();
+    }, 1000);
+  };
+
+  const selectDealer = async () => {
+    if (!gameId) return;
+
+    // Randomly select a dealer position
+    const randomDealerPosition = Math.floor(Math.random() * players.length) + 1;
+    const dealerPlayer = players.find(p => p.position === randomDealerPosition);
+
+    const { error } = await supabase
+      .from('games')
+      .update({ 
+        status: 'configuring',
+        dealer_position: randomDealerPosition 
+      })
+      .eq('id', gameId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to select dealer",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Dealer Selected!",
       description: `${dealerPlayer?.profiles?.username || 'Player ' + randomDealerPosition} is the dealer`,
     });
 
@@ -685,28 +717,55 @@ const Game = () => {
           </Card>
         )}
 
-        {game.status === 'configuring' && (
+        {(game.status === 'dealer_selection' || game.status === 'configuring') && (
           <>
-            {isDealer ? (
-              <DealerConfig 
-                gameId={gameId!} 
-                dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
-                isBot={dealerPlayer?.is_bot || false}
-                onConfigComplete={handleConfigComplete}
-              />
+            {game.status === 'dealer_selection' ? (
+              <div className="relative">
+                <GameTable
+                  players={players}
+                  currentUserId={user?.id}
+                  pot={game.pot || 0}
+                  currentRound={0}
+                  allDecisionsIn={false}
+                  playerCards={[]}
+                  timeLeft={null}
+                  lastRoundResult={null}
+                  dealerPosition={game.dealer_position}
+                  onStay={() => {}}
+                  onFold={() => {}}
+                />
+                <DealerSelection 
+                  players={players}
+                  onComplete={(position) => {
+                    // This is handled by selectDealer function already
+                  }}
+                />
+              </div>
             ) : (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <p className="text-lg font-semibold">
-                      {dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`} is the dealer
-                    </p>
-                    <p className="text-muted-foreground">
-                      Waiting for the dealer to configure game parameters...
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              // Configuring phase
+              <>
+                {isDealer ? (
+                  <DealerConfig 
+                    gameId={gameId!} 
+                    dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                    isBot={dealerPlayer?.is_bot || false}
+                    onConfigComplete={handleConfigComplete}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-4">
+                        <p className="text-lg font-semibold">
+                          {dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`} is the dealer
+                        </p>
+                        <p className="text-muted-foreground">
+                          Waiting for the dealer to configure game parameters...
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
             )}
           </>
         )}
