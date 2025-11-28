@@ -27,9 +27,32 @@ export const DealerConfig = ({ gameId, dealerUsername, isBot, onConfigComplete }
   // Auto-submit for bots
   useEffect(() => {
     if (isBot) {
-      handleSubmit();
+      const autoSubmit = async () => {
+        const { error } = await supabase
+          .from('games')
+          .update({
+            ante_amount: 2,
+            leg_value: 1,
+            pussy_tax_enabled: true,
+            pussy_tax_value: 1,
+            pussy_tax: 1,
+            legs_to_win: 3,
+            pot_max_enabled: true,
+            pot_max_value: 10,
+            config_complete: true,
+            status: 'ante_decision',
+            ante_decision_deadline: new Date(Date.now() + 10000).toISOString(),
+          })
+          .eq('id', gameId);
+
+        if (!error) {
+          onConfigComplete();
+        }
+      };
+      
+      autoSubmit();
     }
-  }, [isBot]);
+  }, [isBot, gameId, onConfigComplete]);
 
   const handleSubmit = async () => {
     // Validation
