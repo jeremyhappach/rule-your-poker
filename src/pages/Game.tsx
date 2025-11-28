@@ -741,7 +741,7 @@ const Game = () => {
             ) : (
               // Configuring phase
               <>
-                {isDealer ? (
+                {isDealer || dealerPlayer?.is_bot ? (
                   <DealerConfig 
                     gameId={gameId!} 
                     dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
