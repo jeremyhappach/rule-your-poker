@@ -64,20 +64,20 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
         <div className="relative h-full">
-          {/* Pot in center with chips */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-            <div className="bg-poker-felt-dark/50 rounded-lg p-6 backdrop-blur-sm border-2 border-poker-gold/30 shadow-xl">
-              <p className="text-sm text-poker-gold/80 font-semibold mb-2">POT</p>
-              <div className="flex items-center justify-center gap-2 mb-2">
+          {/* Pot in center with chips - higher z-index */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-20">
+            <div className="bg-poker-felt-dark/90 rounded-lg p-4 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
+              <p className="text-xs text-poker-gold/80 font-semibold mb-1">POT</p>
+              <div className="flex items-center justify-center gap-2 mb-1">
                 <ChipStack amount={pot > 0 ? Math.min(pot, 100) : 0} size="lg" />
-                <p className="text-4xl font-bold text-poker-gold drop-shadow-lg">{pot}</p>
+                <p className="text-3xl font-bold text-poker-gold drop-shadow-lg">{pot}</p>
               </div>
-              <Badge className="mt-2 bg-poker-gold text-black border-0 shadow-lg">
+              <Badge className="mt-1 bg-poker-gold text-black border-0 shadow-lg text-xs">
                 Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
               </Badge>
-              <p className="text-sm text-white/90 mt-3 font-semibold">If you lose: pay 10 chips</p>
+              <p className="text-xs text-white/90 mt-2 font-semibold">If you lose: pay 10 chips</p>
               {timeLeft !== null && timeLeft >= 0 && (
-                <Badge className={`mt-2 ${timeLeft <= 3 ? 'bg-red-500 animate-pulse' : timeLeft === 0 ? 'bg-gray-500' : 'bg-blue-500'} text-white border-0 shadow-lg`}>
+                <Badge className={`mt-1 text-xs ${timeLeft <= 3 ? 'bg-red-500 animate-pulse' : timeLeft === 0 ? 'bg-gray-500' : 'bg-blue-500'} text-white border-0 shadow-lg`}>
                   {allDecisionsIn ? 'Time\'s up!' : `Time: ${timeLeft}s`}
                 </Badge>
               )}
@@ -90,7 +90,7 @@ export const GameTable = ({
             const hasPlayerDecided = player.decision_locked;
             const playerDecision = allDecisionsIn ? player.current_decision : null;
             const angle = (index / players.length) * 2 * Math.PI - Math.PI / 2;
-            const radius = 45;
+            const radius = 48; // Increased radius to push players further out
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             const cards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
@@ -98,30 +98,30 @@ export const GameTable = ({
             return (
               <div
                 key={player.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in"
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10"
                 style={{ left: `${x}%`, top: `${y}%` }}
               >
                 <Card className={`
-                  ${isCurrentUser ? "border-poker-gold border-4 shadow-2xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
-                  ${hasPlayerDecided ? "ring-4 ring-green-500 ring-offset-2 ring-offset-poker-felt" : ""}
+                  ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
+                  ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
                   ${playerDecision === 'fold' ? "opacity-50" : ""}
                   bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                 `}>
-                  <CardContent className="p-4 text-center min-w-[160px]">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2">
-                        <p className="font-bold text-sm text-amber-100">
+                  <CardContent className="p-3 text-center min-w-[140px]">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <p className="font-bold text-xs text-amber-100 truncate max-w-[100px]">
                           {player.profiles?.username || (player.is_bot ? `Bot ${index + 1}` : `P${index + 1}`)}
                         </p>
                         {player.is_bot && (
-                          <Badge className="text-xs bg-purple-500 text-white border-0">🤖</Badge>
+                          <Badge className="text-[10px] bg-purple-500 text-white border-0 px-1 py-0">🤖</Badge>
                         )}
                       </div>
                       <div className="flex items-center justify-center gap-1">
                         {/* Legs indicator - show one chip per leg */}
-                        <div className="flex items-center gap-1 bg-amber-900/30 px-2 py-1 rounded border border-amber-700">
+                        <div className="flex items-center gap-0.5 bg-amber-900/30 px-1.5 py-0.5 rounded border border-amber-700">
                           {player.legs === 0 ? (
-                            <span className="text-amber-500/50 text-xs">No legs</span>
+                            <span className="text-amber-500/50 text-[10px]">No legs</span>
                           ) : (
                             Array.from({ length: player.legs }).map((_, i) => (
                               <ChipStack key={i} amount={10} size="sm" />
@@ -131,33 +131,33 @@ export const GameTable = ({
                       </div>
                       <div className="flex gap-1 justify-center flex-wrap">
                         {isCurrentUser && !player.is_bot && (
-                          <Badge variant="secondary" className="text-xs bg-poker-gold text-black border-0">You</Badge>
+                          <Badge variant="secondary" className="text-[10px] bg-poker-gold text-black border-0 px-1 py-0">You</Badge>
                         )}
                         {hasPlayerDecided && !allDecisionsIn && (
-                          <Badge className="text-xs bg-green-500 text-white border-0">Decided ✓</Badge>
+                          <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">✓</Badge>
                         )}
                         {playerDecision === 'stay' && allDecisionsIn && (
-                          <Badge className="text-xs bg-green-500 text-white border-0">Stayed</Badge>
+                          <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">Stay</Badge>
                         )}
                         {playerDecision === 'fold' && allDecisionsIn && (
-                          <Badge variant="destructive" className="text-xs">Folded</Badge>
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0">Fold</Badge>
                         )}
                         {player.status === 'folded' && (
-                          <Badge variant="destructive" className="text-xs opacity-75">Out</Badge>
+                          <Badge variant="destructive" className="text-[10px] opacity-75 px-1 py-0">Out</Badge>
                         )}
                       </div>
-                      <div className="flex justify-center min-h-[70px] items-center">
+                      <div className="flex justify-center min-h-[60px] items-center">
                         {cards.length > 0 ? (
                           <PlayerHand cards={cards} isHidden={!isCurrentUser && player.status !== 'folded'} />
                         ) : (
-                          <div className="text-xs text-amber-300/50">Waiting...</div>
+                          <div className="text-[10px] text-amber-300/50">Waiting...</div>
                         )}
                       </div>
-                      <div className="flex items-center justify-center gap-2 pt-2 border-t border-amber-700">
+                      <div className="flex items-center justify-center gap-1.5 pt-1.5 border-t border-amber-700">
                         <ChipStack amount={Math.min(player.chips, 100)} />
                         <div>
-                          <p className="text-xl font-bold text-poker-gold">{player.chips}</p>
-                          <p className="text-xs text-amber-300/70">chips</p>
+                          <p className="text-lg font-bold text-poker-gold">{player.chips}</p>
+                          <p className="text-[10px] text-amber-300/70">chips</p>
                         </div>
                       </div>
                     </div>
