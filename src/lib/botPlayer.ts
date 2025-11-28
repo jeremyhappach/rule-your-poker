@@ -82,6 +82,6 @@ export async function makeBotDecisions(gameId: string) {
     // Add a small delay to make it feel more natural
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
     
-    await makeDecision(gameId, bot.id, decision, 10);
+    await makeDecision(gameId, bot.id, decision);
   }
 }
