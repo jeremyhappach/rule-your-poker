@@ -223,7 +223,7 @@ const Game = () => {
         .insert({
           game_id: gameId,
           user_id: user.id,
-          chips: gameData.buy_in,
+          chips: 0,
           position: nextPosition
         });
 

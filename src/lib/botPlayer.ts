@@ -50,7 +50,7 @@ export async function addBotPlayer(gameId: string) {
       user_id: botId,
       game_id: gameId,
       position: nextPosition,
-      chips: game.buy_in,
+      chips: 0,
       is_bot: true,
       status: 'active'
     })
