@@ -54,6 +54,14 @@ export const GameTable = ({
 }: GameTableProps) => {
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked;
+  
+  // Reorder players so current user is always first (bottom position)
+  const reorderedPlayers = currentPlayer 
+    ? [currentPlayer, ...players.filter(p => p.user_id !== currentUserId)]
+    : players;
+
+  // Hide pot and timer when showing result message
+  const showPotAndTimer = !lastRoundResult;
 
   return (
     <div className="relative p-8">
@@ -64,41 +72,58 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
         <div className="relative h-full">
-          {/* Pot in center with chips - higher z-index */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-20">
-            <div className="bg-poker-felt-dark/90 rounded-lg p-4 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
-              <p className="text-xs text-poker-gold/80 font-semibold mb-1">POT</p>
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <ChipStack amount={pot > 0 ? Math.min(pot, 100) : 0} size="lg" />
-                <p className="text-3xl font-bold text-poker-gold drop-shadow-lg">{pot}</p>
+          {/* Result Message Flash - replaces pot and timer */}
+          {lastRoundResult && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-30 animate-scale-in">
+              <div className="bg-poker-gold/30 backdrop-blur-lg p-6 rounded-xl border-4 border-poker-gold shadow-2xl">
+                <p className="text-poker-gold font-black text-2xl drop-shadow-lg">
+                  {lastRoundResult}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* Pot and Timer - shown when no result message */}
+          {showPotAndTimer && (
+            <>
+              {/* Pot in center */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -translate-x-20 text-center z-20">
+                <div className="bg-poker-felt-dark/90 rounded-lg p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
+                  <p className="text-xs text-poker-gold/80 font-semibold mb-1">POT</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <ChipStack amount={pot > 0 ? Math.min(pot, 100) : 0} size="lg" />
+                    <p className="text-3xl font-bold text-poker-gold drop-shadow-lg">{pot}</p>
+                  </div>
+                  <Badge className="mt-1 bg-poker-gold text-black border-0 shadow-lg text-xs">
+                    Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
+                  </Badge>
+                  <p className="text-xs text-white/90 mt-1 font-semibold">Lose: pay 10</p>
+                </div>
               </div>
               
-              {/* PROMINENT TIMER */}
+              {/* Timer beside pot */}
               {timeLeft !== null && timeLeft >= 0 && (
-                <div className={`mt-2 mb-2 text-center ${timeLeft <= 3 ? 'animate-pulse' : ''}`}>
-                  <p className={`text-5xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>
-                    {allDecisionsIn ? '⏰' : timeLeft}
-                  </p>
-                  <p className="text-xs text-white/70 mt-1">
-                    {allDecisionsIn ? 'Time\'s up!' : 'seconds left'}
-                  </p>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 translate-x-20 text-center z-20">
+                  <div className={`bg-poker-felt-dark/90 rounded-lg p-4 backdrop-blur-sm border-2 ${timeLeft <= 3 ? 'border-red-500 animate-pulse' : 'border-blue-500'} shadow-2xl`}>
+                    <p className={`text-6xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>
+                      {allDecisionsIn ? '⏰' : timeLeft}
+                    </p>
+                    <p className="text-xs text-white/70 mt-1">
+                      {allDecisionsIn ? 'Time\'s up!' : 'seconds'}
+                    </p>
+                  </div>
                 </div>
               )}
-              
-              <Badge className="mt-1 bg-poker-gold text-black border-0 shadow-lg text-xs">
-                Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
-              </Badge>
-              <p className="text-xs text-white/90 mt-2 font-semibold">If you lose: pay 10 chips</p>
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Players around table */}
-          {players.map((player, index) => {
+          {reorderedPlayers.map((player, index) => {
             const isCurrentUser = player.user_id === currentUserId;
             const hasPlayerDecided = player.decision_locked;
             const playerDecision = allDecisionsIn ? player.current_decision : null;
-            const angle = (index / players.length) * 2 * Math.PI - Math.PI / 2;
-            const radius = 48; // Increased radius to push players further out
+            const angle = (index / reorderedPlayers.length) * 2 * Math.PI - Math.PI / 2;
+            const radius = 48;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             const cards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
@@ -156,17 +181,50 @@ export const GameTable = ({
                       </div>
                       <div className="flex justify-center min-h-[60px] items-center">
                         {cards.length > 0 ? (
-                          <PlayerHand cards={cards} isHidden={!isCurrentUser && !allDecisionsIn} />
+                          <PlayerHand cards={cards} isHidden={!isCurrentUser} />
                         ) : (
                           <div className="text-[10px] text-amber-300/50">Waiting...</div>
                         )}
                       </div>
-                      <div className="flex items-center justify-center gap-1.5 pt-1.5 border-t border-amber-700">
-                        <ChipStack amount={Math.min(player.chips, 100)} />
-                        <div>
-                          <p className="text-lg font-bold text-poker-gold">{player.chips}</p>
-                          <p className="text-[10px] text-amber-300/70">chips</p>
+                      
+                      {/* Action buttons and chip stack row */}
+                      <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-amber-700">
+                        {/* Fold button (left) */}
+                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={onFold}
+                            className="text-[10px] px-2 py-1 h-auto"
+                          >
+                            Fold
+                          </Button>
+                        ) : (
+                          <div className="w-12"></div>
+                        )}
+                        
+                        {/* Chip stack (center) */}
+                        <div className="flex items-center gap-1">
+                          <ChipStack amount={Math.min(player.chips, 100)} />
+                          <div>
+                            <p className="text-lg font-bold text-poker-gold">{player.chips}</p>
+                            <p className="text-[10px] text-amber-300/70">chips</p>
+                          </div>
                         </div>
+                        
+                        {/* Stay button (right) */}
+                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
+                          <Button 
+                            size="sm"
+                            onClick={onStay}
+                            disabled={(player.chips || 0) < 10}
+                            className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[10px] px-2 py-1 h-auto"
+                          >
+                            Stay
+                          </Button>
+                        ) : (
+                          <div className="w-12"></div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -177,33 +235,7 @@ export const GameTable = ({
         </div>
       </div>
 
-      {/* Decision buttons */}
-      {!hasDecided && currentPlayer?.status === 'active' && !allDecisionsIn && (
-        <div className="mt-8 bg-gradient-to-br from-amber-900/50 to-amber-950/50 p-6 rounded-xl border-2 border-poker-gold/30 backdrop-blur-sm">
-          <div className="text-center mb-4">
-            <p className="text-amber-100 text-lg font-bold">Make your decision!</p>
-            <p className="text-amber-300/70 text-sm">All players decide simultaneously</p>
-            <p className="text-poker-gold text-sm mt-2">If you stay and lose, you'll pay 10 chips to the winner</p>
-          </div>
-          <div className="flex gap-4 justify-center">
-            <Button 
-              variant="destructive" 
-              onClick={onFold} 
-              className="font-bold shadow-lg text-lg px-8 py-6"
-            >
-              Fold
-            </Button>
-            <Button 
-              onClick={onStay}
-              disabled={(currentPlayer?.chips || 0) < 10}
-              className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold shadow-lg text-lg px-8 py-6"
-            >
-              Stay
-            </Button>
-          </div>
-        </div>
-      )}
-
+      {/* Status message */}
       {hasDecided && !allDecisionsIn && (
         <div className="text-center mt-8 bg-green-900/30 p-4 rounded-lg border border-green-500/40">
           <p className="text-green-200 font-semibold flex items-center justify-center gap-2">
@@ -212,15 +244,6 @@ export const GameTable = ({
         </div>
       )}
 
-      {lastRoundResult && (
-        <div className="text-center mt-8">
-          <div className="bg-poker-gold/20 p-4 rounded-lg border-2 border-poker-gold/60">
-            <p className="text-poker-gold font-bold text-xl">
-              {lastRoundResult}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
