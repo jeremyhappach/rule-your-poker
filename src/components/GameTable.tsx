@@ -130,7 +130,16 @@ export const GameTable = ({
             const radius = 48;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
-            const cards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
+            
+            // Get cards for current player, or show placeholder cards for others
+            const actualCards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
+            const shouldShowCards = player.status !== 'folded' && !player.sitting_out;
+            const cardCount = currentRound === 1 ? 3 : currentRound === 2 ? 5 : currentRound === 3 ? 7 : 0;
+            
+            // For other players, create placeholder cards to show card backs
+            const cards = isCurrentUser ? actualCards : (shouldShowCards && cardCount > 0 ? 
+              Array(cardCount).fill({ rank: '2', suit: '♠' }) : 
+              []);
 
             return (
               <div
