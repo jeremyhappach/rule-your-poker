@@ -469,7 +469,7 @@ export async function endRound(gameId: string) {
       })
       .eq('id', gameId);
     
-    resultMessage = `💸 PUSSY TAX INCURRED! Everyone folded. Each player paid ${pussyTax} chips. Pot: ${(game.pot || 0) + taxCollected} chips`;
+    resultMessage = `PUSSY TAX INCURRED! (${pussyTax} chips)`;
   }
 
   // Store result message and keep pot (don't reset to 0 if pussy tax was collected)
