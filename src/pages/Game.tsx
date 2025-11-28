@@ -207,7 +207,10 @@ const Game = () => {
   useEffect(() => {
     if (game?.status === 'ante_decision' && user) {
       const currentPlayer = players.find(p => p.user_id === user.id);
-      if (currentPlayer && !currentPlayer.ante_decision) {
+      const isDealer = currentPlayer?.position === game.dealer_position;
+      
+      // Don't show ante dialog for dealer (they auto ante up)
+      if (currentPlayer && !currentPlayer.ante_decision && !isDealer) {
         setShowAnteDialog(true);
         
         // Calculate ante time left
@@ -223,7 +226,7 @@ const Game = () => {
     } else {
       setShowAnteDialog(false);
     }
-  }, [game?.status, game?.ante_decision_deadline, players, user]);
+  }, [game?.status, game?.ante_decision_deadline, game?.dealer_position, players, user]);
 
   // Auto-sit-out when ante timer reaches 0
   useEffect(() => {
@@ -777,6 +780,7 @@ const Game = () => {
                     gameId={gameId!} 
                     dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
                     isBot={dealerPlayer?.is_bot || false}
+                    dealerPlayerId={dealerPlayer?.id || ''}
                     onConfigComplete={handleConfigComplete}
                   />
                 ) : (
