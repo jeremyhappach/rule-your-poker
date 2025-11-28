@@ -428,11 +428,11 @@ export async function endRound(gameId: string) {
       const currentDealerPosition = game.dealer_position || 1;
       const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
       
-      // Update game to dealer announcement phase
+      // Update game to game_over status with 5 second delay before moving to configuration
       await supabase
         .from('games')
         .update({ 
-          status: 'dealer_announcement',
+          status: 'game_over',
           dealer_position: nextDealerPosition,
           current_round: null,
           awaiting_next_round: false,
@@ -600,11 +600,11 @@ export async function endRound(gameId: string) {
         const totalPlayers = updatedPlayers?.length || 0;
         const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
         
-        // Update game to dealer announcement phase
+        // Update game to game_over status with countdown before moving to configuration
         await supabase
           .from('games')
           .update({ 
-            status: 'dealer_announcement',
+            status: 'game_over',
             dealer_position: nextDealerPosition,
             current_round: null,
             awaiting_next_round: false,
