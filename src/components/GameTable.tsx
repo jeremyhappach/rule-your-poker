@@ -203,9 +203,6 @@ export const GameTable = ({
                         {playerDecision === 'fold' && allDecisionsIn && (
                           <Badge variant="destructive" className="text-[10px] px-1 py-0">Out</Badge>
                         )}
-                        {player.status === 'folded' && !allDecisionsIn && (
-                          <Badge variant="destructive" className="text-[10px] opacity-75 px-1 py-0">Out</Badge>
-                        )}
                       </div>
                       <div className="flex justify-center min-h-[60px] items-center">
                         {cards.length > 0 ? (
