@@ -357,7 +357,7 @@ export async function endRound(gameId: string) {
       })
       .eq('id', gameId);
       
-    resultMessage = `${username} won a leg (paid ${betAmount} chips)`;
+    resultMessage = `${username} won a leg (paid $${betAmount})`;
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands and charge losers
     const { data: playerCards } = await supabase
@@ -425,7 +425,7 @@ export async function endRound(gameId: string) {
             })
             .eq('id', gameId);
             
-          resultMessage = `${winnerUsername} won ${totalPot} chips with ${handName}`;
+          resultMessage = `${winnerUsername} won $${totalPot} with ${handName}`;
         }
       }
     }
@@ -461,7 +461,7 @@ export async function endRound(gameId: string) {
       })
       .eq('id', gameId);
     
-    resultMessage = `PUSSY TAX INCURRED! (${pussyTax} chips)`;
+    resultMessage = `PUSSY TAX INCURRED! ($${pussyTax})`;
   }
 
   // Store result message and keep pot (don't reset to 0 if pussy tax was collected)
