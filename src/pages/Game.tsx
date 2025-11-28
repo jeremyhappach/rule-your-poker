@@ -507,58 +507,6 @@ const Game = () => {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Game Info</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Pot:</span>
-                <span className="font-semibold">${game.pot || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Round:</span>
-                <span className="font-semibold">{game.current_round || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Players:</span>
-                <span className="font-semibold">{players.length} / 7</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Players</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {players.map((player, index) => (
-                  <div
-                    key={player.id}
-                    className="flex justify-between items-center p-3 rounded-lg bg-muted"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">P{index + 1}</Badge>
-                      <span className="font-medium">
-                        {player.is_bot ? `🤖 Bot ${index + 1}` : (player.profiles?.username || `Player ${index + 1}`)}
-                      </span>
-                      {player.user_id === user?.id && !player.is_bot && (
-                        <Badge variant="secondary">You</Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm">
-                        <span className={`font-semibold ${player.chips < 0 ? 'text-red-500' : ''}`}>${player.chips}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {game.status === 'waiting' && (
           <Card>
