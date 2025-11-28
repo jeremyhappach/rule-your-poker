@@ -223,7 +223,6 @@ export const GameTable = ({
                           <Button 
                             size="sm"
                             onClick={onStay}
-                            disabled={(player.chips || 0) < 10}
                             className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[10px] px-2 py-1 h-auto"
                           >
                             Stay
