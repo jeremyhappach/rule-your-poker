@@ -131,12 +131,12 @@ export const GameTable = ({
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
-            // Get actual cards for this player
+            // Get cards for this player
             const actualCards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
             const shouldShowCards = player.status !== 'folded' && !player.sitting_out;
             
-            // Show actual cards for all players (for testing), or empty if folded/sitting out
-            const cards = shouldShowCards ? actualCards : [];
+            // Show actual cards only for current user, or when all decisions are in (showdown)
+            const cards = isCurrentUser || allDecisionsIn ? (shouldShowCards ? actualCards : []) : [];
 
             return (
               <div
@@ -184,8 +184,8 @@ export const GameTable = ({
                           )}
                         </div>
                         
-                        {/* Hand evaluation hint - show for all players during testing */}
-                        {cards.length > 0 && (
+                        {/* Hand evaluation hint - only for current user or during showdown */}
+                        {(isCurrentUser || allDecisionsIn) && cards.length > 0 && (
                           <div className="bg-poker-gold/20 px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[10px] font-bold">
                               {formatHandRank(evaluateHand(cards).rank)}
@@ -209,7 +209,7 @@ export const GameTable = ({
                       </div>
                       <div className="flex justify-center min-h-[60px] items-center">
                         {cards.length > 0 ? (
-                          <PlayerHand cards={cards} isHidden={false} />
+                          <PlayerHand cards={cards} isHidden={!isCurrentUser && !allDecisionsIn} />
                         ) : (
                           <div className="text-[10px] text-amber-300/50">Waiting...</div>
                         )}
