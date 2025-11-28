@@ -453,6 +453,39 @@ export async function endRound(gameId: string) {
   } else {
     // Continue to next round - cycle back to round 1 after round 3
     const nextRound = currentRound < 3 ? currentRound + 1 : 1;
-    await startRound(gameId, nextRound);
+    
+    // Set game to await next round (for testing purposes)
+    await supabase
+      .from('games')
+      .update({ 
+        awaiting_next_round: true,
+        next_round_number: nextRound
+      })
+      .eq('id', gameId);
   }
+}
+
+export async function proceedToNextRound(gameId: string) {
+  // Get the next round number
+  const { data: game } = await supabase
+    .from('games')
+    .select('next_round_number')
+    .eq('id', gameId)
+    .single();
+
+  if (!game?.next_round_number) {
+    throw new Error('No next round configured');
+  }
+
+  // Reset the awaiting flag
+  await supabase
+    .from('games')
+    .update({ 
+      awaiting_next_round: false,
+      next_round_number: null
+    })
+    .eq('id', gameId);
+
+  // Start the next round
+  await startRound(gameId, game.next_round_number);
 }
