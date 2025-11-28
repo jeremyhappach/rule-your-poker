@@ -391,14 +391,22 @@ export async function endRound(gameId: string) {
     
     // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
-      console.log('Player won the game!', { username, newLegCount, legsToWin });
+      console.log('Player won the game!', { username, newLegCount, legsToWin, playerId: soloStayer.id });
       
-      // Calculate total leg value across all players
-      const totalLegValue = allPlayers.reduce((sum, p) => sum + (p.legs * legValue), 0);
+      // Calculate total leg value across all players BEFORE resetting
+      const totalLegValue = allPlayers.reduce((sum, p) => {
+        // Use newLegCount for the winner, current legs for others
+        const playerLegs = p.id === soloStayer.id ? newLegCount : p.legs;
+        return sum + (playerLegs * legValue);
+      }, 0);
+      
+      console.log('Total leg value calculated:', { totalLegValue });
       
       // Winner gets the pot PLUS total leg value from all players
       const potValue = game.pot || 0;
       const totalPrize = potValue + totalLegValue;
+      
+      console.log('Awarding prize:', { potValue, totalLegValue, totalPrize });
       
       // Award the winner
       await supabase
@@ -408,12 +416,6 @@ export async function endRound(gameId: string) {
         })
         .eq('id', soloStayer.id);
       
-      // Clear the pot
-      await supabase
-        .from('games')
-        .update({ pot: 0 })
-        .eq('id', gameId);
-      
       const gameWinMessage = `🏆 ${username} won the game with ${newLegCount} legs! (+$${totalPrize}: $${potValue} pot + $${totalLegValue} legs)`;
       
       // Calculate next dealer (clockwise from current dealer)
@@ -421,7 +423,7 @@ export async function endRound(gameId: string) {
       const currentDealerPosition = game.dealer_position || 1;
       const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
       
-      console.log('Updating game to game_over status', { nextDealerPosition });
+      console.log('Updating game to game_over status', { nextDealerPosition, gameWinMessage });
       
       // Update game to game_over status with 5 second delay before moving to configuration
       const { error: gameOverError } = await supabase
@@ -432,12 +434,15 @@ export async function endRound(gameId: string) {
           current_round: null,
           awaiting_next_round: false,
           all_decisions_in: false,
-          last_round_result: gameWinMessage
+          last_round_result: gameWinMessage,
+          pot: 0  // Clear pot here too
         })
         .eq('id', gameId);
         
       if (gameOverError) {
         console.error('Error updating game to game_over:', gameOverError);
+      } else {
+        console.log('Successfully updated game to game_over');
       }
       
       // Reset all players' legs for new game and keep chips
