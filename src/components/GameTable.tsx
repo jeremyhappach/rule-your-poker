@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PlayerHand } from "./PlayerHand";
+import { ChipStack } from "./ChipStack";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState } from "react";
 
@@ -149,12 +150,14 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex items-center justify-center gap-2">
-                        {/* Legs indicator - show one chip per leg */}
+                        {/* Legs indicator - show chip per leg with $10 */}
                         <div className="flex items-center gap-0.5 bg-amber-900/30 px-1.5 py-0.5 rounded border border-amber-700">
                           {player.legs === 0 ? (
                             <span className="text-amber-500/50 text-[10px]">No legs</span>
                           ) : (
-                            <span className="text-amber-500 text-[10px] font-bold">{player.legs} leg{player.legs !== 1 ? 's' : ''}</span>
+                            Array.from({ length: player.legs }).map((_, i) => (
+                              <ChipStack key={i} amount={10} size="sm" />
+                            ))
                           )}
                         </div>
                         
