@@ -515,11 +515,11 @@ const Game = () => {
             <CardContent className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Buy-in:</span>
-                <span className="font-semibold">{game.buy_in} chips</span>
+                <span className="font-semibold">${game.buy_in}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Pot:</span>
-                <span className="font-semibold">{game.pot || 0} chips</span>
+                <span className="font-semibold">${game.pot || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Round:</span>
@@ -554,8 +554,7 @@ const Game = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-sm">
-                        <span className="font-semibold">{player.chips}</span>
-                        <span className="text-muted-foreground ml-1">chips</span>
+                        <span className={`font-semibold ${player.chips < 0 ? 'text-red-500' : ''}`}>${player.chips}</span>
                       </div>
                       {player.user_id === user?.id && (
                         <Button 
@@ -563,7 +562,7 @@ const Game = () => {
                           variant="outline"
                           onClick={() => addChips(100)}
                         >
-                          Add 100
+                          Add $100
                         </Button>
                       )}
                     </div>
@@ -638,7 +637,7 @@ const Game = () => {
                         <Badge variant={index === 0 ? "default" : "secondary"}>
                           {p.legs} legs
                         </Badge>
-                        <Badge variant="outline">{p.chips} chips</Badge>
+                        <Badge variant="outline" className={p.chips < 0 ? 'text-red-500' : ''}>${p.chips}</Badge>
                       </div>
                     </div>
                   ))}

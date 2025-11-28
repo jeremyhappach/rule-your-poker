@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PlayerHand } from "./PlayerHand";
-import { ChipStack } from "./ChipStack";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState } from "react";
 
@@ -91,8 +90,7 @@ export const GameTable = ({
                 <div className="bg-poker-felt-dark/90 rounded-lg p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
                   <p className="text-xs text-poker-gold/80 font-semibold mb-1">POT</p>
                   <div className="flex items-center justify-center gap-2">
-                    <ChipStack amount={pot > 0 ? Math.min(pot, 100) : 0} size="lg" />
-                    <p className="text-3xl font-bold text-poker-gold drop-shadow-lg">{pot}</p>
+                    <p className="text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</p>
                   </div>
                   <Badge className="mt-1 bg-poker-gold text-black border-0 shadow-lg text-xs">
                     Round {currentRound} - {currentRound === 1 ? '3 Cards' : currentRound === 2 ? '5 Cards' : '7 Cards'}
@@ -156,9 +154,7 @@ export const GameTable = ({
                           {player.legs === 0 ? (
                             <span className="text-amber-500/50 text-[10px]">No legs</span>
                           ) : (
-                            Array.from({ length: player.legs }).map((_, i) => (
-                              <ChipStack key={i} amount={10} size="sm" />
-                            ))
+                            <span className="text-amber-500 text-[10px] font-bold">{player.legs} leg{player.legs !== 1 ? 's' : ''}</span>
                           )}
                         </div>
                         
@@ -212,13 +208,11 @@ export const GameTable = ({
                           <div className="w-12"></div>
                         )}
                         
-                        {/* Chip stack (center) */}
-                        <div className="flex items-center gap-1">
-                          <ChipStack amount={Math.min(player.chips, 100)} />
-                          <div>
-                            <p className="text-lg font-bold text-poker-gold">{player.chips}</p>
-                            <p className="text-[10px] text-amber-300/70">chips</p>
-                          </div>
+                        {/* Chip balance (center) */}
+                        <div className="flex items-center justify-center">
+                          <p className={`text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
+                            ${player.chips}
+                          </p>
                         </div>
                         
                         {/* Stay button (right) */}
