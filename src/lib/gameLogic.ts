@@ -496,11 +496,10 @@ export async function endRound(gameId: string) {
             const winnerUsername = winningPlayer.profiles?.username || `Player ${winningPlayer.position}`;
             const handName = formatHandRank(winner.evaluation.rank);
             
-            // Start with current pot (antes)
             const currentPot = game.pot || 0;
-            let totalPrize = currentPot;
+            let totalWinnings = 0;
             
-            // Charge each loser and accumulate
+            // Charge each loser and accumulate (pot stays for game winner)
             for (const player of playersWhoStayed) {
               if (player.id !== winner.playerId) {
                 let amountToCharge;
@@ -511,7 +510,7 @@ export async function endRound(gameId: string) {
                   // No pot max: charge entire current pot value
                   amountToCharge = currentPot;
                 }
-                totalPrize += amountToCharge;
+                totalWinnings += amountToCharge;
                 
                 await supabase
                   .from('players')
@@ -522,21 +521,16 @@ export async function endRound(gameId: string) {
               }
             }
             
-            // Award total prize (pot + showdown payments) to winner
+            // Award showdown winnings to winner (pot remains for game winner)
             await supabase
               .from('players')
               .update({ 
-                chips: winningPlayer.chips + totalPrize
+                chips: winningPlayer.chips + totalWinnings
               })
               .eq('id', winner.playerId);
             
-            // Clear the game pot since it was just awarded
-            await supabase
-              .from('games')
-              .update({ pot: 0 })
-              .eq('id', gameId);
-              
-            const showdownResult = `${winnerUsername} won $${totalPrize} with ${handName}`;
+            // Don't clear the pot - it stays for the game winner
+            const showdownResult = `${winnerUsername} won $${totalWinnings} with ${handName}`;
             
             // Store result message
             await supabase
