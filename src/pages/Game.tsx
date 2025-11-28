@@ -727,6 +727,7 @@ const Game = () => {
                   timeLeft={null}
                   lastRoundResult={null}
                   dealerPosition={game.dealer_position}
+                  legValue={game.leg_value || 1}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -876,6 +877,7 @@ const Game = () => {
               timeLeft={timeLeft}
               lastRoundResult={(game as any).last_round_result || null}
               dealerPosition={game.dealer_position}
+              legValue={game.leg_value || 1}
               onStay={handleStay}
               onFold={handleFold}
             />

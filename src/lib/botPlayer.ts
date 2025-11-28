@@ -97,18 +97,16 @@ export async function makeBotAnteDecisions(gameId: string) {
 
   if (!botPlayers || botPlayers.length === 0) return;
 
-  // Bots always ante up (80% chance) or sit out (20% chance)
+  // Bots always ante up
   for (const bot of botPlayers) {
-    const shouldAnteUp = Math.random() > 0.2;
-    
     // Add a small delay to make it feel more natural
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 2000));
     
     await supabase
       .from('players')
       .update({
-        ante_decision: shouldAnteUp ? 'ante_up' : 'sit_out',
-        sitting_out: !shouldAnteUp,
+        ante_decision: 'ante_up',
+        sitting_out: false,
       })
       .eq('id', bot.id);
   }
