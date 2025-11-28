@@ -556,15 +556,6 @@ const Game = () => {
                       <div className="text-sm">
                         <span className={`font-semibold ${player.chips < 0 ? 'text-red-500' : ''}`}>${player.chips}</span>
                       </div>
-                      {player.user_id === user?.id && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => addChips(100)}
-                        >
-                          Add $100
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ))}
