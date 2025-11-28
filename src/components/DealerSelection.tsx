@@ -21,8 +21,18 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
   const hasStoppedRef = useRef(false);
 
   useEffect(() => {
-    // Randomly select final dealer position
-    const selectedPosition = Math.floor(Math.random() * players.length) + 1;
+    // Filter to only human players
+    const humanPlayers = players.filter(p => !p.is_bot);
+    
+    if (humanPlayers.length === 0) {
+      // Fallback: if all are bots, just pick the first one
+      onComplete(1);
+      return;
+    }
+    
+    // Randomly select final dealer position from human players only
+    const randomIndex = Math.floor(Math.random() * humanPlayers.length);
+    const selectedPosition = humanPlayers[randomIndex].position;
     setFinalPosition(selectedPosition);
     hasStoppedRef.current = false;
 

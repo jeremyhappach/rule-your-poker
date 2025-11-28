@@ -418,10 +418,19 @@ export async function endRound(gameId: string) {
       
       const gameWinMessage = `🏆 ${username} won the game with ${newLegCount} legs! (+$${totalPrize}: $${potValue} pot + $${totalLegValue} legs)`;
       
-      // Calculate next dealer (clockwise from current dealer)
-      const totalPlayers = allPlayers?.length || 0;
+      // Calculate next dealer (clockwise from current dealer) - skip bots
+      const humanPlayers = allPlayers.filter(p => !p.is_bot);
       const currentDealerPosition = game.dealer_position || 1;
-      const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
+      
+      // Find next human player after current dealer
+      let nextDealerPosition = currentDealerPosition;
+      for (let i = 0; i < allPlayers.length; i++) {
+        nextDealerPosition = nextDealerPosition >= allPlayers.length ? 1 : nextDealerPosition + 1;
+        const nextPlayer = allPlayers.find(p => p.position === nextDealerPosition);
+        if (nextPlayer && !nextPlayer.is_bot) {
+          break;
+        }
+      }
       
       console.log('Updating game to game_over status', { nextDealerPosition, gameWinMessage });
       
@@ -611,9 +620,18 @@ export async function endRound(gameId: string) {
           })
           .eq('game_id', gameId);
         
-        // Calculate next dealer (clockwise from current dealer)
-        const totalPlayers = updatedPlayers?.length || 0;
-        const nextDealerPosition = currentDealerPosition >= totalPlayers ? 1 : currentDealerPosition + 1;
+        // Calculate next dealer (clockwise from current dealer) - skip bots
+        const humanPlayers = updatedPlayers?.filter(p => !p.is_bot) || [];
+        
+        // Find next human player after current dealer
+        let nextDealerPosition = currentDealerPosition;
+        for (let i = 0; i < (updatedPlayers?.length || 0); i++) {
+          nextDealerPosition = nextDealerPosition >= (updatedPlayers?.length || 0) ? 1 : nextDealerPosition + 1;
+          const nextPlayer = updatedPlayers?.find(p => p.position === nextDealerPosition);
+          if (nextPlayer && !nextPlayer.is_bot) {
+            break;
+          }
+        }
         
         // Update game to game_over status with countdown before moving to configuration
         await supabase
