@@ -178,12 +178,12 @@ export const GameTable = ({
                           <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">✓</Badge>
                         )}
                         {playerDecision === 'stay' && allDecisionsIn && (
-                          <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">Stay</Badge>
+                          <Badge className="text-[10px] bg-green-500 text-white border-0 px-1 py-0">In</Badge>
                         )}
                         {playerDecision === 'fold' && allDecisionsIn && (
-                          <Badge variant="destructive" className="text-[10px] px-1 py-0">Fold</Badge>
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0">Out</Badge>
                         )}
-                        {player.status === 'folded' && (
+                        {player.status === 'folded' && !allDecisionsIn && (
                           <Badge variant="destructive" className="text-[10px] opacity-75 px-1 py-0">Out</Badge>
                         )}
                       </div>
