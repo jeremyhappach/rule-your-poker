@@ -136,8 +136,10 @@ export const GameTable = ({
                 <Card className={`
                   ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
                   ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
-                  ${playerDecision === 'fold' ? "opacity-50" : ""}
+                  ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
+                  ${playerDecision === 'stay' ? "ring-4 ring-green-400 shadow-lg shadow-green-400/50 brightness-125" : ""}
                   bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
+                  transition-all duration-500
                 `}>
                   <CardContent className="p-3 text-center min-w-[140px]">
                     <div className="space-y-1.5">
