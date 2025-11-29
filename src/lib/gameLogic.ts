@@ -769,7 +769,7 @@ export async function endRound(gameId: string) {
           })
           .eq('id', gameId);
       }
-    }, 1000); // 1 second to show showdown results
+    }, 2500); // 2.5 seconds to show showdown results
     return; // Exit early since we're using setTimeout
   } else {
     // Everyone folded - apply pussy tax if enabled
