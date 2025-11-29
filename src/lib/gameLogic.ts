@@ -639,208 +639,207 @@ export async function endRound(gameId: string) {
       return; // Exit early, starting new game
     }
   } else if (playersWhoStayed.length > 1) {
-    // Multiple players stayed - wait briefly to show decisions, then evaluate hands
-    setTimeout(async () => {
-      const { data: playerCards } = await supabase
-        .from('player_cards')
-        .select('*')
-        .eq('round_id', round.id);
+    // Multiple players stayed - evaluate hands for showdown
+    const { data: playerCards } = await supabase
+      .from('player_cards')
+      .select('*')
+      .eq('round_id', round.id);
 
-      if (playerCards) {
-        // Only evaluate hands of players who stayed
-        const hands = playerCards
-          .filter(pc => playersWhoStayed.some(p => p.id === pc.player_id))
-          .map(pc => ({
-            playerId: pc.player_id,
-            cards: pc.cards as unknown as Card[],
-            evaluation: evaluateHand(pc.cards as unknown as Card[])
-          }));
+    if (playerCards) {
+      // Only evaluate hands of players who stayed
+      const hands = playerCards
+        .filter(pc => playersWhoStayed.some(p => p.id === pc.player_id))
+        .map(pc => ({
+          playerId: pc.player_id,
+          cards: pc.cards as unknown as Card[],
+          evaluation: evaluateHand(pc.cards as unknown as Card[])
+        }));
 
-        if (hands.length > 0) {
-          // Find winner
-          const winner = hands.reduce((best, current) => 
-            current.evaluation.value > best.evaluation.value ? current : best
-          );
+      if (hands.length > 0) {
+        // Find winner
+        const winner = hands.reduce((best, current) => 
+          current.evaluation.value > best.evaluation.value ? current : best
+        );
 
-          const { data: winningPlayer } = await supabase
-            .from('players')
-            .select('*, profiles(username)')
-            .eq('id', winner.playerId)
-            .single();
+        const { data: winningPlayer } = await supabase
+          .from('players')
+          .select('*, profiles(username)')
+          .eq('id', winner.playerId)
+          .single();
 
-          if (winningPlayer) {
-            const winnerUsername = winningPlayer.profiles?.username || `Player ${winningPlayer.position}`;
-            const handName = formatHandRank(winner.evaluation.rank);
-            
-            const currentPot = game.pot || 0;
-            let totalWinnings = 0;
-            
-            // Charge each loser and accumulate (pot stays for game winner)
-            for (const player of playersWhoStayed) {
-              if (player.id !== winner.playerId) {
-                let amountToCharge;
-                if (potMaxEnabled) {
-                  // With pot max: charge current pot value, capped at pot max
-                  amountToCharge = Math.min(currentPot, potMaxValue);
-                } else {
-                  // No pot max: charge entire current pot value
-                  amountToCharge = currentPot;
-                }
-                totalWinnings += amountToCharge;
-                
-                await supabase
-                  .from('players')
-                  .update({ 
-                    chips: player.chips - amountToCharge
-                  })
-                  .eq('id', player.id);
+        if (winningPlayer) {
+          const winnerUsername = winningPlayer.profiles?.username || `Player ${winningPlayer.position}`;
+          const handName = formatHandRank(winner.evaluation.rank);
+          
+          const currentPot = game.pot || 0;
+          let totalWinnings = 0;
+          
+          // Charge each loser and accumulate (pot stays for game winner)
+          for (const player of playersWhoStayed) {
+            if (player.id !== winner.playerId) {
+              let amountToCharge;
+              if (potMaxEnabled) {
+                // With pot max: charge current pot value, capped at pot max
+                amountToCharge = Math.min(currentPot, potMaxValue);
+              } else {
+                // No pot max: charge entire current pot value
+                amountToCharge = currentPot;
               }
+              totalWinnings += amountToCharge;
+              
+              await supabase
+                .from('players')
+                .update({ 
+                  chips: player.chips - amountToCharge
+                })
+                .eq('id', player.id);
             }
-            
-            // Award showdown winnings to winner (pot remains for game winner)
-            await supabase
-              .from('players')
-              .update({ 
-                chips: winningPlayer.chips + totalWinnings
-              })
-              .eq('id', winner.playerId);
-            
-            // Don't clear the pot - it stays for the game winner
-            const showdownResult = `${winnerUsername} won $${totalWinnings} with ${handName}`;
-            
-            // Store result message
-            await supabase
-              .from('games')
-              .update({ 
-                last_round_result: showdownResult
-              })
-              .eq('id', gameId);
           }
-        }
-      }
-
-      // Check if anyone has won the required number of legs
-      const { data: updatedPlayers } = await supabase
-        .from('players')
-        .select('*, profiles(username)')
-        .eq('game_id', gameId);
-
-      const gameWinner = updatedPlayers?.find(p => p.legs >= legsToWin);
-
-      if (gameWinner) {
-        // Someone won the game - calculate total leg value across all players
-        const winnerUsername = gameWinner.profiles?.username || `Player ${gameWinner.position}`;
-        
-        // Get current pot
-        const { data: currentGameData } = await supabase
-          .from('games')
-          .select('pot, dealer_position')
-          .eq('id', gameId)
-          .single();
-        
-        const currentPot = currentGameData?.pot || 0;
-        const currentDealerPosition = currentGameData?.dealer_position || 1;
-        
-        // Calculate total leg value from all players
-        const totalLegValue = updatedPlayers.reduce((sum, p) => sum + (p.legs * legValue), 0);
-        
-        // Winner gets pot + total leg value
-        const totalPrize = currentPot + totalLegValue;
-        
-        // Award the winner
-        await supabase
-          .from('players')
-          .update({ 
-            chips: gameWinner.chips + totalPrize
-          })
-          .eq('id', gameWinner.id);
-        
-        // Clear the pot
-        await supabase
-          .from('games')
-          .update({ pot: 0 })
-          .eq('id', gameId);
-        
-        const gameWinMessage = `🏆 ${winnerUsername} won the game with ${gameWinner.legs} legs! (+$${totalPrize}: $${currentPot} pot + $${totalLegValue} legs)`;
-        
-        // Reset all players' legs for new game and keep chips
-        await supabase
-          .from('players')
-          .update({ 
-            legs: 0,
-            status: 'active',
-            current_decision: null,
-            decision_locked: false,
-            sitting_out: false,
-            ante_decision: null
-          })
-          .eq('game_id', gameId);
-        
-        // Calculate next dealer (clockwise from current dealer) - skip bots
-        const humanPlayers = updatedPlayers?.filter(p => !p.is_bot) || [];
-        
-        // Find next human player after current dealer
-        let nextDealerPosition = currentDealerPosition;
-        for (let i = 0; i < (updatedPlayers?.length || 0); i++) {
-          nextDealerPosition = nextDealerPosition >= (updatedPlayers?.length || 0) ? 1 : nextDealerPosition + 1;
-          const nextPlayer = updatedPlayers?.find(p => p.position === nextDealerPosition);
-          if (nextPlayer && !nextPlayer.is_bot) {
-            break;
-          }
-        }
-        
-        // Check if session should end AFTER awarding prizes
-        const { data: sessionData } = await supabase
-          .from('games')
-          .select('pending_session_end, current_round')
-          .eq('id', gameId)
-          .single();
-        
-        if (sessionData?.pending_session_end) {
-          console.log('Session ending after showdown win - marking as session_ended');
+          
+          // Award showdown winnings to winner (pot remains for game winner)
+          await supabase
+            .from('players')
+            .update({ 
+              chips: winningPlayer.chips + totalWinnings
+            })
+            .eq('id', winner.playerId);
+          
+          // Don't clear the pot - it stays for the game winner
+          const showdownResult = `${winnerUsername} won $${totalWinnings} with ${handName}`;
+          
+          // Store result message
           await supabase
             .from('games')
-            .update({
-              status: 'session_ended',
-              session_ended_at: new Date().toISOString(),
-              total_hands: sessionData.current_round || 0,
-              pending_session_end: false,
-              last_round_result: gameWinMessage
+            .update({ 
+              last_round_result: showdownResult
             })
             .eq('id', gameId);
-          
-          console.log('Session ended successfully after prizes awarded');
-          return; // Exit early, session is ended
         }
-        
-        // Update game to game_over status with countdown before moving to configuration
+      }
+    }
+
+    // Check if anyone has won the required number of legs
+    const { data: updatedPlayers } = await supabase
+      .from('players')
+      .select('*, profiles(username)')
+      .eq('game_id', gameId);
+
+    const gameWinner = updatedPlayers?.find(p => p.legs >= legsToWin);
+
+    if (gameWinner) {
+      // Someone won the game - calculate total leg value across all players
+      const winnerUsername = gameWinner.profiles?.username || `Player ${gameWinner.position}`;
+      
+      // Get current pot
+      const { data: currentGameData } = await supabase
+        .from('games')
+        .select('pot, dealer_position')
+        .eq('id', gameId)
+        .single();
+      
+      const currentPot = currentGameData?.pot || 0;
+      const currentDealerPosition = currentGameData?.dealer_position || 1;
+      
+      // Calculate total leg value from all players
+      const totalLegValue = updatedPlayers.reduce((sum, p) => sum + (p.legs * legValue), 0);
+      
+      // Winner gets pot + total leg value
+      const totalPrize = currentPot + totalLegValue;
+      
+      // Award the winner
+      await supabase
+        .from('players')
+        .update({ 
+          chips: gameWinner.chips + totalPrize
+        })
+        .eq('id', gameWinner.id);
+      
+      // Clear the pot
+      await supabase
+        .from('games')
+        .update({ pot: 0 })
+        .eq('id', gameId);
+      
+      const gameWinMessage = `🏆 ${winnerUsername} won the game with ${gameWinner.legs} legs! (+$${totalPrize}: $${currentPot} pot + $${totalLegValue} legs)`;
+      
+      // Reset all players' legs for new game and keep chips
+      await supabase
+        .from('players')
+        .update({ 
+          legs: 0,
+          status: 'active',
+          current_decision: null,
+          decision_locked: false,
+          sitting_out: false,
+          ante_decision: null
+        })
+        .eq('game_id', gameId);
+      
+      // Calculate next dealer (clockwise from current dealer) - skip bots
+      const humanPlayers = updatedPlayers?.filter(p => !p.is_bot) || [];
+      
+      // Find next human player after current dealer
+      let nextDealerPosition = currentDealerPosition;
+      for (let i = 0; i < (updatedPlayers?.length || 0); i++) {
+        nextDealerPosition = nextDealerPosition >= (updatedPlayers?.length || 0) ? 1 : nextDealerPosition + 1;
+        const nextPlayer = updatedPlayers?.find(p => p.position === nextDealerPosition);
+        if (nextPlayer && !nextPlayer.is_bot) {
+          break;
+        }
+      }
+      
+      // Check if session should end AFTER awarding prizes
+      const { data: sessionData } = await supabase
+        .from('games')
+        .select('pending_session_end, current_round')
+        .eq('id', gameId)
+        .single();
+      
+      if (sessionData?.pending_session_end) {
+        console.log('Session ending after showdown win - marking as session_ended');
         await supabase
           .from('games')
-          .update({ 
-            status: 'game_over',
-            dealer_position: nextDealerPosition,
-            current_round: null,
-            awaiting_next_round: false,
-            all_decisions_in: false,
+          .update({
+            status: 'session_ended',
+            session_ended_at: new Date().toISOString(),
+            total_hands: sessionData.current_round || 0,
+            pending_session_end: false,
             last_round_result: gameWinMessage
           })
           .eq('id', gameId);
-      } else {
-        // Continue to next round - cycle back to round 1 after round 3
-        const nextRound = currentRound < 3 ? currentRound + 1 : 1;
         
-        // Set game to await next round but KEEP the result visible
-        await supabase
-          .from('games')
-          .update({ 
-            awaiting_next_round: true,
-            next_round_number: nextRound
-            // Don't clear last_round_result yet - let proceedToNextRound do it
-          })
-          .eq('id', gameId);
+        console.log('Session ended successfully after prizes awarded');
+        return; // Exit early, session is ended
       }
-    }, 4000); // 4 seconds to show showdown results
-    return; // Exit early since we're using setTimeout
+      
+      // Update game to game_over status with countdown before moving to configuration
+      // Frontend will handle the 4-second delay to show results
+      await supabase
+        .from('games')
+        .update({ 
+          status: 'game_over',
+          dealer_position: nextDealerPosition,
+          current_round: null,
+          awaiting_next_round: false,
+          all_decisions_in: false,
+          last_round_result: gameWinMessage
+        })
+        .eq('id', gameId);
+    } else {
+      // Continue to next round - cycle back to round 1 after round 3
+      const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+      
+      // Set game to await next round with result visible
+      // Frontend will handle the 4-second delay before starting next round
+      await supabase
+        .from('games')
+        .update({ 
+          awaiting_next_round: true,
+          next_round_number: nextRound
+          // Don't clear last_round_result yet - let proceedToNextRound do it
+        })
+        .eq('id', gameId);
+    }
   } else {
     // Everyone folded - apply pussy tax if enabled
     if (pussyTaxEnabled) {
@@ -873,28 +872,18 @@ export async function endRound(gameId: string) {
     }
   }
 
-  // Store result message
+  // Store result message and immediately set awaiting_next_round
+  // The frontend will handle the 4-second delay before calling proceedToNextRound
+  const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+  
   await supabase
     .from('games')
     .update({ 
-      last_round_result: resultMessage
+      last_round_result: resultMessage,
+      awaiting_next_round: true,
+      next_round_number: nextRound
     })
     .eq('id', gameId);
-
-  // Wait 4 seconds to show the result, then proceed
-  setTimeout(async () => {
-    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
-    
-    // Set game to await next round but KEEP the result visible
-    await supabase
-      .from('games')
-      .update({ 
-        awaiting_next_round: true,
-        next_round_number: nextRound
-        // Don't clear last_round_result yet - let proceedToNextRound do it
-      })
-      .eq('id', gameId);
-  }, 4000); // 4 seconds to show fold/pussy tax results
 }
 
 export async function proceedToNextRound(gameId: string) {

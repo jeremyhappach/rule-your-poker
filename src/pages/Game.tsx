@@ -345,14 +345,21 @@ const Game = () => {
     }
   }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused]);
 
-  // Auto-proceed to next round when awaiting
+  // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   useEffect(() => {
     if (game?.awaiting_next_round && gameId) {
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
       
-      // Start next round immediately (result was already shown for 4 seconds)
-      proceedToNextRound(gameId);
+      console.log('[AWAITING_NEXT_ROUND] Waiting 4 seconds before proceeding to next round');
+      
+      // Wait 4 seconds to show the result, then start next round
+      const timer = setTimeout(() => {
+        console.log('[AWAITING_NEXT_ROUND] Proceeding to next round');
+        proceedToNextRound(gameId);
+      }, 4000);
+      
+      return () => clearTimeout(timer);
     }
   }, [game?.awaiting_next_round, gameId]);
 
