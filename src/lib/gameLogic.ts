@@ -299,8 +299,10 @@ async function checkAllDecisionsIn(gameId: string) {
 }
 
 export async function autoFoldUndecided(gameId: string) {
+  console.log('[AUTO-FOLD] Starting autoFoldUndecided for game:', gameId);
+  
   // Get players who haven't decided yet (active and not sitting out)
-  const { data: undecidedPlayers } = await supabase
+  const { data: undecidedPlayers, error: fetchError } = await supabase
     .from('players')
     .select('*')
     .eq('game_id', gameId)
@@ -308,11 +310,22 @@ export async function autoFoldUndecided(gameId: string) {
     .eq('sitting_out', false)
     .is('decision_locked', false);
 
-  if (!undecidedPlayers) return;
+  if (fetchError) {
+    console.error('[AUTO-FOLD] Error fetching undecided players:', fetchError);
+    return;
+  }
+
+  if (!undecidedPlayers || undecidedPlayers.length === 0) {
+    console.log('[AUTO-FOLD] No undecided players found, checking if round should end');
+    await checkAllDecisionsIn(gameId);
+    return;
+  }
+
+  console.log('[AUTO-FOLD] Auto-folding', undecidedPlayers.length, 'undecided players');
 
   // Auto-fold all undecided players
   for (const player of undecidedPlayers) {
-    await supabase
+    const { error: foldError } = await supabase
       .from('players')
       .update({ 
         current_decision: 'fold',
@@ -320,16 +333,15 @@ export async function autoFoldUndecided(gameId: string) {
         status: 'folded'
       })
       .eq('id', player.id);
+    
+    if (foldError) {
+      console.error('[AUTO-FOLD] Error folding player:', player.id, foldError);
+    }
   }
 
-  // Mark all decisions as in
-  await supabase
-    .from('games')
-    .update({ all_decisions_in: true })
-    .eq('id', gameId);
-
-  // End round immediately
-  await endRound(gameId);
+  console.log('[AUTO-FOLD] Checking all decisions after auto-fold');
+  // Check if all decisions are in and end round if needed
+  await checkAllDecisionsIn(gameId);
 }
 
 
