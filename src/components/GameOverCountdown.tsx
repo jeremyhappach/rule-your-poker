@@ -19,7 +19,10 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: Gam
   const [timeLeft, setTimeLeft] = useState(8); // 8 seconds to show game over and prepare for next game
 
   useEffect(() => {
+    console.log('[GAME OVER COUNTDOWN] Time left:', timeLeft);
+    
     if (timeLeft <= 0) {
+      console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
       onComplete();
       return;
     }
@@ -29,7 +32,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: Gam
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, onComplete]);
+  }, [timeLeft]); // Remove onComplete from dependencies to prevent recreation
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 

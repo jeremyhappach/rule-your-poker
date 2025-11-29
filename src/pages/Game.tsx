@@ -363,6 +363,22 @@ const Game = () => {
     }
   }, [game?.last_round_result]);
 
+  // Failsafe: If game is stuck in game_over status for more than 15 seconds, force transition
+  useEffect(() => {
+    if (game?.status === 'game_over' && gameId) {
+      console.log('[GAME OVER FAILSAFE] Game in game_over status, setting 15s failsafe timer');
+      const failsafeTimer = setTimeout(() => {
+        console.log('[GAME OVER FAILSAFE] 15 seconds elapsed, forcing transition');
+        handleGameOverComplete();
+      }, 15000);
+
+      return () => {
+        console.log('[GAME OVER FAILSAFE] Clearing failsafe timer');
+        clearTimeout(failsafeTimer);
+      };
+    }
+  }, [game?.status, gameId]);
+
   const fetchGameData = async () => {
     if (!gameId || !user) return;
 
@@ -524,6 +540,8 @@ const Game = () => {
   const handleGameOverComplete = async () => {
     if (!gameId) return;
 
+    console.log('[GAME OVER COMPLETE] Starting transition to next game');
+
     // Check if session should end
     const { data: gameData } = await supabase
       .from('games')
@@ -547,6 +565,8 @@ const Game = () => {
       return;
     }
 
+    console.log('[GAME OVER] Transitioning to configuring phase');
+
     // Transition to configuring phase for next game
     const { error } = await supabase
       .from('games')
@@ -558,9 +578,11 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
-      console.error('Failed to start configuration:', error);
+      console.error('[GAME OVER] Failed to start configuration:', error);
       return;
     }
+
+    console.log('[GAME OVER] Successfully transitioned to configuring');
 
     // Manual refetch to update UI
     setTimeout(() => fetchGameData(), 100);
