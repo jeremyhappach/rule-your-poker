@@ -2,21 +2,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 export async function startRound(gameId: string, roundNumber: number) {
+  console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
+  
   // Fetch game configuration
   const { data: gameConfig } = await supabase
     .from('games')
-    .select('ante_amount, leg_value')
+    .select('ante_amount, leg_value, status, current_round')
     .eq('id', gameId)
     .single();
+  
+  // Prevent starting if already in progress with this round
+  if (gameConfig?.status === 'in_progress' && gameConfig?.current_round === roundNumber) {
+    console.log('[START_ROUND] Round', roundNumber, 'already in progress, skipping');
+    return;
+  }
   
   const anteAmount = gameConfig?.ante_amount || 2;
   const legValue = gameConfig?.leg_value || 1;
   const betAmount = legValue; // Bet amount per round equals leg value
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
 
-  // If starting round 1 again, delete all old rounds and player cards to start fresh cycle
+  // If starting round 1, ensure all old rounds are deleted
   if (roundNumber === 1) {
-    // Keep trying to delete until successful
+    console.log('[START_ROUND] Cleaning up old rounds for round 1');
+    
+    // First, mark any active rounds as completed
+    await supabase
+      .from('rounds')
+      .update({ status: 'completed' })
+      .eq('game_id', gameId)
+      .neq('status', 'completed');
+    
+    // Delete all rounds for this game to start fresh
     let retries = 0;
     const maxRetries = 5;
     
@@ -27,9 +44,11 @@ export async function startRound(gameId: string, roundNumber: number) {
         .eq('game_id', gameId);
 
       if (!oldRounds || oldRounds.length === 0) {
-        // No rounds to delete, we're good
+        console.log('[START_ROUND] No old rounds to delete');
         break;
       }
+
+      console.log('[START_ROUND] Deleting', oldRounds.length, 'old rounds');
 
       // Delete player cards for old rounds
       await supabase
@@ -44,7 +63,7 @@ export async function startRound(gameId: string, roundNumber: number) {
         .eq('game_id', gameId);
 
       if (roundsDeleteError) {
-        console.error('Error deleting rounds:', roundsDeleteError);
+        console.error('[START_ROUND] Error deleting rounds:', roundsDeleteError);
         retries++;
         await new Promise(resolve => setTimeout(resolve, 200 * retries));
         continue;
@@ -57,7 +76,7 @@ export async function startRound(gameId: string, roundNumber: number) {
         .eq('game_id', gameId);
 
       if (!checkRounds || checkRounds.length === 0) {
-        // Successfully deleted
+        console.log('[START_ROUND] Successfully deleted all rounds');
         break;
       }
 
@@ -807,26 +826,46 @@ export async function endRound(gameId: string) {
 }
 
 export async function proceedToNextRound(gameId: string) {
+  console.log('[PROCEED_NEXT_ROUND] Starting for game', gameId);
+  
   // Get the next round number
   const { data: game } = await supabase
     .from('games')
-    .select('next_round_number')
+    .select('next_round_number, status, awaiting_next_round')
     .eq('id', gameId)
     .single();
 
   if (!game?.next_round_number) {
-    throw new Error('No next round configured');
+    console.log('[PROCEED_NEXT_ROUND] No next round configured');
+    return;
+  }
+  
+  // Guard against multiple calls
+  if (!game.awaiting_next_round) {
+    console.log('[PROCEED_NEXT_ROUND] Not awaiting next round, skipping');
+    return;
   }
 
-  // Reset the awaiting flag (result already cleared)
-  await supabase
+  console.log('[PROCEED_NEXT_ROUND] Proceeding to round', game.next_round_number);
+
+  // Reset the awaiting flag atomically (result already cleared)
+  const { data: updateResult } = await supabase
     .from('games')
     .update({ 
       awaiting_next_round: false,
       next_round_number: null
     })
-    .eq('id', gameId);
+    .eq('id', gameId)
+    .eq('awaiting_next_round', true)  // Only update if still awaiting
+    .select();
+  
+  // Only proceed if we successfully updated (prevents race conditions)
+  if (!updateResult || updateResult.length === 0) {
+    console.log('[PROCEED_NEXT_ROUND] Another process already proceeding, skipping');
+    return;
+  }
 
   // Start the next round
   await startRound(gameId, game.next_round_number);
+  console.log('[PROCEED_NEXT_ROUND] Successfully started round', game.next_round_number);
 }
