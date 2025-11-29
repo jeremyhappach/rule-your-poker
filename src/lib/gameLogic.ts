@@ -276,6 +276,7 @@ async function checkAllDecisionsIn(gameId: string) {
   const allDecided = players.every(p => p.decision_locked);
 
   if (allDecided) {
+    console.log('All players decided, attempting to set all_decisions_in flag');
     // Try to atomically set all_decisions_in flag
     const { data: updateResult, error } = await supabase
       .from('games')
@@ -284,10 +285,15 @@ async function checkAllDecisionsIn(gameId: string) {
       .eq('all_decisions_in', false) // Only update if not already set
       .select();
 
+    console.log('all_decisions_in update result:', { updateResult, error, resultLength: updateResult?.length });
+
     // Only the first call that successfully sets the flag should proceed
     if (!error && updateResult && updateResult.length > 0) {
+      console.log('Successfully set all_decisions_in, calling endRound');
       // End round immediately without delay
       await endRound(gameId);
+    } else {
+      console.log('all_decisions_in already set by another call, skipping endRound');
     }
   }
 }
@@ -365,25 +371,28 @@ export async function endRound(gameId: string) {
   
   // Prevent duplicate calls - if round is already completed, don't process again
   if (round.status === 'completed') {
-    console.log('Round already completed, skipping endRound');
+    console.log('[endRound] Round already completed, skipping endRound');
     return;
   }
 
-  // Immediately mark round as processing to prevent race conditions
+  // Immediately mark round as completed to prevent race conditions
+  console.log('[endRound] Attempting to lock round:', round.id, 'current status:', round.status);
   const { data: lockResult, error: lockError } = await supabase
     .from('rounds')
-    .update({ status: 'processing' })
+    .update({ status: 'completed' })
     .eq('id', round.id)
     .eq('status', 'betting') // Only update if still in betting status
     .select();
 
+  console.log('[endRound] Lock result:', { lockError, resultLength: lockResult?.length });
+
   // If no rows were updated, another call is already processing
   if (lockError || !lockResult || lockResult.length === 0) {
-    console.log('Round already being processed or locked, skipping endRound');
+    console.log('[endRound] Round already being processed or completed, skipping endRound');
     return;
   }
 
-  console.log('Successfully locked round for processing');
+  console.log('[endRound] Successfully locked round for processing');
 
   // Get all players and their decisions
   const { data: allPlayers } = await supabase
@@ -501,12 +510,6 @@ export async function endRound(gameId: string) {
         })
         .eq('game_id', gameId);
         
-      // Mark round as completed
-      await supabase
-        .from('rounds')
-        .update({ status: 'completed' })
-        .eq('id', round.id);
-        
       console.log('Game over setup complete');
       return; // Exit early, starting new game
     }
@@ -590,12 +593,6 @@ export async function endRound(gameId: string) {
           }
         }
       }
-
-      // Mark round as completed
-      await supabase
-        .from('rounds')
-        .update({ status: 'completed' })
-        .eq('id', round.id);
 
       // Check if anyone has won the required number of legs
       const { data: updatedPlayers } = await supabase
@@ -733,12 +730,6 @@ export async function endRound(gameId: string) {
       last_round_result: resultMessage
     })
     .eq('id', gameId);
-
-  // Mark round as completed
-  await supabase
-    .from('rounds')
-    .update({ status: 'completed' })
-    .eq('id', round.id);
 
   // Continue to next round - cycle back to round 1 after round 3
   const nextRound = currentRound < 3 ? currentRound + 1 : 1;
