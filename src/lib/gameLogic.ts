@@ -157,12 +157,14 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error(`Failed to create round: ${roundError?.message || 'Unknown error'}`);
   }
 
-  // Deal cards
-  const deck = shuffleDeck(createDeck());
+  // Deal cards - create deck and remove already dealt cards
+  let deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
   // Get previous round cards if this isn't round 1
   let previousRoundCards: Map<string, Card[]> = new Map();
+  let alreadyDealtCards: Card[] = [];
+  
   if (roundNumber > 1) {
     const previousRoundNumber = roundNumber - 1;
     const { data: previousRound } = await supabase
@@ -180,10 +182,23 @@ export async function startRound(gameId: string, roundNumber: number) {
 
       if (previousCards) {
         previousCards.forEach(pc => {
-          previousRoundCards.set(pc.player_id, pc.cards as unknown as Card[]);
+          const cards = pc.cards as unknown as Card[];
+          previousRoundCards.set(pc.player_id, cards);
+          // Track all cards already dealt
+          alreadyDealtCards.push(...cards);
         });
       }
     }
+  }
+  
+  // Remove already dealt cards from the deck
+  if (alreadyDealtCards.length > 0) {
+    deck = deck.filter(card => {
+      return !alreadyDealtCards.some(dealt => 
+        dealt.suit === card.suit && dealt.rank === card.rank
+      );
+    });
+    console.log('[START_ROUND] Removed', alreadyDealtCards.length, 'already dealt cards, deck now has', deck.length, 'cards');
   }
 
   const newCardsToDeal = roundNumber === 1 ? 3 : 2; // Round 1 gets 3, rounds 2 & 3 get 2 new cards
