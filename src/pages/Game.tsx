@@ -129,6 +129,7 @@ const Game = () => {
   useEffect(() => {
     if (!gameId || !user) return;
 
+    console.log('[SUBSCRIPTION] Setting up real-time subscriptions for game:', gameId);
     fetchGameData();
 
     const channel = supabase
@@ -141,7 +142,8 @@ const Game = () => {
           table: 'games',
           filter: `id=eq.${gameId}`
         },
-        () => {
+        (payload) => {
+          console.log('[REALTIME] Games table changed:', payload);
           fetchGameData();
         }
       )
@@ -153,7 +155,8 @@ const Game = () => {
           table: 'players',
           filter: `game_id=eq.${gameId}`
         },
-        () => {
+        (payload) => {
+          console.log('[REALTIME] Players table changed:', payload);
           fetchGameData();
         }
       )
@@ -164,13 +167,17 @@ const Game = () => {
           schema: 'public',
           table: 'profiles'
         },
-        () => {
+        (payload) => {
+          console.log('[REALTIME] Profiles table changed:', payload);
           fetchGameData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[SUBSCRIPTION] Status:', status);
+      });
 
     return () => {
+      console.log('[SUBSCRIPTION] Cleaning up subscriptions');
       supabase.removeChannel(channel);
     };
   }, [gameId, user]);
