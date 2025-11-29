@@ -856,6 +856,7 @@ const Game = () => {
                   lastRoundResult={null}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
+                  legsToWin={game.legs_to_win || 3}
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
                   pendingSessionEnd={false}
@@ -884,6 +885,7 @@ const Game = () => {
                   lastRoundResult={null}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
+                  legsToWin={game.legs_to_win || 3}
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
                   pendingSessionEnd={false}
@@ -912,6 +914,7 @@ const Game = () => {
                   lastRoundResult={game.last_round_result}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
+                  legsToWin={game.legs_to_win || 3}
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
                   pendingSessionEnd={false}
@@ -979,6 +982,7 @@ const Game = () => {
                 lastRoundResult={null}
                 dealerPosition={game.dealer_position}
                 legValue={game.leg_value || 1}
+                legsToWin={game.legs_to_win || 3}
                 potMaxEnabled={game.pot_max_enabled ?? true}
                 potMaxValue={game.pot_max_value || 10}
                 pendingSessionEnd={game.pending_session_end || false}
@@ -1106,6 +1110,7 @@ const Game = () => {
             lastRoundResult={(game as any).last_round_result || null}
             dealerPosition={game.dealer_position}
             legValue={game.leg_value || 1}
+            legsToWin={game.legs_to_win || 3}
             potMaxEnabled={game.pot_max_enabled ?? true}
             potMaxValue={game.pot_max_value || 10}
             pendingSessionEnd={game.pending_session_end || false}

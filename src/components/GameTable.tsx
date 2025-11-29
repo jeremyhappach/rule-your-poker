@@ -39,6 +39,7 @@ interface GameTableProps {
   lastRoundResult: string | null;
   dealerPosition: number | null;
   legValue: number;
+  legsToWin: number;
   potMaxEnabled: boolean;
   potMaxValue: number;
   pendingSessionEnd: boolean;
@@ -59,6 +60,7 @@ export const GameTable = ({
   lastRoundResult,
   dealerPosition,
   legValue,
+  legsToWin,
   potMaxEnabled,
   potMaxValue,
   pendingSessionEnd,
@@ -247,7 +249,9 @@ export const GameTable = ({
                             <span className="text-amber-500/50 text-[10px]">No legs</span>
                           ) : (
                             Array.from({ length: player.legs }).map((_, i) => (
-                              <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
+                              <div key={i} className={player.legs === legsToWin - 1 ? "animate-pulse" : ""}>
+                                <ChipStack amount={legValue} size="sm" variant="leg" />
+                              </div>
                             ))
                           )}
                         </div>
