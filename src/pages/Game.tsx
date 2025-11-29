@@ -312,13 +312,11 @@ const Game = () => {
     // Poll every 500ms as fallback in case real-time updates don't fire
     const pollInterval = setInterval(() => {
       console.log('[ANTE POLL] Polling for ante decisions...');
-      fetchGameData().then(() => {
-        checkAnteDecisions();
-      });
+      fetchGameData();
     }, 500);
 
     return () => clearInterval(pollInterval);
-  }, [game?.status, gameId]);
+  }, [game?.status, players, gameId]);
 
   // Trigger bot decisions when round starts
   useEffect(() => {
@@ -1102,22 +1100,6 @@ const Game = () => {
                         </div>
                       ))}
                     </div>
-                    
-                    {/* Force start button for dealer if all decisions are in */}
-                    {isDealer && players.every(p => p.ante_decision) && (
-                      <div className="text-center pt-4">
-                        <Button 
-                          onClick={() => {
-                            console.log('[MANUAL] Dealer forcing start');
-                            handleAllAnteDecisionsIn();
-                          }}
-                          size="lg"
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Start Game Now 🎮
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
