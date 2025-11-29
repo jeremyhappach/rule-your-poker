@@ -347,6 +347,9 @@ const Game = () => {
   // Auto-proceed to next round when awaiting
   useEffect(() => {
     if (game?.awaiting_next_round && gameId) {
+      // Clear timer immediately when awaiting next round
+      setTimeLeft(null);
+      
       const timer = setTimeout(() => {
         proceedToNextRound(gameId);
       }, 500); // Small delay to ensure result is visible
@@ -354,6 +357,14 @@ const Game = () => {
       return () => clearTimeout(timer);
     }
   }, [game?.awaiting_next_round, gameId]);
+
+  // Clear timer when results are shown
+  useEffect(() => {
+    if (game?.last_round_result) {
+      console.log('[RESULT] Clearing timer for result display');
+      setTimeLeft(null);
+    }
+  }, [game?.last_round_result]);
 
   const fetchGameData = async () => {
     if (!gameId || !user) return;
