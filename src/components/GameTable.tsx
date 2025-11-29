@@ -97,23 +97,19 @@ export const GameTable = ({
             </div>
           )}
           
-          {/* Last Hand Warning - shown when session ending */}
-          {pendingSessionEnd && !lastRoundResult && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 animate-pulse">
-              <div className="bg-red-600/90 backdrop-blur-lg px-6 py-3 rounded-xl border-4 border-red-400 shadow-2xl">
-                <p className="text-white font-black text-xl drop-shadow-lg">
-                  ⚠️ LAST HAND ⚠️
-                </p>
-                <p className="text-white text-xs mt-1">Session ending after this game</p>
-              </div>
-            </div>
-          )}
-          
           {/* Pot and Timer - shown when no result message */}
           {showPotAndTimer && (
             <>
               {/* Pot in center */}
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -translate-x-20 text-center z-20">
+                {/* Last Hand Warning - shown when session ending */}
+                {pendingSessionEnd && (
+                  <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 whitespace-nowrap">
+                    <p className="text-red-500 font-bold text-sm drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
+                      ⚠️ LAST HAND
+                    </p>
+                  </div>
+                )}
                 <div className="bg-poker-felt-dark/90 rounded-lg p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
                   <p className="text-xs text-poker-gold/80 font-semibold mb-1">POT</p>
                   <div className="flex items-center justify-center gap-2">
