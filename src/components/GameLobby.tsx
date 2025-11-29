@@ -35,6 +35,8 @@ interface Game {
   created_at: string;
   player_count?: number;
   is_creator?: boolean;
+  host_username?: string;
+  duration_minutes?: number;
 }
 
 interface GameLobbyProps {
@@ -77,9 +79,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .from('games')
       .select(`
         *,
-        players(user_id, position)
+        players(user_id, position, profiles(username))
       `)
-      .eq('status', 'waiting')
+      .in('status', ['waiting', 'dealer_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress'])
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -98,12 +100,20 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       // Find creator - the player with position 1
       const creatorPlayer = players.find((p: any) => p.position === 1);
       const isCreator = creatorPlayer?.user_id === userId;
+      const hostUsername = creatorPlayer?.profiles?.username || 'Unknown';
+      
+      // Calculate duration
+      const createdTime = new Date(game.created_at).getTime();
+      const now = Date.now();
+      const durationMinutes = Math.floor((now - createdTime) / (1000 * 60));
       
       return {
         ...game,
         player_count: playerCount,
         // Show delete button if user is the creator (position 1) OR if there are no players
-        is_creator: isCreator || playerCount === 0
+        is_creator: isCreator || playerCount === 0,
+        host_username: hostUsername,
+        duration_minutes: durationMinutes
       };
     }) || [];
 
@@ -172,6 +182,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
+    // Check game status to see if it's active
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('status')
+      .eq('id', gameId)
+      .single();
+
     const { data: players, error: playersError } = await supabase
       .from('players')
       .select('position')
@@ -196,6 +213,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     }
 
     const nextPosition = players.length + 1;
+    const isActiveSession = gameData?.status && gameData.status !== 'waiting';
 
     const { error } = await supabase
       .from('players')
@@ -203,7 +221,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         game_id: gameId,
         user_id: userId,
         chips: 0,
-        position: nextPosition
+        position: nextPosition,
+        sitting_out: isActiveSession // Sit out if joining mid-game
       });
 
     if (error) {
@@ -215,10 +234,17 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    toast({
-      title: "Success",
-      description: "Joined game!",
-    });
+    if (isActiveSession) {
+      toast({
+        title: "Joined Active Game",
+        description: "You'll be dealt in starting next round. Select an open seat.",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Joined game!",
+      });
+    }
 
     navigate(`/game/${gameId}`);
   };
@@ -276,9 +302,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle>Game #{game.id.slice(0, 8)}</CardTitle>
+                    <CardDescription className="mt-1">
+                      Host: {game.host_username} • {game.duration_minutes < 1 ? 'Just started' : `${game.duration_minutes}m ago`}
+                    </CardDescription>
                   </div>
                   <Badge variant={game.status === 'waiting' ? 'default' : 'secondary'}>
-                    {game.status}
+                    {game.status === 'waiting' ? 'Waiting' : 'Active'}
                   </Badge>
                 </div>
               </CardHeader>
@@ -289,9 +318,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={() => joinGame(game.id)} className="flex-1 sm:flex-none">
-                      Join Game
+                      {game.status === 'waiting' ? 'Join Game' : 'Join Session'}
                     </Button>
-                    {game.is_creator && (
+                    {game.is_creator && game.status === 'waiting' && (
                       <Button 
                         variant="destructive" 
                         size="icon"

@@ -13,6 +13,7 @@ import { DealerSelection } from "@/components/DealerSelection";
 import { DealerAnnouncement } from "@/components/DealerAnnouncement";
 import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
+import { SeatSelection } from "@/components/SeatSelection";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -695,6 +696,34 @@ const Game = () => {
     });
   };
 
+  const handleSelectSeat = async (position: number) => {
+    if (!gameId || !user) return;
+
+    const currentPlayer = players.find(p => p.user_id === user.id);
+    if (!currentPlayer) return;
+
+    try {
+      await supabase
+        .from('players')
+        .update({
+          position: position,
+          sitting_out: false
+        })
+        .eq('id', currentPlayer.id);
+
+      toast({
+        title: "Seat selected",
+        description: `You'll join at seat #${position} in the next round`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading || !game) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -864,6 +893,13 @@ const Game = () => {
 
         {game.status === 'ante_decision' && (
           <>
+            {user && players.find(p => p.user_id === user.id && p.sitting_out) && (
+              <SeatSelection
+                players={players}
+                currentUserId={user.id}
+                onSelectSeat={handleSelectSeat}
+              />
+            )}
             {showAnteDialog && user && game.ante_amount !== undefined && (
               <AnteUpDialog
                 gameId={gameId!}
@@ -944,6 +980,13 @@ const Game = () => {
 
         {game.status === 'in_progress' && (
           <div className="space-y-4">
+            {user && players.find(p => p.user_id === user.id && p.sitting_out) && (
+              <SeatSelection
+                players={players}
+                currentUserId={user.id}
+                onSelectSeat={handleSelectSeat}
+              />
+            )}
             <GameTable
               players={players}
               currentUserId={user?.id}
