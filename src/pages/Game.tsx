@@ -581,24 +581,24 @@ const Game = () => {
       return;
     }
 
-    console.log('[GAME OVER] Transitioning to configuring phase');
+    console.log('[GAME OVER] Transitioning to dealer_announcement phase');
 
-    // Transition to configuring phase for next game
+    // Transition to dealer_announcement phase for next game
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'configuring',
+        status: 'dealer_announcement',
         config_complete: false,
         last_round_result: null  // Clear previous game result
       })
       .eq('id', gameId);
 
     if (error) {
-      console.error('[GAME OVER] Failed to start configuration:', error);
+      console.error('[GAME OVER] Failed to start dealer announcement:', error);
       return;
     }
 
-    console.log('[GAME OVER] Successfully transitioned to configuring');
+    console.log('[GAME OVER] Successfully transitioned to dealer_announcement');
 
     // Manual refetch to update UI
     setTimeout(() => fetchGameData(), 100);
