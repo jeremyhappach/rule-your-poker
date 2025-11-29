@@ -665,21 +665,16 @@ export async function endRound(gameId: string) {
               }
             }
             
-            // Award leg to showdown winner
-            const newLegCount = winningPlayer.legs + 1;
-            const legCost = betAmount; // Winning a leg costs the leg value
-            
-            // Award showdown winnings + leg to winner (minus leg cost)
+            // Award showdown winnings to winner (pot remains for game winner)
             await supabase
               .from('players')
               .update({ 
-                chips: winningPlayer.chips + totalWinnings - legCost,
-                legs: newLegCount
+                chips: winningPlayer.chips + totalWinnings
               })
               .eq('id', winner.playerId);
             
             // Don't clear the pot - it stays for the game winner
-            const showdownResult = `${winnerUsername} won a leg with ${handName} (+$${totalWinnings})`;
+            const showdownResult = `${winnerUsername} won $${totalWinnings} with ${handName}`;
             
             // Store result message
             await supabase
