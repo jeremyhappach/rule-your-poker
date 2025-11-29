@@ -33,14 +33,13 @@ export async function addBotPlayer(gameId: string) {
   // Create a bot profile first
   const botId = crypto.randomUUID();
   
-  // Count existing bots to get the next bot number
-  const { data: existingBots } = await supabase
-    .from('players')
-    .select('id')
-    .eq('game_id', gameId)
-    .eq('is_bot', true);
+  // Count ALL existing bot profiles across all games to get a globally unique bot number
+  const { data: existingBotProfiles } = await supabase
+    .from('profiles')
+    .select('username')
+    .like('username', 'Bot %');
   
-  const botNumber = (existingBots?.length || 0) + 1;
+  const botNumber = (existingBotProfiles?.length || 0) + 1;
   const botName = `Bot ${botNumber}`;
   
   console.log('[BOT CREATION] Creating bot profile:', { botId, botName });
