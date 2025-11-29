@@ -475,7 +475,20 @@ export async function endRound(gameId: string) {
         }
       }
       
-      // Check if session should end
+      // Reset all players' legs for new game and keep chips
+      await supabase
+        .from('players')
+        .update({ 
+          legs: 0,
+          status: 'active',
+          current_decision: null,
+          decision_locked: false,
+          sitting_out: false,
+          ante_decision: null
+        })
+        .eq('game_id', gameId);
+      
+      // Check if session should end AFTER awarding prizes
       const { data: gameData } = await supabase
         .from('games')
         .select('pending_session_end, current_round')
@@ -483,20 +496,24 @@ export async function endRound(gameId: string) {
         .single();
       
       if (gameData?.pending_session_end) {
-        console.log('Session ending - marking as session_ended');
+        console.log('Session ending after game win - marking as session_ended');
         await supabase
           .from('games')
           .update({
             status: 'session_ended',
             session_ended_at: new Date().toISOString(),
             total_hands: gameData.current_round || 0,
-            pending_session_end: false
+            pending_session_end: false,
+            last_round_result: gameWinMessage,
+            pot: 0
           })
           .eq('id', gameId);
         
-        console.log('Session ended successfully');
+        console.log('Session ended successfully after prizes awarded');
         return; // Exit early, session is ended
       }
+      
+      console.log('Updating game to game_over status', { nextDealerPosition, gameWinMessage });
       
       // Update game to game_over status with 5 second delay before moving to configuration
       const { error: gameOverError } = await supabase
@@ -517,19 +534,6 @@ export async function endRound(gameId: string) {
       } else {
         console.log('Successfully updated game to game_over');
       }
-      
-      // Reset all players' legs for new game and keep chips
-      await supabase
-        .from('players')
-        .update({ 
-          legs: 0,
-          status: 'active',
-          current_decision: null,
-          decision_locked: false,
-          sitting_out: false,
-          ante_decision: null
-        })
-        .eq('game_id', gameId);
         
       console.log('Game over setup complete');
       return; // Exit early, starting new game
@@ -685,7 +689,7 @@ export async function endRound(gameId: string) {
           }
         }
         
-        // Check if session should end
+        // Check if session should end AFTER awarding prizes
         const { data: sessionData } = await supabase
           .from('games')
           .select('pending_session_end, current_round')
@@ -693,18 +697,19 @@ export async function endRound(gameId: string) {
           .single();
         
         if (sessionData?.pending_session_end) {
-          console.log('Session ending - marking as session_ended');
+          console.log('Session ending after showdown win - marking as session_ended');
           await supabase
             .from('games')
             .update({
               status: 'session_ended',
               session_ended_at: new Date().toISOString(),
               total_hands: sessionData.current_round || 0,
-              pending_session_end: false
+              pending_session_end: false,
+              last_round_result: gameWinMessage
             })
             .eq('id', gameId);
           
-          console.log('Session ended successfully');
+          console.log('Session ended successfully after prizes awarded');
           return; // Exit early, session is ended
         }
         
