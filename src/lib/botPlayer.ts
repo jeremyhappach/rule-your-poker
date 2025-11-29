@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
 
 export async function addBotPlayer(gameId: string) {
+  console.log('[BOT CREATION] Starting bot creation for game:', gameId);
+  
   // Count existing players to determine position
   const { data: existingPlayers } = await supabase
     .from('players')
@@ -14,6 +16,8 @@ export async function addBotPlayer(gameId: string) {
     ? existingPlayers[0].position + 1 
     : 1;
 
+  console.log('[BOT CREATION] Next position:', nextPosition);
+
   // Get the current game's buy-in amount
   const { data: game } = await supabase
     .from('games')
@@ -21,7 +25,10 @@ export async function addBotPlayer(gameId: string) {
     .eq('id', gameId)
     .single();
 
-  if (!game) throw new Error('Game not found');
+  if (!game) {
+    console.error('[BOT CREATION] Game not found');
+    throw new Error('Game not found');
+  }
 
   // Create a bot profile first
   const botId = crypto.randomUUID();
@@ -36,6 +43,8 @@ export async function addBotPlayer(gameId: string) {
   const botNumber = (existingBots?.length || 0) + 1;
   const botName = `Bot ${botNumber}`;
   
+  console.log('[BOT CREATION] Creating bot profile:', { botId, botName });
+  
   // Insert bot profile
   const { error: profileError } = await supabase
     .from('profiles')
@@ -45,9 +54,11 @@ export async function addBotPlayer(gameId: string) {
     });
 
   if (profileError) {
-    console.error('Profile creation error:', profileError);
+    console.error('[BOT CREATION] Profile creation error:', profileError);
     throw new Error(`Failed to create bot profile: ${profileError.message}`);
   }
+
+  console.log('[BOT CREATION] Profile created, now creating player');
 
   // Create bot player
   const { data: botPlayer, error } = await supabase
@@ -63,7 +74,12 @@ export async function addBotPlayer(gameId: string) {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('[BOT CREATION] Player creation error:', error);
+    throw error;
+  }
+
+  console.log('[BOT CREATION] Bot player created successfully:', botPlayer);
 
   return botPlayer;
 }

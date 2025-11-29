@@ -707,12 +707,25 @@ const Game = () => {
   const handleAddBot = async () => {
     if (!gameId) return;
 
+    console.log('[ADD BOT] Starting to add bot player');
+    
     try {
       await addBotPlayer(gameId);
+      console.log('[ADD BOT] Bot added successfully');
       // Manual refetch to ensure bot shows up immediately
       setTimeout(() => fetchGameData(), 500);
+      
+      toast({
+        title: "Bot Added",
+        description: "Bot player joined the game",
+      });
     } catch (error: any) {
-      console.error('Error adding bot:', error);
+      console.error('[ADD BOT] Error adding bot:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add bot player",
+        variant: "destructive",
+      });
     }
   };
 
