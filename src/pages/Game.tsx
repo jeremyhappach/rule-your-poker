@@ -363,21 +363,7 @@ const Game = () => {
     }
   }, [game?.last_round_result]);
 
-  // Failsafe: If game is stuck in game_over status for more than 15 seconds, force transition
-  useEffect(() => {
-    if (game?.status === 'game_over' && gameId) {
-      console.log('[GAME OVER FAILSAFE] Game in game_over status, setting 15s failsafe timer');
-      const failsafeTimer = setTimeout(() => {
-        console.log('[GAME OVER FAILSAFE] 15 seconds elapsed, forcing transition');
-        handleGameOverComplete();
-      }, 15000);
-
-      return () => {
-        console.log('[GAME OVER FAILSAFE] Clearing failsafe timer');
-        clearTimeout(failsafeTimer);
-      };
-    }
-  }, [game?.status, gameId]);
+  // Removed failsafe - countdown component now handles completion reliably
 
   const fetchGameData = async () => {
     if (!gameId || !user) return;

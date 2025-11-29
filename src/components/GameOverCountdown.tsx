@@ -15,17 +15,35 @@ interface GameOverCountdownProps {
   onComplete: () => void;
 }
 
+// Global state to track if countdown is in progress for a game
+const activeCountdowns = new Map<string, boolean>();
+
 export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: GameOverCountdownProps) => {
-  const [timeLeft, setTimeLeft] = useState(8); // 8 seconds to show game over and prepare for next game
+  const [timeLeft, setTimeLeft] = useState(8);
   const hasCompletedRef = useRef(false);
+  const countdownKey = `${winnerMessage}-${nextDealer.id}`;
 
   useEffect(() => {
+    // If this countdown is already complete globally, call onComplete immediately
+    if (activeCountdowns.get(countdownKey) === false) {
+      console.log('[GAME OVER COUNTDOWN] Countdown already completed globally, calling onComplete immediately');
+      if (!hasCompletedRef.current) {
+        hasCompletedRef.current = true;
+        onComplete();
+      }
+      return;
+    }
+
+    // Mark this countdown as active
+    activeCountdowns.set(countdownKey, true);
+
     console.log('[GAME OVER COUNTDOWN] Time left:', timeLeft);
     
     // Only call onComplete once
     if (timeLeft <= 0 && !hasCompletedRef.current) {
       console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
       hasCompletedRef.current = true;
+      activeCountdowns.set(countdownKey, false); // Mark as completed globally
       onComplete();
       return;
     }
@@ -37,7 +55,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: Gam
 
       return () => clearTimeout(timer);
     }
-  }, [timeLeft, onComplete]);
+  }, [timeLeft, onComplete, countdownKey]);
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 
