@@ -289,7 +289,7 @@ const Game = () => {
     if (game?.status === 'ante_decision') {
       const decidedCount = players.filter(p => p.ante_decision).length;
       const allDecided = players.every(p => p.ante_decision);
-      console.log('[ANTE CHECK] Players:', players.length, 'Decided:', decidedCount, 'All decided:', allDecided);
+      console.log('[ANTE CHECK] Players:', players.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', players.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
       
       if (allDecided && players.length > 0) {
         console.log('[ANTE CHECK] All players decided, proceeding to start round');
@@ -331,6 +331,8 @@ const Game = () => {
   const fetchGameData = async () => {
     if (!gameId || !user) return;
 
+    console.log('[FETCH] Fetching game data...');
+
     const { data: gameData, error: gameError } = await supabase
       .from('games')
       .select('*, rounds(*)')
@@ -363,6 +365,8 @@ const Game = () => {
       });
       return;
     }
+
+    console.log('[FETCH] Players fetched:', playersData?.length, 'Ante decisions:', playersData?.map(p => ({ pos: p.position, ante: p.ante_decision })));
 
     // Users join as observers - they must select a seat to become a player
 
