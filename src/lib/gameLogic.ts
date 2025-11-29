@@ -192,14 +192,13 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   const currentPot = currentGame?.pot || 0;
 
-  // Update game state for new round with accumulated pot and clear last result
+  // Update game state for new round - don't set last_round_result here since it's cleared before this
   await supabase
     .from('games')
     .update({
       current_round: roundNumber,
       all_decisions_in: false,
-      pot: currentPot + initialPot,  // Add antes to existing pot
-      last_round_result: null
+      pot: currentPot + initialPot  // Add antes to existing pot
     })
     .eq('id', gameId);
 
@@ -817,12 +816,13 @@ export async function proceedToNextRound(gameId: string) {
     throw new Error('No next round configured');
   }
 
-  // Reset the awaiting flag
+  // Clear the result message FIRST before starting new round
   await supabase
     .from('games')
     .update({ 
       awaiting_next_round: false,
-      next_round_number: null
+      next_round_number: null,
+      last_round_result: null
     })
     .eq('id', gameId);
 

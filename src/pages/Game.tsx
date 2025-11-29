@@ -331,7 +331,7 @@ const Game = () => {
     if (game?.awaiting_next_round && gameId) {
       const timer = setTimeout(() => {
         proceedToNextRound(gameId);
-      }, 1500); // 1.5 second delay to show results
+      }, 800); // Brief delay to show results
 
       return () => clearTimeout(timer);
     }
