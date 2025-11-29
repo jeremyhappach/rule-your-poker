@@ -482,7 +482,7 @@ const Game = () => {
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'configuring',
+        status: 'dealer_announcement',
         dealer_position: dealerPosition 
       })
       .eq('id', gameId);
