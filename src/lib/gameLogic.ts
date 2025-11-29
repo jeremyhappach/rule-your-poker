@@ -131,8 +131,8 @@ export async function startRound(gameId: string, roundNumber: number) {
     }
   }
 
-  // Create round with 10-second deadline
-  const deadline = new Date(Date.now() + 10000); // 10 seconds from now
+  // Create round with 14-second deadline (extra time for UI transitions)
+  const deadline = new Date(Date.now() + 14000); // 14 seconds from now
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
@@ -769,7 +769,7 @@ export async function endRound(gameId: string) {
           })
           .eq('id', gameId);
       }
-    }, 2500); // 2.5 seconds to show showdown results
+    }, 4000); // 4 seconds to show showdown results
     return; // Exit early since we're using setTimeout
   } else {
     // Everyone folded - apply pussy tax if enabled

@@ -349,7 +349,7 @@ const Game = () => {
     if (game?.awaiting_next_round && gameId) {
       const timer = setTimeout(() => {
         proceedToNextRound(gameId);
-      }, 500); // Quick transition to next round
+      }, 100); // Minimal delay to ensure UI updates
 
       return () => clearTimeout(timer);
     }
