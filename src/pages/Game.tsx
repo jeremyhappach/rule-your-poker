@@ -816,13 +816,11 @@ const Game = () => {
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
                 />
-                {dealerPlayer && (
-                  <GameOverCountdown
-                    winnerMessage={game.last_round_result || 'Game over!'}
-                    nextDealer={dealerPlayer}
-                    onComplete={handleGameOverComplete}
-                  />
-                )}
+                <GameOverCountdown
+                  winnerMessage={game.last_round_result || 'Game over!'}
+                  nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
+                  onComplete={handleGameOverComplete}
+                />
               </>
             ) : game.status === 'dealer_selection' ? (
               <div className="relative">

@@ -16,7 +16,7 @@ interface GameOverCountdownProps {
 }
 
 export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: GameOverCountdownProps) => {
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(8); // 8 seconds to show game over and prepare for next game
 
   useEffect(() => {
     if (timeLeft <= 0) {
