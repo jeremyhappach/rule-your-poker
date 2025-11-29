@@ -357,7 +357,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             <div><span className="text-muted-foreground">Host:</span> {game.host_username}</div>
                             <div><span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, h:mm a')}</div>
-                            <div><span className="text-muted-foreground">Duration:</span> {game.duration_minutes} min</div>
                             <div><span className="text-muted-foreground">{activePlayers.length} Active Player{activePlayers.length !== 1 ? 's' : ''}</span></div>
                             {isInProgress && game.current_round && (
                               <div><span className="text-muted-foreground">Hand:</span> {game.current_round}</div>
