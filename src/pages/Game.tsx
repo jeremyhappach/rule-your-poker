@@ -291,9 +291,11 @@ const Game = () => {
     }
   }, [game?.status, navigate, toast]);
 
-  // Check if all ante decisions are in
+  // Check if all ante decisions are in - with polling fallback
   useEffect(() => {
-    if (game?.status === 'ante_decision') {
+    if (game?.status !== 'ante_decision') return;
+
+    const checkAnteDecisions = () => {
       const decidedCount = players.filter(p => p.ante_decision).length;
       const allDecided = players.every(p => p.ante_decision);
       console.log('[ANTE CHECK] Players:', players.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', players.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
@@ -302,8 +304,21 @@ const Game = () => {
         console.log('[ANTE CHECK] All players decided, proceeding to start round');
         handleAllAnteDecisionsIn();
       }
-    }
-  }, [players, game?.status]);
+    };
+
+    // Check immediately
+    checkAnteDecisions();
+
+    // Poll every 500ms as fallback in case real-time updates don't fire
+    const pollInterval = setInterval(() => {
+      console.log('[ANTE POLL] Polling for ante decisions...');
+      fetchGameData().then(() => {
+        checkAnteDecisions();
+      });
+    }, 500);
+
+    return () => clearInterval(pollInterval);
+  }, [game?.status, gameId]);
 
   // Trigger bot decisions when round starts
   useEffect(() => {
@@ -568,10 +583,17 @@ const Game = () => {
     if (!gameId) return;
 
     // Prevent duplicate calls if already in progress
-    if (game?.status === 'in_progress') return;
+    if (game?.status === 'in_progress') {
+      console.log('[ANTE] Already in progress, skipping');
+      return;
+    }
+
+    console.log('[ANTE] Starting handleAllAnteDecisionsIn');
 
     // Get players who anted up
     const antedPlayers = players.filter(p => p.ante_decision === 'ante_up');
+
+    console.log('[ANTE] Anted players:', antedPlayers.length);
 
     if (antedPlayers.length === 0) {
       toast({
@@ -588,6 +610,8 @@ const Game = () => {
       return;
     }
 
+    console.log('[ANTE] Updating game status to in_progress');
+
     // Update game status to in_progress
     const { error } = await supabase
       .from('games')
@@ -595,6 +619,7 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
+      console.error('[ANTE] Error updating game status:', error);
       toast({
         title: "Error",
         description: "Failed to start game",
@@ -602,6 +627,8 @@ const Game = () => {
       });
       return;
     }
+
+    console.log('[ANTE] Starting first round');
 
     // Start first round
     try {
@@ -612,6 +639,7 @@ const Game = () => {
       });
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
+      console.error('[ANTE] Error starting round:', error);
       toast({
         title: "Error",
         description: error.message,
