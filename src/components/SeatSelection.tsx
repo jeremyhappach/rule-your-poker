@@ -6,6 +6,7 @@ interface Player {
   id: string;
   user_id: string;
   position: number;
+  sitting_out?: boolean;
   profiles?: {
     username: string;
   };
@@ -22,8 +23,10 @@ export const SeatSelection = ({ players, currentUserId, onSelectSeat }: SeatSele
   const occupiedPositions = new Set(players.map(p => p.position));
   const currentPlayer = players.find(p => p.user_id === currentUserId);
 
-  // If player already has a seat, don't show selection
-  if (currentPlayer && occupiedPositions.has(currentPlayer.position)) {
+  // Show seat selection for observers or sitting out players
+  const shouldShowSelection = !currentPlayer || currentPlayer.sitting_out;
+
+  if (!shouldShowSelection) {
     return null;
   }
 
@@ -34,9 +37,15 @@ export const SeatSelection = ({ players, currentUserId, onSelectSeat }: SeatSele
   if (availableSeats.length === 0) {
     return (
       <Card className="mb-6">
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Game Full - Observing
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <p className="text-center text-muted-foreground">
-            All seats are taken. Waiting for an open seat...
+            All seats are taken. You're watching as an observer. A seat will open when someone leaves.
           </p>
         </CardContent>
       </Card>
@@ -53,7 +62,10 @@ export const SeatSelection = ({ players, currentUserId, onSelectSeat }: SeatSele
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-4">
-          Choose an open seat to join the game. You'll start playing in the next round.
+          {currentPlayer ? 
+            "Choose an open seat to join the next round." : 
+            "You're observing. Select a seat to join the game!"
+          }
         </p>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3">
           {Array.from({ length: maxSeats }, (_, i) => {
