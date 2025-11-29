@@ -13,7 +13,7 @@ import { DealerSelection } from "@/components/DealerSelection";
 import { DealerAnnouncement } from "@/components/DealerAnnouncement";
 import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
-import { SeatSelection } from "@/components/SeatSelection";
+
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -787,22 +787,13 @@ const Game = () => {
 
 
         {game.status === 'waiting' && (
-          <>
-            {user && !players.find(p => p.user_id === user.id) && players.length < 7 && (
-              <SeatSelection
-                players={players}
-                currentUserId={user.id}
-                onSelectSeat={handleSelectSeat}
-              />
-            )}
-            <PreGameLobby
-              players={players}
-              currentUserId={user?.id}
-              onStartGame={startGame}
-              onAddBot={handleAddBot}
-              canStart={canStart}
-            />
-          </>
+          <PreGameLobby
+            players={players}
+            currentUserId={user?.id}
+            onStartGame={startGame}
+            onAddBot={handleAddBot}
+            canStart={canStart}
+          />
         )}
 
         {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement' || game.status === 'game_over') && (
@@ -826,6 +817,7 @@ const Game = () => {
                   awaitingNextRound={false}
                   onStay={() => {}}
                   onFold={() => {}}
+                  onSelectSeat={handleSelectSeat}
                 />
                 {dealerPlayer && (
                   <GameOverCountdown
@@ -854,6 +846,7 @@ const Game = () => {
                   awaitingNextRound={false}
                   onStay={() => {}}
                   onFold={() => {}}
+                  onSelectSeat={handleSelectSeat}
                 />
                 <DealerSelection
                   players={players}
@@ -881,9 +874,10 @@ const Game = () => {
                   awaitingNextRound={false}
                   onStay={() => {}}
                   onFold={() => {}}
+                  onSelectSeat={handleSelectSeat}
                 />
                 {dealerPlayer && (
-                  <DealerAnnouncement 
+                  <DealerAnnouncement
                     newDealerPlayer={dealerPlayer}
                     onComplete={handleDealerAnnouncementComplete}
                   />
@@ -928,14 +922,6 @@ const Game = () => {
 
         {game.status === 'ante_decision' && (
           <>
-            {user && (!players.find(p => p.user_id === user.id) || players.find(p => p.user_id === user.id && p.sitting_out)) && (
-              <SeatSelection
-                players={players}
-                currentUserId={user.id}
-                onSelectSeat={handleSelectSeat}
-              />
-            )}
-            
             {/* Show table during ante decisions */}
             <div className="space-y-4">
               <GameTable
@@ -955,6 +941,7 @@ const Game = () => {
                 awaitingNextRound={false}
                 onStay={() => {}}
                 onFold={() => {}}
+                onSelectSeat={handleSelectSeat}
               />
               
               {/* Ante Status Card */}
@@ -1064,33 +1051,25 @@ const Game = () => {
         )}
 
         {game.status === 'in_progress' && (
-          <div className="space-y-4">
-            {user && (!players.find(p => p.user_id === user.id) || players.find(p => p.user_id === user.id && p.sitting_out)) && (
-              <SeatSelection
-                players={players}
-                currentUserId={user.id}
-                onSelectSeat={handleSelectSeat}
-              />
-            )}
-            <GameTable
-              players={players}
-              currentUserId={user?.id}
-              pot={game.pot || 0}
-              currentRound={game.current_round || 1}
-              allDecisionsIn={game.all_decisions_in || false}
-              playerCards={playerCards}
-              timeLeft={timeLeft}
-              lastRoundResult={(game as any).last_round_result || null}
-              dealerPosition={game.dealer_position}
-              legValue={game.leg_value || 1}
-              potMaxEnabled={game.pot_max_enabled ?? true}
-              potMaxValue={game.pot_max_value || 10}
-              pendingSessionEnd={game.pending_session_end || false}
-              awaitingNextRound={game.awaiting_next_round || false}
-              onStay={handleStay}
-              onFold={handleFold}
-            />
-          </div>
+          <GameTable
+            players={players}
+            currentUserId={user?.id}
+            pot={game.pot || 0}
+            currentRound={game.current_round || 1}
+            allDecisionsIn={game.all_decisions_in || false}
+            playerCards={playerCards}
+            timeLeft={timeLeft}
+            lastRoundResult={(game as any).last_round_result || null}
+            dealerPosition={game.dealer_position}
+            legValue={game.leg_value || 1}
+            potMaxEnabled={game.pot_max_enabled ?? true}
+            potMaxValue={game.pot_max_value || 10}
+            pendingSessionEnd={game.pending_session_end || false}
+            awaitingNextRound={game.awaiting_next_round || false}
+            onStay={handleStay}
+            onFold={handleFold}
+            onSelectSeat={handleSelectSeat}
+          />
         )}
       </div>
 
