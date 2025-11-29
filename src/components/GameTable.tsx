@@ -104,7 +104,7 @@ export const GameTable = ({
         <div className="relative h-full">
           {/* Result Message Flash - replaces pot and timer */}
           {lastRoundResult && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-30 animate-scale-in">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-30">
               <div className="bg-poker-gold/30 backdrop-blur-lg p-6 rounded-xl border-4 border-poker-gold shadow-2xl">
                 <p className="text-poker-gold font-black text-2xl drop-shadow-lg">
                   {lastRoundResult}
