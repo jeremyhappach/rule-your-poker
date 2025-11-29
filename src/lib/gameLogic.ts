@@ -759,13 +759,13 @@ export async function endRound(gameId: string) {
         // Continue to next round - cycle back to round 1 after round 3
         const nextRound = currentRound < 3 ? currentRound + 1 : 1;
         
-        // Set game to await next round and clear result immediately
+        // Set game to await next round but KEEP the result visible
         await supabase
           .from('games')
           .update({ 
             awaiting_next_round: true,
-            next_round_number: nextRound,
-            last_round_result: null  // Clear immediately
+            next_round_number: nextRound
+            // Don't clear last_round_result yet - let proceedToNextRound do it
           })
           .eq('id', gameId);
       }
@@ -811,18 +811,20 @@ export async function endRound(gameId: string) {
     })
     .eq('id', gameId);
 
-  // Continue to next round - cycle back to round 1 after round 3
-  const nextRound = currentRound < 3 ? currentRound + 1 : 1;
-  
-  // Clear result message immediately and set game to await next round
-  await supabase
-    .from('games')
-    .update({ 
-      awaiting_next_round: true,
-      next_round_number: nextRound,
-      last_round_result: null  // Clear result IMMEDIATELY so UI updates
-    })
-    .eq('id', gameId);
+  // Wait 4 seconds to show the result, then proceed
+  setTimeout(async () => {
+    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    
+    // Set game to await next round but KEEP the result visible
+    await supabase
+      .from('games')
+      .update({ 
+        awaiting_next_round: true,
+        next_round_number: nextRound
+        // Don't clear last_round_result yet - let proceedToNextRound do it
+      })
+      .eq('id', gameId);
+  }, 4000); // 4 seconds to show fold/pussy tax results
 }
 
 export async function proceedToNextRound(gameId: string) {
@@ -848,12 +850,13 @@ export async function proceedToNextRound(gameId: string) {
 
   console.log('[PROCEED_NEXT_ROUND] Proceeding to round', game.next_round_number);
 
-  // Reset the awaiting flag atomically (result already cleared)
+  // Clear result and reset awaiting flag atomically
   const { data: updateResult } = await supabase
     .from('games')
     .update({ 
       awaiting_next_round: false,
-      next_round_number: null
+      next_round_number: null,
+      last_round_result: null  // Clear result now that we're transitioning
     })
     .eq('id', gameId)
     .eq('awaiting_next_round', true)  // Only update if still awaiting
