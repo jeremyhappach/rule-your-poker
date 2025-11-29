@@ -357,7 +357,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             <div><span className="text-muted-foreground">Host:</span> {game.host_username}</div>
                             <div><span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, h:mm a')}</div>
-                            <div><span className="text-muted-foreground">{activePlayers.length} Active Player{activePlayers.length !== 1 ? 's' : ''}</span></div>
+                            <div><span className="text-muted-foreground">Duration:</span> {game.duration_minutes} min</div>
                             {isInProgress && game.current_round && (
                               <div><span className="text-muted-foreground">Hand:</span> {game.current_round}</div>
                             )}
@@ -373,12 +373,15 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           )}
                           
                           {isInProgress && activePlayers.length > 0 && (
-                            <div className="flex flex-wrap gap-2 pt-2">
-                              {activePlayers.map((player, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
-                                  {player.username} ${player.chips}
-                                </Badge>
-                              ))}
+                            <div className="pt-2">
+                              <div className="text-xs font-medium text-muted-foreground mb-2">Active Players w/ Current Chip Stack</div>
+                              <div className="flex flex-wrap gap-2">
+                                {activePlayers.map((player, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {player.username} ${player.chips}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
