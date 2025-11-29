@@ -36,7 +36,9 @@ export type Database = {
           pussy_tax: number
           pussy_tax_enabled: boolean
           pussy_tax_value: number
+          session_ended_at: string | null
           status: string
+          total_hands: number | null
           updated_at: string
         }
         Insert: {
@@ -60,7 +62,9 @@ export type Database = {
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          session_ended_at?: string | null
           status?: string
+          total_hands?: number | null
           updated_at?: string
         }
         Update: {
@@ -84,7 +88,9 @@ export type Database = {
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          session_ended_at?: string | null
           status?: string
+          total_hands?: number | null
           updated_at?: string
         }
         Relationships: []

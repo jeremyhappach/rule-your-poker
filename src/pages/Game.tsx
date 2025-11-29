@@ -664,6 +664,34 @@ const Game = () => {
     }
   };
 
+  const handleEndSession = async () => {
+    if (!gameId) return;
+
+    try {
+      await supabase
+        .from('games')
+        .update({
+          status: 'session_ended',
+          session_ended_at: new Date().toISOString(),
+          total_hands: game?.current_round || 0,
+        })
+        .eq('id', gameId);
+
+      toast({
+        title: "Session ended",
+        description: "Returning to lobby...",
+      });
+
+      setTimeout(() => navigate('/'), 2000);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
 
 
   const handleAddBot = async () => {
@@ -763,6 +791,11 @@ const Game = () => {
               <Button variant="default" onClick={handleInvite}>
                 <Share2 className="w-4 h-4 mr-2" />
                 Invite Players
+              </Button>
+            )}
+            {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'configuring', 'dealer_announcement'].includes(game.status) && (
+              <Button variant="destructive" onClick={handleEndSession}>
+                End Session
               </Button>
             )}
             <Button variant="outline" onClick={leaveGame}>

@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { SessionResults } from "@/components/SessionResults";
+import { format } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,9 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Trash2 } from "lucide-react";
 
 interface Game {
   id: string;
@@ -33,10 +33,28 @@ interface Game {
   buy_in: number;
   pot: number | null;
   created_at: string;
+  session_ended_at?: string;
+  total_hands?: number;
+  current_round?: number;
+  dealer_position?: number;
+  ante_amount?: number;
+  leg_value?: number;
+  pussy_tax_enabled?: boolean;
+  pussy_tax_value?: number;
+  legs_to_win?: number;
+  pot_max_enabled?: boolean;
+  pot_max_value?: number;
   player_count?: number;
   is_creator?: boolean;
   host_username?: string;
   duration_minutes?: number;
+  players?: Array<{
+    username: string;
+    chips: number;
+    legs: number;
+    is_bot: boolean;
+    sitting_out: boolean;
+  }>;
 }
 
 interface GameLobbyProps {
@@ -48,6 +66,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [loading, setLoading] = useState(true);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<Game | null>(null);
+  const [showSessionResults, setShowSessionResults] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -77,11 +97,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const fetchGames = async () => {
     const { data: gamesData, error } = await supabase
       .from('games')
-      .select(`
-        *,
-        players(user_id, position, profiles(username))
-      `)
-      .in('status', ['waiting', 'dealer_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress'])
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -93,31 +109,49 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    const gamesWithCount = gamesData?.map(game => {
-      const players = game.players as any[] || [];
-      const playerCount = players.length;
-      
-      // Find creator - the player with position 1
-      const creatorPlayer = players.find((p: any) => p.position === 1);
-      const isCreator = creatorPlayer?.user_id === userId;
-      const hostUsername = creatorPlayer?.profiles?.username || 'Unknown';
-      
-      // Calculate duration
-      const createdTime = new Date(game.created_at).getTime();
-      const now = Date.now();
-      const durationMinutes = Math.floor((now - createdTime) / (1000 * 60));
-      
-      return {
-        ...game,
-        player_count: playerCount,
-        // Show delete button if user is the creator (position 1) OR if there are no players
-        is_creator: isCreator || playerCount === 0,
-        host_username: hostUsername,
-        duration_minutes: durationMinutes
-      };
-    }) || [];
+    // Fetch player info for each game
+    const gamesWithPlayers = await Promise.all(
+      (gamesData || []).map(async (game) => {
+        const { data: playersData } = await supabase
+          .from('players')
+          .select(`
+            user_id,
+            position,
+            chips,
+            legs,
+            is_bot,
+            sitting_out,
+            profiles(username)
+          `)
+          .eq('game_id', game.id)
+          .order('position');
 
-    setGames(gamesWithCount);
+        const hostPlayer = playersData?.find(p => p.position === 1);
+        const host_username = hostPlayer?.profiles?.username || 'Unknown';
+        
+        const isCreator = playersData?.some(p => p.user_id === userId && p.position === 1) || false;
+        
+        // Calculate duration
+        const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
+        
+        return {
+          ...game,
+          player_count: playersData?.length || 0,
+          is_creator: isCreator,
+          host_username,
+          duration_minutes: durationMinutes,
+          players: playersData?.map(p => ({
+            username: p.profiles?.username || 'Unknown',
+            chips: p.chips,
+            legs: p.legs,
+            is_bot: p.is_bot,
+            sitting_out: p.sitting_out,
+          })) || [],
+        };
+      })
+    );
+
+    setGames(gamesWithPlayers);
     setLoading(false);
   };
 
@@ -125,7 +159,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
-        buy_in: 100, // Default value, not used anymore
+        buy_in: 100,
         status: 'waiting'
       })
       .select()
@@ -168,7 +202,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const joinGame = async (gameId: string) => {
-    // First check if user is already in the game
     const { data: existingPlayer } = await supabase
       .from('players')
       .select('id')
@@ -177,12 +210,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .maybeSingle();
 
     if (existingPlayer) {
-      // User is already in the game, just navigate to it
       navigate(`/game/${gameId}`);
       return;
     }
 
-    // Check game status to see if it's active
     const { data: gameData } = await supabase
       .from('games')
       .select('status')
@@ -222,7 +253,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         user_id: userId,
         chips: 0,
         position: nextPosition,
-        sitting_out: isActiveSession // Sit out if joining mid-game
+        sitting_out: isActiveSession
       });
 
     if (error) {
@@ -273,6 +304,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     fetchGames();
   };
 
+  const activeGames = games.filter(g => 
+    ['waiting', 'dealer_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress'].includes(g.status)
+  );
+  
+  const historicalGames = games.filter(g => g.status === 'session_ended');
+
   if (loading) {
     return <div className="text-center">Loading games...</div>;
   }
@@ -286,56 +323,141 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         </Button>
       </div>
 
-      {games.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No games available. Create one to get started!
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {games.map((game) => (
-            <Card key={game.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle>Game #{game.id.slice(0, 8)}</CardTitle>
-                    <CardDescription className="mt-1">
-                      Host: {game.host_username} • {game.duration_minutes < 1 ? 'Just started' : `${game.duration_minutes}m ago`}
-                    </CardDescription>
-                  </div>
-                  <Badge variant={game.status === 'waiting' ? 'default' : 'secondary'}>
-                    {game.status === 'waiting' ? 'Waiting' : 'Active'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                  <div className="text-sm text-muted-foreground">
-                    Players: {game.player_count} / 7
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={() => joinGame(game.id)} className="flex-1 sm:flex-none">
-                      {game.status === 'waiting' ? 'Join Game' : 'Join Session'}
-                    </Button>
-                    {game.is_creator && game.status === 'waiting' && (
-                      <Button 
-                        variant="destructive" 
-                        size="icon"
-                        onClick={() => setDeleteGameId(game.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="active">Active Sessions ({activeGames.length})</TabsTrigger>
+          <TabsTrigger value="historical">Historical ({historicalGames.length})</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="active" className="space-y-3 mt-4">
+          {activeGames.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-center text-muted-foreground">No active games. Create one to get started!</p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            activeGames.map((game) => {
+              const isInProgress = ['dealer_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress'].includes(game.status);
+              const activePlayers = game.players?.filter(p => !p.sitting_out) || [];
+              
+              return (
+                <Card key={game.id} className="hover:border-primary transition-colors">
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">Game #{game.id.slice(0, 8)}</h3>
+                            <Badge variant={isInProgress ? 'default' : 'secondary'}>
+                              {game.status === 'waiting' ? 'Waiting' : 'Active'}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            <div><span className="text-muted-foreground">Host:</span> {game.host_username}</div>
+                            <div><span className="text-muted-foreground">Buy-in:</span> ${game.buy_in}</div>
+                            <div><span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, h:mm a')}</div>
+                            <div><span className="text-muted-foreground">Duration:</span> {game.duration_minutes} min</div>
+                            <div><span className="text-muted-foreground">Active:</span> {activePlayers.length}/{game.player_count}</div>
+                            {isInProgress && game.current_round && (
+                              <div><span className="text-muted-foreground">Hand:</span> {game.current_round}</div>
+                            )}
+                          </div>
+
+                          {isInProgress && game.ante_amount !== undefined && (
+                            <div className="text-xs text-muted-foreground pt-2 border-t">
+                              <span className="font-medium">Config:</span> Ante ${game.ante_amount} • 
+                              Leg ${game.leg_value} • 
+                              {game.pussy_tax_enabled ? `Tax $${game.pussy_tax_value}` : 'No Tax'} • 
+                              {game.legs_to_win} legs • 
+                              {game.pot_max_enabled ? `Max $${game.pot_max_value}` : 'No Max'}
+                            </div>
+                          )}
+                          
+                          {isInProgress && activePlayers.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-2">
+                              {activePlayers.map((player, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {player.username} ${player.chips}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            onClick={() => joinGame(game.id)}
+                            disabled={game.player_count >= 7}
+                          >
+                            Join
+                          </Button>
+                          {game.is_creator && game.status === 'waiting' && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => setDeleteGameId(game.id)}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
+        
+        <TabsContent value="historical" className="space-y-2 mt-4">
+          {historicalGames.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-center text-muted-foreground">No historical sessions yet.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            historicalGames.map((game) => (
+              <Card key={game.id} className="hover:border-primary transition-colors">
+                <CardContent className="py-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-6 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Host:</span> <span className="font-medium">{game.host_username}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, yyyy h:mm a')}
+                      </div>
+                      {game.session_ended_at && (
+                        <div>
+                          <span className="text-muted-foreground">Ended:</span> {format(new Date(game.session_ended_at), 'MMM d, yyyy h:mm a')}
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-muted-foreground">Players:</span> {game.player_count}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedSession(game);
+                        setShowSessionResults(true);
+                      }}
+                    >
+                      See Results
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
@@ -380,6 +502,21 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedSession && (
+        <SessionResults
+          open={showSessionResults}
+          onOpenChange={setShowSessionResults}
+          session={{
+            id: selectedSession.id,
+            created_at: selectedSession.created_at,
+            session_ended_at: selectedSession.session_ended_at || selectedSession.created_at,
+            total_hands: selectedSession.total_hands || 0,
+            host_username: selectedSession.host_username || 'Unknown',
+            players: selectedSession.players || [],
+          }}
+        />
+      )}
     </div>
   );
 };

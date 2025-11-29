@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users } from "lucide-react";
+import { Users, Armchair } from "lucide-react";
 
 interface Player {
   id: string;
@@ -19,11 +19,11 @@ interface SeatSelectionProps {
 
 export const SeatSelection = ({ players, currentUserId, onSelectSeat }: SeatSelectionProps) => {
   const maxSeats = 7;
-  const occupiedPositions = new Set(players.filter(p => !p.profiles?.username?.startsWith('Bot')).map(p => p.position));
+  const occupiedPositions = new Set(players.map(p => p.position));
   const currentPlayer = players.find(p => p.user_id === currentUserId);
 
   // If player already has a seat, don't show selection
-  if (currentPlayer && !currentPlayer.profiles?.username?.startsWith('Bot')) {
+  if (currentPlayer && occupiedPositions.has(currentPlayer.position)) {
     return null;
   }
 
@@ -64,18 +64,21 @@ export const SeatSelection = ({ players, currentUserId, onSelectSeat }: SeatSele
             return (
               <Button
                 key={position}
-                variant={isOccupied ? "secondary" : "outline"}
-                className="h-20 flex flex-col gap-1"
+                variant={isOccupied ? "secondary" : "default"}
+                className="h-20 flex flex-col gap-1 relative"
                 disabled={isOccupied}
                 onClick={() => !isOccupied && onSelectSeat(position)}
               >
-                <span className="text-2xl font-bold">#{position}</span>
+                {!isOccupied && (
+                  <Armchair className="h-6 w-6 mb-1" />
+                )}
+                <span className="text-lg font-bold">#{position}</span>
                 {isOccupied ? (
                   <span className="text-xs truncate w-full text-center">
                     {occupyingPlayer?.profiles?.username || 'Taken'}
                   </span>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Open</span>
+                  <span className="text-xs">Open</span>
                 )}
               </Button>
             );
