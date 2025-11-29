@@ -328,36 +328,7 @@ const Game = () => {
       return;
     }
 
-    // Auto-join if user is not in the game and game is waiting
-    const isPlayerInGame = playersData?.some(p => p.user_id === user.id);
-    if (!isPlayerInGame && gameData.status === 'waiting' && playersData && playersData.length < 7) {
-      const nextPosition = Math.max(...playersData.map(p => p.position), 0) + 1;
-      
-      const { error: joinError } = await supabase
-        .from('players')
-        .insert({
-          game_id: gameId,
-          user_id: user.id,
-          chips: 0,
-          position: nextPosition
-        });
-
-      if (joinError) {
-        toast({
-          title: "Could not join game",
-          description: joinError.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Joined game!",
-          description: "You've been added to the game",
-        });
-        // Refetch to get updated player list
-        setTimeout(() => fetchGameData(), 500);
-        return;
-      }
-    }
+    // Users join as observers - they must select a seat to become a player
 
     // Fetch player cards if game is in progress
     if (gameData.status === 'in_progress' && gameData.current_round) {
@@ -734,21 +705,44 @@ const Game = () => {
     if (!gameId || !user) return;
 
     const currentPlayer = players.find(p => p.user_id === user.id);
-    if (!currentPlayer) return;
-
+    
     try {
-      await supabase
-        .from('players')
-        .update({
-          position: position,
-          sitting_out: false
-        })
-        .eq('id', currentPlayer.id);
+      if (!currentPlayer) {
+        // User is an observer - insert them as a new player
+        const { error: joinError } = await supabase
+          .from('players')
+          .insert({
+            game_id: gameId,
+            user_id: user.id,
+            chips: 0,
+            position: position,
+            sitting_out: false
+          });
 
-      toast({
-        title: "Seat selected",
-        description: `You'll join at seat #${position} in the next round`,
-      });
+        if (joinError) throw joinError;
+
+        toast({
+          title: "Joined game!",
+          description: `You're now seated at position #${position}`,
+        });
+      } else {
+        // Existing player changing seats
+        await supabase
+          .from('players')
+          .update({
+            position: position,
+            sitting_out: false
+          })
+          .eq('id', currentPlayer.id);
+
+        toast({
+          title: "Seat selected",
+          description: `You'll join at seat #${position} in the next round`,
+        });
+      }
+      
+      // Refetch to update UI
+      setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -806,13 +800,22 @@ const Game = () => {
 
 
         {game.status === 'waiting' && (
-          <PreGameLobby
-            players={players}
-            currentUserId={user?.id}
-            onStartGame={startGame}
-            onAddBot={handleAddBot}
-            canStart={canStart}
-          />
+          <>
+            {user && !players.find(p => p.user_id === user.id) && players.length < 7 && (
+              <SeatSelection
+                players={players}
+                currentUserId={user.id}
+                onSelectSeat={handleSelectSeat}
+              />
+            )}
+            <PreGameLobby
+              players={players}
+              currentUserId={user?.id}
+              onStartGame={startGame}
+              onAddBot={handleAddBot}
+              canStart={canStart}
+            />
+          </>
         )}
 
         {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement' || game.status === 'game_over') && (
@@ -932,7 +935,7 @@ const Game = () => {
 
         {game.status === 'ante_decision' && (
           <>
-            {user && players.find(p => p.user_id === user.id && p.sitting_out) && (
+            {user && (!players.find(p => p.user_id === user.id) || players.find(p => p.user_id === user.id && p.sitting_out)) && (
               <SeatSelection
                 players={players}
                 currentUserId={user.id}
@@ -1019,7 +1022,7 @@ const Game = () => {
 
         {game.status === 'in_progress' && (
           <div className="space-y-4">
-            {user && players.find(p => p.user_id === user.id && p.sitting_out) && (
+            {user && (!players.find(p => p.user_id === user.id) || players.find(p => p.user_id === user.id && p.sitting_out)) && (
               <SeatSelection
                 players={players}
                 currentUserId={user.id}
