@@ -121,14 +121,20 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
   if (roundNumber === 1) {
+    console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
+    
     for (const player of activePlayers) {
       initialPot += anteAmount;
+      
+      console.log('[START_ROUND] Charging player', player.id, 'position', player.position, 'ante of $', anteAmount, 'chips before:', player.chips);
       
       await supabase
         .from('players')
         .update({ chips: player.chips - anteAmount })
         .eq('id', player.id);
     }
+    
+    console.log('[START_ROUND] Total ante pot:', initialPot);
   }
 
   // Create round with 10-second deadline
