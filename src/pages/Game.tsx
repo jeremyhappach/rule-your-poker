@@ -184,8 +184,8 @@ const Game = () => {
 
   // Timer countdown effect
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0 || isPaused) {
-      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, isPaused });
+    if (timeLeft === null || timeLeft <= 0 || isPaused || game?.awaiting_next_round || game?.last_round_result) {
+      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, isPaused, awaiting: game?.awaiting_next_round, result: game?.last_round_result });
       return;
     }
 
@@ -206,7 +206,7 @@ const Game = () => {
       console.log('[TIMER COUNTDOWN] Cleanup');
       clearInterval(timer);
     };
-  }, [timeLeft, isPaused]);
+  }, [timeLeft, isPaused, game?.awaiting_next_round, game?.last_round_result]);
 
   // Ante timer countdown effect
   useEffect(() => {
@@ -416,8 +416,12 @@ const Game = () => {
     setGame(gameData);
     setPlayers(playersData || []);
     
-    // Calculate time left ONLY if game is actively in progress
-    if (gameData.status === 'in_progress' && gameData.rounds && gameData.rounds.length > 0) {
+    // Calculate time left ONLY if game is actively in progress AND not in transition
+    if (gameData.status === 'in_progress' && 
+        gameData.rounds && 
+        gameData.rounds.length > 0 &&
+        !gameData.awaiting_next_round &&
+        !gameData.last_round_result) {
       const currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
       if (currentRound?.decision_deadline) {
         const deadline = new Date(currentRound.decision_deadline).getTime();
@@ -427,8 +431,12 @@ const Game = () => {
         setTimeLeft(remaining);
       }
     } else {
-      // Clear timer for non-playing states
-      console.log('[FETCH] Clearing timer, status:', gameData.status);
+      // Clear timer for non-playing states or transitions
+      if (gameData.awaiting_next_round || gameData.last_round_result) {
+        console.log('[FETCH] Clearing timer during transition');
+      } else {
+        console.log('[FETCH] Clearing timer, status:', gameData.status);
+      }
       setTimeLeft(null);
     }
     
