@@ -192,11 +192,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    toast({
-      title: "Success",
-      description: "Game created!",
-    });
-
     setShowCreateDialog(false);
     navigate(`/game/${game.id}`);
   };

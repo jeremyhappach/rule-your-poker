@@ -150,13 +150,6 @@ export const DealerConfig = ({
       })
       .eq('id', dealerPlayerId);
 
-    if (!isBot) {
-      toast({
-        title: "Configuration saved",
-        description: "Other players must now decide to ante up or sit out",
-      });
-    }
-
     onConfigComplete();
   };
 
