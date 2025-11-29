@@ -137,8 +137,8 @@ export async function startRound(gameId: string, roundNumber: number) {
     console.log('[START_ROUND] Total ante pot:', initialPot);
   }
 
-  // Create round with 10-second deadline
-  const deadline = new Date(Date.now() + 10000); // 10 seconds from now
+  // Create round with 12-second deadline (accounts for ~2s of processing/fetch time)
+  const deadline = new Date(Date.now() + 12000);
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
