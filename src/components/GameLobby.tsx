@@ -345,46 +345,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                 <Card key={game.id} className="hover:border-primary transition-colors">
                   <CardContent className="pt-6">
                     <div className="space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-2 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">Game #{game.id.slice(0, 8)}</h3>
-                            <Badge variant={isInProgress ? 'default' : 'secondary'}>
-                              {game.status === 'waiting' ? 'Waiting' : 'Active'}
-                            </Badge>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            <div><span className="text-muted-foreground">Host:</span> {game.host_username}</div>
-                            <div><span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, h:mm a')}</div>
-                            <div><span className="text-muted-foreground">Duration:</span> {game.duration_minutes} min</div>
-                            <div><span className="text-muted-foreground">Active Players:</span> {activePlayers.length}</div>
-                          </div>
-
-                          {isInProgress && game.ante_amount !== undefined && (
-                            <div className="text-xs text-muted-foreground pt-2 border-t">
-                              <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante • 
-                              ${game.leg_value} Legs ({game.legs_to_win} to win) • 
-                              {game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'} • 
-                              {game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
-                            </div>
-                          )}
-                          
-                          {isInProgress && activePlayers.length > 0 && (
-                            <div className="pt-2">
-                              <div className="text-xs font-medium text-muted-foreground mb-2">Active Players w/ Current Chip Stack</div>
-                              <div className="flex flex-wrap gap-2">
-                                {activePlayers.map((player, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {player.username} ${player.chips}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex gap-2 ml-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <h3 className="font-semibold">Game #{game.id.slice(0, 8)}</h3>
+                        <Badge variant={isInProgress ? 'default' : 'secondary'}>
+                          {game.status === 'waiting' ? 'Waiting' : 'Active'}
+                        </Badge>
+                        <div className="flex gap-2 ml-auto">
                           <Button
                             size="sm"
                             onClick={() => joinGame(game.id)}
@@ -402,6 +368,52 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                             </Button>
                           )}
                         </div>
+                      </div>
+
+                      <div className="flex gap-6">
+                        <div className="flex-1 space-y-2">
+                          <div className="space-y-1 text-sm">
+                            <div><span className="text-muted-foreground">Host:</span> {game.host_username}</div>
+                            <div><span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, h:mm a')}</div>
+                            <div><span className="text-muted-foreground">Duration:</span> {game.duration_minutes} min</div>
+                            <div><span className="text-muted-foreground">Active Players:</span> {activePlayers.length}</div>
+                          </div>
+
+                          {isInProgress && game.ante_amount !== undefined && (
+                            <div className="text-xs text-muted-foreground pt-2 border-t">
+                              <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante • 
+                              ${game.leg_value} Legs ({game.legs_to_win} to win) • 
+                              {game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'} • 
+                              {game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {isInProgress && activePlayers.length > 0 && (
+                          <div className="flex-1">
+                            <div className="text-xs font-medium text-muted-foreground mb-2">Active Players w/ Current Chip Stack</div>
+                            <div className="border rounded-md">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b bg-muted/50">
+                                    <th className="text-left p-2 font-medium">Player</th>
+                                    <th className="text-right p-2 font-medium">Chips</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {activePlayers
+                                    .sort((a, b) => b.chips - a.chips)
+                                    .map((player, idx) => (
+                                      <tr key={idx} className="border-b last:border-0">
+                                        <td className="p-2">{player.username}</td>
+                                        <td className="p-2 text-right font-mono">${player.chips}</td>
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
