@@ -457,8 +457,8 @@ const Game = () => {
   const handleConfigComplete = async () => {
     if (!gameId) return;
 
-    // Just refetch - bots will start making decisions automatically
-    setTimeout(() => fetchGameData(), 500);
+    // Immediately refetch to sync state - bots will start making decisions automatically
+    setTimeout(() => fetchGameData(), 100);
   };
 
   const handleDealerAnnouncementComplete = async () => {
@@ -513,6 +513,9 @@ const Game = () => {
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) return;
+
+    // Prevent duplicate calls if already in progress
+    if (game?.status === 'in_progress') return;
 
     // Get players who anted up
     const antedPlayers = players.filter(p => p.ante_decision === 'ante_up');
