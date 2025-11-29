@@ -41,6 +41,7 @@ interface GameTableProps {
   legValue: number;
   potMaxEnabled: boolean;
   potMaxValue: number;
+  pendingSessionEnd: boolean;
   onStay: () => void;
   onFold: () => void;
 }
@@ -58,6 +59,7 @@ export const GameTable = ({
   legValue,
   potMaxEnabled,
   potMaxValue,
+  pendingSessionEnd,
   onStay,
   onFold,
 }: GameTableProps) => {
@@ -91,6 +93,18 @@ export const GameTable = ({
                 <p className="text-poker-gold font-black text-2xl drop-shadow-lg">
                   {lastRoundResult}
                 </p>
+              </div>
+            </div>
+          )}
+          
+          {/* Last Hand Warning - shown when session ending */}
+          {pendingSessionEnd && !lastRoundResult && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 animate-pulse">
+              <div className="bg-red-600/90 backdrop-blur-lg px-6 py-3 rounded-xl border-4 border-red-400 shadow-2xl">
+                <p className="text-white font-black text-xl drop-shadow-lg">
+                  ⚠️ LAST HAND ⚠️
+                </p>
+                <p className="text-white text-xs mt-1">Session ending after this game</p>
               </div>
             </div>
           )}

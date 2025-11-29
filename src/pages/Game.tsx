@@ -18,6 +18,16 @@ import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from 
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Player {
   id: string;
@@ -55,6 +65,7 @@ interface GameData {
   pot_max_enabled?: boolean;
   pot_max_value?: number;
   last_round_result?: string | null;
+  pending_session_end?: boolean;
   rounds?: Round[];
 }
 
@@ -86,6 +97,8 @@ const Game = () => {
   const [loading, setLoading] = useState(true);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
+  const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
+  const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -247,6 +260,29 @@ const Game = () => {
       }
     }
   }, [anteTimeLeft, game?.status, players, user]);
+
+  // Show toast when session ending is announced
+  useEffect(() => {
+    if (game?.pending_session_end && !hasShownEndingToast) {
+      toast({
+        title: "⚠️ LAST HAND",
+        description: "Host will end this session after this game!",
+        duration: 8000,
+      });
+      setHasShownEndingToast(true);
+    }
+  }, [game?.pending_session_end, hasShownEndingToast, toast]);
+
+  // Redirect to lobby when session ends
+  useEffect(() => {
+    if (game?.status === 'session_ended') {
+      toast({
+        title: "Session Ended",
+        description: "Returning to lobby...",
+      });
+      setTimeout(() => navigate('/'), 2000);
+    }
+  }, [game?.status, navigate, toast]);
 
   // Check if all ante decisions are in
   useEffect(() => {
@@ -642,18 +678,16 @@ const Game = () => {
       await supabase
         .from('games')
         .update({
-          status: 'session_ended',
-          session_ended_at: new Date().toISOString(),
-          total_hands: game?.current_round || 0,
+          pending_session_end: true,
         })
         .eq('id', gameId);
 
       toast({
-        title: "Session ended",
-        description: "Returning to lobby...",
+        title: "Session ending",
+        description: "Session will end after this game completes",
       });
 
-      setTimeout(() => navigate('/'), 2000);
+      setShowEndSessionDialog(false);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -788,7 +822,7 @@ const Game = () => {
               </Button>
             )}
             {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'configuring', 'dealer_announcement'].includes(game.status) && (
-              <Button variant="destructive" onClick={handleEndSession}>
+              <Button variant="destructive" onClick={() => setShowEndSessionDialog(true)}>
                 End Session
               </Button>
             )}
@@ -835,6 +869,7 @@ const Game = () => {
                   legValue={game.leg_value || 1}
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
+                  pendingSessionEnd={false}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -861,6 +896,7 @@ const Game = () => {
                   legValue={game.leg_value || 1}
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
+                  pendingSessionEnd={false}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -886,6 +922,7 @@ const Game = () => {
                   legValue={game.leg_value || 1}
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
+                  pendingSessionEnd={false}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -1042,6 +1079,7 @@ const Game = () => {
               legValue={game.leg_value || 1}
               potMaxEnabled={game.pot_max_enabled ?? true}
               potMaxValue={game.pot_max_value || 10}
+              pendingSessionEnd={game.pending_session_end || false}
               onStay={handleStay}
               onFold={handleFold}
             />
@@ -1059,6 +1097,24 @@ const Game = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog open={showEndSessionDialog} onOpenChange={setShowEndSessionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>End Session for Everyone?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will end the session for all players after the current game completes. 
+              All players will be notified that this is the last hand.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEndSession}>
+              Confirm End Session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
