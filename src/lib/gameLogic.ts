@@ -252,6 +252,18 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 }
 
 async function checkAllDecisionsIn(gameId: string) {
+  // First check if decisions are already marked as in
+  const { data: game } = await supabase
+    .from('games')
+    .select('all_decisions_in')
+    .eq('id', gameId)
+    .single();
+  
+  if (game?.all_decisions_in) {
+    // Already processing, don't check again
+    return;
+  }
+
   const { data: players } = await supabase
     .from('players')
     .select('*')
@@ -264,13 +276,19 @@ async function checkAllDecisionsIn(gameId: string) {
   const allDecided = players.every(p => p.decision_locked);
 
   if (allDecided) {
-    await supabase
+    // Try to atomically set all_decisions_in flag
+    const { data: updateResult, error } = await supabase
       .from('games')
       .update({ all_decisions_in: true })
-      .eq('id', gameId);
+      .eq('id', gameId)
+      .eq('all_decisions_in', false) // Only update if not already set
+      .select();
 
-    // End round immediately without delay
-    await endRound(gameId);
+    // Only the first call that successfully sets the flag should proceed
+    if (!error && updateResult && updateResult.length > 0) {
+      // End round immediately without delay
+      await endRound(gameId);
+    }
   }
 }
 
