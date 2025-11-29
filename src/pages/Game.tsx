@@ -1046,6 +1046,83 @@ const Game = () => {
                 onSelectSeat={handleSelectSeat}
               />
             )}
+            
+            {/* Show table during ante decisions */}
+            <div className="space-y-4">
+              <GameTable
+                players={players}
+                currentUserId={user?.id}
+                pot={game.pot || 0}
+                currentRound={0}
+                allDecisionsIn={false}
+                playerCards={[]}
+                timeLeft={anteTimeLeft}
+                lastRoundResult={null}
+                dealerPosition={game.dealer_position}
+                legValue={game.leg_value || 1}
+                potMaxEnabled={game.pot_max_enabled ?? true}
+                potMaxValue={game.pot_max_value || 10}
+                pendingSessionEnd={game.pending_session_end || false}
+                onStay={() => {}}
+                onFold={() => {}}
+              />
+              
+              {/* Ante Status Card */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold mb-2">Waiting for Ante Decisions</h3>
+                      <p className="text-muted-foreground">
+                        {players.filter(p => !p.ante_decision).length} player(s) still deciding
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {players.map(player => (
+                        <div 
+                          key={player.id}
+                          className={`p-2 rounded border ${
+                            player.ante_decision === 'ante_up' 
+                              ? 'border-green-500 bg-green-500/10' 
+                              : player.ante_decision === 'sit_out'
+                              ? 'border-red-500 bg-red-500/10'
+                              : 'border-yellow-500 bg-yellow-500/10'
+                          }`}
+                        >
+                          <div className="text-sm font-semibold truncate">
+                            {player.profiles?.username || `P${player.position}`}
+                            {player.is_bot && ' 🤖'}
+                          </div>
+                          <div className="text-xs">
+                            {player.ante_decision === 'ante_up' && '✓ Anted Up'}
+                            {player.ante_decision === 'sit_out' && '✗ Sitting Out'}
+                            {!player.ante_decision && '⏳ Deciding...'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Force start button for dealer if all decisions are in */}
+                    {isDealer && players.every(p => p.ante_decision) && (
+                      <div className="text-center pt-4">
+                        <Button 
+                          onClick={() => {
+                            console.log('[MANUAL] Dealer forcing start');
+                            handleAllAnteDecisionsIn();
+                          }}
+                          size="lg"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Start Game Now 🎮
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
             {showAnteDialog && user && game.ante_amount !== undefined && (
               <AnteUpDialog
                 gameId={gameId!}
