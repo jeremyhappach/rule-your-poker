@@ -529,12 +529,13 @@ const Game = () => {
 
     console.log('[GAME SELECTION] Selected game:', gameType);
 
-    // Transition to configuring phase
+    // Save the game type and transition to configuring phase
     const { error } = await supabase
       .from('games')
       .update({ 
         status: 'configuring',
-        config_complete: false
+        config_complete: false,
+        game_type: gameType
       })
       .eq('id', gameId);
 

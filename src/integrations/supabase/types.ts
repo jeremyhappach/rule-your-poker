@@ -25,6 +25,7 @@ export type Database = {
           created_at: string
           current_round: number | null
           dealer_position: number | null
+          game_type: string | null
           id: string
           last_round_result: string | null
           leg_value: number
@@ -52,6 +53,7 @@ export type Database = {
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null
+          game_type?: string | null
           id?: string
           last_round_result?: string | null
           leg_value?: number
@@ -79,6 +81,7 @@ export type Database = {
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null
+          game_type?: string | null
           id?: string
           last_round_result?: string | null
           leg_value?: number

@@ -44,6 +44,7 @@ interface Game {
   legs_to_win?: number;
   pot_max_enabled?: boolean;
   pot_max_value?: number;
+  game_type?: string;
   player_count?: number;
   is_creator?: boolean;
   host_username?: string;
@@ -375,11 +376,16 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           </div>
 
                           {isInProgress && game.ante_amount !== undefined && (
-                            <div className="text-xs text-muted-foreground pt-2 border-t">
-                              <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante • 
-                              ${game.leg_value} Legs ({game.legs_to_win} to win) • 
-                              {game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'} • 
-                              {game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
+                            <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
+                              <div>
+                                <span className="font-medium">Last Game Played:</span> {game.game_type === '3-5-7' ? '3-5-7' : game.game_type || '3-5-7'}
+                              </div>
+                              <div>
+                                <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante • 
+                                ${game.leg_value} Legs ({game.legs_to_win} to win) • 
+                                {game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'} • 
+                                {game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
+                              </div>
                             </div>
                           )}
                         </div>
