@@ -709,7 +709,7 @@ const Game = () => {
       await makeDecision(gameId, currentPlayer.id, 'fold');
       toast({
         title: "Decision locked",
-        description: "You folded",
+        description: "You dropped",
       });
     } catch (error: any) {
       toast({

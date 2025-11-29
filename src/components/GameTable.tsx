@@ -245,7 +245,7 @@ export const GameTable = ({
                             onClick={onFold}
                             className="text-[10px] px-2 py-1 h-auto"
                           >
-                            Fold
+                            Drop
                           </Button>
                         ) : (
                           <div className="w-12"></div>
