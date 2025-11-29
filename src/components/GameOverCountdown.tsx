@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface Player {
@@ -17,22 +17,27 @@ interface GameOverCountdownProps {
 
 export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: GameOverCountdownProps) => {
   const [timeLeft, setTimeLeft] = useState(8); // 8 seconds to show game over and prepare for next game
+  const hasCompletedRef = useRef(false);
 
   useEffect(() => {
     console.log('[GAME OVER COUNTDOWN] Time left:', timeLeft);
     
-    if (timeLeft <= 0) {
+    // Only call onComplete once
+    if (timeLeft <= 0 && !hasCompletedRef.current) {
       console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
+      hasCompletedRef.current = true;
       onComplete();
       return;
     }
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
 
-    return () => clearInterval(timer);
-  }, [timeLeft]); // Remove onComplete from dependencies to prevent recreation
+      return () => clearTimeout(timer);
+    }
+  }, [timeLeft, onComplete]);
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 
