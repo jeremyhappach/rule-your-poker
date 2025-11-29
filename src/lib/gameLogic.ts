@@ -551,7 +551,7 @@ export async function endRound(gameId: string) {
       return; // Exit early, starting new game
     }
   } else if (playersWhoStayed.length > 1) {
-    // Multiple players stayed - wait 3 seconds to show decisions, then evaluate hands
+    // Multiple players stayed - wait briefly to show decisions, then evaluate hands
     setTimeout(async () => {
       const { data: playerCards } = await supabase
         .from('player_cards')
@@ -750,7 +750,7 @@ export async function endRound(gameId: string) {
           })
           .eq('id', gameId);
       }
-    }, 3000);
+    }, 1000); // 1 second to show showdown results
     return; // Exit early since we're using setTimeout
   } else {
     // Everyone folded - apply pussy tax if enabled
