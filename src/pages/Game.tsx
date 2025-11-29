@@ -398,8 +398,8 @@ const Game = () => {
     setGame(gameData);
     setPlayers(playersData || []);
     
-    // Calculate time left if there's a deadline
-    if (gameData.rounds && gameData.rounds.length > 0) {
+    // Calculate time left ONLY if game is actively in progress
+    if (gameData.status === 'in_progress' && gameData.rounds && gameData.rounds.length > 0) {
       const currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
       if (currentRound?.decision_deadline) {
         const deadline = new Date(currentRound.decision_deadline).getTime();
@@ -407,6 +407,9 @@ const Game = () => {
         const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
         setTimeLeft(remaining);
       }
+    } else {
+      // Clear timer for non-playing states
+      setTimeLeft(null);
     }
     
     setLoading(false);
