@@ -30,6 +30,7 @@ export type Database = {
           leg_value: number
           legs_to_win: number
           next_round_number: number | null
+          pending_session_end: boolean | null
           pot: number | null
           pot_max_enabled: boolean
           pot_max_value: number
@@ -56,6 +57,7 @@ export type Database = {
           leg_value?: number
           legs_to_win?: number
           next_round_number?: number | null
+          pending_session_end?: boolean | null
           pot?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number
@@ -82,6 +84,7 @@ export type Database = {
           leg_value?: number
           legs_to_win?: number
           next_round_number?: number | null
+          pending_session_end?: boolean | null
           pot?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number

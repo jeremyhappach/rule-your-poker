@@ -475,7 +475,28 @@ export async function endRound(gameId: string) {
         }
       }
       
-      console.log('Updating game to game_over status', { nextDealerPosition, gameWinMessage });
+      // Check if session should end
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('pending_session_end, current_round')
+        .eq('id', gameId)
+        .single();
+      
+      if (gameData?.pending_session_end) {
+        console.log('Session ending - marking as session_ended');
+        await supabase
+          .from('games')
+          .update({
+            status: 'session_ended',
+            session_ended_at: new Date().toISOString(),
+            total_hands: gameData.current_round || 0,
+            pending_session_end: false
+          })
+          .eq('id', gameId);
+        
+        console.log('Session ended successfully');
+        return; // Exit early, session is ended
+      }
       
       // Update game to game_over status with 5 second delay before moving to configuration
       const { error: gameOverError } = await supabase
@@ -662,6 +683,29 @@ export async function endRound(gameId: string) {
           if (nextPlayer && !nextPlayer.is_bot) {
             break;
           }
+        }
+        
+        // Check if session should end
+        const { data: sessionData } = await supabase
+          .from('games')
+          .select('pending_session_end, current_round')
+          .eq('id', gameId)
+          .single();
+        
+        if (sessionData?.pending_session_end) {
+          console.log('Session ending - marking as session_ended');
+          await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              session_ended_at: new Date().toISOString(),
+              total_hands: sessionData.current_round || 0,
+              pending_session_end: false
+            })
+            .eq('id', gameId);
+          
+          console.log('Session ended successfully');
+          return; // Exit early, session is ended
         }
         
         // Update game to game_over status with countdown before moving to configuration
