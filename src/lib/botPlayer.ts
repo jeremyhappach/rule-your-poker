@@ -79,9 +79,6 @@ export async function makeBotDecisions(gameId: string) {
     const shouldStay = Math.random() > 0.4;
     const decision = shouldStay ? 'stay' : 'fold';
     
-    // Add a small delay to make it feel more natural
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
-    
     await makeDecision(gameId, bot.id, decision);
   }
 }
@@ -99,9 +96,6 @@ export async function makeBotAnteDecisions(gameId: string) {
 
   // Bots always ante up
   for (const bot of botPlayers) {
-    // Add a small delay to make it feel more natural
-    await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 2000));
-    
     await supabase
       .from('players')
       .update({

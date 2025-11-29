@@ -198,7 +198,7 @@ const Game = () => {
     if (game?.status === 'ante_decision') {
       const botAnteTimer = setTimeout(() => {
         makeBotAnteDecisions(gameId!);
-      }, 1000 + Math.random() * 3000);
+      }, 100); // Instant bot decisions
 
       return () => clearTimeout(botAnteTimer);
     }
@@ -258,10 +258,10 @@ const Game = () => {
   // Trigger bot decisions when round starts
   useEffect(() => {
     if (game?.status === 'in_progress' && !game.all_decisions_in && timeLeft !== null) {
-      // Give bots a random delay before making decisions
+      // Instant bot decisions for testing
       const botDecisionTimer = setTimeout(() => {
         makeBotDecisions(gameId!);
-      }, 2000 + Math.random() * 3000);
+      }, 100);
 
       return () => clearTimeout(botDecisionTimer);
     }
