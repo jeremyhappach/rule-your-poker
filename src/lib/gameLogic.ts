@@ -740,12 +740,13 @@ export async function endRound(gameId: string) {
         // Continue to next round - cycle back to round 1 after round 3
         const nextRound = currentRound < 3 ? currentRound + 1 : 1;
         
-        // Set game to await next round
+        // Set game to await next round and clear result immediately
         await supabase
           .from('games')
           .update({ 
             awaiting_next_round: true,
-            next_round_number: nextRound
+            next_round_number: nextRound,
+            last_round_result: null  // Clear immediately
           })
           .eq('id', gameId);
       }
@@ -783,7 +784,7 @@ export async function endRound(gameId: string) {
     }
   }
 
-  // Store result message and keep pot (don't reset to 0 if pussy tax was collected)
+  // Store result message
   await supabase
     .from('games')
     .update({ 
@@ -794,12 +795,13 @@ export async function endRound(gameId: string) {
   // Continue to next round - cycle back to round 1 after round 3
   const nextRound = currentRound < 3 ? currentRound + 1 : 1;
   
-  // Set game to await next round
+  // Clear result message immediately and set game to await next round
   await supabase
     .from('games')
     .update({ 
       awaiting_next_round: true,
-      next_round_number: nextRound
+      next_round_number: nextRound,
+      last_round_result: null  // Clear result IMMEDIATELY so UI updates
     })
     .eq('id', gameId);
 }
@@ -816,13 +818,12 @@ export async function proceedToNextRound(gameId: string) {
     throw new Error('No next round configured');
   }
 
-  // Clear the result message FIRST before starting new round
+  // Reset the awaiting flag (result already cleared)
   await supabase
     .from('games')
     .update({ 
       awaiting_next_round: false,
-      next_round_number: null,
-      last_round_result: null
+      next_round_number: null
     })
     .eq('id', gameId);
 
