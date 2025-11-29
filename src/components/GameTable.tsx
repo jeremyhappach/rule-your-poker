@@ -281,14 +281,6 @@ export const GameTable = ({
         </div>
       </div>
 
-      {/* Status message */}
-      {hasDecided && !allDecisionsIn && (
-        <div className="text-center mt-8 bg-green-900/30 p-4 rounded-lg border border-green-500/40">
-          <p className="text-green-200 font-semibold flex items-center justify-center gap-2">
-            <span className="text-2xl">✓</span> Decision locked! Waiting for other players...
-          </p>
-        </div>
-      )}
 
     </div>
   );

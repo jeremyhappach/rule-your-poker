@@ -268,28 +268,14 @@ const Game = () => {
     }
   }, [anteTimeLeft, game?.status, players, user]);
 
-  // Show toast when session ending is announced
-  useEffect(() => {
-    if (game?.pending_session_end && !hasShownEndingToast) {
-      toast({
-        title: "⚠️ LAST HAND",
-        description: "Host will end this session after this game!",
-        duration: 8000,
-      });
-      setHasShownEndingToast(true);
-    }
-  }, [game?.pending_session_end, hasShownEndingToast, toast]);
+  // Session ending tracking (removed toast)
 
   // Redirect to lobby when session ends
   useEffect(() => {
     if (game?.status === 'session_ended') {
-      toast({
-        title: "Session Ended",
-        description: "Returning to lobby...",
-      });
       setTimeout(() => navigate('/'), 2000);
     }
-  }, [game?.status, navigate, toast]);
+  }, [game?.status, navigate]);
 
   // Check if all ante decisions are in - with polling fallback
   useEffect(() => {
@@ -332,10 +318,13 @@ const Game = () => {
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
-    if (timeLeft === 0 && game && !game.all_decisions_in && !isPaused) {
-      autoFoldUndecided(gameId!);
+    if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
+      console.log('[TIMER EXPIRED] Auto-folding undecided players');
+      autoFoldUndecided(gameId!).catch(err => {
+        console.error('[TIMER EXPIRED] Error auto-folding:', err);
+      });
     }
-  }, [timeLeft, game, gameId, isPaused]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused]);
 
   // Auto-proceed to next round when awaiting
   useEffect(() => {
@@ -360,11 +349,7 @@ const Game = () => {
       .single();
 
     if (gameError) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch game",
-        variant: "destructive",
-      });
+      console.error('Failed to fetch game:', gameError);
       return;
     }
 
@@ -378,11 +363,7 @@ const Game = () => {
       .order('position');
 
     if (playersError) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch players",
-        variant: "destructive",
-      });
+      console.error('Failed to fetch players:', playersError);
       return;
     }
 
@@ -444,18 +425,8 @@ const Game = () => {
 
     if (error) {
       console.error('Start game error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start game",
-        variant: "destructive",
-      });
       return;
     }
-
-    toast({
-      title: "Game Starting",
-      description: "Selecting dealer...",
-    });
 
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
@@ -475,18 +446,9 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to select dealer",
-        variant: "destructive",
-      });
+      console.error('Failed to select dealer:', error);
       return;
     }
-
-    toast({
-      title: "Dealer Selected!",
-      description: `${dealerPlayer?.profiles?.username || 'Player ' + dealerPosition} is the dealer`,
-    });
 
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 500);
@@ -512,11 +474,7 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start configuration",
-        variant: "destructive",
-      });
+      console.error('Failed to start configuration:', error);
       return;
     }
 
@@ -546,11 +504,6 @@ const Game = () => {
         })
         .eq('id', gameId);
 
-      toast({
-        title: "Session Ended",
-        description: "Returning to lobby...",
-      });
-
       setTimeout(() => navigate('/'), 2000);
       return;
     }
@@ -565,11 +518,7 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start configuration",
-        variant: "destructive",
-      });
+      console.error('Failed to start configuration:', error);
       return;
     }
 
@@ -594,12 +543,6 @@ const Game = () => {
     console.log('[ANTE] Anted players:', antedPlayers.length);
 
     if (antedPlayers.length === 0) {
-      toast({
-        title: "No players",
-        description: "Everyone sat out - game cancelled",
-        variant: "destructive",
-      });
-      
       await supabase
         .from('games')
         .update({ status: 'waiting' })
@@ -618,11 +561,6 @@ const Game = () => {
 
     if (error) {
       console.error('[ANTE] Error updating game status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to start game",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -631,18 +569,9 @@ const Game = () => {
     // Start first round
     try {
       await startRound(gameId, 1);
-      toast({
-        title: "Game Started!",
-        description: "Cards dealt. Good luck!",
-      });
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
     }
   };
 
@@ -662,18 +591,9 @@ const Game = () => {
       .eq('id', currentPlayer.id);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add chips",
-        variant: "destructive",
-      });
+      console.error('Failed to add chips:', error);
       return;
     }
-
-    toast({
-      title: "Success",
-      description: `Added ${amount} chips!`,
-    });
   };
 
   const handleStay = async () => {
@@ -684,16 +604,8 @@ const Game = () => {
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'stay');
-      toast({
-        title: "Decision locked",
-        description: "You chose to stay in!",
-      });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Error making stay decision:', error);
     }
   };
 
@@ -705,36 +617,11 @@ const Game = () => {
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
-      toast({
-        title: "Decision locked",
-        description: "You dropped",
-      });
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Error making fold decision:', error);
     }
   };
 
-  const handleRestartRound = async () => {
-    if (!gameId) return;
-
-    try {
-      await startRound(gameId, 1);
-      toast({
-        title: "New cycle started",
-        description: "Starting fresh at round 1",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleEndSession = async () => {
     if (!gameId) return;
@@ -747,18 +634,9 @@ const Game = () => {
         })
         .eq('id', gameId);
 
-      toast({
-        title: "Session ending",
-        description: "Session will end after this game completes",
-      });
-
       setShowEndSessionDialog(false);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Error ending session:', error);
     }
   };
 
@@ -769,35 +647,16 @@ const Game = () => {
 
     try {
       await addBotPlayer(gameId);
-      toast({
-        title: "Bot added",
-        description: "A computer player has joined the game",
-      });
       // Manual refetch to ensure bot shows up immediately
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Error adding bot:', error);
     }
   };
 
   const handleInvite = () => {
     const gameUrl = window.location.href;
-    navigator.clipboard.writeText(gameUrl).then(() => {
-      toast({
-        title: "Link copied!",
-        description: "Share this link with other players to invite them",
-      });
-    }).catch(() => {
-      toast({
-        title: "Failed to copy",
-        description: "Please copy the URL manually from your browser",
-        variant: "destructive",
-      });
-    });
+    navigator.clipboard.writeText(gameUrl);
   };
 
   const handleSelectSeat = async (position: number) => {
@@ -819,11 +678,6 @@ const Game = () => {
           });
 
         if (joinError) throw joinError;
-
-        toast({
-          title: "Joined game!",
-          description: `You're now seated at position #${position}`,
-        });
       } else {
         // Existing player changing seats
         await supabase
@@ -833,21 +687,12 @@ const Game = () => {
             sitting_out: false
           })
           .eq('id', currentPlayer.id);
-
-        toast({
-          title: "Seat selected",
-          description: `You'll join at seat #${position} in the next round`,
-        });
       }
       
       // Refetch to update UI
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Error ending session:', error);
     }
   };
 
@@ -1209,17 +1054,6 @@ const Game = () => {
               onStay={handleStay}
               onFold={handleFold}
             />
-            {isCreator && game.current_round === 3 && !game.awaiting_next_round && (
-              <div className="text-center">
-                <Button 
-                  onClick={handleRestartRound} 
-                  variant="outline" 
-                  className="bg-poker-gold text-black font-bold"
-                >
-                  Start New Cycle (Round 1)
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </div>
