@@ -538,16 +538,21 @@ const Game = () => {
   };
 
   const handleGameOverComplete = async () => {
-    if (!gameId) return;
+    if (!gameId) {
+      console.log('[GAME OVER COMPLETE] No gameId, aborting');
+      return;
+    }
 
-    console.log('[GAME OVER COMPLETE] Starting transition to next game');
+    console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
 
     // Check if session should end
-    const { data: gameData } = await supabase
+    const { data: gameData, error: fetchError } = await supabase
       .from('games')
-      .select('pending_session_end, current_round')
+      .select('pending_session_end, current_round, status')
       .eq('id', gameId)
       .single();
+
+    console.log('[GAME OVER COMPLETE] Game data:', gameData, 'error:', fetchError);
 
     if (gameData?.pending_session_end) {
       console.log('[GAME OVER] Session should end, transitioning to session_ended');
@@ -874,6 +879,7 @@ const Game = () => {
                   onSelectSeat={handleSelectSeat}
                 />
                 <GameOverCountdown
+                  key={`game-over-${gameId}`}
                   winnerMessage={game.last_round_result || 'Game over!'}
                   nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
                   onComplete={handleGameOverComplete}
