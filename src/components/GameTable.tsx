@@ -155,11 +155,15 @@ export const GameTable = ({
                   ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
                   ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
                   ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
-                  ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-125 animate-pulse" : ""}
+                  ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-110" : ""}
                   ${player.sitting_out ? "opacity-50 grayscale" : ""}
                   bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                   transition-all duration-500
                 `}>
+                  <div className="relative">
+                    {playerDecision === 'stay' && (
+                      <div className="absolute inset-0 rounded-lg border-[6px] border-green-500 animate-[pulse_3s_ease-in-out_infinite] pointer-events-none" />
+                    )}
                   <CardContent className="p-3 text-center min-w-[140px]">
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-center gap-1.5">
@@ -259,6 +263,7 @@ export const GameTable = ({
                       </div>
                     </div>
                   </CardContent>
+                  </div>
                 </Card>
               </div>
             );

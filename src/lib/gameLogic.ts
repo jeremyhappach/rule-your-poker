@@ -352,16 +352,20 @@ export async function endRound(gameId: string) {
   }
 
   // Immediately mark round as processing to prevent race conditions
-  const { error: lockError } = await supabase
+  const { data: lockResult, error: lockError } = await supabase
     .from('rounds')
     .update({ status: 'processing' })
     .eq('id', round.id)
-    .eq('status', 'betting'); // Only update if still in betting status
+    .eq('status', 'betting') // Only update if still in betting status
+    .select();
 
-  if (lockError) {
-    console.log('Round already being processed, skipping endRound');
+  // If no rows were updated, another call is already processing
+  if (lockError || !lockResult || lockResult.length === 0) {
+    console.log('Round already being processed or locked, skipping endRound');
     return;
   }
+
+  console.log('Successfully locked round for processing');
 
   // Get all players and their decisions
   const { data: allPlayers } = await supabase
