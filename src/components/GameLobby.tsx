@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { SessionResults } from "@/components/SessionResults";
 import { format } from "date-fns";
+import { generateGameName } from "@/lib/gameNames";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ import {
 
 interface Game {
   id: string;
+  name?: string;
   status: string;
   buy_in: number;
   pot: number | null;
@@ -161,7 +163,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .from('games')
       .insert({
         buy_in: 100,
-        status: 'waiting'
+        status: 'waiting',
+        name: generateGameName()
       })
       .select()
       .single();
@@ -342,7 +345,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                   <CardContent className="pt-6">
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <h3 className="font-semibold">Game #{game.id.slice(0, 8)}</h3>
+                        <h3 className="font-semibold">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
                         <Badge variant={isInProgress ? 'default' : 'secondary'}>
                           {game.status === 'waiting' ? 'Waiting' : 'Active'}
                         </Badge>
