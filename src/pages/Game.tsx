@@ -197,9 +197,11 @@ const Game = () => {
   // Trigger bot ante decisions
   useEffect(() => {
     if (game?.status === 'ante_decision') {
+      console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions');
       const botAnteTimer = setTimeout(() => {
+        console.log('[ANTE PHASE] Calling makeBotAnteDecisions');
         makeBotAnteDecisions(gameId!);
-      }, 100); // Instant bot decisions
+      }, 500); // Give time for game data to be fetched
 
       return () => clearTimeout(botAnteTimer);
     }
@@ -249,8 +251,12 @@ const Game = () => {
   // Check if all ante decisions are in
   useEffect(() => {
     if (game?.status === 'ante_decision') {
+      const decidedCount = players.filter(p => p.ante_decision).length;
       const allDecided = players.every(p => p.ante_decision);
+      console.log('[ANTE CHECK] Players:', players.length, 'Decided:', decidedCount, 'All decided:', allDecided);
+      
       if (allDecided && players.length > 0) {
+        console.log('[ANTE CHECK] All players decided, proceeding to start round');
         handleAllAnteDecisionsIn();
       }
     }

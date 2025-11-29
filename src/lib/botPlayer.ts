@@ -84,24 +84,45 @@ export async function makeBotDecisions(gameId: string) {
 }
 
 export async function makeBotAnteDecisions(gameId: string) {
+  console.log('[BOT ANTE] Starting bot ante decisions for game:', gameId);
+  
   // Get all bot players who haven't made ante decisions yet
-  const { data: botPlayers } = await supabase
+  const { data: botPlayers, error } = await supabase
     .from('players')
     .select('*')
     .eq('game_id', gameId)
     .eq('is_bot', true)
     .is('ante_decision', null);
 
-  if (!botPlayers || botPlayers.length === 0) return;
+  console.log('[BOT ANTE] Found bots needing decisions:', botPlayers?.length || 0, botPlayers);
+  
+  if (error) {
+    console.error('[BOT ANTE] Error fetching bot players:', error);
+    return;
+  }
+
+  if (!botPlayers || botPlayers.length === 0) {
+    console.log('[BOT ANTE] No bots need to make ante decisions');
+    return;
+  }
 
   // Bots always ante up
   for (const bot of botPlayers) {
-    await supabase
+    console.log('[BOT ANTE] Bot making ante decision:', bot.id);
+    const { error: updateError } = await supabase
       .from('players')
       .update({
         ante_decision: 'ante_up',
         sitting_out: false,
       })
       .eq('id', bot.id);
+      
+    if (updateError) {
+      console.error('[BOT ANTE] Error updating bot ante decision:', updateError);
+    } else {
+      console.log('[BOT ANTE] Bot successfully anted up:', bot.id);
+    }
   }
+  
+  console.log('[BOT ANTE] Completed bot ante decisions');
 }
