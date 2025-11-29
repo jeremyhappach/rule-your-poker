@@ -516,7 +516,8 @@ const Game = () => {
       .from('games')
       .update({ 
         status: 'configuring',
-        config_complete: false
+        config_complete: false,
+        last_round_result: null  // Clear previous game result
       })
       .eq('id', gameId);
 
