@@ -184,18 +184,28 @@ const Game = () => {
 
   // Timer countdown effect
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0 || isPaused) return;
+    if (timeLeft === null || timeLeft <= 0 || isPaused) {
+      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, isPaused });
+      return;
+    }
 
+    console.log('[TIMER COUNTDOWN] Starting interval, current timeLeft:', timeLeft);
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev === null || prev <= 1) {
+          console.log('[TIMER COUNTDOWN] Reached 0, prev was:', prev);
           return 0;
         }
-        return prev - 1;
+        const newTime = prev - 1;
+        console.log('[TIMER COUNTDOWN] Tick:', prev, '→', newTime);
+        return newTime;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      console.log('[TIMER COUNTDOWN] Cleanup');
+      clearInterval(timer);
+    };
   }, [timeLeft, isPaused]);
 
   // Ante timer countdown effect
@@ -318,6 +328,14 @@ const Game = () => {
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
+    console.log('[TIMER CHECK]', { 
+      timeLeft, 
+      status: game?.status, 
+      all_decisions_in: game?.all_decisions_in, 
+      isPaused,
+      shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused
+    });
+    
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
       console.log('[TIMER EXPIRED] Auto-folding undecided players');
       autoFoldUndecided(gameId!).catch(err => {
@@ -405,10 +423,12 @@ const Game = () => {
         const deadline = new Date(currentRound.decision_deadline).getTime();
         const now = Date.now();
         const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+        console.log('[FETCH] Setting timeLeft from deadline:', { deadline: new Date(deadline), now: new Date(now), remaining, all_decisions_in: gameData.all_decisions_in });
         setTimeLeft(remaining);
       }
     } else {
       // Clear timer for non-playing states
+      console.log('[FETCH] Clearing timer, status:', gameData.status);
       setTimeLeft(null);
     }
     
