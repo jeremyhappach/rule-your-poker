@@ -137,6 +137,38 @@ export async function startRound(gameId: string, roundNumber: number) {
     console.log('[START_ROUND] Total ante pot:', initialPot);
   }
 
+  // Safety check: delete any existing round with same game_id and round_number to prevent duplicates
+  const { data: existingRound } = await supabase
+    .from('rounds')
+    .select('id')
+    .eq('game_id', gameId)
+    .eq('round_number', roundNumber)
+    .maybeSingle();
+  
+  if (existingRound) {
+    console.log('[START_ROUND] Found existing round for game', gameId, 'round', roundNumber, '- deleting it');
+    
+    // Delete player_cards for this round
+    await supabase
+      .from('player_cards')
+      .delete()
+      .eq('round_id', existingRound.id);
+    
+    // Delete player_actions for this round
+    await supabase
+      .from('player_actions')
+      .delete()
+      .eq('round_id', existingRound.id);
+    
+    // Delete the round
+    await supabase
+      .from('rounds')
+      .delete()
+      .eq('id', existingRound.id);
+    
+    console.log('[START_ROUND] Deleted existing round');
+  }
+
   // Create round with 12-second deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + 12000);
   const { data: round, error: roundError } = await supabase
