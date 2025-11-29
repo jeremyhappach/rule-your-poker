@@ -350,11 +350,8 @@ const Game = () => {
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
       
-      const timer = setTimeout(() => {
-        proceedToNextRound(gameId);
-      }, 500); // Small delay to ensure result is visible
-
-      return () => clearTimeout(timer);
+      // Start next round immediately (result was already shown for 4 seconds)
+      proceedToNextRound(gameId);
     }
   }, [game?.awaiting_next_round, gameId]);
 
