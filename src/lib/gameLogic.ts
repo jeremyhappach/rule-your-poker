@@ -330,7 +330,12 @@ async function checkAllDecisionsIn(gameId: string) {
     if (!error && updateResult && updateResult.length > 0) {
       console.log('Successfully set all_decisions_in, calling endRound');
       // End round immediately without delay
-      await endRound(gameId);
+      try {
+        await endRound(gameId);
+        console.log('[CHECK_DECISIONS] endRound completed successfully');
+      } catch (endRoundError) {
+        console.error('[CHECK_DECISIONS] Error in endRound:', endRoundError);
+      }
     } else {
       console.log('all_decisions_in already set by another call, skipping endRound');
     }
@@ -385,13 +390,25 @@ export async function autoFoldUndecided(gameId: string) {
 
 
 export async function endRound(gameId: string) {
-  const { data: game } = await supabase
+  console.log('[endRound] Starting endRound for game:', gameId);
+  
+  const { data: game, error: gameError } = await supabase
     .from('games')
     .select('*, players(*)')
     .eq('id', gameId)
     .single();
 
-  if (!game || !game.current_round) return;
+  console.log('[endRound] Game data:', { 
+    hasGame: !!game, 
+    currentRound: game?.current_round,
+    status: game?.status,
+    error: gameError 
+  });
+
+  if (!game || !game.current_round) {
+    console.log('[endRound] Early return: no game or no current_round');
+    return;
+  }
 
   // Fetch game configuration
   const { data: gameConfig } = await supabase
