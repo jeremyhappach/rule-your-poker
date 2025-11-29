@@ -514,6 +514,34 @@ const Game = () => {
   const handleGameOverComplete = async () => {
     if (!gameId) return;
 
+    // Check if session should end
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('pending_session_end, current_round')
+      .eq('id', gameId)
+      .single();
+
+    if (gameData?.pending_session_end) {
+      console.log('[GAME OVER] Session should end, transitioning to session_ended');
+      await supabase
+        .from('games')
+        .update({
+          status: 'session_ended',
+          session_ended_at: new Date().toISOString(),
+          total_hands: gameData.current_round || 0,
+          pending_session_end: false
+        })
+        .eq('id', gameId);
+
+      toast({
+        title: "Session Ended",
+        description: "Returning to lobby...",
+      });
+
+      setTimeout(() => navigate('/'), 2000);
+      return;
+    }
+
     // Transition to configuring phase for next game
     const { error } = await supabase
       .from('games')
