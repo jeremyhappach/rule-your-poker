@@ -469,7 +469,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           <DialogHeader>
             <DialogTitle>Create New Game</DialogTitle>
             <DialogDescription>
-              Start a new game of Three, Five, Seven
+              Start a new game of Peoria Home Game Poker
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
