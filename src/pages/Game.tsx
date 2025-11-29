@@ -968,18 +968,6 @@ const Game = () => {
                 onDecisionMade={() => setShowAnteDialog(false)}
               />
             )}
-            {!showAnteDialog && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <p className="text-lg font-semibold">Waiting for ante decisions...</p>
-                    <p className="text-muted-foreground">
-                      {players.filter(p => !p.ante_decision).length} player(s) still deciding
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </>
         )}
 
