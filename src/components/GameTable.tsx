@@ -45,6 +45,7 @@ interface GameTableProps {
   awaitingNextRound: boolean;
   onStay: () => void;
   onFold: () => void;
+  onSelectSeat?: (position: number) => void;
 }
 
 export const GameTable = ({
@@ -64,6 +65,7 @@ export const GameTable = ({
   awaitingNextRound,
   onStay,
   onFold,
+  onSelectSeat,
 }: GameTableProps) => {
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked;
@@ -78,6 +80,18 @@ export const GameTable = ({
 
   // Hide pot and timer when showing result message
   const showPotAndTimer = !lastRoundResult;
+
+  // Calculate open seats (max 7 positions)
+  const maxSeats = 7;
+  const occupiedPositions = new Set(players.map(p => p.position));
+  const allPositions = Array.from({ length: maxSeats }, (_, i) => i + 1);
+  const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
+  
+  // Show seat selection for observers or sitting out players
+  const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
+  
+  // Combine players and open seats for rendering
+  const seatsToRender = [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
 
   return (
     <div className="relative p-8">
@@ -140,22 +154,53 @@ export const GameTable = ({
             </>
           )}
 
-          {/* Players around table */}
-          {reorderedPlayers.map((player, index) => {
-            const isCurrentUser = player.user_id === currentUserId;
-            const hasPlayerDecided = player.decision_locked;
-            const playerDecision = allDecisionsIn ? player.current_decision : null;
-            const angle = (index / reorderedPlayers.length) * 2 * Math.PI - Math.PI / 2;
+          {/* Players and open seats around table */}
+          {seatsToRender.map((seat, index) => {
+            const isEmptySeat = 'isEmpty' in seat && seat.isEmpty;
+            const player = !isEmptySeat ? seat as Player : null;
+            const isCurrentUser = player?.user_id === currentUserId;
+            const hasPlayerDecided = player?.decision_locked;
+            const playerDecision = allDecisionsIn ? player?.current_decision : null;
+            const angle = (index / seatsToRender.length) * 2 * Math.PI - Math.PI / 2;
             const radius = 48;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
             // Get cards for this player
-            const actualCards = playerCards.find(pc => pc.player_id === player.id)?.cards || [];
-            const shouldShowCards = player.status !== 'folded' && !player.sitting_out;
+            const actualCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
+            const shouldShowCards = player && player.status !== 'folded' && !player.sitting_out;
             
             // Always get the cards to show card backs, visibility controlled by isHidden prop
             const cards = shouldShowCards ? actualCards : [];
+            
+            // Handle empty seat click
+            if (isEmptySeat) {
+              return (
+                <div
+                  key={`empty-${seat.position}`}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10 cursor-pointer"
+                  style={{ left: `${x}%`, top: `${y}%` }}
+                  onClick={() => onSelectSeat && onSelectSeat(seat.position)}
+                >
+                  <Card className="border-dashed border-2 border-amber-700/50 bg-gradient-to-br from-amber-900/20 to-amber-950/20 backdrop-blur-sm hover:border-amber-500 hover:bg-amber-900/30 transition-all duration-300">
+                    <CardContent className="p-3 text-center min-w-[140px]">
+                      <div className="space-y-2">
+                        <div className="w-12 h-12 mx-auto rounded-full bg-amber-900/30 flex items-center justify-center border-2 border-amber-700/50">
+                          <span className="text-2xl">💺</span>
+                        </div>
+                        <p className="text-xs text-amber-300/70 font-semibold">Open Seat</p>
+                        <p className="text-[10px] text-amber-300/50">Click to sit</p>
+                        <Badge variant="outline" className="text-[10px] border-amber-700/50 text-amber-300/70">
+                          Seat #{seat.position}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            }
+            
+            if (!player) return null;
 
             return (
               <div
