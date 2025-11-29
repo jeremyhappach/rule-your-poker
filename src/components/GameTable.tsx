@@ -124,8 +124,8 @@ export const GameTable = ({
                 </div>
               </div>
               
-              {/* Timer beside pot */}
-              {timeLeft !== null && timeLeft >= 0 && !awaitingNextRound && (
+              {/* Timer beside pot - hide during transitions and when showing results */}
+              {timeLeft !== null && timeLeft >= 0 && !awaitingNextRound && !lastRoundResult && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 translate-x-20 text-center z-20">
                   <div className={`bg-poker-felt-dark/90 rounded-lg p-4 backdrop-blur-sm border-2 ${timeLeft <= 3 ? 'border-red-500 animate-pulse' : 'border-blue-500'} shadow-2xl`}>
                     <p className={`text-6xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>
