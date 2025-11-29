@@ -898,7 +898,7 @@ const Game = () => {
                   onSelectSeat={handleSelectSeat}
                 />
                 <GameOverCountdown
-                  key={`game-over-${gameId}`}
+                  key={`game-over-${gameId}-${game.last_round_result}`}
                   winnerMessage={game.last_round_result || 'Game over!'}
                   nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
                   onComplete={handleGameOverComplete}

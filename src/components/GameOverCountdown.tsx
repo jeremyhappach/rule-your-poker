@@ -15,47 +15,30 @@ interface GameOverCountdownProps {
   onComplete: () => void;
 }
 
-// Global state to track if countdown is in progress for a game
-const activeCountdowns = new Map<string, boolean>();
-
 export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: GameOverCountdownProps) => {
   const [timeLeft, setTimeLeft] = useState(8);
   const hasCompletedRef = useRef(false);
-  const countdownKey = `${winnerMessage}-${nextDealer.id}`;
 
   useEffect(() => {
-    // If this countdown is already complete globally, call onComplete immediately
-    if (activeCountdowns.get(countdownKey) === false) {
-      console.log('[GAME OVER COUNTDOWN] Countdown already completed globally, calling onComplete immediately');
+    console.log('[GAME OVER COUNTDOWN] Starting countdown, time left:', timeLeft);
+    
+    // Countdown complete
+    if (timeLeft <= 0) {
       if (!hasCompletedRef.current) {
+        console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
         hasCompletedRef.current = true;
         onComplete();
       }
       return;
     }
 
-    // Mark this countdown as active
-    activeCountdowns.set(countdownKey, true);
+    // Tick down
+    const timer = setTimeout(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
 
-    console.log('[GAME OVER COUNTDOWN] Time left:', timeLeft);
-    
-    // Only call onComplete once
-    if (timeLeft <= 0 && !hasCompletedRef.current) {
-      console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
-      hasCompletedRef.current = true;
-      activeCountdowns.set(countdownKey, false); // Mark as completed globally
-      onComplete();
-      return;
-    }
-
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [timeLeft, onComplete, countdownKey]);
+    return () => clearTimeout(timer);
+  }, [timeLeft, onComplete]);
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 
