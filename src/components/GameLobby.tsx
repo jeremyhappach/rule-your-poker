@@ -367,7 +367,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
                           {isInProgress && game.ante_amount !== undefined && (
                             <div className="text-xs text-muted-foreground pt-2 border-t">
-                              <span className="font-medium">Config:</span> Ante ${game.ante_amount} • 
+                              <span className="font-medium">Last Used Config:</span> Ante ${game.ante_amount} • 
                               Leg ${game.leg_value} • 
                               {game.pussy_tax_enabled ? `Tax $${game.pussy_tax_value}` : 'No Tax'} • 
                               {game.legs_to_win} legs • 
