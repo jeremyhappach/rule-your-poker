@@ -349,7 +349,7 @@ const Game = () => {
     if (game?.awaiting_next_round && gameId) {
       const timer = setTimeout(() => {
         proceedToNextRound(gameId);
-      }, 800); // Brief delay to show results
+      }, 500); // Quick transition to next round
 
       return () => clearTimeout(timer);
     }
@@ -804,6 +804,7 @@ const Game = () => {
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
                   pendingSessionEnd={false}
+                  awaitingNextRound={false}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -831,10 +832,11 @@ const Game = () => {
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
                   pendingSessionEnd={false}
+                  awaitingNextRound={false}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
-                <DealerSelection 
+                <DealerSelection
                   players={players}
                   onComplete={(position) => {
                     selectDealer(position);
@@ -857,6 +859,7 @@ const Game = () => {
                   potMaxEnabled={game.pot_max_enabled ?? true}
                   potMaxValue={game.pot_max_value || 10}
                   pendingSessionEnd={false}
+                  awaitingNextRound={false}
                   onStay={() => {}}
                   onFold={() => {}}
                 />
@@ -930,6 +933,7 @@ const Game = () => {
                 potMaxEnabled={game.pot_max_enabled ?? true}
                 potMaxValue={game.pot_max_value || 10}
                 pendingSessionEnd={game.pending_session_end || false}
+                awaitingNextRound={false}
                 onStay={() => {}}
                 onFold={() => {}}
               />
@@ -1063,6 +1067,7 @@ const Game = () => {
               potMaxEnabled={game.pot_max_enabled ?? true}
               potMaxValue={game.pot_max_value || 10}
               pendingSessionEnd={game.pending_session_end || false}
+              awaitingNextRound={game.awaiting_next_round || false}
               onStay={handleStay}
               onFold={handleFold}
             />
