@@ -249,7 +249,8 @@ export const GameTable = ({
                     )}
                   <CardContent className="p-1 sm:p-1.5 md:p-2 lg:p-3 text-center min-w-[70px] sm:min-w-[90px] md:min-w-[110px] lg:min-w-[130px] xl:min-w-[140px] max-w-[110px] sm:max-w-[130px] md:max-w-none">
                     <div className="space-y-0.5 sm:space-y-1 md:space-y-1.5">
-                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5">
+                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5 relative">
+                        <ChipChangeIndicator currentChips={player.chips} playerId={player.id} />
                         <p className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px]">
                           {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
                           {player.sitting_out && ' (Out)'}
@@ -327,11 +328,10 @@ export const GameTable = ({
                         )}
                         
                         {/* Chip balance (center) */}
-                        <div className="flex items-center justify-center relative">
+                        <div className="flex items-center justify-center">
                           <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                             ${player.chips}
                           </p>
-                          <ChipChangeIndicator currentChips={player.chips} playerId={player.id} />
                         </div>
                         
                         {/* Stay button (right) */}
