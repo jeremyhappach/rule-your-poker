@@ -25,11 +25,11 @@ export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndica
       setChipChange(change);
       setShowAnimation(true);
 
-      // Hide animation after 1.5 seconds
+      // Hide animation after 2.5 seconds
       const timer = setTimeout(() => {
         setShowAnimation(false);
         setChipChange(null);
-      }, 1500);
+      }, 2500);
 
       previousChipsRef.current = currentChips;
 
@@ -49,7 +49,7 @@ export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndica
         isPositive ? "text-green-500" : "text-red-500"
       }`}
       style={{
-        animation: "fadeOut 1.5s ease-out forwards"
+        animation: "fadeOut 2.5s ease-out forwards"
       }}
     >
       {isPositive ? "+" : ""}${chipChange}
