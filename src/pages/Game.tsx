@@ -456,11 +456,13 @@ const Game = () => {
     setPlayers(playersData || []);
     
     // Calculate time left ONLY if game is actively in progress AND not in transition
+    // CRITICAL: Never set timeLeft during game_over to prevent unmounting GameOverCountdown
     if (gameData.status === 'in_progress' && 
         gameData.rounds && 
         gameData.rounds.length > 0 &&
         !gameData.awaiting_next_round &&
-        !gameData.last_round_result) {
+        !gameData.last_round_result &&
+        !gameData.game_over_at) {  // Don't set timeLeft if game_over_at is set
       const currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
       if (currentRound?.decision_deadline) {
         const deadline = new Date(currentRound.decision_deadline).getTime();
@@ -470,13 +472,17 @@ const Game = () => {
         setTimeLeft(remaining);
       }
     } else {
-      // Clear timer for non-playing states or transitions
-      if (gameData.awaiting_next_round || gameData.last_round_result) {
-        console.log('[FETCH] Clearing timer during transition');
+      // Clear timer for non-playing states or transitions (but not for game_over to avoid disrupting countdown)
+      if (!gameData.game_over_at) {
+        if (gameData.awaiting_next_round || gameData.last_round_result) {
+          console.log('[FETCH] Clearing timer during transition');
+        } else {
+          console.log('[FETCH] Clearing timer, status:', gameData.status);
+        }
+        setTimeLeft(null);
       } else {
-        console.log('[FETCH] Clearing timer, status:', gameData.status);
+        console.log('[FETCH] Skipping timer update during game_over to preserve countdown');
       }
-      setTimeLeft(null);
     }
     
     setLoading(false);
