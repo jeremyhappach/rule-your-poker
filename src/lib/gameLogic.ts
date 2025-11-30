@@ -813,7 +813,7 @@ export async function endRound(gameId: string) {
       }
       
       // Update game to game_over status with countdown before moving to configuration
-      // Frontend will handle the 4-second delay to show results
+      // Frontend will handle the 8-second delay to show results
       await supabase
         .from('games')
         .update({ 
@@ -822,7 +822,8 @@ export async function endRound(gameId: string) {
           current_round: null,
           awaiting_next_round: false,
           all_decisions_in: false,
-          last_round_result: gameWinMessage
+          last_round_result: gameWinMessage,
+          game_over_at: new Date().toISOString()
         })
         .eq('id', gameId);
     } else {
