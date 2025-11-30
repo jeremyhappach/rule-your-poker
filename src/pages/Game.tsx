@@ -339,14 +339,30 @@ const Game = () => {
   // Trigger bot decisions when round starts
   useEffect(() => {
     if (game?.status === 'in_progress' && !game.all_decisions_in && timeLeft !== null) {
-      // Instant bot decisions for testing
-      const botDecisionTimer = setTimeout(() => {
-        makeBotDecisions(gameId!);
-      }, 100);
-
-      return () => clearTimeout(botDecisionTimer);
+      // For Holm games, only trigger when a bot has the buck
+      if (game.game_type === 'holm-game') {
+        const botWithBuck = players.find(p => p.is_bot && p.position === game.buck_position && !p.decision_locked);
+        
+        if (botWithBuck) {
+          console.log('[BOT TRIGGER] Bot has buck, will make decision after delay');
+          // Give user time to see the game state before bot acts (3 seconds)
+          const botDecisionTimer = setTimeout(() => {
+            console.log('[BOT TRIGGER] Executing bot decision');
+            makeBotDecisions(gameId!);
+          }, 3000);
+          
+          return () => clearTimeout(botDecisionTimer);
+        }
+      } else {
+        // For non-Holm games, trigger bot decisions with short delay
+        const botDecisionTimer = setTimeout(() => {
+          makeBotDecisions(gameId!);
+        }, 1000);
+        
+        return () => clearTimeout(botDecisionTimer);
+      }
     }
-  }, [game?.current_round, gameId]);
+  }, [game?.current_round, game?.buck_position, game?.status, game?.all_decisions_in, game?.game_type, players, gameId, timeLeft]);
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
