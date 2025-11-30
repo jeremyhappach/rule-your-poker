@@ -726,17 +726,26 @@ export async function proceedToNextHolmRound(gameId: string) {
 
   if (!game) return;
 
-  // Rotate buck position clockwise
+  // Rotate buck position clockwise to next active player
   const { data: players } = await supabase
     .from('players')
     .select('position')
     .eq('game_id', gameId)
+    .eq('status', 'active')
+    .eq('sitting_out', false)
     .order('position');
 
   if (!players || players.length === 0) return;
 
-  const maxPosition = Math.max(...players.map(p => p.position));
-  const newBuckPosition = game.buck_position >= maxPosition ? 1 : game.buck_position + 1;
+  // Get sorted positions of active players
+  const positions = players.map(p => p.position).sort((a, b) => a - b);
+  const currentBuckIndex = positions.indexOf(game.buck_position);
+  
+  // Find next position (wrap around if needed)
+  const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
+  const newBuckPosition = positions[nextBuckIndex];
+
+  console.log('[HOLM NEXT] Rotating buck from', game.buck_position, 'to', newBuckPosition);
 
   await supabase
     .from('games')
