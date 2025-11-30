@@ -23,13 +23,10 @@ export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndica
         setChipChange(null);
       }, 1500);
 
-      setPreviousChips(currentChips);
-
       return () => clearTimeout(timer);
-    } else if (previousChips === 0 || previousChips === currentChips) {
-      // Initialize previous chips on first render
-      setPreviousChips(currentChips);
     }
+    
+    setPreviousChips(currentChips);
   }, [currentChips, previousChips]);
 
   if (!showAnimation || chipChange === null || chipChange === 0) {
@@ -40,15 +37,11 @@ export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndica
 
   return (
     <div
-      className={`absolute -right-12 top-1/2 -translate-y-1/2 font-bold text-sm sm:text-base md:text-lg whitespace-nowrap animate-fade-in ${
+      className={`absolute -left-14 top-0 font-bold text-sm sm:text-base md:text-lg whitespace-nowrap ${
         isPositive ? "text-green-500" : "text-red-500"
       }`}
       style={{
-        animationDelay: "0s, 1.2s",
-        animationName: "fadeIn, fadeOut",
-        animationDuration: "0.3s, 0.3s",
-        animationTimingFunction: "ease-out, ease-out",
-        animationFillMode: "both"
+        animation: "fadeOut 1.5s ease-out forwards"
       }}
     >
       {isPositive ? "+" : ""}${chipChange}
