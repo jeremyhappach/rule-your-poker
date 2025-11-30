@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
-import { useState } from "react";
+import { useState, useMemo, useLayoutEffect } from "react";
 
 interface Player {
   id: string;
@@ -72,6 +72,23 @@ export const GameTable = ({
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked;
   
+  // Stabilize radius calculation to prevent flickering during rapid re-renders
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  
+  useLayoutEffect(() => {
+    const updateWidth = () => setWindowWidth(window.innerWidth);
+    updateWidth(); // Set initial value
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+  
+  const radius = useMemo(() => {
+    if (windowWidth < 480) return 32;
+    if (windowWidth < 640) return 36;
+    if (windowWidth < 1024) return 42;
+    return 48;
+  }, [windowWidth]);
+  
   // Calculate the amount loser will pay: min of pot and pot max (if enabled)
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
   
@@ -94,11 +111,6 @@ export const GameTable = ({
   
   // Combine players and open seats for rendering
   const seatsToRender = [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
-
-  // Calculate radius once for all positions to prevent flickering
-  const radius = typeof window !== 'undefined' 
-    ? window.innerWidth < 480 ? 32 : window.innerWidth < 640 ? 36 : window.innerWidth < 1024 ? 42 : 48
-    : 48;
 
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
@@ -191,7 +203,7 @@ export const GameTable = ({
               return (
                 <div
                   key={`empty-${seat.position}`}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10 cursor-pointer"
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10 cursor-pointer transition-all duration-300 ease-out"
                   style={{ left: `${x}%`, top: `${y}%` }}
                   onClick={() => onSelectSeat && onSelectSeat(seat.position)}
                 >
@@ -218,7 +230,7 @@ export const GameTable = ({
             return (
               <div
                 key={player.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10"
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10 transition-all duration-300 ease-out"
                 style={{ left: `${x}%`, top: `${y}%` }}
               >
                 <Card className={`
