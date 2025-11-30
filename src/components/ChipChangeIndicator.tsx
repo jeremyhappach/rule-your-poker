@@ -37,7 +37,7 @@ export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndica
 
   return (
     <div
-      className={`absolute -left-14 top-0 font-bold text-sm sm:text-base md:text-lg whitespace-nowrap ${
+      className={`absolute -left-10 sm:-left-12 top-0 font-bold text-[9px] sm:text-xs md:text-sm whitespace-nowrap ${
         isPositive ? "text-green-500" : "text-red-500"
       }`}
       style={{
