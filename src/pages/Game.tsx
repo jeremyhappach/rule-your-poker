@@ -347,20 +347,37 @@ const Game = () => {
   }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
+  // Using a ref to prevent multiple simultaneous timeouts
+  const proceedingToNextRoundRef = useState<boolean>(false)[0];
+  
   useEffect(() => {
-    if (game?.awaiting_next_round && gameId) {
+    if (game?.awaiting_next_round && gameId && !proceedingToNextRoundRef) {
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
       
       console.log('[AWAITING_NEXT_ROUND] Waiting 4 seconds before proceeding to next round');
       
+      // Mark that we're already processing
+      const proceedingRef = { current: true };
+      
       // Wait 4 seconds to show the result, then start next round
-      const timer = setTimeout(() => {
-        console.log('[AWAITING_NEXT_ROUND] Proceeding to next round');
-        proceedToNextRound(gameId);
+      const timer = setTimeout(async () => {
+        if (proceedingRef.current) {
+          console.log('[AWAITING_NEXT_ROUND] Proceeding to next round');
+          try {
+            await proceedToNextRound(gameId);
+          } catch (error) {
+            console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
+          }
+          proceedingRef.current = false;
+        }
       }, 4000);
       
-      return () => clearTimeout(timer);
+      return () => {
+        console.log('[AWAITING_NEXT_ROUND] Cleanup: cancelling timeout');
+        clearTimeout(timer);
+        proceedingRef.current = false;
+      };
     }
   }, [game?.awaiting_next_round, gameId]);
 
