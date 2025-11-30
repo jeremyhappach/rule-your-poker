@@ -453,7 +453,7 @@ export async function endHolmRound(gameId: string) {
     // Wait 2 seconds before dealing Chucky
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Deal Chucky's cards and store them
+    // Deal Chucky's cards and store them (but don't activate yet)
     console.log('[HOLM END] Now dealing Chucky cards...');
     const deck = shuffleDeck(createDeck());
     const chuckyCardCount = game.chucky_cards || 4;
@@ -461,21 +461,34 @@ export async function endHolmRound(gameId: string) {
 
     console.log('[HOLM END] Chucky dealt', chuckyCardCount, 'cards:', chuckyCards);
 
+    // First, store Chucky's cards WITHOUT activating (chucky_active stays false)
     const { data: chuckyResult, error: chuckyError } = await supabase
       .from('rounds')
       .update({ 
         chucky_cards: chuckyCards as any,
-        chucky_active: true 
+        chucky_active: false 
       })
       .eq('id', round.id)
       .select();
 
-    console.log('[HOLM END] Chucky cards stored:', { 
+    console.log('[HOLM END] Chucky cards stored (not yet visible):', { 
       success: !chuckyError, 
       error: chuckyError,
       updatedRows: chuckyResult?.length,
       chuckyData: chuckyResult?.[0]
     });
+
+    // Wait 2 more seconds before making Chucky visible
+    console.log('[HOLM END] Waiting 2 seconds before revealing Chucky...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Now activate Chucky to make cards visible in UI
+    await supabase
+      .from('rounds')
+      .update({ chucky_active: true })
+      .eq('id', round.id);
+    
+    console.log('[HOLM END] Chucky is now visible to players');
 
     // Brief pause before evaluation
     console.log('[HOLM END] Brief pause before showdown evaluation...');
