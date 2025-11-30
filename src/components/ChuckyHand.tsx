@@ -5,16 +5,23 @@ interface ChuckyHandProps {
   cards: CardType[];
   show: boolean;
   revealed?: number;
+  x?: number;
+  y?: number;
 }
 
-export const ChuckyHand = ({ cards, show, revealed = cards.length }: ChuckyHandProps) => {
+export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: ChuckyHandProps) => {
   if (!show || cards.length === 0) return null;
 
   // Only show the revealed cards
   const visibleCards = cards.slice(0, revealed);
 
+  // Use provided position or default to top-center
+  const positionStyle = x !== undefined && y !== undefined
+    ? { left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }
+    : { top: '2%', left: '50%', transform: 'translateX(-50%)' };
+
   return (
-    <div className="absolute top-[2%] left-1/2 -translate-x-1/2 transform z-30 animate-scale-in">
+    <div className="absolute z-30 animate-scale-in" style={positionStyle}>
       <div className="bg-gradient-to-br from-red-900/90 to-red-950/90 rounded-xl p-3 sm:p-4 backdrop-blur-sm border-2 border-red-500 shadow-2xl">
         <div className="text-center mb-2">
           <span className="text-red-400 font-bold text-sm sm:text-base flex items-center justify-center gap-2">
