@@ -170,9 +170,11 @@ export const GameTable = ({
             
             // Get cards for this player
             const actualCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
-            const shouldShowCards = player && player.status !== 'folded' && !player.sitting_out;
+            // Show card backs for all players during active round, regardless of fold status
+            // Only hide cards completely if sitting out or game is not in active decision phase
+            const shouldShowCards = player && !player.sitting_out && currentRound > 0;
             
-            // Always get the cards to show card backs, visibility controlled by isHidden prop
+            // Show actual cards or card backs based on shouldShowCards
             const cards = shouldShowCards ? actualCards : [];
             
             // Handle empty seat click
