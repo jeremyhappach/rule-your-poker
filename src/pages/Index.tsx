@@ -4,10 +4,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { GameLobby } from "@/components/GameLobby";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { UserCircle } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [currentUsername, setCurrentUsername] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -15,6 +34,7 @@ const Index = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUsername(session.user.id);
       }
     });
 
@@ -23,14 +43,107 @@ const Index = () => {
         navigate("/auth");
       } else {
         setUser(session.user);
+        fetchUsername(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const fetchUsername = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .single();
+    
+    if (data) {
+      setCurrentUsername(data.username);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  const handleUpdateUsername = async () => {
+    if (!user || !newUsername.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid username",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: newUsername.trim() })
+      .eq('id', user.id);
+
+    setIsUpdating(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update username",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCurrentUsername(newUsername.trim());
+    setNewUsername("");
+    toast({
+      title: "Success",
+      description: "Username updated successfully",
+    });
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    setIsUpdating(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmPassword("");
+    toast({
+      title: "Success",
+      description: "Password updated successfully",
+    });
   };
 
   if (!user) return null;
@@ -40,10 +153,99 @@ const Index = () => {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <h1 className="text-2xl sm:text-4xl font-bold">Peoria Home Game Poker</h1>
-          <Button variant="ghost" onClick={handleLogout} className="w-full sm:w-auto">Logout</Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowProfileDialog(true)}
+              className="w-full sm:w-auto"
+            >
+              <UserCircle className="w-4 h-4 mr-2" />
+              Profile
+            </Button>
+            <Button variant="ghost" onClick={handleLogout} className="w-full sm:w-auto">
+              Logout
+            </Button>
+          </div>
         </div>
         <GameLobby userId={user.id} />
       </div>
+
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Profile Settings</DialogTitle>
+            <DialogDescription>
+              Update your username or change your password
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Username Section */}
+            <div className="space-y-3">
+              <div className="pb-2 border-b">
+                <h3 className="font-semibold">Username</h3>
+                <p className="text-sm text-muted-foreground">Current: {currentUsername}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-username">New Username</Label>
+                <Input
+                  id="new-username"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="Enter new username"
+                />
+              </div>
+              <Button 
+                onClick={handleUpdateUsername} 
+                disabled={isUpdating || !newUsername.trim()}
+                className="w-full"
+              >
+                Update Username
+              </Button>
+            </div>
+
+            {/* Password Section */}
+            <div className="space-y-3">
+              <div className="pb-2 border-b">
+                <h3 className="font-semibold">Password</h3>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                />
+              </div>
+              <Button 
+                onClick={handleUpdatePassword} 
+                disabled={isUpdating || !newPassword || !confirmPassword}
+                className="w-full"
+              >
+                Update Password
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowProfileDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
