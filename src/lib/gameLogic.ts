@@ -278,6 +278,8 @@ export async function startRound(gameId: string, roundNumber: number) {
 }
 
 export async function makeDecision(gameId: string, playerId: string, decision: 'stay' | 'fold') {
+  console.log('[MAKE DECISION] Starting:', { gameId, playerId, decision });
+  
   // Get current game and round
   const { data: game } = await supabase
     .from('games')
@@ -285,10 +287,18 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     .eq('id', gameId)
     .single();
 
-  if (!game) throw new Error('Game not found');
+  if (!game) {
+    console.log('[MAKE DECISION] Game not found');
+    throw new Error('Game not found');
+  }
+
+  console.log('[MAKE DECISION] Game status:', game.status, 'Type:', game.game_type);
 
   const currentRound = (game.rounds as any[]).find((r: any) => r.round_number === game.current_round);
-  if (!currentRound) throw new Error('Round not found');
+  if (!currentRound) {
+    console.log('[MAKE DECISION] Round not found');
+    throw new Error('Round not found');
+  }
 
   const { data: player } = await supabase
     .from('players')
@@ -296,7 +306,12 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     .eq('id', playerId)
     .maybeSingle();
 
-  if (!player) throw new Error('Player not found');
+  if (!player) {
+    console.log('[MAKE DECISION] Player not found');
+    throw new Error('Player not found');
+  }
+
+  console.log('[MAKE DECISION] Player found:', { position: player.position, currentDecision: player.current_decision });
 
   // Lock in decision - no chips deducted yet
   if (decision === 'stay') {
@@ -307,6 +322,7 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
         decision_locked: true
       })
       .eq('id', playerId);
+    console.log('[MAKE DECISION] Stay decision locked in database');
   } else {
     await supabase
       .from('players')
@@ -316,14 +332,19 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
         status: 'folded'
       })
       .eq('id', playerId);
+    console.log('[MAKE DECISION] Fold decision locked in database');
   }
 
   // For Holm games, don't check all decisions here - buck rotation handles it
   const isHolmGame = game.game_type === 'holm-game';
+  console.log('[MAKE DECISION] Is Holm game?', isHolmGame);
+  
   if (!isHolmGame) {
     // Check if all players have decided (only for non-Holm games)
     await checkAllDecisionsIn(gameId);
   }
+  
+  console.log('[MAKE DECISION] Complete');
 }
 
 async function checkAllDecisionsIn(gameId: string) {
