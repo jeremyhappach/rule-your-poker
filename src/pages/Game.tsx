@@ -879,7 +879,7 @@ const Game = () => {
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'dealer_announcement' || game.status === 'game_over') && (
           <>
-            {game.status === 'game_over' ? (
+            {game.status === 'game_over' && game.last_round_result ? (
               <>
                 <GameTable
                   players={players}
@@ -901,13 +901,15 @@ const Game = () => {
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
                 />
-                <GameOverCountdown
-                  key={`game-over-${gameId}`}
-                  winnerMessage={game.last_round_result || 'Game over!'}
-                  nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
-                  onComplete={handleGameOverComplete}
-                  gameOverAt={game.game_over_at || new Date().toISOString()}
-                />
+                {game.game_over_at && (
+                  <GameOverCountdown
+                    key={game.game_over_at}
+                    winnerMessage={game.last_round_result}
+                    nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
+                    onComplete={handleGameOverComplete}
+                    gameOverAt={game.game_over_at}
+                  />
+                )}
               </>
             ) : game.status === 'dealer_selection' ? (
               <div className="relative">

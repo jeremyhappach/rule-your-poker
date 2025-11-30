@@ -21,6 +21,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
   const hasCompletedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   const gameOverAtRef = useRef(gameOverAt); // Capture initial gameOverAt to prevent restarts
+  const isMountedRef = useRef(true);
   
   // Keep onComplete ref updated without triggering re-renders
   useEffect(() => {
@@ -38,10 +39,16 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
 
   // Single effect to handle the countdown - runs only once on mount
   useEffect(() => {
+    isMountedRef.current = true;
     console.log('[GAME OVER COUNTDOWN] Setting up countdown timer');
     
     // Update every 100ms based on actual elapsed time
     const timer = setInterval(() => {
+      if (!isMountedRef.current) {
+        console.log('[GAME OVER COUNTDOWN] Component unmounted, skipping tick');
+        return;
+      }
+      
       const endTime = new Date(gameOverAtRef.current).getTime() + (COUNTDOWN_DURATION * 1000);
       const now = Date.now();
       const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
@@ -50,7 +57,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
       setTimeLeft(remaining);
       
       // Check if countdown is complete
-      if (remaining <= 0 && !hasCompletedRef.current) {
+      if (remaining <= 0 && !hasCompletedRef.current && isMountedRef.current) {
         console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
         hasCompletedRef.current = true;
         onCompleteRef.current();
@@ -59,6 +66,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
 
     return () => {
       console.log('[GAME OVER COUNTDOWN] Cleanup interval');
+      isMountedRef.current = false;
       clearInterval(timer);
     };
   }, []); // Empty deps - only run once on mount
