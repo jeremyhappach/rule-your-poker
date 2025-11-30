@@ -20,6 +20,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
   const COUNTDOWN_DURATION = 8; // seconds
   const hasCompletedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
+  const gameOverAtRef = useRef(gameOverAt); // Capture initial gameOverAt to prevent restarts
   
   // Keep onComplete ref updated without triggering re-renders
   useEffect(() => {
@@ -28,20 +29,20 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
   
   const [timeLeft, setTimeLeft] = useState(() => {
     // Calculate initial time left based on timestamp
-    const endTime = new Date(gameOverAt).getTime() + (COUNTDOWN_DURATION * 1000);
+    const endTime = new Date(gameOverAtRef.current).getTime() + (COUNTDOWN_DURATION * 1000);
     const now = Date.now();
     const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
-    console.log('[GAME OVER COUNTDOWN] Initial calculation:', { gameOverAt, endTime, now, remaining });
+    console.log('[GAME OVER COUNTDOWN] Initial calculation:', { gameOverAt: gameOverAtRef.current, endTime, now, remaining });
     return remaining;
   });
 
-  // Single effect to handle the countdown - no timeLeft dependency to avoid recreating interval
+  // Single effect to handle the countdown - runs only once on mount
   useEffect(() => {
     console.log('[GAME OVER COUNTDOWN] Setting up countdown timer');
     
     // Update every 100ms based on actual elapsed time
     const timer = setInterval(() => {
-      const endTime = new Date(gameOverAt).getTime() + (COUNTDOWN_DURATION * 1000);
+      const endTime = new Date(gameOverAtRef.current).getTime() + (COUNTDOWN_DURATION * 1000);
       const now = Date.now();
       const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
       
@@ -60,7 +61,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
       console.log('[GAME OVER COUNTDOWN] Cleanup interval');
       clearInterval(timer);
     };
-  }, [gameOverAt, COUNTDOWN_DURATION]); // Only depend on gameOverAt and duration, not timeLeft
+  }, []); // Empty deps - only run once on mount
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 
