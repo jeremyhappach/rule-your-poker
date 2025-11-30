@@ -2,6 +2,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 /**
+ * Rotate buck to next player after a decision in Holm game
+ * Also check if all players have decided
+ */
+export async function rotateBuck(gameId: string) {
+  console.log('[HOLM] Rotating buck');
+  
+  const { data: game } = await supabase
+    .from('games')
+    .select('buck_position')
+    .eq('id', gameId)
+    .single();
+    
+  if (!game) return;
+  
+  const { data: players } = await supabase
+    .from('players')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('status', 'active')
+    .eq('sitting_out', false)
+    .order('position');
+    
+  if (!players || players.length === 0) return;
+  
+  // Check if all players have decided
+  const allDecided = players.every(p => p.decision_locked);
+  
+  if (allDecided) {
+    console.log('[HOLM] All players decided, setting all_decisions_in flag');
+    await supabase
+      .from('games')
+      .update({ all_decisions_in: true })
+      .eq('id', gameId);
+    
+    // End the round
+    await endHolmRound(gameId);
+    return;
+  }
+  
+  const positions = players.map(p => p.position).sort((a, b) => a - b);
+  const currentBuckIndex = positions.indexOf(game.buck_position);
+  
+  // Find next position (wrap around)
+  const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
+  const nextBuckPosition = positions[nextBuckIndex];
+  
+  await supabase
+    .from('games')
+    .update({ buck_position: nextBuckPosition })
+    .eq('id', gameId);
+    
+  console.log('[HOLM] Buck rotated from', game.buck_position, 'to', nextBuckPosition);
+}
+
+
+/**
  * Start a Holm game round
  * - Each player gets 4 cards
  * - 4 community cards (2 visible, 2 hidden initially)
@@ -22,7 +78,21 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   }
 
   const anteAmount = gameConfig.ante_amount || 2;
-  const buckPosition = gameConfig.buck_position || 1;
+  const dealerPosition = gameConfig.dealer_position || 1;
+  
+  // Buck starts one position to the left of dealer
+  // If we have 7 seats and dealer is at position 1, buck starts at position 7
+  const { data: allPlayers } = await supabase
+    .from('players')
+    .select('position')
+    .eq('game_id', gameId)
+    .order('position');
+  
+  const maxPosition = allPlayers && allPlayers.length > 0 
+    ? Math.max(...allPlayers.map(p => p.position))
+    : 7;
+  
+  const buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
 
   // Get all active players who aren't sitting out
   const { data: players } = await supabase
@@ -130,13 +200,15 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       });
   }
 
-  // Update game status
+  // Update game status and set buck position
   await supabase
     .from('games')
     .update({
       status: 'in_progress',
       current_round: roundNumber,
-      pot: initialPot
+      pot: initialPot,
+      buck_position: buckPosition,
+      all_decisions_in: false
     })
     .eq('id', gameId);
 

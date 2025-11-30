@@ -749,6 +749,12 @@ const Game = () => {
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'stay');
+      
+      // In Holm game, rotate buck after decision
+      if (game?.game_type === 'holm-game') {
+        const { rotateBuck } = await import('@/lib/holmGameLogic');
+        await rotateBuck(gameId);
+      }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
     }
@@ -762,6 +768,12 @@ const Game = () => {
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
+      
+      // In Holm game, rotate buck after decision
+      if (game?.game_type === 'holm-game') {
+        const { rotateBuck } = await import('@/lib/holmGameLogic');
+        await rotateBuck(gameId);
+      }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
     }

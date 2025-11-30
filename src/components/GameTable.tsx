@@ -206,7 +206,14 @@ export const GameTable = ({
             const player = !isEmptySeat ? seat as Player : null;
             const isCurrentUser = player?.user_id === currentUserId;
             const hasPlayerDecided = player?.decision_locked;
-            const playerDecision = allDecisionsIn ? player?.current_decision : null;
+            // For Holm game, show decisions immediately. For other games, wait for all decisions
+            const playerDecision = gameType === 'holm-game' 
+              ? player?.current_decision 
+              : (allDecisionsIn ? player?.current_decision : null);
+            
+            // In Holm game, only the player with the buck can make decisions
+            const hasBuck = gameType === 'holm-game' && buckPosition === player?.position;
+            const isWaitingForBuck = gameType === 'holm-game' && !hasBuck && !hasPlayerDecided;
             
             // Use seat position (1-7) for stable angle calculation
             const seatPosition = seat.position;
@@ -329,11 +336,20 @@ export const GameTable = ({
                           </div>
                         )}
                         
-                        {/* Hand evaluation hint - only for current user */}
-                        {isCurrentUser && cards.length > 0 && (
+                        {/* Hand evaluation hint - only for current user in non-Holm games */}
+                        {isCurrentUser && cards.length > 0 && gameType !== 'holm-game' && (
                           <div className="bg-poker-gold/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[7px] sm:text-[8px] md:text-[10px] font-bold">
                               {formatHandRank(evaluateHand(cards).rank)}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Waiting for buck indicator in Holm game */}
+                        {isWaitingForBuck && (
+                          <div className="bg-blue-500/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-blue-500/40">
+                            <span className="text-blue-300 text-[7px] sm:text-[8px] md:text-[10px] font-bold">
+                              Waiting...
                             </span>
                           </div>
                         )}
@@ -362,7 +378,8 @@ export const GameTable = ({
                       {/* Action buttons and chip stack row */}
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {/* Fold button (left) */}
-                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
+                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
+                         (gameType === 'holm-game' ? hasBuck : !allDecisionsIn) ? (
                           <Button 
                             variant="destructive" 
                             size="sm"
@@ -383,7 +400,8 @@ export const GameTable = ({
                         </div>
                         
                         {/* Stay button (right) */}
-                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
+                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
+                         (gameType === 'holm-game' ? hasBuck : !allDecisionsIn) ? (
                           <Button 
                             size="sm"
                             onClick={onStay}

@@ -11,11 +11,6 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
 
   return (
     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-      <div className="text-center mb-2">
-        <span className="text-poker-gold font-semibold text-sm bg-black/50 px-3 py-1 rounded-full">
-          Community Cards
-        </span>
-      </div>
       <div className="flex gap-2">
         {cards.map((card, index) => {
           const isRevealed = index < revealed;
