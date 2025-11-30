@@ -489,7 +489,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Players start at $0 and can go into debt. Get 3 legs to win!
+              Start a dealer call-it home game session. Players begin at $0 and can go into debt. The dealer will select the game type and configure rules once the game starts.
             </p>
           </div>
           <DialogFooter>

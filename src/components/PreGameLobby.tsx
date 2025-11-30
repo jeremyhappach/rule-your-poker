@@ -85,33 +85,18 @@ export const PreGameLobby = ({
         {/* Default Values Box */}
         <Card className="bg-gradient-to-br from-poker-felt to-poker-felt-dark border-amber-900">
           <CardHeader>
-            <CardTitle className="text-poker-gold">Default Game Values</CardTitle>
+            <CardTitle className="text-poker-gold">Game Setup</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-amber-950/50 rounded border border-amber-800">
-                <span className="text-amber-100">Ante Amount</span>
-                <span className="text-poker-gold font-bold">$2</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-amber-950/50 rounded border border-amber-800">
-                <span className="text-amber-100">Leg Value</span>
-                <span className="text-poker-gold font-bold">$1</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-amber-950/50 rounded border border-amber-800">
-                <span className="text-amber-100">Pussy Tax</span>
-                <span className="text-poker-gold font-bold">$1</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-amber-950/50 rounded border border-amber-800">
-                <span className="text-amber-100">Legs to Win</span>
-                <span className="text-poker-gold font-bold">3</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-amber-950/50 rounded border border-amber-800">
-                <span className="text-amber-100">Pot Maximum</span>
-                <span className="text-poker-gold font-bold">$10</span>
+              <div className="text-center py-6 px-4">
+                <p className="text-amber-100 text-sm leading-relaxed">
+                  Once the game starts, the dealer will select the game type and configure all game rules including ante, betting limits, and win conditions.
+                </p>
               </div>
               <div className="pt-2 border-t border-amber-800">
-                <p className="text-xs text-amber-300/70 text-center">
-                  Dealer will configure these values when game starts
+                <p className="text-xs text-amber-300/70 text-center font-semibold">
+                  Dealer call-it home game poker
                 </p>
               </div>
             </div>
