@@ -6,7 +6,7 @@ import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from
  * Also check if all players have decided
  */
 export async function rotateBuck(gameId: string) {
-  console.log('[HOLM] Rotating buck');
+  console.log('[HOLM BUCK] Starting buck rotation for game:', gameId);
   
   const { data: game } = await supabase
     .from('games')
@@ -14,7 +14,12 @@ export async function rotateBuck(gameId: string) {
     .eq('id', gameId)
     .single();
     
-  if (!game) return;
+  if (!game) {
+    console.log('[HOLM BUCK] Game not found');
+    return;
+  }
+  
+  console.log('[HOLM BUCK] Current buck position:', game.buck_position);
   
   const { data: players } = await supabase
     .from('players')
@@ -24,13 +29,24 @@ export async function rotateBuck(gameId: string) {
     .eq('sitting_out', false)
     .order('position');
     
-  if (!players || players.length === 0) return;
+  if (!players || players.length === 0) {
+    console.log('[HOLM BUCK] No active players found');
+    return;
+  }
+  
+  console.log('[HOLM BUCK] Players:', players.map(p => ({
+    position: p.position,
+    decided: p.decision_locked,
+    decision: p.current_decision
+  })));
   
   // Check if all players have decided
   const allDecided = players.every(p => p.decision_locked);
   
+  console.log('[HOLM BUCK] All players decided?', allDecided);
+  
   if (allDecided) {
-    console.log('[HOLM] All players decided, setting all_decisions_in flag');
+    console.log('[HOLM BUCK] All players decided, setting all_decisions_in flag and calling endHolmRound');
     await supabase
       .from('games')
       .update({ all_decisions_in: true })
@@ -45,6 +61,8 @@ export async function rotateBuck(gameId: string) {
   const positions = players.map(p => p.position).sort((a, b) => a - b);
   const currentBuckIndex = positions.indexOf(game.buck_position);
   
+  console.log('[HOLM BUCK] Finding next undecided player. Current index:', currentBuckIndex, 'Positions:', positions);
+  
   // Find next undecided player (wrap around)
   let nextBuckIndex = (currentBuckIndex + 1) % positions.length;
   let attempts = 0;
@@ -53,14 +71,17 @@ export async function rotateBuck(gameId: string) {
     const nextPosition = positions[nextBuckIndex];
     const nextPlayer = players.find(p => p.position === nextPosition);
     
+    console.log('[HOLM BUCK] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked);
+    
     if (nextPlayer && !nextPlayer.decision_locked) {
       // Found next undecided player
+      console.log('[HOLM BUCK] Found next undecided player at position:', nextPosition);
       await supabase
         .from('games')
         .update({ buck_position: nextPosition })
         .eq('id', gameId);
         
-      console.log('[HOLM] Buck rotated from', game.buck_position, 'to', nextPosition);
+      console.log('[HOLM BUCK] Buck rotated from', game.buck_position, 'to', nextPosition);
       return;
     }
     
@@ -70,7 +91,7 @@ export async function rotateBuck(gameId: string) {
   }
   
   // If we get here, all players have decided (shouldn't happen but just in case)
-  console.log('[HOLM] No undecided players found during rotation');
+  console.log('[HOLM BUCK] No undecided players found during rotation, ending round');
   await supabase
     .from('games')
     .update({ all_decisions_in: true })
@@ -251,7 +272,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
  * - Wait before evaluation
  */
 export async function endHolmRound(gameId: string) {
-  console.log('[HOLM] Ending Holm round for game', gameId);
+  console.log('[HOLM END] ========== Starting endHolmRound for game:', gameId, '==========');
 
   const { data: game } = await supabase
     .from('games')
@@ -259,7 +280,16 @@ export async function endHolmRound(gameId: string) {
     .eq('id', gameId)
     .single();
 
-  if (!game) return;
+  if (!game) {
+    console.log('[HOLM END] ERROR: Game not found');
+    return;
+  }
+
+  console.log('[HOLM END] Game data:', {
+    current_round: game.current_round,
+    pot: game.pot,
+    status: game.status
+  });
 
   const { data: round } = await supabase
     .from('rounds')
@@ -268,7 +298,17 @@ export async function endHolmRound(gameId: string) {
     .eq('round_number', game.current_round)
     .single();
 
-  if (!round) return;
+  if (!round) {
+    console.log('[HOLM END] ERROR: Round not found for round_number:', game.current_round);
+    return;
+  }
+
+  console.log('[HOLM END] Round data:', {
+    id: round.id,
+    status: round.status,
+    community_cards_revealed: round.community_cards_revealed,
+    chucky_active: round.chucky_active
+  });
 
   // Get all players and their decisions
   const { data: players } = await supabase
@@ -277,13 +317,24 @@ export async function endHolmRound(gameId: string) {
     .eq('game_id', gameId)
     .order('position');
 
-  if (!players) return;
+  if (!players) {
+    console.log('[HOLM END] ERROR: No players found');
+    return;
+  }
 
   const stayedPlayers = players.filter(p => p.current_decision === 'stay');
   const activePlayers = players.filter(p => p.status === 'active' && !p.sitting_out);
 
+  console.log('[HOLM END] Player decisions:', {
+    total: players.length,
+    stayed: stayedPlayers.length,
+    folded: players.length - stayedPlayers.length,
+    stayedPositions: stayedPlayers.map(p => p.position)
+  });
+
   // Case 1: Everyone folded - pussy tax
   if (stayedPlayers.length === 0) {
+    console.log('[HOLM END] Case 1: Everyone folded, applying pussy tax');
     const pussyTaxEnabled = game.pussy_tax_enabled ?? true;
     const pussyTaxAmount = pussyTaxEnabled ? (game.pussy_tax_value || 1) : 0;
     
@@ -303,6 +354,8 @@ export async function endHolmRound(gameId: string) {
       ? `Everyone folded! Pussy tax of $${pussyTaxAmount} per player charged. Pot now $${newPot}.`
       : 'Everyone folded! No penalty.';
 
+    console.log('[HOLM END] Updating game with pussy tax result:', resultMessage);
+
     await supabase
       .from('games')
       .update({
@@ -317,38 +370,60 @@ export async function endHolmRound(gameId: string) {
       .update({ status: 'completed' })
       .eq('id', round.id);
 
+    console.log('[HOLM END] Pussy tax case completed');
     return;
   }
 
   // Reveal all 4 community cards first
-  await supabase
+  console.log('[HOLM END] Revealing all 4 community cards...');
+  const { data: revealResult, error: revealError } = await supabase
     .from('rounds')
     .update({ community_cards_revealed: 4 })
-    .eq('id', round.id);
+    .eq('id', round.id)
+    .select();
+
+  console.log('[HOLM END] Community cards reveal result:', { 
+    success: !revealError, 
+    error: revealError,
+    updatedRows: revealResult?.length 
+  });
 
   // Deal Chucky's cards and store them
+  console.log('[HOLM END] Dealing Chucky cards...');
   const deck = shuffleDeck(createDeck());
   const chuckyCardCount = game.chucky_cards || 4;
   const chuckyCards = deck.slice(0, chuckyCardCount);
 
-  await supabase
+  console.log('[HOLM END] Chucky dealt', chuckyCardCount, 'cards:', chuckyCards);
+
+  const { data: chuckyResult, error: chuckyError } = await supabase
     .from('rounds')
     .update({ 
       chucky_cards: chuckyCards as any,
       chucky_active: true 
     })
-    .eq('id', round.id);
+    .eq('id', round.id)
+    .select();
+
+  console.log('[HOLM END] Chucky cards stored:', { 
+    success: !chuckyError, 
+    error: chuckyError,
+    updatedRows: chuckyResult?.length 
+  });
 
   // Wait 2 seconds for dramatic effect
+  console.log('[HOLM END] Waiting 2 seconds before showdown...');
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
+    console.log('[HOLM END] Case 2: Single player vs Chucky');
     await handleChuckyShowdown(gameId, round.id, stayedPlayers[0], round.community_cards as unknown as Card[], game, chuckyCards);
     return;
   }
 
   // Case 3: Multiple players stayed - showdown
+  console.log('[HOLM END] Case 3: Multi-player showdown');
   await handleMultiPlayerShowdown(gameId, round.id, stayedPlayers, round.community_cards as unknown as Card[], game);
 }
 
@@ -363,7 +438,10 @@ async function handleChuckyShowdown(
   game: any,
   chuckyCards: Card[]
 ) {
-  console.log('[HOLM] Player vs Chucky showdown');
+  console.log('[HOLM SHOWDOWN] ========== Starting Chucky showdown ==========');
+  console.log('[HOLM SHOWDOWN] Player:', player.id, 'position:', player.position);
+  console.log('[HOLM SHOWDOWN] Chucky cards:', chuckyCards);
+  console.log('[HOLM SHOWDOWN] Community cards:', communityCards);
 
   // Get player's cards
   const { data: playerCardsData } = await supabase
@@ -373,20 +451,33 @@ async function handleChuckyShowdown(
     .eq('round_id', roundId)
     .single();
 
-  if (!playerCardsData) return;
+  if (!playerCardsData) {
+    console.log('[HOLM SHOWDOWN] ERROR: Player cards not found');
+    return;
+  }
 
   const playerCards = playerCardsData.cards as unknown as Card[];
+  console.log('[HOLM SHOWDOWN] Player cards:', playerCards);
 
   // Evaluate hands (best 5 from 4 player + 4 community for player, best 5 from X chucky + 4 community for chucky)
   const playerAllCards = [...playerCards, ...communityCards];
   const chuckyAllCards = [...chuckyCards, ...communityCards];
 
+  console.log('[HOLM SHOWDOWN] Player all cards:', playerAllCards);
+  console.log('[HOLM SHOWDOWN] Chucky all cards:', chuckyAllCards);
+
   const playerEval = evaluateHand(playerAllCards);
   const chuckyEval = evaluateHand(chuckyAllCards);
 
+  console.log('[HOLM SHOWDOWN] Player hand:', formatHandRank(playerEval.rank), 'value:', playerEval.value);
+  console.log('[HOLM SHOWDOWN] Chucky hand:', formatHandRank(chuckyEval.rank), 'value:', chuckyEval.value);
+
   const playerWins = playerEval.value > chuckyEval.value;
 
+  console.log('[HOLM SHOWDOWN] Winner:', playerWins ? 'Player' : 'Chucky');
+
   if (playerWins) {
+    console.log('[HOLM SHOWDOWN] Player wins! Pot:', game.pot);
     // Player beats Chucky - game over, player wins
     await supabase
       .from('players')
@@ -403,10 +494,13 @@ async function handleChuckyShowdown(
       })
       .eq('id', gameId);
   } else {
+    console.log('[HOLM SHOWDOWN] Chucky wins!');
     // Chucky wins - player matches pot (capped)
     const potMatchAmount = game.pot_max_enabled 
       ? Math.min(game.pot, game.pot_max_value) 
       : game.pot;
+
+    console.log('[HOLM SHOWDOWN] Pot match amount:', potMatchAmount);
 
     await supabase
       .from('players')
@@ -414,6 +508,8 @@ async function handleChuckyShowdown(
       .eq('id', player.id);
 
     const newPot = game.pot + potMatchAmount;
+
+    console.log('[HOLM SHOWDOWN] New pot:', newPot);
 
     await supabase
       .from('games')
@@ -430,6 +526,8 @@ async function handleChuckyShowdown(
     .from('rounds')
     .update({ status: 'completed' })
     .eq('id', roundId);
+
+  console.log('[HOLM SHOWDOWN] Showdown complete');
 }
 
 /**
