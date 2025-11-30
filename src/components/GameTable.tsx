@@ -151,9 +151,6 @@ export const GameTable = ({
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
                         <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</p>
                       </div>
-                      <Badge className="mt-0.5 sm:mt-1 bg-poker-gold text-black border-0 shadow-lg text-[8px] sm:text-[10px] md:text-xs">
-                        R{currentRound} - {currentRound === 1 ? '3' : currentRound === 2 ? '5' : '7'}
-                      </Badge>
                       <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 sm:mt-1 font-semibold">Lose: ${loseAmount}</p>
                     </div>
                   </div>
