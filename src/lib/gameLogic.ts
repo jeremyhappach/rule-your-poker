@@ -421,6 +421,109 @@ export async function autoFoldUndecided(gameId: string) {
 }
 
 
+// Centralized game-over handler to ensure consistency
+async function handleGameOver(
+  gameId: string,
+  winnerId: string,
+  winnerUsername: string,
+  winnerLegs: number,
+  allPlayers: any[],
+  currentPot: number,
+  legValue: number,
+  legsToWin: number,
+  currentDealerPosition: number
+) {
+  console.log('[HANDLE GAME OVER] Starting game over handler', { winnerId, winnerUsername, winnerLegs });
+  
+  // Calculate total leg value from all players
+  const totalLegValue = allPlayers.reduce((sum, p) => {
+    const playerLegs = p.id === winnerId ? winnerLegs : p.legs;
+    return sum + (playerLegs * legValue);
+  }, 0);
+  
+  // Winner gets pot + total leg value
+  const totalPrize = currentPot + totalLegValue;
+  
+  console.log('[HANDLE GAME OVER] Awarding prize:', { currentPot, totalLegValue, totalPrize });
+  
+  // Award the winner
+  await supabase
+    .from('players')
+    .update({ chips: allPlayers.find(p => p.id === winnerId)!.chips + totalPrize })
+    .eq('id', winnerId);
+  
+  const gameWinMessage = `🏆 ${winnerUsername} won the game with ${winnerLegs} legs! (+$${totalPrize}: $${currentPot} pot + $${totalLegValue} legs)`;
+  
+  // Reset all players' legs for new game and keep chips
+  await supabase
+    .from('players')
+    .update({ 
+      legs: 0,
+      status: 'active',
+      current_decision: null,
+      decision_locked: false,
+      sitting_out: false,
+      ante_decision: null
+    })
+    .eq('game_id', gameId);
+  
+  // Calculate next dealer (clockwise from current dealer) - skip bots
+  let nextDealerPosition = currentDealerPosition;
+  for (let i = 0; i < allPlayers.length; i++) {
+    nextDealerPosition = nextDealerPosition >= allPlayers.length ? 1 : nextDealerPosition + 1;
+    const nextPlayer = allPlayers.find(p => p.position === nextDealerPosition);
+    if (nextPlayer && !nextPlayer.is_bot) {
+      break;
+    }
+  }
+  
+  console.log('[HANDLE GAME OVER] Next dealer position:', nextDealerPosition);
+  
+  // Check if session should end AFTER awarding prizes
+  const { data: sessionData } = await supabase
+    .from('games')
+    .select('pending_session_end, current_round')
+    .eq('id', gameId)
+    .single();
+  
+  if (sessionData?.pending_session_end) {
+    console.log('[HANDLE GAME OVER] Session ending - marking as session_ended');
+    await supabase
+      .from('games')
+      .update({
+        status: 'session_ended',
+        session_ended_at: new Date().toISOString(),
+        total_hands: sessionData.current_round || 0,
+        pending_session_end: false,
+        last_round_result: gameWinMessage,
+        pot: 0
+      })
+      .eq('id', gameId);
+    
+    console.log('[HANDLE GAME OVER] Session ended successfully');
+    return;
+  }
+  
+  console.log('[HANDLE GAME OVER] Setting game_over status');
+  
+  // Update game to game_over status - SINGLE atomic update with ALL required fields
+  await supabase
+    .from('games')
+    .update({ 
+      status: 'game_over',
+      dealer_position: nextDealerPosition,
+      current_round: null,
+      awaiting_next_round: false,
+      all_decisions_in: false,
+      last_round_result: gameWinMessage,
+      game_over_at: new Date().toISOString(),
+      pot: 0  // Critical: always reset pot
+    })
+    .eq('id', gameId);
+  
+  console.log('[HANDLE GAME OVER] Game over setup complete');
+}
+
 export async function endRound(gameId: string) {
   console.log('[endRound] Starting endRound for game:', gameId);
   
@@ -534,110 +637,22 @@ export async function endRound(gameId: string) {
     
     // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
-      console.log('Player won the game!', { username, newLegCount, legsToWin, playerId: soloStayer.id });
+      console.log('[SOLO WIN] Player won the game!', { username, newLegCount, legsToWin, playerId: soloStayer.id });
       
-      // Calculate total leg value across all players BEFORE resetting
-      const totalLegValue = allPlayers.reduce((sum, p) => {
-        // Use newLegCount for the winner, current legs for others
-        const playerLegs = p.id === soloStayer.id ? newLegCount : p.legs;
-        return sum + (playerLegs * legValue);
-      }, 0);
+      // Use centralized game-over handler
+      await handleGameOver(
+        gameId,
+        soloStayer.id,
+        username,
+        newLegCount,
+        allPlayers,
+        game.pot || 0,
+        legValue,
+        legsToWin,
+        game.dealer_position || 1
+      );
       
-      console.log('Total leg value calculated:', { totalLegValue });
-      
-      // Winner gets the pot PLUS total leg value from all players
-      const potValue = game.pot || 0;
-      const totalPrize = potValue + totalLegValue;
-      
-      console.log('Awarding prize:', { potValue, totalLegValue, totalPrize });
-      
-      // Award the winner
-      await supabase
-        .from('players')
-        .update({ 
-          chips: newChips + totalPrize
-        })
-        .eq('id', soloStayer.id);
-      
-      const gameWinMessage = `🏆 ${username} won the game with ${newLegCount} legs! (+$${totalPrize}: $${potValue} pot + $${totalLegValue} legs)`;
-      
-      // Calculate next dealer (clockwise from current dealer) - skip bots
-      const humanPlayers = allPlayers.filter(p => !p.is_bot);
-      const currentDealerPosition = game.dealer_position || 1;
-      
-      // Find next human player after current dealer
-      let nextDealerPosition = currentDealerPosition;
-      for (let i = 0; i < allPlayers.length; i++) {
-        nextDealerPosition = nextDealerPosition >= allPlayers.length ? 1 : nextDealerPosition + 1;
-        const nextPlayer = allPlayers.find(p => p.position === nextDealerPosition);
-        if (nextPlayer && !nextPlayer.is_bot) {
-          break;
-        }
-      }
-      
-      // Reset all players' legs for new game and keep chips
-      await supabase
-        .from('players')
-        .update({ 
-          legs: 0,
-          status: 'active',
-          current_decision: null,
-          decision_locked: false,
-          sitting_out: false,
-          ante_decision: null
-        })
-        .eq('game_id', gameId);
-      
-      // Check if session should end AFTER awarding prizes
-      const { data: gameData } = await supabase
-        .from('games')
-        .select('pending_session_end, current_round')
-        .eq('id', gameId)
-        .single();
-      
-      if (gameData?.pending_session_end) {
-        console.log('Session ending after game win - marking as session_ended');
-        await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            session_ended_at: new Date().toISOString(),
-            total_hands: gameData.current_round || 0,
-            pending_session_end: false,
-            last_round_result: gameWinMessage,
-            pot: 0
-          })
-          .eq('id', gameId);
-        
-        console.log('Session ended successfully after prizes awarded');
-        return; // Exit early, session is ended
-      }
-      
-      console.log('Updating game to game_over status', { nextDealerPosition, gameWinMessage });
-      
-      // Update game to game_over status with 5 second delay before moving to configuration
-      const { error: gameOverError } = await supabase
-        .from('games')
-        .update({ 
-          status: 'game_over',
-          dealer_position: nextDealerPosition,
-          current_round: null,
-          awaiting_next_round: false,
-          all_decisions_in: false,
-          last_round_result: gameWinMessage,
-          pot: 0,  // Clear pot here too
-          game_over_at: new Date().toISOString()
-        })
-        .eq('id', gameId);
-        
-      if (gameOverError) {
-        console.error('Error updating game to game_over:', gameOverError);
-      } else {
-        console.log('Successfully updated game to game_over');
-      }
-        
-      console.log('Game over setup complete');
-      return; // Exit early, starting new game
+      return; // Exit early, game over handled
     }
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands for showdown
@@ -722,106 +737,29 @@ export async function endRound(gameId: string) {
     const gameWinner = updatedPlayers?.find(p => p.legs >= legsToWin);
 
     if (gameWinner) {
-      // Someone won the game - calculate total leg value across all players
-      const winnerUsername = gameWinner.profiles?.username || `Player ${gameWinner.position}`;
+      console.log('[SHOWDOWN WIN] Player won the game!', { winnerId: gameWinner.id, legs: gameWinner.legs });
       
-      // Get current pot
+      // Get current game data for pot and dealer position
       const { data: currentGameData } = await supabase
         .from('games')
         .select('pot, dealer_position')
         .eq('id', gameId)
         .single();
       
-      const currentPot = currentGameData?.pot || 0;
-      const currentDealerPosition = currentGameData?.dealer_position || 1;
+      const winnerUsername = gameWinner.profiles?.username || `Player ${gameWinner.position}`;
       
-      // Calculate total leg value from all players
-      const totalLegValue = updatedPlayers.reduce((sum, p) => sum + (p.legs * legValue), 0);
-      
-      // Winner gets pot + total leg value
-      const totalPrize = currentPot + totalLegValue;
-      
-      // Award the winner
-      await supabase
-        .from('players')
-        .update({ 
-          chips: gameWinner.chips + totalPrize
-        })
-        .eq('id', gameWinner.id);
-      
-      // Clear the pot
-      await supabase
-        .from('games')
-        .update({ pot: 0 })
-        .eq('id', gameId);
-      
-      const gameWinMessage = `🏆 ${winnerUsername} won the game with ${gameWinner.legs} legs! (+$${totalPrize}: $${currentPot} pot + $${totalLegValue} legs)`;
-      
-      // Reset all players' legs for new game and keep chips
-      await supabase
-        .from('players')
-        .update({ 
-          legs: 0,
-          status: 'active',
-          current_decision: null,
-          decision_locked: false,
-          sitting_out: false,
-          ante_decision: null
-        })
-        .eq('game_id', gameId);
-      
-      // Calculate next dealer (clockwise from current dealer) - skip bots
-      const humanPlayers = updatedPlayers?.filter(p => !p.is_bot) || [];
-      
-      // Find next human player after current dealer
-      let nextDealerPosition = currentDealerPosition;
-      for (let i = 0; i < (updatedPlayers?.length || 0); i++) {
-        nextDealerPosition = nextDealerPosition >= (updatedPlayers?.length || 0) ? 1 : nextDealerPosition + 1;
-        const nextPlayer = updatedPlayers?.find(p => p.position === nextDealerPosition);
-        if (nextPlayer && !nextPlayer.is_bot) {
-          break;
-        }
-      }
-      
-      // Check if session should end AFTER awarding prizes
-      const { data: sessionData } = await supabase
-        .from('games')
-        .select('pending_session_end, current_round')
-        .eq('id', gameId)
-        .single();
-      
-      if (sessionData?.pending_session_end) {
-        console.log('Session ending after showdown win - marking as session_ended');
-        await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            session_ended_at: new Date().toISOString(),
-            total_hands: sessionData.current_round || 0,
-            pending_session_end: false,
-            last_round_result: gameWinMessage
-          })
-          .eq('id', gameId);
-        
-        console.log('Session ended successfully after prizes awarded');
-        return; // Exit early, session is ended
-      }
-      
-      // Update game to game_over status with countdown before moving to configuration
-      // Frontend will handle the 8-second delay to show results
-      await supabase
-        .from('games')
-        .update({ 
-          status: 'game_over',
-          dealer_position: nextDealerPosition,
-          current_round: null,
-          awaiting_next_round: false,
-          all_decisions_in: false,
-          last_round_result: gameWinMessage,
-          game_over_at: new Date().toISOString(),
-          pot: 0
-        })
-        .eq('id', gameId);
+      // Use centralized game-over handler
+      await handleGameOver(
+        gameId,
+        gameWinner.id,
+        winnerUsername,
+        gameWinner.legs,
+        updatedPlayers || [],
+        currentGameData?.pot || 0,
+        legValue,
+        legsToWin,
+        currentGameData?.dealer_position || 1
+      );
     } else {
       // Continue to next round - cycle back to round 1 after round 3
       const nextRound = currentRound < 3 ? currentRound + 1 : 1;
