@@ -734,56 +734,22 @@ export async function endRound(gameId: string) {
       }
     }
 
-    // Check if anyone has won the required number of legs
-    const { data: updatedPlayers } = await supabase
-      .from('players')
-      .select('*, profiles(username)')
-      .eq('game_id', gameId);
-
-    const gameWinner = updatedPlayers?.find(p => p.legs >= legsToWin);
-
-    if (gameWinner) {
-      console.log('[SHOWDOWN WIN] Player won the game!', { winnerId: gameWinner.id, legs: gameWinner.legs });
-      
-      // Get current game data for pot and dealer position
-      const { data: currentGameData } = await supabase
-        .from('games')
-        .select('pot, dealer_position')
-        .eq('id', gameId)
-        .single();
-      
-      const winnerUsername = gameWinner.profiles?.username || `Player ${gameWinner.position}`;
-      
-      // Use centralized game-over handler
-      await handleGameOver(
-        gameId,
-        gameWinner.id,
-        winnerUsername,
-        gameWinner.legs,
-        updatedPlayers || [],
-        currentGameData?.pot || 0,
-        legValue,
-        legsToWin,
-        currentGameData?.dealer_position || 1
-      );
-      
-      return; // CRITICAL: Exit early, game over handled
-    } else {
-      // Continue to next round - cycle back to round 1 after round 3
-      const nextRound = currentRound < 3 ? currentRound + 1 : 1;
-      
-      // Set game to await next round with result visible
-      // Frontend will handle the 4-second delay before starting next round
-      await supabase
-        .from('games')
-        .update({ 
-          awaiting_next_round: true,
-          next_round_number: nextRound,
-          last_round_result: resultMessage  // Set result message here atomically
-          // proceedToNextRound will clear it after 4 seconds
-        })
-        .eq('id', gameId);
-    }
+    // Showdowns never end the game - continue to next round
+    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    
+    // Set game to await next round with result visible
+    // Frontend will handle the 4-second delay before starting next round
+    await supabase
+      .from('games')
+      .update({ 
+        awaiting_next_round: true,
+        next_round_number: nextRound,
+        last_round_result: resultMessage  // Set result message here atomically
+        // proceedToNextRound will clear it after 4 seconds
+      })
+      .eq('id', gameId);
+    
+    return; // Exit after showdown handling
   } else {
     // Everyone folded - apply pussy tax if enabled
     if (pussyTaxEnabled) {
