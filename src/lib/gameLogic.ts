@@ -798,7 +798,7 @@ export async function endRound(gameId: string) {
         })
         .eq('id', gameId);
       
-      resultMessage = `PUSSY TAX INCURRED! ($${pussyTaxValue})`;
+      resultMessage = `PUSSY TAX!`;
     } else {
       resultMessage = 'Everyone folded - no winner';
     }
