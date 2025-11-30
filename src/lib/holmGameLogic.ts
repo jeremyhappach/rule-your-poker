@@ -37,6 +37,19 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     throw new Error('No active players found');
   }
 
+  // Check if round already exists to prevent duplicates
+  const { data: existingRound } = await supabase
+    .from('rounds')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('round_number', roundNumber)
+    .single();
+
+  if (existingRound) {
+    console.log('[HOLM] Round', roundNumber, 'already exists, skipping creation');
+    return;
+  }
+
   // Reset player decisions
   await supabase
     .from('players')
@@ -77,6 +90,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .single();
 
   if (roundError || !round) {
+    console.error('[HOLM] Failed to create round:', roundError);
     throw new Error(`Failed to create round: ${roundError?.message}`);
   }
 
