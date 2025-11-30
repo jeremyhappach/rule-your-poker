@@ -54,6 +54,7 @@ interface GameTableProps {
   buckPosition?: number | null;
   chuckyCards?: CardType[];
   chuckyActive?: boolean;
+  chuckyCardsRevealed?: number;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -81,6 +82,7 @@ export const GameTable = ({
   buckPosition,
   chuckyCards,
   chuckyActive,
+  chuckyCardsRevealed,
   onStay,
   onFold,
   onSelectSeat,
@@ -208,6 +210,7 @@ export const GameTable = ({
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
+              revealed={chuckyCardsRevealed}
             />
           )}
 
