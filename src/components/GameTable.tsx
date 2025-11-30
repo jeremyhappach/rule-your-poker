@@ -137,16 +137,17 @@ export const GameTable = ({
               {/* Pot and Timer Container - stack on small screens, side-by-side on larger */}
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-6">
+                  {/* Last Hand Warning - shown when session ending */}
+                  {pendingSessionEnd && (
+                    <div className="whitespace-nowrap">
+                      <p className="text-red-500 font-bold text-[10px] sm:text-xs drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
+                        ⚠️ LAST HAND
+                      </p>
+                    </div>
+                  )}
+                  
                   {/* Pot */}
                   <div className="relative">
-                    {/* Last Hand Warning - shown when session ending */}
-                    {pendingSessionEnd && (
-                      <div className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                        <p className="text-red-500 font-bold text-[10px] sm:text-xs drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
-                          ⚠️ LAST HAND
-                        </p>
-                      </div>
-                    )}
                     <div className="bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
                       <div className="flex items-baseline justify-center gap-1">
                         <span className="text-[10px] sm:text-xs md:text-sm text-poker-gold/80 font-semibold">POT:</span>
