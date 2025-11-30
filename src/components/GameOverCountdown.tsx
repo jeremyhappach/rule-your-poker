@@ -35,35 +35,32 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
     return remaining;
   });
 
+  // Single effect to handle the countdown - no timeLeft dependency to avoid recreating interval
   useEffect(() => {
-    console.log('[GAME OVER COUNTDOWN] Effect running, timeLeft:', timeLeft, 'hasCompleted:', hasCompletedRef.current);
+    console.log('[GAME OVER COUNTDOWN] Setting up countdown timer');
     
-    // Countdown complete
-    if (timeLeft <= 0 && !hasCompletedRef.current) {
-      console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
-      hasCompletedRef.current = true;
-      onCompleteRef.current();
-      return;
-    }
-
-    // Don't set up timer if already completed
-    if (hasCompletedRef.current) {
-      return;
-    }
-
     // Update every 100ms based on actual elapsed time
     const timer = setInterval(() => {
       const endTime = new Date(gameOverAt).getTime() + (COUNTDOWN_DURATION * 1000);
       const now = Date.now();
       const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+      
+      console.log('[GAME OVER COUNTDOWN] Tick:', remaining);
       setTimeLeft(remaining);
+      
+      // Check if countdown is complete
+      if (remaining <= 0 && !hasCompletedRef.current) {
+        console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
+        hasCompletedRef.current = true;
+        onCompleteRef.current();
+      }
     }, 100);
 
     return () => {
       console.log('[GAME OVER COUNTDOWN] Cleanup interval');
       clearInterval(timer);
     };
-  }, [timeLeft, gameOverAt, COUNTDOWN_DURATION]);
+  }, [gameOverAt, COUNTDOWN_DURATION]); // Only depend on gameOverAt and duration, not timeLeft
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 
