@@ -766,6 +766,8 @@ export async function endRound(gameId: string) {
         legsToWin,
         currentGameData?.dealer_position || 1
       );
+      
+      return; // CRITICAL: Exit early, game over handled
     } else {
       // Continue to next round - cycle back to round 1 after round 3
       const nextRound = currentRound < 3 ? currentRound + 1 : 1;
