@@ -625,7 +625,8 @@ export async function endRound(gameId: string) {
           awaiting_next_round: false,
           all_decisions_in: false,
           last_round_result: gameWinMessage,
-          pot: 0  // Clear pot here too
+          pot: 0,  // Clear pot here too
+          game_over_at: new Date().toISOString()
         })
         .eq('id', gameId);
         
