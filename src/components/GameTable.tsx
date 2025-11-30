@@ -96,9 +96,9 @@ export const GameTable = ({
   const seatsToRender = [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
 
   return (
-    <div className="relative p-1 sm:p-2 md:p-4 lg:p-8">
-      {/* Green Felt Poker Table */}
-      <div className="relative bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-[50%] aspect-[2/1] w-full max-w-5xl mx-auto p-2 sm:p-4 md:p-8 lg:p-12 shadow-2xl border-2 sm:border-4 md:border-6 lg:border-8 border-amber-900">
+    <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
+      {/* Green Felt Poker Table - scale down on very small screens */}
+      <div className="relative bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-[50%] aspect-[2/1] w-full max-w-5xl mx-auto p-1 sm:p-2 md:p-4 lg:p-8 xl:p-12 shadow-2xl border-2 sm:border-3 md:border-4 lg:border-6 xl:border-8 border-amber-900 scale-90 sm:scale-95 md:scale-100">
         {/* Table edge wood effect */}
         <div className="absolute inset-0 rounded-[50%] shadow-inner" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
@@ -120,38 +120,38 @@ export const GameTable = ({
             <>
               {/* Pot and Timer Container - stack on small screens, side-by-side on larger */}
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 md:gap-8">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-6">
                   {/* Pot */}
                   <div className="relative">
                     {/* Last Hand Warning - shown when session ending */}
                     {pendingSessionEnd && (
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                        <p className="text-red-500 font-bold text-xs sm:text-sm drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
+                      <div className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                        <p className="text-red-500 font-bold text-[10px] sm:text-xs drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
                           ⚠️ LAST HAND
                         </p>
                       </div>
                     )}
-                    <div className="bg-poker-felt-dark/90 rounded-lg p-2 sm:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
-                      <p className="text-[10px] sm:text-xs text-poker-gold/80 font-semibold mb-1">POT</p>
-                      <div className="flex items-center justify-center gap-2">
-                        <p className="text-xl sm:text-2xl md:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</p>
+                    <div className="bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
+                      <p className="text-[8px] sm:text-[10px] md:text-xs text-poker-gold/80 font-semibold mb-0.5 sm:mb-1">POT</p>
+                      <div className="flex items-center justify-center gap-1 sm:gap-2">
+                        <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</p>
                       </div>
-                      <Badge className="mt-1 bg-poker-gold text-black border-0 shadow-lg text-[10px] sm:text-xs">
-                        Round {currentRound} - {currentRound === 1 ? '3' : currentRound === 2 ? '5' : '7'}
+                      <Badge className="mt-0.5 sm:mt-1 bg-poker-gold text-black border-0 shadow-lg text-[8px] sm:text-[10px] md:text-xs">
+                        R{currentRound} - {currentRound === 1 ? '3' : currentRound === 2 ? '5' : '7'}
                       </Badge>
-                      <p className="text-[10px] sm:text-xs text-white/90 mt-1 font-semibold">Lose: ${loseAmount}</p>
+                      <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 sm:mt-1 font-semibold">Lose: ${loseAmount}</p>
                     </div>
                   </div>
                   
                   {/* Timer - hide during transitions, results, and when all decisions in */}
                   {timeLeft !== null && timeLeft > 0 && !awaitingNextRound && !lastRoundResult && !allDecisionsIn && (
                     <div className="relative">
-                      <div className={`bg-poker-felt-dark/90 rounded-lg p-2 sm:p-3 md:p-4 backdrop-blur-sm border-2 ${timeLeft <= 3 ? 'border-red-500 animate-pulse' : 'border-blue-500'} shadow-2xl`}>
-                        <p className={`text-3xl sm:text-4xl md:text-6xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>
+                      <div className={`bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 lg:p-4 backdrop-blur-sm border-2 ${timeLeft <= 3 ? 'border-red-500 animate-pulse' : 'border-blue-500'} shadow-2xl`}>
+                        <p className={`text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>
                           {timeLeft}
                         </p>
-                        <p className="text-[10px] sm:text-xs text-white/70 mt-1">
-                          seconds
+                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/70 mt-0.5 sm:mt-1">
+                          sec
                         </p>
                       </div>
                     </div>
@@ -169,8 +169,8 @@ export const GameTable = ({
             const hasPlayerDecided = player?.decision_locked;
             const playerDecision = allDecisionsIn ? player?.current_decision : null;
             const angle = (index / seatsToRender.length) * 2 * Math.PI - Math.PI / 2;
-            // Responsive radius: smaller on mobile, larger on desktop
-            const radius = window.innerWidth < 640 ? 38 : window.innerWidth < 1024 ? 42 : 48;
+            // Aggressive responsive radius to prevent overlaps
+            const radius = window.innerWidth < 480 ? 32 : window.innerWidth < 640 ? 36 : window.innerWidth < 1024 ? 42 : 48;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
@@ -193,15 +193,15 @@ export const GameTable = ({
                   onClick={() => onSelectSeat && onSelectSeat(seat.position)}
                 >
                   <Card className="border-dashed border-2 border-amber-700/50 bg-gradient-to-br from-amber-900/20 to-amber-950/20 backdrop-blur-sm hover:border-amber-500 hover:bg-amber-900/30 transition-all duration-300">
-                    <CardContent className="p-1.5 sm:p-2 md:p-3 text-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px] lg:min-w-[140px]">
-                      <div className="space-y-1 sm:space-y-2">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 mx-auto rounded-full bg-amber-900/30 flex items-center justify-center border-2 border-amber-700/50">
-                          <span className="text-lg sm:text-xl md:text-2xl">💺</span>
+                    <CardContent className="p-1 sm:p-1.5 md:p-2 lg:p-3 text-center min-w-[70px] sm:min-w-[90px] md:min-w-[110px] lg:min-w-[130px] xl:min-w-[140px] max-w-[110px] sm:max-w-[130px] md:max-w-none">
+                      <div className="space-y-1 sm:space-y-1.5">
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 mx-auto rounded-full bg-amber-900/30 flex items-center justify-center border-2 border-amber-700/50">
+                          <span className="text-base sm:text-lg md:text-xl lg:text-2xl">💺</span>
                         </div>
-                        <p className="text-[10px] sm:text-xs text-amber-300/70 font-semibold">Open Seat</p>
-                        <p className="text-[8px] sm:text-[10px] text-amber-300/50">Click to sit</p>
-                        <Badge variant="outline" className="text-[8px] sm:text-[10px] border-amber-700/50 text-amber-300/70">
-                          Seat #{seat.position}
+                        <p className="text-[9px] sm:text-[10px] md:text-xs text-amber-300/70 font-semibold">Open</p>
+                        <p className="text-[8px] sm:text-[9px] md:text-[10px] text-amber-300/50">Click</p>
+                        <Badge variant="outline" className="text-[8px] sm:text-[9px] md:text-[10px] border-amber-700/50 text-amber-300/70">
+                          #{seat.position}
                         </Badge>
                       </div>
                     </CardContent>
@@ -231,30 +231,30 @@ export const GameTable = ({
                     {playerDecision === 'stay' && (
                       <div className="absolute inset-0 rounded-lg border-4 sm:border-[6px] border-green-500 animate-[pulse_3s_ease-in-out_infinite] pointer-events-none" />
                     )}
-                  <CardContent className="p-1.5 sm:p-2 md:p-3 text-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px] lg:min-w-[140px]">
-                    <div className="space-y-1 sm:space-y-1.5">
-                      <div className="flex items-center justify-center gap-1 sm:gap-1.5">
-                        <p className="font-bold text-[10px] sm:text-xs text-amber-100 truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px]">
+                  <CardContent className="p-1 sm:p-1.5 md:p-2 lg:p-3 text-center min-w-[70px] sm:min-w-[90px] md:min-w-[110px] lg:min-w-[130px] xl:min-w-[140px] max-w-[110px] sm:max-w-[130px] md:max-w-none">
+                    <div className="space-y-0.5 sm:space-y-1 md:space-y-1.5">
+                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5">
+                        <p className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px]">
                           {player.profiles?.username || (player.is_bot ? `Bot ${index + 1}` : `P${index + 1}`)}
                           {player.sitting_out && ' (Out)'}
                         </p>
                         {player.position === dealerPosition && (
-                          <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-poker-gold flex items-center justify-center border border-black sm:border-2 shadow-lg">
-                            <span className="text-black font-black text-[8px] sm:text-[10px]">D</span>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full bg-poker-gold flex items-center justify-center border border-black shadow-lg">
+                            <span className="text-black font-black text-[7px] sm:text-[8px] md:text-[10px]">D</span>
                           </div>
                         )}
                         {isCurrentUser && !player.is_bot && (
-                          <Badge variant="secondary" className="text-[8px] sm:text-[10px] bg-poker-gold text-black border-0 px-0.5 sm:px-1 py-0">You</Badge>
+                          <Badge variant="secondary" className="text-[7px] sm:text-[8px] md:text-[10px] bg-poker-gold text-black border-0 px-0.5 py-0">You</Badge>
                         )}
                         {player.is_bot && (
-                          <Badge className="text-[8px] sm:text-[10px] bg-purple-500 text-white border-0 px-0.5 sm:px-1 py-0">🤖</Badge>
+                          <Badge className="text-[7px] sm:text-[8px] md:text-[10px] bg-purple-500 text-white border-0 px-0.5 py-0">🤖</Badge>
                         )}
                       </div>
-                      <div className="flex items-center justify-center gap-1 sm:gap-2">
+                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2">
                         {/* Legs indicator - show chip per leg with configured value */}
-                        <div className="flex items-center gap-0.5 bg-amber-900/30 px-1 sm:px-1.5 py-0.5 rounded border border-amber-700">
+                        <div className="flex items-center gap-0.5 bg-amber-900/30 px-0.5 sm:px-1 md:px-1.5 py-0.5 rounded border border-amber-700">
                           {player.legs === 0 ? (
-                            <span className="text-amber-500/50 text-[8px] sm:text-[10px]">No legs</span>
+                            <span className="text-amber-500/50 text-[7px] sm:text-[8px] md:text-[10px]">No legs</span>
                           ) : (
                             Array.from({ length: player.legs }).map((_, i) => (
                               <div key={i} className={player.legs === legsToWin - 1 ? "animate-pulse" : ""}>
@@ -266,8 +266,8 @@ export const GameTable = ({
                         
                         {/* Hand evaluation hint - only for current user */}
                         {isCurrentUser && cards.length > 0 && (
-                          <div className="bg-poker-gold/20 px-1 sm:px-2 py-0.5 rounded border border-poker-gold/40">
-                            <span className="text-poker-gold text-[8px] sm:text-[10px] font-bold">
+                          <div className="bg-poker-gold/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-poker-gold/40">
+                            <span className="text-poker-gold text-[7px] sm:text-[8px] md:text-[10px] font-bold">
                               {formatHandRank(evaluateHand(cards).rank)}
                             </span>
                           </div>
@@ -286,33 +286,33 @@ export const GameTable = ({
                           <Badge variant="destructive" className="text-[8px] sm:text-[10px] px-0.5 sm:px-1 py-0">Out</Badge>
                         )}
                       </div>
-                      <div className="flex justify-center min-h-[40px] sm:min-h-[50px] md:min-h-[60px] items-center">
+                      <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center">
                         {cards.length > 0 ? (
                           <PlayerHand cards={cards} isHidden={!isCurrentUser} />
                         ) : (
-                          <div className="text-[8px] sm:text-[10px] text-amber-300/50">Waiting...</div>
+                          <div className="text-[7px] sm:text-[8px] md:text-[10px] text-amber-300/50">Wait...</div>
                         )}
                       </div>
                       
                       {/* Action buttons and chip stack row */}
-                      <div className="flex items-center justify-between gap-1 sm:gap-2 pt-1 sm:pt-1.5 border-t border-amber-700">
+                      <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {/* Fold button (left) */}
                         {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
                           <Button 
                             variant="destructive" 
                             size="sm"
                             onClick={onFold}
-                            className="text-[8px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 sm:py-1 h-auto"
+                            className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
                           >
                             Drop
                           </Button>
                         ) : (
-                          <div className="w-8 sm:w-10 md:w-12"></div>
+                          <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
                         )}
                         
                         {/* Chip balance (center) */}
                         <div className="flex items-center justify-center">
-                          <p className={`text-sm sm:text-base md:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
+                          <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                             ${player.chips}
                           </p>
                         </div>
@@ -322,12 +322,12 @@ export const GameTable = ({
                           <Button 
                             size="sm"
                             onClick={onStay}
-                            className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[8px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 sm:py-1 h-auto"
+                            className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
                           >
                             Stay
                           </Button>
                         ) : (
-                          <div className="w-8 sm:w-10 md:w-12"></div>
+                          <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
                         )}
                       </div>
                     </div>
