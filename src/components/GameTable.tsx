@@ -364,10 +364,19 @@ export const GameTable = ({
                           </div>
                         )}
                         
-                        {/* Hand evaluation hint - only for current user in non-Holm games */}
-                        {isCurrentUser && cards.length > 0 && gameType !== 'holm-game' && (
+                        {/* Hand evaluation hint - hide during Chucky showdown */}
+                        {isCurrentUser && cards.length > 0 && gameType !== 'holm-game' && !chuckyActive && (
                           <div className="bg-poker-gold/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[7px] sm:text-[8px] md:text-[10px] font-bold">
+                              {formatHandRank(evaluateHand(cards).rank)}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Hand evaluation for Holm game - positioned below cards to avoid community cards */}
+                        {isCurrentUser && cards.length > 0 && gameType === 'holm-game' && !chuckyActive && (
+                          <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-poker-gold/20 px-1 py-0.5 rounded border border-poker-gold/40 whitespace-nowrap z-20">
+                            <span className="text-poker-gold text-[8px] sm:text-[10px] font-bold">
                               {formatHandRank(evaluateHand(cards).rank)}
                             </span>
                           </div>
