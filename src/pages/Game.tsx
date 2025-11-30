@@ -102,6 +102,7 @@ const Game = () => {
   const [showAnteDialog, setShowAnteDialog] = useState(false);
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
+  const isCountdownActiveRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -393,6 +394,12 @@ const Game = () => {
 
   const fetchGameData = async () => {
     if (!gameId || !user) return;
+    
+    // CRITICAL: Don't fetch during countdown to prevent unmounting
+    if (isCountdownActiveRef.current) {
+      console.log('[FETCH] Skipping fetch during countdown');
+      return;
+    }
 
     console.log('[FETCH] Fetching game data...');
 
@@ -486,6 +493,12 @@ const Game = () => {
     }
     
     setLoading(false);
+    
+    // Set countdown active flag when game_over_at is set
+    if (gameData.game_over_at && !isCountdownActiveRef.current) {
+      console.log('[FETCH] Activating countdown mode');
+      isCountdownActiveRef.current = true;
+    }
   };
 
   const startGame = async () => {
@@ -589,6 +602,9 @@ const Game = () => {
     }
 
     console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
+    
+    // Clear countdown flag to allow fetches again
+    isCountdownActiveRef.current = false;
 
     // Check if session should end
     const { data: gameData, error: fetchError } = await supabase
