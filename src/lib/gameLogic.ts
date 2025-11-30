@@ -707,13 +707,7 @@ export async function endRound(gameId: string) {
           // Don't clear the pot - it stays for the game winner
           const showdownResult = `${winnerUsername} won $${totalWinnings} with ${handName}`;
           
-          // Store result message
-          await supabase
-            .from('games')
-            .update({ 
-              last_round_result: showdownResult
-            })
-            .eq('id', gameId);
+          resultMessage = showdownResult;
         }
       }
     }
@@ -836,8 +830,9 @@ export async function endRound(gameId: string) {
         .from('games')
         .update({ 
           awaiting_next_round: true,
-          next_round_number: nextRound
-          // Don't clear last_round_result yet - let proceedToNextRound do it
+          next_round_number: nextRound,
+          last_round_result: resultMessage  // Set result message here atomically
+          // proceedToNextRound will clear it after 4 seconds
         })
         .eq('id', gameId);
     }
