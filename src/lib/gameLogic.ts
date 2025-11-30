@@ -639,13 +639,19 @@ export async function endRound(gameId: string) {
     if (newLegCount >= legsToWin) {
       console.log('[SOLO WIN] Player won the game!', { username, newLegCount, legsToWin, playerId: soloStayer.id });
       
-      // Use centralized game-over handler
+      // Fetch fresh player data after the leg/chips update above
+      const { data: freshPlayers } = await supabase
+        .from('players')
+        .select('*, profiles(username)')
+        .eq('game_id', gameId);
+      
+      // Use centralized game-over handler with fresh data
       await handleGameOver(
         gameId,
         soloStayer.id,
         username,
         newLegCount,
-        allPlayers,
+        freshPlayers || allPlayers,
         game.pot || 0,
         legValue,
         legsToWin,
