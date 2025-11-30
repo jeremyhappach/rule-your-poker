@@ -142,26 +142,34 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   const anteAmount = gameConfig.ante_amount || 2;
   const dealerPosition = gameConfig.dealer_position || 1;
   
-  // Buck starts one position to the left of dealer
-  // If we have 7 seats and dealer is at position 1, buck starts at position 7
-  const { data: allPlayers } = await supabase
-    .from('players')
-    .select('position')
-    .eq('game_id', gameId)
-    .order('position');
+  // Buck position calculation - only for round 1, otherwise it's already set
+  let buckPosition = gameConfig.buck_position;
   
-  const maxPosition = allPlayers && allPlayers.length > 0 
-    ? Math.max(...allPlayers.map(p => p.position))
-    : 7;
-  
-  const buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
-  
-  console.log('[HOLM] Buck position calculation:', {
-    dealerPosition,
-    maxPosition,
-    playerPositions: allPlayers?.map(p => p.position),
-    calculatedBuckPosition: buckPosition
-  });
+  // Only calculate initial buck position on round 1
+  if (roundNumber === 1 || !buckPosition) {
+    // Buck starts one position to the left of dealer
+    // If we have 7 seats and dealer is at position 1, buck starts at position 7
+    const { data: allPlayers } = await supabase
+      .from('players')
+      .select('position')
+      .eq('game_id', gameId)
+      .order('position');
+    
+    const maxPosition = allPlayers && allPlayers.length > 0 
+      ? Math.max(...allPlayers.map(p => p.position))
+      : 7;
+    
+    buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
+    
+    console.log('[HOLM] Buck position calculation:', {
+      dealerPosition,
+      maxPosition,
+      playerPositions: allPlayers?.map(p => p.position),
+      calculatedBuckPosition: buckPosition
+    });
+  } else {
+    console.log('[HOLM] Using existing buck position:', buckPosition);
+  }
 
   // Get all active players who aren't sitting out
   const { data: players } = await supabase
@@ -310,7 +318,8 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       current_round: roundNumber,
       pot: initialPot,
       buck_position: buckPosition,
-      all_decisions_in: false
+      all_decisions_in: false,
+      last_round_result: null // Clear result when starting new round
     })
     .eq('id', gameId);
 
@@ -782,6 +791,8 @@ export async function proceedToNextHolmRound(gameId: string) {
 
   console.log('[HOLM NEXT] Rotating buck from', game.buck_position, 'to', newBuckPosition);
 
+  // Update buck position before starting next round
+  // startHolmRound will use this buck_position instead of recalculating
   await supabase
     .from('games')
     .update({
