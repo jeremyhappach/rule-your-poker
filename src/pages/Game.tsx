@@ -605,13 +605,14 @@ const Game = () => {
       return;
     }
 
-    console.log('[GAME OVER] Transitioning to dealer_selection phase for new game');
+    console.log('[GAME OVER] Transitioning to dealer_announcement phase for new game');
 
-    // Transition to dealer_selection phase to start a fresh game
+    // Transition to dealer_announcement phase to show new dealer
+    // The dealer_position is already set from gameLogic.ts (rotated clockwise, skipping bots)
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'dealer_selection',
+        status: 'dealer_announcement',
         config_complete: false,
         last_round_result: null,
         current_round: null,
@@ -624,7 +625,7 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
-      console.error('[GAME OVER] Failed to start dealer selection:', error);
+      console.error('[GAME OVER] Failed to start dealer announcement:', error);
       return;
     }
 
