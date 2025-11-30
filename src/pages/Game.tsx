@@ -380,9 +380,10 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        // For Holm game, auto-fold then end the round
-        autoFoldUndecided(gameId!).then(() => {
-          endHolmRound(gameId!);
+        // For Holm game, auto-fold then rotate buck (which will check all decisions and end if needed)
+        autoFoldUndecided(gameId!).then(async () => {
+          const { rotateBuck } = await import('@/lib/holmGameLogic');
+          await rotateBuck(gameId!);
         }).catch(err => {
           console.error('[TIMER EXPIRED] Error in Holm game:', err);
         });
@@ -392,7 +393,7 @@ const Game = () => {
         });
       }
     }
-  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   // Using a ref to prevent multiple simultaneous timeouts
