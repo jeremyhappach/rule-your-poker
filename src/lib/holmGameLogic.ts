@@ -437,9 +437,14 @@ export async function endHolmRound(gameId: string) {
     revealedData: revealResult?.[0]
   });
   
-  // Wait 2 seconds to ensure UI updates and shows all community cards
-  console.log('[HOLM END] Waiting 2 seconds for community cards to be displayed...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  if (revealError) {
+    console.error('[HOLM END] ERROR revealing community cards:', revealError);
+  }
+  
+  // Wait 3 seconds to ensure UI updates and shows all community cards
+  console.log('[HOLM END] Waiting 3 seconds for community cards to be displayed...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  console.log('[HOLM END] Community cards should now be visible to players');
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
