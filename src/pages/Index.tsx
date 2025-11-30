@@ -100,6 +100,7 @@ const Index = () => {
       title: "Success",
       description: "Username updated successfully",
     });
+    setShowProfileDialog(false);
   };
 
   const handleUpdatePassword = async () => {
@@ -144,6 +145,7 @@ const Index = () => {
       title: "Success",
       description: "Password updated successfully",
     });
+    setShowProfileDialog(false);
   };
 
   if (!user) return null;
