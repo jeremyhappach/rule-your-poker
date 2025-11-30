@@ -10,9 +10,9 @@ import { GameTable } from "@/components/GameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { DealerSelection } from "@/components/DealerSelection";
-import { DealerAnnouncement } from "@/components/DealerAnnouncement";
 import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
+import { GameSelection } from "@/components/GameSelection";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
@@ -515,7 +515,7 @@ const Game = () => {
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'dealer_announcement',
+        status: 'game_selection',
         dealer_position: dealerPosition 
       })
       .eq('id', gameId);
@@ -523,6 +523,14 @@ const Game = () => {
     if (error) {
       console.error('Failed to select dealer:', error);
       return;
+    }
+
+    // Make bot decision if dealer is a bot
+    if (dealerPlayer?.is_bot && gameId) {
+      // Bot immediately selects a game
+      setTimeout(() => {
+        handleGameSelection('3-5-7');
+      }, 1000);
     }
 
     // Manual refetch to ensure UI updates immediately
@@ -536,20 +544,23 @@ const Game = () => {
     setTimeout(() => fetchGameData(), 100);
   };
 
-  const handleDealerAnnouncementComplete = async () => {
+  const handleGameSelection = async (gameType: string) => {
     if (!gameId) return;
 
-    // Skip game selection, go directly to configuring phase
+    console.log('[GAME SELECTION] Selected game:', gameType);
+
+    // Save the game type and transition to configuring phase
     const { error } = await supabase
       .from('games')
       .update({ 
         status: 'configuring',
-        config_complete: false
+        config_complete: false,
+        game_type: gameType
       })
       .eq('id', gameId);
 
     if (error) {
-      console.error('Failed to start configuring:', error);
+      console.error('Failed to start configuration:', error);
       return;
     }
 
@@ -590,14 +601,13 @@ const Game = () => {
       return;
     }
 
-    console.log('[GAME OVER] Transitioning to dealer_announcement phase for new game');
+    console.log('[GAME OVER] Transitioning to game_selection phase for new game');
 
-    // Transition to dealer_announcement phase to show new dealer
-    // The dealer_position is already set from gameLogic.ts (rotated clockwise, skipping bots)
+    // Skip dealer_announcement, go directly to game_selection
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'dealer_announcement',
+        status: 'game_selection',
         config_complete: false,
         last_round_result: null,
         current_round: null,
@@ -610,11 +620,11 @@ const Game = () => {
       .eq('id', gameId);
 
     if (error) {
-      console.error('[GAME OVER] Failed to start dealer announcement:', error);
+      console.error('[GAME OVER] Failed to start game selection:', error);
       return;
     }
 
-    console.log('[GAME OVER] Successfully transitioned to dealer_selection');
+    console.log('[GAME OVER] Successfully transitioned to game_selection');
 
     // Manual refetch to update UI
     setTimeout(() => fetchGameData(), 100);
@@ -837,7 +847,7 @@ const Game = () => {
                 Invite Players
               </Button>
             )}
-            {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'configuring', 'dealer_announcement'].includes(game.status) && (
+            {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) && (
               <Button variant="destructive" onClick={() => setShowEndSessionDialog(true)}>
                 End Session
               </Button>
@@ -859,7 +869,7 @@ const Game = () => {
           />
         )}
 
-        {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement' || game.status === 'game_over') && (
+        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over') && (
           <>
             {game.status === 'game_over' && game.last_round_result ? (
               <>
@@ -921,7 +931,7 @@ const Game = () => {
                   }}
                 />
               </div>
-            ) : game.status === 'dealer_announcement' ? (
+            ) : game.status === 'game_selection' ? (
               <div className="relative">
                 <GameTable
                   players={players}
@@ -931,7 +941,7 @@ const Game = () => {
                   allDecisionsIn={false}
                   playerCards={[]}
                   timeLeft={null}
-                  lastRoundResult={game.last_round_result}
+                  lastRoundResult={null}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
                   legsToWin={game.legs_to_win || 3}
@@ -943,12 +953,7 @@ const Game = () => {
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
                 />
-                {dealerPlayer && (
-                  <DealerAnnouncement
-                    newDealerPlayer={dealerPlayer}
-                    onComplete={handleDealerAnnouncementComplete}
-                  />
-                )}
+                <GameSelection onSelectGame={handleGameSelection} />
               </div>
             ) : (
               // Configuring phase
