@@ -163,8 +163,14 @@ export const GameTable = ({
                         <span className="text-[10px] sm:text-xs md:text-sm text-poker-gold/80 font-semibold">POT:</span>
                         <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</span>
                       </div>
-                      <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 sm:mt-1 font-semibold">{legsToWin} legs to win</p>
-                      <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Stay and Lose: ${loseAmount}</p>
+                      {gameType !== 'holm-game' && (
+                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 sm:mt-1 font-semibold">{legsToWin} legs to win</p>
+                      )}
+                      {gameType === 'holm-game' ? (
+                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Beat Chucky to win</p>
+                      ) : (
+                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Stay and Lose: ${loseAmount}</p>
+                      )}
                     </div>
                   </div>
                   
@@ -212,8 +218,12 @@ export const GameTable = ({
             // Get cards for this player
             const actualCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
             
-            // Calculate expected card count based on round (3-5-7 game)
+            // Calculate expected card count based on game type
             const getExpectedCardCount = (round: number): number => {
+              if (gameType === 'holm-game') {
+                return 4; // Holm game always has 4 cards per player
+              }
+              // 3-5-7 game
               if (round === 1) return 3;
               if (round === 2) return 5;
               if (round === 3) return 7;
@@ -304,18 +314,20 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2">
-                        {/* Legs indicator - show chip per leg with configured value */}
-                        <div className="flex items-center gap-0.5 bg-amber-900/30 px-0.5 sm:px-1 md:px-1.5 py-0.5 rounded border border-amber-700">
-                          {player.legs === 0 ? (
-                            <span className="text-amber-500/50 text-[7px] sm:text-[8px] md:text-[10px]">No legs</span>
-                          ) : (
-                            Array.from({ length: player.legs }).map((_, i) => (
-                              <div key={i} className={player.legs === legsToWin - 1 ? "animate-pulse" : ""}>
-                                <ChipStack amount={legValue} size="sm" variant="leg" />
-                              </div>
-                            ))
-                          )}
-                        </div>
+                        {/* Legs indicator - only show for non-Holm games */}
+                        {gameType !== 'holm-game' && (
+                          <div className="flex items-center gap-0.5 bg-amber-900/30 px-0.5 sm:px-1 md:px-1.5 py-0.5 rounded border border-amber-700">
+                            {player.legs === 0 ? (
+                              <span className="text-amber-500/50 text-[7px] sm:text-[8px] md:text-[10px]">No legs</span>
+                            ) : (
+                              Array.from({ length: player.legs }).map((_, i) => (
+                                <div key={i} className={player.legs === legsToWin - 1 ? "animate-pulse" : ""}>
+                                  <ChipStack amount={legValue} size="sm" variant="leg" />
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
                         
                         {/* Hand evaluation hint - only for current user */}
                         {isCurrentUser && cards.length > 0 && (
@@ -357,7 +369,7 @@ export const GameTable = ({
                             onClick={onFold}
                             className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
                           >
-                            Drop
+                            Fold
                           </Button>
                         ) : (
                           <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
