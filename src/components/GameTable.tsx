@@ -145,7 +145,7 @@ export const GameTable = ({
           {showPotAndTimer && (
             <>
               {/* Pot and Timer Container - stack on small screens, side-by-side on larger */}
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 md:gap-4 lg:gap-6">
                   {/* Last Hand Warning - shown when session ending */}
                   {pendingSessionEnd && (
@@ -241,15 +241,8 @@ export const GameTable = ({
             // Show cards when there's an active round and player isn't sitting out
             const shouldShowCards = player && !player.sitting_out && currentRound > 0;
             
-            // For observers or other players, create dummy cards for card backs display
-            const cards = shouldShowCards ? (
-              actualCards.length > 0 ? actualCards : 
-              // Create dummy cards based on expected count for the round
-              Array.from({ length: expectedCardCount }, (_, i) => ({ 
-                rank: '2' as const, 
-                suit: '♠' as const
-              }))
-            ) : [];
+            // Only show cards if we have actual data - don't show dummy placeholders
+            const cards = shouldShowCards && actualCards.length > 0 ? actualCards : [];
             
             // Handle empty seat click
             if (isEmptySeat) {
