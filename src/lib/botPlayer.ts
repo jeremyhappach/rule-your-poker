@@ -95,9 +95,9 @@ export async function makeBotDecisions(gameId: string) {
 
   if (!botPlayers || botPlayers.length === 0) return;
 
-  // Make random decisions for each bot (60% stay, 40% fold)
+  // Make random decisions for each bot (20% stay, 80% fold)
   for (const bot of botPlayers) {
-    const shouldStay = Math.random() > 0.4;
+    const shouldStay = Math.random() > 0.8;
     const decision = shouldStay ? 'stay' : 'fold';
     
     await makeDecision(gameId, bot.id, decision);
