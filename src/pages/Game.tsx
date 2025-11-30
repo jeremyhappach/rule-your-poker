@@ -354,10 +354,10 @@ const Game = () => {
           return () => clearTimeout(botDecisionTimer);
         }
       } else {
-        // For non-Holm games, trigger bot decisions with short delay
+        // For 3-5-7 and other games, keep original fast bot decisions
         const botDecisionTimer = setTimeout(() => {
           makeBotDecisions(gameId!);
-        }, 1000);
+        }, 100);
         
         return () => clearTimeout(botDecisionTimer);
       }
