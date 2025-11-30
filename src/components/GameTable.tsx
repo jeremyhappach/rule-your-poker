@@ -95,6 +95,11 @@ export const GameTable = ({
   // Combine players and open seats for rendering
   const seatsToRender = [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
 
+  // Calculate radius once for all positions to prevent flickering
+  const radius = typeof window !== 'undefined' 
+    ? window.innerWidth < 480 ? 32 : window.innerWidth < 640 ? 36 : window.innerWidth < 1024 ? 42 : 48
+    : 48;
+
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
       {/* Green Felt Poker Table - scale down on very small screens */}
@@ -169,8 +174,6 @@ export const GameTable = ({
             const hasPlayerDecided = player?.decision_locked;
             const playerDecision = allDecisionsIn ? player?.current_decision : null;
             const angle = (index / seatsToRender.length) * 2 * Math.PI - Math.PI / 2;
-            // Aggressive responsive radius to prevent overlaps
-            const radius = window.innerWidth < 480 ? 32 : window.innerWidth < 640 ? 36 : window.innerWidth < 1024 ? 42 : 48;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
