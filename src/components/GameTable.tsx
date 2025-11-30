@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
 import { ChipChangeIndicator } from "./ChipChangeIndicator";
+import { CommunityCards } from "./CommunityCards";
+import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useMemo, useLayoutEffect } from "react";
 
@@ -45,6 +47,10 @@ interface GameTableProps {
   potMaxValue: number;
   pendingSessionEnd: boolean;
   awaitingNextRound: boolean;
+  gameType?: string | null;
+  communityCards?: CardType[];
+  communityCardsRevealed?: number;
+  buckPosition?: number | null;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -66,6 +72,10 @@ export const GameTable = ({
   potMaxValue,
   pendingSessionEnd,
   awaitingNextRound,
+  gameType,
+  communityCards,
+  communityCardsRevealed,
+  buckPosition,
   onStay,
   onFold,
   onSelectSeat,
@@ -176,6 +186,14 @@ export const GameTable = ({
             </>
           )}
 
+          {/* Community Cards for Holm Game */}
+          {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
+            <CommunityCards 
+              cards={communityCards} 
+              revealed={communityCardsRevealed || 2} 
+            />
+          )}
+
           {/* Players and open seats around table */}
           {seatsToRender.map((seat) => {
             const isEmptySeat = 'isEmpty' in seat && seat.isEmpty;
@@ -251,16 +269,17 @@ export const GameTable = ({
                 className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
                 style={{ left: `${x}%`, top: `${y}%` }}
               >
-                <Card className={`
-                  ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
-                  ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
-                  ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
-                  ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-110" : ""}
-                  ${player.sitting_out ? "opacity-50 grayscale" : ""}
-                  bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
-                  transition-all duration-500
-                `}>
-                  <div className="relative">
+                <div className="relative">
+                  <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
+                  <Card className={`
+                    ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
+                    ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
+                    ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
+                    ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-110" : ""}
+                    ${player.sitting_out ? "opacity-50 grayscale" : ""}
+                    bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
+                    transition-all duration-500
+                  `}>
                     {playerDecision === 'stay' && (
                       <div className="absolute inset-0 rounded-lg border-4 sm:border-[6px] border-green-500 animate-[pulse_3s_ease-in-out_infinite] pointer-events-none" />
                     )}
@@ -366,8 +385,8 @@ export const GameTable = ({
                       </div>
                     </div>
                   </CardContent>
-                  </div>
-                </Card>
+                  </Card>
+                </div>
               </div>
             );
           })}

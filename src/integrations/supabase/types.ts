@@ -20,7 +20,9 @@ export type Database = {
           ante_amount: number
           ante_decision_deadline: string | null
           awaiting_next_round: boolean | null
+          buck_position: number | null
           buy_in: number
+          chucky_cards: number | null
           config_complete: boolean
           created_at: string
           current_round: number | null
@@ -50,7 +52,9 @@ export type Database = {
           ante_amount?: number
           ante_decision_deadline?: string | null
           awaiting_next_round?: boolean | null
+          buck_position?: number | null
           buy_in?: number
+          chucky_cards?: number | null
           config_complete?: boolean
           created_at?: string
           current_round?: number | null
@@ -80,7 +84,9 @@ export type Database = {
           ante_amount?: number
           ante_decision_deadline?: string | null
           awaiting_next_round?: boolean | null
+          buck_position?: number | null
           buy_in?: number
+          chucky_cards?: number | null
           config_complete?: boolean
           created_at?: string
           current_round?: number | null
@@ -270,6 +276,9 @@ export type Database = {
         Row: {
           bet_amount: number | null
           cards_dealt: number
+          chucky_active: boolean | null
+          community_cards: Json | null
+          community_cards_revealed: number | null
           created_at: string
           decision_deadline: string | null
           game_id: string
@@ -281,6 +290,9 @@ export type Database = {
         Insert: {
           bet_amount?: number | null
           cards_dealt: number
+          chucky_active?: boolean | null
+          community_cards?: Json | null
+          community_cards_revealed?: number | null
           created_at?: string
           decision_deadline?: string | null
           game_id: string
@@ -292,6 +304,9 @@ export type Database = {
         Update: {
           bet_amount?: number | null
           cards_dealt?: number
+          chucky_active?: boolean | null
+          community_cards?: Json | null
+          community_cards_revealed?: number | null
           created_at?: string
           decision_deadline?: string | null
           game_id?: string
