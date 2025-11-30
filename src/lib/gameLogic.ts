@@ -502,6 +502,7 @@ async function handleGameOver(
       .update({
         status: 'session_ended',
         session_ended_at: new Date().toISOString(),
+        game_over_at: new Date().toISOString(),
         total_hands: newTotalHands,
         pending_session_end: false,
         last_round_result: gameWinMessage,

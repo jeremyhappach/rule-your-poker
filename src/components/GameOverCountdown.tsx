@@ -14,9 +14,10 @@ interface GameOverCountdownProps {
   nextDealer: Player;
   onComplete: () => void;
   gameOverAt: string; // ISO timestamp when game ended
+  isSessionEnded?: boolean; // Whether the session has ended
 }
 
-export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt }: GameOverCountdownProps) => {
+export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt, isSessionEnded = false }: GameOverCountdownProps) => {
   const COUNTDOWN_DURATION = 8; // seconds
   const hasCompletedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
@@ -85,15 +86,23 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
             </div>
             
             <div className="bg-amber-950/50 p-6 rounded-lg border border-amber-800">
-              <p className="text-amber-100 text-xl mb-3">
-                Next game starting in...
-              </p>
-              <p className="text-poker-gold font-black text-6xl mb-3">
-                {timeLeft}
-              </p>
-              <p className="text-amber-300 text-lg">
-                <span className="font-bold">{nextDealerName}</span> will be the dealer
-              </p>
+              {isSessionEnded ? (
+                <p className="text-poker-gold font-black text-4xl">
+                  SESSION ENDED
+                </p>
+              ) : (
+                <>
+                  <p className="text-amber-100 text-xl mb-3">
+                    Next game starting in...
+                  </p>
+                  <p className="text-poker-gold font-black text-6xl mb-3">
+                    {timeLeft}
+                  </p>
+                  <p className="text-amber-300 text-lg">
+                    <span className="font-bold">{nextDealerName}</span> will be the dealer
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
