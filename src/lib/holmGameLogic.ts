@@ -41,19 +41,41 @@ export async function rotateBuck(gameId: string) {
     return;
   }
   
+  // Find next player who hasn't decided yet
   const positions = players.map(p => p.position).sort((a, b) => a - b);
   const currentBuckIndex = positions.indexOf(game.buck_position);
   
-  // Find next position (wrap around)
-  const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
-  const nextBuckPosition = positions[nextBuckIndex];
+  // Find next undecided player (wrap around)
+  let nextBuckIndex = (currentBuckIndex + 1) % positions.length;
+  let attempts = 0;
   
+  while (attempts < positions.length) {
+    const nextPosition = positions[nextBuckIndex];
+    const nextPlayer = players.find(p => p.position === nextPosition);
+    
+    if (nextPlayer && !nextPlayer.decision_locked) {
+      // Found next undecided player
+      await supabase
+        .from('games')
+        .update({ buck_position: nextPosition })
+        .eq('id', gameId);
+        
+      console.log('[HOLM] Buck rotated from', game.buck_position, 'to', nextPosition);
+      return;
+    }
+    
+    // Try next position
+    nextBuckIndex = (nextBuckIndex + 1) % positions.length;
+    attempts++;
+  }
+  
+  // If we get here, all players have decided (shouldn't happen but just in case)
+  console.log('[HOLM] No undecided players found during rotation');
   await supabase
     .from('games')
-    .update({ buck_position: nextBuckPosition })
+    .update({ all_decisions_in: true })
     .eq('id', gameId);
-    
-  console.log('[HOLM] Buck rotated from', game.buck_position, 'to', nextBuckPosition);
+  await endHolmRound(gameId);
 }
 
 

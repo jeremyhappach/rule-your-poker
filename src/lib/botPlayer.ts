@@ -99,6 +99,17 @@ export async function addBotPlayer(gameId: string) {
 }
 
 export async function makeBotDecisions(gameId: string) {
+  console.log('[BOT] Making bot decisions for game:', gameId);
+  
+  // Check if this is a Holm game
+  const { data: game } = await supabase
+    .from('games')
+    .select('game_type, buck_position')
+    .eq('id', gameId)
+    .single();
+    
+  const isHolmGame = game?.game_type === 'holm-game';
+  
   // Get all bot players in the game who haven't decided yet
   const { data: botPlayers } = await supabase
     .from('players')
@@ -110,12 +121,24 @@ export async function makeBotDecisions(gameId: string) {
 
   if (!botPlayers || botPlayers.length === 0) return;
 
+  // In Holm game, only the bot with the buck should decide
+  const playersToDecide = isHolmGame 
+    ? botPlayers.filter(bot => bot.position === game.buck_position)
+    : botPlayers;
+
   // Make random decisions for each bot (20% stay, 80% fold)
-  for (const bot of botPlayers) {
+  for (const bot of playersToDecide) {
     const shouldStay = Math.random() > 0.8;
     const decision = shouldStay ? 'stay' : 'fold';
     
+    console.log('[BOT] Bot', bot.id, 'at position', bot.position, 'deciding:', decision);
     await makeDecision(gameId, bot.id, decision);
+    
+    // In Holm game, rotate buck after bot decision
+    if (isHolmGame) {
+      const { rotateBuck } = await import('./holmGameLogic');
+      await rotateBuck(gameId);
+    }
   }
 }
 
