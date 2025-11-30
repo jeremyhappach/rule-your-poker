@@ -96,9 +96,9 @@ export const GameTable = ({
   const seatsToRender = [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
 
   return (
-    <div className="relative p-2 sm:p-4 md:p-8">
+    <div className="relative p-1 sm:p-2 md:p-4 lg:p-8">
       {/* Green Felt Poker Table */}
-      <div className="relative bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-[50%] aspect-[2/1] max-w-5xl mx-auto p-4 sm:p-8 md:p-12 shadow-2xl border-4 sm:border-6 md:border-8 border-amber-900">
+      <div className="relative bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-[50%] aspect-[2/1] w-full max-w-5xl mx-auto p-2 sm:p-4 md:p-8 lg:p-12 shadow-2xl border-2 sm:border-4 md:border-6 lg:border-8 border-amber-900">
         {/* Table edge wood effect */}
         <div className="absolute inset-0 rounded-[50%] shadow-inner" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
@@ -169,7 +169,8 @@ export const GameTable = ({
             const hasPlayerDecided = player?.decision_locked;
             const playerDecision = allDecisionsIn ? player?.current_decision : null;
             const angle = (index / seatsToRender.length) * 2 * Math.PI - Math.PI / 2;
-            const radius = 48;
+            // Responsive radius: smaller on mobile, larger on desktop
+            const radius = window.innerWidth < 640 ? 38 : window.innerWidth < 1024 ? 42 : 48;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
@@ -192,7 +193,7 @@ export const GameTable = ({
                   onClick={() => onSelectSeat && onSelectSeat(seat.position)}
                 >
                   <Card className="border-dashed border-2 border-amber-700/50 bg-gradient-to-br from-amber-900/20 to-amber-950/20 backdrop-blur-sm hover:border-amber-500 hover:bg-amber-900/30 transition-all duration-300">
-                    <CardContent className="p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px]">
+                    <CardContent className="p-1.5 sm:p-2 md:p-3 text-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px] lg:min-w-[140px]">
                       <div className="space-y-1 sm:space-y-2">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 mx-auto rounded-full bg-amber-900/30 flex items-center justify-center border-2 border-amber-700/50">
                           <span className="text-lg sm:text-xl md:text-2xl">💺</span>
@@ -230,7 +231,7 @@ export const GameTable = ({
                     {playerDecision === 'stay' && (
                       <div className="absolute inset-0 rounded-lg border-4 sm:border-[6px] border-green-500 animate-[pulse_3s_ease-in-out_infinite] pointer-events-none" />
                     )}
-                  <CardContent className="p-2 sm:p-3 text-center min-w-[100px] sm:min-w-[120px] md:min-w-[140px]">
+                  <CardContent className="p-1.5 sm:p-2 md:p-3 text-center min-w-[80px] sm:min-w-[100px] md:min-w-[120px] lg:min-w-[140px]">
                     <div className="space-y-1 sm:space-y-1.5">
                       <div className="flex items-center justify-center gap-1 sm:gap-1.5">
                         <p className="font-bold text-[10px] sm:text-xs text-amber-100 truncate max-w-[60px] sm:max-w-[80px] md:max-w-[100px]">

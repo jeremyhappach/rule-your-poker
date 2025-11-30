@@ -13,7 +13,6 @@ import { DealerSelection } from "@/components/DealerSelection";
 import { DealerAnnouncement } from "@/components/DealerAnnouncement";
 import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
-import { GameSelection } from "@/components/GameSelection";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
@@ -540,41 +539,17 @@ const Game = () => {
   const handleDealerAnnouncementComplete = async () => {
     if (!gameId) return;
 
-    // Transition to game selection phase
+    // Skip game selection, go directly to configuring phase
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'game_selection',
+        status: 'configuring',
         config_complete: false
       })
       .eq('id', gameId);
 
     if (error) {
-      console.error('Failed to start game selection:', error);
-      return;
-    }
-
-    // Manual refetch to update UI
-    setTimeout(() => fetchGameData(), 100);
-  };
-
-  const handleGameSelection = async (gameType: string) => {
-    if (!gameId) return;
-
-    console.log('[GAME SELECTION] Selected game:', gameType);
-
-    // Save the game type and transition to configuring phase
-    const { error } = await supabase
-      .from('games')
-      .update({ 
-        status: 'configuring',
-        config_complete: false,
-        game_type: gameType
-      })
-      .eq('id', gameId);
-
-    if (error) {
-      console.error('Failed to start configuration:', error);
+      console.error('Failed to start configuring:', error);
       return;
     }
 
@@ -862,7 +837,7 @@ const Game = () => {
                 Invite Players
               </Button>
             )}
-            {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement'].includes(game.status) && (
+            {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'configuring', 'dealer_announcement'].includes(game.status) && (
               <Button variant="destructive" onClick={() => setShowEndSessionDialog(true)}>
                 End Session
               </Button>
@@ -884,7 +859,7 @@ const Game = () => {
           />
         )}
 
-        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'dealer_announcement' || game.status === 'game_over') && (
+        {(game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'dealer_announcement' || game.status === 'game_over') && (
           <>
             {game.status === 'game_over' && game.last_round_result ? (
               <>
@@ -945,30 +920,6 @@ const Game = () => {
                     selectDealer(position);
                   }}
                 />
-              </div>
-            ) : game.status === 'game_selection' ? (
-              <div className="relative">
-                <GameTable
-                  players={players}
-                  currentUserId={user?.id}
-                  pot={game.pot || 0}
-                  currentRound={0}
-                  allDecisionsIn={false}
-                  playerCards={[]}
-                  timeLeft={null}
-                  lastRoundResult={null}
-                  dealerPosition={game.dealer_position}
-                  legValue={game.leg_value || 1}
-                  legsToWin={game.legs_to_win || 3}
-                  potMaxEnabled={game.pot_max_enabled ?? true}
-                  potMaxValue={game.pot_max_value || 10}
-                  pendingSessionEnd={false}
-                  awaitingNextRound={false}
-                  onStay={() => {}}
-                  onFold={() => {}}
-                  onSelectSeat={handleSelectSeat}
-                />
-                <GameSelection onSelectGame={handleGameSelection} />
               </div>
             ) : game.status === 'dealer_announcement' ? (
               <div className="relative">
