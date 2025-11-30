@@ -68,6 +68,8 @@ interface GameData {
   last_round_result?: string | null;
   pending_session_end?: boolean;
   game_over_at?: string | null;
+  created_at?: string;
+  total_hands?: number | null;
   rounds?: Round[];
 }
 
@@ -824,6 +826,12 @@ const Game = () => {
   }
 
   const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
+  const sessionStartTime = game.created_at ? new Date(game.created_at).toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  }) : '';
+  const handsPlayed = game.total_hands || 0;
 
   const isCreator = players[0]?.user_id === user?.id;
   const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
@@ -837,6 +845,8 @@ const Game = () => {
           <div>
             <h1 className="text-3xl font-bold">Peoria Home Game Poker</h1>
             <p className="text-muted-foreground">{gameName}</p>
+            <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
+            <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
           </div>
           <div className="flex gap-2">
             {game.status !== 'configuring' && (
