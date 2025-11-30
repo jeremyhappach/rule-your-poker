@@ -134,6 +134,15 @@ const Game = () => {
     console.log('[SUBSCRIPTION] Setting up real-time subscriptions for game:', gameId);
     fetchGameData();
 
+    // Debounce fetch to prevent rapid re-renders
+    let debounceTimer: NodeJS.Timeout | null = null;
+    const debouncedFetch = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        fetchGameData();
+      }, 150); // 150ms debounce
+    };
+
     const channel = supabase
       .channel(`game-${gameId}`)
       .on(
@@ -146,7 +155,7 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] Games table changed:', payload);
-          fetchGameData();
+          debouncedFetch();
         }
       )
       .on(
@@ -159,7 +168,7 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] Players table changed:', payload);
-          fetchGameData();
+          debouncedFetch();
         }
       )
       .on(
@@ -171,7 +180,7 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] Profiles table changed:', payload);
-          fetchGameData();
+          debouncedFetch();
         }
       )
       .subscribe((status) => {
@@ -180,6 +189,7 @@ const Game = () => {
 
     return () => {
       console.log('[SUBSCRIPTION] Cleaning up subscriptions');
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [gameId, user]);
@@ -307,11 +317,11 @@ const Game = () => {
     // Check immediately
     checkAnteDecisions();
 
-    // Poll every 500ms as fallback in case real-time updates don't fire
+    // Poll every 2 seconds as fallback (reduced from 500ms to prevent flickering)
     const pollInterval = setInterval(() => {
       console.log('[ANTE POLL] Polling for ante decisions...');
       fetchGameData();
-    }, 500);
+    }, 2000);
 
     return () => clearInterval(pollInterval);
   }, [game?.status, players, gameId]);
