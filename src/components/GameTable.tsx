@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
+import { ChipChangeIndicator } from "./ChipChangeIndicator";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useMemo, useLayoutEffect } from "react";
 
@@ -326,10 +327,11 @@ export const GameTable = ({
                         )}
                         
                         {/* Chip balance (center) */}
-                        <div className="flex items-center justify-center">
+                        <div className="flex items-center justify-center relative">
                           <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                             ${player.chips}
                           </p>
+                          <ChipChangeIndicator currentChips={player.chips} playerId={player.id} />
                         </div>
                         
                         {/* Stay button (right) */}
