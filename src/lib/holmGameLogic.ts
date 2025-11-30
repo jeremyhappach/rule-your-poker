@@ -157,6 +157,15 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     throw new Error('No active players found');
   }
 
+  // Calculate pot from antes (only for round 1)
+  let initialPot = gameConfig.pot || 0;
+  
+  if (roundNumber === 1) {
+    for (const player of players) {
+      initialPot += anteAmount;
+    }
+  }
+
   // Check if round already exists to prevent duplicates
   const { data: existingRound } = await supabase
     .from('rounds')
@@ -166,7 +175,25 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .single();
 
   if (existingRound) {
-    console.log('[HOLM] Round', roundNumber, 'already exists, skipping creation');
+    console.log('[HOLM] Round', roundNumber, 'already exists. Ensuring game state is updated...');
+    
+    // Update game state even if round exists
+    await supabase
+      .from('games')
+      .update({
+        status: 'in_progress',
+        current_round: roundNumber,
+        pot: initialPot,
+        buck_position: buckPosition,
+        all_decisions_in: false
+      })
+      .eq('id', gameId);
+    
+    console.log('[HOLM] Game state updated for existing round:', {
+      pot: initialPot,
+      buck_position: buckPosition,
+      current_round: roundNumber
+    });
     return;
   }
 
@@ -179,12 +206,9 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     })
     .eq('game_id', gameId);
 
-  // Calculate pot from antes (only for round 1)
-  let initialPot = gameConfig.pot || 0;
-  
+  // Deduct antes from player chips (only for round 1)
   if (roundNumber === 1) {
     for (const player of players) {
-      initialPot += anteAmount;
       await supabase
         .from('players')
         .update({ chips: player.chips - anteAmount })
