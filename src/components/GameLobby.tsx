@@ -219,6 +219,19 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .eq('id', gameId)
       .single();
 
+    const isActiveSession = gameData?.status && gameData.status !== 'waiting';
+
+    // For active sessions, just navigate - user will join as observer
+    if (isActiveSession) {
+      toast({
+        title: "Joined as Observer",
+        description: "Select an open seat to join the game!",
+      });
+      navigate(`/game/${gameId}`);
+      return;
+    }
+
+    // For waiting games, check if there's room and add player
     const { data: players, error: playersError } = await supabase
       .from('players')
       .select('position')
@@ -243,7 +256,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     }
 
     const nextPosition = players.length + 1;
-    const isActiveSession = gameData?.status && gameData.status !== 'waiting';
 
     const { error } = await supabase
       .from('players')
@@ -252,7 +264,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         user_id: userId,
         chips: 0,
         position: nextPosition,
-        sitting_out: isActiveSession
+        sitting_out: false
       });
 
     if (error) {
@@ -264,17 +276,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    if (isActiveSession) {
-      toast({
-        title: "Joined Active Game",
-        description: "You'll be dealt in starting next round. Select an open seat.",
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Joined game!",
-      });
-    }
+    toast({
+      title: "Success",
+      description: "Joined game!",
+    });
 
     navigate(`/game/${gameId}`);
   };
