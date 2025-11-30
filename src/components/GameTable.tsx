@@ -7,6 +7,7 @@ import { ChipStack } from "./ChipStack";
 import { ChipChangeIndicator } from "./ChipChangeIndicator";
 import { CommunityCards } from "./CommunityCards";
 import { BuckIndicator } from "./BuckIndicator";
+import { ChuckyHand } from "./ChuckyHand";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useMemo, useLayoutEffect } from "react";
 
@@ -51,6 +52,8 @@ interface GameTableProps {
   communityCards?: CardType[];
   communityCardsRevealed?: number;
   buckPosition?: number | null;
+  chuckyCards?: CardType[];
+  chuckyActive?: boolean;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -76,6 +79,8 @@ export const GameTable = ({
   communityCards,
   communityCardsRevealed,
   buckPosition,
+  chuckyCards,
+  chuckyActive,
   onStay,
   onFold,
   onSelectSeat,
@@ -195,6 +200,14 @@ export const GameTable = ({
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
+            />
+          )}
+
+          {/* Chucky's Hand for Holm Game */}
+          {gameType === 'holm-game' && chuckyActive && chuckyCards && (
+            <ChuckyHand 
+              cards={chuckyCards}
+              show={true}
             />
           )}
 
