@@ -147,11 +147,8 @@ export const GameTable = ({
                       </div>
                     )}
                     <div className="bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
-                      <p className="text-[8px] sm:text-[10px] md:text-xs text-poker-gold/80 font-semibold mb-0.5 sm:mb-1">POT</p>
-                      <div className="flex items-center justify-center gap-1 sm:gap-2">
-                        <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</p>
-                      </div>
-                      <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 sm:mt-1 font-semibold">Lose: ${loseAmount}</p>
+                      <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-poker-gold drop-shadow-lg">POT: ${pot}</p>
+                      <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 sm:mt-1 font-semibold">{legsToWin} legs to win</p>
                     </div>
                   </div>
                   
