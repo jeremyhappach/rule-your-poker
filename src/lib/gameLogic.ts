@@ -775,6 +775,15 @@ export async function endRound(gameId: string) {
   } else {
     // Everyone folded - apply pussy tax if enabled
     if (pussyTaxEnabled) {
+      // Reset player statuses so chip animations are visible
+      await supabase
+        .from('players')
+        .update({ 
+          status: 'active',
+          current_decision: null
+        })
+        .eq('game_id', gameId);
+      
       let taxCollected = 0;
       
       // Charge each player the pussy tax
