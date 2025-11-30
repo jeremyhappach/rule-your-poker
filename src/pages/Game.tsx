@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -348,38 +348,36 @@ const Game = () => {
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   // Using a ref to prevent multiple simultaneous timeouts
-  const proceedingToNextRoundRef = useState<boolean>(false)[0];
+  const proceedingToNextRoundRef = useRef<boolean>(false);
   
   useEffect(() => {
-    if (game?.awaiting_next_round && gameId && !proceedingToNextRoundRef) {
+    // Don't proceed if game is in game_over status (let GameOverCountdown handle it)
+    if (game?.awaiting_next_round && gameId && !proceedingToNextRoundRef.current && game.status !== 'game_over') {
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
       
       console.log('[AWAITING_NEXT_ROUND] Waiting 4 seconds before proceeding to next round');
-      
-      // Mark that we're already processing
-      const proceedingRef = { current: true };
+      proceedingToNextRoundRef.current = true;
       
       // Wait 4 seconds to show the result, then start next round
       const timer = setTimeout(async () => {
-        if (proceedingRef.current) {
-          console.log('[AWAITING_NEXT_ROUND] Proceeding to next round');
-          try {
-            await proceedToNextRound(gameId);
-          } catch (error) {
-            console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
-          }
-          proceedingRef.current = false;
+        console.log('[AWAITING_NEXT_ROUND] Proceeding to next round');
+        try {
+          await proceedToNextRound(gameId);
+        } catch (error) {
+          console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
+        } finally {
+          proceedingToNextRoundRef.current = false;
         }
       }, 4000);
       
       return () => {
         console.log('[AWAITING_NEXT_ROUND] Cleanup: cancelling timeout');
         clearTimeout(timer);
-        proceedingRef.current = false;
+        proceedingToNextRoundRef.current = false;
       };
     }
-  }, [game?.awaiting_next_round, gameId]);
+  }, [game?.awaiting_next_round, gameId, game?.status]);
 
   // Clear timer when results are shown
   useEffect(() => {
@@ -617,7 +615,9 @@ const Game = () => {
         last_round_result: null,
         current_round: null,
         awaiting_next_round: false,
-        next_round_number: null
+        next_round_number: null,
+        pot: 0,
+        all_decisions_in: false
       })
       .eq('id', gameId);
 
