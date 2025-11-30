@@ -314,6 +314,8 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   console.log('[MAKE DECISION] Player found:', { position: player.position, currentDecision: player.current_decision });
 
   // Lock in decision - no chips deducted yet
+  const isHolmGame = game.game_type === 'holm-game';
+  
   if (decision === 'stay') {
     await supabase
       .from('players')
@@ -324,19 +326,19 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       .eq('id', playerId);
     console.log('[MAKE DECISION] Stay decision locked in database');
   } else {
+    // In Holm game, folding only affects current hand - keep status 'active'
+    // In 3-5-7 game, folding eliminates player from entire session - set status 'folded'
     await supabase
       .from('players')
       .update({ 
         current_decision: 'fold',
         decision_locked: true,
-        status: 'folded'
+        ...(isHolmGame ? {} : { status: 'folded' })
       })
       .eq('id', playerId);
     console.log('[MAKE DECISION] Fold decision locked in database');
   }
 
-  // For Holm games, don't check all decisions here - buck rotation handles it
-  const isHolmGame = game.game_type === 'holm-game';
   console.log('[MAKE DECISION] Is Holm game?', isHolmGame);
   
   if (!isHolmGame) {
@@ -402,6 +404,15 @@ async function checkAllDecisionsIn(gameId: string) {
 export async function autoFoldUndecided(gameId: string) {
   console.log('[AUTO-FOLD] Starting autoFoldUndecided for game:', gameId);
   
+  // Get game type first
+  const { data: game } = await supabase
+    .from('games')
+    .select('game_type')
+    .eq('id', gameId)
+    .single();
+  
+  const isHolmGame = game?.game_type === 'holm-game';
+  
   // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers, error: fetchError } = await supabase
     .from('players')
@@ -425,13 +436,14 @@ export async function autoFoldUndecided(gameId: string) {
   console.log('[AUTO-FOLD] Auto-folding', undecidedPlayers.length, 'undecided players');
 
   // Auto-fold all undecided players
+  // In Holm game, keep status 'active' so they can play next hand
   for (const player of undecidedPlayers) {
     const { error: foldError } = await supabase
       .from('players')
       .update({ 
         current_decision: 'fold',
         decision_locked: true,
-        status: 'folded'
+        ...(isHolmGame ? {} : { status: 'folded' })
       })
       .eq('id', player.id);
     
