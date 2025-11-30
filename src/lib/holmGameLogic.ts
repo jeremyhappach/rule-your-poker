@@ -169,25 +169,39 @@ export async function endHolmRound(gameId: string) {
 
   // Case 1: Everyone folded - pussy tax
   if (stayedPlayers.length === 0) {
-    const pussyTaxAmount = game.pussy_tax_enabled ? game.pussy_tax_value : 0;
+    const pussyTaxEnabled = game.pussy_tax_enabled ?? true; // Default to enabled
+    const pussyTaxAmount = pussyTaxEnabled ? (game.pussy_tax_value || 1) : 0;
     
+    let totalTaxCollected = 0;
     if (pussyTaxAmount > 0) {
       for (const player of activePlayers) {
         await supabase
           .from('players')
           .update({ chips: player.chips - pussyTaxAmount })
           .eq('id', player.id);
+        totalTaxCollected += pussyTaxAmount;
       }
     }
+
+    const newPot = game.pot + totalTaxCollected;
+    const resultMessage = pussyTaxAmount > 0 
+      ? `Everyone folded! Pussy tax of $${pussyTaxAmount} per player charged. Pot now $${newPot}.`
+      : 'Everyone folded! No penalty.';
 
     await supabase
       .from('games')
       .update({
-        last_round_result: `Everyone folded! ${pussyTaxAmount > 0 ? `Pussy tax of $${pussyTaxAmount} charged.` : ''}`,
+        last_round_result: resultMessage,
         awaiting_next_round: true,
-        pot: game.pot + (pussyTaxAmount * activePlayers.length)
+        pot: newPot
       })
       .eq('id', gameId);
+
+    // Mark round complete
+    await supabase
+      .from('rounds')
+      .update({ status: 'completed' })
+      .eq('id', round.id);
 
     return;
   }
