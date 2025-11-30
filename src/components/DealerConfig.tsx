@@ -41,14 +41,14 @@ export const DealerConfig = ({
   onConfigComplete 
 }: DealerConfigProps) => {
   const { toast } = useToast();
-  const [anteAmount, setAnteAmount] = useState(currentAnteAmount);
-  const [legValue, setLegValue] = useState(currentLegValue);
-  const [pussyTaxEnabled, setPussyTaxEnabled] = useState(currentPussyTaxEnabled);
-  const [pussyTaxValue, setPussyTaxValue] = useState(currentPussyTaxValue);
-  const [legsToWin, setLegsToWin] = useState(currentLegsToWin);
-  const [potMaxEnabled, setPotMaxEnabled] = useState(currentPotMaxEnabled);
-  const [potMaxValue, setPotMaxValue] = useState(currentPotMaxValue);
-  const [chuckyCards, setChuckyCards] = useState(currentChuckyCards);
+  const [anteAmount, setAnteAmount] = useState(currentAnteAmount || 2);
+  const [legValue, setLegValue] = useState(currentLegValue || 1);
+  const [pussyTaxEnabled, setPussyTaxEnabled] = useState(currentPussyTaxEnabled ?? true);
+  const [pussyTaxValue, setPussyTaxValue] = useState(currentPussyTaxValue || 1);
+  const [legsToWin, setLegsToWin] = useState(currentLegsToWin || 3);
+  const [potMaxEnabled, setPotMaxEnabled] = useState(currentPotMaxEnabled ?? true);
+  const [potMaxValue, setPotMaxValue] = useState(currentPotMaxValue || 10);
+  const [chuckyCards, setChuckyCards] = useState(currentChuckyCards || 4);
   
   const isHolmGame = gameType === 'holm-game';
 
@@ -243,8 +243,17 @@ export const DealerConfig = ({
                 value={pussyTaxValue}
                 onChange={(e) => setPussyTaxValue(parseInt(e.target.value) || 1)}
               />
-              <p className="text-xs text-muted-foreground">Penalty for folding early</p>
+              <p className="text-xs text-muted-foreground">
+                {isHolmGame 
+                  ? "Penalty when all players fold" 
+                  : "Penalty for folding early"}
+              </p>
             </div>
+          )}
+          {!pussyTaxEnabled && (
+            <p className="text-xs text-muted-foreground pl-4">
+              No penalty for folding
+            </p>
           )}
         </div>
 
