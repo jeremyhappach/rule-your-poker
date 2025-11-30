@@ -380,20 +380,24 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        // For Holm game, auto-fold then rotate buck (which will check all decisions and end if needed)
-        autoFoldUndecided(gameId!).then(async () => {
-          const { rotateBuck } = await import('@/lib/holmGameLogic');
-          await rotateBuck(gameId!);
-        }).catch(err => {
-          console.error('[TIMER EXPIRED] Error in Holm game:', err);
-        });
+        // For Holm game, only auto-fold the player with the buck
+        const playerWithBuck = players.find(p => p.position === game.buck_position);
+        if (playerWithBuck && !playerWithBuck.decision_locked) {
+          console.log('[TIMER EXPIRED] Auto-folding buck holder at position', game.buck_position);
+          makeDecision(gameId!, playerWithBuck.id, 'fold').then(async () => {
+            const { rotateBuck } = await import('@/lib/holmGameLogic');
+            await rotateBuck(gameId!);
+          }).catch(err => {
+            console.error('[TIMER EXPIRED] Error in Holm game:', err);
+          });
+        }
       } else {
         autoFoldUndecided(gameId!).catch(err => {
           console.error('[TIMER EXPIRED] Error auto-folding:', err);
         });
       }
     }
-  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type, game?.buck_position, players]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   // Using a ref to prevent multiple simultaneous timeouts
