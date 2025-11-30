@@ -435,6 +435,15 @@ async function handleGameOver(
 ) {
   console.log('[HANDLE GAME OVER] Starting game over handler', { winnerId, winnerUsername, winnerLegs });
   
+  // Get current total_hands to increment it
+  const { data: currentGameData } = await supabase
+    .from('games')
+    .select('total_hands')
+    .eq('id', gameId)
+    .single();
+  
+  const newTotalHands = (currentGameData?.total_hands || 0) + 1;
+  
   // Calculate total leg value from all players
   const totalLegValue = allPlayers.reduce((sum, p) => {
     const playerLegs = p.id === winnerId ? winnerLegs : p.legs;
@@ -493,7 +502,7 @@ async function handleGameOver(
       .update({
         status: 'session_ended',
         session_ended_at: new Date().toISOString(),
-        total_hands: sessionData.current_round || 0,
+        total_hands: newTotalHands,
         pending_session_end: false,
         last_round_result: gameWinMessage,
         pot: 0
@@ -517,7 +526,8 @@ async function handleGameOver(
       all_decisions_in: false,
       last_round_result: gameWinMessage,
       game_over_at: new Date().toISOString(),
-      pot: 0  // Critical: always reset pot
+      pot: 0,  // Critical: always reset pot
+      total_hands: newTotalHands
     })
     .eq('id', gameId)
     .select();
