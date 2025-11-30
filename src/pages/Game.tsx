@@ -187,8 +187,8 @@ const Game = () => {
 
   // Timer countdown effect
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0 || isPaused || game?.awaiting_next_round || game?.last_round_result) {
-      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, isPaused, awaiting: game?.awaiting_next_round, result: game?.last_round_result });
+    if (timeLeft === null || timeLeft <= 0 || isPaused || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
+      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, isPaused, awaiting: game?.awaiting_next_round, result: game?.last_round_result, allDecisionsIn: game?.all_decisions_in });
       return;
     }
 
@@ -209,7 +209,7 @@ const Game = () => {
       console.log('[TIMER COUNTDOWN] Cleanup');
       clearInterval(timer);
     };
-  }, [timeLeft, isPaused, game?.awaiting_next_round, game?.last_round_result]);
+  }, [timeLeft, isPaused, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
 
   // Ante timer countdown effect
   useEffect(() => {
@@ -339,6 +339,7 @@ const Game = () => {
       shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused
     });
     
+    // Only auto-fold if timer expired AND all_decisions_in is still false
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
       console.log('[TIMER EXPIRED] Auto-folding undecided players');
       autoFoldUndecided(gameId!).catch(err => {
