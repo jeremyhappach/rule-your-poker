@@ -134,13 +134,13 @@ const Game = () => {
     console.log('[SUBSCRIPTION] Setting up real-time subscriptions for game:', gameId);
     fetchGameData();
 
-    // Debounce fetch aggressively to batch rapid updates during round transitions
+    // Debounce fetch to batch rapid updates during transitions
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetch = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         fetchGameData();
-      }, 1000); // Increased to 1000ms to fully batch round start updates
+      }, 300); // 300ms balances responsiveness and batching
     };
 
     const channel = supabase
@@ -462,7 +462,8 @@ const Game = () => {
     }
 
     setGame(gameData);
-    setPlayers(playersData || []);
+    // Sort players by position for consistent rendering
+    setPlayers((playersData || []).sort((a, b) => a.position - b.position));
     
     // Calculate time left ONLY if game is actively in progress AND not in transition
     // CRITICAL: Never set timeLeft during game_over to prevent unmounting GameOverCountdown
