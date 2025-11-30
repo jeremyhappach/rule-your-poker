@@ -194,9 +194,23 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .single();
 
   if (existingRound) {
-    console.log('[HOLM] Round', roundNumber, 'already exists. Ensuring game state is updated...');
+    console.log('[HOLM] Round', roundNumber, 'already exists. Resetting round state...');
     
-    // Update game state even if round exists
+    // Reset the existing round state for the new hand
+    const deadline = new Date(Date.now() + 15000);
+    await supabase
+      .from('rounds')
+      .update({
+        status: 'betting',
+        pot: initialPot,
+        decision_deadline: deadline.toISOString(),
+        community_cards_revealed: 2,
+        chucky_active: false,
+        chucky_cards: null
+      })
+      .eq('id', existingRound.id);
+    
+    // Update game state
     await supabase
       .from('games')
       .update({
@@ -208,7 +222,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       })
       .eq('id', gameId);
     
-    console.log('[HOLM] Game state updated for existing round:', {
+    console.log('[HOLM] Round and game state reset for new hand:', {
       pot: initialPot,
       buck_position: buckPosition,
       current_round: roundNumber
