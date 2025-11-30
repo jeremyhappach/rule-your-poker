@@ -337,7 +337,7 @@ export async function endHolmRound(gameId: string) {
   // Get all players and their decisions
   const { data: players } = await supabase
     .from('players')
-    .select('*')
+    .select('*, profiles(username)')
     .eq('game_id', gameId)
     .order('position');
 
@@ -517,6 +517,9 @@ async function handleChuckyShowdown(
   const playerWins = playerEval.value > chuckyEval.value;
 
   console.log('[HOLM SHOWDOWN] Winner:', playerWins ? 'Player' : 'Chucky');
+  
+  // Get player username
+  const playerUsername = player.profiles?.username || player.user_id;
 
   if (playerWins) {
     console.log('[HOLM SHOWDOWN] Player wins! Pot:', game.pot);
@@ -530,7 +533,7 @@ async function handleChuckyShowdown(
       .from('games')
       .update({
         status: 'game_over',
-        last_round_result: `${player.user_id} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${game.pot}!`,
+        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${game.pot}!`,
         game_over_at: new Date().toISOString(),
         pot: 0
       })
@@ -613,6 +616,7 @@ async function handleMultiPlayerShowdown(
 
   if (winners.length === 1) {
     const winner = winners[0];
+    const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
     
     // Winner takes the pot
     await supabase
@@ -637,7 +641,7 @@ async function handleMultiPlayerShowdown(
     await supabase
       .from('games')
       .update({
-        last_round_result: `${winner.player.user_id} wins with ${formatHandRank(winner.evaluation.rank)}!`,
+        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)}!`,
         awaiting_next_round: true,
         pot: totalMatched
       })
