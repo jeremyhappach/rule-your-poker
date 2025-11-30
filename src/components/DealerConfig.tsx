@@ -209,20 +209,22 @@ export const DealerConfig = ({
             value={anteAmount}
             onChange={(e) => setAnteAmount(parseInt(e.target.value) || 1)}
           />
-          <p className="text-xs text-muted-foreground">Amount each player pays per round</p>
+          <p className="text-xs text-muted-foreground">Amount each player pays per {isHolmGame ? 'hand' : 'round'}</p>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="legValue">Leg Value ($)</Label>
-          <Input
-            id="legValue"
-            type="number"
-            min="1"
-            value={legValue}
-            onChange={(e) => setLegValue(parseInt(e.target.value) || 1)}
-          />
-          <p className="text-xs text-muted-foreground">Value of each leg won</p>
-        </div>
+        {!isHolmGame && (
+          <div className="space-y-2">
+            <Label htmlFor="legValue">Leg Value ($)</Label>
+            <Input
+              id="legValue"
+              type="number"
+              min="1"
+              value={legValue}
+              onChange={(e) => setLegValue(parseInt(e.target.value) || 1)}
+            />
+            <p className="text-xs text-muted-foreground">Value of each leg won</p>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -257,17 +259,19 @@ export const DealerConfig = ({
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="legsToWin">Number of Legs to Win</Label>
-          <Input
-            id="legsToWin"
-            type="number"
-            min="1"
-            value={legsToWin}
-            onChange={(e) => setLegsToWin(parseInt(e.target.value) || 1)}
-          />
-          <p className="text-xs text-muted-foreground">Legs needed to win the game</p>
-        </div>
+        {!isHolmGame && (
+          <div className="space-y-2">
+            <Label htmlFor="legsToWin">Number of Legs to Win</Label>
+            <Input
+              id="legsToWin"
+              type="number"
+              min="1"
+              value={legsToWin}
+              onChange={(e) => setLegsToWin(parseInt(e.target.value) || 1)}
+            />
+            <p className="text-xs text-muted-foreground">Legs needed to win the game</p>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -309,9 +313,17 @@ export const DealerConfig = ({
               value={chuckyCards}
               onChange={(e) => setChuckyCards(parseInt(e.target.value) || 4)}
             />
-            <p className="text-xs text-muted-foreground">Number of cards Chucky gets (2-7)</p>
+            <p className="text-xs text-muted-foreground">Number of cards Chucky gets if only one player stays (2-7)</p>
           </div>
         )}
+
+        <div className="border-t border-muted pt-4">
+          <p className="text-xs text-muted-foreground text-center mb-2">
+            {isHolmGame 
+              ? "Game ends when a player beats Chucky in a showdown" 
+              : "First player to reach the target legs wins the game"}
+          </p>
+        </div>
 
         <Button onClick={handleSubmit} className="w-full" size="lg">
           Start Game
