@@ -134,13 +134,13 @@ const Game = () => {
     console.log('[SUBSCRIPTION] Setting up real-time subscriptions for game:', gameId);
     fetchGameData();
 
-    // Debounce fetch to prevent rapid re-renders
-    let debounceTimer: NodeJS.Timeout | null = null;
+    // Debounce fetch with longer delay to prevent flickering during rapid updates
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedFetch = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         fetchGameData();
-      }, 150); // 150ms debounce
+      }, 500); // Increased to 500ms to batch rapid updates
     };
 
     const channel = supabase

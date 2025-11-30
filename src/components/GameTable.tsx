@@ -203,7 +203,7 @@ export const GameTable = ({
               return (
                 <div
                   key={`empty-${seat.position}`}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10 cursor-pointer transition-all duration-300 ease-out"
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10 cursor-pointer"
                   style={{ left: `${x}%`, top: `${y}%` }}
                   onClick={() => onSelectSeat && onSelectSeat(seat.position)}
                 >
@@ -230,7 +230,7 @@ export const GameTable = ({
             return (
               <div
                 key={player.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10 transition-all duration-300 ease-out"
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 animate-fade-in z-10"
                 style={{ left: `${x}%`, top: `${y}%` }}
               >
                 <Card className={`
