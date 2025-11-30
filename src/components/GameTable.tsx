@@ -193,12 +193,28 @@ export const GameTable = ({
             
             // Get cards for this player
             const actualCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
-            // Show card backs for all players during active round, regardless of fold status
-            // Only hide cards completely if sitting out or game is not in active decision phase
+            
+            // Calculate expected card count based on round (3-5-7 game)
+            const getExpectedCardCount = (round: number): number => {
+              if (round === 1) return 3;
+              if (round === 2) return 5;
+              if (round === 3) return 7;
+              return 0;
+            };
+            const expectedCardCount = getExpectedCardCount(currentRound);
+            
+            // Show cards when there's an active round and player isn't sitting out
             const shouldShowCards = player && !player.sitting_out && currentRound > 0;
             
-            // Show actual cards or card backs based on shouldShowCards
-            const cards = shouldShowCards ? actualCards : [];
+            // For observers or other players, create dummy cards for card backs display
+            const cards = shouldShowCards ? (
+              actualCards.length > 0 ? actualCards : 
+              // Create dummy cards based on expected count for the round
+              Array.from({ length: expectedCardCount }, (_, i) => ({ 
+                rank: '2' as const, 
+                suit: '♠' as const
+              }))
+            ) : [];
             
             // Handle empty seat click
             if (isEmptySeat) {
