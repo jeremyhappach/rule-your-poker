@@ -92,25 +92,28 @@ export const GameTable = ({
   // Calculate the amount loser will pay: min of pot and pot max (if enabled)
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
   
-  // Reorder players so current user is always first (bottom position)
-  const reorderedPlayers = currentPlayer 
-    ? [currentPlayer, ...players.filter(p => p.user_id !== currentUserId)]
-    : players;
+  // Memoize seatsToRender to prevent position flickering during rapid updates
+  const seatsToRender = useMemo(() => {
+    // Reorder players so current user is always first (bottom position)
+    const reorderedPlayers = currentPlayer 
+      ? [currentPlayer, ...players.filter(p => p.user_id !== currentUserId)]
+      : players;
+    
+    // Calculate open seats (max 7 positions)
+    const maxSeats = 7;
+    const occupiedPositions = new Set(players.map(p => p.position));
+    const allPositions = Array.from({ length: maxSeats }, (_, i) => i + 1);
+    const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
+    
+    // Show seat selection for observers or sitting out players
+    const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
+    
+    // Combine players and open seats for rendering
+    return [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
+  }, [players, currentPlayer, currentUserId, onSelectSeat]);
 
   // Hide pot and timer when showing result message
   const showPotAndTimer = !lastRoundResult;
-
-  // Calculate open seats (max 7 positions)
-  const maxSeats = 7;
-  const occupiedPositions = new Set(players.map(p => p.position));
-  const allPositions = Array.from({ length: maxSeats }, (_, i) => i + 1);
-  const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
-  
-  // Show seat selection for observers or sitting out players
-  const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
-  
-  // Combine players and open seats for rendering
-  const seatsToRender = [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
 
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
