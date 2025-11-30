@@ -19,11 +19,11 @@ export async function addBotPlayer(gameId: string) {
   } else {
     const occupiedPositions = new Set(existingPlayers.map(p => p.position));
     
-    // For 2 players (1 existing + 1 bot), position 5 is most directly opposite position 1
-    // For more players, spread them evenly: 1, 5, 3, 7, 2, 4, 6
+    // For 2 players (1 existing + 1 bot), position 4 is closest to opposite on 7-seat table
+    // For more players, spread them evenly: 1, 4, 2, 6, 3, 5, 7
     const preferredOrder = existingPlayers.length === 1 
-      ? [5, 1, 3, 7, 2, 4, 6]  // 2-player: bot goes to position 5 (directly across)
-      : [1, 5, 3, 7, 2, 4, 6]; // Multi-player: spread evenly
+      ? [4, 1, 2, 6, 3, 5, 7]  // 2-player: bot goes to position 4 (closest to opposite)
+      : [1, 4, 2, 6, 3, 5, 7]; // Multi-player: spread evenly
     
     // Find first available position from preferred order
     nextPosition = preferredOrder.find(pos => !occupiedPositions.has(pos)) || 
