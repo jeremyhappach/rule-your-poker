@@ -868,18 +868,26 @@ export async function endRound(gameId: string) {
     }
   }
 
-  // Store result message and immediately set awaiting_next_round
-  // The frontend will handle the 4-second delay before calling proceedToNextRound
-  const nextRound = currentRound < 3 ? currentRound + 1 : 1;
-  
-  await supabase
+  // Only set awaiting_next_round if we're not ending the game
+  // Check if game is over by re-fetching to see if status was set to game_over
+  const { data: finalGameState } = await supabase
     .from('games')
-    .update({ 
-      last_round_result: resultMessage,
-      awaiting_next_round: true,
-      next_round_number: nextRound
-    })
-    .eq('id', gameId);
+    .select('status')
+    .eq('id', gameId)
+    .single();
+  
+  if (finalGameState?.status !== 'game_over') {
+    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    
+    await supabase
+      .from('games')
+      .update({ 
+        last_round_result: resultMessage,
+        awaiting_next_round: true,
+        next_round_number: nextRound
+      })
+      .eq('id', gameId);
+  }
 }
 
 export async function proceedToNextRound(gameId: string) {
