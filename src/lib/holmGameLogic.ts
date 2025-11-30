@@ -40,8 +40,8 @@ export async function rotateBuck(gameId: string) {
     decision: p.current_decision
   })));
   
-  // Check if all players have decided
-  const allDecided = players.every(p => p.decision_locked);
+  // Check if all players have decided (must have both decision_locked AND a current_decision)
+  const allDecided = players.every(p => p.decision_locked && p.current_decision !== null);
   
   console.log('[HOLM BUCK] All players decided?', allDecided);
   
@@ -71,9 +71,9 @@ export async function rotateBuck(gameId: string) {
     const nextPosition = positions[nextBuckIndex];
     const nextPlayer = players.find(p => p.position === nextPosition);
     
-    console.log('[HOLM BUCK] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked);
+    console.log('[HOLM BUCK] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked, 'decision:', nextPlayer?.current_decision);
     
-    if (nextPlayer && !nextPlayer.decision_locked) {
+    if (nextPlayer && (!nextPlayer.decision_locked || nextPlayer.current_decision === null)) {
       // Found next undecided player
       console.log('[HOLM BUCK] Found next undecided player at position:', nextPosition);
       await supabase
