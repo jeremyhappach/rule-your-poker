@@ -193,20 +193,19 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .eq('round_number', roundNumber)
     .single();
 
+  let roundId: string;
+  const deadline = new Date(Date.now() + 15000);
+
   if (existingRound) {
-    console.log('[HOLM] Round', roundNumber, 'already exists. Resetting round state...');
+    console.log('[HOLM] Round', roundNumber, 'already exists. Resetting for new hand...');
     
-    // Reset player decisions first
+    // Delete old player cards from previous hand
     await supabase
-      .from('players')
-      .update({ 
-        current_decision: null,
-        decision_locked: false
-      })
-      .eq('game_id', gameId);
+      .from('player_cards')
+      .delete()
+      .eq('round_id', existingRound.id);
     
     // Reset the existing round state for the new hand
-    const deadline = new Date(Date.now() + 15000);
     await supabase
       .from('rounds')
       .update({
@@ -215,31 +214,40 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
         chucky_active: false,
-        chucky_cards: null
+        chucky_cards: null,
+        chucky_cards_revealed: 0,
+        community_cards: null
       })
       .eq('id', existingRound.id);
     
-    // Update game state
-    await supabase
-      .from('games')
-      .update({
-        status: 'in_progress',
-        current_round: roundNumber,
+    roundId = existingRound.id;
+  } else {
+    // Create new round
+    console.log('[HOLM] Creating new round', roundNumber);
+    const { data: round, error: roundError } = await supabase
+      .from('rounds')
+      .insert({
+        game_id: gameId,
+        round_number: roundNumber,
+        cards_dealt: 4,
+        status: 'betting',
         pot: initialPot,
-        buck_position: buckPosition,
-        all_decisions_in: false
+        decision_deadline: deadline.toISOString(),
+        community_cards_revealed: 2,
+        chucky_active: false
       })
-      .eq('id', gameId);
+      .select()
+      .single();
+
+    if (roundError || !round) {
+      console.error('[HOLM] Failed to create round:', roundError);
+      throw new Error(`Failed to create round: ${roundError?.message}`);
+    }
     
-    console.log('[HOLM] Round and game state reset for new hand:', {
-      pot: initialPot,
-      buck_position: buckPosition,
-      current_round: roundNumber
-    });
-    return;
+    roundId = round.id;
   }
 
-  // Reset player decisions
+  // Reset player decisions for new hand
   await supabase
     .from('players')
     .update({ 
@@ -258,29 +266,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     }
   }
 
-  // Create the round with 15-second deadline
-  const deadline = new Date(Date.now() + 15000);
-  const { data: round, error: roundError } = await supabase
-    .from('rounds')
-    .insert({
-      game_id: gameId,
-      round_number: roundNumber,
-      cards_dealt: 4, // Each player gets 4 cards
-      status: 'betting',
-      pot: initialPot,
-      decision_deadline: deadline.toISOString(),
-      community_cards_revealed: 2, // 2 community cards shown initially
-      chucky_active: false
-    })
-    .select()
-    .single();
-
-  if (roundError || !round) {
-    console.error('[HOLM] Failed to create round:', roundError);
-    throw new Error(`Failed to create round: ${roundError?.message}`);
-  }
-
-  // Deal cards
+  // Deal cards for the new hand
   const deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
@@ -296,7 +282,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   await supabase
     .from('rounds')
     .update({ community_cards: communityCards as any })
-    .eq('id', round.id);
+    .eq('id', roundId);
 
   // Deal 4 cards to each player
   for (const player of players) {
@@ -311,7 +297,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       .from('player_cards')
       .insert({
         player_id: player.id,
-        round_id: round.id,
+        round_id: roundId,
         cards: playerCards as any
       });
   }
