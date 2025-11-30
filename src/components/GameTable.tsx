@@ -108,9 +108,15 @@ export const GameTable = ({
     // Show seat selection for observers or sitting out players
     const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
     
-    // Combine players and open seats for rendering
-    return [...reorderedPlayers, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
-  }, [players, currentPlayer, currentUserId, onSelectSeat]);
+    // Combine players and open seats for rendering - sort by position for stable rendering
+    const allSeats = [
+      ...reorderedPlayers.map(p => ({ ...p, seatPosition: p.position })),
+      ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true, seatPosition: pos })) : [])
+    ];
+    
+    // Sort by seat position to ensure stable ordering regardless of data updates
+    return allSeats.sort((a, b) => a.seatPosition - b.seatPosition);
+  }, [players.length, currentPlayer?.id, currentUserId, onSelectSeat]);
 
   // Hide pot and timer when showing result message
   const showPotAndTimer = !lastRoundResult;
@@ -182,13 +188,17 @@ export const GameTable = ({
           )}
 
           {/* Players and open seats around table */}
-          {seatsToRender.map((seat, index) => {
+          {seatsToRender.map((seat) => {
             const isEmptySeat = 'isEmpty' in seat && seat.isEmpty;
             const player = !isEmptySeat ? seat as Player : null;
             const isCurrentUser = player?.user_id === currentUserId;
             const hasPlayerDecided = player?.decision_locked;
             const playerDecision = allDecisionsIn ? player?.current_decision : null;
-            const angle = (index / seatsToRender.length) * 2 * Math.PI - Math.PI / 2;
+            
+            // Use seat position (1-7) for stable angle calculation
+            const seatPosition = seat.position;
+            const totalSeats = 7; // Max seats around table
+            const angle = ((seatPosition - 1) / totalSeats) * 2 * Math.PI - Math.PI / 2;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
@@ -253,7 +263,7 @@ export const GameTable = ({
                     <div className="space-y-0.5 sm:space-y-1 md:space-y-1.5">
                       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5">
                         <p className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px]">
-                          {player.profiles?.username || (player.is_bot ? `Bot ${index + 1}` : `P${index + 1}`)}
+                          {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
                           {player.sitting_out && ' (Out)'}
                         </p>
                         {player.position === dealerPosition && (
