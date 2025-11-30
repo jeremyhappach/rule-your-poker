@@ -196,6 +196,15 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   if (existingRound) {
     console.log('[HOLM] Round', roundNumber, 'already exists. Resetting round state...');
     
+    // Reset player decisions first
+    await supabase
+      .from('players')
+      .update({ 
+        current_decision: null,
+        decision_locked: false
+      })
+      .eq('game_id', gameId);
+    
     // Reset the existing round state for the new hand
     const deadline = new Date(Date.now() + 15000);
     await supabase
