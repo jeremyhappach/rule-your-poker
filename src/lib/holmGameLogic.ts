@@ -419,49 +419,53 @@ export async function endHolmRound(gameId: string) {
   });
   
   // Force a small delay to ensure UI updates
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  // Wait 2 seconds before dealing Chucky
-  console.log('[HOLM END] Waiting 2 seconds before dealing Chucky...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // Deal Chucky's cards and store them
-  console.log('[HOLM END] Now dealing Chucky cards...');
-  const deck = shuffleDeck(createDeck());
-  const chuckyCardCount = game.chucky_cards || 4;
-  const chuckyCards = deck.slice(0, chuckyCardCount);
-
-  console.log('[HOLM END] Chucky dealt', chuckyCardCount, 'cards:', chuckyCards);
-
-  const { data: chuckyResult, error: chuckyError } = await supabase
-    .from('rounds')
-    .update({ 
-      chucky_cards: chuckyCards as any,
-      chucky_active: true 
-    })
-    .eq('id', round.id)
-    .select();
-
-  console.log('[HOLM END] Chucky cards stored:', { 
-    success: !chuckyError, 
-    error: chuckyError,
-    updatedRows: chuckyResult?.length,
-    chuckyData: chuckyResult?.[0]
-  });
-
-  // Brief pause before evaluation
-  console.log('[HOLM END] Brief pause before showdown evaluation...');
   await new Promise(resolve => setTimeout(resolve, 500));
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
-    console.log('[HOLM END] Case 2: Single player vs Chucky');
+    console.log('[HOLM END] Case 2: Single player vs Chucky - waiting 2 seconds before dealing Chucky');
+    
+    // Wait 2 seconds before dealing Chucky
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Deal Chucky's cards and store them
+    console.log('[HOLM END] Now dealing Chucky cards...');
+    const deck = shuffleDeck(createDeck());
+    const chuckyCardCount = game.chucky_cards || 4;
+    const chuckyCards = deck.slice(0, chuckyCardCount);
+
+    console.log('[HOLM END] Chucky dealt', chuckyCardCount, 'cards:', chuckyCards);
+
+    const { data: chuckyResult, error: chuckyError } = await supabase
+      .from('rounds')
+      .update({ 
+        chucky_cards: chuckyCards as any,
+        chucky_active: true 
+      })
+      .eq('id', round.id)
+      .select();
+
+    console.log('[HOLM END] Chucky cards stored:', { 
+      success: !chuckyError, 
+      error: chuckyError,
+      updatedRows: chuckyResult?.length,
+      chuckyData: chuckyResult?.[0]
+    });
+
+    // Brief pause before evaluation
+    console.log('[HOLM END] Brief pause before showdown evaluation...');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     await handleChuckyShowdown(gameId, round.id, stayedPlayers[0], round.community_cards as unknown as Card[], game, chuckyCards);
     return;
   }
 
-  // Case 3: Multiple players stayed - showdown
-  console.log('[HOLM END] Case 3: Multi-player showdown');
+  // Case 3: Multiple players stayed - showdown (no Chucky)
+  console.log('[HOLM END] Case 3: Multi-player showdown (no Chucky)');
+  
+  // Brief pause before evaluation
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
   await handleMultiPlayerShowdown(gameId, round.id, stayedPlayers, round.community_cards as unknown as Card[], game);
 }
 
