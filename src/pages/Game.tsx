@@ -748,8 +748,16 @@ const Game = () => {
     const currentPlayer = players.find(p => p.user_id === user.id);
     if (!currentPlayer) return;
 
+    console.log('[PLAYER DECISION] Player staying:', {
+      playerId: currentPlayer.id,
+      position: currentPlayer.position,
+      gameType: game?.game_type
+    });
+
     try {
       await makeDecision(gameId, currentPlayer.id, 'stay');
+      
+      console.log('[PLAYER DECISION] Stay decision made, calling rotateBuck');
       
       // In Holm game, rotate buck after decision
       if (game?.game_type === 'holm-game') {
