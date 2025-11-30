@@ -1151,6 +1151,10 @@ const Game = () => {
             potMaxValue={game.pot_max_value || 10}
             pendingSessionEnd={game.pending_session_end || false}
             awaitingNextRound={game.awaiting_next_round || false}
+            gameType={game.game_type}
+            communityCards={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards as CardType[] | undefined}
+            communityCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards_revealed}
+            buckPosition={game.buck_position}
             onStay={handleStay}
             onFold={handleFold}
             onSelectSeat={handleSelectSeat}
