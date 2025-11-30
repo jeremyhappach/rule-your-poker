@@ -219,11 +219,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .eq('id', gameId)
       .single();
 
-    // Users join as observers only if ante decisions have started or game is in progress
-    const shouldJoinAsObserver = gameData?.status && 
-      ['ante_decision', 'in_progress'].includes(gameData.status);
+    // Users join as observers for any session that's already started (not in waiting)
+    const shouldJoinAsObserver = gameData?.status && gameData.status !== 'waiting';
 
-    // For active gameplay, join as observer
+    // For active sessions, join as observer
     if (shouldJoinAsObserver) {
       toast({
         title: "Joined as Observer",
