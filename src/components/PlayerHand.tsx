@@ -20,28 +20,28 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
   // Calculate size and spacing based on number of cards
   const getCardClasses = () => {
     if (cards.length >= 7) {
-      // Round 3: 7 cards - smallest
+      // Round 3: 7 cards - smallest with heavy overlap
       return {
         card: 'w-8 h-11 sm:w-9 sm:h-12 md:w-10 md:h-14',
         text: 'text-sm sm:text-base',
         suit: 'text-lg sm:text-xl',
-        gap: 'gap-0.5'
+        overlap: '-ml-4 sm:-ml-4 md:-ml-5 first:ml-0'
       };
     } else if (cards.length >= 5) {
-      // Round 2: 5 cards - medium
+      // Round 2: 5 cards - medium with moderate overlap
       return {
         card: 'w-10 h-14 sm:w-11 sm:h-15 md:w-12 md:h-16',
         text: 'text-base sm:text-lg',
         suit: 'text-xl sm:text-2xl',
-        gap: 'gap-1'
+        overlap: '-ml-5 sm:-ml-6 md:-ml-7 first:ml-0'
       };
     }
-    // Round 1: 3 cards - base size
+    // Round 1: 3 cards - base size with light overlap
     return {
       card: 'w-12 h-16',
       text: 'text-lg',
       suit: 'text-2xl',
-      gap: 'gap-1'
+      overlap: '-ml-4 first:ml-0'
     };
   };
 
@@ -49,11 +49,11 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
   
   if (isHidden) {
     return (
-      <div className={`flex ${classes.gap}`}>
+      <div className="flex">
         {sortedCards.map((_, index) => (
           <div
             key={index}
-            className={`${classes.card} bg-gradient-to-br from-red-900 via-red-950 to-black rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden`}
+            className={`${classes.card} ${classes.overlap} bg-gradient-to-br from-red-900 via-red-950 to-black rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden`}
             style={{ transform: `rotate(${index * 2 - 2}deg)` }}
           >
             {/* Card back pattern */}
@@ -70,11 +70,11 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
   }
 
   return (
-    <div className={`flex ${classes.gap}`}>
+    <div className="flex">
       {sortedCards.map((card, index) => (
         <Card
           key={index}
-          className={`${classes.card} flex flex-col items-center justify-center p-1 bg-white shadow-xl border-2 border-gray-300 transform transition-transform hover:scale-110 hover:-translate-y-2`}
+          className={`${classes.card} ${classes.overlap} flex flex-col items-center justify-center p-1 bg-white shadow-xl border-2 border-gray-300 transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10`}
           style={{ transform: `rotate(${index * 2 - (sortedCards.length - 1)}deg)` }}
         >
           <span className={`${classes.text} font-bold leading-none ${
