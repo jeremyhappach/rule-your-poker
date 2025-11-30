@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface ChipChangeIndicatorProps {
   currentChips: number;
@@ -7,13 +7,21 @@ interface ChipChangeIndicatorProps {
 
 export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndicatorProps) => {
   const [chipChange, setChipChange] = useState<number | null>(null);
-  const [previousChips, setPreviousChips] = useState<number>(currentChips);
   const [showAnimation, setShowAnimation] = useState(false);
+  const previousChipsRef = useRef<number>(currentChips);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    // Only show change if chips actually changed and it's not the initial render
-    if (previousChips !== currentChips && previousChips !== 0) {
-      const change = currentChips - previousChips;
+    // Skip the initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      previousChipsRef.current = currentChips;
+      return;
+    }
+
+    // Only show change if chips actually changed
+    if (previousChipsRef.current !== currentChips) {
+      const change = currentChips - previousChipsRef.current;
       setChipChange(change);
       setShowAnimation(true);
 
@@ -23,11 +31,11 @@ export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndica
         setChipChange(null);
       }, 1500);
 
+      previousChipsRef.current = currentChips;
+
       return () => clearTimeout(timer);
     }
-    
-    setPreviousChips(currentChips);
-  }, [currentChips, previousChips]);
+  }, [currentChips]);
 
   if (!showAnimation || chipChange === null || chipChange === 0) {
     return null;
