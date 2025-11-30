@@ -163,7 +163,7 @@ export const GameTable = ({
                         <span className="text-[10px] sm:text-xs md:text-sm text-poker-gold/80 font-semibold">POT:</span>
                         <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</span>
                       </div>
-                      {gameType !== 'holm-game' && (
+                      {gameType && gameType !== 'holm-game' && (
                         <>
                           <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 sm:mt-1 font-semibold">{legsToWin} legs to win</p>
                           <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Stay and Lose: ${loseAmount}</p>

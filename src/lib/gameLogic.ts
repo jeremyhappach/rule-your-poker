@@ -318,8 +318,12 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       .eq('id', playerId);
   }
 
-  // Check if all players have decided
-  await checkAllDecisionsIn(gameId);
+  // For Holm games, don't check all decisions here - buck rotation handles it
+  const isHolmGame = game.game_type === 'holm-game';
+  if (!isHolmGame) {
+    // Check if all players have decided (only for non-Holm games)
+    await checkAllDecisionsIn(gameId);
+  }
 }
 
 async function checkAllDecisionsIn(gameId: string) {
