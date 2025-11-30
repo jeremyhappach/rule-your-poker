@@ -818,7 +818,8 @@ export async function endRound(gameId: string) {
           awaiting_next_round: false,
           all_decisions_in: false,
           last_round_result: gameWinMessage,
-          game_over_at: new Date().toISOString()
+          game_over_at: new Date().toISOString(),
+          pot: 0
         })
         .eq('id', gameId);
     } else {
