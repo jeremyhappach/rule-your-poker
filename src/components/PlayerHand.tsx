@@ -56,7 +56,7 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
             className={`${classes.card} ${classes.overlap} bg-gradient-to-br from-red-900 via-red-950 to-black rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden animate-fade-in`}
             style={{ 
               transform: `rotate(${index * 2 - 2}deg)`,
-              animationDelay: `${index * 100}ms`,
+              animationDelay: `${index * 150}ms`,
               animationFillMode: 'backwards'
             }}
           >
@@ -81,7 +81,7 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
           className={`${classes.card} ${classes.overlap} flex flex-col items-center justify-center p-1 bg-white shadow-xl border-2 border-gray-300 transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
           style={{ 
             transform: `rotate(${index * 2 - (sortedCards.length - 1)}deg)`,
-            animationDelay: `${index * 100}ms`,
+            animationDelay: `${index * 150}ms`,
             animationFillMode: 'backwards'
           }}
         >
