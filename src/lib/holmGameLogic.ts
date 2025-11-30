@@ -441,17 +441,17 @@ export async function endHolmRound(gameId: string) {
     console.error('[HOLM END] ERROR revealing community cards:', revealError);
   }
   
-  // Wait 3 seconds to ensure UI updates and shows all community cards
-  console.log('[HOLM END] Waiting 3 seconds for community cards to be displayed...');
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  // Wait 5 seconds to ensure UI receives realtime update and displays all community cards
+  console.log('[HOLM END] Waiting 5 seconds for community cards to be displayed...');
+  await new Promise(resolve => setTimeout(resolve, 5000));
   console.log('[HOLM END] Community cards should now be visible to players');
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
-    console.log('[HOLM END] Case 2: Single player vs Chucky - waiting 2 seconds before dealing Chucky');
+    console.log('[HOLM END] Case 2: Single player vs Chucky - waiting 3 seconds before dealing Chucky');
     
-    // Wait 2 seconds before dealing Chucky
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait 3 more seconds before dealing Chucky (total 8 seconds after reveal started)
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // Deal Chucky's cards and store them (but don't activate yet)
     console.log('[HOLM END] Now dealing Chucky cards...');
@@ -478,9 +478,9 @@ export async function endHolmRound(gameId: string) {
       chuckyData: chuckyResult?.[0]
     });
 
-    // Wait 2 more seconds before making Chucky visible
-    console.log('[HOLM END] Waiting 2 seconds before revealing Chucky...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait 3 more seconds before making Chucky visible (total 11 seconds after reveal started)
+    console.log('[HOLM END] Waiting 3 seconds before revealing Chucky...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     // Now activate Chucky to make cards visible in UI
     await supabase
