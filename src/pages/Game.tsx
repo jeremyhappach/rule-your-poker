@@ -890,9 +890,9 @@ const Game = () => {
           />
         )}
 
-        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over') && (
+        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended') && (
           <>
-            {game.status === 'game_over' && game.last_round_result ? (
+            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result ? (
               <>
                 <GameTable
                   players={players}
@@ -920,6 +920,7 @@ const Game = () => {
                     nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
                     onComplete={handleGameOverComplete}
                     gameOverAt={game.game_over_at}
+                    isSessionEnded={game.status === 'session_ended'}
                   />
                 )}
               </>
