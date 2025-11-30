@@ -12,6 +12,7 @@ interface DealerConfigProps {
   dealerUsername: string;
   isBot: boolean;
   dealerPlayerId: string;
+  gameType: string;
   currentAnteAmount: number;
   currentLegValue: number;
   currentPussyTaxEnabled: boolean;
@@ -19,6 +20,7 @@ interface DealerConfigProps {
   currentLegsToWin: number;
   currentPotMaxEnabled: boolean;
   currentPotMaxValue: number;
+  currentChuckyCards: number;
   onConfigComplete: () => void;
 }
 
@@ -26,7 +28,8 @@ export const DealerConfig = ({
   gameId, 
   dealerUsername, 
   isBot, 
-  dealerPlayerId, 
+  dealerPlayerId,
+  gameType,
   currentAnteAmount,
   currentLegValue,
   currentPussyTaxEnabled,
@@ -34,6 +37,7 @@ export const DealerConfig = ({
   currentLegsToWin,
   currentPotMaxEnabled,
   currentPotMaxValue,
+  currentChuckyCards,
   onConfigComplete 
 }: DealerConfigProps) => {
   const { toast } = useToast();
@@ -44,27 +48,37 @@ export const DealerConfig = ({
   const [legsToWin, setLegsToWin] = useState(currentLegsToWin);
   const [potMaxEnabled, setPotMaxEnabled] = useState(currentPotMaxEnabled);
   const [potMaxValue, setPotMaxValue] = useState(currentPotMaxValue);
+  const [chuckyCards, setChuckyCards] = useState(currentChuckyCards);
+  
+  const isHolmGame = gameType === 'holm-game';
 
   // Auto-submit for bots
   useEffect(() => {
     if (isBot) {
       const autoSubmit = async () => {
         // Update game config using current settings
+        const updateData: any = {
+          ante_amount: currentAnteAmount,
+          leg_value: currentLegValue,
+          pussy_tax_enabled: currentPussyTaxEnabled,
+          pussy_tax_value: currentPussyTaxValue,
+          pussy_tax: currentPussyTaxValue,
+          legs_to_win: currentLegsToWin,
+          pot_max_enabled: currentPotMaxEnabled,
+          pot_max_value: currentPotMaxValue,
+          config_complete: true,
+          status: 'ante_decision',
+          ante_decision_deadline: new Date(Date.now() + 10000).toISOString(),
+        };
+
+        if (isHolmGame) {
+          updateData.chucky_cards = currentChuckyCards;
+          updateData.buck_position = 1; // Initialize buck position
+        }
+
         const { error } = await supabase
           .from('games')
-          .update({
-            ante_amount: currentAnteAmount,
-            leg_value: currentLegValue,
-            pussy_tax_enabled: currentPussyTaxEnabled,
-            pussy_tax_value: currentPussyTaxValue,
-            pussy_tax: currentPussyTaxValue,
-            legs_to_win: currentLegsToWin,
-            pot_max_enabled: currentPotMaxEnabled,
-            pot_max_value: currentPotMaxValue,
-            config_complete: true,
-            status: 'ante_decision',
-            ante_decision_deadline: new Date(Date.now() + 10000).toISOString(),
-          })
+          .update(updateData)
           .eq('id', gameId);
 
         if (!error) {
@@ -115,21 +129,28 @@ export const DealerConfig = ({
     }
 
     // Update game config
+    const updateData: any = {
+      ante_amount: anteAmount,
+      leg_value: legValue,
+      pussy_tax_enabled: pussyTaxEnabled,
+      pussy_tax_value: pussyTaxValue,
+      pussy_tax: pussyTaxValue, // Update old column too for backward compatibility
+      legs_to_win: legsToWin,
+      pot_max_enabled: potMaxEnabled,
+      pot_max_value: potMaxValue,
+      config_complete: true,
+      status: 'ante_decision',
+      ante_decision_deadline: new Date(Date.now() + 10000).toISOString(), // 10 seconds
+    };
+
+    if (isHolmGame) {
+      updateData.chucky_cards = chuckyCards;
+      updateData.buck_position = 1; // Initialize buck position
+    }
+
     const { error } = await supabase
       .from('games')
-      .update({
-        ante_amount: anteAmount,
-        leg_value: legValue,
-        pussy_tax_enabled: pussyTaxEnabled,
-        pussy_tax_value: pussyTaxValue,
-        pussy_tax: pussyTaxValue, // Update old column too for backward compatibility
-        legs_to_win: legsToWin,
-        pot_max_enabled: potMaxEnabled,
-        pot_max_value: potMaxValue,
-        config_complete: true,
-        status: 'ante_decision',
-        ante_decision_deadline: new Date(Date.now() + 10000).toISOString(), // 10 seconds
-      })
+      .update(updateData)
       .eq('id', gameId);
 
     if (error) {
@@ -267,6 +288,21 @@ export const DealerConfig = ({
             </p>
           )}
         </div>
+
+        {isHolmGame && (
+          <div className="space-y-2">
+            <Label htmlFor="chuckyCards">Chucky Cards</Label>
+            <Input
+              id="chuckyCards"
+              type="number"
+              min="2"
+              max="7"
+              value={chuckyCards}
+              onChange={(e) => setChuckyCards(parseInt(e.target.value) || 4)}
+            />
+            <p className="text-xs text-muted-foreground">Number of cards Chucky gets (2-7)</p>
+          </div>
+        )}
 
         <Button onClick={handleSubmit} className="w-full" size="lg">
           Start Game

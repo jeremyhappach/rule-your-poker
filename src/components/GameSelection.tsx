@@ -17,8 +17,8 @@ export const GameSelection = ({ onSelectGame }: GameSelectionProps) => {
     {
       id: "holm-game",
       name: "Holm Game",
-      description: "Coming soon",
-      enabled: false,
+      description: "4 cards + 4 community cards vs the table",
+      enabled: true,
     },
     {
       id: "straight-cincinnati",

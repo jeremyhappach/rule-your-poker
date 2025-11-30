@@ -15,6 +15,7 @@ import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { GameSelection } from "@/components/GameSelection";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
+import { startHolmRound, endHolmRound, proceedToNextHolmRound } from "@/lib/holmGameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot } from "lucide-react";
@@ -70,6 +71,9 @@ interface GameData {
   game_over_at?: string | null;
   created_at?: string;
   total_hands?: number | null;
+  game_type?: string | null;
+  buck_position?: number | null;
+  chucky_cards?: number;
   rounds?: Round[];
 }
 
@@ -81,6 +85,9 @@ interface Round {
   pot: number;
   status: string;
   decision_deadline: string | null;
+  community_cards?: any;
+  community_cards_revealed?: number;
+  chucky_active?: boolean;
 }
 
 interface PlayerCards {
@@ -353,9 +360,20 @@ const Game = () => {
     // Only auto-fold if timer expired AND all_decisions_in is still false
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
       console.log('[TIMER EXPIRED] Auto-folding undecided players');
-      autoFoldUndecided(gameId!).catch(err => {
-        console.error('[TIMER EXPIRED] Error auto-folding:', err);
-      });
+      const isHolmGame = game?.game_type === 'holm-game';
+      
+      if (isHolmGame) {
+        // For Holm game, auto-fold then end the round
+        autoFoldUndecided(gameId!).then(() => {
+          endHolmRound(gameId!);
+        }).catch(err => {
+          console.error('[TIMER EXPIRED] Error in Holm game:', err);
+        });
+      } else {
+        autoFoldUndecided(gameId!).catch(err => {
+          console.error('[TIMER EXPIRED] Error auto-folding:', err);
+        });
+      }
     }
   }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused]);
 
@@ -376,7 +394,12 @@ const Game = () => {
       const timer = setTimeout(async () => {
         console.log('[AWAITING_NEXT_ROUND] Proceeding to next round');
         try {
-          await proceedToNextRound(gameId);
+          const isHolmGame = game?.game_type === 'holm-game';
+          if (isHolmGame) {
+            await proceedToNextHolmRound(gameId);
+          } else {
+            await proceedToNextRound(gameId);
+          }
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
         } finally {
@@ -685,7 +708,12 @@ const Game = () => {
 
     // Start first round
     try {
-      await startRound(gameId, 1);
+      const isHolmGame = game?.game_type === 'holm-game';
+      if (isHolmGame) {
+        await startHolmRound(gameId, 1);
+      } else {
+        await startRound(gameId, 1);
+      }
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
@@ -986,6 +1014,7 @@ const Game = () => {
                     dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
+                    gameType={game.game_type || '3-5-7'}
                     currentAnteAmount={game.ante_amount || 2}
                     currentLegValue={game.leg_value || 1}
                     currentPussyTaxEnabled={game.pussy_tax_enabled ?? true}
@@ -993,6 +1022,7 @@ const Game = () => {
                     currentLegsToWin={game.legs_to_win || 3}
                     currentPotMaxEnabled={game.pot_max_enabled ?? true}
                     currentPotMaxValue={game.pot_max_value || 10}
+                    currentChuckyCards={game.chucky_cards || 4}
                     onConfigComplete={handleConfigComplete}
                   />
                 ) : (
