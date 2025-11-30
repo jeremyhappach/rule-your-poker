@@ -76,12 +76,31 @@ export async function rotateBuck(gameId: string) {
     if (nextPlayer && (!nextPlayer.decision_locked || nextPlayer.current_decision === null)) {
       // Found next undecided player
       console.log('[HOLM BUCK] Found next undecided player at position:', nextPosition);
+      
+      // Update buck position and reset decision deadline for new player
+      const newDeadline = new Date(Date.now() + 15000).toISOString();
+      
+      // Get current round to update deadline
+      const { data: currentGame } = await supabase
+        .from('games')
+        .select('current_round')
+        .eq('id', gameId)
+        .single();
+      
+      if (currentGame?.current_round) {
+        await supabase
+          .from('rounds')
+          .update({ decision_deadline: newDeadline })
+          .eq('game_id', gameId)
+          .eq('round_number', currentGame.current_round);
+      }
+      
       await supabase
         .from('games')
         .update({ buck_position: nextPosition })
         .eq('id', gameId);
         
-      console.log('[HOLM BUCK] Buck rotated from', game.buck_position, 'to', nextPosition);
+      console.log('[HOLM BUCK] Buck rotated from', game.buck_position, 'to', nextPosition, 'with new deadline');
       return;
     }
     
