@@ -367,6 +367,10 @@ export async function endHolmRound(gameId: string) {
     chucky_active: round.chucky_active
   });
 
+  // Extract community cards for later use
+  const communityCards = (round.community_cards as unknown as Card[]) || [];
+  console.log('[HOLM END] Community cards:', communityCards);
+
   // Get all players and their decisions
   const { data: players } = await supabase
     .from('players')
@@ -462,12 +466,40 @@ export async function endHolmRound(gameId: string) {
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
-    console.log('[HOLM END] Case 2: Single player vs Chucky - waiting 3 seconds before dealing Chucky');
+    console.log('[HOLM END] Case 2: Single player vs Chucky - evaluating player hand...');
     
-    // Wait 3 more seconds before dealing Chucky (total 8 seconds after reveal started)
+    const player = stayedPlayers[0];
+    
+    // Get player's cards
+    const { data: playerCardsData } = await supabase
+      .from('player_cards')
+      .select('*')
+      .eq('player_id', player.id)
+      .eq('round_id', round.id)
+      .single();
+
+    if (playerCardsData) {
+      const playerCards = playerCardsData.cards as unknown as Card[];
+      const playerAllCards = [...playerCards, ...communityCards];
+      const playerEval = evaluateHand(playerAllCards);
+      const playerUsername = player.profiles?.username || player.user_id;
+      
+      console.log('[HOLM END] Player has:', formatHandRank(playerEval.rank));
+      
+      // Store player's hand ranking in game for display
+      await supabase
+        .from('games')
+        .update({ 
+          last_round_result: `${playerUsername} has ${formatHandRank(playerEval.rank)}. Dealing Chucky...`
+        })
+        .eq('id', gameId);
+    }
+    
+    // Wait 3 seconds to show player's hand
+    console.log('[HOLM END] Waiting 3 seconds to display player hand...');
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Deal Chucky's cards and store them (but don't activate yet)
+    // Deal Chucky's cards and store them
     console.log('[HOLM END] Now dealing Chucky cards...');
     const deck = shuffleDeck(createDeck());
     const chuckyCardCount = game.chucky_cards || 4;
@@ -475,40 +507,34 @@ export async function endHolmRound(gameId: string) {
 
     console.log('[HOLM END] Chucky dealt', chuckyCardCount, 'cards:', chuckyCards);
 
-    // First, store Chucky's cards WITHOUT activating (chucky_active stays false)
-    const { data: chuckyResult, error: chuckyError } = await supabase
+    // Store all Chucky's cards but don't reveal any yet
+    await supabase
       .from('rounds')
       .update({ 
         chucky_cards: chuckyCards as any,
-        chucky_active: false 
+        chucky_active: true,
+        chucky_cards_revealed: 0
       })
-      .eq('id', round.id)
-      .select();
-
-    console.log('[HOLM END] Chucky cards stored (not yet visible):', { 
-      success: !chuckyError, 
-      error: chuckyError,
-      updatedRows: chuckyResult?.length,
-      chuckyData: chuckyResult?.[0]
-    });
-
-    // Wait 3 more seconds before making Chucky visible (total 11 seconds after reveal started)
-    console.log('[HOLM END] Waiting 3 seconds before revealing Chucky...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Now activate Chucky to make cards visible in UI
-    await supabase
-      .from('rounds')
-      .update({ chucky_active: true })
       .eq('id', round.id);
+
+    console.log('[HOLM END] Chucky cards stored, revealing one at a time...');
     
-    console.log('[HOLM END] Chucky is now visible to players');
+    // Reveal Chucky's cards one at a time
+    for (let i = 1; i <= chuckyCardCount; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second between each card
+      await supabase
+        .from('rounds')
+        .update({ chucky_cards_revealed: i })
+        .eq('id', round.id);
+      console.log('[HOLM END] Revealed Chucky card', i, 'of', chuckyCardCount);
+    }
+    
+    console.log('[HOLM END] All Chucky cards revealed');
 
     // Brief pause before evaluation
-    console.log('[HOLM END] Brief pause before showdown evaluation...');
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    await handleChuckyShowdown(gameId, round.id, stayedPlayers[0], round.community_cards as unknown as Card[], game, chuckyCards);
+    await handleChuckyShowdown(gameId, round.id, player, communityCards, game, chuckyCards);
     return;
   }
 
@@ -518,7 +544,7 @@ export async function endHolmRound(gameId: string) {
   // Brief pause before evaluation
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  await handleMultiPlayerShowdown(gameId, round.id, stayedPlayers, round.community_cards as unknown as Card[], game);
+  await handleMultiPlayerShowdown(gameId, round.id, stayedPlayers, communityCards, game);
 }
 
 /**

@@ -89,6 +89,7 @@ interface Round {
   community_cards_revealed?: number;
   chucky_active?: boolean;
   chucky_cards?: any;
+  chucky_cards_revealed?: number;
 }
 
 interface PlayerCards {
@@ -1212,6 +1213,7 @@ const Game = () => {
             buckPosition={game.buck_position}
             chuckyCards={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards as CardType[] | undefined}
             chuckyActive={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_active}
+            chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}
             onStay={handleStay}
             onFold={handleFold}
             onSelectSeat={handleSelectSeat}

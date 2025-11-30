@@ -278,6 +278,7 @@ export type Database = {
           cards_dealt: number
           chucky_active: boolean | null
           chucky_cards: Json | null
+          chucky_cards_revealed: number | null
           community_cards: Json | null
           community_cards_revealed: number | null
           created_at: string
@@ -293,6 +294,7 @@ export type Database = {
           cards_dealt: number
           chucky_active?: boolean | null
           chucky_cards?: Json | null
+          chucky_cards_revealed?: number | null
           community_cards?: Json | null
           community_cards_revealed?: number | null
           created_at?: string
@@ -308,6 +310,7 @@ export type Database = {
           cards_dealt?: number
           chucky_active?: boolean | null
           chucky_cards?: Json | null
+          chucky_cards_revealed?: number | null
           community_cards?: Json | null
           community_cards_revealed?: number | null
           created_at?: string
