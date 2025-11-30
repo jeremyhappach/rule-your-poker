@@ -20,20 +20,20 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
   // Calculate size and spacing based on number of cards
   const getCardClasses = () => {
     if (cards.length >= 7) {
-      // Round 3: 7 cards - smallest with heavy overlap
+      // Round 3: 7 cards - smallest with readable overlap
       return {
         card: 'w-8 h-11 sm:w-9 sm:h-12 md:w-10 md:h-14',
         text: 'text-sm sm:text-base',
         suit: 'text-lg sm:text-xl',
-        overlap: '-ml-4 sm:-ml-4 md:-ml-5 first:ml-0'
+        overlap: '-ml-2 sm:-ml-2 md:-ml-3 first:ml-0'
       };
     } else if (cards.length >= 5) {
-      // Round 2: 5 cards - medium with moderate overlap
+      // Round 2: 5 cards - medium with readable overlap
       return {
         card: 'w-10 h-14 sm:w-11 sm:h-15 md:w-12 md:h-16',
         text: 'text-base sm:text-lg',
         suit: 'text-xl sm:text-2xl',
-        overlap: '-ml-5 sm:-ml-6 md:-ml-7 first:ml-0'
+        overlap: '-ml-3 sm:-ml-4 md:-ml-4 first:ml-0'
       };
     }
     // Round 1: 3 cards - base size with light overlap
@@ -41,7 +41,7 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
       card: 'w-12 h-16',
       text: 'text-lg',
       suit: 'text-2xl',
-      overlap: '-ml-4 first:ml-0'
+      overlap: '-ml-2 first:ml-0'
     };
   };
 
