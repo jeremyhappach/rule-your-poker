@@ -186,6 +186,19 @@ const Game = () => {
         {
           event: '*',
           schema: 'public',
+          table: 'rounds',
+          filter: `game_id=eq.${gameId}`
+        },
+        (payload) => {
+          console.log('[REALTIME] Rounds table changed:', payload);
+          debouncedFetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'profiles'
         },
         (payload) => {
