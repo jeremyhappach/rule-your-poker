@@ -246,9 +246,9 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
 
 /**
  * Handle end of Holm round
- * - Reveal final 2 community cards if anyone stayed
- * - Evaluate hands
- * - Handle Chucky if only one player stayed
+ * - Reveal all 4 community cards immediately
+ * - Deal Chucky if only one player stayed
+ * - Wait before evaluation
  */
 export async function endHolmRound(gameId: string) {
   console.log('[HOLM] Ending Holm round for game', gameId);
@@ -284,7 +284,7 @@ export async function endHolmRound(gameId: string) {
 
   // Case 1: Everyone folded - pussy tax
   if (stayedPlayers.length === 0) {
-    const pussyTaxEnabled = game.pussy_tax_enabled ?? true; // Default to enabled
+    const pussyTaxEnabled = game.pussy_tax_enabled ?? true;
     const pussyTaxAmount = pussyTaxEnabled ? (game.pussy_tax_value || 1) : 0;
     
     let totalTaxCollected = 0;
@@ -312,7 +312,6 @@ export async function endHolmRound(gameId: string) {
       })
       .eq('id', gameId);
 
-    // Mark round complete
     await supabase
       .from('rounds')
       .update({ status: 'completed' })
@@ -321,15 +320,31 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
-  // Reveal all community cards
+  // Reveal all 4 community cards first
   await supabase
     .from('rounds')
     .update({ community_cards_revealed: 4 })
     .eq('id', round.id);
 
+  // Deal Chucky's cards and store them
+  const deck = shuffleDeck(createDeck());
+  const chuckyCardCount = game.chucky_cards || 4;
+  const chuckyCards = deck.slice(0, chuckyCardCount);
+
+  await supabase
+    .from('rounds')
+    .update({ 
+      chucky_cards: chuckyCards as any,
+      chucky_active: true 
+    })
+    .eq('id', round.id);
+
+  // Wait 2 seconds for dramatic effect
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
-    await handleChuckyShowdown(gameId, round.id, stayedPlayers[0], round.community_cards as unknown as Card[], game);
+    await handleChuckyShowdown(gameId, round.id, stayedPlayers[0], round.community_cards as unknown as Card[], game, chuckyCards);
     return;
   }
 
@@ -345,7 +360,8 @@ async function handleChuckyShowdown(
   roundId: string, 
   player: any, 
   communityCards: Card[],
-  game: any
+  game: any,
+  chuckyCards: Card[]
 ) {
   console.log('[HOLM] Player vs Chucky showdown');
 
@@ -360,11 +376,6 @@ async function handleChuckyShowdown(
   if (!playerCardsData) return;
 
   const playerCards = playerCardsData.cards as unknown as Card[];
-
-  // Deal Chucky's cards
-  const deck = shuffleDeck(createDeck());
-  const chuckyCardCount = game.chucky_cards || 4;
-  const chuckyCards = deck.slice(0, chuckyCardCount);
 
   // Evaluate hands (best 5 from 4 player + 4 community for player, best 5 from X chucky + 4 community for chucky)
   const playerAllCards = [...playerCards, ...communityCards];
@@ -417,10 +428,7 @@ async function handleChuckyShowdown(
   // Mark round complete
   await supabase
     .from('rounds')
-    .update({ 
-      status: 'completed',
-      chucky_active: true 
-    })
+    .update({ status: 'completed' })
     .eq('id', roundId);
 }
 
