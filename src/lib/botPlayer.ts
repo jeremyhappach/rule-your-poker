@@ -4,17 +4,30 @@ import { makeDecision } from "./gameLogic";
 export async function addBotPlayer(gameId: string) {
   console.log('[BOT CREATION] Starting bot creation for game:', gameId);
   
-  // Count existing players to determine position
+  // Get existing players to determine optimal position
   const { data: existingPlayers } = await supabase
     .from('players')
     .select('position')
     .eq('game_id', gameId)
-    .order('position', { ascending: false })
-    .limit(1);
+    .order('position', { ascending: true });
 
-  const nextPosition = existingPlayers && existingPlayers.length > 0 
-    ? existingPlayers[0].position + 1 
-    : 1;
+  // Calculate optimal position for spacing players around the table
+  let nextPosition: number;
+  
+  if (!existingPlayers || existingPlayers.length === 0) {
+    nextPosition = 1;
+  } else {
+    const occupiedPositions = new Set(existingPlayers.map(p => p.position));
+    
+    // For better spacing, choose positions that maximize distance
+    // Priority positions: 1, 4, 2, 6, 3, 5, 7 (spreads players evenly)
+    const preferredOrder = [1, 4, 2, 6, 3, 5, 7];
+    
+    // Find first available position from preferred order
+    nextPosition = preferredOrder.find(pos => !occupiedPositions.has(pos)) || 
+                   Array.from({ length: 7 }, (_, i) => i + 1).find(pos => !occupiedPositions.has(pos)) || 
+                   existingPlayers[existingPlayers.length - 1].position + 1;
+  }
 
   console.log('[BOT CREATION] Next position:', nextPosition);
 
