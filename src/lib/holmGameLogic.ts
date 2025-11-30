@@ -399,7 +399,12 @@ export async function endHolmRound(gameId: string) {
   }
 
   // Reveal all 4 community cards first
-  console.log('[HOLM END] Revealing all 4 community cards...');
+  console.log('[HOLM END] Revealing all 4 community cards...', {
+    roundId: round.id,
+    currentlyRevealed: round.community_cards_revealed,
+    targetRevealed: 4
+  });
+  
   const { data: revealResult, error: revealError } = await supabase
     .from('rounds')
     .update({ community_cards_revealed: 4 })
@@ -409,11 +414,19 @@ export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] Community cards reveal result:', { 
     success: !revealError, 
     error: revealError,
-    updatedRows: revealResult?.length 
+    updatedRows: revealResult?.length,
+    revealedData: revealResult?.[0]
   });
+  
+  // Force a small delay to ensure UI updates
+  await new Promise(resolve => setTimeout(resolve, 100));
 
+  // Wait 2 seconds before dealing Chucky
+  console.log('[HOLM END] Waiting 2 seconds before dealing Chucky...');
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
   // Deal Chucky's cards and store them
-  console.log('[HOLM END] Dealing Chucky cards...');
+  console.log('[HOLM END] Now dealing Chucky cards...');
   const deck = shuffleDeck(createDeck());
   const chuckyCardCount = game.chucky_cards || 4;
   const chuckyCards = deck.slice(0, chuckyCardCount);
@@ -432,12 +445,13 @@ export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] Chucky cards stored:', { 
     success: !chuckyError, 
     error: chuckyError,
-    updatedRows: chuckyResult?.length 
+    updatedRows: chuckyResult?.length,
+    chuckyData: chuckyResult?.[0]
   });
 
-  // Wait 2 seconds for dramatic effect
-  console.log('[HOLM END] Waiting 2 seconds before showdown...');
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Brief pause before evaluation
+  console.log('[HOLM END] Brief pause before showdown evaluation...');
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
