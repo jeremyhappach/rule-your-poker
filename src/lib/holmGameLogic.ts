@@ -115,6 +115,13 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     : 7;
   
   const buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
+  
+  console.log('[HOLM] Buck position calculation:', {
+    dealerPosition,
+    maxPosition,
+    playerPositions: allPlayers?.map(p => p.position),
+    calculatedBuckPosition: buckPosition
+  });
 
   // Get all active players who aren't sitting out
   const { data: players } = await supabase
