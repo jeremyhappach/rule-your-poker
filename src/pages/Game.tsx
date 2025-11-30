@@ -49,6 +49,7 @@ interface Player {
 
 interface GameData {
   id: string;
+  name?: string;
   status: string;
   buy_in: number;
   pot: number | null;
@@ -792,36 +793,11 @@ const Game = () => {
     }
   };
 
-  const generateGameName = () => {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    
-    const chicagoSportsPlayers = [
-      'Michael Jordan', 'Walter Payton', 'Ernie Banks', 'Bobby Hull', 'Ryne Sandberg',
-      'Dick Butkus', 'Stan Mikita', 'Frank Thomas', 'Gale Sayers', 'Patrick Kane',
-      'Jonathan Toews', 'Sammy Sosa', 'Kerry Wood', 'Mike Ditka', 'Scottie Pippen',
-      'Dennis Rodman', 'Ron Santo', 'Billy Williams', 'Anthony Rizzo', 'Kris Bryant'
-    ];
-    
-    const gratefulDeadSongs = [
-      'Truckin', 'Casey Jones', 'Friend of the Devil', 'Uncle Johns Band', 'Ripple',
-      'Touch of Grey', 'Sugar Magnolia', 'Fire on the Mountain', 'Scarlet Begonias', 'Shakedown Street',
-      'Eyes of the World', 'China Cat Sunflower', 'Tennessee Jed', 'Box of Rain', 'St Stephen',
-      'Dark Star', 'Help on the Way', 'Franklin\'s Tower', 'New Speedway Boogie', 'Cumberland Blues'
-    ];
-    
-    const allNames = [...chicagoSportsPlayers, ...gratefulDeadSongs];
-    const randomName = allNames[Math.floor(Math.random() * allNames.length)];
-    
-    return `Game #${month}${day} "${randomName}"`;
-  };
-
   if (loading || !game) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  const gameName = generateGameName();
+  const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
 
   const isCreator = players[0]?.user_id === user?.id;
   const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
@@ -837,9 +813,11 @@ const Game = () => {
             <p className="text-muted-foreground">{gameName}</p>
           </div>
           <div className="flex gap-2">
-            <Badge variant={game.status === 'in_progress' ? 'default' : 'secondary'}>
-              {game.status === 'in_progress' ? 'In Progress' : game.status}
-            </Badge>
+            {game.status !== 'configuring' && (
+              <Badge variant={game.status === 'in_progress' ? 'default' : 'secondary'}>
+                {game.status === 'in_progress' ? 'In Progress' : game.status}
+              </Badge>
+            )}
             {game.status === 'in_progress' && (
               <Button 
                 variant={isPaused ? "default" : "outline"} 
