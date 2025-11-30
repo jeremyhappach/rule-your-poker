@@ -507,7 +507,7 @@ async function handleGameOver(
   console.log('[HANDLE GAME OVER] Setting game_over status');
   
   // Update game to game_over status - SINGLE atomic update with ALL required fields
-  await supabase
+  const { data: gameOverUpdate, error: gameOverError } = await supabase
     .from('games')
     .update({ 
       status: 'game_over',
@@ -519,9 +519,21 @@ async function handleGameOver(
       game_over_at: new Date().toISOString(),
       pot: 0  // Critical: always reset pot
     })
-    .eq('id', gameId);
+    .eq('id', gameId)
+    .select();
   
-  console.log('[HANDLE GAME OVER] Game over setup complete');
+  if (gameOverError) {
+    console.error('[HANDLE GAME OVER] ERROR updating game:', gameOverError);
+    throw gameOverError;
+  }
+  
+  console.log('[HANDLE GAME OVER] Game over setup complete', { 
+    updateSuccess: !!gameOverUpdate,
+    rowsUpdated: gameOverUpdate?.length,
+    gameStatus: gameOverUpdate?.[0]?.status,
+    gameOverAt: gameOverUpdate?.[0]?.game_over_at,
+    pot: gameOverUpdate?.[0]?.pot
+  });
 }
 
 export async function endRound(gameId: string) {
