@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface Player {
   id: string;
@@ -15,14 +15,21 @@ interface DealerAnnouncementProps {
 }
 
 export const DealerAnnouncement = ({ newDealerPlayer, onComplete }: DealerAnnouncementProps) => {
+  const onCompleteRef = useRef(onComplete);
+  
+  // Keep onComplete ref updated without triggering re-renders
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
   useEffect(() => {
     // Auto-advance after 3 seconds
     const timer = setTimeout(() => {
-      onComplete();
+      onCompleteRef.current();
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [onComplete]);
+  }, []); // Empty deps - only run once on mount
 
   const dealerName = newDealerPlayer.profiles?.username || `Player ${newDealerPlayer.position}`;
 

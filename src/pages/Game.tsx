@@ -446,6 +446,9 @@ const Game = () => {
           })));
         }
       }
+    } else {
+      // Clear cards when not in active play to prevent showing old cards
+      setPlayerCards([]);
     }
 
     setGame(gameData);
