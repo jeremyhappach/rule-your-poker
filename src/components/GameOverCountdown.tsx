@@ -19,6 +19,13 @@ interface GameOverCountdownProps {
 export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt }: GameOverCountdownProps) => {
   const COUNTDOWN_DURATION = 8; // seconds
   const hasCompletedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  
+  // Keep onComplete ref updated without triggering re-renders
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+  
   const [timeLeft, setTimeLeft] = useState(() => {
     // Calculate initial time left based on timestamp
     const endTime = new Date(gameOverAt).getTime() + (COUNTDOWN_DURATION * 1000);
@@ -29,28 +36,34 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
   });
 
   useEffect(() => {
-    console.log('[GAME OVER COUNTDOWN] Current timeLeft:', timeLeft);
+    console.log('[GAME OVER COUNTDOWN] Effect running, timeLeft:', timeLeft, 'hasCompleted:', hasCompletedRef.current);
     
     // Countdown complete
-    if (timeLeft <= 0) {
-      if (!hasCompletedRef.current) {
-        console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
-        hasCompletedRef.current = true;
-        onComplete();
-      }
+    if (timeLeft <= 0 && !hasCompletedRef.current) {
+      console.log('[GAME OVER COUNTDOWN] Countdown complete, calling onComplete');
+      hasCompletedRef.current = true;
+      onCompleteRef.current();
       return;
     }
 
-    // Update every second based on actual elapsed time
+    // Don't set up timer if already completed
+    if (hasCompletedRef.current) {
+      return;
+    }
+
+    // Update every 100ms based on actual elapsed time
     const timer = setInterval(() => {
       const endTime = new Date(gameOverAt).getTime() + (COUNTDOWN_DURATION * 1000);
       const now = Date.now();
       const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
       setTimeLeft(remaining);
-    }, 100); // Check every 100ms for smoother countdown
+    }, 100);
 
-    return () => clearInterval(timer);
-  }, [timeLeft, onComplete, gameOverAt, COUNTDOWN_DURATION]);
+    return () => {
+      console.log('[GAME OVER COUNTDOWN] Cleanup interval');
+      clearInterval(timer);
+    };
+  }, [timeLeft, gameOverAt, COUNTDOWN_DURATION]);
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -572,7 +572,7 @@ const Game = () => {
     setTimeout(() => fetchGameData(), 100);
   };
 
-  const handleGameOverComplete = async () => {
+  const handleGameOverComplete = useCallback(async () => {
     if (!gameId) {
       console.log('[GAME OVER COMPLETE] No gameId, aborting');
       return;
@@ -633,7 +633,7 @@ const Game = () => {
 
     // Manual refetch to update UI
     setTimeout(() => fetchGameData(), 100);
-  };
+  }, [gameId, navigate]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) return;
