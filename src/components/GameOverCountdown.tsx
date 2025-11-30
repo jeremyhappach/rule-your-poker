@@ -13,14 +13,23 @@ interface GameOverCountdownProps {
   winnerMessage: string;
   nextDealer: Player;
   onComplete: () => void;
+  gameOverAt: string; // ISO timestamp when game ended
 }
 
-export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: GameOverCountdownProps) => {
-  const [timeLeft, setTimeLeft] = useState(8);
+export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt }: GameOverCountdownProps) => {
+  const COUNTDOWN_DURATION = 8; // seconds
   const hasCompletedRef = useRef(false);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    // Calculate initial time left based on timestamp
+    const endTime = new Date(gameOverAt).getTime() + (COUNTDOWN_DURATION * 1000);
+    const now = Date.now();
+    const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+    console.log('[GAME OVER COUNTDOWN] Initial calculation:', { gameOverAt, endTime, now, remaining });
+    return remaining;
+  });
 
   useEffect(() => {
-    console.log('[GAME OVER COUNTDOWN] Starting countdown, time left:', timeLeft);
+    console.log('[GAME OVER COUNTDOWN] Current timeLeft:', timeLeft);
     
     // Countdown complete
     if (timeLeft <= 0) {
@@ -32,13 +41,16 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete }: Gam
       return;
     }
 
-    // Tick down
-    const timer = setTimeout(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
+    // Update every second based on actual elapsed time
+    const timer = setInterval(() => {
+      const endTime = new Date(gameOverAt).getTime() + (COUNTDOWN_DURATION * 1000);
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+      setTimeLeft(remaining);
+    }, 100); // Check every 100ms for smoother countdown
 
-    return () => clearTimeout(timer);
-  }, [timeLeft, onComplete]);
+    return () => clearInterval(timer);
+  }, [timeLeft, onComplete, gameOverAt, COUNTDOWN_DURATION]);
 
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 

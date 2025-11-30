@@ -68,6 +68,7 @@ interface GameData {
   pot_max_value?: number;
   last_round_result?: string | null;
   pending_session_end?: boolean;
+  game_over_at?: string | null;
   rounds?: Round[];
 }
 
@@ -617,7 +618,8 @@ const Game = () => {
         awaiting_next_round: false,
         next_round_number: null,
         pot: 0,
-        all_decisions_in: false
+        all_decisions_in: false,
+        game_over_at: null
       })
       .eq('id', gameId);
 
@@ -896,10 +898,11 @@ const Game = () => {
                   onSelectSeat={handleSelectSeat}
                 />
                 <GameOverCountdown
-                  key={`game-over-${gameId}-${game.last_round_result}`}
+                  key={`game-over-${gameId}`}
                   winnerMessage={game.last_round_result || 'Game over!'}
                   nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
                   onComplete={handleGameOverComplete}
+                  gameOverAt={game.game_over_at || new Date().toISOString()}
                 />
               </>
             ) : game.status === 'dealer_selection' ? (
