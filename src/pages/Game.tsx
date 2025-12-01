@@ -201,6 +201,18 @@ const Game = () => {
         {
           event: '*',
           schema: 'public',
+          table: 'player_cards'
+        },
+        (payload) => {
+          console.log('[REALTIME] Player cards changed:', payload);
+          debouncedFetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
           table: 'profiles'
         },
         (payload) => {
