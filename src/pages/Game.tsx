@@ -15,7 +15,7 @@ import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { GameSelection } from "@/components/GameSelection";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
-import { startHolmRound, endHolmRound, proceedToNextHolmRound } from "@/lib/holmGameLogic";
+import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot } from "lucide-react";
@@ -399,8 +399,8 @@ const Game = () => {
         if (playerWithBuck && !playerWithBuck.decision_locked) {
           console.log('[TIMER EXPIRED] Auto-folding buck holder at position', game.buck_position);
           makeDecision(gameId!, playerWithBuck.id, 'fold').then(async () => {
-            const { rotateBuck } = await import('@/lib/holmGameLogic');
-            await rotateBuck(gameId!);
+            const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
+            await checkHolmRoundComplete(gameId!);
           }).catch(err => {
             console.error('[TIMER EXPIRED] Error in Holm game:', err);
           });
@@ -792,12 +792,12 @@ const Game = () => {
     try {
       await makeDecision(gameId, currentPlayer.id, 'stay');
       
-      console.log('[PLAYER DECISION] Stay decision made, calling rotateBuck');
+      console.log('[PLAYER DECISION] Stay decision made, checking if round complete');
       
-      // In Holm game, rotate buck after decision
+      // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
-        const { rotateBuck } = await import('@/lib/holmGameLogic');
-        await rotateBuck(gameId);
+        const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
+        await checkHolmRoundComplete(gameId);
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
@@ -813,10 +813,10 @@ const Game = () => {
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
       
-      // In Holm game, rotate buck after decision
+      // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
-        const { rotateBuck } = await import('@/lib/holmGameLogic');
-        await rotateBuck(gameId);
+        const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
+        await checkHolmRoundComplete(gameId);
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);

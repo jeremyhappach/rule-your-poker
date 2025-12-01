@@ -134,10 +134,10 @@ export async function makeBotDecisions(gameId: string) {
     console.log('[BOT] Bot', bot.id, 'at position', bot.position, 'deciding:', decision);
     await makeDecision(gameId, bot.id, decision);
     
-    // In Holm game, rotate buck after bot decision
+    // Check if round is complete after bot decision
     if (isHolmGame) {
-      const { rotateBuck } = await import('./holmGameLogic');
-      await rotateBuck(gameId);
+      const { checkHolmRoundComplete } = await import('./holmGameLogic');
+      await checkHolmRoundComplete(gameId);
     }
   }
 }

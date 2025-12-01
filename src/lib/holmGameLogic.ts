@@ -2,24 +2,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 /**
- * Rotate buck to next player after a decision in Holm game
- * Also check if all players have decided
+ * Check if all players have decided in a Holm game round
+ * If yes, end the round
  */
-export async function rotateBuck(gameId: string) {
-  console.log('[HOLM BUCK] Starting buck rotation for game:', gameId);
-  
-  const { data: game } = await supabase
-    .from('games')
-    .select('buck_position')
-    .eq('id', gameId)
-    .single();
-    
-  if (!game) {
-    console.log('[HOLM BUCK] Game not found');
-    return;
-  }
-  
-  console.log('[HOLM BUCK] Current buck position:', game.buck_position);
+export async function checkHolmRoundComplete(gameId: string) {
+  console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
   
   const { data: players } = await supabase
     .from('players')
@@ -30,11 +17,11 @@ export async function rotateBuck(gameId: string) {
     .order('position');
     
   if (!players || players.length === 0) {
-    console.log('[HOLM BUCK] No active players found');
+    console.log('[HOLM CHECK] No active players found');
     return;
   }
   
-  console.log('[HOLM BUCK] Players:', players.map(p => ({
+  console.log('[HOLM CHECK] Players:', players.map(p => ({
     position: p.position,
     decided: p.decision_locked,
     decision: p.current_decision
@@ -43,10 +30,10 @@ export async function rotateBuck(gameId: string) {
   // Check if all players have decided (must have both decision_locked AND a current_decision)
   const allDecided = players.every(p => p.decision_locked && p.current_decision !== null);
   
-  console.log('[HOLM BUCK] All players decided?', allDecided);
+  console.log('[HOLM CHECK] All players decided?', allDecided);
   
   if (allDecided) {
-    console.log('[HOLM BUCK] All players decided, setting all_decisions_in flag and calling endHolmRound');
+    console.log('[HOLM CHECK] All players decided, setting all_decisions_in flag and calling endHolmRound');
     await supabase
       .from('games')
       .update({ all_decisions_in: true })
@@ -56,71 +43,10 @@ export async function rotateBuck(gameId: string) {
     try {
       await endHolmRound(gameId);
     } catch (error) {
-      console.error('[HOLM BUCK] ERROR calling endHolmRound:', error);
+      console.error('[HOLM CHECK] ERROR calling endHolmRound:', error);
       throw error;
     }
-    return;
   }
-  
-  // Find next player who hasn't decided yet
-  const positions = players.map(p => p.position).sort((a, b) => a - b);
-  const currentBuckIndex = positions.indexOf(game.buck_position);
-  
-  console.log('[HOLM BUCK] Finding next undecided player. Current index:', currentBuckIndex, 'Positions:', positions);
-  
-  // Find next undecided player (wrap around)
-  let nextBuckIndex = (currentBuckIndex + 1) % positions.length;
-  let attempts = 0;
-  
-  while (attempts < positions.length) {
-    const nextPosition = positions[nextBuckIndex];
-    const nextPlayer = players.find(p => p.position === nextPosition);
-    
-    console.log('[HOLM BUCK] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked, 'decision:', nextPlayer?.current_decision);
-    
-    if (nextPlayer && (!nextPlayer.decision_locked || nextPlayer.current_decision === null)) {
-      // Found next undecided player
-      console.log('[HOLM BUCK] Found next undecided player at position:', nextPosition);
-      
-      // Update buck position and reset decision deadline for new player
-      const newDeadline = new Date(Date.now() + 15000).toISOString();
-      
-      // Get current round to update deadline
-      const { data: currentGame } = await supabase
-        .from('games')
-        .select('current_round')
-        .eq('id', gameId)
-        .single();
-      
-      if (currentGame?.current_round) {
-        await supabase
-          .from('rounds')
-          .update({ decision_deadline: newDeadline })
-          .eq('game_id', gameId)
-          .eq('round_number', currentGame.current_round);
-      }
-      
-      await supabase
-        .from('games')
-        .update({ buck_position: nextPosition })
-        .eq('id', gameId);
-        
-      console.log('[HOLM BUCK] Buck rotated from', game.buck_position, 'to', nextPosition, 'with new deadline');
-      return;
-    }
-    
-    // Try next position
-    nextBuckIndex = (nextBuckIndex + 1) % positions.length;
-    attempts++;
-  }
-  
-  // If we get here, all players have decided (shouldn't happen but just in case)
-  console.log('[HOLM BUCK] No undecided players found during rotation, ending round');
-  await supabase
-    .from('games')
-    .update({ all_decisions_in: true })
-    .eq('id', gameId);
-  await endHolmRound(gameId);
 }
 
 
