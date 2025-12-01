@@ -358,12 +358,12 @@ const Game = () => {
         const botWithBuck = players.find(p => p.is_bot && p.position === game.buck_position && !p.decision_locked);
         
         if (botWithBuck) {
-          console.log('[BOT TRIGGER] Bot has buck, will make decision after delay');
-          // Give user time to see the game state before bot acts (3 seconds)
+          console.log('[BOT TRIGGER] Bot has buck, making instant decision');
+          // Bot makes instant decision in Holm game
           const botDecisionTimer = setTimeout(() => {
             console.log('[BOT TRIGGER] Executing bot decision');
             makeBotDecisions(gameId!);
-          }, 3000);
+          }, 100); // Instant decision (minimal delay for state updates)
           
           return () => clearTimeout(botDecisionTimer);
         }

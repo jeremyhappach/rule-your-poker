@@ -46,7 +46,67 @@ export async function checkHolmRoundComplete(gameId: string) {
       console.error('[HOLM CHECK] ERROR calling endHolmRound:', error);
       throw error;
     }
+  } else {
+    // Not all players decided yet - move buck to next undecided player
+    console.log('[HOLM CHECK] Not all decided, moving buck to next undecided player');
+    await moveBuckToNextUndecidedPlayer(gameId, players);
   }
+}
+
+/**
+ * Move buck to next undecided player during a round
+ */
+async function moveBuckToNextUndecidedPlayer(gameId: string, players: any[]) {
+  const { data: game } = await supabase
+    .from('games')
+    .select('buck_position, current_round')
+    .eq('id', gameId)
+    .single();
+    
+  if (!game) return;
+  
+  console.log('[HOLM BUCK MOVE] Current buck position:', game.buck_position);
+  
+  // Find next undecided player
+  const positions = players.map(p => p.position).sort((a, b) => a - b);
+  const currentBuckIndex = positions.indexOf(game.buck_position);
+  
+  let nextBuckIndex = (currentBuckIndex + 1) % positions.length;
+  let attempts = 0;
+  
+  while (attempts < positions.length) {
+    const nextPosition = positions[nextBuckIndex];
+    const nextPlayer = players.find(p => p.position === nextPosition);
+    
+    console.log('[HOLM BUCK MOVE] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked);
+    
+    if (nextPlayer && (!nextPlayer.decision_locked || nextPlayer.current_decision === null)) {
+      // Found next undecided player - move buck there
+      console.log('[HOLM BUCK MOVE] Moving buck to position:', nextPosition);
+      
+      // Update buck position and set new deadline
+      const newDeadline = new Date(Date.now() + 15000).toISOString();
+      
+      await supabase
+        .from('rounds')
+        .update({ decision_deadline: newDeadline })
+        .eq('game_id', gameId)
+        .eq('round_number', game.current_round);
+      
+      await supabase
+        .from('games')
+        .update({ buck_position: nextPosition })
+        .eq('id', gameId);
+        
+      console.log('[HOLM BUCK MOVE] Buck moved to', nextPosition, 'with new deadline');
+      return;
+    }
+    
+    nextBuckIndex = (nextBuckIndex + 1) % positions.length;
+    attempts++;
+  }
+  
+  console.log('[HOLM BUCK MOVE] No undecided players found');
 }
 
 
