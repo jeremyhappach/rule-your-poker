@@ -311,7 +311,13 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     throw new Error('Player not found');
   }
 
-  console.log('[MAKE DECISION] Player found:', { position: player.position, currentDecision: player.current_decision });
+  console.log('[MAKE DECISION] Player found:', { position: player.position, currentDecision: player.current_decision, decisionLocked: player.decision_locked });
+
+  // Prevent double-clicking - if player has already locked in a decision, don't allow changes
+  if (player.decision_locked) {
+    console.log('[MAKE DECISION] Player has already locked in a decision, ignoring new decision');
+    return;
+  }
 
   // Lock in decision - no chips deducted yet
   const isHolmGame = game.game_type === 'holm-game';

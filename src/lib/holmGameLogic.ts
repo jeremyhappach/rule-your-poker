@@ -52,8 +52,13 @@ export async function rotateBuck(gameId: string) {
       .update({ all_decisions_in: true })
       .eq('id', gameId);
     
-    // End the round
-    await endHolmRound(gameId);
+    // End the round - wrap in try/catch to ensure errors are logged
+    try {
+      await endHolmRound(gameId);
+    } catch (error) {
+      console.error('[HOLM BUCK] ERROR calling endHolmRound:', error);
+      throw error;
+    }
     return;
   }
   
