@@ -410,25 +410,43 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        const currentRound = game.rounds?.find(r => r.round_number === game.current_round);
-        const currentTurnPosition = currentRound?.current_turn_position;
-        
-        // For Holm game, auto-fold the player whose turn it is (at current_turn_position)
-        console.log('[TIMER EXPIRED] Turn position:', currentTurnPosition, 'Players:', players.map(p => ({ pos: p.position, locked: p.decision_locked, decision: p.current_decision })));
-        const playerWithTurn = currentTurnPosition ? players.find(p => p.position === currentTurnPosition && !p.decision_locked) : null;
-        
-        console.log('[TIMER EXPIRED] Player to fold:', playerWithTurn?.id, 'position:', playerWithTurn?.position);
-        
-        if (playerWithTurn) {
-          makeDecision(gameId!, playerWithTurn.id, 'fold').then(async () => {
+        // Fetch fresh turn position from database to avoid race conditions with stale React state
+        (async () => {
+          const { data: freshRound } = await supabase
+            .from('rounds')
+            .select('current_turn_position')
+            .eq('game_id', gameId!)
+            .eq('round_number', game.current_round)
+            .single();
+          
+          const currentTurnPosition = freshRound?.current_turn_position;
+          console.log('[TIMER EXPIRED] Fresh turn position from DB:', currentTurnPosition);
+          
+          // Re-fetch players to get fresh decision_locked status
+          const { data: freshPlayers } = await supabase
+            .from('players')
+            .select('*')
+            .eq('game_id', gameId!)
+            .eq('status', 'active');
+          
+          console.log('[TIMER EXPIRED] Fresh players:', freshPlayers?.map(p => ({ pos: p.position, locked: p.decision_locked, decision: p.current_decision })));
+          
+          const playerWithTurn = currentTurnPosition && freshPlayers 
+            ? freshPlayers.find(p => p.position === currentTurnPosition && !p.decision_locked) 
+            : null;
+          
+          console.log('[TIMER EXPIRED] Player to fold:', playerWithTurn?.id, 'position:', playerWithTurn?.position);
+          
+          if (playerWithTurn) {
+            await makeDecision(gameId!, playerWithTurn.id, 'fold');
             const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
             await checkHolmRoundComplete(gameId!);
-          }).catch(err => {
-            console.error('[TIMER EXPIRED] Error auto-folding:', err);
-          });
-        } else {
-          console.log('[TIMER EXPIRED] No player found at turn position to auto-fold');
-        }
+          } else {
+            console.log('[TIMER EXPIRED] No player found at turn position to auto-fold');
+          }
+        })().catch(err => {
+          console.error('[TIMER EXPIRED] Error auto-folding:', err);
+        });
       } else {
         autoFoldUndecided(gameId!).catch(err => {
           console.error('[TIMER EXPIRED] Error auto-folding:', err);
