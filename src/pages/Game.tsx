@@ -458,7 +458,6 @@ const Game = () => {
             await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log('[TIMER EXPIRED] Checking if round complete after fold');
-            const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
             await checkHolmRoundComplete(gameId!);
           } else {
             console.log('[TIMER EXPIRED] No player found at turn position to auto-fold');
@@ -857,7 +856,6 @@ const Game = () => {
       
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
-        const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
         await checkHolmRoundComplete(gameId);
       }
     } catch (error: any) {
@@ -876,7 +874,6 @@ const Game = () => {
       
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
-        const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
         await checkHolmRoundComplete(gameId);
       }
     } catch (error: any) {
