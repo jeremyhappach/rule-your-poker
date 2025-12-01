@@ -431,7 +431,7 @@ const Game = () => {
         });
       }
     }
-  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type, game?.buck_position, players]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type, game?.rounds, players]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   // Using a ref to prevent multiple simultaneous timeouts
