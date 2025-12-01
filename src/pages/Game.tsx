@@ -115,6 +115,7 @@ const Game = () => {
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
+  const [timerTurnPosition, setTimerTurnPosition] = useState<number | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -387,13 +388,21 @@ const Game = () => {
       status: game?.status, 
       all_decisions_in: game?.all_decisions_in, 
       isPaused,
+      timerTurnPosition,
+      currentTurnPosition: currentRound?.current_turn_position,
       shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused
     });
     
     // Don't auto-fold if timer is null or negative (means fresh round)
     // Only auto-fold when timer explicitly reaches 0 and we have positive time tracked
-    if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
-      console.log('[TIMER EXPIRED] Auto-folding undecided players');
+    // CRITICAL: Only auto-fold if the turn hasn't changed (timerTurnPosition matches current turn)
+    if (timeLeft === 0 && 
+        game?.status === 'in_progress' && 
+        !game.all_decisions_in && 
+        !isPaused &&
+        timerTurnPosition !== null &&
+        currentRound?.current_turn_position === timerTurnPosition) {
+      console.log('[TIMER EXPIRED] Auto-folding player at position', timerTurnPosition);
       // Immediately clear the timer to stop flashing
       setTimeLeft(null);
       setIsPaused(true);
@@ -401,26 +410,13 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        // In Holm, auto-fold current player whose turn it is
+        // In Holm, auto-fold the player whose timer expired
         (async () => {
-          const { data: freshRound } = await supabase
-            .from('rounds')
-            .select('*')
-            .eq('game_id', gameId!)
-            .eq('round_number', game.current_round!)
-            .single();
-            
-          if (!freshRound?.current_turn_position) {
-            console.log('[TIMER EXPIRED HOLM] No current turn position');
-            setIsPaused(false);
-            return;
-          }
-          
           const { data: currentTurnPlayer } = await supabase
             .from('players')
             .select('*')
             .eq('game_id', gameId!)
-            .eq('position', freshRound.current_turn_position)
+            .eq('position', timerTurnPosition)
             .single();
             
           if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
@@ -428,6 +424,8 @@ const Game = () => {
             await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
             await checkHolmRoundComplete(gameId!);
             await fetchGameData();
+          } else {
+            console.log('[TIMER EXPIRED HOLM] Player already decided or not found');
           }
           
           setIsPaused(false);
@@ -445,7 +443,7 @@ const Game = () => {
         });
       }
     }
-  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type, game?.rounds, players]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   // Using a ref to prevent multiple simultaneous timeouts
@@ -586,11 +584,13 @@ const Game = () => {
           console.log('[FETCH] Turn changed from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh 10 seconds');
           setTimeLeft(10);
           setLastTurnPosition(currentRound.current_turn_position);
+          setTimerTurnPosition(currentRound.current_turn_position);
         } else if (lastTurnPosition === null) {
           // First time seeing this round
           console.log('[FETCH] First load of round, turn position:', currentRound.current_turn_position, '- giving fresh 10 seconds');
           setTimeLeft(10);
           setLastTurnPosition(currentRound.current_turn_position);
+          setTimerTurnPosition(currentRound.current_turn_position);
         } else {
           // Same turn, calculate from deadline
           const deadline = new Date(currentRound.decision_deadline).getTime();
