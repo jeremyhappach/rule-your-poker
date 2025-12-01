@@ -443,7 +443,7 @@ export async function endHolmRound(gameId: string) {
 
     const newPot = game.pot + totalTaxCollected;
     const resultMessage = pussyTaxAmount > 0 
-      ? `Everyone folded! Pussy tax of $${pussyTaxAmount} per player charged. Pot now $${newPot}.`
+      ? `Pussy Tax!`
       : 'Everyone folded! No penalty.';
 
     console.log('[HOLM END] Updating game with pussy tax result:', resultMessage);
