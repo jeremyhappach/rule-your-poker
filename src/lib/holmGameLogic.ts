@@ -63,6 +63,15 @@ export async function checkHolmRoundComplete(gameId: string) {
       .update({ all_decisions_in: true })
       .eq('id', gameId);
     
+    // Clear the timer and turn position since all decisions are in
+    await supabase
+      .from('rounds')
+      .update({ 
+        current_turn_position: null,
+        decision_deadline: null
+      })
+      .eq('id', round.id);
+    
     // End the round
     try {
       await endHolmRound(gameId);
