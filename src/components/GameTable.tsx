@@ -401,7 +401,14 @@ export const GameTable = ({
                       {/* Action buttons and chip stack row */}
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {/* Fold button (left) */}
-                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
+                        {(() => {
+                          // For Holm game, only show buttons when it's the player's turn
+                          const isPlayerTurn = gameType === 'holm-game' 
+                            ? currentTurnPosition === player.position 
+                            : true;
+                          
+                          return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
+                        })() ? (
                           <Button 
                             variant="destructive" 
                             size="sm"
@@ -422,7 +429,14 @@ export const GameTable = ({
                         </div>
                         
                         {/* Stay button (right) */}
-                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
+                        {(() => {
+                          // For Holm game, only show buttons when it's the player's turn
+                          const isPlayerTurn = gameType === 'holm-game' 
+                            ? currentTurnPosition === player.position 
+                            : true;
+                          
+                          return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
+                        })() ? (
                           <Button 
                             size="sm"
                             onClick={onStay}

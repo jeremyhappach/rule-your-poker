@@ -410,11 +410,20 @@ const Game = () => {
   useEffect(() => {
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
       const isHolmGame = game?.game_type === 'holm-game';
+      
+      // For Holm games, only trigger if there's a valid turn position
+      // For other games, trigger on any undecided bot
+      if (isHolmGame && !currentRound?.current_turn_position) {
+        console.log('[BOT TRIGGER] Holm game but no turn position set, skipping');
+        return;
+      }
+      
       console.log('[BOT TRIGGER] Triggering bot decisions', {
         game_type: game?.game_type,
         current_turn: currentRound?.current_turn_position,
         round: game?.current_round
       });
+      
       const botDecisionTimer = setTimeout(() => {
         makeBotDecisions(gameId!);
       }, 500);
@@ -427,6 +436,7 @@ const Game = () => {
     game?.all_decisions_in, 
     // Only watch turn position for Holm games (turn-based), not 3-5-7 (simultaneous)
     game?.game_type === 'holm-game' ? currentRound?.current_turn_position : null,
+    game?.game_type,
     gameId
   ]);
 
