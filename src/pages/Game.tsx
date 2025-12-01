@@ -414,6 +414,10 @@ const Game = () => {
     // Only auto-fold if timer expired AND all_decisions_in is still false
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
       console.log('[TIMER EXPIRED] Auto-folding player whose turn it is');
+      // Immediately clear the timer to stop flashing
+      setTimeLeft(null);
+      setIsPaused(true);
+      
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
@@ -450,15 +454,26 @@ const Game = () => {
             
             console.log('[TIMER EXPIRED] Checking if round complete after fold');
             await checkHolmRoundComplete(gameId!);
+            
+            // Force immediate refetch to get new deadline and turn position
+            console.log('[TIMER EXPIRED] Forcing immediate refetch');
+            await fetchGameData();
           } else {
             console.log('[TIMER EXPIRED] No player found at turn position to auto-fold');
           }
+          
+          setIsPaused(false);
         })().catch(err => {
           console.error('[TIMER EXPIRED] Error auto-folding:', err);
+          setIsPaused(false);
         });
       } else {
-        autoFoldUndecided(gameId!).catch(err => {
+        autoFoldUndecided(gameId!).then(() => {
+          fetchGameData();
+          setIsPaused(false);
+        }).catch(err => {
           console.error('[TIMER EXPIRED] Error auto-folding:', err);
+          setIsPaused(false);
         });
       }
     }
