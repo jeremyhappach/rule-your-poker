@@ -365,13 +365,25 @@ const Game = () => {
 
   // Trigger bot decisions when round starts
   useEffect(() => {
+    console.log('[BOT TRIGGER CHECK]', {
+      status: game?.status,
+      all_decisions_in: game?.all_decisions_in,
+      game_type: game?.game_type,
+      current_round: game?.current_round,
+      rounds: game?.rounds?.map(r => ({ round_number: r.round_number, turn: r.current_turn_position }))
+    });
+    
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
       const currentRound = game.rounds?.find(r => r.round_number === game.current_round);
       const currentTurnPosition = currentRound?.current_turn_position;
       
+      console.log('[BOT TRIGGER CHECK] Current turn position:', currentTurnPosition, 'Players:', players.map(p => ({ id: p.id, pos: p.position, is_bot: p.is_bot, locked: p.decision_locked })));
+      
       // For Holm games, only bot whose turn it is should decide
       if (game.game_type === 'holm-game' && currentTurnPosition) {
         const botWithTurn = players.find(p => p.is_bot && p.position === currentTurnPosition && !p.decision_locked);
+        
+        console.log('[BOT TRIGGER CHECK] Bot with turn found:', botWithTurn ? `yes (${botWithTurn.id})` : 'no');
         
         if (botWithTurn) {
           console.log('[BOT TRIGGER] Bot has turn, making instant decision');
