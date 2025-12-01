@@ -233,6 +233,18 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   // First player (buck) gets 10 seconds to decide - turn-based
   const deadline = new Date(Date.now() + 10000);
 
+  // Deal fresh cards for the new hand - do this BEFORE checking for existing round
+  const deck = shuffleDeck(createDeck());
+  let cardIndex = 0;
+
+  // Deal 4 community cards
+  const communityCards = [
+    deck[cardIndex++],
+    deck[cardIndex++],
+    deck[cardIndex++],
+    deck[cardIndex++]
+  ];
+
   if (existingRound) {
     console.log('[HOLM] Round', roundNumber, 'already exists. Resetting for new hand...');
     
@@ -242,7 +254,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       .delete()
       .eq('round_id', existingRound.id);
     
-    // Reset the existing round state for the new hand
+    // Reset the existing round state for the new hand with FRESH community cards
     await supabase
       .from('rounds')
       .update({
@@ -253,14 +265,14 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
         chucky_active: false,
         chucky_cards: null,
         chucky_cards_revealed: 0,
-        community_cards: null,
+        community_cards: communityCards as any, // Fresh cards!
         current_turn_position: buckPosition // Start with buck position
       })
       .eq('id', existingRound.id);
     
     roundId = existingRound.id;
   } else {
-    // Create new round
+    // Create new round with fresh community cards
     console.log('[HOLM] Creating new round', roundNumber);
     const { data: round, error: roundError } = await supabase
       .from('rounds')
@@ -272,6 +284,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
         pot: initialPot,
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
+        community_cards: communityCards as any, // Fresh cards!
         chucky_active: false,
         current_turn_position: buckPosition // Start with buck position
       })
@@ -305,25 +318,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     }
   }
 
-  // Deal cards for the new hand
-  const deck = shuffleDeck(createDeck());
-  let cardIndex = 0;
-
-  // Deal 4 community cards
-  const communityCards = [
-    deck[cardIndex++],
-    deck[cardIndex++],
-    deck[cardIndex++],
-    deck[cardIndex++]
-  ];
-
-  // Store community cards in round
-  await supabase
-    .from('rounds')
-    .update({ community_cards: communityCards as any })
-    .eq('id', roundId);
-
-  // Deal 4 cards to each player
+  // Deal 4 cards to each player using the fresh deck
   for (const player of players) {
     const playerCards = [
       deck[cardIndex++],
@@ -660,7 +655,8 @@ async function handleChuckyShowdown(
           status: 'game_over',
           last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins the game!`,
           game_over_at: new Date().toISOString(),
-          pot: 0
+          pot: 0,
+          awaiting_next_round: false // Clear awaiting flag when game ends
         })
         .eq('id', gameId);
     } else {
@@ -702,10 +698,13 @@ async function handleChuckyShowdown(
       .eq('id', gameId);
   }
 
-  // Mark round complete
+  // Mark round complete and hide Chucky
   await supabase
     .from('rounds')
-    .update({ status: 'completed' })
+    .update({ 
+      status: 'completed',
+      chucky_active: false // Hide Chucky when round ends
+    })
     .eq('id', roundId);
 
   console.log('[HOLM SHOWDOWN] Showdown complete');
@@ -791,7 +790,8 @@ async function handleMultiPlayerShowdown(
           status: 'game_over',
           last_round_result: `${winnerUsername} wins the game with ${formatHandRank(winner.evaluation.rank)}!`,
           game_over_at: new Date().toISOString(),
-          pot: totalMatched
+          pot: totalMatched,
+          awaiting_next_round: false // Clear awaiting flag when game ends
         })
         .eq('id', gameId);
     } else {
@@ -840,7 +840,8 @@ async function handleMultiPlayerShowdown(
           status: 'game_over',
           last_round_result: `Tie! ${winnerNames.join(' and ')} reached ${game.legs_to_win} legs with ${formatHandRank(winners[0].evaluation.rank)}!`,
           game_over_at: new Date().toISOString(),
-          pot: 0
+          pot: 0,
+          awaiting_next_round: false // Clear awaiting flag when game ends
         })
         .eq('id', gameId);
     } else {
@@ -859,7 +860,10 @@ async function handleMultiPlayerShowdown(
   // Mark round complete
   await supabase
     .from('rounds')
-    .update({ status: 'completed' })
+    .update({ 
+      status: 'completed',
+      chucky_active: false // Ensure Chucky is hidden
+    })
     .eq('id', roundId);
 }
 
