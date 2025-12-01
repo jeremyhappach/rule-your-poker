@@ -101,14 +101,22 @@ export async function addBotPlayer(gameId: string) {
 export async function makeBotDecisions(gameId: string) {
   console.log('[BOT] Making bot decisions for game:', gameId);
   
-  // Check if this is a Holm game
+  // Check if this is a Holm game and get current turn position
   const { data: game } = await supabase
     .from('games')
-    .select('game_type, buck_position')
+    .select('game_type, buck_position, current_round, rounds(*)')
     .eq('id', gameId)
     .single();
     
   const isHolmGame = game?.game_type === 'holm-game';
+  
+  // For Holm games, get the current turn position
+  let currentTurnPosition: number | null = null;
+  if (isHolmGame && game?.rounds) {
+    const currentRound = (game.rounds as any[]).find((r: any) => r.round_number === game.current_round);
+    currentTurnPosition = currentRound?.current_turn_position || null;
+    console.log('[BOT] Current turn position:', currentTurnPosition);
+  }
   
   // Get all bot players in the game who haven't decided yet
   const { data: botPlayers } = await supabase
@@ -119,12 +127,22 @@ export async function makeBotDecisions(gameId: string) {
     .eq('status', 'active')
     .is('decision_locked', false);
 
-  if (!botPlayers || botPlayers.length === 0) return;
+  console.log('[BOT] Found bot players:', botPlayers?.map(b => ({ id: b.id, position: b.position, locked: b.decision_locked })));
 
-  // In Holm game, bot makes decision when it's their turn (at buck position)
-  // The Game.tsx component already filters to only call this when bot has buck
+  if (!botPlayers || botPlayers.length === 0) {
+    console.log('[BOT] No bot players found to make decisions');
+    return;
+  }
+
+  // In Holm game, only process bot at current turn position
+  const botsToProcess = isHolmGame && currentTurnPosition
+    ? botPlayers.filter(b => b.position === currentTurnPosition)
+    : botPlayers;
+  
+  console.log('[BOT] Bots to process:', botsToProcess.map(b => ({ id: b.id, position: b.position })));
+
   // Make random decisions for bot (80% stay, 20% fold)
-  for (const bot of botPlayers) {
+  for (const bot of botsToProcess) {
     const shouldStay = Math.random() > 0.2; // 80% chance to stay
     const decision = shouldStay ? 'stay' : 'fold';
     
