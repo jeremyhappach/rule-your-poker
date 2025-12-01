@@ -48,10 +48,7 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   if (cards.length === 0) return { rank: 'high-card', value: 0 };
 
   // Determine wild card based on number of cards dealt (if wild cards are enabled)
-  // Round 1 (3 cards): 3s are wild
-  // Round 2 (5 cards): 5s are wild
-  // Round 3 (7 cards): 7s are wild
-  const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A'; // Use impossible rank if wildcards disabled
+  const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A';
 
   // Count wildcards (only if wildcards are enabled)
   const wildcards = useWildCards ? cards.filter(c => c.rank === wildRank) : [];
@@ -60,12 +57,11 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
   // If all cards are wildcards, treat as highest possible
   if (wildcardCount === cards.length) {
-    return { rank: 'straight-flush', value: 8000 + 14 }; // Royal Flush
+    return { rank: 'straight-flush', value: calculateValue(8, [14]) };
   }
 
   const sortedCards = [...nonWildcards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
   const ranks = sortedCards.map(c => c.rank);
-  const suits = sortedCards.map(c => c.suit);
 
   // Count ranks (excluding wildcards)
   const rankCounts = ranks.reduce((acc, rank) => {
@@ -73,65 +69,117 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
     return acc;
   }, {} as Record<string, number>);
 
-  const counts = Object.values(rankCounts).sort((a, b) => b - a);
+  // Sort rank groups by count, then by value
+  const rankGroups = Object.entries(rankCounts)
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1]; // Sort by count descending
+      return RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]; // Then by value descending
+    });
   
   // Check for potential straight flush with wildcards
   const straightFlushResult = checkStraightFlush(sortedCards, wildcardCount);
   if (straightFlushResult.possible) {
-    return { rank: 'straight-flush', value: 8000 + straightFlushResult.highCard };
+    return { rank: 'straight-flush', value: calculateValue(8, [straightFlushResult.highCard]) };
   }
 
   // Use wildcards to complete the best possible hand
+  const counts = rankGroups.map(([_, count]) => count);
   let bestCount = counts[0] || 0;
-  bestCount += wildcardCount; // Add wildcards to the most frequent rank
+  const bestRank = rankGroups[0]?.[0] as Rank;
+  bestCount += wildcardCount;
 
   const secondCount = counts[1] || 0;
+  const secondRank = rankGroups[1]?.[0] as Rank;
 
   // Four of a Kind
   if (bestCount >= 4) {
-    const highCard = sortedCards[0]?.rank || 'A';
-    return { rank: 'four-of-a-kind', value: 7000 + RANK_VALUES[highCard] };
+    const quadRank = bestRank;
+    const kickers = sortedCards
+      .filter(c => c.rank !== quadRank)
+      .map(c => RANK_VALUES[c.rank])
+      .slice(0, 1);
+    return { rank: 'four-of-a-kind', value: calculateValue(7, [RANK_VALUES[quadRank], ...kickers]) };
   }
 
   // Full House (3 + 2)
   if (bestCount >= 3 && secondCount >= 2) {
-    const highCard = sortedCards[0]?.rank || 'A';
-    return { rank: 'full-house', value: 6000 + RANK_VALUES[highCard] };
+    const tripRank = bestRank;
+    const pairRank = secondRank;
+    return { rank: 'full-house', value: calculateValue(6, [RANK_VALUES[tripRank], RANK_VALUES[pairRank]]) };
   }
 
   // Flush with wildcards
   const flushResult = checkFlush(sortedCards, wildcardCount);
   if (flushResult.possible) {
-    return { rank: 'flush', value: 5000 + flushResult.highCard };
+    const flushCards = sortedCards
+      .filter(c => flushResult.suit ? c.suit === flushResult.suit : true)
+      .map(c => RANK_VALUES[c.rank])
+      .slice(0, 5);
+    return { rank: 'flush', value: calculateValue(5, flushCards) };
   }
 
   // Straight with wildcards
   const straightResult = checkStraightWithWildcards(ranks, wildcardCount);
   if (straightResult.possible) {
-    return { rank: 'straight', value: 4000 + straightResult.highCard };
+    return { rank: 'straight', value: calculateValue(4, [straightResult.highCard]) };
   }
 
   // Three of a Kind
   if (bestCount >= 3) {
-    const highCard = sortedCards[0]?.rank || 'A';
-    return { rank: 'three-of-a-kind', value: 3000 + RANK_VALUES[highCard] };
+    const tripRank = bestRank;
+    const kickers = sortedCards
+      .filter(c => c.rank !== tripRank)
+      .map(c => RANK_VALUES[c.rank])
+      .slice(0, 2);
+    return { rank: 'three-of-a-kind', value: calculateValue(3, [RANK_VALUES[tripRank], ...kickers]) };
   }
 
   // Two Pair
   if (bestCount >= 2 && secondCount >= 2) {
-    const highCard = sortedCards[0]?.rank || 'A';
-    return { rank: 'two-pair', value: 2000 + RANK_VALUES[highCard] };
+    const highPairRank = bestRank;
+    const lowPairRank = secondRank;
+    const kickers = sortedCards
+      .filter(c => c.rank !== highPairRank && c.rank !== lowPairRank)
+      .map(c => RANK_VALUES[c.rank])
+      .slice(0, 1);
+    return { rank: 'two-pair', value: calculateValue(2, [RANK_VALUES[highPairRank], RANK_VALUES[lowPairRank], ...kickers]) };
   }
 
   // Pair (including with wildcards)
   if (bestCount >= 2) {
-    const highCard = sortedCards[0]?.rank || 'A';
-    return { rank: 'pair', value: 1000 + RANK_VALUES[highCard] };
+    const pairRank = bestRank;
+    const kickers = sortedCards
+      .filter(c => c.rank !== pairRank)
+      .map(c => RANK_VALUES[c.rank])
+      .slice(0, 3);
+    return { rank: 'pair', value: calculateValue(1, [RANK_VALUES[pairRank], ...kickers]) };
   }
 
   // High Card
-  const highCard = sortedCards[0]?.rank || 'A';
-  return { rank: 'high-card', value: RANK_VALUES[highCard] };
+  const allValues = sortedCards.map(c => RANK_VALUES[c.rank]).slice(0, 5);
+  return { rank: 'high-card', value: calculateValue(0, allValues) };
+}
+
+/**
+ * Calculate a hand value that properly compares hands of the same rank.
+ * Base value is handType * 100000, then each card adds diminishing value:
+ * First card: value * 10000
+ * Second card: value * 100
+ * Third card: value * 1
+ * Fourth card: value * 0.01
+ * Fifth card: value * 0.0001
+ */
+function calculateValue(handType: number, cardValues: number[]): number {
+  const weights = [10000, 100, 1, 0.01, 0.0001];
+  let value = handType * 100000;
+  
+  cardValues.forEach((cardValue, index) => {
+    if (index < weights.length) {
+      value += cardValue * weights[index];
+    }
+  });
+  
+  return value;
 }
 
 function checkStraightFlush(cards: Card[], wildcards: number): { possible: boolean; highCard: number } {
@@ -157,7 +205,7 @@ function checkStraightFlush(cards: Card[], wildcards: number): { possible: boole
   return { possible: false, highCard: 0 };
 }
 
-function checkFlush(cards: Card[], wildcards: number): { possible: boolean; highCard: number } {
+function checkFlush(cards: Card[], wildcards: number): { possible: boolean; highCard: number; suit?: Suit } {
   if (cards.length + wildcards < 5) return { possible: false, highCard: 0 };
   
   // Count suits
@@ -166,8 +214,9 @@ function checkFlush(cards: Card[], wildcards: number): { possible: boolean; high
   
   const maxSuitCount = Math.max(...Object.values(suitCounts));
   if (maxSuitCount + wildcards >= 5) {
+    const flushSuit = Object.entries(suitCounts).find(([_, count]) => count === maxSuitCount)?.[0] as Suit;
     const highCard = cards[0] ? RANK_VALUES[cards[0].rank] : 14;
-    return { possible: true, highCard };
+    return { possible: true, highCard, suit: flushSuit };
   }
   
   return { possible: false, highCard: 0 };
