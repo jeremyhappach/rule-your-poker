@@ -86,7 +86,7 @@ export async function checkHolmRoundComplete(gameId: string) {
  * Move to the next player's turn in Holm game (clockwise from buck)
  */
 async function moveToNextHolmPlayerTurn(gameId: string) {
-  console.log('[HOLM TURN] Moving to next player turn');
+  console.log('[HOLM TURN] ========== Starting moveToNextHolmPlayerTurn ==========');
   
   const { data: game } = await supabase
     .from('games')
@@ -120,7 +120,7 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   const nextIndex = (currentIndex + 1) % positions.length;
   const nextPosition = positions[nextIndex];
   
-  console.log('[HOLM TURN] Moving from position', round.current_turn_position, 'to', nextPosition);
+  console.log('[HOLM TURN] *** MOVING TURN from position', round.current_turn_position, 'to', nextPosition, '***');
   
   // Update turn position and reset timer (10 seconds per turn)
   const deadline = new Date(Date.now() + 10000);
@@ -132,13 +132,17 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     })
     .eq('id', round.id);
     
+  console.log('[HOLM TURN] *** TURN UPDATE COMPLETE - DB updated to position', nextPosition, '***');
+    
   // Trigger bot decision if next player is a bot
   const nextPlayer = players.find(p => p.position === nextPosition);
   if (nextPlayer?.is_bot && !nextPlayer.decision_locked) {
-    console.log('[HOLM TURN] Next player is bot, making decision');
+    console.log('[HOLM TURN] *** Next player is bot, making decision ***');
     const { makeBotDecisions } = await import('./botPlayer');
     await makeBotDecisions(gameId);
   }
+  
+  console.log('[HOLM TURN] ========== moveToNextHolmPlayerTurn COMPLETE ==========');
 }
 
 

@@ -402,7 +402,12 @@ const Game = () => {
         !isPaused &&
         timerTurnPosition !== null &&
         currentRound?.current_turn_position === timerTurnPosition) {
-      console.log('[TIMER EXPIRED] Auto-folding player at position', timerTurnPosition);
+      console.log('[TIMER EXPIRED] *** AUTO-FOLDING player at position', timerTurnPosition, '***');
+      console.log('[TIMER EXPIRED] Verification:', {
+        timerTurnPosition,
+        currentTurnPosition: currentRound?.current_turn_position,
+        match: timerTurnPosition === currentRound?.current_turn_position
+      });
       // Immediately clear the timer to stop flashing
       setTimeLeft(null);
       setIsPaused(true);
@@ -503,6 +508,7 @@ const Game = () => {
   // Removed failsafe - countdown component now handles completion reliably
 
   const fetchGameData = async () => {
+    console.log('[FETCH] ========== STARTING FETCH ==========');
     if (!gameId || !user) return;
 
     console.log('[FETCH] Fetching game data...');
@@ -576,12 +582,19 @@ const Game = () => {
         !gameData.last_round_result &&
         !gameData.game_over_at) {  // Don't set timeLeft if game_over_at is set
       const currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
+      console.log('[FETCH] Round data:', {
+        currentRound: currentRound?.id,
+        current_turn_position: currentRound?.current_turn_position,
+        lastTurnPosition,
+        timerTurnPosition
+      });
+      
       if (currentRound?.decision_deadline && currentRound.current_turn_position) {
         // Check if turn changed
         const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
         
         if (turnChanged) {
-          console.log('[FETCH] Turn changed from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh 10 seconds');
+          console.log('[FETCH] *** TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh 10 seconds ***');
           setTimeLeft(10);
           setLastTurnPosition(currentRound.current_turn_position);
           setTimerTurnPosition(currentRound.current_turn_position);
@@ -655,9 +668,20 @@ const Game = () => {
       if (currentRound?.current_turn_position) {
         const currentTurnPlayer = players.find(p => p.position === currentRound.current_turn_position);
         
+        console.log('[BOT TURN CHECK]', {
+          current_turn_position: currentRound.current_turn_position,
+          currentTurnPlayer: currentTurnPlayer?.id,
+          is_bot: currentTurnPlayer?.is_bot,
+          decision_locked: currentTurnPlayer?.decision_locked
+        });
+        
         if (currentTurnPlayer?.is_bot && !currentTurnPlayer.decision_locked) {
-          console.log('[BOT TURN] Bot turn detected at position', currentTurnPlayer.position);
-          makeBotDecisions(gameId!).catch(err => {
+          console.log('[BOT TURN] *** BOT TURN DETECTED at position', currentTurnPlayer.position, '***');
+          makeBotDecisions(gameId!).then(() => {
+            console.log('[BOT TURN] *** BOT DECISION COMPLETE, FETCHING GAME DATA ***');
+            // CRITICAL: Refetch immediately after bot decision
+            fetchGameData();
+          }).catch(err => {
             console.error('[BOT TURN] Error making bot decision:', err);
           });
         }
