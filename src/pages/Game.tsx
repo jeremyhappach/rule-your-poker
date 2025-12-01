@@ -392,7 +392,7 @@ const Game = () => {
         return () => clearTimeout(botDecisionTimer);
       }
     }
-  }, [game?.current_round, game?.buck_position, game?.status, game?.all_decisions_in, game?.game_type, players, gameId, timeLeft]);
+  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, game?.rounds, players, gameId, timeLeft]);
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
