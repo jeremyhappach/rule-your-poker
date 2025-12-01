@@ -778,7 +778,7 @@ async function handleMultiPlayerShowdown(
  * Proceed to next Holm round
  */
 export async function proceedToNextHolmRound(gameId: string) {
-  console.log('[HOLM] Proceeding to next round');
+  console.log('[HOLM NEXT] ========== Proceeding to next round ==========');
 
   const { data: game } = await supabase
     .from('games')
@@ -786,39 +786,62 @@ export async function proceedToNextHolmRound(gameId: string) {
     .eq('id', gameId)
     .single();
 
-  if (!game) return;
+  if (!game) {
+    console.error('[HOLM NEXT] ERROR: Game not found');
+    return;
+  }
+
+  console.log('[HOLM NEXT] Current game state:', {
+    current_round: game.current_round,
+    buck_position: game.buck_position,
+    pot: game.pot,
+    awaiting_next_round: game.awaiting_next_round
+  });
 
   // Rotate buck position clockwise to next active player
   const { data: players } = await supabase
     .from('players')
-    .select('position')
+    .select('position, is_bot')
     .eq('game_id', gameId)
     .eq('status', 'active')
     .eq('sitting_out', false)
     .order('position');
 
-  if (!players || players.length === 0) return;
+  if (!players || players.length === 0) {
+    console.error('[HOLM NEXT] ERROR: No active players found');
+    return;
+  }
+
+  console.log('[HOLM NEXT] Active player positions:', players.map(p => p.position));
 
   // Get sorted positions of active players
   const positions = players.map(p => p.position).sort((a, b) => a - b);
   const currentBuckIndex = positions.indexOf(game.buck_position);
   
+  console.log('[HOLM NEXT] Buck rotation:', {
+    current_buck: game.buck_position,
+    current_index: currentBuckIndex,
+    positions
+  });
+  
   // Find next position (wrap around if needed)
   const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
   const newBuckPosition = positions[nextBuckIndex];
 
-  console.log('[HOLM NEXT] Rotating buck from', game.buck_position, 'to', newBuckPosition);
+  console.log('[HOLM NEXT] New buck position:', newBuckPosition);
 
-  // Update buck position before starting next round
-  // startHolmRound will use this buck_position instead of recalculating
+  // Update buck position and clear awaiting flag before starting next round
   await supabase
     .from('games')
     .update({
       awaiting_next_round: false,
-      buck_position: newBuckPosition
+      buck_position: newBuckPosition,
+      last_round_result: null // Clear result when starting new round
     })
     .eq('id', gameId);
 
   const nextRound = (game.current_round || 0) + 1;
+  console.log('[HOLM NEXT] Starting round', nextRound);
   await startHolmRound(gameId, nextRound);
+  console.log('[HOLM NEXT] ========== Next round started ==========');
 }

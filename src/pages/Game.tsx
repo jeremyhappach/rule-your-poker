@@ -489,23 +489,32 @@ const Game = () => {
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
       
-      console.log('[AWAITING_NEXT_ROUND] Waiting 4 seconds before proceeding to next round');
+      console.log('[AWAITING_NEXT_ROUND] Detected awaiting_next_round=true, waiting 4 seconds before proceeding', {
+        game_type: game?.game_type,
+        current_round: game?.current_round,
+        pot: game?.pot,
+        last_result: game?.last_round_result
+      });
       proceedingToNextRoundRef.current = true;
       
       // Wait 4 seconds to show the result, then start next round
       const timer = setTimeout(async () => {
-        console.log('[AWAITING_NEXT_ROUND] Proceeding to next round');
+        console.log('[AWAITING_NEXT_ROUND] Timeout fired, proceeding to next round');
         try {
           const isHolmGame = game?.game_type === 'holm-game';
           if (isHolmGame) {
+            console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextHolmRound');
             await proceedToNextHolmRound(gameId);
           } else {
+            console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextRound');
             await proceedToNextRound(gameId);
           }
+          console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next round');
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
         } finally {
           proceedingToNextRoundRef.current = false;
+          console.log('[AWAITING_NEXT_ROUND] Reset proceedingToNextRoundRef to false');
         }
       }, 4000);
       
@@ -515,7 +524,7 @@ const Game = () => {
         proceedingToNextRoundRef.current = false;
       };
     }
-  }, [game?.awaiting_next_round, gameId, game?.status]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type]);
 
   // Clear timer when results are shown
   useEffect(() => {
