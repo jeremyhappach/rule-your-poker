@@ -428,8 +428,11 @@ const Game = () => {
             console.log('[TIMER EXPIRED HOLM] Auto-folding player at position', currentTurnPlayer.position);
             await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
             await checkHolmRoundComplete(gameId!);
-            console.log('[TIMER EXPIRED HOLM] *** REFETCHING after auto-fold ***');
-            await fetchGameData();
+            console.log('[TIMER EXPIRED HOLM] *** WAITING 500ms THEN REFETCHING after auto-fold ***');
+            // Wait for DB to fully update before refetching
+            setTimeout(() => {
+              fetchGameData();
+            }, 500);
           } else {
             console.log('[TIMER EXPIRED HOLM] Player already decided or not found');
           }
@@ -679,9 +682,12 @@ const Game = () => {
         if (currentTurnPlayer?.is_bot && !currentTurnPlayer.decision_locked) {
           console.log('[BOT TURN] *** BOT TURN DETECTED at position', currentTurnPlayer.position, '***');
           makeBotDecisions(gameId!).then(() => {
-            console.log('[BOT TURN] *** BOT DECISION COMPLETE, FETCHING GAME DATA ***');
-            // CRITICAL: Refetch immediately after bot decision
-            fetchGameData();
+            console.log('[BOT TURN] *** BOT DECISION COMPLETE, WAITING 500ms THEN FETCHING ***');
+            // Wait for DB to fully update before refetching
+            setTimeout(() => {
+              console.log('[BOT TURN] *** NOW REFETCHING GAME DATA ***');
+              fetchGameData();
+            }, 500);
           }).catch(err => {
             console.error('[BOT TURN] Error making bot decision:', err);
           });
@@ -908,8 +914,11 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
-        console.log('[PLAYER DECISION] *** REFETCHING after checkHolmRoundComplete ***');
-        await fetchGameData();
+        console.log('[PLAYER DECISION] *** WAITING 500ms THEN REFETCHING after checkHolmRoundComplete ***');
+        // Wait for DB to fully update before refetching
+        setTimeout(() => {
+          fetchGameData();
+        }, 500);
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
@@ -928,8 +937,11 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
-        console.log('[PLAYER DECISION] *** REFETCHING after checkHolmRoundComplete (fold) ***');
-        await fetchGameData();
+        console.log('[PLAYER DECISION] *** WAITING 500ms THEN REFETCHING after checkHolmRoundComplete (fold) ***');
+        // Wait for DB to fully update before refetching
+        setTimeout(() => {
+          fetchGameData();
+        }, 500);
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
