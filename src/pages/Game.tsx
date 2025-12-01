@@ -399,40 +399,34 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        // In Holm, ALL undecided players auto-fold simultaneously (no turns)
+        // In Holm, auto-fold current player whose turn it is
         (async () => {
-          console.log('[TIMER EXPIRED HOLM] Fetching all undecided players');
+          const { data: freshRound } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('game_id', gameId!)
+            .eq('round_number', game.current_round!)
+            .single();
+            
+          if (!freshRound?.current_turn_position) {
+            console.log('[TIMER EXPIRED HOLM] No current turn position');
+            setIsPaused(false);
+            return;
+          }
           
-          const { data: freshPlayers } = await supabase
+          const { data: currentTurnPlayer } = await supabase
             .from('players')
             .select('*')
             .eq('game_id', gameId!)
-            .eq('status', 'active')
-            .eq('sitting_out', false);
-          
-          console.log('[TIMER EXPIRED HOLM] All active players:', freshPlayers?.map(p => ({ 
-            pos: p.position, 
-            locked: p.decision_locked, 
-            decision: p.current_decision,
-            is_bot: p.is_bot
-          })));
-          
-          const undecidedPlayers = freshPlayers?.filter(p => !p.decision_locked) || [];
-          
-          console.log('[TIMER EXPIRED HOLM] Auto-folding', undecidedPlayers.length, 'undecided players');
-          
-          // Fold all undecided players at once
-          for (const player of undecidedPlayers) {
-            console.log('[TIMER EXPIRED HOLM] Folding player at position', player.position);
-            await makeDecision(gameId!, player.id, 'fold');
+            .eq('position', freshRound.current_turn_position)
+            .single();
+            
+          if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
+            console.log('[TIMER EXPIRED HOLM] Auto-folding player at position', currentTurnPlayer.position);
+            await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
+            await checkHolmRoundComplete(gameId!);
+            await fetchGameData();
           }
-          
-          console.log('[TIMER EXPIRED HOLM] Checking if round complete after auto-folds');
-          await checkHolmRoundComplete(gameId!);
-          
-          // Force immediate refetch to get new state
-          console.log('[TIMER EXPIRED HOLM] Forcing immediate refetch');
-          await fetchGameData();
           
           setIsPaused(false);
         })().catch(err => {
@@ -625,6 +619,27 @@ const Game = () => {
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
   };
+
+  // Trigger bot decisions when it's a bot's turn
+  useEffect(() => {
+    if (game?.status === 'in_progress' && 
+        game?.rounds && 
+        game.rounds.length > 0 &&
+        !game.all_decisions_in) {
+      const currentRound = game.rounds.find((r: Round) => r.round_number === game.current_round);
+      
+      if (currentRound?.current_turn_position) {
+        const currentTurnPlayer = players.find(p => p.position === currentRound.current_turn_position);
+        
+        if (currentTurnPlayer?.is_bot && !currentTurnPlayer.decision_locked) {
+          console.log('[BOT TURN] Bot turn detected at position', currentTurnPlayer.position);
+          makeBotDecisions(gameId!).catch(err => {
+            console.error('[BOT TURN] Error making bot decision:', err);
+          });
+        }
+      }
+    }
+  }, [game?.rounds, players, gameId, game?.status, game?.all_decisions_in]);
 
   const selectDealer = async (dealerPosition: number) => {
     if (!gameId) return;
@@ -1256,7 +1271,7 @@ const Game = () => {
             communityCards={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards as CardType[] | undefined}
             communityCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards_revealed}
             buckPosition={game.buck_position}
-            currentTurnPosition={null} // No turns in Holm - all players decide simultaneously
+            currentTurnPosition={game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
             chuckyCards={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards as CardType[] | undefined}
             chuckyActive={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_active}
             chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}

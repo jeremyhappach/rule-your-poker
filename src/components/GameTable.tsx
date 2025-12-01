@@ -318,6 +318,16 @@ export const GameTable = ({
               >
                 <div className="relative">
                   <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
+                  
+                  {/* Turn indicator */}
+                  {currentTurnPosition === player.position && (
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10">
+                      <Badge variant="secondary" className="bg-accent text-accent-foreground text-xs px-2 py-0.5 border border-accent-foreground/20 shadow-lg">
+                        Turn
+                      </Badge>
+                    </div>
+                  )}
+                  
                   <Card className={`
                     ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
                     ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
@@ -440,9 +450,16 @@ export const GameTable = ({
             );
           })}
         </div>
+        
+        {/* YOUR TURN indicator at bottom */}
+        {currentPlayer && currentTurnPosition === currentPlayer.position && !hasDecided && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+            <div className="bg-accent text-accent-foreground px-4 py-2 rounded-lg border-2 border-accent-foreground/20 shadow-xl">
+              <p className="font-bold text-sm md:text-base">YOUR TURN</p>
+            </div>
+          </div>
+        )}
       </div>
-
-
     </div>
   );
 };
