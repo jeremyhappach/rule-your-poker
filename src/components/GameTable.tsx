@@ -129,8 +129,8 @@ export const GameTable = ({
   // Combine players and open seats for rendering - no reordering needed
   const seatsToRender = [...players, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
 
-  // Hide pot and timer when showing result message, but allow during awaiting to show updated pot
-  const showPotAndTimer = !lastRoundResult;
+  // Show pot during awaiting_next_round (even with result message) and when no result message
+  const showPotAndTimer = awaitingNextRound || !lastRoundResult;
 
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">

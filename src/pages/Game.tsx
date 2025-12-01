@@ -580,6 +580,9 @@ const Game = () => {
             await proceedToNextRound(gameId);
           }
           console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next round');
+          // Explicitly refetch to ensure UI shows updated buck position and pot immediately
+          await fetchGameData();
+          console.log('[AWAITING_NEXT_ROUND] Refetched game data after transition');
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
         } finally {
