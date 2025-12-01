@@ -363,11 +363,12 @@ const Game = () => {
     return () => clearInterval(pollInterval);
   }, [game?.status, players, gameId]);
 
-  // Trigger bot decisions when round starts
+  // Extract current turn position as a stable value that triggers re-renders
+  const currentRound = game?.rounds?.find(r => r.round_number === game.current_round);
+  const currentTurnPosition = currentRound?.current_turn_position;
+
+  // Trigger bot decisions when it's a bot's turn
   useEffect(() => {
-    const currentRound = game?.rounds?.find(r => r.round_number === game.current_round);
-    const currentTurnPosition = currentRound?.current_turn_position;
-    
     console.log('[BOT TRIGGER CHECK]', {
       status: game?.status,
       all_decisions_in: game?.all_decisions_in,
@@ -398,7 +399,7 @@ const Game = () => {
         return () => clearTimeout(botDecisionTimer);
       }
     }
-  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, game?.rounds?.find(r => r.round_number === game?.current_round)?.current_turn_position, players, gameId]);
+  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, currentTurnPosition, players, gameId]);
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
