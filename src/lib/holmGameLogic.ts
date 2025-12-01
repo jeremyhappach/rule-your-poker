@@ -738,6 +738,11 @@ async function handleMultiPlayerShowdown(
 ) {
   console.log('[HOLM] Multi-player showdown');
 
+  // Add 3 second delay so players can read the cards
+  console.log('[HOLM MULTI] Waiting 3 seconds for players to view cards...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  console.log('[HOLM MULTI] Evaluating hands...');
+
   // Evaluate each player's hand
   const evaluations = await Promise.all(
     stayedPlayers.map(async (player) => {
@@ -800,6 +805,7 @@ async function handleMultiPlayerShowdown(
 
     if (hasWon) {
       // Winner wins the game
+      console.log('[HOLM MULTI] Winner reached legs_to_win! Game over.');
       await supabase
         .from('games')
         .update({
@@ -812,6 +818,7 @@ async function handleMultiPlayerShowdown(
         .eq('id', gameId);
     } else {
       // Continue to next round
+      console.log('[HOLM MULTI] Setting awaiting_next_round to proceed to next hand');
       await supabase
         .from('games')
         .update({
@@ -820,6 +827,7 @@ async function handleMultiPlayerShowdown(
           pot: totalMatched
         })
         .eq('id', gameId);
+      console.log('[HOLM MULTI] awaiting_next_round flag set - game should proceed when clicked');
     }
   } else {
     // Tie - split pot and award legs to all winners
@@ -850,6 +858,7 @@ async function handleMultiPlayerShowdown(
 
     if (anyWinnerReachedGoal) {
       // At least one winner reached legs_to_win
+      console.log('[HOLM TIE] At least one winner reached legs_to_win! Game over.');
       await supabase
         .from('games')
         .update({
@@ -862,6 +871,7 @@ async function handleMultiPlayerShowdown(
         .eq('id', gameId);
     } else {
       // Continue to next round
+      console.log('[HOLM TIE] Setting awaiting_next_round to proceed to next hand');
       await supabase
         .from('games')
         .update({
@@ -870,6 +880,7 @@ async function handleMultiPlayerShowdown(
           pot: 0
         })
         .eq('id', gameId);
+      console.log('[HOLM TIE] awaiting_next_round flag set - game should proceed when clicked');
     }
   }
 
