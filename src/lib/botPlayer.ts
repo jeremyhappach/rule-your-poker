@@ -123,9 +123,9 @@ export async function makeBotDecisions(gameId: string) {
 
   // In Holm game, bot makes decision when it's their turn (at buck position)
   // The Game.tsx component already filters to only call this when bot has buck
-  // Make random decisions for bot (20% stay, 80% fold)
+  // Make random decisions for bot (80% stay, 20% fold)
   for (const bot of botPlayers) {
-    const shouldStay = Math.random() > 0.8;
+    const shouldStay = Math.random() > 0.2; // 80% chance to stay
     const decision = shouldStay ? 'stay' : 'fold';
     
     console.log('[BOT] Bot', bot.id, 'at position', bot.position, 'deciding:', decision);
