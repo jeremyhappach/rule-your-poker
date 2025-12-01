@@ -409,7 +409,9 @@ const Game = () => {
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
+      const isHolmGame = game?.game_type === 'holm-game';
       console.log('[BOT TRIGGER] Triggering bot decisions', {
+        game_type: game?.game_type,
         current_turn: currentRound?.current_turn_position,
         round: game?.current_round
       });
@@ -419,7 +421,14 @@ const Game = () => {
       
       return () => clearTimeout(botDecisionTimer);
     }
-  }, [game?.current_round, game?.status, game?.all_decisions_in, currentRound?.current_turn_position, gameId]);
+  }, [
+    game?.current_round, 
+    game?.status, 
+    game?.all_decisions_in, 
+    // Only watch turn position for Holm games (turn-based), not 3-5-7 (simultaneous)
+    game?.game_type === 'holm-game' ? currentRound?.current_turn_position : null,
+    gameId
+  ]);
 
   // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
   useEffect(() => {
