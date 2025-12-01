@@ -646,11 +646,19 @@ async function handleChuckyShowdown(
     const newLegs = player.legs + game.leg_value;
     const hasWon = newLegs >= game.legs_to_win;
 
-    console.log('[HOLM SHOWDOWN] Player now has', newLegs, 'legs. Needs', game.legs_to_win, 'to win. Game over:', hasWon);
+    console.log('[HOLM SHOWDOWN] Victory check:', {
+      playerUsername,
+      currentLegs: player.legs,
+      legValue: game.leg_value,
+      newLegs,
+      legsToWin: game.legs_to_win,
+      hasWon
+    });
 
     if (hasWon) {
       // Player wins the game
-      await supabase
+      console.log('[HOLM SHOWDOWN] *** PLAYER WINS THE GAME! Setting status to game_over ***');
+      const { error: gameOverError } = await supabase
         .from('games')
         .update({
           status: 'game_over',
@@ -660,8 +668,15 @@ async function handleChuckyShowdown(
           awaiting_next_round: false // Clear awaiting flag when game ends
         })
         .eq('id', gameId);
+      
+      if (gameOverError) {
+        console.error('[HOLM SHOWDOWN] ERROR setting game_over status:', gameOverError);
+      } else {
+        console.log('[HOLM SHOWDOWN] Successfully set game_over status');
+      }
     } else {
       // Continue to next round
+      console.log('[HOLM SHOWDOWN] Player wins but game continues');
       await supabase
         .from('games')
         .update({

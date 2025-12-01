@@ -139,14 +139,12 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
         <div className="relative h-full">
-          {/* Result Message Flash - positioned at bottom to not block community cards */}
+          {/* Result Message - text directly on felt below community cards */}
           {lastRoundResult && (
-            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-center z-30 w-[90%] max-w-md pointer-events-none pb-2">
-              <div className="bg-poker-gold/90 p-3 sm:p-4 md:p-6 rounded-xl border-2 sm:border-3 md:border-4 border-poker-gold shadow-2xl">
-                <p className="text-black font-black text-sm sm:text-lg md:text-2xl drop-shadow-lg">
-                  {lastRoundResult}
-                </p>
-              </div>
+            <div className="absolute top-[52%] left-1/2 transform -translate-x-1/2 text-center z-30 w-[90%] max-w-md pointer-events-none">
+              <p className="text-poker-gold font-black text-xs sm:text-sm md:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                {lastRoundResult}
+              </p>
             </div>
           )}
           
