@@ -408,6 +408,14 @@ const Game = () => {
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
+    console.log('[BOT TRIGGER EFFECT] Running', {
+      status: game?.status,
+      all_decisions_in: game?.all_decisions_in,
+      game_type: game?.game_type,
+      current_turn: currentRound?.current_turn_position,
+      round: game?.current_round
+    });
+    
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
       const isHolmGame = game?.game_type === 'holm-game';
       
@@ -425,10 +433,16 @@ const Game = () => {
       });
       
       const botDecisionTimer = setTimeout(() => {
+        console.log('[BOT TRIGGER] *** CALLING makeBotDecisions ***');
         makeBotDecisions(gameId!);
       }, 500);
       
-      return () => clearTimeout(botDecisionTimer);
+      return () => {
+        console.log('[BOT TRIGGER] *** CLEANUP - clearing timeout ***');
+        clearTimeout(botDecisionTimer);
+      };
+    } else {
+      console.log('[BOT TRIGGER] Conditions not met for bot trigger');
     }
   }, [
     game?.current_round, 
@@ -476,6 +490,32 @@ const Game = () => {
       if (isHolmGame) {
         // In Holm, auto-fold the player whose timer expired
         (async () => {
+          // CRITICAL: Fetch fresh round data to verify turn hasn't changed
+          const { data: freshRound } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('game_id', gameId!)
+            .eq('round_number', game.current_round)
+            .single();
+            
+          if (!freshRound) {
+            console.log('[TIMER EXPIRED HOLM] Fresh round not found');
+            setIsPaused(false);
+            return;
+          }
+          
+          // Verify the turn hasn't changed since timer started
+          if (freshRound.current_turn_position !== timerTurnPosition) {
+            console.log('[TIMER EXPIRED HOLM] *** TURN HAS CHANGED - SKIPPING AUTO-FOLD ***', {
+              expected: timerTurnPosition,
+              actual: freshRound.current_turn_position
+            });
+            setIsPaused(false);
+            // Refetch to sync with new turn
+            fetchGameData();
+            return;
+          }
+          
           const { data: currentTurnPlayer } = await supabase
             .from('players')
             .select('*')
@@ -728,36 +768,6 @@ const Game = () => {
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
   };
-
-  // Trigger bot decisions when it's a bot's turn
-  useEffect(() => {
-    if (game?.status === 'in_progress' && 
-        game?.rounds && 
-        game.rounds.length > 0 &&
-        !game.all_decisions_in) {
-      const currentRound = game.rounds.find((r: Round) => r.round_number === game.current_round);
-      
-      if (currentRound?.current_turn_position) {
-        const currentTurnPlayer = players.find(p => p.position === currentRound.current_turn_position);
-        
-        console.log('[BOT TURN CHECK]', {
-          current_turn_position: currentRound.current_turn_position,
-          currentTurnPlayer: currentTurnPlayer?.id,
-          is_bot: currentTurnPlayer?.is_bot,
-          decision_locked: currentTurnPlayer?.decision_locked
-        });
-        
-        if (currentTurnPlayer?.is_bot && !currentTurnPlayer.decision_locked) {
-          console.log('[BOT TURN] *** BOT TURN DETECTED at position', currentTurnPlayer.position, '***');
-          makeBotDecisions(gameId!).then(() => {
-            console.log('[BOT TURN] *** BOT DECISION COMPLETE - Realtime will trigger refetch ***');
-          }).catch(err => {
-            console.error('[BOT TURN] Error making bot decision:', err);
-          });
-        }
-      }
-    }
-  }, [game?.rounds, players, gameId, game?.status, game?.all_decisions_in]);
 
   const selectDealer = async (dealerPosition: number) => {
     if (!gameId) return;
