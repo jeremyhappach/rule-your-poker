@@ -590,8 +590,8 @@ async function handleChuckyShowdown(
   console.log('[HOLM SHOWDOWN] Player all cards:', playerAllCards);
   console.log('[HOLM SHOWDOWN] Chucky all cards:', chuckyAllCards);
 
-  const playerEval = evaluateHand(playerAllCards);
-  const chuckyEval = evaluateHand(chuckyAllCards);
+  const playerEval = evaluateHand(playerAllCards, false); // No wild cards in Holm
+  const chuckyEval = evaluateHand(chuckyAllCards, false); // No wild cards in Holm
 
   console.log('[HOLM SHOWDOWN] Player hand:', formatHandRank(playerEval.rank), 'value:', playerEval.value);
   console.log('[HOLM SHOWDOWN] Chucky hand:', formatHandRank(chuckyEval.rank), 'value:', chuckyEval.value);
@@ -681,7 +681,7 @@ async function handleMultiPlayerShowdown(
 
       const playerCards = (playerCardsData?.cards as unknown as Card[]) || [];
       const allCards = [...playerCards, ...communityCards];
-      const evaluation = evaluateHand(allCards);
+      const evaluation = evaluateHand(allCards, false); // No wild cards in Holm
 
       return {
         player,

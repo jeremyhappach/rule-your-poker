@@ -10,7 +10,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   if (cards.length === 0) return null;
 
   return (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
+    <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
       <div className="flex gap-2">
         {cards.map((card, index) => {
           const isRevealed = index < revealed;

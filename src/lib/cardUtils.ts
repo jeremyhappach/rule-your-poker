@@ -44,18 +44,18 @@ export function shuffleDeck(deck: Card[]): Card[] {
   return shuffled;
 }
 
-export function evaluateHand(cards: Card[]): { rank: HandRank; value: number } {
+export function evaluateHand(cards: Card[], useWildCards: boolean = true): { rank: HandRank; value: number } {
   if (cards.length === 0) return { rank: 'high-card', value: 0 };
 
-  // Determine wild card based on number of cards dealt
+  // Determine wild card based on number of cards dealt (if wild cards are enabled)
   // Round 1 (3 cards): 3s are wild
   // Round 2 (5 cards): 5s are wild
   // Round 3 (7 cards): 7s are wild
-  const wildRank: Rank = cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7';
+  const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A'; // Use impossible rank if wildcards disabled
 
-  // Count wildcards
-  const wildcards = cards.filter(c => c.rank === wildRank);
-  const nonWildcards = cards.filter(c => c.rank !== wildRank);
+  // Count wildcards (only if wildcards are enabled)
+  const wildcards = useWildCards ? cards.filter(c => c.rank === wildRank) : [];
+  const nonWildcards = useWildCards ? cards.filter(c => c.rank !== wildRank) : cards;
   const wildcardCount = wildcards.length;
 
   // If all cards are wildcards, treat as highest possible
