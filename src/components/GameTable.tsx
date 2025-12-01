@@ -324,6 +324,7 @@ export const GameTable = ({
                     ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
                     ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-110" : ""}
                     ${player.sitting_out ? "opacity-50 grayscale" : ""}
+                    ${gameType === 'holm-game' && currentTurnPosition === player.position && !hasPlayerDecided ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-poker-felt animate-pulse shadow-[0_0_30px_rgba(96,165,250,0.9)]" : ""}
                     bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                     transition-all duration-500
                   `}>
