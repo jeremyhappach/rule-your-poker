@@ -133,8 +133,8 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .single();
 
   let roundId: string;
-  // Give 30 seconds for all players to decide in Holm game (simultaneous decisions)
-  const deadline = new Date(Date.now() + 30000);
+  // All players get 10 seconds to decide simultaneously in Holm game
+  const deadline = new Date(Date.now() + 10000);
 
   if (existingRound) {
     console.log('[HOLM] Round', roundNumber, 'already exists. Resetting for new hand...');
