@@ -379,21 +379,16 @@ const Game = () => {
     });
     
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
-      // For Holm games, check if bot's turn and trigger decision after visible delay
+      // For Holm games, check if bot's turn and trigger instant decision
       if (game.game_type === 'holm-game' && currentTurnPosition) {
         const botWithTurn = players.find(p => p.is_bot && p.position === currentTurnPosition && !p.decision_locked);
         
         console.log('[BOT TRIGGER CHECK] Bot with turn found:', botWithTurn ? `yes (pos ${botWithTurn.position})` : 'no');
         
         if (botWithTurn) {
-          console.log('[BOT TRIGGER] Bot at position', botWithTurn.position, 'will decide after 1.5 second delay');
-          // Add 1.5 second delay so user can SEE the bot is thinking
-          const botDecisionTimer = setTimeout(() => {
-            console.log('[BOT TRIGGER] Bot deciding now');
-            makeBotDecisions(gameId!);
-          }, 1500);
-          
-          return () => clearTimeout(botDecisionTimer);
+          console.log('[BOT TRIGGER] Bot at position', botWithTurn.position, 'making instant decision');
+          // Bot decides immediately to avoid timer expiration
+          makeBotDecisions(gameId!);
         }
       } else if (game.game_type !== 'holm-game') {
         // For 3-5-7 and other games, keep original fast bot decisions
@@ -452,10 +447,6 @@ const Game = () => {
           if (playerWithTurn) {
             console.log('[TIMER EXPIRED] Folding player at position', playerWithTurn.position);
             await makeDecision(gameId!, playerWithTurn.id, 'fold');
-            
-            // Wait 500ms to ensure fold is persisted and real-time updates propagate
-            console.log('[TIMER EXPIRED] Waiting 500ms for fold to persist...');
-            await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log('[TIMER EXPIRED] Checking if round complete after fold');
             await checkHolmRoundComplete(gameId!);
