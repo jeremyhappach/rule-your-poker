@@ -414,8 +414,10 @@ const Game = () => {
         const currentTurnPosition = currentRound?.current_turn_position;
         
         // For Holm game, auto-fold the player whose turn it is (at current_turn_position)
-        console.log('[TIMER EXPIRED] Auto-folding player at turn position in Holm game');
+        console.log('[TIMER EXPIRED] Turn position:', currentTurnPosition, 'Players:', players.map(p => ({ pos: p.position, locked: p.decision_locked, decision: p.current_decision })));
         const playerWithTurn = currentTurnPosition ? players.find(p => p.position === currentTurnPosition && !p.decision_locked) : null;
+        
+        console.log('[TIMER EXPIRED] Player to fold:', playerWithTurn?.id, 'position:', playerWithTurn?.position);
         
         if (playerWithTurn) {
           makeDecision(gameId!, playerWithTurn.id, 'fold').then(async () => {
@@ -424,6 +426,8 @@ const Game = () => {
           }).catch(err => {
             console.error('[TIMER EXPIRED] Error auto-folding:', err);
           });
+        } else {
+          console.log('[TIMER EXPIRED] No player found at turn position to auto-fold');
         }
       } else {
         autoFoldUndecided(gameId!).catch(err => {
