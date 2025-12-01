@@ -38,7 +38,7 @@ async function moveToNextPlayerTurn(gameId: string, players: any[]) {
     
     console.log('[HOLM TURN] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked);
     
-    if (nextPlayer && (!nextPlayer.decision_locked || nextPlayer.current_decision === null)) {
+    if (nextPlayer && !nextPlayer.decision_locked) {
       // Found next undecided player
       console.log('[HOLM TURN] Moving turn to position:', nextPosition);
       
