@@ -391,25 +391,7 @@ const Game = () => {
     });
     
     // Only auto-fold if timer expired AND all_decisions_in is still false
-    // AND the round is not brand new (has been active for at least 2 seconds)
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
-      // Check if the current round was created recently (within last 2 seconds)
-      // to avoid auto-folding due to race conditions
-      const currentRound = game?.rounds?.find((r: Round) => r.round_number === game.current_round);
-      if (currentRound?.created_at) {
-        const roundAge = Date.now() - new Date(currentRound.created_at).getTime();
-        if (roundAge < 2000) {
-          console.log('[TIMER EXPIRED] Round too new, skipping auto-fold. Round age:', roundAge, 'ms');
-          // Don't auto-fold yet, wait for fresh data
-          setIsPaused(true);
-          setTimeout(() => {
-            fetchGameData();
-            setIsPaused(false);
-          }, 500);
-          return;
-        }
-      }
-      
       console.log('[TIMER EXPIRED] Auto-folding undecided players');
       // Immediately clear the timer to stop flashing
       setTimeLeft(null);
