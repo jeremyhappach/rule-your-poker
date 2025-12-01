@@ -114,6 +114,7 @@ const Game = () => {
   const [showAnteDialog, setShowAnteDialog] = useState(false);
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
+  const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -577,29 +578,40 @@ const Game = () => {
         !gameData.last_round_result &&
         !gameData.game_over_at) {  // Don't set timeLeft if game_over_at is set
       const currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
-      if (currentRound?.decision_deadline) {
-        const deadline = new Date(currentRound.decision_deadline).getTime();
-        const now = Date.now();
-        const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+      if (currentRound?.decision_deadline && currentRound.current_turn_position) {
+        // Check if turn changed
+        const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
         
-        // If deadline is in the past or very soon (< 2 seconds), give fresh 10 seconds
-        // This handles race conditions where the DB deadline is stale
-        const freshTime = remaining < 2 ? 10 : remaining;
-        
-        console.log('[FETCH] Setting timeLeft from deadline:', { 
-          deadline: new Date(deadline), 
-          now: new Date(now), 
-          calculated: remaining,
-          final: freshTime,
-          all_decisions_in: gameData.all_decisions_in 
-        });
-        setTimeLeft(freshTime);
+        if (turnChanged) {
+          console.log('[FETCH] Turn changed from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh 10 seconds');
+          setTimeLeft(10);
+          setLastTurnPosition(currentRound.current_turn_position);
+        } else if (lastTurnPosition === null) {
+          // First time seeing this round
+          console.log('[FETCH] First load of round, turn position:', currentRound.current_turn_position, '- giving fresh 10 seconds');
+          setTimeLeft(10);
+          setLastTurnPosition(currentRound.current_turn_position);
+        } else {
+          // Same turn, calculate from deadline
+          const deadline = new Date(currentRound.decision_deadline).getTime();
+          const now = Date.now();
+          const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+          
+          console.log('[FETCH] Same turn, using calculated time:', { 
+            deadline: new Date(deadline), 
+            now: new Date(now), 
+            remaining,
+            all_decisions_in: gameData.all_decisions_in 
+          });
+          setTimeLeft(remaining);
+        }
       }
     } else {
       // Clear timer for non-playing states or transitions (but not for game_over to avoid disrupting countdown)
       if (!gameData.game_over_at) {
         if (gameData.awaiting_next_round || gameData.last_round_result) {
           console.log('[FETCH] Clearing timer during transition');
+          setLastTurnPosition(null); // Reset turn tracking on transition
         } else {
           console.log('[FETCH] Clearing timer, status:', gameData.status);
         }
