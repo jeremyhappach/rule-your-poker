@@ -55,6 +55,14 @@ async function moveToNextPlayerTurn(gameId: string, players: any[]) {
         .eq('round_number', game.current_round);
         
       console.log('[HOLM TURN] Turn moved to', nextPosition, 'with 10s deadline');
+      
+      // If next player is a bot, make them decide immediately
+      if (nextPlayer.is_bot) {
+        console.log('[HOLM TURN] Next player is bot, making instant decision');
+        const { makeBotDecisions } = await import('./botPlayer');
+        await makeBotDecisions(gameId);
+      }
+      
       return;
     }
     
