@@ -111,6 +111,17 @@ export async function makeBotDecisions(gameId: string) {
   const isHolmGame = game?.game_type === 'holm-game';
   console.log('[BOT] Game type:', game?.game_type, 'Is Holm:', isHolmGame);
   
+  if (!game?.current_round) {
+    console.log('[BOT] No active round found');
+    return;
+  }
+
+  const currentRound = game.rounds?.find((r: any) => r.round_number === game.current_round);
+  if (!currentRound) {
+    console.log('[BOT] Current round not found');
+    return;
+  }
+  
   // Get all bot players in the game who haven't decided yet
   const { data: botPlayers } = await supabase
     .from('players')
@@ -118,30 +129,39 @@ export async function makeBotDecisions(gameId: string) {
     .eq('game_id', gameId)
     .eq('is_bot', true)
     .eq('status', 'active')
+    .eq('sitting_out', false)
     .is('decision_locked', false);
 
-  console.log('[BOT] Found bot players:', botPlayers?.map(b => ({ id: b.id, position: b.position, locked: b.decision_locked })));
+  console.log('[BOT] Found undecided bot players:', botPlayers?.map(b => ({ id: b.id, position: b.position })));
 
   if (!botPlayers || botPlayers.length === 0) {
-    console.log('[BOT] No bot players found to make decisions');
+    console.log('[BOT] No undecided bot players found');
     return;
   }
 
-  // In Holm, ALL bots decide simultaneously
-  const botsToProcess = botPlayers;
-  
-  console.log('[BOT] Bots to process:', botsToProcess.length);
-
-  // Make random decisions for bot (80% stay, 20% fold)
-  for (const bot of botsToProcess) {
-    const shouldStay = Math.random() > 0.2; // 80% chance to stay
-    const decision = shouldStay ? 'stay' : 'fold';
-    
-    console.log('[BOT] Bot', bot.id, 'at position', bot.position, 'deciding:', decision);
-    await makeDecision(gameId, bot.id, decision);
+  // Only process the bot whose turn it is
+  if (!currentRound.current_turn_position) {
+    console.log('[BOT] No current turn position set');
+    return;
   }
+
+  const currentTurnBot = botPlayers.find(bot => bot.position === currentRound.current_turn_position);
   
-  // Check if round is complete after all bot decisions
+  if (!currentTurnBot) {
+    console.log('[BOT] Current turn is not a bot or bot already decided');
+    return;
+  }
+
+  console.log('[BOT] Processing turn-based decision for bot at position:', currentTurnBot.position);
+
+  // Make random decision for bot (80% stay, 20% fold)
+  const shouldStay = Math.random() > 0.2; // 80% chance to stay
+  const decision = shouldStay ? 'stay' : 'fold';
+  
+  console.log('[BOT] Bot', currentTurnBot.id, 'at position', currentTurnBot.position, 'deciding:', decision);
+  await makeDecision(gameId, currentTurnBot.id, decision);
+  
+  // Check if round is complete after bot decision
   if (isHolmGame) {
     const { checkHolmRoundComplete } = await import('./holmGameLogic');
     await checkHolmRoundComplete(gameId);
