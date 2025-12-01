@@ -7,17 +7,27 @@ import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from
 async function moveToNextPlayerTurn(gameId: string, players: any[]) {
   const { data: game } = await supabase
     .from('games')
-    .select('buck_position, current_round')
+    .select('current_round')
     .eq('id', gameId)
     .single();
     
   if (!game) return;
   
-  console.log('[HOLM TURN] Current turn position:', game.buck_position);
+  // Get current turn position from rounds table
+  const { data: round } = await supabase
+    .from('rounds')
+    .select('current_turn_position')
+    .eq('game_id', gameId)
+    .eq('round_number', game.current_round)
+    .single();
+  
+  if (!round || round.current_turn_position === null) return;
+  
+  console.log('[HOLM TURN] Current turn position:', round.current_turn_position);
   
   // Find next undecided player in clockwise order
   const positions = players.map(p => p.position).sort((a, b) => a - b);
-  const currentIndex = positions.indexOf(game.buck_position);
+  const currentIndex = positions.indexOf(round.current_turn_position);
   
   let nextIndex = (currentIndex + 1) % positions.length;
   let attempts = 0;
@@ -37,14 +47,12 @@ async function moveToNextPlayerTurn(gameId: string, players: any[]) {
       
       await supabase
         .from('rounds')
-        .update({ decision_deadline: newDeadline })
+        .update({ 
+          decision_deadline: newDeadline,
+          current_turn_position: nextPosition 
+        })
         .eq('game_id', gameId)
         .eq('round_number', game.current_round);
-      
-      await supabase
-        .from('games')
-        .update({ buck_position: nextPosition })
-        .eq('id', gameId);
         
       console.log('[HOLM TURN] Turn moved to', nextPosition, 'with 10s deadline');
       return;
@@ -216,7 +224,8 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
         chucky_active: false,
         chucky_cards: null,
         chucky_cards_revealed: 0,
-        community_cards: null
+        community_cards: null,
+        current_turn_position: buckPosition
       })
       .eq('id', existingRound.id);
     
@@ -234,7 +243,8 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
         pot: initialPot,
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
-        chucky_active: false
+        chucky_active: false,
+        current_turn_position: buckPosition
       })
       .select()
       .single();

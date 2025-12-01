@@ -282,6 +282,7 @@ export type Database = {
           community_cards: Json | null
           community_cards_revealed: number | null
           created_at: string
+          current_turn_position: number | null
           decision_deadline: string | null
           game_id: string
           id: string
@@ -298,6 +299,7 @@ export type Database = {
           community_cards?: Json | null
           community_cards_revealed?: number | null
           created_at?: string
+          current_turn_position?: number | null
           decision_deadline?: string | null
           game_id: string
           id?: string
@@ -314,6 +316,7 @@ export type Database = {
           community_cards?: Json | null
           community_cards_revealed?: number | null
           created_at?: string
+          current_turn_position?: number | null
           decision_deadline?: string | null
           game_id?: string
           id?: string
