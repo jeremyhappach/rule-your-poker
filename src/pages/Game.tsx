@@ -409,14 +409,17 @@ const Game = () => {
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
-      console.log('[BOT TRIGGER] Triggering bot decisions');
+      console.log('[BOT TRIGGER] Triggering bot decisions', {
+        current_turn: currentRound?.current_turn_position,
+        round: game?.current_round
+      });
       const botDecisionTimer = setTimeout(() => {
         makeBotDecisions(gameId!);
       }, 500);
       
       return () => clearTimeout(botDecisionTimer);
     }
-  }, [game?.current_round, game?.status, game?.all_decisions_in, gameId]);
+  }, [game?.current_round, game?.status, game?.all_decisions_in, currentRound?.current_turn_position, gameId]);
 
   // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
   useEffect(() => {
