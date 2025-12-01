@@ -10,8 +10,8 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   if (cards.length === 0) return null;
 
   return (
-    <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
-      <div className="flex gap-2">
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+      <div className="flex gap-1">
         {cards.map((card, index) => {
           const isRevealed = index < revealed;
           const suitColor = (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-gray-900';
@@ -20,23 +20,23 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
             <Card 
               key={index}
               className={`
-                w-16 h-24 flex items-center justify-center bg-white
-                border-2 border-poker-gold shadow-lg
+                w-10 h-14 sm:w-12 sm:h-16 flex items-center justify-center bg-white
+                border border-poker-gold shadow-lg
                 ${!isRevealed ? 'bg-gradient-to-br from-blue-900 to-blue-700' : ''}
               `}
             >
               {isRevealed ? (
                 <div className="flex flex-col items-center justify-center">
-                  <div className={`text-3xl font-bold ${suitColor}`}>
+                  <div className={`text-lg sm:text-xl font-bold ${suitColor}`}>
                     {card.rank}
                   </div>
-                  <div className={`text-2xl ${suitColor}`}>
+                  <div className={`text-base sm:text-lg ${suitColor}`}>
                     {card.suit}
                   </div>
                 </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-poker-gold text-4xl font-bold opacity-30">
+                  <div className="text-poker-gold text-2xl font-bold opacity-30">
                     ?
                   </div>
                 </div>
