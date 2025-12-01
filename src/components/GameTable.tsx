@@ -151,8 +151,8 @@ export const GameTable = ({
           {/* Pot and Timer - shown when no result message */}
           {showPotAndTimer && (
             <>
-              {/* Pot and Timer Container - positioned at bottom center to avoid cards and players */}
-              <div className="absolute bottom-[10%] left-1/2 transform -translate-x-1/2 z-20">
+              {/* Pot and Timer Container - positioned at very bottom to avoid cards */}
+              <div className="absolute bottom-[3%] left-1/2 transform -translate-x-1/2 z-20">
                 <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 md:gap-4">
                   {/* Last Hand Warning - shown when session ending */}
                   {pendingSessionEnd && (
