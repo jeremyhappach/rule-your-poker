@@ -334,6 +334,14 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .eq('id', gameId);
 
   console.log('[HOLM] Round started successfully');
+  
+  // If the buck position player is a bot, make them decide immediately
+  const buckPlayer = players.find(p => p.position === buckPosition);
+  if (buckPlayer?.is_bot) {
+    console.log('[HOLM] Buck position player is bot, making instant decision');
+    const { makeBotDecisions } = await import('./botPlayer');
+    await makeBotDecisions(gameId);
+  }
 }
 
 /**
