@@ -392,7 +392,19 @@ export const GameTable = ({
                       </div>
                       <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center">
                         {cards.length > 0 ? (
-                          <PlayerHand cards={cards} isHidden={!isCurrentUser} />
+                          <PlayerHand 
+                            cards={cards} 
+                            isHidden={
+                              // Show cards if: 
+                              // 1. It's the current user, OR
+                              // 2. In Holm game, all community cards revealed AND player stayed
+                              !isCurrentUser && !(
+                                gameType === 'holm-game' && 
+                                communityCardsRevealed === 4 && 
+                                playerDecision === 'stay'
+                              )
+                            } 
+                          />
                         ) : (
                           <div className="text-[7px] sm:text-[8px] md:text-[10px] text-amber-300/50">Wait...</div>
                         )}
