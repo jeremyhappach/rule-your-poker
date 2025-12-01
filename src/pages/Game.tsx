@@ -90,6 +90,7 @@ interface Round {
   chucky_active?: boolean;
   chucky_cards?: any;
   chucky_cards_revealed?: number;
+  current_turn_position?: number | null;
 }
 
 interface PlayerCards {
@@ -353,11 +354,14 @@ const Game = () => {
   // Trigger bot decisions when round starts
   useEffect(() => {
     if (game?.status === 'in_progress' && !game.all_decisions_in && timeLeft !== null) {
-      // For Holm games, only bot with the buck should decide
-      if (game.game_type === 'holm-game') {
-        const botWithBuck = players.find(p => p.is_bot && p.position === game.buck_position && !p.decision_locked);
+      const currentRound = game.rounds?.find(r => r.round_number === game.current_round);
+      const currentTurnPosition = currentRound?.current_turn_position;
+      
+      // For Holm games, only bot whose turn it is should decide
+      if (game.game_type === 'holm-game' && currentTurnPosition) {
+        const botWithTurn = players.find(p => p.is_bot && p.position === currentTurnPosition && !p.decision_locked);
         
-        if (botWithBuck) {
+        if (botWithTurn) {
           console.log('[BOT TRIGGER] Bot has turn, making instant decision');
           // Bot makes instant decision when it's their turn
           const botDecisionTimer = setTimeout(() => {
@@ -394,12 +398,15 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        // For Holm game, auto-fold the player whose turn it is (at buck position)
-        console.log('[TIMER EXPIRED] Auto-folding player at buck position in Holm game');
-        const playerWithBuck = players.find(p => p.position === game.buck_position && !p.decision_locked);
+        const currentRound = game.rounds?.find(r => r.round_number === game.current_round);
+        const currentTurnPosition = currentRound?.current_turn_position;
         
-        if (playerWithBuck) {
-          makeDecision(gameId!, playerWithBuck.id, 'fold').then(async () => {
+        // For Holm game, auto-fold the player whose turn it is (at current_turn_position)
+        console.log('[TIMER EXPIRED] Auto-folding player at turn position in Holm game');
+        const playerWithTurn = currentTurnPosition ? players.find(p => p.position === currentTurnPosition && !p.decision_locked) : null;
+        
+        if (playerWithTurn) {
+          makeDecision(gameId!, playerWithTurn.id, 'fold').then(async () => {
             const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
             await checkHolmRoundComplete(gameId!);
           }).catch(err => {
@@ -1212,6 +1219,7 @@ const Game = () => {
             communityCards={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards as CardType[] | undefined}
             communityCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards_revealed}
             buckPosition={game.buck_position}
+            currentTurnPosition={game.rounds?.find(r => r.round_number === game.current_round)?.current_turn_position}
             chuckyCards={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards as CardType[] | undefined}
             chuckyActive={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_active}
             chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}
