@@ -141,15 +141,6 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
         <div className="relative h-full">
-          {/* Result Message - text directly on felt below community cards */}
-          {lastRoundResult && (
-            <div className="absolute top-[52%] left-1/2 transform -translate-x-1/2 text-center z-30 w-[90%] max-w-md pointer-events-none">
-              <p className="text-poker-gold font-black text-xs sm:text-sm md:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                {lastRoundResult}
-              </p>
-            </div>
-          )}
-          
           {/* Pot and Timer - shown when no result message */}
           {showPotAndTimer && (
             <>
@@ -208,35 +199,16 @@ export const GameTable = ({
             />
           )}
 
-          {/* Chucky's Hand for Holm Game - only show during active round, not when awaiting next round */}
-          {gameType === 'holm-game' && chuckyActive && chuckyCards && !awaitingNextRound && (() => {
-            // Find the player who stayed (has not folded)
-            const stayedPlayer = players.find(p => p.current_decision === 'stay');
-            
-            // Find a good empty position opposite to the stayed player
-            // If player is at position 1, put Chucky at position 4-5 range
-            let chuckyPosition = 4;
-            if (stayedPlayer) {
-              // Put Chucky roughly opposite (add 3-4 positions, wrap around)
-              chuckyPosition = ((stayedPlayer.position + 3) % 7) || 7;
-            }
-            
-            // Calculate Chucky's position using same formula as player seats
-            const totalSeats = 7;
-            const angle = ((chuckyPosition - 1) / totalSeats) * 2 * Math.PI - Math.PI / 2;
-            const chuckyX = 50 + radius * Math.cos(angle);
-            const chuckyY = 50 + radius * Math.sin(angle);
-            
-            return (
-              <ChuckyHand 
-                cards={chuckyCards}
-                show={true}
-                revealed={chuckyCardsRevealed}
-                x={chuckyX}
-                y={chuckyY}
-              />
-            );
-          })()}
+          {/* Chucky's Hand for Holm Game - positioned below community cards */}
+          {gameType === 'holm-game' && chuckyActive && chuckyCards && !awaitingNextRound && (
+            <ChuckyHand 
+              cards={chuckyCards}
+              show={true}
+              revealed={chuckyCardsRevealed}
+              x={50}
+              y={55}
+            />
+          )}
 
           {/* Players and open seats around table */}
           {seatsToRender.map((seat) => {
@@ -469,6 +441,15 @@ export const GameTable = ({
           })}
         </div>
       </div>
+      
+      {/* Result Message - displayed below the table */}
+      {lastRoundResult && (
+        <div className="mt-4 text-center">
+          <p className="text-poker-gold font-black text-sm sm:text-base md:text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+            {lastRoundResult}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
