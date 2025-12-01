@@ -580,7 +580,7 @@ const Game = () => {
     // Users join as observers - they must select a seat to become a player
 
     // Fetch player cards if game is in progress
-    if (gameData.status === 'in_progress' && gameData.current_round) {
+    if (gameData.status === 'in_progress' && gameData.current_round && !gameData.awaiting_next_round) {
       const { data: roundData } = await supabase
         .from('rounds')
         .select('id')
@@ -595,6 +595,7 @@ const Game = () => {
           .eq('round_id', roundData.id);
 
         if (cardsData) {
+          console.log('[FETCH] Setting player cards for round', gameData.current_round, ':', cardsData.length, 'players');
           setPlayerCards(cardsData.map(cd => ({
             player_id: cd.player_id,
             cards: cd.cards as unknown as CardType[]
@@ -602,7 +603,8 @@ const Game = () => {
         }
       }
     } else {
-      // Clear cards when not in active play to prevent showing old cards
+      // Clear cards when not in active play OR awaiting next round to prevent showing old cards
+      console.log('[FETCH] Clearing player cards (not in active play or awaiting next round)');
       setPlayerCards([]);
     }
 
