@@ -147,11 +147,11 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   const anteAmount = gameConfig.ante_amount || 2;
   const dealerPosition = gameConfig.dealer_position || 1;
   
-  // Buck position calculation - only for round 1, otherwise it's already set
+  // Buck position calculation - only for round 1, otherwise use existing position
   let buckPosition = gameConfig.buck_position;
   
   // Only calculate initial buck position on round 1
-  if (roundNumber === 1 || !buckPosition) {
+  if (roundNumber === 1) {
     // Buck starts one position to the left of dealer
     // If we have 7 seats and dealer is at position 1, buck starts at position 7
     const { data: allPlayers } = await supabase
@@ -166,14 +166,14 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     
     buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
     
-    console.log('[HOLM] Buck position calculation:', {
+    console.log('[HOLM] Buck position calculation for round 1:', {
       dealerPosition,
       maxPosition,
       playerPositions: allPlayers?.map(p => p.position),
       calculatedBuckPosition: buckPosition
     });
   } else {
-    console.log('[HOLM] Using existing buck position:', buckPosition);
+    console.log('[HOLM] Using existing buck position for round', roundNumber, ':', buckPosition);
   }
 
   // Get all active players who aren't sitting out
