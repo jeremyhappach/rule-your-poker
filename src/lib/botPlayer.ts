@@ -167,16 +167,19 @@ export async function makeBotDecisions(gameId: string) {
 
   console.log('[BOT] ✓ Found bot at turn position! Processing decision for bot:', {
     id: currentTurnBot.id,
-    position: currentTurnBot.position
+    position: currentTurnBot.position,
+    current_decision: currentTurnBot.current_decision,
+    decision_locked: currentTurnBot.decision_locked
   });
 
   // Make random decision for bot (80% stay, 20% fold)
   const shouldStay = Math.random() > 0.2; // 80% chance to stay
   const decision = shouldStay ? 'stay' : 'fold';
   
-  console.log('[BOT] Bot deciding:', decision);
+  console.log('[BOT] *** Bot deciding:', decision, '***');
   await makeDecision(gameId, currentTurnBot.id, decision);
-  console.log('[BOT] Decision recorded, checking if round complete');
+  console.log('[BOT] *** Decision recorded in DB ***');
+  console.log('[BOT] *** Calling checkHolmRoundComplete to advance turn ***');
   
   // Check if round is complete after bot decision
   if (isHolmGame) {
