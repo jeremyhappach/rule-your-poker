@@ -924,11 +924,10 @@ export async function proceedToNextHolmRound(gameId: string) {
 
   console.log('[HOLM NEXT] New buck position:', newBuckPosition);
 
-  // Update buck position and clear awaiting flag before starting next round
+  // Update buck position FIRST, but keep awaiting flag until round is ready
   await supabase
     .from('games')
     .update({
-      awaiting_next_round: false,
       buck_position: newBuckPosition,
       last_round_result: null // Clear result when starting new round
     })
@@ -937,5 +936,14 @@ export async function proceedToNextHolmRound(gameId: string) {
   const nextRound = (game.current_round || 0) + 1;
   console.log('[HOLM NEXT] Starting round', nextRound);
   await startHolmRound(gameId, nextRound);
-  console.log('[HOLM NEXT] ========== Next round started ==========');
+  
+  // CRITICAL: Only clear awaiting flag AFTER round is fully set up with current_turn_position
+  await supabase
+    .from('games')
+    .update({
+      awaiting_next_round: false
+    })
+    .eq('id', gameId);
+    
+  console.log('[HOLM NEXT] ========== Next round started and ready ==========');
 }
