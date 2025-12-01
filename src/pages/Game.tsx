@@ -379,16 +379,21 @@ const Game = () => {
     });
     
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
-      // For Holm games, check if bot's turn and trigger instant decision
+      // For Holm games, check if bot's turn and trigger decision after visible delay
       if (game.game_type === 'holm-game' && currentTurnPosition) {
         const botWithTurn = players.find(p => p.is_bot && p.position === currentTurnPosition && !p.decision_locked);
         
         console.log('[BOT TRIGGER CHECK] Bot with turn found:', botWithTurn ? `yes (pos ${botWithTurn.position})` : 'no');
         
         if (botWithTurn) {
-          console.log('[BOT TRIGGER] Bot at position', botWithTurn.position, 'making instant decision');
-          // Call makeBotDecisions immediately without any delay
-          makeBotDecisions(gameId!);
+          console.log('[BOT TRIGGER] Bot at position', botWithTurn.position, 'will decide after 1.5 second delay');
+          // Add 1.5 second delay so user can SEE the bot is thinking
+          const botDecisionTimer = setTimeout(() => {
+            console.log('[BOT TRIGGER] Bot deciding now');
+            makeBotDecisions(gameId!);
+          }, 1500);
+          
+          return () => clearTimeout(botDecisionTimer);
         }
       } else if (game.game_type !== 'holm-game') {
         // For 3-5-7 and other games, keep original fast bot decisions
