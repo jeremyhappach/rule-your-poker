@@ -2,80 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 /**
- * Move to next player's turn in Holm game
- */
-async function moveToNextPlayerTurn(gameId: string, players: any[]) {
-  const { data: game } = await supabase
-    .from('games')
-    .select('current_round')
-    .eq('id', gameId)
-    .single();
-    
-  if (!game) return;
-  
-  // Get current turn position from rounds table
-  const { data: round } = await supabase
-    .from('rounds')
-    .select('current_turn_position')
-    .eq('game_id', gameId)
-    .eq('round_number', game.current_round)
-    .single();
-  
-  if (!round || round.current_turn_position === null) return;
-  
-  console.log('[HOLM TURN] Current turn position:', round.current_turn_position);
-  
-  // Find next undecided player in clockwise order
-  const positions = players.map(p => p.position).sort((a, b) => a - b);
-  const currentIndex = positions.indexOf(round.current_turn_position);
-  
-  let nextIndex = (currentIndex + 1) % positions.length;
-  let attempts = 0;
-  
-  while (attempts < positions.length) {
-    const nextPosition = positions[nextIndex];
-    const nextPlayer = players.find(p => p.position === nextPosition);
-    
-    console.log('[HOLM TURN] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked);
-    
-    if (nextPlayer && !nextPlayer.decision_locked) {
-      // Found next undecided player
-      console.log('[HOLM TURN] Moving turn to position:', nextPosition);
-      
-      // Set new 10-second deadline for this player
-      const newDeadline = new Date(Date.now() + 10000).toISOString();
-      
-      await supabase
-        .from('rounds')
-        .update({ 
-          decision_deadline: newDeadline,
-          current_turn_position: nextPosition 
-        })
-        .eq('game_id', gameId)
-        .eq('round_number', game.current_round);
-        
-      console.log('[HOLM TURN] Turn moved to', nextPosition, 'with 10s deadline');
-      
-      // If next player is a bot, make them decide immediately
-      if (nextPlayer.is_bot) {
-        console.log('[HOLM TURN] Next player is bot, making instant decision');
-        const { makeBotDecisions } = await import('./botPlayer');
-        await makeBotDecisions(gameId);
-      }
-      
-      return;
-    }
-    
-    nextIndex = (nextIndex + 1) % positions.length;
-    attempts++;
-  }
-  
-  console.log('[HOLM TURN] No undecided players found');
-}
-
-/**
  * Check if all players have decided in a Holm game round
- * If yes, end the round
+ * In Holm, all players decide SIMULTANEOUSLY - no turn rotation
  */
 export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
@@ -96,7 +24,8 @@ export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] Players:', players.map(p => ({
     position: p.position,
     decided: p.decision_locked,
-    decision: p.current_decision
+    decision: p.current_decision,
+    is_bot: p.is_bot
   })));
   
   // Check if all players have decided (must have both decision_locked AND a current_decision)
@@ -111,7 +40,7 @@ export async function checkHolmRoundComplete(gameId: string) {
       .update({ all_decisions_in: true })
       .eq('id', gameId);
     
-    // End the round - wrap in try/catch to ensure errors are logged
+    // End the round
     try {
       await endHolmRound(gameId);
     } catch (error) {
@@ -119,9 +48,8 @@ export async function checkHolmRoundComplete(gameId: string) {
       throw error;
     }
   } else {
-    // Not all decided - move to next player's turn
-    console.log('[HOLM CHECK] Not all decided, moving to next player turn');
-    await moveToNextPlayerTurn(gameId, players);
+    // In Holm, everyone decides simultaneously - no turn rotation
+    console.log('[HOLM CHECK] Waiting for remaining players to decide (simultaneous decision mode)');
   }
 }
 
@@ -209,7 +137,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .single();
 
   let roundId: string;
-  // All players get 10 seconds to decide simultaneously in Holm game
+  // All players get 10 seconds to decide SIMULTANEOUSLY in Holm game (no turn rotation)
   const deadline = new Date(Date.now() + 10000);
 
   if (existingRound) {
@@ -233,7 +161,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
         chucky_cards: null,
         chucky_cards_revealed: 0,
         community_cards: null,
-        current_turn_position: buckPosition
+        current_turn_position: null // No turns in Holm - everyone decides at once
       })
       .eq('id', existingRound.id);
     
@@ -252,7 +180,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
         chucky_active: false,
-        current_turn_position: buckPosition
+        current_turn_position: null // No turns in Holm - everyone decides at once
       })
       .select()
       .single();
@@ -333,12 +261,12 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     })
     .eq('id', gameId);
 
-  console.log('[HOLM] Round started successfully');
+  console.log('[HOLM] Round started successfully. All players have 10 seconds to decide simultaneously.');
   
-  // If the buck position player is a bot, make them decide immediately
-  const buckPlayer = players.find(p => p.position === buckPosition);
-  if (buckPlayer?.is_bot) {
-    console.log('[HOLM] Buck position player is bot, making instant decision');
+  // Make all bots decide immediately (but don't end round until timer expires or all humans decide)
+  const bots = players.filter(p => p.is_bot);
+  if (bots.length > 0) {
+    console.log('[HOLM] Making', bots.length, 'bot(s) decide immediately');
     const { makeBotDecisions } = await import('./botPlayer');
     await makeBotDecisions(gameId);
   }
