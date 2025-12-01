@@ -580,31 +580,42 @@ const Game = () => {
     // Users join as observers - they must select a seat to become a player
 
     // Fetch player cards if game is in progress
-    if (gameData.status === 'in_progress' && gameData.current_round && !gameData.awaiting_next_round) {
-      const { data: roundData } = await supabase
-        .from('rounds')
-        .select('id')
-        .eq('game_id', gameId)
-        .eq('round_number', gameData.current_round)
-        .single();
+    if (gameData.status === 'in_progress' && gameData.current_round) {
+      // For Holm games, don't fetch cards during round transitions (awaiting_next_round)
+      // For 3-5-7, always show cards during the session
+      const isHolmGame = gameData.game_type === 'holm-game';
+      const shouldFetchCards = !isHolmGame || !gameData.awaiting_next_round;
+      
+      if (shouldFetchCards) {
+        const { data: roundData } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameId)
+          .eq('round_number', gameData.current_round)
+          .single();
 
-      if (roundData) {
-        const { data: cardsData } = await supabase
-          .from('player_cards')
-          .select('player_id, cards')
-          .eq('round_id', roundData.id);
+        if (roundData) {
+          const { data: cardsData } = await supabase
+            .from('player_cards')
+            .select('player_id, cards')
+            .eq('round_id', roundData.id);
 
-        if (cardsData) {
-          console.log('[FETCH] Setting player cards for round', gameData.current_round, ':', cardsData.length, 'players');
-          setPlayerCards(cardsData.map(cd => ({
-            player_id: cd.player_id,
-            cards: cd.cards as unknown as CardType[]
-          })));
+          if (cardsData) {
+            console.log('[FETCH] Setting player cards for round', gameData.current_round, ':', cardsData.length, 'players');
+            setPlayerCards(cardsData.map(cd => ({
+              player_id: cd.player_id,
+              cards: cd.cards as unknown as CardType[]
+            })));
+          }
         }
+      } else {
+        // Clear cards only for Holm games when awaiting next round
+        console.log('[FETCH] Clearing player cards (Holm game awaiting next round)');
+        setPlayerCards([]);
       }
     } else {
-      // Clear cards when not in active play OR awaiting next round to prevent showing old cards
-      console.log('[FETCH] Clearing player cards (not in active play or awaiting next round)');
+      // Clear cards when not in active play
+      console.log('[FETCH] Clearing player cards (not in active play)');
       setPlayerCards([]);
     }
 
