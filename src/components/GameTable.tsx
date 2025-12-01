@@ -208,8 +208,8 @@ export const GameTable = ({
             />
           )}
 
-          {/* Chucky's Hand for Holm Game - position in empty seat */}
-          {gameType === 'holm-game' && chuckyActive && chuckyCards && (() => {
+          {/* Chucky's Hand for Holm Game - only show during active round, not when awaiting next round */}
+          {gameType === 'holm-game' && chuckyActive && chuckyCards && !awaitingNextRound && (() => {
             // Find the player who stayed (has not folded)
             const stayedPlayer = players.find(p => p.current_decision === 'stay');
             
