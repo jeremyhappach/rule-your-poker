@@ -379,23 +379,18 @@ const Game = () => {
       
       console.log('[BOT TRIGGER CHECK] Current turn position:', currentTurnPosition, 'Players:', players.map(p => ({ id: p.id, pos: p.position, is_bot: p.is_bot, locked: p.decision_locked })));
       
-      // For Holm games, only bot whose turn it is should decide
+      // For Holm games, check if bot's turn and trigger instant decision
       if (game.game_type === 'holm-game' && currentTurnPosition) {
         const botWithTurn = players.find(p => p.is_bot && p.position === currentTurnPosition && !p.decision_locked);
         
-        console.log('[BOT TRIGGER CHECK] Bot with turn found:', botWithTurn ? `yes (${botWithTurn.id})` : 'no');
+        console.log('[BOT TRIGGER CHECK] Bot with turn found:', botWithTurn ? `yes (pos ${botWithTurn.position})` : 'no');
         
         if (botWithTurn) {
-          console.log('[BOT TRIGGER] Bot has turn, making instant decision');
-          // Bot makes instant decision when it's their turn
-          const botDecisionTimer = setTimeout(() => {
-            console.log('[BOT TRIGGER] Executing bot decision');
-            makeBotDecisions(gameId!);
-          }, 50); // Instant decision with minimal delay for state updates
-
-          return () => clearTimeout(botDecisionTimer);
+          console.log('[BOT TRIGGER] Bot at position', botWithTurn.position, 'making instant decision');
+          // Call makeBotDecisions immediately without any delay
+          makeBotDecisions(gameId!);
         }
-      } else {
+      } else if (game.game_type !== 'holm-game') {
         // For 3-5-7 and other games, keep original fast bot decisions
         const botDecisionTimer = setTimeout(() => {
           makeBotDecisions(gameId!);
