@@ -182,7 +182,7 @@ export const GameTable = ({
                   </div>
                   
                   {/* Timer - hide during transitions, results, and when all decisions in */}
-                  {timeLeft !== null && timeLeft > 0 && !awaitingNextRound && !lastRoundResult && 
+                  {timeLeft !== null && timeLeft >= 1 && !awaitingNextRound && !lastRoundResult && 
                    (gameType === 'holm-game' ? true : !allDecisionsIn) && (
                     <div className="relative">
                       <div className={`bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 lg:p-4 backdrop-blur-sm border-2 ${timeLeft <= 3 ? 'border-red-500 animate-pulse' : 'border-blue-500'} shadow-2xl`}>
