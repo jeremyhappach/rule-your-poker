@@ -324,7 +324,6 @@ export const GameTable = ({
                     ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
                     ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-110" : ""}
                     ${player.sitting_out ? "opacity-50 grayscale" : ""}
-                    ${gameType === 'holm-game' && currentTurnPosition === player.position && !hasPlayerDecided ? "ring-4 ring-blue-400 ring-offset-2 ring-offset-poker-felt animate-pulse shadow-[0_0_30px_rgba(96,165,250,0.9)]" : ""}
                     bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                     transition-all duration-500
                   `}>
@@ -400,8 +399,7 @@ export const GameTable = ({
                       {/* Action buttons and chip stack row */}
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {/* Fold button (left) */}
-                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
-                         (gameType === 'holm-game' ? (currentTurnPosition === player.position) : !allDecisionsIn) ? (
+                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
                           <Button 
                             variant="destructive" 
                             size="sm"
@@ -422,8 +420,7 @@ export const GameTable = ({
                         </div>
                         
                         {/* Stay button (right) */}
-                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
-                         (gameType === 'holm-game' ? (currentTurnPosition === player.position) : !allDecisionsIn) ? (
+                        {isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn ? (
                           <Button 
                             size="sm"
                             onClick={onStay}

@@ -101,7 +101,7 @@ export async function addBotPlayer(gameId: string) {
 export async function makeBotDecisions(gameId: string) {
   console.log('[BOT] Making bot decisions for game:', gameId);
   
-  // Check if this is a Holm game and get current turn position
+  // Check if this is a Holm game
   const { data: game } = await supabase
     .from('games')
     .select('game_type, buck_position, current_round, rounds(*)')
@@ -109,14 +109,7 @@ export async function makeBotDecisions(gameId: string) {
     .single();
     
   const isHolmGame = game?.game_type === 'holm-game';
-  
-  // For Holm games, get the current turn position
-  let currentTurnPosition: number | null = null;
-  if (isHolmGame && game?.rounds) {
-    const currentRound = (game.rounds as any[]).find((r: any) => r.round_number === game.current_round);
-    currentTurnPosition = currentRound?.current_turn_position || null;
-    console.log('[BOT] Current turn position:', currentTurnPosition);
-  }
+  console.log('[BOT] Game type:', game?.game_type, 'Is Holm:', isHolmGame);
   
   // Get all bot players in the game who haven't decided yet
   const { data: botPlayers } = await supabase
@@ -134,12 +127,10 @@ export async function makeBotDecisions(gameId: string) {
     return;
   }
 
-  // In Holm game, only process bot at current turn position
-  const botsToProcess = isHolmGame && currentTurnPosition
-    ? botPlayers.filter(b => b.position === currentTurnPosition)
-    : botPlayers;
+  // In Holm, ALL bots decide simultaneously
+  const botsToProcess = botPlayers;
   
-  console.log('[BOT] Bots to process:', botsToProcess.map(b => ({ id: b.id, position: b.position })));
+  console.log('[BOT] Bots to process:', botsToProcess.length);
 
   // Make random decisions for bot (80% stay, 20% fold)
   for (const bot of botsToProcess) {
@@ -148,15 +139,12 @@ export async function makeBotDecisions(gameId: string) {
     
     console.log('[BOT] Bot', bot.id, 'at position', bot.position, 'deciding:', decision);
     await makeDecision(gameId, bot.id, decision);
-    
-    // Check if round is complete after bot decision
-    if (isHolmGame) {
-      const { checkHolmRoundComplete } = await import('./holmGameLogic');
-      await checkHolmRoundComplete(gameId);
-    }
-    
-    // In Holm game, only process one bot at a time (the one whose turn it is)
-    if (isHolmGame) break;
+  }
+  
+  // Check if round is complete after all bot decisions
+  if (isHolmGame) {
+    const { checkHolmRoundComplete } = await import('./holmGameLogic');
+    await checkHolmRoundComplete(gameId);
   }
 }
 

@@ -363,43 +363,21 @@ const Game = () => {
     return () => clearInterval(pollInterval);
   }, [game?.status, players, gameId]);
 
-  // Extract current turn position as a stable value that triggers re-renders
+  // Extract current round info
   const currentRound = game?.rounds?.find(r => r.round_number === game.current_round);
-  const currentTurnPosition = currentRound?.current_turn_position;
 
-  // Trigger bot decisions when it's a bot's turn
+  // Auto-trigger bot decisions when appropriate - REMOVED for Holm (bots decide in startHolmRound)
+  // Only kept for other game types
   useEffect(() => {
-    console.log('[BOT TRIGGER CHECK]', {
-      status: game?.status,
-      all_decisions_in: game?.all_decisions_in,
-      game_type: game?.game_type,
-      current_round: game?.current_round,
-      currentTurnPosition,
-      players: players.map(p => ({ pos: p.position, is_bot: p.is_bot, locked: p.decision_locked }))
-    });
-    
-    if (game?.status === 'in_progress' && !game.all_decisions_in) {
-      // For Holm games, check if bot's turn and trigger instant decision
-      if (game.game_type === 'holm-game' && currentTurnPosition) {
-        const botWithTurn = players.find(p => p.is_bot && p.position === currentTurnPosition && !p.decision_locked);
-        
-        console.log('[BOT TRIGGER CHECK] Bot with turn found:', botWithTurn ? `yes (pos ${botWithTurn.position})` : 'no');
-        
-        if (botWithTurn) {
-          console.log('[BOT TRIGGER] Bot at position', botWithTurn.position, 'making instant decision');
-          // Bot decides immediately to avoid timer expiration
-          makeBotDecisions(gameId!);
-        }
-      } else if (game.game_type !== 'holm-game') {
-        // For 3-5-7 and other games, keep original fast bot decisions
-        const botDecisionTimer = setTimeout(() => {
-          makeBotDecisions(gameId!);
-        }, 100);
-        
-        return () => clearTimeout(botDecisionTimer);
-      }
+    if (game?.status === 'in_progress' && !game.all_decisions_in && game.game_type !== 'holm-game') {
+      console.log('[BOT TRIGGER] Triggering bot decisions for non-Holm game');
+      const botDecisionTimer = setTimeout(() => {
+        makeBotDecisions(gameId!);
+      }, 100);
+      
+      return () => clearTimeout(botDecisionTimer);
     }
-  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, currentTurnPosition, players, gameId]);
+  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, gameId]);
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
@@ -413,7 +391,7 @@ const Game = () => {
     
     // Only auto-fold if timer expired AND all_decisions_in is still false
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
-      console.log('[TIMER EXPIRED] Auto-folding player whose turn it is');
+      console.log('[TIMER EXPIRED] Auto-folding undecided players');
       // Immediately clear the timer to stop flashing
       setTimeLeft(null);
       setIsPaused(true);
@@ -421,50 +399,44 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        // Fetch fresh turn position from database to avoid race conditions with stale React state
+        // In Holm, ALL undecided players auto-fold simultaneously (no turns)
         (async () => {
-          const { data: freshRound } = await supabase
-            .from('rounds')
-            .select('current_turn_position')
-            .eq('game_id', gameId!)
-            .eq('round_number', game.current_round)
-            .single();
+          console.log('[TIMER EXPIRED HOLM] Fetching all undecided players');
           
-          const currentTurnPosition = freshRound?.current_turn_position;
-          console.log('[TIMER EXPIRED] Fresh turn position from DB:', currentTurnPosition);
-          
-          // Re-fetch players to get fresh decision_locked status
           const { data: freshPlayers } = await supabase
             .from('players')
             .select('*')
             .eq('game_id', gameId!)
-            .eq('status', 'active');
+            .eq('status', 'active')
+            .eq('sitting_out', false);
           
-          console.log('[TIMER EXPIRED] Fresh players:', freshPlayers?.map(p => ({ pos: p.position, locked: p.decision_locked, decision: p.current_decision })));
+          console.log('[TIMER EXPIRED HOLM] All active players:', freshPlayers?.map(p => ({ 
+            pos: p.position, 
+            locked: p.decision_locked, 
+            decision: p.current_decision,
+            is_bot: p.is_bot
+          })));
           
-          const playerWithTurn = currentTurnPosition && freshPlayers 
-            ? freshPlayers.find(p => p.position === currentTurnPosition && !p.decision_locked) 
-            : null;
+          const undecidedPlayers = freshPlayers?.filter(p => !p.decision_locked) || [];
           
-          console.log('[TIMER EXPIRED] Player to fold:', playerWithTurn?.id, 'position:', playerWithTurn?.position);
+          console.log('[TIMER EXPIRED HOLM] Auto-folding', undecidedPlayers.length, 'undecided players');
           
-          if (playerWithTurn) {
-            console.log('[TIMER EXPIRED] Folding player at position', playerWithTurn.position);
-            await makeDecision(gameId!, playerWithTurn.id, 'fold');
-            
-            console.log('[TIMER EXPIRED] Checking if round complete after fold');
-            await checkHolmRoundComplete(gameId!);
-            
-            // Force immediate refetch to get new deadline and turn position
-            console.log('[TIMER EXPIRED] Forcing immediate refetch');
-            await fetchGameData();
-          } else {
-            console.log('[TIMER EXPIRED] No player found at turn position to auto-fold');
+          // Fold all undecided players at once
+          for (const player of undecidedPlayers) {
+            console.log('[TIMER EXPIRED HOLM] Folding player at position', player.position);
+            await makeDecision(gameId!, player.id, 'fold');
           }
+          
+          console.log('[TIMER EXPIRED HOLM] Checking if round complete after auto-folds');
+          await checkHolmRoundComplete(gameId!);
+          
+          // Force immediate refetch to get new state
+          console.log('[TIMER EXPIRED HOLM] Forcing immediate refetch');
+          await fetchGameData();
           
           setIsPaused(false);
         })().catch(err => {
-          console.error('[TIMER EXPIRED] Error auto-folding:', err);
+          console.error('[TIMER EXPIRED HOLM] Error auto-folding:', err);
           setIsPaused(false);
         });
       } else {
@@ -1284,7 +1256,7 @@ const Game = () => {
             communityCards={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards as CardType[] | undefined}
             communityCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards_revealed}
             buckPosition={game.buck_position}
-            currentTurnPosition={game.rounds?.find(r => r.round_number === game.current_round)?.current_turn_position}
+            currentTurnPosition={null} // No turns in Holm - all players decide simultaneously
             chuckyCards={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards as CardType[] | undefined}
             chuckyActive={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_active}
             chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}
