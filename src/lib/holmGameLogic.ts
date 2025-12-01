@@ -350,22 +350,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .eq('id', gameId);
 
   console.log('[HOLM] Round started. Buck position starts at', buckPosition);
-  
-  // If buck is a bot, make its decision immediately (with small delay to ensure DB commit)
-  const buckPlayer = players.find(p => p.position === buckPosition);
-  console.log('[HOLM] Buck player:', { position: buckPosition, is_bot: buckPlayer?.is_bot, user_id: buckPlayer?.user_id });
-  
-  if (buckPlayer?.is_bot) {
-    console.log('[HOLM] Buck is a bot, scheduling decision in 100ms');
-    // Small delay to ensure round data is committed
-    setTimeout(async () => {
-      const { makeBotDecisions } = await import('./botPlayer');
-      console.log('[HOLM] Now calling makeBotDecisions for buck bot');
-      await makeBotDecisions(gameId);
-    }, 100);
-  } else {
-    console.log('[HOLM] Buck is a human player, waiting for their decision');
-  }
+  console.log('[HOLM] Frontend will handle bot decisions via useEffect');
 }
 
 /**

@@ -367,20 +367,19 @@ const Game = () => {
   // Extract current round info
   const currentRound = game?.rounds?.find(r => r.round_number === game.current_round);
 
-  // Auto-trigger bot decisions when appropriate - REMOVED for Holm (bots decide in startHolmRound)
-  // Only kept for other game types
+  // Auto-trigger bot decisions when appropriate
   useEffect(() => {
-    if (game?.status === 'in_progress' && !game.all_decisions_in && game.game_type !== 'holm-game') {
-      console.log('[BOT TRIGGER] Triggering bot decisions for non-Holm game');
+    if (game?.status === 'in_progress' && !game.all_decisions_in) {
+      console.log('[BOT TRIGGER] Triggering bot decisions');
       const botDecisionTimer = setTimeout(() => {
         makeBotDecisions(gameId!);
-      }, 100);
+      }, 500);
       
       return () => clearTimeout(botDecisionTimer);
     }
-  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, gameId]);
+  }, [game?.current_round, game?.status, game?.all_decisions_in, gameId]);
 
-  // Auto-fold when timer reaches 0
+  // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
   useEffect(() => {
     console.log('[TIMER CHECK]', { 
       timeLeft, 
@@ -390,7 +389,8 @@ const Game = () => {
       shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused
     });
     
-    // Only auto-fold if timer expired AND all_decisions_in is still false
+    // Don't auto-fold if timer is null or negative (means fresh round)
+    // Only auto-fold when timer explicitly reaches 0 and we have positive time tracked
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
       console.log('[TIMER EXPIRED] Auto-folding undecided players');
       // Immediately clear the timer to stop flashing
@@ -581,8 +581,19 @@ const Game = () => {
         const deadline = new Date(currentRound.decision_deadline).getTime();
         const now = Date.now();
         const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
-        console.log('[FETCH] Setting timeLeft from deadline:', { deadline: new Date(deadline), now: new Date(now), remaining, all_decisions_in: gameData.all_decisions_in });
-        setTimeLeft(remaining);
+        
+        // If deadline is in the past or very soon (< 2 seconds), give fresh 10 seconds
+        // This handles race conditions where the DB deadline is stale
+        const freshTime = remaining < 2 ? 10 : remaining;
+        
+        console.log('[FETCH] Setting timeLeft from deadline:', { 
+          deadline: new Date(deadline), 
+          now: new Date(now), 
+          calculated: remaining,
+          final: freshTime,
+          all_decisions_in: gameData.all_decisions_in 
+        });
+        setTimeLeft(freshTime);
       }
     } else {
       // Clear timer for non-playing states or transitions (but not for game_over to avoid disrupting countdown)
