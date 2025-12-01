@@ -133,14 +133,6 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     .eq('id', round.id);
     
   console.log('[HOLM TURN] *** TURN UPDATE COMPLETE - DB updated to position', nextPosition, '***');
-    
-  // Trigger bot decision if next player is a bot
-  const nextPlayer = players.find(p => p.position === nextPosition);
-  if (nextPlayer?.is_bot && !nextPlayer.decision_locked) {
-    console.log('[HOLM TURN] *** Next player is bot, making decision ***');
-    const { makeBotDecisions } = await import('./botPlayer');
-    await makeBotDecisions(gameId);
-  }
   
   console.log('[HOLM TURN] ========== moveToNextHolmPlayerTurn COMPLETE ==========');
 }

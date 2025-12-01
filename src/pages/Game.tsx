@@ -428,6 +428,7 @@ const Game = () => {
             console.log('[TIMER EXPIRED HOLM] Auto-folding player at position', currentTurnPlayer.position);
             await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
             await checkHolmRoundComplete(gameId!);
+            console.log('[TIMER EXPIRED HOLM] *** REFETCHING after auto-fold ***');
             await fetchGameData();
           } else {
             console.log('[TIMER EXPIRED HOLM] Player already decided or not found');
@@ -907,6 +908,8 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
+        console.log('[PLAYER DECISION] *** REFETCHING after checkHolmRoundComplete ***');
+        await fetchGameData();
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
@@ -925,6 +928,8 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
+        console.log('[PLAYER DECISION] *** REFETCHING after checkHolmRoundComplete (fold) ***');
+        await fetchGameData();
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
