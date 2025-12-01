@@ -121,13 +121,9 @@ export async function makeBotDecisions(gameId: string) {
 
   if (!botPlayers || botPlayers.length === 0) return;
 
-  // In Holm game, only the bot with the buck should decide
-  const playersToDecide = isHolmGame 
-    ? botPlayers.filter(bot => bot.position === game.buck_position)
-    : botPlayers;
-
+  // In Holm game, all bots can decide simultaneously
   // Make random decisions for each bot (20% stay, 80% fold)
-  for (const bot of playersToDecide) {
+  for (const bot of botPlayers) {
     const shouldStay = Math.random() > 0.8;
     const decision = shouldStay ? 'stay' : 'fold';
     
