@@ -834,6 +834,12 @@ async function handleMultiPlayerShowdown(
         console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=', totalMatched);
       }
     }
+  
+  // Mark round as completed to hide timer
+  await supabase
+    .from('rounds')
+    .update({ status: 'completed' })
+    .eq('id', roundId);
   } else {
     // Tie - split pot and award legs to all winners
     const splitAmount = Math.floor(game.pot / winners.length);
@@ -894,7 +900,7 @@ async function handleMultiPlayerShowdown(
     }
   }
 
-  // Mark round complete
+  // Mark round complete to hide timer during showdown
   await supabase
     .from('rounds')
     .update({ 
