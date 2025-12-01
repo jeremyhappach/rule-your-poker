@@ -365,7 +365,7 @@ const Game = () => {
 
   // Trigger bot decisions when round starts
   useEffect(() => {
-    if (game?.status === 'in_progress' && !game.all_decisions_in && timeLeft !== null) {
+    if (game?.status === 'in_progress' && !game.all_decisions_in) {
       const currentRound = game.rounds?.find(r => r.round_number === game.current_round);
       const currentTurnPosition = currentRound?.current_turn_position;
       
@@ -379,7 +379,7 @@ const Game = () => {
           const botDecisionTimer = setTimeout(() => {
             console.log('[BOT TRIGGER] Executing bot decision');
             makeBotDecisions(gameId!);
-          }, 500); // Small delay for UI updates
+          }, 50); // Instant decision with minimal delay for state updates
 
           return () => clearTimeout(botDecisionTimer);
         }
@@ -392,7 +392,7 @@ const Game = () => {
         return () => clearTimeout(botDecisionTimer);
       }
     }
-  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, game?.rounds, players, gameId, timeLeft]);
+  }, [game?.current_round, game?.status, game?.all_decisions_in, game?.game_type, game?.rounds, players, gameId]);
 
   // Auto-fold when timer reaches 0
   useEffect(() => {
