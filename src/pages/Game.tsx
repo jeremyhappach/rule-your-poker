@@ -353,18 +353,18 @@ const Game = () => {
   // Trigger bot decisions when round starts
   useEffect(() => {
     if (game?.status === 'in_progress' && !game.all_decisions_in && timeLeft !== null) {
-      // For Holm games, bots make instant decisions (not just the one with buck)
+      // For Holm games, only bot with the buck should decide
       if (game.game_type === 'holm-game') {
-        const botsToDecide = players.filter(p => p.is_bot && !p.decision_locked);
+        const botWithBuck = players.find(p => p.is_bot && p.position === game.buck_position && !p.decision_locked);
         
-        if (botsToDecide.length > 0) {
-          console.log('[BOT TRIGGER] Bots making instant decisions');
-          // Bots make instant decisions in Holm game
+        if (botWithBuck) {
+          console.log('[BOT TRIGGER] Bot has turn, making instant decision');
+          // Bot makes instant decision when it's their turn
           const botDecisionTimer = setTimeout(() => {
-            console.log('[BOT TRIGGER] Executing bot decisions');
+            console.log('[BOT TRIGGER] Executing bot decision');
             makeBotDecisions(gameId!);
-          }, 100); // Instant decision (minimal delay for state updates)
-          
+          }, 500); // Small delay for UI updates
+
           return () => clearTimeout(botDecisionTimer);
         }
       } else {
@@ -390,18 +390,22 @@ const Game = () => {
     
     // Only auto-fold if timer expired AND all_decisions_in is still false
     if (timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused) {
-      console.log('[TIMER EXPIRED] Auto-folding undecided players');
+      console.log('[TIMER EXPIRED] Auto-folding player whose turn it is');
       const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
-        // For Holm game, auto-fold all undecided players
-        console.log('[TIMER EXPIRED] Auto-folding undecided players in Holm game');
-        autoFoldUndecided(gameId!).then(async () => {
-          const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
-          await checkHolmRoundComplete(gameId!);
-        }).catch(err => {
-          console.error('[TIMER EXPIRED] Error in Holm game:', err);
-        });
+        // For Holm game, auto-fold the player whose turn it is (at buck position)
+        console.log('[TIMER EXPIRED] Auto-folding player at buck position in Holm game');
+        const playerWithBuck = players.find(p => p.position === game.buck_position && !p.decision_locked);
+        
+        if (playerWithBuck) {
+          makeDecision(gameId!, playerWithBuck.id, 'fold').then(async () => {
+            const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
+            await checkHolmRoundComplete(gameId!);
+          }).catch(err => {
+            console.error('[TIMER EXPIRED] Error auto-folding:', err);
+          });
+        }
       } else {
         autoFoldUndecided(gameId!).catch(err => {
           console.error('[TIMER EXPIRED] Error auto-folding:', err);

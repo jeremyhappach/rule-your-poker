@@ -397,7 +397,7 @@ export const GameTable = ({
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {/* Fold button (left) */}
                         {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
-                         (gameType === 'holm-game' ? true : !allDecisionsIn) ? (
+                         (gameType === 'holm-game' ? (buckPosition === player.position) : !allDecisionsIn) ? (
                           <Button 
                             variant="destructive" 
                             size="sm"
@@ -419,7 +419,7 @@ export const GameTable = ({
                         
                         {/* Stay button (right) */}
                         {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
-                         (gameType === 'holm-game' ? true : !allDecisionsIn) ? (
+                         (gameType === 'holm-game' ? (buckPosition === player.position) : !allDecisionsIn) ? (
                           <Button 
                             size="sm"
                             onClick={onStay}
