@@ -56,6 +56,7 @@ interface GameTableProps {
   chuckyCards?: CardType[];
   chuckyActive?: boolean;
   chuckyCardsRevealed?: number;
+  roundStatus?: string;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -85,6 +86,7 @@ export const GameTable = ({
   chuckyCards,
   chuckyActive,
   chuckyCardsRevealed,
+  roundStatus,
   onStay,
   onFold,
   onSelectSeat,
@@ -179,9 +181,9 @@ export const GameTable = ({
                     </div>
                   </div>
                   
-                  {/* Timer - hide during transitions, results, and when all decisions in */}
+                  {/* Timer - hide during transitions, results, showdowns, and when all decisions in */}
                   {timeLeft !== null && timeLeft >= 1 && !awaitingNextRound && !lastRoundResult && 
-                   (gameType === 'holm-game' ? true : !allDecisionsIn) && (
+                   roundStatus !== 'completed' && (gameType === 'holm-game' ? true : !allDecisionsIn) && (
                     <div className="relative">
                       <div className={`bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 lg:p-4 backdrop-blur-sm border-2 ${timeLeft <= 3 ? 'border-red-500 animate-pulse' : 'border-blue-500'} shadow-2xl`}>
                         <p className={`text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>

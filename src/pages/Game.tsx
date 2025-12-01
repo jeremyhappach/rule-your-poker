@@ -1414,6 +1414,7 @@ const Game = () => {
             chuckyCards={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards as CardType[] | undefined}
             chuckyActive={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_active}
             chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}
+            roundStatus={currentRound?.status}
             onStay={handleStay}
             onFold={handleFold}
             onSelectSeat={handleSelectSeat}

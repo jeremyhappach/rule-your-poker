@@ -819,7 +819,7 @@ async function handleMultiPlayerShowdown(
     } else {
       // Continue to next round
       console.log('[HOLM MULTI] Setting awaiting_next_round to proceed to next hand');
-      await supabase
+      const { error: updateError } = await supabase
         .from('games')
         .update({
           last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)}!`,
@@ -827,7 +827,12 @@ async function handleMultiPlayerShowdown(
           pot: totalMatched
         })
         .eq('id', gameId);
-      console.log('[HOLM MULTI] awaiting_next_round flag set - game should proceed when clicked');
+      
+      if (updateError) {
+        console.error('[HOLM MULTI] ERROR updating game:', updateError);
+      } else {
+        console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=', totalMatched);
+      }
     }
   } else {
     // Tie - split pot and award legs to all winners
@@ -872,7 +877,7 @@ async function handleMultiPlayerShowdown(
     } else {
       // Continue to next round
       console.log('[HOLM TIE] Setting awaiting_next_round to proceed to next hand');
-      await supabase
+      const { error: updateError } = await supabase
         .from('games')
         .update({
           last_round_result: `Tie! ${winners.length} players split the pot with ${formatHandRank(winners[0].evaluation.rank)}`,
@@ -880,7 +885,12 @@ async function handleMultiPlayerShowdown(
           pot: 0
         })
         .eq('id', gameId);
-      console.log('[HOLM TIE] awaiting_next_round flag set - game should proceed when clicked');
+      
+      if (updateError) {
+        console.error('[HOLM TIE] ERROR updating game:', updateError);
+      } else {
+        console.log('[HOLM TIE] Successfully set awaiting_next_round=true');
+      }
     }
   }
 
