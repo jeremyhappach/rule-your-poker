@@ -121,8 +121,9 @@ export async function makeBotDecisions(gameId: string) {
 
   if (!botPlayers || botPlayers.length === 0) return;
 
-  // In Holm game, all bots can decide simultaneously
-  // Make random decisions for each bot (20% stay, 80% fold)
+  // In Holm game, bot makes decision when it's their turn (at buck position)
+  // The Game.tsx component already filters to only call this when bot has buck
+  // Make random decisions for bot (20% stay, 80% fold)
   for (const bot of botPlayers) {
     const shouldStay = Math.random() > 0.8;
     const decision = shouldStay ? 'stay' : 'fold';
@@ -135,6 +136,9 @@ export async function makeBotDecisions(gameId: string) {
       const { checkHolmRoundComplete } = await import('./holmGameLogic');
       await checkHolmRoundComplete(gameId);
     }
+    
+    // In Holm game, only process one bot at a time (the one whose turn it is)
+    if (isHolmGame) break;
   }
 }
 

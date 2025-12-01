@@ -2,6 +2,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
 
 /**
+ * Move to next player's turn in Holm game
+ */
+async function moveToNextPlayerTurn(gameId: string, players: any[]) {
+  const { data: game } = await supabase
+    .from('games')
+    .select('buck_position, current_round')
+    .eq('id', gameId)
+    .single();
+    
+  if (!game) return;
+  
+  console.log('[HOLM TURN] Current turn position:', game.buck_position);
+  
+  // Find next undecided player in clockwise order
+  const positions = players.map(p => p.position).sort((a, b) => a - b);
+  const currentIndex = positions.indexOf(game.buck_position);
+  
+  let nextIndex = (currentIndex + 1) % positions.length;
+  let attempts = 0;
+  
+  while (attempts < positions.length) {
+    const nextPosition = positions[nextIndex];
+    const nextPlayer = players.find(p => p.position === nextPosition);
+    
+    console.log('[HOLM TURN] Checking position', nextPosition, 'decided?', nextPlayer?.decision_locked);
+    
+    if (nextPlayer && (!nextPlayer.decision_locked || nextPlayer.current_decision === null)) {
+      // Found next undecided player
+      console.log('[HOLM TURN] Moving turn to position:', nextPosition);
+      
+      // Set new 10-second deadline for this player
+      const newDeadline = new Date(Date.now() + 10000).toISOString();
+      
+      await supabase
+        .from('rounds')
+        .update({ decision_deadline: newDeadline })
+        .eq('game_id', gameId)
+        .eq('round_number', game.current_round);
+      
+      await supabase
+        .from('games')
+        .update({ buck_position: nextPosition })
+        .eq('id', gameId);
+        
+      console.log('[HOLM TURN] Turn moved to', nextPosition, 'with 10s deadline');
+      return;
+    }
+    
+    nextIndex = (nextIndex + 1) % positions.length;
+    attempts++;
+  }
+  
+  console.log('[HOLM TURN] No undecided players found');
+}
+
+/**
  * Check if all players have decided in a Holm game round
  * If yes, end the round
  */
@@ -46,6 +102,10 @@ export async function checkHolmRoundComplete(gameId: string) {
       console.error('[HOLM CHECK] ERROR calling endHolmRound:', error);
       throw error;
     }
+  } else {
+    // Not all decided - move to next player's turn
+    console.log('[HOLM CHECK] Not all decided, moving to next player turn');
+    await moveToNextPlayerTurn(gameId, players);
   }
 }
 
