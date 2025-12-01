@@ -416,7 +416,7 @@ export async function endHolmRound(gameId: string) {
     if (playerCardsData) {
       const playerCards = playerCardsData.cards as unknown as Card[];
       const playerAllCards = [...playerCards, ...communityCards];
-      const playerEval = evaluateHand(playerAllCards);
+      const playerEval = evaluateHand(playerAllCards, false); // No wild cards in Holm
       const playerUsername = player.profiles?.username || player.user_id;
       
       console.log('[HOLM END] Player has:', formatHandRank(playerEval.rank));
