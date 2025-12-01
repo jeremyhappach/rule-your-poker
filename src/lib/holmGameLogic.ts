@@ -623,21 +623,43 @@ async function handleChuckyShowdown(
 
   if (playerWins) {
     console.log('[HOLM SHOWDOWN] Player wins! Pot:', game.pot);
-    // Player beats Chucky - game over, player wins
+    // Player beats Chucky - award pot and leg, check if game over
     await supabase
       .from('players')
-      .update({ chips: player.chips + game.pot })
+      .update({ 
+        chips: player.chips + game.pot,
+        legs: player.legs + game.leg_value
+      })
       .eq('id', player.id);
 
-    await supabase
-      .from('games')
-      .update({
-        status: 'game_over',
-        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${game.pot}!`,
-        game_over_at: new Date().toISOString(),
-        pot: 0
-      })
-      .eq('id', gameId);
+    // Check if player reached legs_to_win
+    const newLegs = player.legs + game.leg_value;
+    const hasWon = newLegs >= game.legs_to_win;
+
+    console.log('[HOLM SHOWDOWN] Player now has', newLegs, 'legs. Needs', game.legs_to_win, 'to win. Game over:', hasWon);
+
+    if (hasWon) {
+      // Player wins the game
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins the game!`,
+          game_over_at: new Date().toISOString(),
+          pot: 0
+        })
+        .eq('id', gameId);
+    } else {
+      // Continue to next round
+      await supabase
+        .from('games')
+        .update({
+          last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${game.pot}!`,
+          awaiting_next_round: true,
+          pot: 0
+        })
+        .eq('id', gameId);
+    }
   } else {
     console.log('[HOLM SHOWDOWN] Chucky wins!');
     // Chucky wins - player matches pot (capped)
@@ -718,10 +740,13 @@ async function handleMultiPlayerShowdown(
     const winner = winners[0];
     const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
     
-    // Winner takes the pot
+    // Winner takes the pot and gets a leg
     await supabase
       .from('players')
-      .update({ chips: winner.player.chips + game.pot })
+      .update({ 
+        chips: winner.player.chips + game.pot,
+        legs: winner.player.legs + game.leg_value
+      })
       .eq('id', winner.player.id);
 
     // Losers match the pot (capped)
@@ -738,33 +763,83 @@ async function handleMultiPlayerShowdown(
       totalMatched += potMatchAmount;
     }
 
-    await supabase
-      .from('games')
-      .update({
-        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)}!`,
-        awaiting_next_round: true,
-        pot: totalMatched
-      })
-      .eq('id', gameId);
+    // Check if winner reached legs_to_win
+    const newLegs = winner.player.legs + game.leg_value;
+    const hasWon = newLegs >= game.legs_to_win;
+
+    console.log('[HOLM MULTI] Winner now has', newLegs, 'legs. Needs', game.legs_to_win, 'to win. Game over:', hasWon);
+
+    if (hasWon) {
+      // Winner wins the game
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          last_round_result: `${winnerUsername} wins the game with ${formatHandRank(winner.evaluation.rank)}!`,
+          game_over_at: new Date().toISOString(),
+          pot: totalMatched
+        })
+        .eq('id', gameId);
+    } else {
+      // Continue to next round
+      await supabase
+        .from('games')
+        .update({
+          last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)}!`,
+          awaiting_next_round: true,
+          pot: totalMatched
+        })
+        .eq('id', gameId);
+    }
   } else {
-    // Tie - split pot
+    // Tie - split pot and award legs to all winners
     const splitAmount = Math.floor(game.pot / winners.length);
     
+    let anyWinnerReachedGoal = false;
+    let winnerNames: string[] = [];
+
     for (const winner of winners) {
+      const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
+      winnerNames.push(winnerUsername);
+
       await supabase
         .from('players')
-        .update({ chips: winner.player.chips + splitAmount })
+        .update({ 
+          chips: winner.player.chips + splitAmount,
+          legs: winner.player.legs + game.leg_value
+        })
         .eq('id', winner.player.id);
+
+      const newLegs = winner.player.legs + game.leg_value;
+      if (newLegs >= game.legs_to_win) {
+        anyWinnerReachedGoal = true;
+      }
     }
 
-    await supabase
-      .from('games')
-      .update({
-        last_round_result: `Tie! ${winners.length} players split the pot with ${formatHandRank(winners[0].evaluation.rank)}`,
-        awaiting_next_round: true,
-        pot: 0
-      })
-      .eq('id', gameId);
+    console.log('[HOLM TIE] Tied winners:', winnerNames, 'Any reached goal:', anyWinnerReachedGoal);
+
+    if (anyWinnerReachedGoal) {
+      // At least one winner reached legs_to_win
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          last_round_result: `Tie! ${winnerNames.join(' and ')} reached ${game.legs_to_win} legs with ${formatHandRank(winners[0].evaluation.rank)}!`,
+          game_over_at: new Date().toISOString(),
+          pot: 0
+        })
+        .eq('id', gameId);
+    } else {
+      // Continue to next round
+      await supabase
+        .from('games')
+        .update({
+          last_round_result: `Tie! ${winners.length} players split the pot with ${formatHandRank(winners[0].evaluation.rank)}`,
+          awaiting_next_round: true,
+          pot: 0
+        })
+        .eq('id', gameId);
+    }
   }
 
   // Mark round complete
