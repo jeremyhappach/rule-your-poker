@@ -562,8 +562,9 @@ export async function endHolmRound(gameId: string) {
     
     console.log('[HOLM END] All Chucky cards revealed');
 
-    // Brief pause before evaluation
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // 3-second delay so players can read the results before evaluation
+    console.log('[HOLM END] Pausing 3 seconds for players to see results...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     await handleChuckyShowdown(gameId, round.id, player, communityCards, game, chuckyCards);
     return;

@@ -841,7 +841,7 @@ const Game = () => {
     // Check if session should end
     const { data: gameData, error: fetchError } = await supabase
       .from('games')
-      .select('pending_session_end, current_round, status')
+      .select('pending_session_end, current_round, status, dealer_position')
       .eq('id', gameId)
       .single();
 
@@ -889,8 +889,17 @@ const Game = () => {
     console.log('[GAME OVER] Successfully transitioned to game_selection');
 
     // Manual refetch to update UI
-    setTimeout(() => fetchGameData(), 100);
-  }, [gameId, navigate]);
+    await fetchGameData();
+    
+    // Check if dealer is a bot and auto-select game
+    const dealerPlayer = players.find(p => p.position === gameData?.dealer_position);
+    if (dealerPlayer?.is_bot) {
+      console.log('[GAME OVER] Dealer is a bot, auto-selecting game');
+      setTimeout(() => {
+        handleGameSelection('3-5-7');
+      }, 1000);
+    }
+  }, [gameId, navigate, players]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) return;
