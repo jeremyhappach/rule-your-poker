@@ -195,8 +195,14 @@ const Game = () => {
           filter: `game_id=eq.${gameId}`
         },
         (payload) => {
-          console.log('[REALTIME] Rounds table changed:', payload);
-          debouncedFetch();
+          console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
+          if (payload.eventType === 'UPDATE' && payload.new && 'current_turn_position' in payload.new) {
+            console.log('[REALTIME] Turn change detected! Immediately fetching without debounce');
+            fetchGameData(); // Immediate fetch for turn changes
+          } else {
+            console.log('[REALTIME] Other round change, using debounced fetch');
+            debouncedFetch();
+          }
         }
       )
       .on(
@@ -235,6 +241,37 @@ const Game = () => {
   }, [gameId, user]);
 
   // Timer countdown effect
+  // Subscribe to real-time updates for rounds to catch turn changes immediately
+  useEffect(() => {
+    if (!gameId || !game) return;
+
+    console.log('[REALTIME] Setting up realtime subscription for rounds');
+    
+    const channel = supabase
+      .channel(`rounds-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rounds',
+          filter: `game_id=eq.${gameId}`
+        },
+        (payload) => {
+          console.log('[REALTIME] *** ROUND UPDATE RECEIVED ***', payload);
+          console.log('[REALTIME] New turn position:', payload.new.current_turn_position);
+          console.log('[REALTIME] Immediately refetching game data');
+          fetchGameData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[REALTIME] Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [gameId, game?.id]);
+
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0 || isPaused || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
       console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, isPaused, awaiting: game?.awaiting_next_round, result: game?.last_round_result, allDecisionsIn: game?.all_decisions_in });
@@ -428,11 +465,7 @@ const Game = () => {
             console.log('[TIMER EXPIRED HOLM] Auto-folding player at position', currentTurnPlayer.position);
             await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
             await checkHolmRoundComplete(gameId!);
-            console.log('[TIMER EXPIRED HOLM] *** WAITING 500ms THEN REFETCHING after auto-fold ***');
-            // Wait for DB to fully update before refetching
-            setTimeout(() => {
-              fetchGameData();
-            }, 500);
+            console.log('[TIMER EXPIRED HOLM] *** Realtime will trigger refetch after auto-fold ***');
           } else {
             console.log('[TIMER EXPIRED HOLM] Player already decided or not found');
           }
@@ -682,12 +715,7 @@ const Game = () => {
         if (currentTurnPlayer?.is_bot && !currentTurnPlayer.decision_locked) {
           console.log('[BOT TURN] *** BOT TURN DETECTED at position', currentTurnPlayer.position, '***');
           makeBotDecisions(gameId!).then(() => {
-            console.log('[BOT TURN] *** BOT DECISION COMPLETE, WAITING 500ms THEN FETCHING ***');
-            // Wait for DB to fully update before refetching
-            setTimeout(() => {
-              console.log('[BOT TURN] *** NOW REFETCHING GAME DATA ***');
-              fetchGameData();
-            }, 500);
+            console.log('[BOT TURN] *** BOT DECISION COMPLETE - Realtime will trigger refetch ***');
           }).catch(err => {
             console.error('[BOT TURN] Error making bot decision:', err);
           });
@@ -914,11 +942,7 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
-        console.log('[PLAYER DECISION] *** WAITING 500ms THEN REFETCHING after checkHolmRoundComplete ***');
-        // Wait for DB to fully update before refetching
-        setTimeout(() => {
-          fetchGameData();
-        }, 500);
+        console.log('[PLAYER DECISION] *** Realtime will trigger refetch ***');
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
@@ -937,11 +961,7 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
-        console.log('[PLAYER DECISION] *** WAITING 500ms THEN REFETCHING after checkHolmRoundComplete (fold) ***');
-        // Wait for DB to fully update before refetching
-        setTimeout(() => {
-          fetchGameData();
-        }, 500);
+        console.log('[PLAYER DECISION] *** Realtime will trigger refetch (fold) ***');
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
