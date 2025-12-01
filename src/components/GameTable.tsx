@@ -246,9 +246,8 @@ export const GameTable = ({
               ? player?.current_decision 
               : (allDecisionsIn ? player?.current_decision : null);
             
-            // In Holm game, only the player with the buck can make decisions
+            // In Holm game, buck just indicates who decides first, but all players can decide
             const hasBuck = gameType === 'holm-game' && buckPosition === player?.position;
-            const isWaitingForBuck = gameType === 'holm-game' && !hasBuck && !hasPlayerDecided;
             
             // Use seat position (1-7) for stable angle calculation
             const seatPosition = seat.position;
@@ -372,15 +371,6 @@ export const GameTable = ({
                             </span>
                           </div>
                         )}
-                        
-                        {/* Waiting for buck indicator in Holm game */}
-                        {isWaitingForBuck && (
-                          <div className="bg-blue-500/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-blue-500/40">
-                            <span className="text-blue-300 text-[7px] sm:text-[8px] md:text-[10px] font-bold">
-                              Waiting...
-                            </span>
-                          </div>
-                        )}
                       </div>
                       <div className="flex gap-0.5 sm:gap-1 justify-center flex-wrap">
                         {/* Only show current user's decision status before all decisions lock */}
@@ -407,7 +397,7 @@ export const GameTable = ({
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {/* Fold button (left) */}
                         {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
-                         (gameType === 'holm-game' ? hasBuck : !allDecisionsIn) ? (
+                         (gameType === 'holm-game' ? true : !allDecisionsIn) ? (
                           <Button 
                             variant="destructive" 
                             size="sm"
@@ -429,7 +419,7 @@ export const GameTable = ({
                         
                         {/* Stay button (right) */}
                         {isCurrentUser && !hasPlayerDecided && player.status === 'active' && 
-                         (gameType === 'holm-game' ? hasBuck : !allDecisionsIn) ? (
+                         (gameType === 'holm-game' ? true : !allDecisionsIn) ? (
                           <Button 
                             size="sm"
                             onClick={onStay}
