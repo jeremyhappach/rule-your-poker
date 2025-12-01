@@ -450,7 +450,14 @@ const Game = () => {
           console.log('[TIMER EXPIRED] Player to fold:', playerWithTurn?.id, 'position:', playerWithTurn?.position);
           
           if (playerWithTurn) {
+            console.log('[TIMER EXPIRED] Folding player at position', playerWithTurn.position);
             await makeDecision(gameId!, playerWithTurn.id, 'fold');
+            
+            // Wait 500ms to ensure fold is persisted and real-time updates propagate
+            console.log('[TIMER EXPIRED] Waiting 500ms for fold to persist...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            console.log('[TIMER EXPIRED] Checking if round complete after fold');
             const { checkHolmRoundComplete } = await import('@/lib/holmGameLogic');
             await checkHolmRoundComplete(gameId!);
           } else {
