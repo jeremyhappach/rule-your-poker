@@ -564,6 +564,14 @@ const Game = () => {
   const lastAwaitingChangeRef = useRef<number>(0);
   
   useEffect(() => {
+    console.log('[AUTO_PROCEED_EFFECT] Running', {
+      awaiting: game?.awaiting_next_round,
+      status: game?.status,
+      proceedingRef: proceedingToNextRoundRef.current,
+      gameId: gameId,
+      gameType: game?.game_type
+    });
+    
     // Don't proceed if game is in game_over status (let GameOverCountdown handle it)
     if (game?.awaiting_next_round && gameId && !proceedingToNextRoundRef.current && game.status !== 'game_over') {
       // Clear timer immediately when awaiting next round
@@ -577,7 +585,8 @@ const Game = () => {
         game_type: game?.game_type,
         current_round: game?.current_round,
         pot: game?.pot,
-        last_result: game?.last_round_result
+        last_result: game?.last_round_result,
+        timestamp: now
       });
       proceedingToNextRoundRef.current = true;
       
@@ -597,12 +606,12 @@ const Game = () => {
             console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextHolmRound');
             await proceedToNextHolmRound(gameId);
           } else {
-            console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextRound');
+            console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextRound for 3-5-7');
             await proceedToNextRound(gameId);
           }
           console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next hand');
           
-          // Simple refetch - no complex round tracking needed for Holm
+          // Simple refetch
           await new Promise(resolve => setTimeout(resolve, 500));
           await fetchGameData();
           
@@ -625,7 +634,7 @@ const Game = () => {
       console.log('[AWAITING_NEXT_ROUND] No longer awaiting, resetting ref');
       proceedingToNextRoundRef.current = false;
     }
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.current_round]);
 
   // Clear timer when results are shown
   useEffect(() => {
