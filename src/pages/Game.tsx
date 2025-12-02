@@ -163,14 +163,22 @@ const Game = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'games',
           filter: `id=eq.${gameId}`
         },
         (payload) => {
-          console.log('[REALTIME] Games table changed:', payload);
-          debouncedFetch();
+          console.log('[REALTIME] Games table UPDATE:', payload);
+          
+          // Immediately fetch if awaiting_next_round changed to true (critical for round transitions)
+          if (payload.new && 'awaiting_next_round' in payload.new && payload.new.awaiting_next_round === true) {
+            console.log('[REALTIME] ⚡ awaiting_next_round set to TRUE - immediate fetch!');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+          } else {
+            debouncedFetch();
+          }
         }
       )
       .on(
