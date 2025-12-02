@@ -47,6 +47,7 @@ interface Game {
   pot_max_enabled?: boolean;
   pot_max_value?: number;
   game_type?: string;
+  chucky_cards?: number;
   player_count?: number;
   is_creator?: boolean;
   host_username?: string;
@@ -391,10 +392,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                               </div>
                               <div>
                                 <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante
-                                {game.game_type !== 'holm-game' && (
-                                  <> • ${game.leg_value} Legs ({game.legs_to_win} to win) • 
-                                  {game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'}</>
+                                {game.game_type === 'holm-game' ? (
+                                  <> • {game.chucky_cards || 4} Chucky Cards</>
+                                ) : (
+                                  <> • ${game.leg_value} Legs ({game.legs_to_win} to win)</>
                                 )}
+                                {' • '}{game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'}
                                 {' • '}{game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
                               </div>
                             </div>
