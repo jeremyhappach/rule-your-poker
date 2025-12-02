@@ -356,6 +356,9 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   console.log('[HOLM] Decision deadline set for 10 seconds from now');
   console.log('[HOLM] Frontend will handle bot decisions via useEffect');
   
+  // Add a small delay to ensure database propagation
+  await new Promise(resolve => setTimeout(resolve, 200));
+  
   // Verify the round was created with turn position
   const { data: verifyRound } = await supabase
     .from('rounds')
@@ -369,6 +372,23 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     has_deadline: !!verifyRound?.decision_deadline,
     status: verifyRound?.status
   });
+  
+  if (!verifyRound?.current_turn_position) {
+    console.error('[HOLM] *** CRITICAL ERROR: Round created but turn position not in database! ***');
+    console.error('[HOLM] This will cause buttons/timer to not appear');
+    console.error('[HOLM] Attempting to fix by updating round again...');
+    
+    // Try to fix by updating again
+    await supabase
+      .from('rounds')
+      .update({
+        current_turn_position: buckPosition,
+        decision_deadline: new Date(Date.now() + 10000).toISOString()
+      })
+      .eq('id', roundId);
+      
+    console.log('[HOLM] Attempted fix complete');
+  }
 }
 
 /**

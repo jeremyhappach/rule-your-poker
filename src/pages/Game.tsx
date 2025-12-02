@@ -580,10 +580,52 @@ const Game = () => {
             await proceedToNextRound(gameId);
           }
           console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next round');
-          // Simple delay to let database state settle
-          await new Promise(resolve => setTimeout(resolve, 500));
-          // Single refetch after delay
-          await fetchGameData();
+          // Retry fetching until we see the new round with turn position
+          const expectedRound = isHolmGame ? (game?.current_round || 0) + 1 : (game?.current_round || 0) + 1;
+          console.log('[AWAITING_NEXT_ROUND] Expecting round number:', expectedRound);
+          
+          let retries = 0;
+          const maxRetries = 10;
+          
+          while (retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            await fetchGameData();
+            
+            // Check if we got the new round data
+            const { data: checkGame } = await supabase
+              .from('games')
+              .select(`
+                *,
+                rounds!inner (
+                  id,
+                  round_number,
+                  current_turn_position,
+                  status
+                )
+              `)
+              .eq('id', gameId)
+              .single();
+            
+            const newRound = checkGame?.rounds?.find((r: any) => r.round_number === expectedRound);
+            
+            console.log('[AWAITING_NEXT_ROUND] Retry', retries + 1, '- Round', expectedRound, 'status:', {
+              found: !!newRound,
+              has_turn: newRound?.current_turn_position,
+              status: newRound?.status,
+              current_game_round: checkGame?.current_round
+            });
+            
+            if (newRound?.current_turn_position && newRound.status === 'betting') {
+              console.log('[AWAITING_NEXT_ROUND] ✓ Got new round data with turn position!');
+              break;
+            }
+            
+            retries++;
+            if (retries >= maxRetries) {
+              console.error('[AWAITING_NEXT_ROUND] *** TIMEOUT: Failed to get new round data after', maxRetries, 'attempts');
+            }
+          }
+          
           console.log('[AWAITING_NEXT_ROUND] Refetched game data after transition');
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
