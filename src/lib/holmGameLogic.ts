@@ -210,9 +210,6 @@ export async function startHolmRound(gameId: string) {
   // In Holm, we always use round 1 and just reset state for each hand
   const HOLM_ROUND_NUMBER = 1;
   
-  // Pot continues from previous hand (accumulates)
-  let currentPot = gameConfig.pot || 0;
-  
   // Check if round already exists (it should after first hand)
   const { data: existingRound } = await supabase
     .from('rounds')
@@ -221,7 +218,25 @@ export async function startHolmRound(gameId: string) {
     .eq('round_number', HOLM_ROUND_NUMBER)
     .maybeSingle();
 
+  const isFirstHand = !existingRound;
+  
+  // On first hand, collect antes. On subsequent hands, pot continues from previous value
+  let currentPot = gameConfig.pot || 0;
+  
+  if (isFirstHand) {
+    // First hand - collect antes from all players
+    console.log('[HOLM] First hand - collecting antes');
+    for (const player of players) {
+      currentPot += anteAmount;
+      await supabase
+        .from('players')
+        .update({ chips: player.chips - anteAmount })
+        .eq('id', player.id);
+    }
+  }
+
   console.log('[HOLM] Round check:', {
+    isFirstHand,
     exists: !!existingRound,
     roundId: existingRound?.id,
     currentPot
