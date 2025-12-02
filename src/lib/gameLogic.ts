@@ -701,20 +701,20 @@ export async function endRound(gameId: string) {
       
     resultMessage = `${username} won a leg`;
     
-    // Set result message and awaiting state FIRST so user sees the leg win
-    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
-    await supabase
-      .from('games')
-      .update({ 
-        last_round_result: resultMessage,
-        awaiting_next_round: true,
-        next_round_number: nextRound
-      })
-      .eq('id', gameId);
-    
-    // If this is their final leg, they win the game after showing the leg win
+    // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
       console.log('[SOLO WIN] Player won the game!', { username, newLegCount, legsToWin, playerId: soloStayer.id });
+      
+      // Set result message and awaiting state so user sees the leg win
+      const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+      await supabase
+        .from('games')
+        .update({ 
+          last_round_result: resultMessage,
+          awaiting_next_round: true,
+          next_round_number: nextRound
+        })
+        .eq('id', gameId);
       
       // Fetch fresh player data after the leg/chips update above
       const { data: freshPlayers } = await supabase
@@ -740,6 +740,7 @@ export async function endRound(gameId: string) {
       
       return; // Exit early, game over will be handled after delay
     }
+    // If not final leg, just continue - result message will be set at end of function
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands for showdown
     const { data: playerCards } = await supabase

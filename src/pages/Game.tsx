@@ -561,12 +561,17 @@ const Game = () => {
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   // Using a ref to prevent multiple simultaneous timeouts
   const proceedingToNextRoundRef = useRef<boolean>(false);
+  const lastAwaitingChangeRef = useRef<number>(0);
   
   useEffect(() => {
     // Don't proceed if game is in game_over status (let GameOverCountdown handle it)
     if (game?.awaiting_next_round && gameId && !proceedingToNextRoundRef.current && game.status !== 'game_over') {
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
+      
+      // Track when this state started
+      const now = Date.now();
+      lastAwaitingChangeRef.current = now;
       
       console.log('[AWAITING_NEXT_ROUND] Detected awaiting_next_round=true, waiting 4 seconds before proceeding', {
         game_type: game?.game_type,
@@ -578,6 +583,13 @@ const Game = () => {
       
       // Wait 4 seconds to show the result, then start next round
       const timer = setTimeout(async () => {
+        // Only proceed if we're still in the same awaiting state
+        if (lastAwaitingChangeRef.current !== now) {
+          console.log('[AWAITING_NEXT_ROUND] State changed during wait, skipping');
+          proceedingToNextRoundRef.current = false;
+          return;
+        }
+        
         console.log('[AWAITING_NEXT_ROUND] Timeout fired, proceeding to next round');
         try {
           const isHolmGame = game?.game_type === 'holm-game';
@@ -608,6 +620,10 @@ const Game = () => {
         clearTimeout(timer);
         proceedingToNextRoundRef.current = false;
       };
+    } else if (!game?.awaiting_next_round && proceedingToNextRoundRef.current) {
+      // Reset ref if we're no longer awaiting but ref is still true
+      console.log('[AWAITING_NEXT_ROUND] No longer awaiting, resetting ref');
+      proceedingToNextRoundRef.current = false;
     }
   }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type]);
 
