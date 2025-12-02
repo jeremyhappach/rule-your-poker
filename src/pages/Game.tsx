@@ -116,6 +116,26 @@ const Game = () => {
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
   const [timerTurnPosition, setTimerTurnPosition] = useState<number | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<'stay' | 'fold' | null>(null);
+
+  // Clear pending decision when backend confirms
+  useEffect(() => {
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (currentPlayer?.decision_locked && pendingDecision) {
+      console.log('[PENDING_DECISION] Backend confirmed, clearing pending decision');
+      setPendingDecision(null);
+    }
+  }, [players, user?.id, pendingDecision]);
+
+  // Clear pending decision when round changes or awaiting next round
+  useEffect(() => {
+    if (game?.awaiting_next_round || game?.all_decisions_in) {
+      if (pendingDecision) {
+        console.log('[PENDING_DECISION] Round complete/awaiting, clearing pending decision');
+        setPendingDecision(null);
+      }
+    }
+  }, [game?.awaiting_next_round, game?.all_decisions_in, pendingDecision]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1136,6 +1156,9 @@ const Game = () => {
     const currentPlayer = players.find(p => p.user_id === user.id);
     if (!currentPlayer) return;
 
+    // Optimistic UI update - show indicator immediately
+    setPendingDecision('stay');
+
     console.log('[PLAYER DECISION] Player staying:', {
       playerId: currentPlayer.id,
       position: currentPlayer.position,
@@ -1154,6 +1177,8 @@ const Game = () => {
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
+      // Clear pending decision on error
+      setPendingDecision(null);
     }
   };
 
@@ -1162,6 +1187,9 @@ const Game = () => {
     
     const currentPlayer = players.find(p => p.user_id === user.id);
     if (!currentPlayer) return;
+
+    // Optimistic UI update - show indicator immediately
+    setPendingDecision('fold');
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
@@ -1173,6 +1201,8 @@ const Game = () => {
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
+      // Clear pending decision on error
+      setPendingDecision(null);
     }
   };
 
@@ -1577,6 +1607,7 @@ const Game = () => {
             chuckyActive={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_active}
             chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}
             roundStatus={currentRound?.status}
+            pendingDecision={pendingDecision}
             onStay={handleStay}
             onFold={handleFold}
             onSelectSeat={handleSelectSeat}
