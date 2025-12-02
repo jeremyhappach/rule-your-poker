@@ -591,8 +591,9 @@ const Game = () => {
             await new Promise(resolve => setTimeout(resolve, 300));
             await fetchGameData();
             
-            // Check if we got the new round data (with cache busting)
-            const { data: checkGame } = await supabase
+            // Check if we got the new round data (with cache busting and proper ordering)
+            const timestamp = Date.now();
+            const { data: checkGame, error: checkError } = await supabase
               .from('games')
               .select(`
                 *,
@@ -601,23 +602,29 @@ const Game = () => {
                   round_number,
                   current_turn_position,
                   status,
-                  decision_deadline
+                  decision_deadline,
+                  created_at
                 )
               `)
               .eq('id', gameId)
-              .order('round_number', { foreignTable: 'rounds', ascending: false })
+              .order('created_at', { foreignTable: 'rounds', ascending: false })
               .single();
+            
+            if (checkError) {
+              console.error('[AWAITING_NEXT_ROUND] Error fetching game:', checkError);
+            }
             
             const allRounds = Array.isArray(checkGame?.rounds) ? checkGame.rounds : [];
             const newRound = allRounds.find((r: any) => r.round_number === expectedRound);
             
-            console.log('[AWAITING_NEXT_ROUND] Retry', retries + 1, '- Round', expectedRound, 'status:', {
+            console.log('[AWAITING_NEXT_ROUND] Retry', retries + 1, '- Round', expectedRound, 'status (timestamp:', timestamp, '):', {
               found: !!newRound,
               has_turn: newRound?.current_turn_position,
               status: newRound?.status,
               current_game_round: checkGame?.current_round,
               all_round_numbers: allRounds.map((r: any) => r.round_number),
-              total_rounds: allRounds.length
+              total_rounds: allRounds.length,
+              error: checkError?.message
             });
             
             if (newRound?.current_turn_position && newRound.status === 'betting') {
@@ -625,9 +632,35 @@ const Game = () => {
               break;
             }
             
+            // Also try a direct round query as fallback
+            const { data: directRound } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', gameId)
+              .eq('round_number', expectedRound)
+              .maybeSingle();
+            
+            if (directRound) {
+              console.log('[AWAITING_NEXT_ROUND] Direct query found round:', {
+                round_number: directRound.round_number,
+                has_turn: directRound.current_turn_position,
+                status: directRound.status
+              });
+              
+              if (directRound.current_turn_position && directRound.status === 'betting') {
+                console.log('[AWAITING_NEXT_ROUND] ✓ Direct query confirmed round is ready!');
+                break;
+              }
+            }
+            
             retries++;
             if (retries >= maxRetries) {
               console.error('[AWAITING_NEXT_ROUND] *** TIMEOUT: Failed to get new round data after', maxRetries, 'attempts');
+              console.error('[AWAITING_NEXT_ROUND] Last known state:', {
+                game_current_round: checkGame?.current_round,
+                expected_round: expectedRound,
+                found_rounds: allRounds.map((r: any) => ({ num: r.round_number, status: r.status, turn: r.current_turn_position }))
+              });
             }
           }
           
