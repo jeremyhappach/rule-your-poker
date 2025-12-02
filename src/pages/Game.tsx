@@ -591,7 +591,7 @@ const Game = () => {
             await new Promise(resolve => setTimeout(resolve, 300));
             await fetchGameData();
             
-            // Check if we got the new round data
+            // Check if we got the new round data (with cache busting)
             const { data: checkGame } = await supabase
               .from('games')
               .select(`
@@ -600,19 +600,24 @@ const Game = () => {
                   id,
                   round_number,
                   current_turn_position,
-                  status
+                  status,
+                  decision_deadline
                 )
               `)
               .eq('id', gameId)
+              .order('round_number', { foreignTable: 'rounds', ascending: false })
               .single();
             
-            const newRound = checkGame?.rounds?.find((r: any) => r.round_number === expectedRound);
+            const allRounds = Array.isArray(checkGame?.rounds) ? checkGame.rounds : [];
+            const newRound = allRounds.find((r: any) => r.round_number === expectedRound);
             
             console.log('[AWAITING_NEXT_ROUND] Retry', retries + 1, '- Round', expectedRound, 'status:', {
               found: !!newRound,
               has_turn: newRound?.current_turn_position,
               status: newRound?.status,
-              current_game_round: checkGame?.current_round
+              current_game_round: checkGame?.current_round,
+              all_round_numbers: allRounds.map((r: any) => r.round_number),
+              total_rounds: allRounds.length
             });
             
             if (newRound?.current_turn_position && newRound.status === 'betting') {
@@ -669,6 +674,14 @@ const Game = () => {
       console.error('Failed to fetch game:', gameError);
       return;
     }
+    
+    console.log('[FETCH] Game data received:', {
+      current_round: gameData?.current_round,
+      status: gameData?.status,
+      awaiting_next_round: gameData?.awaiting_next_round,
+      rounds_count: gameData?.rounds?.length,
+      round_numbers: gameData?.rounds?.map((r: any) => r.round_number)
+    });
 
     const { data: playersData, error: playersError } = await supabase
       .from('players')
