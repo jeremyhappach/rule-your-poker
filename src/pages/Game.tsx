@@ -560,70 +560,84 @@ const Game = () => {
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   const awaitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gameStateAtTimerStart = useRef<{ awaiting: boolean; round: number } | null>(null);
   
   useEffect(() => {
+    const currentAwaiting = game?.awaiting_next_round || false;
+    const currentRound = game?.current_round || 0;
+    
     console.log('[AUTO_PROCEED_EFFECT] Running', {
-      awaiting: game?.awaiting_next_round,
+      awaiting: currentAwaiting,
       status: game?.status,
       hasTimer: awaitingTimerRef.current !== null,
       gameId: gameId,
-      gameType: game?.game_type
+      gameType: game?.game_type,
+      savedState: gameStateAtTimerStart.current
     });
     
-    // Clear any existing timer first
-    if (awaitingTimerRef.current) {
-      console.log('[AUTO_PROCEED_EFFECT] Clearing existing timer');
-      clearTimeout(awaitingTimerRef.current);
-      awaitingTimerRef.current = null;
-    }
-    
-    // Don't proceed if game is in game_over status (let GameOverCountdown handle it)
-    if (game?.awaiting_next_round && gameId && game.status !== 'game_over') {
+    // If awaiting state changed to true and we don't have a timer yet
+    if (currentAwaiting && 
+        gameId && 
+        game?.status !== 'game_over' && 
+        !awaitingTimerRef.current) {
+      
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
       
-      console.log('[AWAITING_NEXT_ROUND] Detected awaiting_next_round=true, waiting 4 seconds before proceeding', {
+      // Save the game state when we start the timer
+      gameStateAtTimerStart.current = { awaiting: true, round: currentRound };
+      
+      console.log('[AWAITING_NEXT_ROUND] Starting 4-second timer', {
         game_type: game?.game_type,
-        current_round: game?.current_round,
+        current_round: currentRound,
         pot: game?.pot,
         last_result: game?.last_round_result
       });
       
       // Wait 4 seconds to show the result, then start next round
       awaitingTimerRef.current = setTimeout(async () => {
-        console.log('[AWAITING_NEXT_ROUND] Timer fired, proceeding to next round');
+        console.log('[AWAITING_NEXT_ROUND] Timer fired after 4 seconds');
+        const timerId = awaitingTimerRef.current;
         awaitingTimerRef.current = null;
+        gameStateAtTimerStart.current = null;
         
         try {
           const isHolmGame = game?.game_type === 'holm-game';
+          console.log('[AWAITING_NEXT_ROUND] Calling proceed function', { isHolmGame, gameId });
+          
           if (isHolmGame) {
-            console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextHolmRound');
             await proceedToNextHolmRound(gameId);
           } else {
-            console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextRound for 3-5-7');
             await proceedToNextRound(gameId);
           }
-          console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next hand');
           
-          // Simple refetch
+          console.log('[AWAITING_NEXT_ROUND] Proceed function completed successfully');
+          
+          // Refetch after a short delay
           await new Promise(resolve => setTimeout(resolve, 500));
           await fetchGameData();
           
-          console.log('[AWAITING_NEXT_ROUND] Refetched game data');
+          console.log('[AWAITING_NEXT_ROUND] Game data refetched');
         } catch (error) {
-          console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
+          console.error('[AWAITING_NEXT_ROUND] ERROR during proceed:', error);
         }
       }, 4000);
+      
+      console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
+    }
+    // If awaiting changed to false, clear any existing timer
+    else if (!currentAwaiting && awaitingTimerRef.current) {
+      console.log('[AWAITING_NEXT_ROUND] No longer awaiting, clearing timer');
+      clearTimeout(awaitingTimerRef.current);
+      awaitingTimerRef.current = null;
+      gameStateAtTimerStart.current = null;
     }
     
     return () => {
-      if (awaitingTimerRef.current) {
-        console.log('[AUTO_PROCEED_EFFECT] Cleanup: cancelling timer');
-        clearTimeout(awaitingTimerRef.current);
-        awaitingTimerRef.current = null;
-      }
+      // Don't clear timer on cleanup during normal re-renders
+      // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.current_round]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type]);
 
   // Clear timer when results are shown
   useEffect(() => {
