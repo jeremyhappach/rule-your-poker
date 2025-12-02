@@ -215,10 +215,10 @@ export const GameTable = ({
             const player = !isEmptySeat ? seat as Player : null;
             const isCurrentUser = player?.user_id === currentUserId;
             const hasPlayerDecided = player?.decision_locked;
-            // For Holm game, show decisions immediately. For other games, wait for all decisions
-            const playerDecision = gameType === 'holm-game' 
+            // Always show current user's decision immediately, or all decisions when allDecisionsIn
+            const playerDecision = (isCurrentUser || allDecisionsIn || gameType === 'holm-game') 
               ? player?.current_decision 
-              : (allDecisionsIn ? player?.current_decision : null);
+              : null;
             
             // In Holm game, buck just indicates who decides first, but all players can decide
             // Only show buck when round is fully initialized with turn position
