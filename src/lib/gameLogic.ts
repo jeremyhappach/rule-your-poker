@@ -701,7 +701,18 @@ export async function endRound(gameId: string) {
       
     resultMessage = `${username} won a leg`;
     
-    // If this is their final leg, they win the game immediately
+    // Set result message and awaiting state FIRST so user sees the leg win
+    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    await supabase
+      .from('games')
+      .update({ 
+        last_round_result: resultMessage,
+        awaiting_next_round: true,
+        next_round_number: nextRound
+      })
+      .eq('id', gameId);
+    
+    // If this is their final leg, they win the game after showing the leg win
     if (newLegCount >= legsToWin) {
       console.log('[SOLO WIN] Player won the game!', { username, newLegCount, legsToWin, playerId: soloStayer.id });
       
@@ -711,20 +722,23 @@ export async function endRound(gameId: string) {
         .select('*, profiles(username)')
         .eq('game_id', gameId);
       
-      // Use centralized game-over handler with fresh data
-      await handleGameOver(
-        gameId,
-        soloStayer.id,
-        username,
-        newLegCount,
-        freshPlayers || allPlayers,
-        game.pot || 0,
-        legValue,
-        legsToWin,
-        game.dealer_position || 1
-      );
+      // Wait 4 seconds to show "won a leg" message, then transition to game over
+      setTimeout(async () => {
+        // Use centralized game-over handler with fresh data
+        await handleGameOver(
+          gameId,
+          soloStayer.id,
+          username,
+          newLegCount,
+          freshPlayers || allPlayers,
+          game.pot || 0,
+          legValue,
+          legsToWin,
+          game.dealer_position || 1
+        );
+      }, 4000);
       
-      return; // Exit early, game over handled
+      return; // Exit early, game over will be handled after delay
     }
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands for showdown
