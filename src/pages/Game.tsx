@@ -708,7 +708,10 @@ const Game = () => {
         !gameData.last_round_result &&
         !gameData.game_over_at) {  // Don't set timeLeft if game_over_at is set
       const currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
+      const isHolmGame = gameData.game_type === 'holm-game';
+      
       console.log('[FETCH] Round data:', {
+        gameType: gameData.game_type,
         currentRound: currentRound?.id,
         current_turn_position: currentRound?.current_turn_position,
         roundStatus: currentRound?.status,
@@ -719,28 +722,44 @@ const Game = () => {
         all_decisions_in: gameData.all_decisions_in
       });
       
-      if (currentRound?.decision_deadline && currentRound.current_turn_position) {
-        // Check if turn changed
-        const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
-        
-        if (turnChanged) {
-          console.log('[FETCH] *** TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh 10 seconds ***');
-          setTimeLeft(10);
-          setLastTurnPosition(currentRound.current_turn_position);
-          setTimerTurnPosition(currentRound.current_turn_position);
-        } else if (lastTurnPosition === null) {
-          // First time seeing this round
-          console.log('[FETCH] First load of round, turn position:', currentRound.current_turn_position, '- giving fresh 10 seconds');
-          setTimeLeft(10);
-          setLastTurnPosition(currentRound.current_turn_position);
-          setTimerTurnPosition(currentRound.current_turn_position);
-        } else {
-          // Same turn, calculate from deadline
+      if (currentRound?.decision_deadline) {
+        // Holm game: turn-based, needs current_turn_position
+        if (isHolmGame && currentRound.current_turn_position) {
+          // Check if turn changed
+          const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
+          
+          if (turnChanged) {
+            console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh 10 seconds ***');
+            setTimeLeft(10);
+            setLastTurnPosition(currentRound.current_turn_position);
+            setTimerTurnPosition(currentRound.current_turn_position);
+          } else if (lastTurnPosition === null) {
+            // First time seeing this round
+            console.log('[FETCH] HOLM: First load of round, turn position:', currentRound.current_turn_position, '- giving fresh 10 seconds');
+            setTimeLeft(10);
+            setLastTurnPosition(currentRound.current_turn_position);
+            setTimerTurnPosition(currentRound.current_turn_position);
+          } else {
+            // Same turn, calculate from deadline
+            const deadline = new Date(currentRound.decision_deadline).getTime();
+            const now = Date.now();
+            const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+            
+            console.log('[FETCH] HOLM: Same turn, using calculated time:', { 
+              deadline: new Date(deadline), 
+              now: new Date(now), 
+              remaining
+            });
+            setTimeLeft(remaining);
+          }
+        } 
+        // 3-5-7 game: simultaneous decisions, no turn position needed
+        else if (!isHolmGame) {
           const deadline = new Date(currentRound.decision_deadline).getTime();
           const now = Date.now();
           const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
           
-          console.log('[FETCH] Same turn, using calculated time:', { 
+          console.log('[FETCH] 3-5-7: Setting timer from deadline:', { 
             deadline: new Date(deadline), 
             now: new Date(now), 
             remaining,

@@ -144,8 +144,9 @@ export const GameTable = ({
           {/* Pot and Timer - shown when no result message */}
           {showPotAndTimer && (
             <>
-              {/* Pot and Timer Container - positioned at absolute bottom */}
-              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-20 pb-2">
+              {/* Pot and Timer Container - game-type specific positioning */}
+              {/* Holm: bottom of table, 3-5-7: center of table */}
+              <div className={`absolute ${gameType === 'holm-game' ? 'bottom-0 pb-2' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-20`}>
                 <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 md:gap-4">
                   {/* Last Hand Warning - shown when session ending */}
                   {pendingSessionEnd && (
