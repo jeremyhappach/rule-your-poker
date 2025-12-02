@@ -199,14 +199,14 @@ export const GameTable = ({
             />
           )}
 
-          {/* Chucky's Hand for Holm Game - positioned below community cards */}
+          {/* Chucky's Hand for Holm Game - positioned below community cards, offset left */}
           {gameType === 'holm-game' && chuckyActive && chuckyCards && !awaitingNextRound && (
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
               revealed={chuckyCardsRevealed}
-              x={50}
-              y={55}
+              x={48}
+              y={62}
             />
           )}
 
@@ -442,10 +442,10 @@ export const GameTable = ({
         </div>
       </div>
       
-      {/* Result Message - displayed below the table */}
+      {/* Result Message - displayed below the table with better visibility */}
       {lastRoundResult && (
-        <div className="mt-4 text-center">
-          <p className="text-poker-gold font-black text-sm sm:text-base md:text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+        <div className="mt-6 text-center bg-poker-felt-dark/80 rounded-lg p-3 border-2 border-poker-gold/50">
+          <p className="text-poker-gold font-black text-base sm:text-lg md:text-xl drop-shadow-[0_2px_8px_rgba(0,0,0,1)]">
             {lastRoundResult}
           </p>
         </div>

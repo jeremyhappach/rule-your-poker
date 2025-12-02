@@ -580,7 +580,9 @@ const Game = () => {
             await proceedToNextRound(gameId);
           }
           console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next round');
-          // Explicitly refetch to ensure UI shows updated buck position and pot immediately
+          // Wait a moment for database state to settle before refetching
+          await new Promise(resolve => setTimeout(resolve, 200));
+          // Explicitly refetch to ensure UI shows updated buck position and turn position immediately
           await fetchGameData();
           console.log('[AWAITING_NEXT_ROUND] Refetched game data after transition');
         } catch (error) {
