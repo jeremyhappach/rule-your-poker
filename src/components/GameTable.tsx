@@ -442,12 +442,14 @@ export const GameTable = ({
         </div>
       </div>
       
-      {/* Result Message - displayed below the table with better visibility */}
-      {lastRoundResult && (
-        <div className="mt-6 text-center bg-poker-felt-dark/80 rounded-lg p-3 border-2 border-poker-gold/50">
-          <p className="text-poker-gold font-black text-base sm:text-lg md:text-xl drop-shadow-[0_2px_8px_rgba(0,0,0,1)]">
-            {lastRoundResult}
-          </p>
+      {/* Result Message - prominent overlay */}
+      {lastRoundResult && awaitingNextRound && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 animate-scale-in">
+          <div className="bg-gradient-to-br from-poker-felt-dark via-poker-felt to-poker-felt-dark rounded-xl p-4 sm:p-6 border-4 border-poker-gold shadow-2xl max-w-md">
+            <p className="text-poker-gold font-black text-lg sm:text-xl md:text-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,1)] text-center leading-tight">
+              {lastRoundResult}
+            </p>
+          </div>
         </div>
       )}
     </div>

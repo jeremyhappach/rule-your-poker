@@ -580,10 +580,21 @@ const Game = () => {
             await proceedToNextRound(gameId);
           }
           console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next round');
-          // Wait a moment for database state to settle before refetching
-          await new Promise(resolve => setTimeout(resolve, 200));
-          // Explicitly refetch to ensure UI shows updated buck position and turn position immediately
-          await fetchGameData();
+          // Wait longer for database state to fully propagate
+          await new Promise(resolve => setTimeout(resolve, 800));
+          // Refetch until we see the new round number
+          const oldRound = game?.current_round;
+          let attempts = 0;
+          while (attempts < 5) {
+            await fetchGameData();
+            const newGameData = await supabase.from('games').select('current_round').eq('id', gameId).single();
+            if (newGameData.data?.current_round !== oldRound) {
+              console.log('[AWAITING_NEXT_ROUND] Confirmed new round:', newGameData.data?.current_round);
+              break;
+            }
+            attempts++;
+            if (attempts < 5) await new Promise(resolve => setTimeout(resolve, 300));
+          }
           console.log('[AWAITING_NEXT_ROUND] Refetched game data after transition');
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
