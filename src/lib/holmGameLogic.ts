@@ -212,11 +212,13 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     throw new Error('No active players found');
   }
 
-  // Calculate pot from antes - collect antes for EVERY round, not just round 1
-  let initialPot = 0;
+  // Calculate pot from antes (only for round 1)
+  let initialPot = gameConfig.pot || 0;
   
-  for (const player of players) {
-    initialPot += anteAmount;
+  if (roundNumber === 1) {
+    for (const player of players) {
+      initialPot += anteAmount;
+    }
   }
 
   // Check if round already exists to prevent duplicates
@@ -306,12 +308,14 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     })
     .eq('game_id', gameId);
 
-  // Deduct antes from player chips for every round
-  for (const player of players) {
-    await supabase
-      .from('players')
-      .update({ chips: player.chips - anteAmount })
-      .eq('id', player.id);
+  // Deduct antes from player chips (only for round 1)
+  if (roundNumber === 1) {
+    for (const player of players) {
+      await supabase
+        .from('players')
+        .update({ chips: player.chips - anteAmount })
+        .eq('id', player.id);
+    }
   }
 
   // Deal 4 cards to each player using the fresh deck
