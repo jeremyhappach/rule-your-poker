@@ -613,7 +613,9 @@ export async function endHolmRound(gameId: string) {
     console.log('[HOLM END] Pausing 3 seconds for players to see results...');
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    await handleChuckyShowdown(gameId, round.id, player, communityCards, game, chuckyCards);
+    // Use round.pot as the authoritative pot value (game.pot may be stale)
+    const roundPot = round.pot || game.pot || 0;
+    await handleChuckyShowdown(gameId, round.id, player, communityCards, game, chuckyCards, roundPot);
     return;
   }
 
@@ -623,7 +625,9 @@ export async function endHolmRound(gameId: string) {
   // Brief pause before evaluation
   await new Promise(resolve => setTimeout(resolve, 300));
   
-  await handleMultiPlayerShowdown(gameId, round.id, stayedPlayers, communityCards, game);
+  // Use round.pot as the authoritative pot value (game.pot may be stale)
+  const roundPot = round.pot || game.pot || 0;
+  await handleMultiPlayerShowdown(gameId, round.id, stayedPlayers, communityCards, game, roundPot);
 }
 
 /**
@@ -635,12 +639,14 @@ async function handleChuckyShowdown(
   player: any, 
   communityCards: Card[],
   game: any,
-  chuckyCards: Card[]
+  chuckyCards: Card[],
+  roundPot: number
 ) {
   console.log('[HOLM SHOWDOWN] ========== Starting Chucky showdown ==========');
   console.log('[HOLM SHOWDOWN] Player:', player.id, 'position:', player.position);
   console.log('[HOLM SHOWDOWN] Chucky cards:', chuckyCards);
   console.log('[HOLM SHOWDOWN] Community cards:', communityCards);
+  console.log('[HOLM SHOWDOWN] Round pot (authoritative):', roundPot, 'game.pot:', game.pot);
 
   // Get player's cards
   const { data: playerCardsData } = await supabase
@@ -679,13 +685,13 @@ async function handleChuckyShowdown(
   const playerUsername = player.profiles?.username || player.user_id;
 
   if (playerWins) {
-    console.log('[HOLM SHOWDOWN] Player wins! Pot:', game.pot);
+    console.log('[HOLM SHOWDOWN] Player wins! Pot:', roundPot);
     // Player beats Chucky - award pot, GAME OVER (Holm game ends when you beat Chucky)
     // Note: Holm game doesn't use legs system
     await supabase
       .from('players')
       .update({ 
-        chips: player.chips + game.pot
+        chips: player.chips + roundPot
       })
       .eq('id', player.id);
 
@@ -695,7 +701,7 @@ async function handleChuckyShowdown(
       .from('games')
       .update({
         status: 'game_over',
-        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins the game!`,
+        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${roundPot}!`,
         game_over_at: new Date().toISOString(),
         pot: 0,
         awaiting_next_round: false
@@ -711,17 +717,17 @@ async function handleChuckyShowdown(
     console.log('[HOLM SHOWDOWN] Chucky wins!');
     // Chucky wins - player matches pot (capped)
     const potMatchAmount = game.pot_max_enabled 
-      ? Math.min(game.pot, game.pot_max_value) 
-      : game.pot;
+      ? Math.min(roundPot, game.pot_max_value) 
+      : roundPot;
 
-    console.log('[HOLM SHOWDOWN] Pot match amount:', potMatchAmount);
+    console.log('[HOLM SHOWDOWN] Pot match amount:', potMatchAmount, '(based on roundPot:', roundPot, ')');
 
     await supabase
       .from('players')
       .update({ chips: player.chips - potMatchAmount })
       .eq('id', player.id);
 
-    const newPot = game.pot + potMatchAmount;
+    const newPot = roundPot + potMatchAmount;
 
     console.log('[HOLM SHOWDOWN] New pot:', newPot);
 
@@ -755,9 +761,10 @@ async function handleMultiPlayerShowdown(
   roundId: string,
   stayedPlayers: any[],
   communityCards: Card[],
-  game: any
+  game: any,
+  roundPot: number
 ) {
-  console.log('[HOLM] Multi-player showdown');
+  console.log('[HOLM] Multi-player showdown, roundPot:', roundPot, 'game.pot:', game.pot);
 
   // Add 3 second delay so players can read the cards
   console.log('[HOLM MULTI] Waiting 3 seconds for players to view cards...');
@@ -796,17 +803,20 @@ async function handleMultiPlayerShowdown(
     const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
     
     // Winner takes the pot (Holm game doesn't use legs system)
+    console.log('[HOLM MULTI] Winner', winnerUsername, 'gets pot:', roundPot);
     await supabase
       .from('players')
       .update({ 
-        chips: winner.player.chips + game.pot
+        chips: winner.player.chips + roundPot
       })
       .eq('id', winner.player.id);
 
     // Losers match the pot (capped)
     const potMatchAmount = game.pot_max_enabled 
-      ? Math.min(game.pot, game.pot_max_value) 
-      : game.pot;
+      ? Math.min(roundPot, game.pot_max_value) 
+      : roundPot;
+    
+    console.log('[HOLM MULTI] Losers pay potMatchAmount:', potMatchAmount, '(based on roundPot:', roundPot, ')');
 
     let totalMatched = 0;
     for (const loser of losers) {
