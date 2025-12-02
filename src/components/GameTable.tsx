@@ -418,11 +418,12 @@ export const GameTable = ({
                       {/* Action buttons and chip stack row */}
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {(() => {
-                          // For Holm game, only show buttons when it's the player's turn and game is ready
+                          // For Holm game, only show buttons when buck is assigned, it's the player's turn, and game is ready
+                          const buckIsAssigned = buckPosition !== null && buckPosition !== undefined;
                           const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
                           
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? (roundIsReady && currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed')
+                            ? (buckIsAssigned && roundIsReady && currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed')
                             : true;
                           
                           const canDecide = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;

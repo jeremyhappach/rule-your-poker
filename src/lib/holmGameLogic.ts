@@ -617,11 +617,42 @@ export async function endHolmRound(gameId: string) {
     console.log('[HOLM END] Brief pause to display player hand...');
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Deal Chucky's cards and store them
+    // Deal Chucky's cards from remaining deck (exclude community cards and player cards)
     console.log('[HOLM END] Now dealing Chucky cards...');
-    const deck = shuffleDeck(createDeck());
+    
+    // Get all player cards for this round to exclude from Chucky's deck
+    const { data: allPlayerCards } = await supabase
+      .from('player_cards')
+      .select('cards')
+      .eq('round_id', round.id);
+    
+    // Collect all used cards
+    const usedCards = new Set<string>();
+    
+    // Add community cards
+    communityCards.forEach(card => {
+      usedCards.add(`${card.suit}-${card.rank}`);
+    });
+    
+    // Add all player cards
+    if (allPlayerCards) {
+      allPlayerCards.forEach(pc => {
+        const cards = pc.cards as unknown as Card[];
+        cards.forEach(card => {
+          usedCards.add(`${card.suit}-${card.rank}`);
+        });
+      });
+    }
+    
+    console.log('[HOLM END] Used cards to exclude:', usedCards.size);
+    
+    // Create deck excluding used cards
+    const fullDeck = createDeck();
+    const availableCards = fullDeck.filter(card => !usedCards.has(`${card.suit}-${card.rank}`));
+    const shuffledAvailable = shuffleDeck(availableCards);
+    
     const chuckyCardCount = game.chucky_cards || 4;
-    const chuckyCards = deck.slice(0, chuckyCardCount);
+    const chuckyCards = shuffledAvailable.slice(0, chuckyCardCount);
 
     console.log('[HOLM END] Chucky dealt', chuckyCardCount, 'cards:', chuckyCards);
 
