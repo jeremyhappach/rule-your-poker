@@ -223,7 +223,8 @@ export async function startHolmRound(gameId: string) {
   // 2. Round 1 exists but pot is 0 (antes weren't collected due to a bug)
   const needsAnteCollection = isFirstHand || (gameConfig.pot === 0 && (!round1 || round1.pot === 0));
   
-  let currentPot = gameConfig.pot || 0;
+  // CRITICAL: Use round1.pot if game.pot is stale/0 but round1 has the correct pot
+  let currentPot = gameConfig.pot || round1?.pot || 0;
   
   console.log('[HOLM] Pot initialization:', {
     isFirstHand,
