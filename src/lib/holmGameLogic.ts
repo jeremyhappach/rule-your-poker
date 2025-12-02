@@ -979,6 +979,21 @@ export async function proceedToNextHolmRound(gameId: string) {
   console.log('[HOLM NEXT] Starting round', nextRound);
   await startHolmRound(gameId, nextRound);
   
+  // Verify round was created with turn position before clearing awaiting flag
+  const { data: verifyRound } = await supabase
+    .from('rounds')
+    .select('current_turn_position')
+    .eq('game_id', gameId)
+    .eq('round_number', nextRound)
+    .single();
+  
+  if (!verifyRound?.current_turn_position) {
+    console.error('[HOLM NEXT] ERROR: Round created but no turn position set!');
+    return;
+  }
+  
+  console.log('[HOLM NEXT] Verified round has turn position:', verifyRound.current_turn_position);
+  
   // CRITICAL: Only clear awaiting flag AFTER round is fully set up with current_turn_position
   await supabase
     .from('games')
