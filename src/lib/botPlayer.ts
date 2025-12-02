@@ -173,8 +173,8 @@ export async function makeBotDecisions(gameId: string) {
       decision_locked: currentTurnBot.decision_locked
     });
 
-    // Make random decision for bot (80% stay, 20% fold)
-    const shouldStay = Math.random() > 0.2;
+    // Make random decision for bot (20% stay, 80% fold)
+    const shouldStay = Math.random() < 0.2;
     const decision = shouldStay ? 'stay' : 'fold';
     
     console.log('[BOT] HOLM: *** Bot deciding:', decision, '***');
@@ -192,7 +192,7 @@ export async function makeBotDecisions(gameId: string) {
       const delay = Math.random() * 500;
       
       setTimeout(async () => {
-        const shouldStay = Math.random() > 0.2; // 80% chance to stay
+        const shouldStay = Math.random() < 0.2; // 20% chance to stay, 80% fold
         const decision = shouldStay ? 'stay' : 'fold';
         
         console.log('[BOT] 3-5-7: Bot at position', bot.position, 'deciding:', decision);
