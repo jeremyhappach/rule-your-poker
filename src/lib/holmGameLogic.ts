@@ -766,6 +766,12 @@ async function handleChuckyShowdown(
         pot: newPot
       })
       .eq('id', gameId);
+    
+    // Also update round.pot so the next hand has the correct pot value
+    await supabase
+      .from('rounds')
+      .update({ pot: newPot })
+      .eq('id', roundId);
   }
 
   // Mark round complete and hide Chucky
