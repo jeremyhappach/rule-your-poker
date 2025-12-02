@@ -57,6 +57,7 @@ interface GameTableProps {
   chuckyActive?: boolean;
   chuckyCardsRevealed?: number;
   roundStatus?: string;
+  pendingDecision?: 'stay' | 'fold' | null;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -87,12 +88,13 @@ export const GameTable = ({
   chuckyActive,
   chuckyCardsRevealed,
   roundStatus,
+  pendingDecision,
   onStay,
   onFold,
   onSelectSeat,
 }: GameTableProps) => {
   const currentPlayer = players.find(p => p.user_id === currentUserId);
-  const hasDecided = currentPlayer?.decision_locked;
+  const hasDecided = currentPlayer?.decision_locked || !!pendingDecision;
   
   // Stabilize radius calculation to prevent flickering during rapid re-renders
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -413,8 +415,8 @@ export const GameTable = ({
                             : true;
                           
                           const canDecide = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
-                          const hasDecidedFold = isCurrentUser && hasPlayerDecided && playerDecision === 'fold';
-                          const hasDecidedStay = isCurrentUser && hasPlayerDecided && playerDecision === 'stay';
+                          const hasDecidedFold = isCurrentUser && (hasPlayerDecided && playerDecision === 'fold') || pendingDecision === 'fold';
+                          const hasDecidedStay = isCurrentUser && (hasPlayerDecided && playerDecision === 'stay') || pendingDecision === 'stay';
                           
                           if (gameType === 'holm-game' && isCurrentUser) {
                             console.log('[GAME_TABLE] Decision buttons check for player position', player.position, ':', {
