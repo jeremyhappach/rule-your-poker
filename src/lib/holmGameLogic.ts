@@ -794,41 +794,130 @@ async function handleMultiPlayerShowdown(
     .update({ status: 'completed' })
     .eq('id', roundId);
   } else {
-    // Tie - split pot and award legs to all winners
-    const splitAmount = Math.floor(game.pot / winners.length);
+    // Tie - both/all tied players must face Chucky
+    console.log('[HOLM TIE] Tie detected. Tied players must face Chucky.');
     
-    let winnerNames: string[] = [];
-
-    for (const winner of winners) {
-      const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
-      winnerNames.push(winnerUsername);
-
-      await supabase
-        .from('players')
-        .update({ 
-          chips: winner.player.chips + splitAmount,
-          legs: winner.player.legs + game.leg_value
-        })
-        .eq('id', winner.player.id);
+    // Deal Chucky cards (4 cards for Holm game)
+    const deck = shuffleDeck(createDeck());
+    const chuckyCardCount = game.chucky_cards || 4;
+    const chuckyCards: Card[] = [];
+    for (let i = 0; i < chuckyCardCount; i++) {
+      chuckyCards.push(deck[i]);
     }
-
-    console.log('[HOLM TIE] Tied winners:', winnerNames);
-
-    // In Holm, multi-player ties never end the game - only beating Chucky does
-    console.log('[HOLM TIE] Tie in multi-player showdown, continuing to next hand');
-    const { error: updateError } = await supabase
-      .from('games')
-      .update({
-        last_round_result: `Tie! ${winners.length} players split the pot with ${formatHandRank(winners[0].evaluation.rank)}`,
-        awaiting_next_round: true,
-        pot: 0
-      })
-      .eq('id', gameId);
     
-    if (updateError) {
-      console.error('[HOLM TIE] ERROR updating game:', updateError);
+    console.log('[HOLM TIE] Dealt Chucky:', chuckyCards);
+    
+    // Reveal Chucky cards gradually with 3 second delay
+    await supabase
+      .from('rounds')
+      .update({ 
+        chucky_cards: chuckyCards as any,
+        chucky_cards_revealed: 0,
+        chucky_active: true
+      })
+      .eq('id', roundId);
+    
+    // Reveal Chucky cards one by one
+    for (let revealed = 1; revealed <= chuckyCardCount; revealed++) {
+      await new Promise(resolve => setTimeout(resolve, 600));
+      await supabase
+        .from('rounds')
+        .update({ chucky_cards_revealed: revealed })
+        .eq('id', roundId);
+    }
+    
+    // Wait 3 seconds for players to see all cards
+    console.log('[HOLM TIE] Waiting 3 seconds for players to view cards...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Evaluate each tied player against Chucky
+    const chuckyAllCards = [...chuckyCards, ...communityCards];
+    const chuckyEval = evaluateHand(chuckyAllCards, false);
+    
+    console.log('[HOLM TIE] Chucky hand:', formatHandRank(chuckyEval.rank), 'value:', chuckyEval.value);
+    
+    const playersBeatChucky = winners.filter(w => w.evaluation.value > chuckyEval.value);
+    const playersLoseToChucky = winners.filter(w => w.evaluation.value <= chuckyEval.value);
+    
+    console.log('[HOLM TIE] Players beat Chucky:', playersBeatChucky.length, 'Players lose:', playersLoseToChucky.length);
+    
+    if (playersBeatChucky.length === 0) {
+      // All tied players lost to Chucky - they all match pot (capped)
+      console.log('[HOLM TIE] Chucky beats all tied players');
+      
+      const potMatchAmount = game.pot_max_enabled 
+        ? Math.min(game.pot, game.pot_max_value) 
+        : game.pot;
+      
+      let totalMatched = 0;
+      let loserNames: string[] = [];
+      
+      for (const loser of playersLoseToChucky) {
+        const loserUsername = loser.player.profiles?.username || loser.player.user_id;
+        loserNames.push(loserUsername);
+        
+        await supabase
+          .from('players')
+          .update({ chips: loser.player.chips - potMatchAmount })
+          .eq('id', loser.player.id);
+        
+        totalMatched += potMatchAmount;
+      }
+      
+      const newPot = game.pot + totalMatched;
+      
+      await supabase
+        .from('games')
+        .update({
+          last_round_result: `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${formatHandRank(chuckyEval.rank)}. $${totalMatched} added to pot.`,
+          awaiting_next_round: true,
+          pot: newPot
+        })
+        .eq('id', gameId);
     } else {
-      console.log('[HOLM TIE] Successfully set awaiting_next_round=true');
+      // Some players beat Chucky - they split the pot
+      console.log('[HOLM TIE] Some tied players beat Chucky');
+      
+      const splitAmount = Math.floor(game.pot / playersBeatChucky.length);
+      let winnerNames: string[] = [];
+      
+      for (const winner of playersBeatChucky) {
+        const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
+        winnerNames.push(winnerUsername);
+        
+        await supabase
+          .from('players')
+          .update({ 
+            chips: winner.player.chips + splitAmount,
+            legs: winner.player.legs + game.leg_value
+          })
+          .eq('id', winner.player.id);
+      }
+      
+      // Losers match pot (capped)
+      const potMatchAmount = game.pot_max_enabled 
+        ? Math.min(game.pot, game.pot_max_value) 
+        : game.pot;
+      
+      let totalMatched = 0;
+      
+      for (const loser of playersLoseToChucky) {
+        await supabase
+          .from('players')
+          .update({ chips: loser.player.chips - potMatchAmount })
+          .eq('id', loser.player.id);
+        
+        totalMatched += potMatchAmount;
+      }
+      
+      await supabase
+        .from('games')
+        .update({
+          last_round_result: `Tie broken! ${winnerNames.join(' and ')} beat Chucky and split $${game.pot}!`,
+          awaiting_next_round: true,
+          pot: totalMatched
+        })
+        .eq('id', gameId);
     }
   }
 
