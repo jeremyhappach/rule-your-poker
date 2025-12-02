@@ -222,8 +222,19 @@ export const GameTable = ({
               : (allDecisionsIn ? player?.current_decision : null);
             
             // In Holm game, buck just indicates who decides first, but all players can decide
-            // Only show buck when game is actually in progress (not during transitions)
-            const hasBuck = gameType === 'holm-game' && buckPosition === player?.position && !awaitingNextRound && roundStatus !== 'completed';
+            // Only show buck when round is fully initialized with turn position
+            const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
+            const hasBuck = gameType === 'holm-game' && buckPosition === player?.position && !awaitingNextRound && roundStatus !== 'completed' && roundIsReady;
+            
+            console.log('[GAME_TABLE] Buck check for position', player?.position, ':', {
+              gameType,
+              buckPosition,
+              awaitingNextRound,
+              roundStatus,
+              currentTurnPosition,
+              roundIsReady,
+              hasBuck
+            });
             
             // Use seat position (1-7) for stable angle calculation
             const seatPosition = seat.position;
@@ -388,11 +399,27 @@ export const GameTable = ({
                         {/* Fold button (left) */}
                         {(() => {
                           // For Holm game, only show buttons when it's the player's turn and game is ready
+                          const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed'
+                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed' && roundIsReady
                             : true;
                           
-                          return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
+                          const shouldShowButtons = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
+                          
+                          if (gameType === 'holm-game' && isCurrentUser && player.position === currentTurnPosition) {
+                            console.log('[GAME_TABLE] Button check for current turn player position', player.position, ':', {
+                              roundIsReady,
+                              currentTurnPosition,
+                              awaitingNextRound,
+                              roundStatus,
+                              hasPlayerDecided,
+                              allDecisionsIn,
+                              isPlayerTurn,
+                              shouldShowButtons
+                            });
+                          }
+                          
+                          return shouldShowButtons;
                         })() ? (
                           <Button 
                             variant="destructive" 
@@ -416,8 +443,9 @@ export const GameTable = ({
                         {/* Stay button (right) */}
                         {(() => {
                           // For Holm game, only show buttons when it's the player's turn and game is ready
+                          const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed'
+                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed' && roundIsReady
                             : true;
                           
                           return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
