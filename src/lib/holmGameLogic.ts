@@ -207,25 +207,22 @@ export async function startHolmRound(gameId: string) {
     throw new Error('No active players found');
   }
 
-  // In Holm, we always use round 1 and just reset state for each hand
-  const HOLM_ROUND_NUMBER = 1;
-  
-  // Check if round already exists (it should after first hand)
-  const { data: existingRound } = await supabase
+  // Check if round 1 exists - if not, this is the very first hand
+  const { data: round1 } = await supabase
     .from('rounds')
     .select('*')
     .eq('game_id', gameId)
-    .eq('round_number', HOLM_ROUND_NUMBER)
+    .eq('round_number', 1)
     .maybeSingle();
 
-  const isFirstHand = !existingRound;
-  
-  // On first hand, collect antes. On subsequent hands, pot continues from previous value
+  const isFirstHand = !round1;
   let currentPot = gameConfig.pot || 0;
   
   if (isFirstHand) {
-    // First hand - collect antes from all players
-    console.log('[HOLM] First hand - collecting antes');
+    // Very first hand - create round 1 for ante collection
+    console.log('[HOLM] First hand - creating round 1 for ante collection');
+    
+    // Collect antes from all players
     for (const player of players) {
       currentPot += anteAmount;
       await supabase
@@ -233,20 +230,49 @@ export async function startHolmRound(gameId: string) {
         .update({ chips: player.chips - anteAmount })
         .eq('id', player.id);
     }
+    
+    // Create round 1 (ante collection round - no gameplay)
+    await supabase
+      .from('rounds')
+      .insert({
+        game_id: gameId,
+        round_number: 1,
+        cards_dealt: 0,
+        status: 'completed',
+        pot: currentPot,
+        community_cards: [] as any
+      });
+    
+    // Update game to round 1
+    await supabase
+      .from('games')
+      .update({
+        current_round: 1,
+        pot: currentPot,
+        buck_position: buckPosition
+      })
+      .eq('id', gameId);
+    
+    console.log('[HOLM] Round 1 completed - antes collected, buck positioned');
   }
+  
+  // Now handle round 2 (actual gameplay) - check if it exists
+  const { data: round2 } = await supabase
+    .from('rounds')
+    .select('*')
+    .eq('game_id', gameId)
+    .eq('round_number', 2)
+    .maybeSingle();
 
-  console.log('[HOLM] Round check:', {
-    isFirstHand,
-    exists: !!existingRound,
-    roundId: existingRound?.id,
+  console.log('[HOLM] Round 2 check:', {
+    exists: !!round2,
+    roundId: round2?.id,
     currentPot
   });
 
+  // Deal fresh cards for the new hand
   let roundId: string;
-  // First player (buck) gets 10 seconds to decide - turn-based
   const deadline = new Date(Date.now() + 10000);
-
-  // Deal fresh cards for the new hand - do this BEFORE checking for existing round
   const deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
@@ -258,16 +284,16 @@ export async function startHolmRound(gameId: string) {
     deck[cardIndex++]
   ];
 
-  if (existingRound) {
-    console.log('[HOLM] Resetting round 1 for new hand...');
+  if (round2) {
+    console.log('[HOLM] Resetting round 2 for new hand...');
     
     // Delete old player cards from previous hand
     await supabase
       .from('player_cards')
       .delete()
-      .eq('round_id', existingRound.id);
+      .eq('round_id', round2.id);
     
-    // Reset the existing round state for the new hand with FRESH community cards
+    // Reset round 2 with fresh cards
     await supabase
       .from('rounds')
       .update({
@@ -281,17 +307,17 @@ export async function startHolmRound(gameId: string) {
         community_cards: communityCards as any,
         current_turn_position: buckPosition
       })
-      .eq('id', existingRound.id);
+      .eq('id', round2.id);
     
-    roundId = existingRound.id;
+    roundId = round2.id;
   } else {
-    // First hand - create round 1
-    console.log('[HOLM] Creating round 1 for first hand');
+    // Create round 2 for actual gameplay
+    console.log('[HOLM] Creating round 2 for gameplay');
     const { data: round, error: roundError } = await supabase
       .from('rounds')
       .insert({
         game_id: gameId,
-        round_number: HOLM_ROUND_NUMBER,
+        round_number: 2,
         cards_dealt: 4,
         status: 'betting',
         pot: currentPot,
@@ -338,12 +364,12 @@ export async function startHolmRound(gameId: string) {
       });
   }
 
-  // Update game status
+  // Update game status - always use round 2 for gameplay
   await supabase
     .from('games')
     .update({
       status: 'in_progress',
-      current_round: HOLM_ROUND_NUMBER,
+      current_round: 2,
       pot: currentPot,
       buck_position: buckPosition,
       all_decisions_in: false,
@@ -351,7 +377,7 @@ export async function startHolmRound(gameId: string) {
     })
     .eq('id', gameId);
 
-  console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', currentPot);
+  console.log('[HOLM] Hand started. Round: 2, Buck:', buckPosition, 'Pot:', currentPot);
 }
 
 /**
