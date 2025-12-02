@@ -404,80 +404,84 @@ export const GameTable = ({
                       
                       {/* Action buttons and chip stack row */}
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
-                        {/* Fold button (left) */}
                         {(() => {
                           // For Holm game, only show buttons when it's the player's turn and game is ready
                           const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
                           
-                          // In Holm game, buttons only show when:
-                          // 1. It's actually your turn (position matches currentTurnPosition)
-                          // 2. Round is ready and has a current turn set
-                          // 3. Not awaiting next round
-                          // 4. Round is not completed
-                          const isPlayerTurn = gameType === 'holm-game' 
-                            ? (roundIsReady && currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed')
-                            : true; // For non-Holm games, always allow if other conditions met
-                          
-                          const shouldShowButtons = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
-                          
-                          if (gameType === 'holm-game' && isCurrentUser) {
-                            console.log('[GAME_TABLE] Fold button check for player position', player.position, ':', {
-                              roundIsReady,
-                              currentTurnPosition,
-                              playerPosition: player.position,
-                              positionMatch: currentTurnPosition === player.position,
-                              awaitingNextRound,
-                              roundStatus,
-                              hasPlayerDecided,
-                              allDecisionsIn,
-                              isPlayerTurn,
-                              shouldShowButtons
-                            });
-                          }
-                          
-                          return shouldShowButtons;
-                        })() ? (
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={onFold}
-                            className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
-                          >
-                            Fold
-                          </Button>
-                        ) : (
-                          <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
-                        )}
-                        
-                        {/* Chip balance (center) */}
-                        <div className="flex items-center justify-center">
-                          <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
-                            ${player.chips}
-                          </p>
-                        </div>
-                        
-                        {/* Stay button (right) */}
-                        {(() => {
-                          // For Holm game, only show buttons when it's the player's turn and game is ready
-                          const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
-                          
-                          // Same logic as Fold button
                           const isPlayerTurn = gameType === 'holm-game' 
                             ? (roundIsReady && currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed')
                             : true;
                           
-                          return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
-                        })() ? (
-                          <Button 
-                            size="sm"
-                            onClick={onStay}
-                            className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
-                          >
-                            Stay
-                          </Button>
-                        ) : (
-                          <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
-                        )}
+                          const canDecide = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
+                          const hasDecidedFold = isCurrentUser && hasPlayerDecided && playerDecision === 'fold';
+                          const hasDecidedStay = isCurrentUser && hasPlayerDecided && playerDecision === 'stay';
+                          
+                          if (gameType === 'holm-game' && isCurrentUser) {
+                            console.log('[GAME_TABLE] Decision buttons check for player position', player.position, ':', {
+                              roundIsReady,
+                              currentTurnPosition,
+                              playerPosition: player.position,
+                              canDecide,
+                              hasDecidedFold,
+                              hasDecidedStay
+                            });
+                          }
+                          
+                          return (
+                            <>
+                              {/* Fold button (left) - shown when no decision or when fold is chosen */}
+                              {canDecide ? (
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={onFold}
+                                  className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
+                                >
+                                  Fold
+                                </Button>
+                              ) : hasDecidedFold ? (
+                                <Button 
+                                  variant="destructive" 
+                                  size="lg"
+                                  disabled
+                                  className="text-xs sm:text-sm md:text-base px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 h-auto animate-[pulse_2s_ease-in-out_3] scale-110 relative"
+                                >
+                                  <span className="mr-1">✓</span> FOLDED
+                                </Button>
+                              ) : hasDecidedStay ? null : (
+                                <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
+                              )}
+                              
+                              {/* Chip balance (center) */}
+                              <div className="flex items-center justify-center">
+                                <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
+                                  ${player.chips}
+                                </p>
+                              </div>
+                              
+                              {/* Stay button (right) - shown when no decision or when stay is chosen */}
+                              {canDecide ? (
+                                <Button 
+                                  size="sm"
+                                  onClick={onStay}
+                                  className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
+                                >
+                                  Stay
+                                </Button>
+                              ) : hasDecidedStay ? (
+                                <Button 
+                                  size="lg"
+                                  disabled
+                                  className="bg-poker-chip-green text-white text-xs sm:text-sm md:text-base px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 h-auto animate-[pulse_2s_ease-in-out_3] scale-110 relative"
+                                >
+                                  <span className="mr-1">✓</span> STAYED
+                                </Button>
+                              ) : hasDecidedFold ? null : (
+                                <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </CardContent>
