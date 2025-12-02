@@ -660,12 +660,12 @@ async function handleChuckyShowdown(
 
   if (playerWins) {
     console.log('[HOLM SHOWDOWN] Player wins! Pot:', game.pot);
-    // Player beats Chucky - award pot and leg, GAME OVER (Holm game ends when you beat Chucky)
+    // Player beats Chucky - award pot, GAME OVER (Holm game ends when you beat Chucky)
+    // Note: Holm game doesn't use legs system
     await supabase
       .from('players')
       .update({ 
-        chips: player.chips + game.pot,
-        legs: player.legs + game.leg_value
+        chips: player.chips + game.pot
       })
       .eq('id', player.id);
 
@@ -775,12 +775,11 @@ async function handleMultiPlayerShowdown(
     const winner = winners[0];
     const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
     
-    // Winner takes the pot and gets a leg
+    // Winner takes the pot (Holm game doesn't use legs system)
     await supabase
       .from('players')
       .update({ 
-        chips: winner.player.chips + game.pot,
-        legs: winner.player.legs + game.leg_value
+        chips: winner.player.chips + game.pot
       })
       .eq('id', winner.player.id);
 
@@ -912,11 +911,11 @@ async function handleMultiPlayerShowdown(
         const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
         winnerNames.push(winnerUsername);
         
+        // Award split pot (Holm game doesn't use legs system)
         await supabase
           .from('players')
           .update({ 
-            chips: winner.player.chips + splitAmount,
-            legs: winner.player.legs + game.leg_value
+            chips: winner.player.chips + splitAmount
           })
           .eq('id', winner.player.id);
       }
