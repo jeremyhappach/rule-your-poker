@@ -891,9 +891,17 @@ export async function endRound(gameId: string) {
     // Showdowns never end the game - continue to next round
     const nextRound = currentRound < 3 ? currentRound + 1 : 1;
     
+    console.log('[endRound] SHOWDOWN: Preparing to set awaiting_next_round', {
+      gameId,
+      currentRound,
+      nextRound,
+      resultMessage,
+      hasResultMessage: resultMessage.length > 0
+    });
+    
     // Set game to await next round with result visible
     // Frontend will handle the 4-second delay before starting next round
-    await supabase
+    const { data: updateResult, error: updateError } = await supabase
       .from('games')
       .update({ 
         awaiting_next_round: true,
@@ -901,7 +909,14 @@ export async function endRound(gameId: string) {
         last_round_result: resultMessage  // Set result message here atomically
         // proceedToNextRound will clear it after 4 seconds
       })
-      .eq('id', gameId);
+      .eq('id', gameId)
+      .select();
+    
+    console.log('[endRound] SHOWDOWN: awaiting_next_round update result:', {
+      error: updateError,
+      rowsUpdated: updateResult?.length,
+      awaiting: updateResult?.[0]?.awaiting_next_round
+    });
     
     return; // Exit after showdown handling
   } else {
