@@ -308,6 +308,17 @@ export const GameTable = ({
                     ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
                     ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-110" : ""}
                     ${player.sitting_out ? "opacity-50 grayscale" : ""}
+                    ${
+                      // Pulsing yellow border when it's your turn in Holm game
+                      gameType === 'holm-game' && 
+                      isCurrentUser && 
+                      currentTurnPosition === player.position && 
+                      !awaitingNextRound && 
+                      roundStatus !== 'completed' && 
+                      !hasPlayerDecided
+                      ? "ring-[6px] ring-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.9)] animate-pulse"
+                      : ""
+                    }
                     bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                     transition-all duration-500
                   `}>
