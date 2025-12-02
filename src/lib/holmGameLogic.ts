@@ -152,9 +152,10 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
  * - Each player gets 4 cards
  * - 4 community cards (2 visible, 2 hidden initially)
  * - Decision starts with buck position and rotates clockwise
+ * - Always uses round 1 (Holm has no round progression, just hands)
  */
-export async function startHolmRound(gameId: string, roundNumber: number) {
-  console.log('[HOLM] Starting Holm round', roundNumber, 'for game', gameId);
+export async function startHolmRound(gameId: string) {
+  console.log('[HOLM] Starting Holm hand for game', gameId);
   
   // Fetch game configuration
   const { data: gameConfig } = await supabase
@@ -170,13 +171,12 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   const anteAmount = gameConfig.ante_amount || 2;
   const dealerPosition = gameConfig.dealer_position || 1;
   
-  // Buck position calculation - only for round 1, otherwise use existing position
+  // Use existing buck position (rotated by proceedToNextHolmRound)
+  // If not set (first hand), calculate it
   let buckPosition = gameConfig.buck_position;
   
-  // Only calculate initial buck position on round 1
-  if (roundNumber === 1) {
-    // Buck starts one position to the left of dealer
-    // If we have 7 seats and dealer is at position 1, buck starts at position 7
+  if (!buckPosition) {
+    // First hand - buck starts one position to the left of dealer
     const { data: allPlayers } = await supabase
       .from('players')
       .select('position')
@@ -189,14 +189,9 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     
     buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
     
-    console.log('[HOLM] Buck position calculation for round 1:', {
-      dealerPosition,
-      maxPosition,
-      playerPositions: allPlayers?.map(p => p.position),
-      calculatedBuckPosition: buckPosition
-    });
+    console.log('[HOLM] First hand - calculated buck position:', buckPosition);
   } else {
-    console.log('[HOLM] Using existing buck position for round', roundNumber, ':', buckPosition);
+    console.log('[HOLM] Using rotated buck position:', buckPosition);
   }
 
   // Get all active players who aren't sitting out
@@ -212,27 +207,24 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     throw new Error('No active players found');
   }
 
-  // Calculate pot from antes (only for round 1)
-  let initialPot = gameConfig.pot || 0;
+  // In Holm, we always use round 1 and just reset state for each hand
+  const HOLM_ROUND_NUMBER = 1;
   
-  if (roundNumber === 1) {
-    for (const player of players) {
-      initialPot += anteAmount;
-    }
-  }
-
-  // Check if round already exists to prevent duplicates
+  // Pot continues from previous hand (accumulates)
+  let currentPot = gameConfig.pot || 0;
+  
+  // Check if round already exists (it should after first hand)
   const { data: existingRound } = await supabase
     .from('rounds')
     .select('*')
     .eq('game_id', gameId)
-    .eq('round_number', roundNumber)
-    .single();
+    .eq('round_number', HOLM_ROUND_NUMBER)
+    .maybeSingle();
 
-  console.log('[HOLM] Existing round check for round', roundNumber, ':', {
+  console.log('[HOLM] Round check:', {
     exists: !!existingRound,
     roundId: existingRound?.id,
-    status: existingRound?.status
+    currentPot
   });
 
   let roundId: string;
@@ -252,63 +244,52 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   ];
 
   if (existingRound) {
-    console.log('[HOLM] Round', roundNumber, 'already exists. Resetting for new hand...');
+    console.log('[HOLM] Resetting round 1 for new hand...');
     
     // Delete old player cards from previous hand
-    const { error: deleteError } = await supabase
+    await supabase
       .from('player_cards')
       .delete()
       .eq('round_id', existingRound.id);
     
-    if (deleteError) {
-      console.error('[HOLM] Error deleting old player cards:', deleteError);
-    }
-    
     // Reset the existing round state for the new hand with FRESH community cards
-    const { error: updateError } = await supabase
+    await supabase
       .from('rounds')
       .update({
         status: 'betting',
-        pot: initialPot,
+        pot: currentPot,
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
         chucky_active: false,
         chucky_cards: null,
         chucky_cards_revealed: 0,
-        community_cards: communityCards as any, // Fresh cards!
-        current_turn_position: buckPosition // Start with buck position
+        community_cards: communityCards as any,
+        current_turn_position: buckPosition
       })
       .eq('id', existingRound.id);
     
-    if (updateError) {
-      console.error('[HOLM] ERROR updating existing round:', updateError);
-      throw new Error(`Failed to update round: ${updateError.message}`);
-    }
-    
-    console.log('[HOLM] Successfully updated existing round', existingRound.id);
     roundId = existingRound.id;
   } else {
-    // Create new round with fresh community cards
-    console.log('[HOLM] Creating new round', roundNumber);
+    // First hand - create round 1
+    console.log('[HOLM] Creating round 1 for first hand');
     const { data: round, error: roundError } = await supabase
       .from('rounds')
       .insert({
         game_id: gameId,
-        round_number: roundNumber,
+        round_number: HOLM_ROUND_NUMBER,
         cards_dealt: 4,
         status: 'betting',
-        pot: initialPot,
+        pot: currentPot,
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
-        community_cards: communityCards as any, // Fresh cards!
+        community_cards: communityCards as any,
         chucky_active: false,
-        current_turn_position: buckPosition // Start with buck position
+        current_turn_position: buckPosition
       })
       .select()
       .single();
 
     if (roundError || !round) {
-      console.error('[HOLM] Failed to create round:', roundError);
       throw new Error(`Failed to create round: ${roundError?.message}`);
     }
     
@@ -316,29 +297,13 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   }
 
   // Reset player decisions for new hand
-  const { error: resetError } = await supabase
+  await supabase
     .from('players')
     .update({ 
       current_decision: null,
       decision_locked: false
     })
     .eq('game_id', gameId);
-  
-  if (resetError) {
-    console.error('[HOLM] ERROR resetting player decisions:', resetError);
-  } else {
-    console.log('[HOLM] Successfully reset player decisions');
-  }
-
-  // Deduct antes from player chips (only for round 1)
-  if (roundNumber === 1) {
-    for (const player of players) {
-      await supabase
-        .from('players')
-        .update({ chips: player.chips - anteAmount })
-        .eq('id', player.id);
-    }
-  }
 
   // Deal 4 cards to each player using the fresh deck
   for (const player of players) {
@@ -358,66 +323,20 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       });
   }
 
-  // Update game status and set buck position
-  const { error: gameUpdateError } = await supabase
+  // Update game status
+  await supabase
     .from('games')
     .update({
       status: 'in_progress',
-      current_round: roundNumber,
-      pot: initialPot,
+      current_round: HOLM_ROUND_NUMBER,
+      pot: currentPot,
       buck_position: buckPosition,
       all_decisions_in: false,
-      last_round_result: null // Clear result when starting new round
+      last_round_result: null
     })
     .eq('id', gameId);
-  
-  if (gameUpdateError) {
-    console.error('[HOLM] ERROR updating game:', gameUpdateError);
-    throw new Error(`Failed to update game: ${gameUpdateError.message}`);
-  }
-  
-  console.log('[HOLM] Successfully updated game to round', roundNumber);
 
-  console.log('[HOLM] ========== Round setup complete ==========');
-  console.log('[HOLM] Round started. Buck position:', buckPosition);
-  console.log('[HOLM] Round ID:', roundId);
-  console.log('[HOLM] Initial turn position:', buckPosition);
-  console.log('[HOLM] Decision deadline set for 10 seconds from now');
-  console.log('[HOLM] Frontend will handle bot decisions via useEffect');
-  
-  // Add a small delay to ensure database propagation
-  await new Promise(resolve => setTimeout(resolve, 200));
-  
-  // Verify the round was created with turn position
-  const { data: verifyRound } = await supabase
-    .from('rounds')
-    .select('current_turn_position, decision_deadline, status')
-    .eq('id', roundId)
-    .single();
-  
-  console.log('[HOLM] *** VERIFICATION - Round in DB:', {
-    roundId,
-    current_turn_position: verifyRound?.current_turn_position,
-    has_deadline: !!verifyRound?.decision_deadline,
-    status: verifyRound?.status
-  });
-  
-  if (!verifyRound?.current_turn_position) {
-    console.error('[HOLM] *** CRITICAL ERROR: Round created but turn position not in database! ***');
-    console.error('[HOLM] This will cause buttons/timer to not appear');
-    console.error('[HOLM] Attempting to fix by updating round again...');
-    
-    // Try to fix by updating again
-    await supabase
-      .from('rounds')
-      .update({
-        current_turn_position: buckPosition,
-        decision_deadline: new Date(Date.now() + 10000).toISOString()
-      })
-      .eq('id', roundId);
-      
-    console.log('[HOLM] Attempted fix complete');
-  }
+  console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', currentPot);
 }
 
 /**
@@ -999,10 +918,10 @@ async function handleMultiPlayerShowdown(
 }
 
 /**
- * Proceed to next Holm round
+ * Proceed to next Holm hand (always uses round 1, just resets state)
  */
 export async function proceedToNextHolmRound(gameId: string) {
-  console.log('[HOLM NEXT] ========== Proceeding to next round ==========');
+  console.log('[HOLM NEXT] ========== Proceeding to next hand ==========');
 
   const { data: game } = await supabase
     .from('games')
@@ -1014,13 +933,6 @@ export async function proceedToNextHolmRound(gameId: string) {
     console.error('[HOLM NEXT] ERROR: Game not found');
     return;
   }
-
-  console.log('[HOLM NEXT] Current game state:', {
-    current_round: game.current_round,
-    buck_position: game.buck_position,
-    pot: game.pot,
-    awaiting_next_round: game.awaiting_next_round
-  });
 
   // Rotate buck position clockwise to next active player
   const { data: players } = await supabase
@@ -1036,80 +948,31 @@ export async function proceedToNextHolmRound(gameId: string) {
     return;
   }
 
-  console.log('[HOLM NEXT] Active player positions:', players.map(p => p.position));
-
   // Get sorted positions of active players
   const positions = players.map(p => p.position).sort((a, b) => a - b);
   const currentBuckIndex = positions.indexOf(game.buck_position);
-  
-  console.log('[HOLM NEXT] Buck rotation:', {
-    current_buck: game.buck_position,
-    current_index: currentBuckIndex,
-    positions
-  });
-  
-  // Find next position (wrap around if needed)
   const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
   const newBuckPosition = positions[nextBuckIndex];
 
-  console.log('[HOLM NEXT] New buck position:', newBuckPosition);
+  console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
 
-  // Update buck position FIRST, but keep awaiting flag until round is ready
+  // Update buck position
   await supabase
     .from('games')
     .update({
       buck_position: newBuckPosition,
-      last_round_result: null // Clear result when starting new round
+      last_round_result: null
     })
     .eq('id', gameId);
 
-  const nextRound = (game.current_round || 0) + 1;
-  console.log('[HOLM NEXT] Starting round', nextRound);
-  await startHolmRound(gameId, nextRound);
+  // Start new hand (always round 1)
+  await startHolmRound(gameId);
   
-  console.log('[HOLM NEXT] startHolmRound completed, verifying round setup...');
-  
-  // Verify round was created with turn position before clearing awaiting flag
-  const { data: verifyRound, error: verifyError } = await supabase
-    .from('rounds')
-    .select('current_turn_position, decision_deadline, status')
-    .eq('game_id', gameId)
-    .eq('round_number', nextRound)
-    .single();
-  
-  if (verifyError) {
-    console.error('[HOLM NEXT] ERROR verifying round:', verifyError);
-    return;
-  }
-  
-  console.log('[HOLM NEXT] *** VERIFICATION RESULT ***', {
-    has_round: !!verifyRound,
-    current_turn_position: verifyRound?.current_turn_position,
-    has_deadline: !!verifyRound?.decision_deadline,
-    status: verifyRound?.status,
-    deadline: verifyRound?.decision_deadline
-  });
-  
-  if (!verifyRound?.current_turn_position) {
-    console.error('[HOLM NEXT] ERROR: Round created but no turn position set! Cannot proceed.');
-    return;
-  }
-  
-  console.log('[HOLM NEXT] ✓ Verified round has turn position:', verifyRound.current_turn_position);
-  
-  // CRITICAL: Only clear awaiting flag AFTER round is fully set up with current_turn_position
-  const { error: clearAwaitingError } = await supabase
+  // Clear awaiting flag
+  await supabase
     .from('games')
-    .update({
-      awaiting_next_round: false
-    })
+    .update({ awaiting_next_round: false })
     .eq('id', gameId);
-    
-  if (clearAwaitingError) {
-    console.error('[HOLM NEXT] ERROR clearing awaiting flag:', clearAwaitingError);
-  } else {
-    console.log('[HOLM NEXT] ✓ Cleared awaiting_next_round flag');
-  }
-    
-  console.log('[HOLM NEXT] ========== Next round started and ready ==========');
+
+  console.log('[HOLM NEXT] Next hand ready');
 }

@@ -579,92 +579,13 @@ const Game = () => {
             console.log('[AWAITING_NEXT_ROUND] Calling proceedToNextRound');
             await proceedToNextRound(gameId);
           }
-          console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next round');
-          // Retry fetching until we see the new round with turn position
-          const expectedRound = isHolmGame ? (game?.current_round || 0) + 1 : (game?.current_round || 0) + 1;
-          console.log('[AWAITING_NEXT_ROUND] Expecting round number:', expectedRound);
+          console.log('[AWAITING_NEXT_ROUND] Successfully proceeded to next hand');
           
-          let retries = 0;
-          const maxRetries = 10;
+          // Simple refetch - no complex round tracking needed for Holm
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await fetchGameData();
           
-          while (retries < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 300));
-            await fetchGameData();
-            
-            // Check if we got the new round data (with cache busting and proper ordering)
-            const timestamp = Date.now();
-            const { data: checkGame, error: checkError } = await supabase
-              .from('games')
-              .select(`
-                *,
-                rounds!inner (
-                  id,
-                  round_number,
-                  current_turn_position,
-                  status,
-                  decision_deadline,
-                  created_at
-                )
-              `)
-              .eq('id', gameId)
-              .order('created_at', { foreignTable: 'rounds', ascending: false })
-              .single();
-            
-            if (checkError) {
-              console.error('[AWAITING_NEXT_ROUND] Error fetching game:', checkError);
-            }
-            
-            const allRounds = Array.isArray(checkGame?.rounds) ? checkGame.rounds : [];
-            const newRound = allRounds.find((r: any) => r.round_number === expectedRound);
-            
-            console.log('[AWAITING_NEXT_ROUND] Retry', retries + 1, '- Round', expectedRound, 'status (timestamp:', timestamp, '):', {
-              found: !!newRound,
-              has_turn: newRound?.current_turn_position,
-              status: newRound?.status,
-              current_game_round: checkGame?.current_round,
-              all_round_numbers: allRounds.map((r: any) => r.round_number),
-              total_rounds: allRounds.length,
-              error: checkError?.message
-            });
-            
-            if (newRound?.current_turn_position && newRound.status === 'betting') {
-              console.log('[AWAITING_NEXT_ROUND] ✓ Got new round data with turn position!');
-              break;
-            }
-            
-            // Also try a direct round query as fallback
-            const { data: directRound } = await supabase
-              .from('rounds')
-              .select('*')
-              .eq('game_id', gameId)
-              .eq('round_number', expectedRound)
-              .maybeSingle();
-            
-            if (directRound) {
-              console.log('[AWAITING_NEXT_ROUND] Direct query found round:', {
-                round_number: directRound.round_number,
-                has_turn: directRound.current_turn_position,
-                status: directRound.status
-              });
-              
-              if (directRound.current_turn_position && directRound.status === 'betting') {
-                console.log('[AWAITING_NEXT_ROUND] ✓ Direct query confirmed round is ready!');
-                break;
-              }
-            }
-            
-            retries++;
-            if (retries >= maxRetries) {
-              console.error('[AWAITING_NEXT_ROUND] *** TIMEOUT: Failed to get new round data after', maxRetries, 'attempts');
-              console.error('[AWAITING_NEXT_ROUND] Last known state:', {
-                game_current_round: checkGame?.current_round,
-                expected_round: expectedRound,
-                found_rounds: allRounds.map((r: any) => ({ num: r.round_number, status: r.status, turn: r.current_turn_position }))
-              });
-            }
-          }
-          
-          console.log('[AWAITING_NEXT_ROUND] Refetched game data after transition');
+          console.log('[AWAITING_NEXT_ROUND] Refetched game data');
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] Error proceeding:', error);
         } finally {
@@ -1049,7 +970,7 @@ const Game = () => {
     try {
       const isHolmGame = game?.game_type === 'holm-game';
       if (isHolmGame) {
-        await startHolmRound(gameId, 1);
+        await startHolmRound(gameId);
       } else {
         await startRound(gameId, 1);
       }
