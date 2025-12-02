@@ -633,7 +633,7 @@ async function handleChuckyShowdown(
 
   if (playerWins) {
     console.log('[HOLM SHOWDOWN] Player wins! Pot:', game.pot);
-    // Player beats Chucky - award pot and leg, check if game over
+    // Player beats Chucky - award pot and leg, GAME OVER (Holm game ends when you beat Chucky)
     await supabase
       .from('players')
       .update({ 
@@ -642,49 +642,23 @@ async function handleChuckyShowdown(
       })
       .eq('id', player.id);
 
-    // Check if player reached legs_to_win
-    const newLegs = player.legs + game.leg_value;
-    const hasWon = newLegs >= game.legs_to_win;
-
-    console.log('[HOLM SHOWDOWN] Victory check:', {
-      playerUsername,
-      currentLegs: player.legs,
-      legValue: game.leg_value,
-      newLegs,
-      legsToWin: game.legs_to_win,
-      hasWon
-    });
-
-    if (hasWon) {
-      // Player wins the game
-      console.log('[HOLM SHOWDOWN] *** PLAYER WINS THE GAME! Setting status to game_over ***');
-      const { error: gameOverError } = await supabase
-        .from('games')
-        .update({
-          status: 'game_over',
-          last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins the game!`,
-          game_over_at: new Date().toISOString(),
-          pot: 0,
-          awaiting_next_round: false // Clear awaiting flag when game ends
-        })
-        .eq('id', gameId);
-      
-      if (gameOverError) {
-        console.error('[HOLM SHOWDOWN] ERROR setting game_over status:', gameOverError);
-      } else {
-        console.log('[HOLM SHOWDOWN] Successfully set game_over status');
-      }
+    // In Holm game, beating Chucky ends the game immediately
+    console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Game ends. ***');
+    const { error: gameOverError } = await supabase
+      .from('games')
+      .update({
+        status: 'game_over',
+        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins the game!`,
+        game_over_at: new Date().toISOString(),
+        pot: 0,
+        awaiting_next_round: false
+      })
+      .eq('id', gameId);
+    
+    if (gameOverError) {
+      console.error('[HOLM SHOWDOWN] ERROR setting game_over status:', gameOverError);
     } else {
-      // Continue to next round
-      console.log('[HOLM SHOWDOWN] Player wins but game continues');
-      await supabase
-        .from('games')
-        .update({
-          last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${game.pot}!`,
-          awaiting_next_round: true,
-          pot: 0
-        })
-        .eq('id', gameId);
+      console.log('[HOLM SHOWDOWN] Successfully set game_over status');
     }
   } else {
     console.log('[HOLM SHOWDOWN] Chucky wins!');
@@ -797,42 +771,21 @@ async function handleMultiPlayerShowdown(
       totalMatched += potMatchAmount;
     }
 
-    // Check if winner reached legs_to_win
-    const newLegs = winner.player.legs + game.leg_value;
-    const hasWon = newLegs >= game.legs_to_win;
-
-    console.log('[HOLM MULTI] Winner now has', newLegs, 'legs. Needs', game.legs_to_win, 'to win. Game over:', hasWon);
-
-    if (hasWon) {
-      // Winner wins the game
-      console.log('[HOLM MULTI] Winner reached legs_to_win! Game over.');
-      await supabase
-        .from('games')
-        .update({
-          status: 'game_over',
-          last_round_result: `${winnerUsername} wins the game with ${formatHandRank(winner.evaluation.rank)}!`,
-          game_over_at: new Date().toISOString(),
-          pot: totalMatched,
-          awaiting_next_round: false // Clear awaiting flag when game ends
-        })
-        .eq('id', gameId);
+    // In Holm, multi-player showdowns never end the game - only beating Chucky does
+    console.log('[HOLM MULTI] Winner in multi-player showdown, continuing to next round');
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({
+        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)}!`,
+        awaiting_next_round: true,
+        pot: totalMatched
+      })
+      .eq('id', gameId);
+    
+    if (updateError) {
+      console.error('[HOLM MULTI] ERROR updating game:', updateError);
     } else {
-      // Continue to next round
-      console.log('[HOLM MULTI] Setting awaiting_next_round to proceed to next hand');
-      const { error: updateError } = await supabase
-        .from('games')
-        .update({
-          last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)}!`,
-          awaiting_next_round: true,
-          pot: totalMatched
-        })
-        .eq('id', gameId);
-      
-      if (updateError) {
-        console.error('[HOLM MULTI] ERROR updating game:', updateError);
-      } else {
-        console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=', totalMatched);
-      }
+      console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=', totalMatched);
     }
   
   // Mark round as completed to hide timer
@@ -844,7 +797,6 @@ async function handleMultiPlayerShowdown(
     // Tie - split pot and award legs to all winners
     const splitAmount = Math.floor(game.pot / winners.length);
     
-    let anyWinnerReachedGoal = false;
     let winnerNames: string[] = [];
 
     for (const winner of winners) {
@@ -858,45 +810,25 @@ async function handleMultiPlayerShowdown(
           legs: winner.player.legs + game.leg_value
         })
         .eq('id', winner.player.id);
-
-      const newLegs = winner.player.legs + game.leg_value;
-      if (newLegs >= game.legs_to_win) {
-        anyWinnerReachedGoal = true;
-      }
     }
 
-    console.log('[HOLM TIE] Tied winners:', winnerNames, 'Any reached goal:', anyWinnerReachedGoal);
+    console.log('[HOLM TIE] Tied winners:', winnerNames);
 
-    if (anyWinnerReachedGoal) {
-      // At least one winner reached legs_to_win
-      console.log('[HOLM TIE] At least one winner reached legs_to_win! Game over.');
-      await supabase
-        .from('games')
-        .update({
-          status: 'game_over',
-          last_round_result: `Tie! ${winnerNames.join(' and ')} reached ${game.legs_to_win} legs with ${formatHandRank(winners[0].evaluation.rank)}!`,
-          game_over_at: new Date().toISOString(),
-          pot: 0,
-          awaiting_next_round: false // Clear awaiting flag when game ends
-        })
-        .eq('id', gameId);
+    // In Holm, multi-player ties never end the game - only beating Chucky does
+    console.log('[HOLM TIE] Tie in multi-player showdown, continuing to next hand');
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({
+        last_round_result: `Tie! ${winners.length} players split the pot with ${formatHandRank(winners[0].evaluation.rank)}`,
+        awaiting_next_round: true,
+        pot: 0
+      })
+      .eq('id', gameId);
+    
+    if (updateError) {
+      console.error('[HOLM TIE] ERROR updating game:', updateError);
     } else {
-      // Continue to next round
-      console.log('[HOLM TIE] Setting awaiting_next_round to proceed to next hand');
-      const { error: updateError } = await supabase
-        .from('games')
-        .update({
-          last_round_result: `Tie! ${winners.length} players split the pot with ${formatHandRank(winners[0].evaluation.rank)}`,
-          awaiting_next_round: true,
-          pot: 0
-        })
-        .eq('id', gameId);
-      
-      if (updateError) {
-        console.error('[HOLM TIE] ERROR updating game:', updateError);
-      } else {
-        console.log('[HOLM TIE] Successfully set awaiting_next_round=true');
-      }
+      console.log('[HOLM TIE] Successfully set awaiting_next_round=true');
     }
   }
 
