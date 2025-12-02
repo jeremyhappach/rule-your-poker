@@ -73,7 +73,7 @@ export const DealerConfig = ({
 
         if (isHolmGame) {
           updateData.chucky_cards = currentChuckyCards;
-          updateData.buck_position = 1; // Initialize buck position
+          // Buck position will be calculated by startHolmRound
         }
 
         const { error } = await supabase
@@ -145,7 +145,7 @@ export const DealerConfig = ({
 
     if (isHolmGame) {
       updateData.chucky_cards = chuckyCards;
-      updateData.buck_position = 1; // Initialize buck position
+      // Buck position will be calculated by startHolmRound
     }
 
     const { error } = await supabase
