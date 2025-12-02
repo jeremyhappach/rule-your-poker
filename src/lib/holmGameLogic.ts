@@ -216,45 +216,71 @@ export async function startHolmRound(gameId: string) {
     .maybeSingle();
 
   const isFirstHand = !round1;
+  
+  // CRITICAL: Check if antes need to be collected
+  // Antes should be collected if:
+  // 1. This is the first hand (no round 1) OR
+  // 2. Round 1 exists but pot is 0 (antes weren't collected due to a bug)
+  const needsAnteCollection = isFirstHand || (gameConfig.pot === 0 && (!round1 || round1.pot === 0));
+  
   let currentPot = gameConfig.pot || 0;
   
   console.log('[HOLM] Pot initialization:', {
     isFirstHand,
+    needsAnteCollection,
     gameConfigPot: gameConfig.pot,
+    round1Pot: round1?.pot,
     currentPot,
     anteAmount,
     playerCount: players.length
   });
   
-  if (isFirstHand) {
-    // Very first hand - create round 1 for ante collection
-    console.log('[HOLM] First hand - creating round 1 for ante collection');
-    
+  if (needsAnteCollection) {
     // Collect antes from all players
+    console.log('[HOLM] Collecting antes - anteAmount:', anteAmount, 'players:', players.length);
+    
+    // Reset pot to 0 before collecting (in case of stale data)
+    currentPot = 0;
+    
     for (const player of players) {
       currentPot += anteAmount;
-      console.log('[HOLM] Collecting ante from player', player.position, '- pot now:', currentPot);
-      await supabase
+      const newChips = player.chips - anteAmount;
+      console.log('[HOLM] Collecting ante from player', player.position, '- chips:', player.chips, '->', newChips, '- pot now:', currentPot);
+      
+      const { error } = await supabase
         .from('players')
-        .update({ chips: player.chips - anteAmount })
+        .update({ chips: newChips })
         .eq('id', player.id);
+      
+      if (error) {
+        console.error('[HOLM] Error deducting ante from player:', error);
+      }
     }
     
     console.log('[HOLM] Total antes collected:', currentPot);
     
-    // Create round 1 (ante collection round - no gameplay)
-    await supabase
-      .from('rounds')
-      .insert({
-        game_id: gameId,
-        round_number: 1,
-        cards_dealt: 0,
-        status: 'completed',
-        pot: currentPot,
-        community_cards: [] as any
-      });
+    if (isFirstHand) {
+      // Create round 1 (ante collection round - no gameplay)
+      await supabase
+        .from('rounds')
+        .insert({
+          game_id: gameId,
+          round_number: 1,
+          cards_dealt: 0,
+          status: 'completed',
+          pot: currentPot,
+          community_cards: [] as any
+        });
+    } else {
+      // Update existing round 1 with correct pot
+      await supabase
+        .from('rounds')
+        .update({ pot: currentPot })
+        .eq('game_id', gameId)
+        .eq('round_number', 1);
+    }
     
-    // Update game to round 1
+    // Update game pot and buck position
     await supabase
       .from('games')
       .update({
@@ -264,7 +290,7 @@ export async function startHolmRound(gameId: string) {
       })
       .eq('id', gameId);
     
-    console.log('[HOLM] Round 1 completed - antes collected:', currentPot, 'buck positioned at:', buckPosition);
+    console.log('[HOLM] Antes collected:', currentPot, 'buck positioned at:', buckPosition);
   } else {
     console.log('[HOLM] Subsequent hand - carrying forward pot:', currentPot);
   }
