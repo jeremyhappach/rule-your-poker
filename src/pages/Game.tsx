@@ -169,14 +169,21 @@ const Game = () => {
           filter: `id=eq.${gameId}`
         },
         (payload) => {
-          console.log('[REALTIME] Games table UPDATE:', payload);
+          console.log('[REALTIME] Games table UPDATE:', {
+            eventType: payload.eventType,
+            hasNew: !!payload.new,
+            newKeys: payload.new ? Object.keys(payload.new) : [],
+            awaiting_next_round: payload.new?.awaiting_next_round,
+            fullPayload: payload
+          });
           
           // Immediately fetch if awaiting_next_round changed to true (critical for round transitions)
           if (payload.new && 'awaiting_next_round' in payload.new && payload.new.awaiting_next_round === true) {
-            console.log('[REALTIME] ⚡ awaiting_next_round set to TRUE - immediate fetch!');
+            console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
           } else {
+            console.log('[REALTIME] No awaiting trigger, using debounced fetch');
             debouncedFetch();
           }
         }
