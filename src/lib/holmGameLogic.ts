@@ -418,6 +418,12 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
+  // Guard: Prevent multiple simultaneous calls - if round is completed or Chucky is already dealing, exit
+  if (round.status === 'completed' || (round.chucky_active && round.chucky_cards_revealed && round.chucky_cards_revealed > 0)) {
+    console.log('[HOLM END] Round already being processed or completed, skipping');
+    return;
+  }
+
   console.log('[HOLM END] Round data:', {
     id: round.id,
     status: round.status,
