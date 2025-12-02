@@ -702,8 +702,12 @@ const Game = () => {
       console.log('[FETCH] Round data:', {
         currentRound: currentRound?.id,
         current_turn_position: currentRound?.current_turn_position,
+        roundStatus: currentRound?.status,
+        decision_deadline: currentRound?.decision_deadline,
         lastTurnPosition,
-        timerTurnPosition
+        timerTurnPosition,
+        awaiting_next_round: gameData.awaiting_next_round,
+        all_decisions_in: gameData.all_decisions_in
       });
       
       if (currentRound?.decision_deadline && currentRound.current_turn_position) {
@@ -735,6 +739,13 @@ const Game = () => {
           });
           setTimeLeft(remaining);
         }
+      } else {
+        console.log('[FETCH] *** NO TIMER SET - Missing deadline or turn position ***', {
+          has_deadline: !!currentRound?.decision_deadline,
+          has_turn_position: !!currentRound?.current_turn_position,
+          turn_position: currentRound?.current_turn_position,
+          round_status: currentRound?.status
+        });
       }
     } else {
       // Clear timer for non-playing states or transitions (but not for game_over to avoid disrupting countdown)
