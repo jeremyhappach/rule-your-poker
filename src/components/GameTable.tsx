@@ -222,7 +222,8 @@ export const GameTable = ({
               : (allDecisionsIn ? player?.current_decision : null);
             
             // In Holm game, buck just indicates who decides first, but all players can decide
-            const hasBuck = gameType === 'holm-game' && buckPosition === player?.position;
+            // Only show buck when game is actually in progress (not during transitions)
+            const hasBuck = gameType === 'holm-game' && buckPosition === player?.position && !awaitingNextRound && roundStatus !== 'completed';
             
             // Use seat position (1-7) for stable angle calculation
             const seatPosition = seat.position;
@@ -386,9 +387,9 @@ export const GameTable = ({
                       <div className="flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 pt-0.5 sm:pt-1 md:pt-1.5 border-t border-amber-700">
                         {/* Fold button (left) */}
                         {(() => {
-                          // For Holm game, only show buttons when it's the player's turn
+                          // For Holm game, only show buttons when it's the player's turn and game is ready
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? currentTurnPosition === player.position 
+                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed'
                             : true;
                           
                           return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
@@ -414,9 +415,9 @@ export const GameTable = ({
                         
                         {/* Stay button (right) */}
                         {(() => {
-                          // For Holm game, only show buttons when it's the player's turn
+                          // For Holm game, only show buttons when it's the player's turn and game is ready
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? currentTurnPosition === player.position 
+                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed'
                             : true;
                           
                           return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
