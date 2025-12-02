@@ -212,67 +212,27 @@ export async function startHolmRound(gameId: string) {
     throw new Error('No active players found');
   }
 
-  // Check if round 1 exists - if not, this is the very first hand
-  const { data: round1 } = await supabase
-    .from('rounds')
-    .select('*')
-    .eq('game_id', gameId)
-    .eq('round_number', 1)
-    .maybeSingle();
-
-  const isFirstHand = !round1;
+  // SIMPLIFIED POT LOGIC: 
+  // - First hand (total_hands === 0 or null): collect antes, set game.pot
+  // - After that: game.pot is ONLY modified by showdowns, NEVER here
+  const isFirstHand = gameConfig.total_hands === 0 || gameConfig.total_hands === null;
   
-  // In Holm, antes are ONLY collected on the very first hand
-  // After that, losers match the pot - no re-anting
-  // Use BOTH round1 existence AND total_hands as guards
-  const needsAnteCollection = isFirstHand && (gameConfig.total_hands === 0 || gameConfig.total_hands === null);
-  
-  console.log('[HOLM] First hand check:', {
-    round1Exists: !!round1,
+  console.log('[HOLM] Hand check:', {
     totalHands: gameConfig.total_hands,
     isFirstHand,
-    needsAnteCollection
+    currentGamePot: gameConfig.pot
   });
   
-  // CRITICAL: Use round1.pot if game.pot is stale/0 but round1 has the correct pot
-  let currentPot = gameConfig.pot || round1?.pot || 0;
-  
-  console.log('[HOLM] Pot initialization:', {
-    isFirstHand,
-    needsAnteCollection,
-    gameConfigPot: gameConfig.pot,
-    round1Pot: round1?.pot,
-    currentPot,
-    anteAmount,
-    playerCount: players.length
-  });
-  
-  // ALWAYS ensure round 1 exists (for pot tracking)
-  if (!round1) {
-    console.log('[HOLM] Round 1 missing - creating it for pot tracking');
-    await supabase
-      .from('rounds')
-      .insert({
-        game_id: gameId,
-        round_number: 1,
-        cards_dealt: 1,  // Must be >= 1 due to DB constraint
-        status: 'completed',
-        pot: currentPot,
-        community_cards: [] as any
-      });
-  }
-
-  if (needsAnteCollection) {
+  // Only collect antes on the VERY FIRST hand
+  if (isFirstHand) {
     // Collect antes from all players
-    console.log('[HOLM] Collecting antes - anteAmount:', anteAmount, 'players:', players.length);
+    console.log('[HOLM] FIRST HAND - Collecting antes - anteAmount:', anteAmount, 'players:', players.length);
     
-    // Reset pot to 0 before collecting (in case of stale data)
-    currentPot = 0;
-    
+    let antePot = 0;
     for (const player of players) {
-      currentPot += anteAmount;
+      antePot += anteAmount;
       const newChips = player.chips - anteAmount;
-      console.log('[HOLM] Collecting ante from player', player.position, '- chips:', player.chips, '->', newChips, '- pot now:', currentPot);
+      console.log('[HOLM] Collecting ante from player', player.position, '- chips:', player.chips, '->', newChips, '- pot now:', antePot);
       
       const { error } = await supabase
         .from('players')
@@ -284,35 +244,23 @@ export async function startHolmRound(gameId: string) {
       }
     }
     
-    console.log('[HOLM] Total antes collected:', currentPot);
+    console.log('[HOLM] Total antes collected:', antePot);
     
-    // Update round 1 with correct pot
-    await supabase
-      .from('rounds')
-      .update({ pot: currentPot })
-      .eq('game_id', gameId)
-      .eq('round_number', 1);
-    
-    // Update game pot and buck position
+    // Update game pot and buck position - this is the ONLY place we set pot on first hand
     await supabase
       .from('games')
       .update({
-        current_round: 1,
-        pot: currentPot,
-        buck_position: buckPosition
+        current_round: 2,
+        pot: antePot,
+        buck_position: buckPosition,
+        total_hands: 1  // Mark that we've played at least one hand
       })
       .eq('id', gameId);
     
-    console.log('[HOLM] Antes collected:', currentPot, 'buck positioned at:', buckPosition);
+    console.log('[HOLM] First hand setup complete - pot:', antePot, 'buck:', buckPosition);
   } else {
-    console.log('[HOLM] Subsequent hand - carrying forward pot:', currentPot);
-    
-    // Update round 1's pot to match (in case it was out of sync)
-    await supabase
-      .from('rounds')
-      .update({ pot: currentPot })
-      .eq('game_id', gameId)
-      .eq('round_number', 1);
+    // SUBSEQUENT HAND: DO NOT touch game.pot - it was set by the showdown
+    console.log('[HOLM] SUBSEQUENT HAND - preserving pot from showdown:', gameConfig.pot);
   }
   
   // Now handle round 2 (actual gameplay) - check if it exists
@@ -323,11 +271,15 @@ export async function startHolmRound(gameId: string) {
     .eq('round_number', 2)
     .maybeSingle();
 
+  // Get the current pot value - either from ante collection or preserved from showdown
+  // IMPORTANT: If first hand, use antePot we just collected. Otherwise use preserved game.pot
+  const potForRound = isFirstHand ? (gameConfig.ante_amount * players.length) : (gameConfig.pot || 0);
+  
   console.log('[HOLM] Round 2 check:', {
     exists: !!round2,
     roundId: round2?.id,
-    currentPot,
-    willCreateWithPot: currentPot
+    potForRound,
+    isFirstHand
   });
 
   // Deal fresh cards for the new hand
@@ -358,7 +310,7 @@ export async function startHolmRound(gameId: string) {
       .from('rounds')
       .update({
         status: 'betting',
-        pot: currentPot,
+        pot: potForRound,
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
         chucky_active: false,
@@ -380,7 +332,7 @@ export async function startHolmRound(gameId: string) {
         round_number: 2,
         cards_dealt: 4,
         status: 'betting',
-        pot: currentPot,
+        pot: potForRound,
         decision_deadline: deadline.toISOString(),
         community_cards_revealed: 2,
         community_cards: communityCards as any,
@@ -425,7 +377,8 @@ export async function startHolmRound(gameId: string) {
   }
 
   // Update game status - always use round 2 for gameplay
-  // Only update pot if we collected antes, otherwise preserve the pot from showdown
+  // DO NOT update pot here - it's either set during ante collection (first hand) 
+  // or preserved from showdown (subsequent hands)
   const gameUpdate: any = {
     status: 'in_progress',
     current_round: 2,
@@ -434,17 +387,12 @@ export async function startHolmRound(gameId: string) {
     last_round_result: null
   };
   
-  // Only update pot during ante collection (first hand)
-  if (needsAnteCollection) {
-    gameUpdate.pot = currentPot;
-  }
-  
   await supabase
     .from('games')
     .update(gameUpdate)
     .eq('id', gameId);
 
-  console.log('[HOLM] Hand started. Round: 2, Buck:', buckPosition, 'Pot:', currentPot, 'AnteCollected:', needsAnteCollection);
+  console.log('[HOLM] Hand started. Round: 2, Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', isFirstHand);
 }
 
 /**
@@ -840,20 +788,6 @@ async function handleChuckyShowdown(
       .eq('id', gameId);
     
     console.log('[HOLM SHOWDOWN] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
-    
-    // Also update round.pot and round1.pot so the next hand has the correct pot value
-    await supabase
-      .from('rounds')
-      .update({ pot: newPot })
-      .eq('id', roundId);
-    
-    await supabase
-      .from('rounds')
-      .update({ pot: newPot })
-      .eq('game_id', gameId)
-      .eq('round_number', 1);
-    
-    console.log('[HOLM SHOWDOWN] Rounds pot update: SUCCESS - pot set to ' + newPot);
   }
 
   // Mark round complete and hide Chucky
@@ -958,13 +892,6 @@ async function handleMultiPlayerShowdown(
     } else {
       console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=', newPot);
     }
-
-    // Also update round 1's pot for next hand
-    await supabase
-      .from('rounds')
-      .update({ pot: newPot })
-      .eq('game_id', gameId)
-      .eq('round_number', 1);
   
     // Mark round as completed to hide timer
     await supabase
@@ -1102,13 +1029,6 @@ async function handleMultiPlayerShowdown(
           pot: newPot
         })
         .eq('id', gameId);
-      
-      // Also update round 1's pot
-      await supabase
-        .from('rounds')
-        .update({ pot: newPot })
-        .eq('game_id', gameId)
-        .eq('round_number', 1);
     }
   }
 
