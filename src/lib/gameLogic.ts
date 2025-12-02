@@ -664,28 +664,55 @@ export async function endRound(gameId: string) {
   console.log('[endRound] Successfully locked round for processing');
 
   // Get all players and their decisions
-  const { data: allPlayers } = await supabase
+  const { data: allPlayers, error: playersError } = await supabase
     .from('players')
     .select('*, profiles(username)')
     .eq('game_id', gameId);
 
-  if (!allPlayers) return;
+  console.log('[endRound] Players fetched:', { 
+    count: allPlayers?.length, 
+    error: playersError,
+    players: allPlayers?.map(p => ({
+      position: p.position,
+      status: p.status,
+      decision: p.current_decision,
+      locked: p.decision_locked
+    }))
+  });
+
+  if (!allPlayers) {
+    console.log('[endRound] ERROR: No players found, exiting');
+    return;
+  }
 
   // Find players who stayed (didn't fold)
   const playersWhoStayed = allPlayers.filter(p => p.current_decision === 'stay');
+  
+  console.log('[endRound] Players who stayed:', {
+    count: playersWhoStayed.length,
+    positions: playersWhoStayed.map(p => p.position)
+  });
   
   let resultMessage = '';
 
   // Award leg only if exactly one player stayed
   if (playersWhoStayed.length === 1) {
+    console.log('[endRound] SOLO STAY detected - awarding leg');
     const soloStayer = playersWhoStayed[0];
     const username = soloStayer.profiles?.username || `Player ${soloStayer.position}`;
     
     // Check if player already has enough legs (game should have ended)
     if (soloStayer.legs >= legsToWin) {
-      console.log(`Player already has ${legsToWin}+ legs, game should have ended`);
+      console.log(`[endRound] Player already has ${legsToWin}+ legs, game should have ended`);
       return;
     }
+    
+    console.log('[endRound] Awarding leg to solo stayer:', {
+      playerId: soloStayer.id,
+      currentLegs: soloStayer.legs,
+      currentChips: soloStayer.chips,
+      betAmount
+    });
     
     // Winning a leg costs the leg value (can go negative)
     const newLegCount = soloStayer.legs + 1;
@@ -700,6 +727,13 @@ export async function endRound(gameId: string) {
       .eq('id', soloStayer.id);
       
     resultMessage = `${username} won a leg`;
+    
+    console.log('[endRound] Leg awarded:', {
+      newLegCount,
+      newChips,
+      legsToWin,
+      isFinalLeg: newLegCount >= legsToWin
+    });
     
     // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
@@ -740,6 +774,8 @@ export async function endRound(gameId: string) {
       
       return; // Exit early, game over will be handled after delay
     }
+    
+    console.log('[endRound] Not final leg, continuing to set awaiting_next_round');
     // If not final leg, just continue - result message will be set at end of function
   } else if (playersWhoStayed.length > 1) {
     // Multiple players stayed - evaluate hands for showdown
@@ -880,8 +916,17 @@ export async function endRound(gameId: string) {
     .eq('id', gameId)
     .single();
   
+  console.log('[endRound] Final check before setting awaiting_next_round:', {
+    finalGameStatus: finalGameState?.status,
+    resultMessage,
+    currentRound,
+    willSetAwaiting: finalGameState?.status !== 'game_over'
+  });
+  
   if (finalGameState?.status !== 'game_over') {
     const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    
+    console.log('[endRound] Setting awaiting_next_round:', { nextRound, resultMessage });
     
     await supabase
       .from('games')
@@ -891,7 +936,13 @@ export async function endRound(gameId: string) {
         next_round_number: nextRound
       })
       .eq('id', gameId);
+      
+    console.log('[endRound] awaiting_next_round set successfully');
+  } else {
+    console.log('[endRound] Game is over, not setting awaiting_next_round');
   }
+  
+  console.log('[endRound] ========== endRound COMPLETE ==========');
 }
 
 export async function proceedToNextRound(gameId: string) {
