@@ -387,13 +387,15 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           {isInProgress && game.ante_amount !== undefined && (
                             <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
                               <div>
-                                <span className="font-medium">Last Game Played:</span> {game.game_type === '3-5-7' ? '3-5-7' : game.game_type || '3-5-7'}
+                                <span className="font-medium">Last Game Played:</span> {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
                               </div>
                               <div>
-                                <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante • 
-                                ${game.leg_value} Legs ({game.legs_to_win} to win) • 
-                                {game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'} • 
-                                {game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
+                                <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante
+                                {game.game_type !== 'holm-game' && (
+                                  <> • ${game.leg_value} Legs ({game.legs_to_win} to win) • 
+                                  {game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'}</>
+                                )}
+                                {' • '}{game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
                               </div>
                             </div>
                           )}
