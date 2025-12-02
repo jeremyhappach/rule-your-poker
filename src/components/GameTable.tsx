@@ -131,8 +131,8 @@ export const GameTable = ({
   // Combine players and open seats for rendering - no reordering needed
   const seatsToRender = [...players, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
 
-  // Show pot during awaiting_next_round (even with result message) and when no result message
-  const showPotAndTimer = awaitingNextRound || !lastRoundResult;
+  // Show pot and timer when no result message is displayed
+  const showPotAndTimer = !lastRoundResult || !awaitingNextRound;
 
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
@@ -143,6 +143,17 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
         <div className="relative h-full">
+          {/* Result Message - displayed in center of table when available */}
+          {lastRoundResult && awaitingNextRound && (
+            <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
+              <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 animate-pulse">
+                <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center whitespace-nowrap drop-shadow-lg">
+                  {lastRoundResult}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Pot and Timer - shown when no result message */}
           {showPotAndTimer && (
             <>
