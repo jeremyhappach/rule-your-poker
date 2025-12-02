@@ -229,6 +229,12 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     .eq('round_number', roundNumber)
     .single();
 
+  console.log('[HOLM] Existing round check for round', roundNumber, ':', {
+    exists: !!existingRound,
+    roundId: existingRound?.id,
+    status: existingRound?.status
+  });
+
   let roundId: string;
   // First player (buck) gets 10 seconds to decide - turn-based
   const deadline = new Date(Date.now() + 10000);
@@ -249,13 +255,17 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
     console.log('[HOLM] Round', roundNumber, 'already exists. Resetting for new hand...');
     
     // Delete old player cards from previous hand
-    await supabase
+    const { error: deleteError } = await supabase
       .from('player_cards')
       .delete()
       .eq('round_id', existingRound.id);
     
+    if (deleteError) {
+      console.error('[HOLM] Error deleting old player cards:', deleteError);
+    }
+    
     // Reset the existing round state for the new hand with FRESH community cards
-    await supabase
+    const { error: updateError } = await supabase
       .from('rounds')
       .update({
         status: 'betting',
@@ -270,6 +280,12 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       })
       .eq('id', existingRound.id);
     
+    if (updateError) {
+      console.error('[HOLM] ERROR updating existing round:', updateError);
+      throw new Error(`Failed to update round: ${updateError.message}`);
+    }
+    
+    console.log('[HOLM] Successfully updated existing round', existingRound.id);
     roundId = existingRound.id;
   } else {
     // Create new round with fresh community cards
@@ -300,13 +316,19 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   }
 
   // Reset player decisions for new hand
-  await supabase
+  const { error: resetError } = await supabase
     .from('players')
     .update({ 
       current_decision: null,
       decision_locked: false
     })
     .eq('game_id', gameId);
+  
+  if (resetError) {
+    console.error('[HOLM] ERROR resetting player decisions:', resetError);
+  } else {
+    console.log('[HOLM] Successfully reset player decisions');
+  }
 
   // Deduct antes from player chips (only for round 1)
   if (roundNumber === 1) {
@@ -337,7 +359,7 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
   }
 
   // Update game status and set buck position
-  await supabase
+  const { error: gameUpdateError } = await supabase
     .from('games')
     .update({
       status: 'in_progress',
@@ -348,6 +370,13 @@ export async function startHolmRound(gameId: string, roundNumber: number) {
       last_round_result: null // Clear result when starting new round
     })
     .eq('id', gameId);
+  
+  if (gameUpdateError) {
+    console.error('[HOLM] ERROR updating game:', gameUpdateError);
+    throw new Error(`Failed to update game: ${gameUpdateError.message}`);
+  }
+  
+  console.log('[HOLM] Successfully updated game to round', roundNumber);
 
   console.log('[HOLM] ========== Round setup complete ==========');
   console.log('[HOLM] Round started. Buck position:', buckPosition);
