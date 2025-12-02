@@ -398,16 +398,24 @@ export const GameTable = ({
                         {(() => {
                           // For Holm game, only show buttons when it's the player's turn and game is ready
                           const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
+                          
+                          // In Holm game, buttons only show when:
+                          // 1. It's actually your turn (position matches currentTurnPosition)
+                          // 2. Round is ready and has a current turn set
+                          // 3. Not awaiting next round
+                          // 4. Round is not completed
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed' && roundIsReady
-                            : true;
+                            ? (roundIsReady && currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed')
+                            : true; // For non-Holm games, always allow if other conditions met
                           
                           const shouldShowButtons = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
                           
-                          if (gameType === 'holm-game' && isCurrentUser && player.position === currentTurnPosition) {
-                            console.log('[GAME_TABLE] Button check for current turn player position', player.position, ':', {
+                          if (gameType === 'holm-game' && isCurrentUser) {
+                            console.log('[GAME_TABLE] Fold button check for player position', player.position, ':', {
                               roundIsReady,
                               currentTurnPosition,
+                              playerPosition: player.position,
+                              positionMatch: currentTurnPosition === player.position,
                               awaitingNextRound,
                               roundStatus,
                               hasPlayerDecided,
@@ -442,8 +450,10 @@ export const GameTable = ({
                         {(() => {
                           // For Holm game, only show buttons when it's the player's turn and game is ready
                           const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
+                          
+                          // Same logic as Fold button
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed' && roundIsReady
+                            ? (roundIsReady && currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed')
                             : true;
                           
                           return isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
