@@ -402,10 +402,10 @@ export const GameTable = ({
                             isHidden={
                               // Show cards if: 
                               // 1. It's the current user, OR
-                              // 2. In Holm game, all community cards revealed AND player stayed
+                              // 2. In Holm game, round is in showdown/completed phase AND player stayed
                               !isCurrentUser && !(
                                 gameType === 'holm-game' && 
-                                communityCardsRevealed === 4 && 
+                                (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4) && 
                                 playerDecision === 'stay'
                               )
                             } 

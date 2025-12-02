@@ -487,34 +487,29 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
-  // Reveal all 4 community cards first
-  console.log('[HOLM END] Revealing all 4 community cards...', {
-    roundId: round.id,
-    currentlyRevealed: round.community_cards_revealed,
-    targetRevealed: 4
-  });
-  
-  const { data: revealResult, error: revealError } = await supabase
-    .from('rounds')
-    .update({ community_cards_revealed: 4 })
-    .eq('id', round.id)
-    .select();
-
-  console.log('[HOLM END] Community cards reveal result:', { 
-    success: !revealError, 
-    error: revealError,
-    updatedRows: revealResult?.length,
-    revealedData: revealResult?.[0]
-  });
-  
-  if (revealError) {
-    console.error('[HOLM END] ERROR revealing community cards:', revealError);
+  // For single player vs Chucky, reveal all 4 community cards now
+  // For multi-player showdown, we'll reveal the hidden cards AFTER exposing player cards
+  if (stayedPlayers.length === 1) {
+    // Single player - reveal all 4 community cards first
+    console.log('[HOLM END] Single player - revealing all 4 community cards...', {
+      roundId: round.id,
+      currentlyRevealed: round.community_cards_revealed,
+      targetRevealed: 4
+    });
+    
+    const { error: revealError } = await supabase
+      .from('rounds')
+      .update({ community_cards_revealed: 4 })
+      .eq('id', round.id);
+    
+    if (revealError) {
+      console.error('[HOLM END] ERROR revealing community cards:', revealError);
+    }
+    
+    // Brief pause to allow UI to update with community cards
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
-  
-  // Brief pause to allow UI to update with community cards
-  console.log('[HOLM END] Brief pause for community cards display...');
-  await new Promise(resolve => setTimeout(resolve, 500));
-  console.log('[HOLM END] Community cards should now be visible to players');
+  // For multi-player, keep community_cards_revealed at 2 for now
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
@@ -600,11 +595,26 @@ export async function endHolmRound(gameId: string) {
       })
       .eq('id', round.id);
 
-    console.log('[HOLM END] Chucky cards stored, revealing one at a time...');
+    console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
     
-    // Reveal Chucky's cards one at a time
+    // Reveal Chucky's cards one at a time with suspenseful delays
     for (let i = 1; i <= chuckyCardCount; i++) {
-      await new Promise(resolve => setTimeout(resolve, 300)); // 0.3 seconds between each card
+      // Determine delay based on card position
+      let delay: number;
+      if (i === chuckyCardCount) {
+        // Final card - 3 second delay for maximum suspense
+        delay = 3000;
+        console.log('[HOLM END] Building suspense for FINAL card...');
+      } else if (i === chuckyCardCount - 1) {
+        // Next-to-last card - 1.5 second delay
+        delay = 1500;
+        console.log('[HOLM END] Building suspense for next-to-last card...');
+      } else {
+        // Earlier cards - quick 300ms reveal
+        delay = 300;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
       await supabase
         .from('rounds')
         .update({ chucky_cards_revealed: i })
@@ -627,8 +637,18 @@ export async function endHolmRound(gameId: string) {
   // Case 3: Multiple players stayed - showdown (no Chucky)
   console.log('[HOLM END] Case 3: Multi-player showdown (no Chucky)');
   
-  // Brief pause before evaluation
-  await new Promise(resolve => setTimeout(resolve, 300));
+  // Player cards are already visible to their owners, but now expose them to everyone
+  // by marking the round as "showdown" phase - the UI will handle showing all cards
+  console.log('[HOLM END] Exposing player cards for showdown...');
+  
+  // 3 second delay for players to read exposed cards before revealing hidden community cards
+  console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  
+  // Now reveal the 2 hidden community cards (cards 3 and 4)
+  // Community cards were already set to 4 revealed earlier, but let's ensure the sequence:
+  // Cards 1-2 were visible, now reveal 3-4
+  console.log('[HOLM END] Revealing hidden community cards...');
   
   // Use round.pot as the authoritative pot value (game.pot may be stale)
   const roundPot = round.pot || game.pot || 0;
@@ -780,9 +800,28 @@ async function handleMultiPlayerShowdown(
 ) {
   console.log('[HOLM] Multi-player showdown, roundPot:', roundPot, 'game.pot:', game.pot);
 
-  // Add 3 second delay so players can read the cards
-  console.log('[HOLM MULTI] Waiting 3 seconds for players to view cards...');
+  // Step 1: Mark round as "showdown" to expose all player cards in UI
+  console.log('[HOLM MULTI] Exposing player cards (marking round as showdown)...');
+  await supabase
+    .from('rounds')
+    .update({ status: 'showdown' })
+    .eq('id', roundId);
+
+  // Step 2: Wait 3 seconds for players to read the exposed player cards
+  console.log('[HOLM MULTI] Waiting 3 seconds for players to view exposed cards...');
   await new Promise(resolve => setTimeout(resolve, 3000));
+
+  // Step 3: Now reveal the 2 hidden community cards (cards 3 and 4)
+  console.log('[HOLM MULTI] Revealing hidden community cards (3 and 4)...');
+  await supabase
+    .from('rounds')
+    .update({ community_cards_revealed: 4 })
+    .eq('id', roundId);
+
+  // Step 4: Wait 3 more seconds for players to see final hands
+  console.log('[HOLM MULTI] Waiting 3 seconds for players to see final hands...');
+  await new Promise(resolve => setTimeout(resolve, 3000));
+
   console.log('[HOLM MULTI] Evaluating hands...');
 
   // Evaluate each player's hand
