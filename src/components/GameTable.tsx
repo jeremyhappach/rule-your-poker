@@ -336,7 +336,7 @@ export const GameTable = ({
                       </div>
                       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2">
                         {/* Legs indicator - only show for non-Holm games */}
-                        {gameType !== 'holm-game' && (
+                        {gameType && gameType !== 'holm-game' && (
                           <div className="flex items-center gap-0.5 bg-amber-900/30 px-0.5 sm:px-1 md:px-1.5 py-0.5 rounded border border-amber-700">
                             {player.legs === 0 ? (
                               <span className="text-amber-500/50 text-[7px] sm:text-[8px] md:text-[10px]">No legs</span>
@@ -351,7 +351,7 @@ export const GameTable = ({
                         )}
                         
                         {/* Hand evaluation hint - only for non-Holm games, hide during Chucky showdown */}
-                        {isCurrentUser && cards.length > 0 && gameType !== 'holm-game' && !chuckyActive && (
+                        {isCurrentUser && cards.length > 0 && gameType && gameType !== 'holm-game' && !chuckyActive && (
                           <div className="bg-poker-gold/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[7px] sm:text-[8px] md:text-[10px] font-bold">
                               {formatHandRank(evaluateHand(cards).rank)}
