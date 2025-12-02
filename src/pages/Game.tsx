@@ -576,6 +576,64 @@ const Game = () => {
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   const awaitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gameStateAtTimerStart = useRef<{ awaiting: boolean; round: number } | null>(null);
+  const awaitingPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Poll for awaiting_next_round when round is completed and all decisions are in
+  useEffect(() => {
+    const isHolmGame = game?.game_type === 'holm-game';
+    const roundCompleted = currentRound?.status === 'completed';
+    const allDecisionsIn = game?.all_decisions_in === true;
+    const alreadyAwaiting = game?.awaiting_next_round === true;
+    const gameInProgress = game?.status === 'in_progress';
+    
+    // For 3-5-7 games: poll when round is completed and all decisions are in
+    const shouldPoll = !isHolmGame && gameInProgress && roundCompleted && allDecisionsIn && !alreadyAwaiting;
+    
+    console.log('[AWAITING_POLL] Check', {
+      shouldPoll,
+      isHolmGame,
+      roundCompleted,
+      allDecisionsIn,
+      alreadyAwaiting,
+      gameInProgress
+    });
+    
+    if (shouldPoll && !awaitingPollRef.current) {
+      console.log('[AWAITING_POLL] 🔄 Starting poll for awaiting_next_round');
+      
+      awaitingPollRef.current = setInterval(async () => {
+        console.log('[AWAITING_POLL] 🔍 Checking for awaiting_next_round...');
+        
+        const { data: freshGame } = await supabase
+          .from('games')
+          .select('awaiting_next_round, last_round_result, next_round_number')
+          .eq('id', gameId)
+          .single();
+        
+        console.log('[AWAITING_POLL] Fresh data:', freshGame);
+        
+        if (freshGame?.awaiting_next_round) {
+          console.log('[AWAITING_POLL] ✅ DETECTED awaiting_next_round! Triggering refetch');
+          if (awaitingPollRef.current) {
+            clearInterval(awaitingPollRef.current);
+            awaitingPollRef.current = null;
+          }
+          await fetchGameData();
+        }
+      }, 500); // Poll every 500ms
+    } else if (!shouldPoll && awaitingPollRef.current) {
+      console.log('[AWAITING_POLL] 🛑 Stopping poll');
+      clearInterval(awaitingPollRef.current);
+      awaitingPollRef.current = null;
+    }
+    
+    return () => {
+      if (awaitingPollRef.current) {
+        clearInterval(awaitingPollRef.current);
+        awaitingPollRef.current = null;
+      }
+    };
+  }, [gameId, game?.game_type, currentRound?.status, game?.all_decisions_in, game?.awaiting_next_round, game?.status]);
   
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
