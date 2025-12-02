@@ -456,6 +456,8 @@ const Game = () => {
 
   // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
   useEffect(() => {
+    const isHolmGame = game?.game_type === 'holm-game';
+    
     console.log('[TIMER CHECK]', { 
       timeLeft, 
       status: game?.status, 
@@ -463,29 +465,36 @@ const Game = () => {
       isPaused,
       timerTurnPosition,
       currentTurnPosition: currentRound?.current_turn_position,
+      isHolmGame,
       shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused
     });
     
     // Don't auto-fold if timer is null or negative (means fresh round)
     // Only auto-fold when timer explicitly reaches 0 and we have positive time tracked
-    // CRITICAL: Only auto-fold if the turn hasn't changed (timerTurnPosition matches current turn)
-    if (timeLeft === 0 && 
+    // For Holm games: Only auto-fold if the turn hasn't changed (timerTurnPosition matches current turn)
+    // For 3-5-7 games: Auto-fold when timer reaches 0 (no turn position to check)
+    const shouldAutoFold = timeLeft === 0 && 
         game?.status === 'in_progress' && 
         !game.all_decisions_in && 
         !isPaused &&
-        timerTurnPosition !== null &&
-        currentRound?.current_turn_position === timerTurnPosition) {
-      console.log('[TIMER EXPIRED] *** AUTO-FOLDING player at position', timerTurnPosition, '***');
-      console.log('[TIMER EXPIRED] Verification:', {
-        timerTurnPosition,
-        currentTurnPosition: currentRound?.current_turn_position,
-        match: timerTurnPosition === currentRound?.current_turn_position
-      });
+        (isHolmGame 
+          ? (timerTurnPosition !== null && currentRound?.current_turn_position === timerTurnPosition)
+          : true); // For 3-5-7, just check timer reached 0
+    
+    if (shouldAutoFold) {
+      if (isHolmGame) {
+        console.log('[TIMER EXPIRED HOLM] *** AUTO-FOLDING player at position', timerTurnPosition, '***');
+        console.log('[TIMER EXPIRED HOLM] Verification:', {
+          timerTurnPosition,
+          currentTurnPosition: currentRound?.current_turn_position,
+          match: timerTurnPosition === currentRound?.current_turn_position
+        });
+      } else {
+        console.log('[TIMER EXPIRED 3-5-7] *** AUTO-FOLDING undecided players ***');
+      }
       // Immediately clear the timer to stop flashing
       setTimeLeft(null);
       setIsPaused(true);
-      
-      const isHolmGame = game?.game_type === 'holm-game';
       
       if (isHolmGame) {
         // In Holm, auto-fold the player whose timer expired
