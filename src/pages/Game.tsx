@@ -1119,7 +1119,7 @@ const Game = () => {
     try {
       const isHolmGame = game?.game_type === 'holm-game';
       if (isHolmGame) {
-        await startHolmRound(gameId);
+        await startHolmRound(gameId, true); // First hand - collect antes
       } else {
         await startRound(gameId, 1);
       }

@@ -152,13 +152,11 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
  * - Each player gets 4 cards
  * - 4 community cards (2 visible, 2 hidden initially)
  * - Decision starts with buck position and rotates clockwise
- * - Always uses round 1 (Holm has no round progression, just hands)
+ * - Uses firstHand flag: true = collect antes; false = preserve pot from showdown
  */
-export async function startHolmRound(gameId: string) {
+export async function startHolmRound(gameId: string, isFirstHand: boolean = false) {
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
-  
-  // Small delay to ensure any pending pot updates are committed
-  await new Promise(resolve => setTimeout(resolve, 100));
+  console.log('[HOLM] isFirstHand parameter:', isFirstHand);
   
   // Fetch game configuration
   const { data: gameConfig } = await supabase
@@ -171,16 +169,15 @@ export async function startHolmRound(gameId: string) {
     throw new Error('Game not found');
   }
 
-  console.log('[HOLM] Game config fetched - pot:', gameConfig.pot, 'buck_position:', gameConfig.buck_position);
+  console.log('[HOLM] Game config - pot:', gameConfig.pot, 'buck_position:', gameConfig.buck_position);
 
   const anteAmount = gameConfig.ante_amount || 2;
   const dealerPosition = gameConfig.dealer_position || 1;
   
-  // Use existing buck position (rotated by proceedToNextHolmRound)
-  // If not set (first hand), calculate it
+  // Use existing buck position or calculate for first hand
   let buckPosition = gameConfig.buck_position;
   
-  if (!buckPosition) {
+  if (!buckPosition || isFirstHand) {
     // First hand - buck starts one position to the left of dealer
     const { data: allPlayers } = await supabase
       .from('players')
@@ -193,10 +190,7 @@ export async function startHolmRound(gameId: string) {
       : 7;
     
     buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
-    
-    console.log('[HOLM] First hand - calculated buck position:', buckPosition);
-  } else {
-    console.log('[HOLM] Using rotated buck position:', buckPosition);
+    console.log('[HOLM] Calculated buck position:', buckPosition);
   }
 
   // Get all active players who aren't sitting out
@@ -212,58 +206,44 @@ export async function startHolmRound(gameId: string) {
     throw new Error('No active players found');
   }
 
-  // SIMPLIFIED POT LOGIC: 
-  // - First hand (total_hands === 0 or null): collect antes, set game.pot
-  // - After that: game.pot is ONLY modified by showdowns, NEVER here
-  const isFirstHand = gameConfig.total_hands === 0 || gameConfig.total_hands === null;
+  // FIRST HAND: Collect antes and set initial pot
+  // SUBSEQUENT HANDS: Use pot value preserved from showdown (DO NOT re-ante)
+  let potForRound: number;
   
-  console.log('[HOLM] Hand check:', {
-    totalHands: gameConfig.total_hands,
-    isFirstHand,
-    currentGamePot: gameConfig.pot
-  });
-  
-  // Only collect antes on the VERY FIRST hand
   if (isFirstHand) {
-    // Collect antes from all players
-    console.log('[HOLM] FIRST HAND - Collecting antes - anteAmount:', anteAmount, 'players:', players.length);
+    console.log('[HOLM] FIRST HAND - Collecting antes');
     
     let antePot = 0;
     for (const player of players) {
       antePot += anteAmount;
       const newChips = player.chips - anteAmount;
-      console.log('[HOLM] Collecting ante from player', player.position, '- chips:', player.chips, '->', newChips, '- pot now:', antePot);
+      console.log('[HOLM] Ante from player', player.position, ':', anteAmount, '- chips:', player.chips, '->', newChips);
       
-      const { error } = await supabase
+      await supabase
         .from('players')
         .update({ chips: newChips })
         .eq('id', player.id);
-      
-      if (error) {
-        console.error('[HOLM] Error deducting ante from player:', error);
-      }
     }
     
-    console.log('[HOLM] Total antes collected:', antePot);
+    potForRound = antePot;
+    console.log('[HOLM] Total antes collected:', potForRound);
     
-    // Update game pot and buck position - this is the ONLY place we set pot on first hand
+    // Update game with ante pot
     await supabase
       .from('games')
       .update({
-        current_round: 2,
-        pot: antePot,
+        pot: potForRound,
         buck_position: buckPosition,
-        total_hands: 1  // Mark that we've played at least one hand
+        total_hands: 1
       })
       .eq('id', gameId);
-    
-    console.log('[HOLM] First hand setup complete - pot:', antePot, 'buck:', buckPosition);
   } else {
-    // SUBSEQUENT HAND: DO NOT touch game.pot - it was set by the showdown
-    console.log('[HOLM] SUBSEQUENT HAND - preserving pot from showdown:', gameConfig.pot);
+    // SUBSEQUENT HAND: Use the pot value from the database (set during showdown)
+    potForRound = gameConfig.pot || 0;
+    console.log('[HOLM] SUBSEQUENT HAND - Using preserved pot:', potForRound);
   }
-  
-  // Now handle round 2 (actual gameplay) - check if it exists
+
+  // Handle round 2 (gameplay round)
   const { data: round2 } = await supabase
     .from('rounds')
     .select('*')
@@ -271,19 +251,7 @@ export async function startHolmRound(gameId: string) {
     .eq('round_number', 2)
     .maybeSingle();
 
-  // Get the current pot value - either from ante collection or preserved from showdown
-  // IMPORTANT: If first hand, use antePot we just collected. Otherwise use preserved game.pot
-  const potForRound = isFirstHand ? (gameConfig.ante_amount * players.length) : (gameConfig.pot || 0);
-  
-  console.log('[HOLM] Round 2 check:', {
-    exists: !!round2,
-    roundId: round2?.id,
-    potForRound,
-    isFirstHand
-  });
-
-  // Deal fresh cards for the new hand
-  let roundId: string;
+  // Deal fresh cards
   const deadline = new Date(Date.now() + 10000);
   const deck = shuffleDeck(createDeck());
   let cardIndex = 0;
@@ -296,10 +264,12 @@ export async function startHolmRound(gameId: string) {
     deck[cardIndex++]
   ];
 
+  let roundId: string;
+
   if (round2) {
     console.log('[HOLM] Resetting round 2 for new hand...');
     
-    // Delete old player cards from previous hand
+    // Delete old player cards
     await supabase
       .from('player_cards')
       .delete()
@@ -323,7 +293,6 @@ export async function startHolmRound(gameId: string) {
     
     roundId = round2.id;
   } else {
-    // Create round 2 for actual gameplay
     console.log('[HOLM] Creating round 2 for gameplay');
     const { data: round, error: roundError } = await supabase
       .from('rounds')
@@ -349,7 +318,7 @@ export async function startHolmRound(gameId: string) {
     roundId = round.id;
   }
 
-  // Reset player decisions for new hand
+  // Reset player decisions
   await supabase
     .from('players')
     .update({ 
@@ -358,7 +327,7 @@ export async function startHolmRound(gameId: string) {
     })
     .eq('game_id', gameId);
 
-  // Deal 4 cards to each player using the fresh deck
+  // Deal 4 cards to each player
   for (const player of players) {
     const playerCards = [
       deck[cardIndex++],
@@ -376,23 +345,19 @@ export async function startHolmRound(gameId: string) {
       });
   }
 
-  // Update game status - always use round 2 for gameplay
-  // DO NOT update pot here - it's either set during ante collection (first hand) 
-  // or preserved from showdown (subsequent hands)
-  const gameUpdate: any = {
-    status: 'in_progress',
-    current_round: 2,
-    buck_position: buckPosition,
-    all_decisions_in: false,
-    last_round_result: null
-  };
-  
+  // Update game status (DO NOT touch pot - it's already set correctly above)
   await supabase
     .from('games')
-    .update(gameUpdate)
+    .update({
+      status: 'in_progress',
+      current_round: 2,
+      buck_position: buckPosition,
+      all_decisions_in: false,
+      last_round_result: null
+    })
     .eq('id', gameId);
 
-  console.log('[HOLM] Hand started. Round: 2, Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', isFirstHand);
+  console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', isFirstHand);
 }
 
 /**
@@ -1098,8 +1063,8 @@ export async function proceedToNextHolmRound(gameId: string) {
   
   console.log('[HOLM NEXT] Updated total_hands to', newTotalHands);
 
-  // Start new hand (always round 1)
-  await startHolmRound(gameId);
+  // Start new hand - NOT first hand, so preserve pot from showdown
+  await startHolmRound(gameId, false);
   
   // Clear awaiting flag
   await supabase
