@@ -820,13 +820,19 @@ async function handleChuckyShowdown(
     
     console.log('[HOLM SHOWDOWN] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
     
-    // Also update round.pot so the next hand has the correct pot value
-    const { error: roundUpdateError } = await supabase
+    // Also update round.pot and round1.pot so the next hand has the correct pot value
+    await supabase
       .from('rounds')
       .update({ pot: newPot })
       .eq('id', roundId);
     
-    console.log('[HOLM SHOWDOWN] Rounds pot update:', roundUpdateError ? `ERROR: ${roundUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
+    await supabase
+      .from('rounds')
+      .update({ pot: newPot })
+      .eq('game_id', gameId)
+      .eq('round_number', 1);
+    
+    console.log('[HOLM SHOWDOWN] Rounds pot update: SUCCESS - pot set to ' + newPot);
   }
 
   // Mark round complete and hide Chucky
@@ -890,16 +896,7 @@ async function handleMultiPlayerShowdown(
     const winner = winners[0];
     const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
     
-    // Winner takes the pot (Holm game doesn't use legs system)
-    console.log('[HOLM MULTI] Winner', winnerUsername, 'gets pot:', roundPot);
-    await supabase
-      .from('players')
-      .update({ 
-        chips: winner.player.chips + roundPot
-      })
-      .eq('id', winner.player.id);
-
-    // Losers match the pot (capped)
+    // Losers match the pot (capped) - calculate this FIRST
     const potMatchAmount = game.pot_max_enabled 
       ? Math.min(roundPot, game.pot_max_value) 
       : roundPot;
@@ -915,28 +912,46 @@ async function handleMultiPlayerShowdown(
       totalMatched += potMatchAmount;
     }
 
+    // Winner takes the pot PLUS the loser's matched amount
+    const totalWinnings = roundPot + totalMatched;
+    console.log('[HOLM MULTI] Winner', winnerUsername, 'gets pot:', roundPot, '+ matched:', totalMatched, '= total:', totalWinnings);
+    await supabase
+      .from('players')
+      .update({ 
+        chips: winner.player.chips + totalWinnings
+      })
+      .eq('id', winner.player.id);
+
     // In Holm, multi-player showdowns never end the game - only beating Chucky does
-    console.log('[HOLM MULTI] Winner in multi-player showdown, continuing to next round');
+    // Reset pot to 0 so next hand collects fresh antes
+    console.log('[HOLM MULTI] Winner in multi-player showdown, pot reset to 0');
     const { error: updateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)}!`,
+        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)} and takes $${totalWinnings}!`,
         awaiting_next_round: true,
-        pot: totalMatched
+        pot: 0
       })
       .eq('id', gameId);
     
     if (updateError) {
       console.error('[HOLM MULTI] ERROR updating game:', updateError);
     } else {
-      console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=', totalMatched);
+      console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=0');
     }
+
+    // Also reset round 1's pot so next hand starts fresh with antes
+    await supabase
+      .from('rounds')
+      .update({ pot: 0 })
+      .eq('game_id', gameId)
+      .eq('round_number', 1);
   
-  // Mark round as completed to hide timer
-  await supabase
-    .from('rounds')
-    .update({ status: 'completed' })
-    .eq('id', roundId);
+    // Mark round as completed to hide timer
+    await supabase
+      .from('rounds')
+      .update({ status: 'completed' })
+      .eq('id', roundId);
   } else {
     // Tie - both/all tied players must face Chucky
     console.log('[HOLM TIE] Tie detected. Tied players must face Chucky.');
@@ -1018,27 +1033,18 @@ async function handleMultiPlayerShowdown(
           pot: newPot
         })
         .eq('id', gameId);
+      
+      // Also update round1.pot so next hand has correct pot
+      await supabase
+        .from('rounds')
+        .update({ pot: newPot })
+        .eq('game_id', gameId)
+        .eq('round_number', 1);
     } else {
-      // Some players beat Chucky - they split the pot
+      // Some players beat Chucky - they split the pot AND loser's matched amount
       console.log('[HOLM TIE] Some tied players beat Chucky');
       
-      const splitAmount = Math.floor(game.pot / playersBeatChucky.length);
-      let winnerNames: string[] = [];
-      
-      for (const winner of playersBeatChucky) {
-        const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
-        winnerNames.push(winnerUsername);
-        
-        // Award split pot (Holm game doesn't use legs system)
-        await supabase
-          .from('players')
-          .update({ 
-            chips: winner.player.chips + splitAmount
-          })
-          .eq('id', winner.player.id);
-      }
-      
-      // Losers match pot (capped)
+      // First calculate loser's matched amount
       const potMatchAmount = game.pot_max_enabled 
         ? Math.min(game.pot, game.pot_max_value) 
         : game.pot;
@@ -1054,14 +1060,40 @@ async function handleMultiPlayerShowdown(
         totalMatched += potMatchAmount;
       }
       
+      // Winners split pot + loser's matched amount
+      const totalWinnings = game.pot + totalMatched;
+      const splitAmount = Math.floor(totalWinnings / playersBeatChucky.length);
+      let winnerNames: string[] = [];
+      
+      for (const winner of playersBeatChucky) {
+        const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
+        winnerNames.push(winnerUsername);
+        
+        // Award split of total winnings (pot + matched)
+        await supabase
+          .from('players')
+          .update({ 
+            chips: winner.player.chips + splitAmount
+          })
+          .eq('id', winner.player.id);
+      }
+      
+      // Reset pot to 0 so next hand collects fresh antes
       await supabase
         .from('games')
         .update({
-          last_round_result: `Tie broken! ${winnerNames.join(' and ')} beat Chucky and split $${game.pot}!`,
+          last_round_result: `Tie broken! ${winnerNames.join(' and ')} beat Chucky and take $${totalWinnings}!`,
           awaiting_next_round: true,
-          pot: totalMatched
+          pot: 0
         })
         .eq('id', gameId);
+      
+      // Also reset round 1's pot
+      await supabase
+        .from('rounds')
+        .update({ pot: 0 })
+        .eq('game_id', gameId)
+        .eq('round_number', 1);
     }
   }
 
