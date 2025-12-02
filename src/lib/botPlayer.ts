@@ -150,41 +150,56 @@ export async function makeBotDecisions(gameId: string) {
     return;
   }
 
-  // Only process the bot whose turn it is
-  if (!currentRound.current_turn_position) {
-    console.log('[BOT] ERROR: No current turn position set in round');
-    return;
-  }
-
-  console.log('[BOT] Looking for bot at turn position:', currentRound.current_turn_position);
-  const currentTurnBot = botPlayers.find(bot => bot.position === currentRound.current_turn_position);
-  
-  if (!currentTurnBot) {
-    console.log('[BOT] Current turn position', currentRound.current_turn_position, 'is not a bot or bot already decided');
-    console.log('[BOT] Available bot positions:', botPlayers.map(b => b.position));
-    return;
-  }
-
-  console.log('[BOT] ✓ Found bot at turn position! Processing decision for bot:', {
-    id: currentTurnBot.id,
-    position: currentTurnBot.position,
-    current_decision: currentTurnBot.current_decision,
-    decision_locked: currentTurnBot.decision_locked
-  });
-
-  // Make random decision for bot (80% stay, 20% fold)
-  const shouldStay = Math.random() > 0.2; // 80% chance to stay
-  const decision = shouldStay ? 'stay' : 'fold';
-  
-  console.log('[BOT] *** Bot deciding:', decision, '***');
-  await makeDecision(gameId, currentTurnBot.id, decision);
-  console.log('[BOT] *** Decision recorded in DB ***');
-  console.log('[BOT] *** Calling checkHolmRoundComplete to advance turn ***');
-  
-  // Check if round is complete after bot decision
   if (isHolmGame) {
+    // HOLM GAME: Turn-based - only process the bot whose turn it is
+    if (!currentRound.current_turn_position) {
+      console.log('[BOT] HOLM: No current turn position set in round');
+      return;
+    }
+
+    console.log('[BOT] HOLM: Looking for bot at turn position:', currentRound.current_turn_position);
+    const currentTurnBot = botPlayers.find(bot => bot.position === currentRound.current_turn_position);
+    
+    if (!currentTurnBot) {
+      console.log('[BOT] HOLM: Current turn position', currentRound.current_turn_position, 'is not a bot or bot already decided');
+      console.log('[BOT] HOLM: Available bot positions:', botPlayers.map(b => b.position));
+      return;
+    }
+
+    console.log('[BOT] HOLM: ✓ Found bot at turn position! Processing decision for bot:', {
+      id: currentTurnBot.id,
+      position: currentTurnBot.position,
+      current_decision: currentTurnBot.current_decision,
+      decision_locked: currentTurnBot.decision_locked
+    });
+
+    // Make random decision for bot (80% stay, 20% fold)
+    const shouldStay = Math.random() > 0.2;
+    const decision = shouldStay ? 'stay' : 'fold';
+    
+    console.log('[BOT] HOLM: *** Bot deciding:', decision, '***');
+    await makeDecision(gameId, currentTurnBot.id, decision);
+    console.log('[BOT] HOLM: *** Decision recorded, checking if round complete ***');
+    
     const { checkHolmRoundComplete } = await import('./holmGameLogic');
     await checkHolmRoundComplete(gameId);
+  } else {
+    // 3-5-7 GAME: Simultaneous decisions - all bots decide instantly with small delay
+    console.log('[BOT] 3-5-7: Processing', botPlayers.length, 'bot decisions simultaneously');
+    
+    for (const bot of botPlayers) {
+      // Small random delay to make it feel natural (0-500ms)
+      const delay = Math.random() * 500;
+      
+      setTimeout(async () => {
+        const shouldStay = Math.random() > 0.2; // 80% chance to stay
+        const decision = shouldStay ? 'stay' : 'fold';
+        
+        console.log('[BOT] 3-5-7: Bot at position', bot.position, 'deciding:', decision);
+        await makeDecision(gameId, bot.id, decision);
+        console.log('[BOT] 3-5-7: Bot decision recorded');
+      }, delay);
+    }
   }
   
   console.log('[BOT] ========== Bot decision complete ==========');
