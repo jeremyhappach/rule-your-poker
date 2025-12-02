@@ -452,16 +452,7 @@ export const GameTable = ({
                                 >
                                   Fold
                                 </Button>
-                              ) : hasDecidedFold ? (
-                                <Button 
-                                  variant="destructive" 
-                                  size="lg"
-                                  disabled
-                                  className="text-xs sm:text-sm md:text-base px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 h-auto animate-[pulse_2s_ease-in-out_3] scale-110 relative"
-                                >
-                                  <span className="mr-1">✓</span> FOLDED
-                                </Button>
-                              ) : hasDecidedStay ? null : (
+                              ) : (
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
                               )}
                               
@@ -481,15 +472,7 @@ export const GameTable = ({
                                 >
                                   Stay
                                 </Button>
-                              ) : hasDecidedStay ? (
-                                <Button 
-                                  size="lg"
-                                  disabled
-                                  className="bg-poker-chip-green text-white text-xs sm:text-sm md:text-base px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 h-auto animate-[pulse_2s_ease-in-out_3] scale-110 relative"
-                                >
-                                  <span className="mr-1">✓</span> STAYED
-                                </Button>
-                              ) : hasDecidedFold ? null : (
+                              ) : (
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
                               )}
                             </>
