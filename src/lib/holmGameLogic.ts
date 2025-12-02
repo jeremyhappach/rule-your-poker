@@ -155,7 +155,10 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
  * - Always uses round 1 (Holm has no round progression, just hands)
  */
 export async function startHolmRound(gameId: string) {
-  console.log('[HOLM] Starting Holm hand for game', gameId);
+  console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
+  
+  // Small delay to ensure any pending pot updates are committed
+  await new Promise(resolve => setTimeout(resolve, 100));
   
   // Fetch game configuration
   const { data: gameConfig } = await supabase
@@ -167,6 +170,8 @@ export async function startHolmRound(gameId: string) {
   if (!gameConfig) {
     throw new Error('Game not found');
   }
+
+  console.log('[HOLM] Game config fetched - pot:', gameConfig.pot, 'buck_position:', gameConfig.buck_position);
 
   const anteAmount = gameConfig.ante_amount || 2;
   const dealerPosition = gameConfig.dealer_position || 1;
@@ -260,14 +265,14 @@ export async function startHolmRound(gameId: string) {
     
     console.log('[HOLM] Total antes collected:', currentPot);
     
-    if (isFirstHand) {
-      // Create round 1 (ante collection round - no gameplay)
+  if (isFirstHand) {
+      // Create round 1 (ante collection round - no gameplay, but cards_dealt must be >= 1)
       await supabase
         .from('rounds')
         .insert({
           game_id: gameId,
           round_number: 1,
-          cards_dealt: 0,
+          cards_dealt: 1,  // Must be >= 1 due to DB constraint
           status: 'completed',
           pot: currentPot,
           community_cards: [] as any
@@ -520,9 +525,10 @@ export async function endHolmRound(gameId: string) {
       ? `Pussy Tax!`
       : 'Everyone folded! No penalty.';
 
-    console.log('[HOLM END] Updating game with pussy tax result:', resultMessage);
+    console.log('[HOLM END] Pussy tax - old pot:', game.pot, 'tax collected:', totalTaxCollected, 'new pot:', newPot);
 
-    await supabase
+    // Update both games and rounds with the new pot
+    const { error: gameUpdateError } = await supabase
       .from('games')
       .update({
         last_round_result: resultMessage,
@@ -530,13 +536,20 @@ export async function endHolmRound(gameId: string) {
         pot: newPot
       })
       .eq('id', gameId);
+    
+    console.log('[HOLM END] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS');
 
-    await supabase
+    const { error: roundUpdateError } = await supabase
       .from('rounds')
-      .update({ status: 'completed' })
+      .update({ 
+        status: 'completed',
+        pot: newPot  // Also update round pot
+      })
       .eq('id', round.id);
+    
+    console.log('[HOLM END] Rounds pot update:', roundUpdateError ? `ERROR: ${roundUpdateError.message}` : 'SUCCESS');
 
-    console.log('[HOLM END] Pussy tax case completed');
+    console.log('[HOLM END] Pussy tax case completed with new pot:', newPot);
     return;
   }
 
@@ -747,18 +760,25 @@ async function handleChuckyShowdown(
       ? Math.min(roundPot, game.pot_max_value) 
       : roundPot;
 
-    console.log('[HOLM SHOWDOWN] Pot match amount:', potMatchAmount, '(based on roundPot:', roundPot, ')');
+    console.log('[HOLM SHOWDOWN] Pot match calculation:', {
+      pot_max_enabled: game.pot_max_enabled,
+      pot_max_value: game.pot_max_value,
+      roundPot,
+      potMatchAmount
+    });
 
     await supabase
       .from('players')
       .update({ chips: player.chips - potMatchAmount })
       .eq('id', player.id);
+    
+    console.log('[HOLM SHOWDOWN] Player chips deducted by:', potMatchAmount);
 
     const newPot = roundPot + potMatchAmount;
 
-    console.log('[HOLM SHOWDOWN] New pot:', newPot);
+    console.log('[HOLM SHOWDOWN] Pot update - old:', roundPot, 'adding:', potMatchAmount, 'new:', newPot);
 
-    await supabase
+    const { error: gameUpdateError } = await supabase
       .from('games')
       .update({
         last_round_result: `Chucky wins with ${formatHandRank(chuckyEval.rank)} vs ${formatHandRank(playerEval.rank)}. $${potMatchAmount} added to pot.`,
@@ -767,11 +787,15 @@ async function handleChuckyShowdown(
       })
       .eq('id', gameId);
     
+    console.log('[HOLM SHOWDOWN] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
+    
     // Also update round.pot so the next hand has the correct pot value
-    await supabase
+    const { error: roundUpdateError } = await supabase
       .from('rounds')
       .update({ pot: newPot })
       .eq('id', roundId);
+    
+    console.log('[HOLM SHOWDOWN] Rounds pot update:', roundUpdateError ? `ERROR: ${roundUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
   }
 
   // Mark round complete and hide Chucky
@@ -1037,6 +1061,8 @@ export async function proceedToNextHolmRound(gameId: string) {
     return;
   }
 
+  console.log('[HOLM NEXT] Current game state - pot:', game.pot, 'awaiting:', game.awaiting_next_round);
+
   // Rotate buck position clockwise to next active player
   const { data: players } = await supabase
     .from('players')
@@ -1059,7 +1085,7 @@ export async function proceedToNextHolmRound(gameId: string) {
 
   console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
 
-  // Update buck position
+  // Update buck position (DO NOT touch pot here)
   await supabase
     .from('games')
     .update({
