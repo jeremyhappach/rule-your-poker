@@ -145,9 +145,9 @@ export const GameTable = ({
           {showPotAndTimer && (
             <>
               {/* Pot and Timer Container - game-type specific positioning */}
-              {/* Holm: bottom of table, 3-5-7: center of table */}
+              {/* Holm: bottom of table (vertical stack), 3-5-7: center of table (horizontal) */}
               <div className={`absolute ${gameType === 'holm-game' ? 'bottom-0 pb-2' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-20`}>
-                <div className="flex flex-col items-center justify-center gap-2 sm:gap-3 md:gap-4">
+                <div className={`flex ${gameType === 'holm-game' ? 'flex-col' : 'flex-row'} items-center justify-center gap-2 sm:gap-3 md:gap-4`}>
                   {/* Last Hand Warning - shown when session ending */}
                   {pendingSessionEnd && (
                     <div className="whitespace-nowrap">
