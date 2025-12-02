@@ -224,7 +224,15 @@ export async function startHolmRound(gameId: string) {
   
   // In Holm, antes are ONLY collected on the very first hand
   // After that, losers match the pot - no re-anting
-  const needsAnteCollection = isFirstHand;
+  // Use BOTH round1 existence AND total_hands as guards
+  const needsAnteCollection = isFirstHand && (gameConfig.total_hands === 0 || gameConfig.total_hands === null);
+  
+  console.log('[HOLM] First hand check:', {
+    round1Exists: !!round1,
+    totalHands: gameConfig.total_hands,
+    isFirstHand,
+    needsAnteCollection
+  });
   
   // CRITICAL: Use round1.pot if game.pot is stale/0 but round1 has the correct pot
   let currentPot = gameConfig.pot || round1?.pot || 0;
@@ -1116,8 +1124,11 @@ export async function proceedToNextHolmRound(gameId: string) {
     return;
   }
 
-  console.log('[HOLM NEXT] Current game state - pot:', game.pot, 'awaiting:', game.awaiting_next_round);
+  console.log('[HOLM NEXT] Current game state - pot:', game.pot, 'awaiting:', game.awaiting_next_round, 'total_hands:', game.total_hands);
 
+  // Increment total_hands counter (this prevents re-anting on subsequent hands)
+  const newTotalHands = (game.total_hands || 0) + 1;
+  
   // Rotate buck position clockwise to next active player
   const { data: players } = await supabase
     .from('players')
@@ -1140,14 +1151,17 @@ export async function proceedToNextHolmRound(gameId: string) {
 
   console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
 
-  // Update buck position (DO NOT touch pot here)
+  // Update buck position and increment total_hands (DO NOT touch pot here)
   await supabase
     .from('games')
     .update({
       buck_position: newBuckPosition,
-      last_round_result: null
+      last_round_result: null,
+      total_hands: newTotalHands
     })
     .eq('id', gameId);
+  
+  console.log('[HOLM NEXT] Updated total_hands to', newTotalHands);
 
   // Start new hand (always round 1)
   await startHolmRound(gameId);
