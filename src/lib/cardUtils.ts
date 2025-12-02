@@ -55,8 +55,13 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   const nonWildcards = useWildCards ? cards.filter(c => c.rank !== wildRank) : cards;
   const wildcardCount = wildcards.length;
 
-  // If all cards are wildcards, treat as highest possible
-  if (wildcardCount === cards.length) {
+  // If all cards are wildcards in round 1 (3 cards), treat as best possible: three of a kind
+  if (cards.length === 3 && wildcardCount === cards.length) {
+    return { rank: 'three-of-a-kind', value: calculateValue(3, [14, 14]) };
+  }
+
+  // If all cards are wildcards in round 2+ (5 or 7 cards), treat as straight flush
+  if (cards.length >= 5 && wildcardCount === cards.length) {
     return { rank: 'straight-flush', value: calculateValue(8, [14]) };
   }
 
@@ -75,12 +80,6 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
       if (b[1] !== a[1]) return b[1] - a[1]; // Sort by count descending
       return RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]; // Then by value descending
     });
-  
-  // Check for potential straight flush with wildcards
-  const straightFlushResult = checkStraightFlush(sortedCards, wildcardCount);
-  if (straightFlushResult.possible) {
-    return { rank: 'straight-flush', value: calculateValue(8, [straightFlushResult.highCard]) };
-  }
 
   // Use wildcards to complete the best possible hand
   const counts = rankGroups.map(([_, count]) => count);
@@ -90,6 +89,41 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
   const secondCount = counts[1] || 0;
   const secondRank = rankGroups[1]?.[0] as Rank;
+
+  // ROUND 1 (3 cards): Only three-of-a-kind, pair, or high card are possible
+  if (cards.length === 3) {
+    // Three of a Kind
+    if (bestCount >= 3) {
+      const tripRank = bestRank;
+      const kickers = sortedCards
+        .filter(c => c.rank !== tripRank)
+        .map(c => RANK_VALUES[c.rank])
+        .slice(0, 2);
+      return { rank: 'three-of-a-kind', value: calculateValue(3, [RANK_VALUES[tripRank], ...kickers]) };
+    }
+
+    // Pair (including with wildcards)
+    if (bestCount >= 2) {
+      const pairRank = bestRank;
+      const kickers = sortedCards
+        .filter(c => c.rank !== pairRank)
+        .map(c => RANK_VALUES[c.rank])
+        .slice(0, 3);
+      return { rank: 'pair', value: calculateValue(1, [RANK_VALUES[pairRank], ...kickers]) };
+    }
+
+    // High Card
+    const allValues = sortedCards.map(c => RANK_VALUES[c.rank]).slice(0, 5);
+    return { rank: 'high-card', value: calculateValue(0, allValues) };
+  }
+
+  // ROUND 2+ (5 or 7 cards): All hands are possible
+  
+  // Check for potential straight flush with wildcards
+  const straightFlushResult = checkStraightFlush(sortedCards, wildcardCount);
+  if (straightFlushResult.possible) {
+    return { rank: 'straight-flush', value: calculateValue(8, [straightFlushResult.highCard]) };
+  }
 
   // Four of a Kind
   if (bestCount >= 4) {
