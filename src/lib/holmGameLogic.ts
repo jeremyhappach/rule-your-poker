@@ -222,11 +222,9 @@ export async function startHolmRound(gameId: string) {
 
   const isFirstHand = !round1;
   
-  // CRITICAL: Check if antes need to be collected
-  // Antes should be collected if:
-  // 1. This is the first hand (no round 1) OR
-  // 2. Round 1 exists but pot is 0 (antes weren't collected due to a bug)
-  const needsAnteCollection = isFirstHand || (gameConfig.pot === 0 && (!round1 || round1.pot === 0));
+  // In Holm, antes are ONLY collected on the very first hand
+  // After that, losers match the pot - no re-anting
+  const needsAnteCollection = isFirstHand;
   
   // CRITICAL: Use round1.pot if game.pot is stale/0 but round1 has the correct pot
   let currentPot = gameConfig.pot || round1?.pot || 0;
@@ -896,54 +894,52 @@ async function handleMultiPlayerShowdown(
     const winner = winners[0];
     const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
     
-    // Losers match the pot (capped) - calculate this FIRST
+    // Winner takes ONLY the pot
+    console.log('[HOLM MULTI] Winner', winnerUsername, 'takes pot:', roundPot);
+    await supabase
+      .from('players')
+      .update({ 
+        chips: winner.player.chips + roundPot
+      })
+      .eq('id', winner.player.id);
+
+    // Losers match the pot (capped) - this becomes the NEW pot for next hand
     const potMatchAmount = game.pot_max_enabled 
       ? Math.min(roundPot, game.pot_max_value) 
       : roundPot;
     
-    console.log('[HOLM MULTI] Losers pay potMatchAmount:', potMatchAmount, '(based on roundPot:', roundPot, ')');
+    console.log('[HOLM MULTI] Losers pay potMatchAmount:', potMatchAmount, '(becomes new pot)');
 
-    let totalMatched = 0;
+    let newPot = 0;
     for (const loser of losers) {
       await supabase
         .from('players')
         .update({ chips: loser.player.chips - potMatchAmount })
         .eq('id', loser.player.id);
-      totalMatched += potMatchAmount;
+      newPot += potMatchAmount;
     }
 
-    // Winner takes the pot PLUS the loser's matched amount
-    const totalWinnings = roundPot + totalMatched;
-    console.log('[HOLM MULTI] Winner', winnerUsername, 'gets pot:', roundPot, '+ matched:', totalMatched, '= total:', totalWinnings);
-    await supabase
-      .from('players')
-      .update({ 
-        chips: winner.player.chips + totalWinnings
-      })
-      .eq('id', winner.player.id);
-
-    // In Holm, multi-player showdowns never end the game - only beating Chucky does
-    // Reset pot to 0 so next hand collects fresh antes
-    console.log('[HOLM MULTI] Winner in multi-player showdown, pot reset to 0');
+    // Set pot to losers' matched amount (no re-anting in Holm)
+    console.log('[HOLM MULTI] New pot from losers match:', newPot);
     const { error: updateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)} and takes $${totalWinnings}!`,
+        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)} and takes $${roundPot}!`,
         awaiting_next_round: true,
-        pot: 0
+        pot: newPot
       })
       .eq('id', gameId);
     
     if (updateError) {
       console.error('[HOLM MULTI] ERROR updating game:', updateError);
     } else {
-      console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=0');
+      console.log('[HOLM MULTI] Successfully set awaiting_next_round=true, pot=', newPot);
     }
 
-    // Also reset round 1's pot so next hand starts fresh with antes
+    // Also update round 1's pot for next hand
     await supabase
       .from('rounds')
-      .update({ pot: 0 })
+      .update({ pot: newPot })
       .eq('game_id', gameId)
       .eq('round_number', 1);
   
@@ -1041,35 +1037,17 @@ async function handleMultiPlayerShowdown(
         .eq('game_id', gameId)
         .eq('round_number', 1);
     } else {
-      // Some players beat Chucky - they split the pot AND loser's matched amount
+      // Some players beat Chucky - they split the pot, losers match it for next pot
       console.log('[HOLM TIE] Some tied players beat Chucky');
       
-      // First calculate loser's matched amount
-      const potMatchAmount = game.pot_max_enabled 
-        ? Math.min(game.pot, game.pot_max_value) 
-        : game.pot;
-      
-      let totalMatched = 0;
-      
-      for (const loser of playersLoseToChucky) {
-        await supabase
-          .from('players')
-          .update({ chips: loser.player.chips - potMatchAmount })
-          .eq('id', loser.player.id);
-        
-        totalMatched += potMatchAmount;
-      }
-      
-      // Winners split pot + loser's matched amount
-      const totalWinnings = game.pot + totalMatched;
-      const splitAmount = Math.floor(totalWinnings / playersBeatChucky.length);
+      // Winners split ONLY the pot
+      const splitAmount = Math.floor(game.pot / playersBeatChucky.length);
       let winnerNames: string[] = [];
       
       for (const winner of playersBeatChucky) {
         const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
         winnerNames.push(winnerUsername);
         
-        // Award split of total winnings (pot + matched)
         await supabase
           .from('players')
           .update({ 
@@ -1078,20 +1056,34 @@ async function handleMultiPlayerShowdown(
           .eq('id', winner.player.id);
       }
       
-      // Reset pot to 0 so next hand collects fresh antes
+      // Losers match the pot (capped) - becomes the NEW pot
+      const potMatchAmount = game.pot_max_enabled 
+        ? Math.min(game.pot, game.pot_max_value) 
+        : game.pot;
+      
+      let newPot = 0;
+      for (const loser of playersLoseToChucky) {
+        await supabase
+          .from('players')
+          .update({ chips: loser.player.chips - potMatchAmount })
+          .eq('id', loser.player.id);
+        newPot += potMatchAmount;
+      }
+      
+      // Set pot to losers' matched amount (no re-anting in Holm)
       await supabase
         .from('games')
         .update({
-          last_round_result: `Tie broken! ${winnerNames.join(' and ')} beat Chucky and take $${totalWinnings}!`,
+          last_round_result: `Tie broken! ${winnerNames.join(' and ')} beat Chucky and take $${game.pot}!`,
           awaiting_next_round: true,
-          pot: 0
+          pot: newPot
         })
         .eq('id', gameId);
       
-      // Also reset round 1's pot
+      // Also update round 1's pot
       await supabase
         .from('rounds')
-        .update({ pot: 0 })
+        .update({ pot: newPot })
         .eq('game_id', gameId)
         .eq('round_number', 1);
     }
