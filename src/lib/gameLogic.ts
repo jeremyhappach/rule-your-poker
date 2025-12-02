@@ -778,13 +778,22 @@ export async function endRound(gameId: string) {
     console.log('[endRound] Not final leg, continuing to set awaiting_next_round');
     // If not final leg, just continue - result message will be set at end of function
   } else if (playersWhoStayed.length > 1) {
+    console.log('[endRound] SHOWDOWN: Multiple players stayed, evaluating hands');
     // Multiple players stayed - evaluate hands for showdown
-    const { data: playerCards } = await supabase
+    const { data: playerCards, error: cardsError } = await supabase
       .from('player_cards')
       .select('*')
       .eq('round_id', round.id);
 
-    if (playerCards) {
+    console.log('[endRound] SHOWDOWN: Player cards fetch result:', {
+      roundId: round.id,
+      cardsCount: playerCards?.length,
+      error: cardsError,
+      hasCards: !!playerCards
+    });
+
+    if (playerCards && playerCards.length > 0) {
+      console.log('[endRound] SHOWDOWN: Processing cards for evaluation');
       // Only evaluate hands of players who stayed
       const hands = playerCards
         .filter(pc => playersWhoStayed.some(p => p.id === pc.player_id))
@@ -794,11 +803,26 @@ export async function endRound(gameId: string) {
           evaluation: evaluateHand(pc.cards as unknown as Card[])
         }));
 
+      console.log('[endRound] SHOWDOWN: Hands evaluated:', {
+        handsCount: hands.length,
+        hands: hands.map(h => ({
+          playerId: h.playerId,
+          rank: h.evaluation.rank,
+          value: h.evaluation.value
+        }))
+      });
+
       if (hands.length > 0) {
         // Find winner
         const winner = hands.reduce((best, current) => 
           current.evaluation.value > best.evaluation.value ? current : best
         );
+
+        console.log('[endRound] SHOWDOWN: Winner determined:', {
+          winnerId: winner.playerId,
+          winnerRank: winner.evaluation.rank,
+          winnerValue: winner.evaluation.value
+        });
 
         const { data: winningPlayer } = await supabase
           .from('players')
@@ -846,9 +870,22 @@ export async function endRound(gameId: string) {
           // Don't clear the pot - it stays for the game winner
           const showdownResult = `${winnerUsername} won $${totalWinnings} with ${handName}`;
           
+          console.log('[endRound] SHOWDOWN: Result determined:', {
+            winner: winnerUsername,
+            winnings: totalWinnings,
+            handName,
+            resultMessage: showdownResult
+          });
+          
           resultMessage = showdownResult;
+        } else {
+          console.log('[endRound] SHOWDOWN: ERROR - No winning player found');
         }
+      } else {
+        console.log('[endRound] SHOWDOWN: ERROR - No hands to evaluate');
       }
+    } else {
+      console.log('[endRound] SHOWDOWN: ERROR - No player cards found or empty array');
     }
 
     // Showdowns never end the game - continue to next round
