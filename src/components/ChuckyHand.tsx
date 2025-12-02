@@ -25,7 +25,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
       <div className="bg-gradient-to-br from-red-900/90 to-red-950/90 rounded-lg p-1.5 sm:p-2 backdrop-blur-sm border border-red-500 shadow-xl">
         <div className="text-center mb-1">
           <span className="text-red-400 font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1">
-            <span className="text-sm">👻</span>
+            <span className="text-sm">😈</span>
             Chucky {revealed < cards.length && `(${revealed}/${cards.length})`}
           </span>
         </div>
