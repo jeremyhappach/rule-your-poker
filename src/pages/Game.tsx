@@ -1187,6 +1187,14 @@ const Game = () => {
           </div>
         </div>
 
+        {/* Result Message - displayed below buttons */}
+        {game.last_round_result && game.awaiting_next_round && (
+          <div className="text-center">
+            <p className="text-poker-gold font-bold text-base md:text-lg">
+              {game.last_round_result}
+            </p>
+          </div>
+        )}
 
         {game.status === 'waiting' && (
           <PreGameLobby
