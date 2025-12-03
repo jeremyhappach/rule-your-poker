@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       game_defaults: {
         Row: {
+          bot_decision_delay_seconds: number
+          bot_fold_probability: number
           chucky_last_card_delay_seconds: number
           chucky_second_to_last_delay_seconds: number
           created_at: string
@@ -25,6 +27,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bot_decision_delay_seconds?: number
+          bot_fold_probability?: number
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
@@ -34,6 +38,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bot_decision_delay_seconds?: number
+          bot_fold_probability?: number
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
