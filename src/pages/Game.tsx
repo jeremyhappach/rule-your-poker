@@ -269,9 +269,15 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
-          if (payload.eventType === 'UPDATE' && payload.new && 'current_turn_position' in payload.new) {
+          // Immediate fetch for INSERT (new round started) or turn changes
+          if (payload.eventType === 'INSERT') {
+            console.log('[REALTIME] 🎴 NEW ROUND INSERTED - Immediate fetch for all clients!');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+          } else if (payload.eventType === 'UPDATE' && payload.new && 'current_turn_position' in payload.new) {
             console.log('[REALTIME] Turn change detected! Immediately fetching without debounce');
-            fetchGameData(); // Immediate fetch for turn changes
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
           } else {
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
@@ -287,7 +293,14 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] Player cards changed:', payload);
-          debouncedFetch();
+          // Immediate fetch for INSERT (cards dealt) - critical for observers to see card backs
+          if (payload.eventType === 'INSERT') {
+            console.log('[REALTIME] 🃏 CARDS DEALT - Immediate fetch for observers!');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+          } else {
+            debouncedFetch();
+          }
         }
       )
       .on(
