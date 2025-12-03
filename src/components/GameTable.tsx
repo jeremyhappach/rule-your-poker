@@ -60,6 +60,7 @@ interface GameTableProps {
   chuckyCardsRevealed?: number;
   roundStatus?: string;
   pendingDecision?: 'stay' | 'fold' | null;
+  isPaused?: boolean;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -91,6 +92,7 @@ export const GameTable = ({
   chuckyCardsRevealed,
   roundStatus,
   pendingDecision,
+  isPaused,
   onStay,
   onFold,
   onSelectSeat,
@@ -476,7 +478,7 @@ export const GameTable = ({
                             ? (buckIsAssigned && roundIsReady && roundIsActive && currentTurnPosition === player.position && !awaitingNextRound)
                             : true;
                           
-                          const canDecide = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
+                          const canDecide = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn && !isPaused;
                           const hasDecidedFold = isCurrentUser && (hasPlayerDecided && playerDecision === 'fold') || pendingDecision === 'fold';
                           const hasDecidedStay = isCurrentUser && (hasPlayerDecided && playerDecision === 'stay') || pendingDecision === 'stay';
                           

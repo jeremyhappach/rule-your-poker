@@ -1412,10 +1412,22 @@ const Game = () => {
                   <Button 
                     variant={game.is_paused ? "default" : "outline"} 
                     onClick={async () => {
-                      await supabase
+                      const newPausedState = !game.is_paused;
+                      const { error } = await supabase
                         .from('games')
-                        .update({ is_paused: !game.is_paused })
+                        .update({ is_paused: newPausedState })
                         .eq('id', gameId);
+                      
+                      if (error) {
+                        console.error('[PAUSE] Error updating pause state:', error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to update game pause state",
+                          variant: "destructive"
+                        });
+                      } else {
+                        console.log('[PAUSE] Successfully set is_paused to:', newPausedState);
+                      }
                     }}
                   >
                     {game.is_paused ? '▶️ Resume' : '⏸️ Pause'}
@@ -1714,6 +1726,7 @@ const Game = () => {
             chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}
             roundStatus={currentRound?.status}
             pendingDecision={pendingDecision}
+            isPaused={game.is_paused || false}
             onStay={handleStay}
             onFold={handleFold}
             onSelectSeat={handleSelectSeat}
