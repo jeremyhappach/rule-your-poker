@@ -600,7 +600,21 @@ const Game = () => {
       if (isHolmGame) {
         // In Holm, auto-fold the player whose timer expired
         (async () => {
-          // CRITICAL: Fetch fresh round data to verify turn hasn't changed
+          // CRITICAL: Fetch fresh game and round data to verify state
+          const { data: freshGame } = await supabase
+            .from('games')
+            .select('is_paused')
+            .eq('id', gameId!)
+            .single();
+          
+          // Check pause state from database (not local state which may be stale)
+          if (freshGame?.is_paused) {
+            console.log('[TIMER EXPIRED HOLM] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
+            autoFoldingRef.current = false;
+            fetchGameData(); // Sync local state
+            return;
+          }
+          
           const { data: freshRound } = await supabase
             .from('rounds')
             .select('*')
@@ -648,10 +662,25 @@ const Game = () => {
           autoFoldingRef.current = false;
         });
       } else {
-        autoFoldUndecided(gameId!).then(() => {
+        // For 3-5-7 games, also check pause state from database
+        (async () => {
+          const { data: freshGame } = await supabase
+            .from('games')
+            .select('is_paused')
+            .eq('id', gameId!)
+            .single();
+          
+          if (freshGame?.is_paused) {
+            console.log('[TIMER EXPIRED 3-5-7] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
+            autoFoldingRef.current = false;
+            fetchGameData();
+            return;
+          }
+          
+          await autoFoldUndecided(gameId!);
           fetchGameData();
           autoFoldingRef.current = false;
-        }).catch(err => {
+        })().catch(err => {
           console.error('[TIMER EXPIRED] Error auto-folding:', err);
           autoFoldingRef.current = false;
         });

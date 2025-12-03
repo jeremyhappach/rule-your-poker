@@ -97,6 +97,16 @@ export async function checkHolmRoundComplete(gameId: string) {
 async function moveToNextHolmPlayerTurn(gameId: string) {
   console.log('[HOLM TURN] ========== Starting moveToNextHolmPlayerTurn ==========');
   
+  // Fetch game_defaults for decision timer
+  const { data: gameDefaults } = await supabase
+    .from('game_defaults')
+    .select('decision_timer_seconds')
+    .eq('game_type', 'holm')
+    .maybeSingle();
+  
+  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
+  console.log('[HOLM TURN] Using decision timer:', timerSeconds, 'seconds');
+  
   const { data: game } = await supabase
     .from('games')
     .select('*')
@@ -131,8 +141,8 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   
   console.log('[HOLM TURN] *** MOVING TURN from position', round.current_turn_position, 'to', nextPosition, '***');
   
-  // Update turn position and reset timer (10 seconds per turn)
-  const deadline = new Date(Date.now() + 10000);
+  // Update turn position and reset timer using game_defaults
+  const deadline = new Date(Date.now() + timerSeconds * 1000);
   await supabase
     .from('rounds')
     .update({ 
@@ -251,6 +261,16 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     console.log('[HOLM] SUBSEQUENT HAND - Using preserved pot:', potForRound);
   }
 
+  // Fetch game_defaults for decision timer
+  const { data: gameDefaults } = await supabase
+    .from('game_defaults')
+    .select('decision_timer_seconds')
+    .eq('game_type', 'holm')
+    .maybeSingle();
+  
+  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
+  console.log('[HOLM] Using decision timer:', timerSeconds, 'seconds');
+
   // Handle round 2 (gameplay round)
   const { data: round2 } = await supabase
     .from('rounds')
@@ -260,7 +280,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     .maybeSingle();
 
   // Deal fresh cards
-  const deadline = new Date(Date.now() + 10000);
+  const deadline = new Date(Date.now() + timerSeconds * 1000);
   const deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
