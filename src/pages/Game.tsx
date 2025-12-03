@@ -196,12 +196,18 @@ const Game = () => {
             hasNew: !!payload.new,
             newKeys: payload.new ? Object.keys(payload.new) : [],
             awaiting_next_round: payload.new?.awaiting_next_round,
+            is_paused: payload.new?.is_paused,
             fullPayload: payload
           });
           
           // Immediately fetch if awaiting_next_round changed to true (critical for round transitions)
           if (payload.new && 'awaiting_next_round' in payload.new && payload.new.awaiting_next_round === true) {
             console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+          } else if (payload.new && 'is_paused' in payload.new) {
+            // Immediately fetch for pause/resume state changes
+            console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE FETCH!', payload.new.is_paused);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
           } else {
