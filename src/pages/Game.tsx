@@ -364,6 +364,12 @@ const Game = () => {
     };
   }, [gameId, game?.id]);
 
+  // Track pause state in a ref so interval callback can access latest value
+  const isPausedRef = useRef(game?.is_paused);
+  useEffect(() => {
+    isPausedRef.current = game?.is_paused;
+  }, [game?.is_paused]);
+
   // Server-driven timer countdown - calculates from decision_deadline for perfect sync
   useEffect(() => {
     // If paused, show frozen time but don't countdown
@@ -392,6 +398,11 @@ const Game = () => {
 
     // Update every second by recalculating from deadline (keeps all clients in sync)
     const timer = setInterval(() => {
+      // Check pause state from ref (latest value) - stop countdown if paused
+      if (isPausedRef.current) {
+        console.log('[TIMER COUNTDOWN] Paused detected in interval, skipping tick');
+        return;
+      }
       const remaining = calculateRemaining();
       console.log('[TIMER COUNTDOWN] Tick (from deadline):', remaining);
       setTimeLeft(remaining);
@@ -1630,16 +1641,16 @@ const Game = () => {
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended') && (
           <>
             {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result ? (
-              <>
+              <div className="relative">
                 <GameTable
                   players={players}
                   currentUserId={user?.id}
                   pot={game.pot || 0}
-                  currentRound={0}
-                  allDecisionsIn={false}
-                  playerCards={[]}
+                  currentRound={game.current_round || 0}
+                  allDecisionsIn={true}
+                  playerCards={playerCards}
                   timeLeft={null}
-                  lastRoundResult={null}
+                  lastRoundResult={game.game_over_at ? null : game.last_round_result}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
                   legsToWin={game.legs_to_win || 3}
@@ -1650,6 +1661,13 @@ const Game = () => {
                   onStay={() => {}}
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
+                  communityCards={currentRound?.community_cards as CardType[] | undefined}
+                  communityCardsRevealed={currentRound?.community_cards_revealed}
+                  chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
+                  chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
+                  chuckyActive={currentRound?.chucky_active}
+                  gameType={game.game_type}
+                  roundStatus={currentRound?.status}
                 />
                 {game.game_over_at ? (
                   <GameOverCountdown
@@ -1661,13 +1679,14 @@ const Game = () => {
                     pendingSessionEnd={game.pending_session_end || false}
                   />
                 ) : (
-                  <DealerConfirmGameOver
-                    winnerMessage={game.last_round_result}
-                    isDealer={isDealer || dealerPlayer?.is_bot || false}
-                    onConfirm={handleDealerConfirmGameOver}
-                  />
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+                    <DealerConfirmGameOver
+                      isDealer={isDealer || dealerPlayer?.is_bot || false}
+                      onConfirm={handleDealerConfirmGameOver}
+                    />
+                  </div>
                 )}
-              </>
+              </div>
             ) : game.status === 'dealer_selection' ? (
               <div className="relative">
                 <GameTable
