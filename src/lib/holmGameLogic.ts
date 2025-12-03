@@ -406,9 +406,13 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
-  // Guard: Prevent multiple simultaneous calls - if round is completed or Chucky is already dealing, exit
-  if (round.status === 'completed' || (round.chucky_active && round.chucky_cards_revealed && round.chucky_cards_revealed > 0)) {
-    console.log('[HOLM END] Round already being processed or completed, skipping');
+  // Guard: Prevent multiple simultaneous calls - if round is completed or Chucky is already active, exit
+  // Check chucky_active alone (not revealed count) to prevent race conditions during initial dealing
+  if (round.status === 'completed' || round.status === 'showdown' || round.chucky_active) {
+    console.log('[HOLM END] Round already being processed or completed, skipping', {
+      status: round.status,
+      chucky_active: round.chucky_active
+    });
     return;
   }
 
@@ -638,7 +642,16 @@ export async function endHolmRound(gameId: string) {
     
     // Use round.pot as the authoritative pot value (game.pot may be stale)
     const roundPot = round.pot || game.pot || 0;
-    await handleChuckyShowdown(gameId, round.id, player, communityCards, game, chuckyCards, roundPot);
+    try {
+      await handleChuckyShowdown(gameId, round.id, player, communityCards, game, chuckyCards, roundPot);
+    } catch (error) {
+      console.error('[HOLM END] ERROR in handleChuckyShowdown:', error);
+      // Attempt to at least mark round as completed to prevent stuck state
+      await supabase
+        .from('rounds')
+        .update({ status: 'completed', chucky_active: false })
+        .eq('id', round.id);
+    }
     return;
   }
 
