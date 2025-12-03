@@ -83,7 +83,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     fetchGames();
     checkSuperuser();
 
-    const channel = supabase
+    const gamesChannel = supabase
       .channel('games-channel')
       .on(
         'postgres_changes',
@@ -98,8 +98,25 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       )
       .subscribe();
 
+    // Also subscribe to players table to update player counts in real-time
+    const playersChannel = supabase
+      .channel('players-lobby-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'players'
+        },
+        () => {
+          fetchGames();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(gamesChannel);
+      supabase.removeChannel(playersChannel);
     };
   }, [userId]);
 
