@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { SessionResults } from "@/components/SessionResults";
+import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
+import { Settings } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,11 +74,14 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Game | null>(null);
   const [showSessionResults, setShowSessionResults] = useState(false);
+  const [showDefaultsConfig, setShowDefaultsConfig] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchGames();
+    checkSuperuser();
 
     const channel = supabase
       .channel('games-channel')
@@ -96,7 +101,17 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
+
+  const checkSuperuser = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_superuser')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    setIsSuperuser(data?.is_superuser || false);
+  };
 
   const fetchGames = async () => {
     const { data: gamesData, error } = await supabase
@@ -324,9 +339,22 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <h2 className="text-xl sm:text-2xl font-bold">Game Lobby</h2>
-        <Button onClick={() => setShowCreateDialog(true)} size="lg" className="w-full sm:w-auto">
-          Create New Game
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          {isSuperuser && (
+            <Button 
+              onClick={() => setShowDefaultsConfig(true)} 
+              size="lg" 
+              variant="outline"
+              className="flex-1 sm:flex-none"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Defaults
+            </Button>
+          )}
+          <Button onClick={() => setShowCreateDialog(true)} size="lg" className="flex-1 sm:flex-none">
+            Create New Game
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="active" className="w-full">
@@ -542,6 +570,11 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           }}
         />
       )}
+
+      <GameDefaultsConfig 
+        open={showDefaultsConfig} 
+        onOpenChange={setShowDefaultsConfig} 
+      />
     </div>
   );
 };

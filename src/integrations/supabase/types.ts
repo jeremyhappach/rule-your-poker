@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      game_defaults: {
+        Row: {
+          chucky_last_card_delay_seconds: number
+          chucky_second_to_last_delay_seconds: number
+          created_at: string
+          decision_timer_seconds: number
+          game_type: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          chucky_last_card_delay_seconds?: number
+          chucky_second_to_last_delay_seconds?: number
+          created_at?: string
+          decision_timer_seconds?: number
+          game_type: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          chucky_last_card_delay_seconds?: number
+          chucky_second_to_last_delay_seconds?: number
+          created_at?: string
+          decision_timer_seconds?: number
+          game_type?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           all_decisions_in: boolean | null
@@ -258,16 +288,19 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_superuser: boolean
           username: string
         }
         Insert: {
           created_at?: string
           id: string
+          is_superuser?: boolean
           username: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_superuser?: boolean
           username?: string
         }
         Relationships: []
