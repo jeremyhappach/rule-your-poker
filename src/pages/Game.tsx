@@ -1447,6 +1447,9 @@ const Game = () => {
                     variant={game.is_paused ? "default" : "outline"} 
                     onClick={async () => {
                       const newPausedState = !game.is_paused;
+                      // Optimistic UI update - immediately reflect the change
+                      setGame(prev => prev ? { ...prev, is_paused: newPausedState } : prev);
+                      
                       const { error } = await supabase
                         .from('games')
                         .update({ is_paused: newPausedState })
@@ -1454,6 +1457,8 @@ const Game = () => {
                       
                       if (error) {
                         console.error('[PAUSE] Error updating pause state:', error);
+                        // Revert optimistic update on error
+                        setGame(prev => prev ? { ...prev, is_paused: !newPausedState } : prev);
                         toast({
                           title: "Error",
                           description: "Failed to update game pause state",
