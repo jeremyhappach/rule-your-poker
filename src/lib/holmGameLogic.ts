@@ -698,18 +698,21 @@ async function handleChuckyShowdown(
   console.log('[HOLM SHOWDOWN] Community cards:', communityCards);
   console.log('[HOLM SHOWDOWN] Round pot (authoritative):', roundPot, 'game.pot:', game.pot);
 
-  // Get player's cards
-  const { data: playerCardsData } = await supabase
+  // Get player's cards (use limit(1) to handle potential duplicates gracefully)
+  const { data: playerCardsArray, error: cardsError } = await supabase
     .from('player_cards')
     .select('*')
     .eq('player_id', player.id)
     .eq('round_id', roundId)
-    .single();
+    .order('created_at', { ascending: true })
+    .limit(1);
 
-  if (!playerCardsData) {
-    console.log('[HOLM SHOWDOWN] ERROR: Player cards not found');
+  if (cardsError || !playerCardsArray || playerCardsArray.length === 0) {
+    console.log('[HOLM SHOWDOWN] ERROR: Player cards not found or error:', cardsError);
     return;
   }
+  
+  const playerCardsData = playerCardsArray[0];
 
   const playerCards = playerCardsData.cards as unknown as Card[];
   console.log('[HOLM SHOWDOWN] Player cards:', playerCards);

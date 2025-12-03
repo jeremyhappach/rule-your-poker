@@ -16,9 +16,10 @@ const TEAM_LOGOS: Record<string, string> = {
 interface PlayerHandProps {
   cards: CardType[];
   isHidden?: boolean;
+  expectedCardCount?: number; // For observers who can't see actual cards
 }
 
-export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
+export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: PlayerHandProps) => {
   const { getCardBackColors, getCardBackId } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
   const cardBackId = getCardBackId();
@@ -35,9 +36,12 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
     RANK_ORDER[a.rank] - RANK_ORDER[b.rank]
   );
   
+  // For observers who can't see actual cards, use expectedCardCount to render hidden backs
+  const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
+  
   // Calculate size and spacing based on number of cards
   const getCardClasses = () => {
-    if (cards.length >= 7) {
+    if (displayCardCount >= 7) {
       // Round 3: 7 cards - smallest with readable overlap
       return {
         card: 'w-8 h-11 sm:w-9 sm:h-12 md:w-10 md:h-14',
@@ -45,7 +49,7 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
         suit: 'text-lg sm:text-xl',
         overlap: '-ml-2 sm:-ml-2 md:-ml-3 first:ml-0'
       };
-    } else if (cards.length >= 5) {
+    } else if (displayCardCount >= 5) {
       // Round 2: 5 cards - medium with readable overlap
       return {
         card: 'w-10 h-14 sm:w-11 sm:h-15 md:w-12 md:h-16',
@@ -66,9 +70,11 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
   const classes = getCardClasses();
   
   if (isHidden) {
+    // For hidden cards, use displayCardCount to render the right number of card backs
+    const hiddenCardArray = Array.from({ length: displayCardCount }, (_, i) => i);
     return (
       <div className="flex">
-        {sortedCards.map((_, index) => (
+        {hiddenCardArray.map((_, index) => (
           <div
             key={index}
             className={`${classes.card} ${classes.overlap} rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden animate-fade-in`}
