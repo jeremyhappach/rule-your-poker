@@ -84,7 +84,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     checkSuperuser();
 
     const gamesChannel = supabase
-      .channel('games-channel')
+      .channel('games-lobby-channel')
       .on(
         'postgres_changes',
         {
@@ -97,7 +97,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           fetchGames();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[LOBBY REALTIME] Games channel status:', status);
+      });
 
     // Also subscribe to players table to update player counts in real-time
     const playersChannel = supabase
@@ -114,7 +116,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           fetchGames();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[LOBBY REALTIME] Players channel status:', status);
+      });
 
     return () => {
       supabase.removeChannel(gamesChannel);
