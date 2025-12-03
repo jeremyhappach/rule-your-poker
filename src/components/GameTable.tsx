@@ -499,7 +499,7 @@ export const GameTable = ({
                               {/* Chip balance (center) */}
                               <div className="flex items-center justify-center">
                                 <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
-                                  ${player.chips}
+                                  ${player.chips.toLocaleString()}
                                 </p>
                               </div>
                               
