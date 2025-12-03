@@ -117,6 +117,7 @@ const Game = () => {
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
   const [timerTurnPosition, setTimerTurnPosition] = useState<number | null>(null);
   const [pendingDecision, setPendingDecision] = useState<'stay' | 'fold' | null>(null);
+  const anteProcessingRef = useRef(false);
 
   // Clear pending decision when backend confirms
   useEffect(() => {
@@ -413,15 +414,26 @@ const Game = () => {
 
   // Check if all ante decisions are in - with polling fallback
   useEffect(() => {
-    if (game?.status !== 'ante_decision') return;
+    if (game?.status !== 'ante_decision') {
+      // Reset the ref when we exit ante_decision status
+      anteProcessingRef.current = false;
+      return;
+    }
 
     const checkAnteDecisions = () => {
+      // Skip if already processing
+      if (anteProcessingRef.current) {
+        console.log('[ANTE CHECK] Already processing, skipping');
+        return;
+      }
+      
       const decidedCount = players.filter(p => p.ante_decision).length;
       const allDecided = players.every(p => p.ante_decision);
       console.log('[ANTE CHECK] Players:', players.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', players.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
       
       if (allDecided && players.length > 0) {
         console.log('[ANTE CHECK] All players decided, proceeding to start round');
+        anteProcessingRef.current = true;
         handleAllAnteDecisionsIn();
       }
     };
@@ -1076,11 +1088,15 @@ const Game = () => {
   }, [gameId, navigate, players]);
 
   const handleAllAnteDecisionsIn = async () => {
-    if (!gameId) return;
+    if (!gameId) {
+      anteProcessingRef.current = false;
+      return;
+    }
 
     // Prevent duplicate calls if already in progress
     if (game?.status === 'in_progress') {
       console.log('[ANTE] Already in progress, skipping');
+      anteProcessingRef.current = false;
       return;
     }
 
@@ -1097,6 +1113,7 @@ const Game = () => {
         .update({ status: 'waiting' })
         .eq('id', gameId);
       
+      anteProcessingRef.current = false;
       return;
     }
 
@@ -1110,6 +1127,7 @@ const Game = () => {
 
     if (error) {
       console.error('[ANTE] Error updating game status:', error);
+      anteProcessingRef.current = false;
       return;
     }
 
@@ -1126,6 +1144,7 @@ const Game = () => {
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
+      anteProcessingRef.current = false;
     }
   };
 
