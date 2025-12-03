@@ -105,7 +105,7 @@ export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
                 style={{ backgroundColor: card.color }}
               >
                 {['bulls', 'bears', 'cubs', 'hawks'].includes(card.id) ? (
-                  <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                  <span className="text-2xl drop-shadow-md">
                     {card.id === 'bulls' && '🐂'}
                     {card.id === 'bears' && '🐻'}
                     {card.id === 'cubs' && '⚾'}
