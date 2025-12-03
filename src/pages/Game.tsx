@@ -123,6 +123,8 @@ const Game = () => {
   const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(30);
   const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
+  const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
 
   // Clear pending decision when backend confirms
@@ -239,6 +241,15 @@ const Game = () => {
           } else if (payload.new && 'is_paused' in payload.new) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', payload.new.is_paused, 'remaining:', payload.new.paused_time_remaining);
+            
+            // CRITICAL: Update ref and clear interval SYNCHRONOUSLY before React render cycle
+            isPausedRef.current = payload.new.is_paused;
+            if (payload.new.is_paused && timerIntervalRef.current) {
+              console.log('[REALTIME] ⏸️ Clearing timer interval synchronously on pause');
+              clearInterval(timerIntervalRef.current);
+              timerIntervalRef.current = null;
+            }
+            
             setGame(prev => prev ? {
               ...prev,
               is_paused: payload.new.is_paused,
@@ -364,9 +375,7 @@ const Game = () => {
     };
   }, [gameId, game?.id]);
 
-  // Track pause state in a ref so interval callback can access latest value
-  const isPausedRef = useRef(game?.is_paused);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Update pause ref and clear timer when paused
   
   // Update pause ref and clear timer when paused
   useEffect(() => {
