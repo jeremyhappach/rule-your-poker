@@ -12,6 +12,7 @@ import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { DealerSelection } from "@/components/DealerSelection";
 import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
+import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
 import { GameSelection } from "@/components/GameSelection";
 import { VisualPreferencesProvider } from "@/hooks/useVisualPreferences";
 
@@ -1100,6 +1101,38 @@ const Game = () => {
     setTimeout(() => fetchGameData(), 100);
   };
 
+  // Dealer confirms to start the game over countdown
+  const handleDealerConfirmGameOver = useCallback(async () => {
+    if (!gameId) return;
+    
+    console.log('[DEALER CONFIRM] Starting game over countdown');
+    const { error } = await supabase
+      .from('games')
+      .update({
+        game_over_at: new Date().toISOString()
+      })
+      .eq('id', gameId);
+    
+    if (error) {
+      console.error('[DEALER CONFIRM] Failed to set game_over_at:', error);
+      toast({ title: "Error", description: "Failed to proceed", variant: "destructive" });
+    }
+  }, [gameId, toast]);
+
+  // Auto-confirm game over for bot dealers (Holm games)
+  useEffect(() => {
+    if (game?.status === 'game_over' && !game?.game_over_at && game?.last_round_result) {
+      const dealerPlayer = players.find(p => p.position === game.dealer_position);
+      if (dealerPlayer?.is_bot) {
+        console.log('[BOT DEALER] Auto-confirming game over');
+        const timer = setTimeout(() => {
+          handleDealerConfirmGameOver();
+        }, 2000); // 2 second delay for dramatic effect
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver]);
+
   const handleGameOverComplete = useCallback(async () => {
     if (!gameId) {
       console.log('[GAME OVER COMPLETE] No gameId, aborting');
@@ -1618,7 +1651,7 @@ const Game = () => {
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
                 />
-                {game.game_over_at && (
+                {game.game_over_at ? (
                   <GameOverCountdown
                     winnerMessage={game.last_round_result}
                     nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
@@ -1626,6 +1659,12 @@ const Game = () => {
                     gameOverAt={game.game_over_at}
                     isSessionEnded={game.status === 'session_ended'}
                     pendingSessionEnd={game.pending_session_end || false}
+                  />
+                ) : (
+                  <DealerConfirmGameOver
+                    winnerMessage={game.last_round_result}
+                    isDealer={isDealer || dealerPlayer?.is_bot || false}
+                    onConfirm={handleDealerConfirmGameOver}
                   />
                 )}
               </>
