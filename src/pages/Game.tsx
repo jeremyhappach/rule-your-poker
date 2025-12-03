@@ -388,19 +388,23 @@ const Game = () => {
     }
   }, [game?.is_paused]);
 
-  // Server-driven timer countdown - calculates from decision_deadline for perfect sync
+  // Handle paused time display separately from interval management
   useEffect(() => {
-    // If paused, show frozen time but don't countdown
-    if (game?.is_paused) {
-      if (game.paused_time_remaining !== null && game.paused_time_remaining !== undefined) {
-        setTimeLeft(game.paused_time_remaining);
-      }
-      console.log('[TIMER COUNTDOWN] Paused, showing frozen time:', game.paused_time_remaining);
-      return;
+    if (game?.is_paused && game.paused_time_remaining !== null && game.paused_time_remaining !== undefined) {
+      setTimeLeft(game.paused_time_remaining);
     }
+  }, [game?.is_paused, game?.paused_time_remaining]);
 
+  // Server-driven timer countdown - uses ref for pause state to avoid dependency issues
+  useEffect(() => {
+    // Don't start timer if no deadline or game conditions prevent it
     if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
-      console.log('[TIMER COUNTDOWN] Stopped', { decisionDeadline, awaiting: game?.awaiting_next_round, result: game?.last_round_result, allDecisionsIn: game?.all_decisions_in });
+      console.log('[TIMER COUNTDOWN] Not starting - conditions not met', { 
+        decisionDeadline, 
+        awaiting: game?.awaiting_next_round, 
+        result: game?.last_round_result, 
+        allDecisionsIn: game?.all_decisions_in 
+      });
       return;
     }
 
@@ -411,33 +415,34 @@ const Game = () => {
       return Math.max(0, Math.floor((deadline - now) / 1000));
     };
 
-    // Set initial value
-    setTimeLeft(calculateRemaining());
+    // Set initial value only if not paused
+    if (!isPausedRef.current) {
+      setTimeLeft(calculateRemaining());
+    }
 
-    // Update every second by recalculating from deadline (keeps all clients in sync)
-    timerIntervalRef.current = setInterval(() => {
-      // Check pause state from ref (latest value) - stop countdown if paused
+    // Update every second - check pause state via ref FIRST before any calculation
+    const intervalId = setInterval(() => {
+      // CRITICAL: Check pause ref immediately - exit before any work if paused
       if (isPausedRef.current) {
-        console.log('[TIMER COUNTDOWN] Paused detected in interval, clearing');
-        if (timerIntervalRef.current) {
-          clearInterval(timerIntervalRef.current);
-          timerIntervalRef.current = null;
-        }
-        return;
+        console.log('[TIMER COUNTDOWN] Tick skipped - game is paused');
+        return; // Just skip this tick, don't clear interval (let the useEffect handle cleanup)
       }
       const remaining = calculateRemaining();
       console.log('[TIMER COUNTDOWN] Tick (from deadline):', remaining);
       setTimeLeft(remaining);
     }, 1000);
 
+    // Store in ref for external access (realtime handler)
+    timerIntervalRef.current = intervalId;
+
     return () => {
-      console.log('[TIMER COUNTDOWN] Cleanup');
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
+      console.log('[TIMER COUNTDOWN] Cleanup - clearing interval');
+      clearInterval(intervalId);
+      if (timerIntervalRef.current === intervalId) {
         timerIntervalRef.current = null;
       }
     };
-  }, [decisionDeadline, game?.is_paused, game?.paused_time_remaining, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
+  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
 
   // Ante timer countdown effect
   useEffect(() => {
