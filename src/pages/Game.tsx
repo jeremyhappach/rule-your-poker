@@ -1442,7 +1442,21 @@ const Game = () => {
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
                 />
-                <GameSelection onSelectGame={handleGameSelection} />
+                {(isDealer || dealerPlayer?.is_bot) && (
+                  <GameSelection onSelectGame={handleGameSelection} />
+                )}
+                {!isDealer && !dealerPlayer?.is_bot && (
+                  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <Card className="max-w-md mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
+                      <CardContent className="pt-8 pb-8 space-y-4 text-center">
+                        <h2 className="text-2xl font-bold text-poker-gold">Dealer Choosing Game</h2>
+                        <p className="text-amber-100">
+                          {dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`} is selecting the game variant...
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </div>
             ) : (
               // Configuring phase
