@@ -178,19 +178,27 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   let buckPosition = gameConfig.buck_position;
   
   if (!buckPosition || isFirstHand) {
-    // First hand - buck starts one position to the left of dealer
+    // First hand - buck starts one position to the left of dealer (counterclockwise)
+    // Must find the actual next occupied seat, not just dealerPosition - 1
     const { data: allPlayers } = await supabase
       .from('players')
       .select('position')
       .eq('game_id', gameId)
+      .eq('status', 'active')
+      .eq('sitting_out', false)
       .order('position');
     
-    const maxPosition = allPlayers && allPlayers.length > 0 
-      ? Math.max(...allPlayers.map(p => p.position))
-      : 7;
-    
-    buckPosition = dealerPosition === 1 ? maxPosition : dealerPosition - 1;
-    console.log('[HOLM] Calculated buck position:', buckPosition);
+    if (allPlayers && allPlayers.length > 0) {
+      const occupiedPositions = allPlayers.map(p => p.position).sort((a, b) => a - b);
+      const dealerIndex = occupiedPositions.indexOf(dealerPosition);
+      
+      // Get the previous position in the sorted array (wrapping to end if at start)
+      const prevIndex = dealerIndex <= 0 ? occupiedPositions.length - 1 : dealerIndex - 1;
+      buckPosition = occupiedPositions[prevIndex];
+      console.log('[HOLM] Occupied positions:', occupiedPositions, 'Dealer at:', dealerPosition, 'Buck goes to:', buckPosition);
+    } else {
+      buckPosition = dealerPosition;
+    }
   }
 
   // Get all active players who aren't sitting out
