@@ -490,7 +490,7 @@ export const GameTable = ({
                                   onClick={onFold}
                                   className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
                                 >
-                                  Fold
+                                  {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                                 </Button>
                               ) : (
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
