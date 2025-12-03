@@ -104,13 +104,14 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   }, [userId]);
 
   const checkSuperuser = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('is_superuser')
+      .select('*')
       .eq('id', userId)
       .maybeSingle();
     
-    setIsSuperuser(data?.is_superuser || false);
+    console.log('[SUPERUSER CHECK]', { userId, data, error });
+    setIsSuperuser((data as any)?.is_superuser || false);
   };
 
   const fetchGames = async () => {
