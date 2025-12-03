@@ -292,21 +292,27 @@ export type Database = {
       }
       profiles: {
         Row: {
+          card_back_design: string
           created_at: string
           id: string
           is_superuser: boolean
+          table_layout: string
           username: string
         }
         Insert: {
+          card_back_design?: string
           created_at?: string
           id: string
           is_superuser?: boolean
+          table_layout?: string
           username: string
         }
         Update: {
+          card_back_design?: string
           created_at?: string
           id?: string
           is_superuser?: boolean
+          table_layout?: string
           username?: string
         }
         Relationships: []
