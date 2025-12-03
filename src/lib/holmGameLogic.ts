@@ -781,14 +781,14 @@ async function handleChuckyShowdown(
       })
       .eq('game_id', gameId);
 
-    // In Holm game, beating Chucky ends the game immediately
-    console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Game ends. ***');
+    // In Holm game, beating Chucky ends the game - but wait for dealer to confirm before countdown
+    console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Awaiting dealer confirmation. ***');
     const { error: gameOverError } = await supabase
       .from('games')
       .update({
         status: 'game_over',
         last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${roundPot}!`,
-        game_over_at: new Date().toISOString(),
+        // DON'T set game_over_at yet - dealer must click button to start countdown
         pot: 0,
         awaiting_next_round: false
       })
@@ -797,7 +797,7 @@ async function handleChuckyShowdown(
     if (gameOverError) {
       console.error('[HOLM SHOWDOWN] ERROR setting game_over status:', gameOverError);
     } else {
-      console.log('[HOLM SHOWDOWN] Successfully set game_over status');
+      console.log('[HOLM SHOWDOWN] Successfully set game_over status (awaiting dealer confirmation)');
     }
   } else {
     console.log('[HOLM SHOWDOWN] Chucky wins!');
