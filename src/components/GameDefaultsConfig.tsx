@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { Settings } from 'lucide-react';
+import { Settings, Bot } from 'lucide-react';
 
 interface GameDefaults {
   id: string;
@@ -14,6 +15,8 @@ interface GameDefaults {
   decision_timer_seconds: number;
   chucky_second_to_last_delay_seconds: number;
   chucky_last_card_delay_seconds: number;
+  bot_fold_probability: number;
+  bot_decision_delay_seconds: number;
 }
 
 interface GameDefaultsConfigProps {
@@ -66,6 +69,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
+            bot_fold_probability: defaultConfig.bot_fold_probability,
+            bot_decision_delay_seconds: defaultConfig.bot_decision_delay_seconds,
           })
           .eq('game_type', defaultConfig.game_type);
 
@@ -83,9 +88,55 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const getDefaultByType = (gameType: string) => 
     defaults.find(d => d.game_type === gameType);
 
+  const renderBotSettings = (gameType: string) => {
+    const gameDefaults = getDefaultByType(gameType);
+    if (!gameDefaults) return null;
+
+    return (
+      <div className="space-y-4 pt-4 border-t">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Bot className="h-4 w-4" />
+          Bot Behavior
+        </div>
+        
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor={`${gameType}-fold-prob`}>Fold Probability</Label>
+              <span className="text-sm font-mono">{gameDefaults.bot_fold_probability}%</span>
+            </div>
+            <Slider
+              id={`${gameType}-fold-prob`}
+              min={0}
+              max={100}
+              step={5}
+              value={[gameDefaults.bot_fold_probability]}
+              onValueChange={([value]) => updateDefault(gameType, 'bot_fold_probability', value)}
+            />
+            <p className="text-xs text-muted-foreground">Chance that a bot will fold (0% = always stay, 100% = always fold)</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`${gameType}-bot-delay`}>Bot Decision Delay (seconds)</Label>
+            <Input
+              id={`${gameType}-bot-delay`}
+              type="number"
+              min={0.5}
+              max={10}
+              step={0.5}
+              value={gameDefaults.bot_decision_delay_seconds}
+              onChange={(e) => updateDefault(gameType, 'bot_decision_delay_seconds', parseFloat(e.target.value) || 2.0)}
+            />
+            <p className="text-xs text-muted-foreground">How long bots wait before making their decision</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-card">
+      <DialogContent className="sm:max-w-[500px] bg-card max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
@@ -148,6 +199,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                       />
                       <p className="text-xs text-muted-foreground">Delay before revealing Chucky's final card</p>
                     </div>
+
+                    {renderBotSettings('holm')}
                   </>
                 );
               })()}
@@ -158,18 +211,22 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                 const defaults357 = getDefaultByType('3-5-7');
                 if (!defaults357) return null;
                 return (
-                  <div className="space-y-2">
-                    <Label htmlFor="357-timer">Decision Timer (seconds)</Label>
-                    <Input
-                      id="357-timer"
-                      type="number"
-                      min={5}
-                      max={60}
-                      value={defaults357.decision_timer_seconds}
-                      onChange={(e) => updateDefault('3-5-7', 'decision_timer_seconds', parseInt(e.target.value) || 10)}
-                    />
-                    <p className="text-xs text-muted-foreground">Time players have to make stay/fold decisions</p>
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="357-timer">Decision Timer (seconds)</Label>
+                      <Input
+                        id="357-timer"
+                        type="number"
+                        min={5}
+                        max={60}
+                        value={defaults357.decision_timer_seconds}
+                        onChange={(e) => updateDefault('3-5-7', 'decision_timer_seconds', parseInt(e.target.value) || 10)}
+                      />
+                      <p className="text-xs text-muted-foreground">Time players have to make stay/fold decisions</p>
+                    </div>
+
+                    {renderBotSettings('3-5-7')}
+                  </>
                 );
               })()}
             </TabsContent>
