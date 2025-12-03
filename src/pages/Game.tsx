@@ -75,6 +75,7 @@ interface GameData {
   game_type?: string | null;
   buck_position?: number | null;
   chucky_cards?: number;
+  is_paused?: boolean;
   rounds?: Round[];
 }
 
@@ -109,7 +110,6 @@ const Game = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
@@ -310,8 +310,8 @@ const Game = () => {
   }, [gameId, game?.id]);
 
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0 || isPaused || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
-      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, isPaused, awaiting: game?.awaiting_next_round, result: game?.last_round_result, allDecisionsIn: game?.all_decisions_in });
+    if (timeLeft === null || timeLeft <= 0 || game?.is_paused || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
+      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, is_paused: game?.is_paused, awaiting: game?.awaiting_next_round, result: game?.last_round_result, allDecisionsIn: game?.all_decisions_in });
       return;
     }
 
@@ -332,7 +332,7 @@ const Game = () => {
       console.log('[TIMER COUNTDOWN] Cleanup');
       clearInterval(timer);
     };
-  }, [timeLeft, isPaused, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
+  }, [timeLeft, game?.is_paused, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
 
   // Ante timer countdown effect
   useEffect(() => {
@@ -503,6 +503,7 @@ const Game = () => {
   ]);
 
   // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
+  const autoFoldingRef = useRef(false);
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
     
@@ -510,11 +511,11 @@ const Game = () => {
       timeLeft, 
       status: game?.status, 
       all_decisions_in: game?.all_decisions_in, 
-      isPaused,
+      is_paused: game?.is_paused,
       timerTurnPosition,
       currentTurnPosition: currentRound?.current_turn_position,
       isHolmGame,
-      shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !isPaused
+      shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !game?.is_paused
     });
     
     // Don't auto-fold if timer is null or negative (means fresh round)
@@ -524,12 +525,14 @@ const Game = () => {
     const shouldAutoFold = timeLeft === 0 && 
         game?.status === 'in_progress' && 
         !game.all_decisions_in && 
-        !isPaused &&
+        !game?.is_paused &&
+        !autoFoldingRef.current &&
         (isHolmGame 
           ? (timerTurnPosition !== null && currentRound?.current_turn_position === timerTurnPosition)
           : true); // For 3-5-7, just check timer reached 0
     
     if (shouldAutoFold) {
+      autoFoldingRef.current = true;
       if (isHolmGame) {
         console.log('[TIMER EXPIRED HOLM] *** AUTO-FOLDING player at position', timerTurnPosition, '***');
         console.log('[TIMER EXPIRED HOLM] Verification:', {
@@ -542,7 +545,6 @@ const Game = () => {
       }
       // Immediately clear the timer to stop flashing
       setTimeLeft(null);
-      setIsPaused(true);
       
       if (isHolmGame) {
         // In Holm, auto-fold the player whose timer expired
@@ -557,7 +559,7 @@ const Game = () => {
             
           if (!freshRound) {
             console.log('[TIMER EXPIRED HOLM] Fresh round not found');
-            setIsPaused(false);
+            autoFoldingRef.current = false;
             return;
           }
           
@@ -567,7 +569,7 @@ const Game = () => {
               expected: timerTurnPosition,
               actual: freshRound.current_turn_position
             });
-            setIsPaused(false);
+            autoFoldingRef.current = false;
             // Refetch to sync with new turn
             fetchGameData();
             return;
@@ -589,22 +591,22 @@ const Game = () => {
             console.log('[TIMER EXPIRED HOLM] Player already decided or not found');
           }
           
-          setIsPaused(false);
+          autoFoldingRef.current = false;
         })().catch(err => {
           console.error('[TIMER EXPIRED HOLM] Error auto-folding:', err);
-          setIsPaused(false);
+          autoFoldingRef.current = false;
         });
       } else {
         autoFoldUndecided(gameId!).then(() => {
           fetchGameData();
-          setIsPaused(false);
+          autoFoldingRef.current = false;
         }).catch(err => {
           console.error('[TIMER EXPIRED] Error auto-folding:', err);
-          setIsPaused(false);
+          autoFoldingRef.current = false;
         });
       }
     }
-  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, isPaused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   const awaitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1408,13 +1410,18 @@ const Game = () => {
               <div className="flex flex-col items-end gap-1">
                 {isCreator && (
                   <Button 
-                    variant={isPaused ? "default" : "outline"} 
-                    onClick={() => setIsPaused(!isPaused)}
+                    variant={game.is_paused ? "default" : "outline"} 
+                    onClick={async () => {
+                      await supabase
+                        .from('games')
+                        .update({ is_paused: !game.is_paused })
+                        .eq('id', gameId);
+                    }}
                   >
-                    {isPaused ? '▶️ Resume' : '⏸️ Pause'}
+                    {game.is_paused ? '▶️ Resume' : '⏸️ Pause'}
                   </Button>
                 )}
-                {isPaused && (
+                {game.is_paused && (
                   <Badge variant="destructive" className="animate-pulse text-sm px-3 py-1">
                     ⏸️ GAME PAUSED
                   </Badge>
