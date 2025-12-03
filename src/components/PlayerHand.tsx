@@ -1,5 +1,6 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
+import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 
 interface PlayerHandProps {
   cards: CardType[];
@@ -7,6 +8,9 @@ interface PlayerHandProps {
 }
 
 export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
+  const { getCardBackColors } = useVisualPreferences();
+  const cardBackColors = getCardBackColors();
+  
   // Sort cards from lowest to highest
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -53,11 +57,12 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
         {sortedCards.map((_, index) => (
           <div
             key={index}
-            className={`${classes.card} ${classes.overlap} bg-gradient-to-br from-red-900 via-red-950 to-black rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden animate-fade-in`}
+            className={`${classes.card} ${classes.overlap} rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden animate-fade-in`}
             style={{ 
               transform: `rotate(${index * 2 - 2}deg)`,
               animationDelay: `${index * 150}ms`,
-              animationFillMode: 'backwards'
+              animationFillMode: 'backwards',
+              background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`
             }}
           >
             {/* Card back pattern */}

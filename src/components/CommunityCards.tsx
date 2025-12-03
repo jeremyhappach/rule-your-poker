@@ -1,5 +1,6 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
+import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 
 interface CommunityCardsProps {
   cards: CardType[];
@@ -7,6 +8,9 @@ interface CommunityCardsProps {
 }
 
 export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
+  const { getCardBackColors } = useVisualPreferences();
+  const cardBackColors = getCardBackColors();
+  
   if (cards.length === 0) return null;
 
   return (
@@ -20,10 +24,12 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
             <Card 
               key={index}
               className={`
-                w-10 h-14 sm:w-12 sm:h-16 flex items-center justify-center bg-white
+                w-10 h-14 sm:w-12 sm:h-16 flex items-center justify-center
                 border border-poker-gold shadow-lg
-                ${!isRevealed ? 'bg-gradient-to-br from-blue-900 to-blue-700' : ''}
               `}
+              style={!isRevealed ? {
+                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`
+              } : { backgroundColor: 'white' }}
             >
               {isRevealed ? (
                 <div className="flex flex-col items-center justify-center">

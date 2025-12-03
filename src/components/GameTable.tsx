@@ -11,6 +11,7 @@ import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useMemo, useLayoutEffect, useEffect, useRef } from "react";
+import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 
 interface Player {
   id: string;
@@ -94,6 +95,9 @@ export const GameTable = ({
   onFold,
   onSelectSeat,
 }: GameTableProps) => {
+  const { getTableColors } = useVisualPreferences();
+  const tableColors = getTableColors();
+  
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked || !!pendingDecision;
   
@@ -161,8 +165,13 @@ export const GameTable = ({
 
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
-      {/* Green Felt Poker Table - scale down on very small screens */}
-      <div className="relative bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-[50%] aspect-[2/1] w-full max-w-5xl mx-auto p-1 sm:p-2 md:p-4 lg:p-8 xl:p-12 shadow-2xl border-2 sm:border-3 md:border-4 lg:border-6 xl:border-8 border-amber-900 scale-90 sm:scale-95 md:scale-100">
+      {/* Poker Table - scale down on very small screens */}
+      <div 
+        className="relative rounded-[50%] aspect-[2/1] w-full max-w-5xl mx-auto p-1 sm:p-2 md:p-4 lg:p-8 xl:p-12 shadow-2xl border-2 sm:border-3 md:border-4 lg:border-6 xl:border-8 border-amber-900 scale-90 sm:scale-95 md:scale-100"
+        style={{
+          background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`
+        }}
+      >
         {/* Table edge wood effect */}
         <div className="absolute inset-0 rounded-[50%] shadow-inner" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'

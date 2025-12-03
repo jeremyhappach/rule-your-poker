@@ -13,6 +13,7 @@ import { DealerSelection } from "@/components/DealerSelection";
 import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { GameSelection } from "@/components/GameSelection";
+import { VisualPreferencesProvider } from "@/hooks/useVisualPreferences";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
@@ -1340,6 +1341,7 @@ const Game = () => {
   const isDealer = dealerPlayer?.user_id === user?.id;
 
   return (
+    <VisualPreferencesProvider userId={user?.id}>
     <div className="min-h-screen p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
@@ -1670,9 +1672,10 @@ const Game = () => {
               Confirm End Session
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
+      </AlertDialogContent>
       </AlertDialog>
     </div>
+    </VisualPreferencesProvider>
   );
 };
 
