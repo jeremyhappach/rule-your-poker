@@ -15,9 +15,10 @@ interface GameOverCountdownProps {
   onComplete: () => void;
   gameOverAt: string; // ISO timestamp when game ended
   isSessionEnded?: boolean; // Whether the session has ended
+  pendingSessionEnd?: boolean; // Whether session will end after this game
 }
 
-export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt, isSessionEnded = false }: GameOverCountdownProps) => {
+export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt, isSessionEnded = false, pendingSessionEnd = false }: GameOverCountdownProps) => {
   const COUNTDOWN_DURATION = 8; // seconds
   const hasCompletedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
@@ -86,9 +87,9 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
             </div>
             
             <div className="bg-amber-950/50 p-6 rounded-lg border border-amber-800">
-              {isSessionEnded ? (
+              {isSessionEnded || pendingSessionEnd ? (
                 <p className="text-poker-gold font-black text-4xl">
-                  SESSION ENDED
+                  {isSessionEnded ? 'SESSION ENDED' : 'SESSION ENDING...'}
                 </p>
               ) : (
                 <>

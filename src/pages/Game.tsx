@@ -1387,6 +1387,7 @@ const Game = () => {
                     onComplete={handleGameOverComplete}
                     gameOverAt={game.game_over_at}
                     isSessionEnded={game.status === 'session_ended'}
+                    pendingSessionEnd={game.pending_session_end || false}
                   />
                 )}
               </>
