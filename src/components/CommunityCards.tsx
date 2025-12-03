@@ -25,12 +25,17 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   const cardBackId = getCardBackId();
   const teamLogo = TEAM_LOGOS[cardBackId] || null;
   
-  // Track which cards are currently flipping
+  // Track which cards are currently flipping and have flipped
   const [flippingCards, setFlippingCards] = useState<Set<number>>(new Set());
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const prevRevealedRef = useRef(revealed);
+  const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   
   useEffect(() => {
+    // Clear any pending timeouts
+    flipTimeoutsRef.current.forEach(t => clearTimeout(t));
+    flipTimeoutsRef.current = [];
+    
     // Check if revealed count increased (new cards being revealed)
     if (revealed > prevRevealedRef.current) {
       const newlyRevealed: number[] = [];
@@ -38,20 +43,30 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
         newlyRevealed.push(i);
       }
       
-      // Start flipping animation for newly revealed cards
-      if (newlyRevealed.length > 0) {
-        setFlippingCards(prev => new Set([...prev, ...newlyRevealed]));
+      // Stagger the flip animations - last card has 1.5s delay
+      newlyRevealed.forEach((cardIndex, i) => {
+        const isLastCard = i === newlyRevealed.length - 1 && newlyRevealed.length > 1;
+        const delay = isLastCard ? 1500 : i * 200; // 1.5s delay for last card, small stagger for others
         
-        // After animation completes, mark as flipped
-        setTimeout(() => {
-          setFlippedCards(prev => new Set([...prev, ...newlyRevealed]));
-          setFlippingCards(prev => {
-            const next = new Set(prev);
-            newlyRevealed.forEach(i => next.delete(i));
-            return next;
-          });
-        }, 1200); // Match animation duration
-      }
+        // Start flipping animation after delay
+        const startTimeout = setTimeout(() => {
+          setFlippingCards(prev => new Set([...prev, cardIndex]));
+          
+          // After animation completes, mark as flipped
+          const endTimeout = setTimeout(() => {
+            setFlippedCards(prev => new Set([...prev, cardIndex]));
+            setFlippingCards(prev => {
+              const next = new Set(prev);
+              next.delete(cardIndex);
+              return next;
+            });
+          }, 1200); // Match animation duration
+          
+          flipTimeoutsRef.current.push(endTimeout);
+        }, delay);
+        
+        flipTimeoutsRef.current.push(startTimeout);
+      });
     } else if (revealed < prevRevealedRef.current) {
       // Reset when revealed count decreases (new round)
       setFlippingCards(new Set());
@@ -63,10 +78,19 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   
   // Reset flipped state when cards change (new round)
   useEffect(() => {
+    flipTimeoutsRef.current.forEach(t => clearTimeout(t));
+    flipTimeoutsRef.current = [];
     setFlippingCards(new Set());
     setFlippedCards(new Set());
     prevRevealedRef.current = revealed;
   }, [cards.length]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      flipTimeoutsRef.current.forEach(t => clearTimeout(t));
+    };
+  }, []);
   
   if (cards.length === 0) return null;
 
@@ -77,8 +101,8 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
           const isRevealed = index < revealed;
           const isFlipping = flippingCards.has(index);
           const hasFlipped = flippedCards.has(index);
-          const wasAlreadyRevealed = index < prevRevealedRef.current && !isFlipping && !hasFlipped;
-          const showFront = (isRevealed && hasFlipped) || (isRevealed && wasAlreadyRevealed) || (isRevealed && index < 2);
+          // Show front if: card has completed flip animation, or was already revealed before this render
+          const showFront = hasFlipped || (isRevealed && index < 2);
           const suitColor = (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-gray-900';
           
           return (
