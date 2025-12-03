@@ -118,7 +118,8 @@ const Game = () => {
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
   const [timerTurnPosition, setTimerTurnPosition] = useState<number | null>(null);
   const [pendingDecision, setPendingDecision] = useState<'stay' | 'fold' | null>(null);
-  const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(10);
+  const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(30);
+  const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
 
   // Clear pending decision when backend confirms
@@ -183,8 +184,9 @@ const Game = () => {
       if (data && !error) {
         console.log('[GAME DEFAULTS] Loaded decision_timer_seconds:', data.decision_timer_seconds, 'for', defaultsGameType);
         setDecisionTimerSeconds(data.decision_timer_seconds);
+        decisionTimerRef.current = data.decision_timer_seconds;
       } else {
-        console.log('[GAME DEFAULTS] No defaults found for', defaultsGameType, ', using fallback of 10 seconds', error);
+        console.log('[GAME DEFAULTS] No defaults found for', defaultsGameType, ', using fallback of 30 seconds', error);
       }
     };
     
@@ -906,14 +908,14 @@ const Game = () => {
           const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
           
           if (turnChanged) {
-            console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh', decisionTimerSeconds, 'seconds ***');
-            setTimeLeft(decisionTimerSeconds);
+            console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh', decisionTimerRef.current, 'seconds ***');
+            setTimeLeft(decisionTimerRef.current);
             setLastTurnPosition(currentRound.current_turn_position);
             setTimerTurnPosition(currentRound.current_turn_position);
           } else if (lastTurnPosition === null) {
             // First time seeing this round
-            console.log('[FETCH] HOLM: First load of round, turn position:', currentRound.current_turn_position, '- giving fresh', decisionTimerSeconds, 'seconds');
-            setTimeLeft(decisionTimerSeconds);
+            console.log('[FETCH] HOLM: First load of round, turn position:', currentRound.current_turn_position, '- giving fresh', decisionTimerRef.current, 'seconds');
+            setTimeLeft(decisionTimerRef.current);
             setLastTurnPosition(currentRound.current_turn_position);
             setTimerTurnPosition(currentRound.current_turn_position);
           } else {
