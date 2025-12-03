@@ -69,12 +69,12 @@ export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: Playe
 
   const classes = getCardClasses();
   
-  if (isHidden) {
-    // For hidden cards, use displayCardCount to render the right number of card backs
-    const hiddenCardArray = Array.from({ length: displayCardCount }, (_, i) => i);
+  // Render card backs (for hidden cards or observers without card data)
+  const renderCardBacks = (count: number) => {
+    const cardArray = Array.from({ length: count }, (_, i) => i);
     return (
       <div className="flex">
-        {hiddenCardArray.map((_, index) => (
+        {cardArray.map((_, index) => (
           <div
             key={index}
             className={`${classes.card} ${classes.overlap} rounded border-2 border-amber-400 shadow-xl transform rotate-2 relative overflow-hidden animate-fade-in`}
@@ -104,6 +104,16 @@ export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: Playe
         ))}
       </div>
     );
+  };
+
+  // If cards should be hidden, render card backs
+  if (isHidden) {
+    return renderCardBacks(displayCardCount);
+  }
+  
+  // If we have no actual card data but have expectedCardCount (observer case), show card backs
+  if (cards.length === 0 && expectedCardCount && expectedCardCount > 0) {
+    return renderCardBacks(expectedCardCount);
   }
 
   return (
