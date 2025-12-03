@@ -1291,9 +1291,13 @@ const Game = () => {
 
     const currentPlayer = players.find(p => p.user_id === user.id);
     
+    // If game is already in progress (not waiting), new players should sit out until next game
+    const gameInProgress = game?.status !== 'waiting';
+    
     try {
       if (!currentPlayer) {
         // User is an observer - insert them as a new player
+        // If game is in progress, they sit out until next game starts
         const { error: joinError } = await supabase
           .from('players')
           .insert({
@@ -1301,17 +1305,18 @@ const Game = () => {
             user_id: user.id,
             chips: 0,
             position: position,
-            sitting_out: false
+            sitting_out: gameInProgress
           });
 
         if (joinError) throw joinError;
       } else {
         // Existing player changing seats
+        // Keep sitting_out status if game is in progress
         await supabase
           .from('players')
           .update({
             position: position,
-            sitting_out: false
+            sitting_out: gameInProgress ? currentPlayer.sitting_out : false
           })
           .eq('id', currentPlayer.id);
       }
@@ -1319,7 +1324,7 @@ const Game = () => {
       // Refetch to update UI
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
-      console.error('Error ending session:', error);
+      console.error('Error selecting seat:', error);
     }
   };
 
