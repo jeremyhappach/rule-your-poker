@@ -545,11 +545,33 @@ export async function endHolmRound(gameId: string) {
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
-    console.log('[HOLM END] Case 2: Single player vs Chucky - evaluating player hand...');
+    console.log('[HOLM END] Case 2: Single player vs Chucky');
     
     const player = stayedPlayers[0];
+    const playerUsername = player.profiles?.username || player.user_id;
     
-    // Get player's cards
+    // Step 1: Expose player's cards by setting all_decisions_in
+    console.log('[HOLM END] Step 1: Exposing player cards...');
+    await supabase
+      .from('games')
+      .update({ all_decisions_in: true })
+      .eq('id', gameId);
+    
+    // Step 2: Wait 2 seconds for player to see their exposed cards
+    console.log('[HOLM END] Step 2: 2-second delay for card exposure...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Step 3: Reveal the 2 hidden community cards
+    console.log('[HOLM END] Step 3: Revealing hidden community cards...');
+    await supabase
+      .from('rounds')
+      .update({ community_cards_revealed: 4 })
+      .eq('id', round.id);
+    
+    // Brief pause to allow UI to update with community cards
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 4: Show player's hand rank
     const { data: playerCardsData } = await supabase
       .from('player_cards')
       .select('*')
@@ -557,25 +579,25 @@ export async function endHolmRound(gameId: string) {
       .eq('round_id', round.id)
       .single();
 
+    let playerEval: any = null;
     if (playerCardsData) {
       const playerCards = playerCardsData.cards as unknown as Card[];
       const playerAllCards = [...playerCards, ...communityCards];
-      const playerEval = evaluateHand(playerAllCards, false); // No wild cards in Holm
-      const playerUsername = player.profiles?.username || player.user_id;
+      playerEval = evaluateHand(playerAllCards, false);
       
-      console.log('[HOLM END] Player has:', formatHandRank(playerEval.rank));
+      console.log('[HOLM END] Step 4: Player has:', formatHandRank(playerEval.rank));
       
-      // Store player's hand ranking in game for display
+      // Show hand rank announcement
       await supabase
         .from('games')
         .update({ 
-          last_round_result: `${playerUsername} has ${formatHandRank(playerEval.rank)}. Dealing Chucky...`
+          last_round_result: formatHandRank(playerEval.rank)
         })
         .eq('id', gameId);
     }
     
-    // 2-second pause to show player's hand before dealing Chucky
-    console.log('[HOLM END] 2-second pause before dealing Chucky...');
+    // Step 5: Wait 2 seconds for player to see their hand rank
+    console.log('[HOLM END] Step 5: 2-second delay for hand rank display...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Deal Chucky's cards from remaining deck (exclude community cards and player cards)
@@ -787,8 +809,8 @@ async function handleChuckyShowdown(
       .from('games')
       .update({
         status: 'game_over',
-        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)} and wins $${roundPot}!`,
-        // DON'T set game_over_at yet - dealer must click button to start countdown
+        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)}!`,
+        // DON'T set game_over_at yet - dealer must click button to go to game selection
         pot: 0,
         awaiting_next_round: false
       })
@@ -827,7 +849,7 @@ async function handleChuckyShowdown(
     const { error: gameUpdateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `Chucky wins with ${formatHandRank(chuckyEval.rank)} vs ${formatHandRank(playerEval.rank)}. $${potMatchAmount} added to pot.`,
+        last_round_result: `Chucky beat ${playerUsername} with ${formatHandRank(chuckyEval.rank)}`,
         awaiting_next_round: true,
         pot: newPot
       })
@@ -836,12 +858,12 @@ async function handleChuckyShowdown(
     console.log('[HOLM SHOWDOWN] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
   }
 
-  // Mark round complete and hide Chucky
+  // Mark round complete but KEEP Chucky visible for result display
   await supabase
     .from('rounds')
     .update({ 
-      status: 'completed',
-      chucky_active: false // Hide Chucky when round ends
+      status: 'completed'
+      // Note: chucky_active stays true so cards remain visible during result announcement
     })
     .eq('id', roundId);
 
