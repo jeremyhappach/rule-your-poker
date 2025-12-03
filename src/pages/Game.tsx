@@ -1406,12 +1406,14 @@ const Game = () => {
             )}
             {game.status === 'in_progress' && (
               <div className="flex flex-col items-end gap-1">
-                <Button 
-                  variant={isPaused ? "default" : "outline"} 
-                  onClick={() => setIsPaused(!isPaused)}
-                >
-                  {isPaused ? '▶️ Resume' : '⏸️ Pause'}
-                </Button>
+                {isCreator && (
+                  <Button 
+                    variant={isPaused ? "default" : "outline"} 
+                    onClick={() => setIsPaused(!isPaused)}
+                  >
+                    {isPaused ? '▶️ Resume' : '⏸️ Pause'}
+                  </Button>
+                )}
                 {isPaused && (
                   <Badge variant="destructive" className="animate-pulse text-sm px-3 py-1">
                     ⏸️ GAME PAUSED
