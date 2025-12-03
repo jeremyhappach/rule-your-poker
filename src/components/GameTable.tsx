@@ -314,12 +314,13 @@ export const GameTable = ({
             // For observers (no currentUserId or not a player), show placeholder card backs
             const isObserver = !currentUserId || !players.some(p => p.user_id === currentUserId);
             
-            // Show actual cards if we have them, OR placeholder cards for observers
+            // Show actual cards if we have them, OR placeholder cards for observers (empty cards with isHidden=true)
+            // When observer has no actual cards, we use empty placeholder cards that will render as hidden card backs
             const cards: CardType[] = shouldShowCards 
               ? (actualCards.length > 0 
                   ? actualCards 
                   : (isObserver && expectedCardCount > 0 
-                      ? Array.from({ length: expectedCardCount }, () => ({ rank: '2' as const, suit: '♠' as const })) 
+                      ? [] // Empty array - PlayerHand will render hidden card backs based on expected count
                       : []))
               : [];
             
@@ -442,9 +443,10 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center">
-                        {cards.length > 0 ? (
+                        {(cards.length > 0 || (isObserver && expectedCardCount > 0)) ? (
                           <PlayerHand 
                             cards={cards} 
+                            expectedCardCount={expectedCardCount}
                             isHidden={
                               // Show cards if: 
                               // 1. It's the current user, OR
