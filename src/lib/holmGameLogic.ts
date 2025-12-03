@@ -639,15 +639,19 @@ export async function endHolmRound(gameId: string) {
   
   // Player cards are already visible to their owners, but now expose them to everyone
   // by marking the round as "showdown" phase - the UI will handle showing all cards
-  console.log('[HOLM END] Exposing player cards for showdown...');
+  console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown...');
+  
+  // SET STATUS TO SHOWDOWN FIRST so UI reveals player cards
+  await supabase
+    .from('rounds')
+    .update({ status: 'showdown' })
+    .eq('id', round.id);
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
   console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');
   await new Promise(resolve => setTimeout(resolve, 3000));
   
   // Now reveal the 2 hidden community cards (cards 3 and 4)
-  // Community cards were already set to 4 revealed earlier, but let's ensure the sequence:
-  // Cards 1-2 were visible, now reveal 3-4
   console.log('[HOLM END] Revealing hidden community cards...');
   
   // Use round.pot as the authoritative pot value (game.pot may be stale)
@@ -800,18 +804,8 @@ async function handleMultiPlayerShowdown(
 ) {
   console.log('[HOLM] Multi-player showdown, roundPot:', roundPot, 'game.pot:', game.pot);
 
-  // Step 1: Mark round as "showdown" to expose all player cards in UI
-  console.log('[HOLM MULTI] Exposing player cards (marking round as showdown)...');
-  await supabase
-    .from('rounds')
-    .update({ status: 'showdown' })
-    .eq('id', roundId);
-
-  // Step 2: Wait 3 seconds for players to read the exposed player cards
-  console.log('[HOLM MULTI] Waiting 3 seconds for players to view exposed cards...');
-  await new Promise(resolve => setTimeout(resolve, 3000));
-
-  // Step 3: Now reveal the 2 hidden community cards (cards 3 and 4)
+  // Status already set to 'showdown' and 3-second delay already completed in endHolmRound
+  // Now reveal the 2 hidden community cards (cards 3 and 4)
   console.log('[HOLM MULTI] Revealing hidden community cards (3 and 4)...');
   await supabase
     .from('rounds')
