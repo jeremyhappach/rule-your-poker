@@ -39,8 +39,8 @@ export function VisualPreferencesProvider({
   children: ReactNode; 
   userId: string | undefined;
 }) {
-  const [tableLayout, setTableLayout] = useState('classic');
-  const [cardBackDesign, setCardBackDesign] = useState('red');
+  const [tableLayout, setTableLayout] = useState('black');
+  const [cardBackDesign, setCardBackDesign] = useState('hawks');
 
   const fetchPreferences = async () => {
     if (!userId) return;
@@ -92,10 +92,10 @@ export function useVisualPreferences() {
   if (!context) {
     // Return defaults if not in provider
     return {
-      tableLayout: 'classic',
-      cardBackDesign: 'red',
-      getTableColors: () => ({ color: '#1a5c3a', darkColor: '#0f3d26', border: '#78350f' }),
-      getCardBackColors: () => ({ color: '#8B0000', darkColor: '#4a0000' }),
+      tableLayout: 'black',
+      cardBackDesign: 'hawks',
+      getTableColors: () => ({ color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f' }),
+      getCardBackColors: () => ({ color: '#CF0A2C', darkColor: '#FFD100' }),
       getCardBackId: () => 'red',
       refreshPreferences: async () => {},
     };
