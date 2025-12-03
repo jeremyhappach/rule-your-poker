@@ -458,9 +458,11 @@ export const GameTable = ({
                           // For Holm game, only show buttons when buck is assigned, it's the player's turn, and game is ready
                           const buckIsAssigned = buckPosition !== null && buckPosition !== undefined;
                           const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
+                          // Additional check: ensure round status is 'active' (not 'pending', 'showdown', or 'completed')
+                          const roundIsActive = roundStatus === 'active';
                           
                           const isPlayerTurn = gameType === 'holm-game' 
-                            ? (buckIsAssigned && roundIsReady && currentTurnPosition === player.position && !awaitingNextRound && roundStatus !== 'completed')
+                            ? (buckIsAssigned && roundIsReady && roundIsActive && currentTurnPosition === player.position && !awaitingNextRound)
                             : true;
                           
                           const canDecide = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn;
