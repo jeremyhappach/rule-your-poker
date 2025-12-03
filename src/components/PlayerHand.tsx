@@ -79,7 +79,7 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
             {/* Card back pattern */}
             <div className="absolute inset-0 flex items-center justify-center">
               {teamEmoji ? (
-                <span className="text-lg drop-shadow-sm">{teamEmoji}</span>
+                <span className="text-3xl sm:text-4xl drop-shadow-md">{teamEmoji}</span>
               ) : (
                 <>
                   <div className="w-10 h-14 border-2 border-amber-400/40 rounded" />

@@ -54,7 +54,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   {teamEmoji ? (
-                    <span className="text-lg drop-shadow-sm">{teamEmoji}</span>
+                    <span className="text-3xl sm:text-4xl drop-shadow-md">{teamEmoji}</span>
                   ) : (
                     <div className="text-poker-gold text-2xl font-bold opacity-30">
                       ?
