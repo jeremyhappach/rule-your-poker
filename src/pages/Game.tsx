@@ -76,6 +76,7 @@ interface GameData {
   buck_position?: number | null;
   chucky_cards?: number;
   is_paused?: boolean;
+  paused_time_remaining?: number | null;
   rounds?: Round[];
 }
 
@@ -121,6 +122,7 @@ const Game = () => {
   const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(30);
   const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
+  const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
 
   // Clear pending decision when backend confirms
   useEffect(() => {
@@ -343,30 +345,44 @@ const Game = () => {
     };
   }, [gameId, game?.id]);
 
+  // Server-driven timer countdown - calculates from decision_deadline for perfect sync
   useEffect(() => {
-    if (timeLeft === null || timeLeft <= 0 || game?.is_paused || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
-      console.log('[TIMER COUNTDOWN] Stopped', { timeLeft, is_paused: game?.is_paused, awaiting: game?.awaiting_next_round, result: game?.last_round_result, allDecisionsIn: game?.all_decisions_in });
+    // If paused, show frozen time but don't countdown
+    if (game?.is_paused) {
+      if (game.paused_time_remaining !== null && game.paused_time_remaining !== undefined) {
+        setTimeLeft(game.paused_time_remaining);
+      }
+      console.log('[TIMER COUNTDOWN] Paused, showing frozen time:', game.paused_time_remaining);
       return;
     }
 
-    console.log('[TIMER COUNTDOWN] Starting interval, current timeLeft:', timeLeft);
+    if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
+      console.log('[TIMER COUNTDOWN] Stopped', { decisionDeadline, awaiting: game?.awaiting_next_round, result: game?.last_round_result, allDecisionsIn: game?.all_decisions_in });
+      return;
+    }
+
+    // Calculate time from server deadline
+    const calculateRemaining = () => {
+      const deadline = new Date(decisionDeadline).getTime();
+      const now = Date.now();
+      return Math.max(0, Math.floor((deadline - now) / 1000));
+    };
+
+    // Set initial value
+    setTimeLeft(calculateRemaining());
+
+    // Update every second by recalculating from deadline (keeps all clients in sync)
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev === null || prev <= 1) {
-          console.log('[TIMER COUNTDOWN] Reached 0, prev was:', prev);
-          return 0;
-        }
-        const newTime = prev - 1;
-        console.log('[TIMER COUNTDOWN] Tick:', prev, '→', newTime);
-        return newTime;
-      });
+      const remaining = calculateRemaining();
+      console.log('[TIMER COUNTDOWN] Tick (from deadline):', remaining);
+      setTimeLeft(remaining);
     }, 1000);
 
     return () => {
       console.log('[TIMER COUNTDOWN] Cleanup');
       clearInterval(timer);
     };
-  }, [timeLeft, game?.is_paused, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
+  }, [decisionDeadline, game?.is_paused, game?.paused_time_remaining, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
 
   // Ante timer countdown effect
   useEffect(() => {
@@ -579,6 +595,7 @@ const Game = () => {
       }
       // Immediately clear the timer to stop flashing
       setTimeLeft(null);
+      setDecisionDeadline(null);
       
       if (isHolmGame) {
         // In Holm, auto-fold the player whose timer expired
@@ -725,6 +742,7 @@ const Game = () => {
       
       // Clear timer immediately when awaiting next round
       setTimeLeft(null);
+      setDecisionDeadline(null);
       
       // Save the game state when we start the timer
       gameStateAtTimerStart.current = { awaiting: true, round: currentRound };
@@ -786,6 +804,7 @@ const Game = () => {
     if (game?.last_round_result) {
       console.log('[RESULT] Clearing timer for result display');
       setTimeLeft(null);
+      setDecisionDeadline(null);
     }
   }, [game?.last_round_result]);
 
@@ -902,51 +921,31 @@ const Game = () => {
       });
       
       if (currentRound?.decision_deadline) {
+        // Store the deadline for server-driven timer
+        setDecisionDeadline(currentRound.decision_deadline);
+        
         // Holm game: turn-based, needs current_turn_position
         if (isHolmGame && currentRound.current_turn_position) {
           // Check if turn changed
           const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
           
           if (turnChanged) {
-            console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh', decisionTimerRef.current, 'seconds ***');
-            setTimeLeft(decisionTimerRef.current);
+            console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '***');
             setLastTurnPosition(currentRound.current_turn_position);
             setTimerTurnPosition(currentRound.current_turn_position);
           } else if (lastTurnPosition === null) {
             // First time seeing this round
-            console.log('[FETCH] HOLM: First load of round, turn position:', currentRound.current_turn_position, '- giving fresh', decisionTimerRef.current, 'seconds');
-            setTimeLeft(decisionTimerRef.current);
+            console.log('[FETCH] HOLM: First load of round, turn position:', currentRound.current_turn_position);
             setLastTurnPosition(currentRound.current_turn_position);
             setTimerTurnPosition(currentRound.current_turn_position);
-          } else {
-            // Same turn, calculate from deadline
-            const deadline = new Date(currentRound.decision_deadline).getTime();
-            const now = Date.now();
-            const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
-            
-            console.log('[FETCH] HOLM: Same turn, using calculated time:', { 
-              deadline: new Date(deadline), 
-              now: new Date(now), 
-              remaining
-            });
-            setTimeLeft(remaining);
           }
         } 
         // 3-5-7 game: simultaneous decisions, no turn position needed
         else if (!isHolmGame) {
-          const deadline = new Date(currentRound.decision_deadline).getTime();
-          const now = Date.now();
-          const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
-          
-          console.log('[FETCH] 3-5-7: Setting timer from deadline:', { 
-            deadline: new Date(deadline), 
-            now: new Date(now), 
-            remaining,
-            all_decisions_in: gameData.all_decisions_in 
-          });
-          setTimeLeft(remaining);
+          console.log('[FETCH] 3-5-7: Using server deadline for timer');
         }
       } else {
+        setDecisionDeadline(null);
         console.log('[FETCH] *** NO TIMER SET - Missing deadline or turn position ***', {
           has_deadline: !!currentRound?.decision_deadline,
           has_turn_position: !!currentRound?.current_turn_position,
@@ -964,6 +963,7 @@ const Game = () => {
           console.log('[FETCH] Clearing timer, status:', gameData.status);
         }
         setTimeLeft(null);
+        setDecisionDeadline(null);
       } else {
         console.log('[FETCH] Skipping timer update during game_over to preserve countdown');
       }
@@ -1447,25 +1447,66 @@ const Game = () => {
                     variant={game.is_paused ? "default" : "outline"} 
                     onClick={async () => {
                       const newPausedState = !game.is_paused;
-                      // Optimistic UI update - immediately reflect the change
-                      setGame(prev => prev ? { ...prev, is_paused: newPausedState } : prev);
                       
-                      const { error } = await supabase
-                        .from('games')
-                        .update({ is_paused: newPausedState })
-                        .eq('id', gameId);
+                      // Get current round for deadline updates
+                      const currentRoundData = game.rounds?.find(r => r.round_number === game.current_round);
                       
-                      if (error) {
-                        console.error('[PAUSE] Error updating pause state:', error);
-                        // Revert optimistic update on error
-                        setGame(prev => prev ? { ...prev, is_paused: !newPausedState } : prev);
-                        toast({
-                          title: "Error",
-                          description: "Failed to update game pause state",
-                          variant: "destructive"
-                        });
+                      if (newPausedState) {
+                        // PAUSING: Save current remaining time
+                        const remainingTime = timeLeft ?? 0;
+                        console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
+                        
+                        // Optimistic UI update
+                        setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
+                        
+                        const { error } = await supabase
+                          .from('games')
+                          .update({ 
+                            is_paused: true, 
+                            paused_time_remaining: remainingTime 
+                          })
+                          .eq('id', gameId);
+                        
+                        if (error) {
+                          console.error('[PAUSE] Error pausing:', error);
+                          setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+                          toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
+                        }
                       } else {
-                        console.log('[PAUSE] Successfully set is_paused to:', newPausedState);
+                        // RESUMING: Set new deadline = now + paused_time_remaining
+                        const savedTime = game.paused_time_remaining ?? decisionTimerRef.current;
+                        const newDeadline = new Date(Date.now() + savedTime * 1000).toISOString();
+                        console.log('[PAUSE] Resuming game, setting new deadline:', newDeadline, 'with', savedTime, 'seconds');
+                        
+                        // Optimistic UI update
+                        setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+                        setDecisionDeadline(newDeadline);
+                        
+                        // Update game and current round deadline
+                        const { error: gameError } = await supabase
+                          .from('games')
+                          .update({ 
+                            is_paused: false, 
+                            paused_time_remaining: null 
+                          })
+                          .eq('id', gameId);
+                        
+                        if (currentRoundData?.id) {
+                          const { error: roundError } = await supabase
+                            .from('rounds')
+                            .update({ decision_deadline: newDeadline })
+                            .eq('id', currentRoundData.id);
+                          
+                          if (roundError) {
+                            console.error('[PAUSE] Error updating round deadline:', roundError);
+                          }
+                        }
+                        
+                        if (gameError) {
+                          console.error('[PAUSE] Error resuming:', gameError);
+                          setGame(prev => prev ? { ...prev, is_paused: true } : prev);
+                          toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
+                        }
                       }
                     }}
                   >
