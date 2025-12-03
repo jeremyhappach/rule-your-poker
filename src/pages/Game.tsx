@@ -366,8 +366,17 @@ const Game = () => {
 
   // Track pause state in a ref so interval callback can access latest value
   const isPausedRef = useRef(game?.is_paused);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Update pause ref and clear timer when paused
   useEffect(() => {
     isPausedRef.current = game?.is_paused;
+    // If just paused, immediately clear the timer interval
+    if (game?.is_paused && timerIntervalRef.current) {
+      console.log('[TIMER COUNTDOWN] Pause detected - clearing interval immediately');
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
   }, [game?.is_paused]);
 
   // Server-driven timer countdown - calculates from decision_deadline for perfect sync
@@ -397,10 +406,14 @@ const Game = () => {
     setTimeLeft(calculateRemaining());
 
     // Update every second by recalculating from deadline (keeps all clients in sync)
-    const timer = setInterval(() => {
+    timerIntervalRef.current = setInterval(() => {
       // Check pause state from ref (latest value) - stop countdown if paused
       if (isPausedRef.current) {
-        console.log('[TIMER COUNTDOWN] Paused detected in interval, skipping tick');
+        console.log('[TIMER COUNTDOWN] Paused detected in interval, clearing');
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
         return;
       }
       const remaining = calculateRemaining();
@@ -410,7 +423,10 @@ const Game = () => {
 
     return () => {
       console.log('[TIMER COUNTDOWN] Cleanup');
-      clearInterval(timer);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
     };
   }, [decisionDeadline, game?.is_paused, game?.paused_time_remaining, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
 

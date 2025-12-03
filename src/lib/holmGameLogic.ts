@@ -574,9 +574,9 @@ export async function endHolmRound(gameId: string) {
         .eq('id', gameId);
     }
     
-    // Brief pause to show player's hand
-    console.log('[HOLM END] Brief pause to display player hand...');
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 2-second pause to show player's hand before dealing Chucky
+    console.log('[HOLM END] 2-second pause before dealing Chucky...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Deal Chucky's cards from remaining deck (exclude community cards and player cards)
     console.log('[HOLM END] Now dealing Chucky cards...');
