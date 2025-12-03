@@ -1181,38 +1181,6 @@ const Game = () => {
     setTimeout(() => fetchGameData(), 100);
   };
 
-  // Dealer confirms to start the game over countdown
-  const handleDealerConfirmGameOver = useCallback(async () => {
-    if (!gameId) return;
-    
-    console.log('[DEALER CONFIRM] Starting game over countdown');
-    const { error } = await supabase
-      .from('games')
-      .update({
-        game_over_at: new Date().toISOString()
-      })
-      .eq('id', gameId);
-    
-    if (error) {
-      console.error('[DEALER CONFIRM] Failed to set game_over_at:', error);
-      toast({ title: "Error", description: "Failed to proceed", variant: "destructive" });
-    }
-  }, [gameId, toast]);
-
-  // Auto-confirm game over for bot dealers (Holm games)
-  useEffect(() => {
-    if (game?.status === 'game_over' && !game?.game_over_at && game?.last_round_result) {
-      const dealerPlayer = players.find(p => p.position === game.dealer_position);
-      if (dealerPlayer?.is_bot) {
-        console.log('[BOT DEALER] Auto-confirming game over');
-        const timer = setTimeout(() => {
-          handleDealerConfirmGameOver();
-        }, 2000); // 2 second delay for dramatic effect
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver]);
-
   const handleGameOverComplete = useCallback(async () => {
     if (!gameId) {
       console.log('[GAME OVER COMPLETE] No gameId, aborting');
@@ -1298,6 +1266,30 @@ const Game = () => {
       }, 1000);
     }
   }, [gameId, navigate, players]);
+
+  // Dealer confirms to skip countdown and go directly to game selection
+  const handleDealerConfirmGameOver = useCallback(async () => {
+    if (!gameId) return;
+    
+    console.log('[DEALER CONFIRM] Skipping countdown, going directly to game selection');
+    
+    // Go directly to game_selection (no countdown)
+    await handleGameOverComplete();
+  }, [gameId, handleGameOverComplete]);
+
+  // Auto-confirm game over for bot dealers (Holm games)
+  useEffect(() => {
+    if (game?.status === 'game_over' && !game?.game_over_at && game?.last_round_result) {
+      const dealerPlayer = players.find(p => p.position === game.dealer_position);
+      if (dealerPlayer?.is_bot) {
+        console.log('[BOT DEALER] Auto-confirming game over');
+        const timer = setTimeout(() => {
+          handleDealerConfirmGameOver();
+        }, 2000); // 2 second delay for dramatic effect
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {

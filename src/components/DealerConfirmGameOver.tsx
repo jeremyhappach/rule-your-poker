@@ -16,7 +16,7 @@ export const DealerConfirmGameOver = ({
           onClick={onConfirm}
           className="bg-poker-gold hover:bg-poker-gold/80 text-black font-bold text-lg px-6 py-3"
         >
-          Start Next Game
+          Next Game
         </Button>
       ) : (
         <p className="text-amber-300 text-sm">
