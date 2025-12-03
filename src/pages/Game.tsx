@@ -1287,7 +1287,14 @@ const Game = () => {
   };
 
   const handleSelectSeat = async (position: number) => {
-    if (!gameId || !user) return;
+    if (!gameId || !user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to select a seat.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const currentPlayer = players.find(p => p.user_id === user.id);
     
@@ -1308,23 +1315,58 @@ const Game = () => {
             sitting_out: gameInProgress
           });
 
-        if (joinError) throw joinError;
+        if (joinError) {
+          console.error('Error joining game:', joinError);
+          toast({
+            title: "Error Joining Game",
+            description: joinError.message || "Failed to select seat. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: gameInProgress ? "Seat Reserved" : "Seat Selected",
+          description: gameInProgress 
+            ? `You'll join the game at seat #${position} when the next round starts.`
+            : `Welcome to seat #${position}!`,
+        });
       } else {
         // Existing player changing seats
         // Keep sitting_out status if game is in progress
-        await supabase
+        const { error: updateError } = await supabase
           .from('players')
           .update({
             position: position,
             sitting_out: gameInProgress ? currentPlayer.sitting_out : false
           })
           .eq('id', currentPlayer.id);
+          
+        if (updateError) {
+          console.error('Error changing seats:', updateError);
+          toast({
+            title: "Error Changing Seats",
+            description: updateError.message || "Failed to change seats. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: "Seat Changed",
+          description: `Moved to seat #${position}`,
+        });
       }
       
       // Refetch to update UI
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
       console.error('Error selecting seat:', error);
+      toast({
+        title: "Unexpected Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
