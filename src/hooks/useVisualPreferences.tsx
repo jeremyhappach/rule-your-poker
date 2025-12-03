@@ -18,7 +18,6 @@ export const CARD_BACKS = [
   { id: 'bulls', name: 'Bulls', color: '#CE1141', darkColor: '#000000' },
   { id: 'bears', name: 'Bears', color: '#0B162A', darkColor: '#C83803' },
   { id: 'cubs', name: 'Cubs', color: '#0E3386', darkColor: '#CC3433' },
-  { id: 'sox', name: 'White Sox', color: '#27251F', darkColor: '#C4CED4' },
   { id: 'hawks', name: 'Blackhawks', color: '#CF0A2C', darkColor: '#FFD100' },
 ];
 
