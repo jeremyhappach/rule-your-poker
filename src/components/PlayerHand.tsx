@@ -8,8 +8,19 @@ interface PlayerHandProps {
 }
 
 export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
-  const { getCardBackColors } = useVisualPreferences();
+  const { getCardBackColors, getCardBackId } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
+  const cardBackId = getCardBackId();
+  
+  const getTeamEmoji = () => {
+    if (cardBackId === 'bulls') return '🐂';
+    if (cardBackId === 'bears') return '🐻';
+    if (cardBackId === 'cubs') return '⚾';
+    if (cardBackId === 'hawks') return '🦅';
+    return null;
+  };
+  
+  const teamEmoji = getTeamEmoji();
   
   // Sort cards from lowest to highest
   const RANK_ORDER: Record<string, number> = {
@@ -67,11 +78,19 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
           >
             {/* Card back pattern */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-10 h-14 border-2 border-amber-400/40 rounded" />
+              {teamEmoji ? (
+                <span className="text-lg drop-shadow-sm">{teamEmoji}</span>
+              ) : (
+                <>
+                  <div className="w-10 h-14 border-2 border-amber-400/40 rounded" />
+                </>
+              )}
             </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-6 h-10 border-2 border-amber-400/30 rounded" />
-            </div>
+            {!teamEmoji && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-6 h-10 border-2 border-amber-400/30 rounded" />
+              </div>
+            )}
           </div>
         ))}
       </div>
