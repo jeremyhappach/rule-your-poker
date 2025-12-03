@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, X } from "lucide-react";
+import { VisualPreferences } from "@/components/VisualPreferences";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -172,7 +174,7 @@ const Index = () => {
       </div>
 
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh]">
           <Button
             variant="ghost"
             size="icon"
@@ -185,69 +187,74 @@ const Index = () => {
           <DialogHeader>
             <DialogTitle>Profile Settings</DialogTitle>
             <DialogDescription>
-              Update your username or change your password
+              Update your profile, password, or visual preferences
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
-            {/* Username Section */}
-            <div className="space-y-3">
-              <div className="pb-2 border-b">
-                <h3 className="font-semibold">Username</h3>
-                <p className="text-sm text-muted-foreground">Current: {currentUsername}</p>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-6">
+              {/* Username Section */}
+              <div className="space-y-3">
+                <div className="pb-2 border-b">
+                  <h3 className="font-semibold">Username</h3>
+                  <p className="text-sm text-muted-foreground">Current: {currentUsername}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-username">New Username</Label>
+                  <Input
+                    id="new-username"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="Enter new username"
+                  />
+                </div>
+                <Button 
+                  onClick={handleUpdateUsername} 
+                  disabled={isUpdating || !newUsername.trim()}
+                  className="w-full"
+                >
+                  Update Username
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-username">New Username</Label>
-                <Input
-                  id="new-username"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="Enter new username"
-                />
-              </div>
-              <Button 
-                onClick={handleUpdateUsername} 
-                disabled={isUpdating || !newUsername.trim()}
-                className="w-full"
-              >
-                Update Username
-              </Button>
-            </div>
 
-            {/* Password Section */}
-            <div className="space-y-3">
-              <div className="pb-2 border-b">
-                <h3 className="font-semibold">Password</h3>
+              {/* Password Section */}
+              <div className="space-y-3">
+                <div className="pb-2 border-b">
+                  <h3 className="font-semibold">Password</h3>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <Button 
+                  onClick={handleUpdatePassword} 
+                  disabled={isUpdating || !newPassword || !confirmPassword}
+                  className="w-full"
+                >
+                  Update Password
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                />
-              </div>
-              <Button 
-                onClick={handleUpdatePassword} 
-                disabled={isUpdating || !newPassword || !confirmPassword}
-                className="w-full"
-              >
-                Update Password
-              </Button>
+
+              {/* Visual Preferences Section */}
+              {user && <VisualPreferences userId={user.id} />}
             </div>
-          </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
