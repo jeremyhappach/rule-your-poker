@@ -236,8 +236,13 @@ const Game = () => {
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
           } else if (payload.new && 'is_paused' in payload.new) {
-            // Immediately fetch for pause/resume state changes
-            console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE FETCH!', payload.new.is_paused);
+            // Immediately update local game state for pause - don't wait for fetch
+            console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', payload.new.is_paused, 'remaining:', payload.new.paused_time_remaining);
+            setGame(prev => prev ? {
+              ...prev,
+              is_paused: payload.new.is_paused,
+              paused_time_remaining: payload.new.paused_time_remaining
+            } : prev);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
           } else {
