@@ -66,6 +66,7 @@ export type Database = {
           game_over_at: string | null
           game_type: string | null
           id: string
+          is_paused: boolean | null
           last_round_result: string | null
           leg_value: number
           legs_to_win: number
@@ -98,6 +99,7 @@ export type Database = {
           game_over_at?: string | null
           game_type?: string | null
           id?: string
+          is_paused?: boolean | null
           last_round_result?: string | null
           leg_value?: number
           legs_to_win?: number
@@ -130,6 +132,7 @@ export type Database = {
           game_over_at?: string | null
           game_type?: string | null
           id?: string
+          is_paused?: boolean | null
           last_round_result?: string | null
           leg_value?: number
           legs_to_win?: number
