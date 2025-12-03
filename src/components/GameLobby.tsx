@@ -92,7 +92,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'games'
         },
-        () => {
+        (payload) => {
+          console.log('[LOBBY REALTIME] Games table changed:', payload);
           fetchGames();
         }
       )
@@ -108,7 +109,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'players'
         },
-        () => {
+        (payload) => {
+          console.log('[LOBBY REALTIME] Players table changed:', payload);
           fetchGames();
         }
       )
