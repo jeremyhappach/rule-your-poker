@@ -5,6 +5,17 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Palette } from 'lucide-react';
 import { TABLE_LAYOUTS, CARD_BACKS } from '@/hooks/useVisualPreferences';
+import bullsLogo from '@/assets/bulls-logo.png';
+import bearsLogo from '@/assets/bears-logo.png';
+import cubsLogo from '@/assets/cubs-logo.png';
+import hawksLogo from '@/assets/hawks-logo.png';
+
+const TEAM_LOGOS: Record<string, string> = {
+  bulls: bullsLogo,
+  bears: bearsLogo,
+  cubs: cubsLogo,
+  hawks: hawksLogo,
+};
 
 interface VisualPreferencesProps {
   userId: string;
@@ -104,13 +115,12 @@ export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
                 }`}
                 style={{ backgroundColor: card.color }}
               >
-                {['bulls', 'bears', 'cubs', 'hawks'].includes(card.id) ? (
-                  <span className="text-2xl drop-shadow-md">
-                    {card.id === 'bulls' && '🐂'}
-                    {card.id === 'bears' && '🐻'}
-                    {card.id === 'cubs' && '⚾'}
-                    {card.id === 'hawks' && '🦅'}
-                  </span>
+                {TEAM_LOGOS[card.id] ? (
+                  <img 
+                    src={TEAM_LOGOS[card.id]} 
+                    alt={card.name} 
+                    className="w-6 h-6 object-contain"
+                  />
                 ) : (
                   <div className="w-6 h-10 border border-white/30 rounded-sm" 
                     style={{
