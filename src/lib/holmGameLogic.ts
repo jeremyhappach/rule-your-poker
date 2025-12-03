@@ -921,13 +921,38 @@ async function handleMultiPlayerShowdown(
     // Tie - both/all tied players must face Chucky
     console.log('[HOLM TIE] Tie detected. Tied players must face Chucky.');
     
-    // Deal Chucky cards (4 cards for Holm game)
-    const deck = shuffleDeck(createDeck());
-    const chuckyCardCount = game.chucky_cards || 4;
-    const chuckyCards: Card[] = [];
-    for (let i = 0; i < chuckyCardCount; i++) {
-      chuckyCards.push(deck[i]);
+    // Deal Chucky cards (4 cards for Holm game) - EXCLUDE used cards
+    // Get all player cards for this round to exclude from Chucky's deck
+    const { data: allPlayerCardsForChucky } = await supabase
+      .from('player_cards')
+      .select('cards')
+      .eq('round_id', roundId);
+    
+    // Collect all used cards
+    const usedCards = new Set<string>();
+    
+    // Add community cards
+    communityCards.forEach(card => {
+      usedCards.add(`${card.suit}-${card.rank}`);
+    });
+    
+    // Add all player cards
+    if (allPlayerCardsForChucky) {
+      allPlayerCardsForChucky.forEach(pc => {
+        const cards = pc.cards as unknown as Card[];
+        cards.forEach(card => {
+          usedCards.add(`${card.suit}-${card.rank}`);
+        });
+      });
     }
+    
+    // Create deck excluding used cards
+    const fullDeck = createDeck();
+    const availableCards = fullDeck.filter(card => !usedCards.has(`${card.suit}-${card.rank}`));
+    const shuffledAvailable = shuffleDeck(availableCards);
+    
+    const chuckyCardCount = game.chucky_cards || 4;
+    const chuckyCards = shuffledAvailable.slice(0, chuckyCardCount);
     
     console.log('[HOLM TIE] Dealt Chucky:', chuckyCards);
     
@@ -967,11 +992,13 @@ async function handleMultiPlayerShowdown(
     
     if (playersBeatChucky.length === 0) {
       // All tied players lost to Chucky - they all match pot (capped)
-      console.log('[HOLM TIE] Chucky beats all tied players');
+      console.log('[HOLM TIE] Chucky beats all tied players, roundPot:', roundPot);
       
       const potMatchAmount = game.pot_max_enabled 
-        ? Math.min(game.pot, game.pot_max_value) 
-        : game.pot;
+        ? Math.min(roundPot, game.pot_max_value) 
+        : roundPot;
+      
+      console.log('[HOLM TIE] Each loser pays potMatchAmount:', potMatchAmount);
       
       let totalMatched = 0;
       let loserNames: string[] = [];
@@ -979,6 +1006,8 @@ async function handleMultiPlayerShowdown(
       for (const loser of playersLoseToChucky) {
         const loserUsername = loser.player.profiles?.username || loser.player.user_id;
         loserNames.push(loserUsername);
+        
+        console.log('[HOLM TIE] Deducting', potMatchAmount, 'from', loserUsername, 'current chips:', loser.player.chips);
         
         await supabase
           .from('players')
@@ -988,7 +1017,9 @@ async function handleMultiPlayerShowdown(
         totalMatched += potMatchAmount;
       }
       
-      const newPot = game.pot + totalMatched;
+      console.log('[HOLM TIE] Total matched from all losers:', totalMatched, '(', playersLoseToChucky.length, 'players)');
+      
+      const newPot = roundPot + totalMatched;
       
       await supabase
         .from('games')
