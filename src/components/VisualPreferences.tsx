@@ -90,6 +90,7 @@ export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
       {/* Card Back Design */}
       <div className="space-y-3">
         <Label>Card Back Design</Label>
+        <p className="text-xs text-muted-foreground">Classic & Chicago Teams</p>
         <div className="grid grid-cols-5 gap-2">
           {CARD_BACKS.map((card) => (
             <div key={card.id} className="flex flex-col items-center gap-1">

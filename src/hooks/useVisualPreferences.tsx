@@ -15,6 +15,11 @@ export const CARD_BACKS = [
   { id: 'green', name: 'Forest Green', color: '#228B22', darkColor: '#0f4a0f' },
   { id: 'purple', name: 'Royal Purple', color: '#4B0082', darkColor: '#2a0050' },
   { id: 'gold', name: 'Gold', color: '#B8860B', darkColor: '#6a4a05' },
+  { id: 'bulls', name: 'Bulls', color: '#CE1141', darkColor: '#000000' },
+  { id: 'bears', name: 'Bears', color: '#0B162A', darkColor: '#C83803' },
+  { id: 'cubs', name: 'Cubs', color: '#0E3386', darkColor: '#CC3433' },
+  { id: 'sox', name: 'White Sox', color: '#27251F', darkColor: '#C4CED4' },
+  { id: 'hawks', name: 'Blackhawks', color: '#CF0A2C', darkColor: '#FFD100' },
 ];
 
 interface VisualPreferencesContextType {
