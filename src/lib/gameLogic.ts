@@ -169,8 +169,18 @@ export async function startRound(gameId: string, roundNumber: number) {
     console.log('[START_ROUND] Deleted existing round');
   }
 
-  // Create round with 12-second deadline (accounts for ~2s of processing/fetch time)
-  const deadline = new Date(Date.now() + 12000);
+  // Fetch game_defaults for decision timer
+  const { data: gameDefaults } = await supabase
+    .from('game_defaults')
+    .select('decision_timer_seconds')
+    .eq('game_type', '3-5-7')
+    .maybeSingle();
+  
+  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
+  console.log('[START_ROUND] Using decision timer:', timerSeconds, 'seconds');
+
+  // Create round with configured deadline (accounts for ~2s of processing/fetch time)
+  const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
