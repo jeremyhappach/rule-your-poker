@@ -5,22 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Palette } from 'lucide-react';
-
-const TABLE_LAYOUTS = [
-  { id: 'classic', name: 'Classic Green', color: '#1a5c3a', border: '#0f3d26' },
-  { id: 'blue', name: 'Casino Blue', color: '#1a3c5c', border: '#0f2640' },
-  { id: 'red', name: 'Vegas Red', color: '#5c1a2a', border: '#3d0f1a' },
-  { id: 'purple', name: 'Royal Purple', color: '#3c1a5c', border: '#260f40' },
-  { id: 'black', name: 'Midnight Black', color: '#1a1a1a', border: '#0a0a0a' },
-];
-
-const CARD_BACKS = [
-  { id: 'red', name: 'Classic Red', color: '#8B0000', pattern: 'diamonds' },
-  { id: 'blue', name: 'Ocean Blue', color: '#00308F', pattern: 'diamonds' },
-  { id: 'green', name: 'Forest Green', color: '#228B22', pattern: 'diamonds' },
-  { id: 'purple', name: 'Royal Purple', color: '#4B0082', pattern: 'diamonds' },
-  { id: 'gold', name: 'Gold', color: '#B8860B', pattern: 'diamonds' },
-];
+import { TABLE_LAYOUTS, CARD_BACKS } from '@/hooks/useVisualPreferences';
 
 interface VisualPreferencesProps {
   userId: string;
