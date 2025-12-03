@@ -388,6 +388,35 @@ const Game = () => {
     }
   }, [game?.is_paused]);
 
+  // Fallback polling for pause state - ensures observers get pause updates even if realtime fails
+  useEffect(() => {
+    if (!gameId) return;
+    
+    const pollPauseState = async () => {
+      const { data } = await supabase
+        .from('games')
+        .select('is_paused, paused_time_remaining')
+        .eq('id', gameId)
+        .single();
+      
+      if (data && data.is_paused !== isPausedRef.current) {
+        console.log('[PAUSE POLL] Pause state mismatch detected! DB:', data.is_paused, 'Local:', isPausedRef.current);
+        isPausedRef.current = data.is_paused;
+        if (data.is_paused && timerIntervalRef.current) {
+          console.log('[PAUSE POLL] Clearing timer interval');
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+        // Update game state
+        setGame(prev => prev ? { ...prev, is_paused: data.is_paused, paused_time_remaining: data.paused_time_remaining } : prev);
+      }
+    };
+    
+    // Poll every 2 seconds as fallback
+    const pollInterval = setInterval(pollPauseState, 2000);
+    return () => clearInterval(pollInterval);
+  }, [gameId]);
+
   // Handle paused time display separately from interval management
   useEffect(() => {
     if (game?.is_paused && game.paused_time_remaining !== null && game.paused_time_remaining !== undefined) {
@@ -983,6 +1012,16 @@ const Game = () => {
     }
 
     setGame(gameData);
+    
+    // CRITICAL: Update pause ref immediately when fetching game data
+    // This ensures timer stops even if realtime updates aren't working for observers
+    isPausedRef.current = gameData.is_paused;
+    if (gameData.is_paused && timerIntervalRef.current) {
+      console.log('[FETCH] ⏸️ Game is paused - clearing timer interval');
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    
     // Sort players by position for consistent rendering
     setPlayers((playersData || []).sort((a, b) => a.position - b.position));
     
