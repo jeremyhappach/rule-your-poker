@@ -8,8 +8,9 @@ import { ChipChangeIndicator } from "./ChipChangeIndicator";
 import { CommunityCards } from "./CommunityCards";
 import { BuckIndicator } from "./BuckIndicator";
 import { ChuckyHand } from "./ChuckyHand";
+import { ChoppedAnimation } from "./ChoppedAnimation";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
-import { useState, useMemo, useLayoutEffect } from "react";
+import { useState, useMemo, useLayoutEffect, useEffect, useRef } from "react";
 
 interface Player {
   id: string;
@@ -99,12 +100,36 @@ export const GameTable = ({
   // Stabilize radius calculation to prevent flickering during rapid re-renders
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
+  // Chopped animation state (when Chucky beats you in Holm)
+  const [showChopped, setShowChopped] = useState(false);
+  const lastChoppedResultRef = useRef<string | null>(null);
+  
   useLayoutEffect(() => {
     const updateWidth = () => setWindowWidth(window.innerWidth);
     updateWidth(); // Set initial value
     window.addEventListener('resize', updateWidth);
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
+  
+  // Detect when Chucky wins against the current player in Holm game
+  useEffect(() => {
+    if (
+      gameType === 'holm-game' && 
+      lastRoundResult && 
+      lastRoundResult.includes('Chucky wins') &&
+      lastRoundResult !== lastChoppedResultRef.current &&
+      currentUserId
+    ) {
+      // Check if current user was the one who lost (single player vs Chucky)
+      const stayedPlayers = players.filter(p => p.current_decision === 'stay');
+      const currentPlayerStayed = stayedPlayers.some(p => p.user_id === currentUserId);
+      
+      if (currentPlayerStayed && stayedPlayers.length === 1) {
+        lastChoppedResultRef.current = lastRoundResult;
+        setShowChopped(true);
+      }
+    }
+  }, [lastRoundResult, gameType, players, currentUserId]);
   
   const radius = useMemo(() => {
     if (windowWidth < 480) return 32;
@@ -143,6 +168,9 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
         <div className="relative h-full">
+          {/* Chopped Animation - when Chucky beats you */}
+          <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
+          
           {/* Result Message - displayed in center of table when available */}
           {lastRoundResult && awaitingNextRound && (
             <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
