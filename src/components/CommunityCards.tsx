@@ -1,6 +1,17 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import bullsLogo from '@/assets/bulls-logo.png';
+import bearsLogo from '@/assets/bears-logo.png';
+import cubsLogo from '@/assets/cubs-logo.png';
+import hawksLogo from '@/assets/hawks-logo.png';
+
+const TEAM_LOGOS: Record<string, string> = {
+  bulls: bullsLogo,
+  bears: bearsLogo,
+  cubs: cubsLogo,
+  hawks: hawksLogo,
+};
 
 interface CommunityCardsProps {
   cards: CardType[];
@@ -12,15 +23,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   const cardBackColors = getCardBackColors();
   const cardBackId = getCardBackId();
   
-  const getTeamEmoji = () => {
-    if (cardBackId === 'bulls') return '🐂';
-    if (cardBackId === 'bears') return '🐻';
-    if (cardBackId === 'cubs') return '⚾';
-    if (cardBackId === 'hawks') return '🦅';
-    return null;
-  };
-  
-  const teamEmoji = getTeamEmoji();
+  const teamLogo = TEAM_LOGOS[cardBackId] || null;
   
   if (cards.length === 0) return null;
 
@@ -52,9 +55,9 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  {teamEmoji ? (
-                    <span className="text-3xl sm:text-4xl drop-shadow-md">{teamEmoji}</span>
+                <div className="w-full h-full flex items-center justify-center p-1">
+                  {teamLogo ? (
+                    <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
                   ) : (
                     <div className="text-poker-gold text-2xl font-bold opacity-30">
                       ?

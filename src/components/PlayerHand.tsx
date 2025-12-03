@@ -1,6 +1,17 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import bullsLogo from '@/assets/bulls-logo.png';
+import bearsLogo from '@/assets/bears-logo.png';
+import cubsLogo from '@/assets/cubs-logo.png';
+import hawksLogo from '@/assets/hawks-logo.png';
+
+const TEAM_LOGOS: Record<string, string> = {
+  bulls: bullsLogo,
+  bears: bearsLogo,
+  cubs: cubsLogo,
+  hawks: hawksLogo,
+};
 
 interface PlayerHandProps {
   cards: CardType[];
@@ -12,15 +23,7 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
   const cardBackColors = getCardBackColors();
   const cardBackId = getCardBackId();
   
-  const getTeamEmoji = () => {
-    if (cardBackId === 'bulls') return '🐂';
-    if (cardBackId === 'bears') return '🐻';
-    if (cardBackId === 'cubs') return '⚾';
-    if (cardBackId === 'hawks') return '🦅';
-    return null;
-  };
-  
-  const teamEmoji = getTeamEmoji();
+  const teamLogo = TEAM_LOGOS[cardBackId] || null;
   
   // Sort cards from lowest to highest
   const RANK_ORDER: Record<string, number> = {
@@ -77,16 +80,16 @@ export const PlayerHand = ({ cards, isHidden = false }: PlayerHandProps) => {
             }}
           >
             {/* Card back pattern */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              {teamEmoji ? (
-                <span className="text-3xl sm:text-4xl drop-shadow-md">{teamEmoji}</span>
+            <div className="absolute inset-0 flex items-center justify-center p-1">
+              {teamLogo ? (
+                <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
               ) : (
                 <>
                   <div className="w-10 h-14 border-2 border-amber-400/40 rounded" />
                 </>
               )}
             </div>
-            {!teamEmoji && (
+            {!teamLogo && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-6 h-10 border-2 border-amber-400/30 rounded" />
               </div>
