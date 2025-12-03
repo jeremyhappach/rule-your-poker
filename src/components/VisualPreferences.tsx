@@ -104,17 +104,26 @@ export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
                 }`}
                 style={{ backgroundColor: card.color }}
               >
-                <div className="w-6 h-10 border border-white/30 rounded-sm" 
-                  style={{
-                    background: `repeating-linear-gradient(
-                      45deg,
-                      transparent,
-                      transparent 2px,
-                      rgba(255,255,255,0.1) 2px,
-                      rgba(255,255,255,0.1) 4px
-                    )`
-                  }}
-                />
+                {['bulls', 'bears', 'cubs', 'hawks'].includes(card.id) ? (
+                  <span className="text-[8px] font-bold text-white drop-shadow-sm">
+                    {card.id === 'bulls' && '🐂'}
+                    {card.id === 'bears' && '🐻'}
+                    {card.id === 'cubs' && '⚾'}
+                    {card.id === 'hawks' && '🦅'}
+                  </span>
+                ) : (
+                  <div className="w-6 h-10 border border-white/30 rounded-sm" 
+                    style={{
+                      background: `repeating-linear-gradient(
+                        45deg,
+                        transparent,
+                        transparent 2px,
+                        rgba(255,255,255,0.1) 2px,
+                        rgba(255,255,255,0.1) 4px
+                      )`
+                    }}
+                  />
+                )}
               </button>
               <span className="text-xs text-center">{card.name.split(' ')[0]}</span>
             </div>

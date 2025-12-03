@@ -26,6 +26,7 @@ interface VisualPreferencesContextType {
   cardBackDesign: string;
   getTableColors: () => { color: string; darkColor: string; border: string };
   getCardBackColors: () => { color: string; darkColor: string };
+  getCardBackId: () => string;
   refreshPreferences: () => Promise<void>;
 }
 
@@ -70,12 +71,15 @@ export function VisualPreferencesProvider({
     return { color: design.color, darkColor: design.darkColor };
   };
 
+  const getCardBackId = () => cardBackDesign;
+
   return (
     <VisualPreferencesContext.Provider value={{
       tableLayout,
       cardBackDesign,
       getTableColors,
       getCardBackColors,
+      getCardBackId,
       refreshPreferences: fetchPreferences,
     }}>
       {children}
@@ -92,6 +96,7 @@ export function useVisualPreferences() {
       cardBackDesign: 'red',
       getTableColors: () => ({ color: '#1a5c3a', darkColor: '#0f3d26', border: '#78350f' }),
       getCardBackColors: () => ({ color: '#8B0000', darkColor: '#4a0000' }),
+      getCardBackId: () => 'red',
       refreshPreferences: async () => {},
     };
   }

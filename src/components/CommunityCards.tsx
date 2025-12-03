@@ -8,8 +8,19 @@ interface CommunityCardsProps {
 }
 
 export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
-  const { getCardBackColors } = useVisualPreferences();
+  const { getCardBackColors, getCardBackId } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
+  const cardBackId = getCardBackId();
+  
+  const getTeamEmoji = () => {
+    if (cardBackId === 'bulls') return '🐂';
+    if (cardBackId === 'bears') return '🐻';
+    if (cardBackId === 'cubs') return '⚾';
+    if (cardBackId === 'hawks') return '🦅';
+    return null;
+  };
+  
+  const teamEmoji = getTeamEmoji();
   
   if (cards.length === 0) return null;
 
@@ -42,9 +53,13 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                 </div>
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-poker-gold text-2xl font-bold opacity-30">
-                    ?
-                  </div>
+                  {teamEmoji ? (
+                    <span className="text-lg drop-shadow-sm">{teamEmoji}</span>
+                  ) : (
+                    <div className="text-poker-gold text-2xl font-bold opacity-30">
+                      ?
+                    </div>
+                  )}
                 </div>
               )}
             </Card>

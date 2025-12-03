@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, X, Trash2, ShieldAlert } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert } from "lucide-react";
 import { VisualPreferences } from "@/components/VisualPreferences";
 
 const Index = () => {
@@ -230,15 +230,6 @@ const Index = () => {
 
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="max-w-md max-h-[85vh]">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-            onClick={() => setShowProfileDialog(false)}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </Button>
           <DialogHeader>
             <DialogTitle>Profile Settings</DialogTitle>
             <DialogDescription>
