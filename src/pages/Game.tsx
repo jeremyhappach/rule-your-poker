@@ -1405,12 +1405,19 @@ const Game = () => {
               </Badge>
             )}
             {game.status === 'in_progress' && (
-              <Button 
-                variant={isPaused ? "default" : "outline"} 
-                onClick={() => setIsPaused(!isPaused)}
-              >
-                {isPaused ? '▶️ Resume' : '⏸️ Pause'}
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button 
+                  variant={isPaused ? "default" : "outline"} 
+                  onClick={() => setIsPaused(!isPaused)}
+                >
+                  {isPaused ? '▶️ Resume' : '⏸️ Pause'}
+                </Button>
+                {isPaused && (
+                  <Badge variant="destructive" className="animate-pulse text-sm px-3 py-1">
+                    ⏸️ GAME PAUSED
+                  </Badge>
+                )}
+              </div>
             )}
             {game.status === 'waiting' && (
               <Button variant="default" onClick={handleInvite}>
@@ -1528,7 +1535,8 @@ const Game = () => {
                 {(isDealer || dealerPlayer?.is_bot) && (
                   <GameSelection onSelectGame={handleGameSelection} />
                 )}
-                {!isDealer && !dealerPlayer?.is_bot && (
+                {/* Show waiting message for non-dealers who are actual players (not observers) */}
+                {!isDealer && !dealerPlayer?.is_bot && players.some(p => p.user_id === user?.id) && (
                   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
                     <Card className="max-w-md mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
                       <CardContent className="pt-8 pb-8 space-y-4 text-center">

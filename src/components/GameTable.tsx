@@ -311,8 +311,17 @@ export const GameTable = ({
             // Show cards when there's an active round and player isn't sitting out
             const shouldShowCards = player && !player.sitting_out && currentRound > 0;
             
-            // Only show cards if we have actual data - don't show dummy placeholders
-            const cards = shouldShowCards && actualCards.length > 0 ? actualCards : [];
+            // For observers (no currentUserId or not a player), show placeholder card backs
+            const isObserver = !currentUserId || !players.some(p => p.user_id === currentUserId);
+            
+            // Show actual cards if we have them, OR placeholder cards for observers
+            const cards: CardType[] = shouldShowCards 
+              ? (actualCards.length > 0 
+                  ? actualCards 
+                  : (isObserver && expectedCardCount > 0 
+                      ? Array.from({ length: expectedCardCount }, () => ({ rank: '2' as const, suit: '♠' as const })) 
+                      : []))
+              : [];
             
             // Handle empty seat click
             if (isEmptySeat) {
