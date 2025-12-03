@@ -118,6 +118,7 @@ const Game = () => {
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
   const [timerTurnPosition, setTimerTurnPosition] = useState<number | null>(null);
   const [pendingDecision, setPendingDecision] = useState<'stay' | 'fold' | null>(null);
+  const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(10);
   const anteProcessingRef = useRef(false);
 
   // Clear pending decision when backend confirms
@@ -164,6 +165,31 @@ const Game = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  // Fetch game defaults for decision timer
+  useEffect(() => {
+    const fetchGameDefaults = async () => {
+      if (!game?.game_type) return;
+      
+      // Map game_type to defaults table format (holm-game -> holm, 3-5-7-game -> 3-5-7)
+      const defaultsGameType = game.game_type === 'holm-game' ? 'holm' : '3-5-7';
+      
+      const { data, error } = await supabase
+        .from('game_defaults')
+        .select('decision_timer_seconds')
+        .eq('game_type', defaultsGameType)
+        .single();
+      
+      if (data && !error) {
+        console.log('[GAME DEFAULTS] Loaded decision_timer_seconds:', data.decision_timer_seconds, 'for', defaultsGameType);
+        setDecisionTimerSeconds(data.decision_timer_seconds);
+      } else {
+        console.log('[GAME DEFAULTS] No defaults found for', defaultsGameType, ', using fallback of 10 seconds', error);
+      }
+    };
+    
+    fetchGameDefaults();
+  }, [game?.game_type]);
 
   useEffect(() => {
     if (!gameId || !user) return;
@@ -880,14 +906,14 @@ const Game = () => {
           const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
           
           if (turnChanged) {
-            console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh 10 seconds ***');
-            setTimeLeft(10);
+            console.log('[FETCH] *** HOLM: TURN CHANGED from', lastTurnPosition, 'to', currentRound.current_turn_position, '- giving fresh', decisionTimerSeconds, 'seconds ***');
+            setTimeLeft(decisionTimerSeconds);
             setLastTurnPosition(currentRound.current_turn_position);
             setTimerTurnPosition(currentRound.current_turn_position);
           } else if (lastTurnPosition === null) {
             // First time seeing this round
-            console.log('[FETCH] HOLM: First load of round, turn position:', currentRound.current_turn_position, '- giving fresh 10 seconds');
-            setTimeLeft(10);
+            console.log('[FETCH] HOLM: First load of round, turn position:', currentRound.current_turn_position, '- giving fresh', decisionTimerSeconds, 'seconds');
+            setTimeLeft(decisionTimerSeconds);
             setLastTurnPosition(currentRound.current_turn_position);
             setTimerTurnPosition(currentRound.current_turn_position);
           } else {
