@@ -1051,6 +1051,19 @@ const Game = () => {
 
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
 
+    // Reset all players for new game (keep chips, clear ante decisions)
+    console.log('[GAME OVER] Resetting player states for new game');
+    await supabase
+      .from('players')
+      .update({ 
+        status: 'active',
+        current_decision: null,
+        decision_locked: false,
+        sitting_out: false,
+        ante_decision: null
+      })
+      .eq('game_id', gameId);
+
     // Skip dealer_announcement, go directly to game_selection
     const { error } = await supabase
       .from('games')
@@ -1063,7 +1076,9 @@ const Game = () => {
         next_round_number: null,
         pot: 0,
         all_decisions_in: false,
-        game_over_at: null
+        game_over_at: null,
+        buck_position: null,
+        total_hands: 0
       })
       .eq('id', gameId);
 

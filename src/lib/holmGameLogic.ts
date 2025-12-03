@@ -732,6 +732,19 @@ async function handleChuckyShowdown(
       })
       .eq('id', player.id);
 
+    // Reset all players for new game (keep chips, clear ante decisions)
+    console.log('[HOLM SHOWDOWN] Resetting player states for new game');
+    await supabase
+      .from('players')
+      .update({ 
+        status: 'active',
+        current_decision: null,
+        decision_locked: false,
+        sitting_out: false,
+        ante_decision: null
+      })
+      .eq('game_id', gameId);
+
     // In Holm game, beating Chucky ends the game immediately
     console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Game ends. ***');
     const { error: gameOverError } = await supabase
