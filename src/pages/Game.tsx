@@ -510,8 +510,20 @@ const Game = () => {
       const currentPlayer = players.find(p => p.user_id === user.id);
       const isDealer = currentPlayer?.position === game.dealer_position;
       
+      console.log('[ANTE DIALOG] Checking ante dialog:', {
+        gameStatus: game?.status,
+        hasUser: !!user,
+        hasCurrentPlayer: !!currentPlayer,
+        anteDecision: currentPlayer?.ante_decision,
+        isDealer,
+        dealerPosition: game.dealer_position,
+        playerPosition: currentPlayer?.position
+      });
+      
       // Don't show ante dialog for dealer (they auto ante up)
-      if (currentPlayer && !currentPlayer.ante_decision && !isDealer) {
+      // Show dialog if player exists and hasn't made ante decision and isn't dealer
+      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer) {
+        console.log('[ANTE DIALOG] Showing ante dialog for player');
         setShowAnteDialog(true);
         
         // Calculate ante time left
@@ -522,6 +534,7 @@ const Game = () => {
           setAnteTimeLeft(remaining);
         }
       } else {
+        console.log('[ANTE DIALOG] NOT showing ante dialog');
         setShowAnteDialog(false);
       }
     } else {
