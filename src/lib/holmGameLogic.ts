@@ -678,9 +678,15 @@ export async function endHolmRound(gameId: string) {
     
     console.log('[HOLM END] All Chucky cards revealed');
 
-    // 3-second delay so players can read the results before evaluation
-    console.log('[HOLM END] Pausing 3 seconds for players to see results...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Clear the hand rank label so players can compare hands visually
+    await supabase
+      .from('games')
+      .update({ last_round_result: null })
+      .eq('id', gameId);
+
+    // 2-second delay so players can compare hands before result
+    console.log('[HOLM END] Pausing 2 seconds for players to compare hands...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Use round.pot as the authoritative pot value (game.pot may be stale)
     const roundPot = round.pot || game.pot || 0;
@@ -803,14 +809,26 @@ async function handleChuckyShowdown(
       })
       .eq('game_id', gameId);
 
-    // In Holm game, beating Chucky ends the game - but wait for dealer to confirm before countdown
-    console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Awaiting dealer confirmation. ***');
+    // In Holm game, beating Chucky ends the game - show result announcement first
+    console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Showing announcement. ***');
+    
+    // First show the result announcement (round stays completed, game stays in_progress)
+    await supabase
+      .from('games')
+      .update({
+        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)}!`
+      })
+      .eq('id', gameId);
+    
+    // 2-second delay for players to see the winning announcement
+    console.log('[HOLM SHOWDOWN] Pausing 2 seconds for announcement...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Now set game_over status so dealer can click Next Game button
     const { error: gameOverError } = await supabase
       .from('games')
       .update({
         status: 'game_over',
-        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)}!`,
-        // DON'T set game_over_at yet - dealer must click button to go to game selection
         pot: 0,
         awaiting_next_round: false
       })
