@@ -126,11 +126,12 @@ export const GameTable = ({
       lastRoundResult !== lastChoppedResultRef.current &&
       currentUserId
     ) {
-      // Check if current user was the one who lost (single player vs Chucky)
-      const stayedPlayers = players.filter(p => p.current_decision === 'stay');
-      const currentPlayerStayed = stayedPlayers.some(p => p.user_id === currentUserId);
+      // Check if current user was the one who lost by checking if their username is in the result
+      const currentPlayer = players.find(p => p.user_id === currentUserId);
+      const currentUsername = currentPlayer?.profiles?.username || '';
       
-      if (currentPlayerStayed && stayedPlayers.length === 1) {
+      // Show chopped animation if the current player's name is in the "Chucky beat X" message
+      if (currentUsername && lastRoundResult.includes(`Chucky beat ${currentUsername}`)) {
         lastChoppedResultRef.current = lastRoundResult;
         setShowChopped(true);
       }
