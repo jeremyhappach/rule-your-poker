@@ -1296,8 +1296,25 @@ const Game = () => {
   }, [gameId, handleGameOverComplete]);
 
   // Auto-confirm game over for bot dealers (Holm games)
+  // Also auto-proceed if Chucky beat a player (game should continue, not end)
   useEffect(() => {
     if (game?.status === 'game_over' && !game?.game_over_at && game?.last_round_result) {
+      // If Chucky beat a player, the game should NOT have ended - auto-proceed to next hand
+      if (game.last_round_result.includes('Chucky beat')) {
+        console.log('[CHUCKY WIN FIX] Chucky beat player but game_over was set incorrectly - auto-proceeding');
+        const timer = setTimeout(async () => {
+          // Reset status to in_progress and set awaiting_next_round
+          await supabase
+            .from('games')
+            .update({ 
+              status: 'in_progress',
+              awaiting_next_round: true 
+            })
+            .eq('id', gameId);
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
+      
       const dealerPlayer = players.find(p => p.position === game.dealer_position);
       if (dealerPlayer?.is_bot) {
         console.log('[BOT DEALER] Auto-confirming game over');
@@ -1307,7 +1324,7 @@ const Game = () => {
         return () => clearTimeout(timer);
       }
     }
-  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver]);
+  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
