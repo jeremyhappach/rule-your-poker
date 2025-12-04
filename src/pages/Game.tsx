@@ -971,14 +971,15 @@ const Game = () => {
 
     // Users join as observers - they must select a seat to become a player
 
-    // Fetch player cards if game is in progress
-    if (gameData.status === 'in_progress' && gameData.current_round) {
-      // For Holm games, don't fetch cards during round transitions (awaiting_next_round)
-      // For 3-5-7, always show cards during the session
+    // Fetch player cards if game is in progress or game_over (keep cards visible during announcements)
+    const shouldFetchCards = (gameData.status === 'in_progress' || gameData.status === 'game_over') && gameData.current_round;
+    
+    if (shouldFetchCards) {
+      // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over
       const isHolmGame = gameData.game_type === 'holm-game';
-      const shouldFetchCards = !isHolmGame || !gameData.awaiting_next_round;
+      const keepCards = gameData.status === 'game_over' || !isHolmGame || !gameData.awaiting_next_round;
       
-      if (shouldFetchCards) {
+      if (keepCards) {
         const { data: roundData } = await supabase
           .from('rounds')
           .select('id')
@@ -1006,7 +1007,7 @@ const Game = () => {
         setPlayerCards([]);
       }
     } else {
-      // Clear cards when not in active play
+      // Clear cards when not in active play (but preserve during game_over)
       console.log('[FETCH] Clearing player cards (not in active play)');
       setPlayerCards([]);
     }

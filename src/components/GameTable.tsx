@@ -183,7 +183,7 @@ export const GameTable = ({
           <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
           
           {/* Result Message - displayed in center of table when available */}
-          {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown') && (
+          {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn) && (
             <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
               <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 animate-pulse">
                 <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center whitespace-nowrap drop-shadow-lg">
