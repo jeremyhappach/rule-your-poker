@@ -659,15 +659,30 @@ const Game = () => {
   }
   
   // Effective revealed count - use max during showdowns/game_over/completed rounds/awaiting next to prevent re-hiding
-  const effectiveCommunityCardsRevealed = (
+  const shouldUseMax = (
     game?.status === 'game_over' || 
     game?.all_decisions_in || 
     currentRound?.status === 'completed' ||
     game?.awaiting_next_round ||
     game?.last_round_result // Keep cards visible while result message is showing
-  )
+  );
+  
+  const effectiveCommunityCardsRevealed = shouldUseMax
     ? maxRevealedRef.current
     : (currentRound?.community_cards_revealed ?? 0);
+    
+  // DETAILED LOGGING for debugging community cards issue
+  console.log('[GAME.TSX COMMUNITY_CARDS] ===== CALC =====', {
+    shouldUseMax,
+    maxRevealedRef: maxRevealedRef.current,
+    roundRevealed: currentRound?.community_cards_revealed,
+    effectiveRevealed: effectiveCommunityCardsRevealed,
+    gameStatus: game?.status,
+    allDecisionsIn: game?.all_decisions_in,
+    roundStatus: currentRound?.status,
+    awaitingNextRound: game?.awaiting_next_round,
+    lastRoundResult: game?.last_round_result?.substring(0, 30)
+  });
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {

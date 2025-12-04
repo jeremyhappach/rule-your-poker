@@ -41,19 +41,38 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   // Detect new hand - only reset when actual cards change
   const isNewHand = currentCardsIdentity !== cardsIdentityRef.current && currentCardsIdentity.length > 0;
   
+  // DETAILED LOGGING for debugging
+  console.log('[COMMUNITY_CARDS] ===== RENDER =====', {
+    propRevealed: revealed,
+    currentCardsIdentity: currentCardsIdentity.substring(0, 30),
+    storedIdentity: cardsIdentityRef.current.substring(0, 30),
+    isNewHand,
+    maxRevealedBefore: maxRevealedRef.current,
+    cardsLength: cards.length
+  });
+  
   if (isNewHand) {
     // Clear timeouts and reset state for new hand
+    console.log('[COMMUNITY_CARDS] NEW HAND DETECTED - resetting state');
     flipTimeoutsRef.current.forEach(t => clearTimeout(t));
     flipTimeoutsRef.current = [];
     cardsIdentityRef.current = currentCardsIdentity;
     maxRevealedRef.current = revealed;
   } else {
     // Same hand - only increase max, never decrease
+    const oldMax = maxRevealedRef.current;
     maxRevealedRef.current = Math.max(maxRevealedRef.current, revealed);
+    if (revealed < oldMax) {
+      console.log('[COMMUNITY_CARDS] *** PROP DECREASED but keeping max ***', {
+        propRevealed: revealed,
+        keepingMax: maxRevealedRef.current
+      });
+    }
   }
   
   // Use internal max for rendering
   const effectiveRevealed = maxRevealedRef.current;
+  console.log('[COMMUNITY_CARDS] effectiveRevealed =', effectiveRevealed);
   
   // Handle new hand reset via useEffect (for state updates)
   useEffect(() => {
