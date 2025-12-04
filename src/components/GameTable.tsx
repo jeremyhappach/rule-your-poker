@@ -122,7 +122,7 @@ export const GameTable = ({
     if (
       gameType === 'holm-game' && 
       lastRoundResult && 
-      lastRoundResult.includes('Chucky wins') &&
+      lastRoundResult.includes('Chucky beat') &&
       lastRoundResult !== lastChoppedResultRef.current &&
       currentUserId
     ) {
@@ -183,7 +183,16 @@ export const GameTable = ({
           <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
           
           {/* Result Message - displayed in center of table when available */}
-          {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn) && (
+          {/* Show during: awaiting next round, completed rounds, showdowns, all decisions in, 
+              chucky active, or Holm hand description ("X has Y") */}
+          {lastRoundResult && (
+            awaitingNextRound || 
+            roundStatus === 'completed' || 
+            roundStatus === 'showdown' || 
+            allDecisionsIn || 
+            chuckyActive ||
+            (gameType === 'holm-game' && lastRoundResult.includes(' has '))
+          ) && (
             <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
               <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 animate-pulse">
                 <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center whitespace-nowrap drop-shadow-lg">
