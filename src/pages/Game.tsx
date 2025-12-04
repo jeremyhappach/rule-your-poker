@@ -658,8 +658,14 @@ const Game = () => {
     maxRevealedRef.current = Math.max(maxRevealedRef.current, currentRound.community_cards_revealed);
   }
   
-  // Effective revealed count - use max during showdowns/game_over/completed rounds to prevent re-hiding
-  const effectiveCommunityCardsRevealed = (game?.status === 'game_over' || game?.all_decisions_in || currentRound?.status === 'completed')
+  // Effective revealed count - use max during showdowns/game_over/completed rounds/awaiting next to prevent re-hiding
+  const effectiveCommunityCardsRevealed = (
+    game?.status === 'game_over' || 
+    game?.all_decisions_in || 
+    currentRound?.status === 'completed' ||
+    game?.awaiting_next_round ||
+    game?.last_round_result // Keep cards visible while result message is showing
+  )
     ? maxRevealedRef.current
     : (currentRound?.community_cards_revealed ?? 0);
 
