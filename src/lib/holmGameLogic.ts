@@ -587,11 +587,12 @@ export async function endHolmRound(gameId: string) {
       
       console.log('[HOLM END] Step 4: Player has:', formatHandRank(playerEval.rank));
       
-      // Show hand rank announcement
+      // Show hand rank announcement - explicitly ensure awaiting_next_round is false
       await supabase
         .from('games')
         .update({ 
-          last_round_result: formatHandRank(playerEval.rank)
+          last_round_result: formatHandRank(playerEval.rank),
+          awaiting_next_round: false
         })
         .eq('id', gameId);
     }

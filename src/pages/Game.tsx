@@ -1711,7 +1711,7 @@ const Game = () => {
                   allDecisionsIn={true}
                   playerCards={playerCards}
                   timeLeft={null}
-                  lastRoundResult={game.game_over_at ? null : game.last_round_result}
+                  lastRoundResult={null}
                   dealerPosition={game.dealer_position}
                   legValue={game.leg_value || 1}
                   legsToWin={game.legs_to_win || 3}
@@ -1744,6 +1744,7 @@ const Game = () => {
                     <DealerConfirmGameOver
                       isDealer={isDealer || dealerPlayer?.is_bot || false}
                       onConfirm={handleDealerConfirmGameOver}
+                      resultMessage={game.last_round_result}
                     />
                   </div>
                 )}
