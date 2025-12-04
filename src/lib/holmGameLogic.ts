@@ -682,12 +682,7 @@ export async function endHolmRound(gameId: string) {
     
     console.log('[HOLM END] All Chucky cards revealed');
 
-    // Clear the hand rank label so players can compare hands visually
-    await supabase
-      .from('games')
-      .update({ last_round_result: null })
-      .eq('id', gameId);
-
+    // Keep hand description visible - it will be replaced by result announcement after comparison
     // 2-second delay so players can compare hands before result
     console.log('[HOLM END] Pausing 2 seconds for players to compare hands...');
     await new Promise(resolve => setTimeout(resolve, 2000));
