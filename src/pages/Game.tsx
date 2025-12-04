@@ -632,8 +632,17 @@ const Game = () => {
   }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed]);
   
   // Use cached round during game_over if live round is unavailable
-  // Priority: liveRound > state cache > ref cache
-  const currentRound = liveRound || cachedRoundData || cachedRoundRef.current;
+  // Priority: whichever has more community cards revealed (to prevent re-hiding)
+  const cachedRevealed = Math.max(
+    cachedRoundData?.community_cards_revealed ?? 0,
+    cachedRoundRef.current?.community_cards_revealed ?? 0
+  );
+  const liveRevealed = liveRound?.community_cards_revealed ?? 0;
+  
+  // Use cache if it has more revealed cards than live data
+  const currentRound = (liveRevealed >= cachedRevealed) 
+    ? (liveRound || cachedRoundData || cachedRoundRef.current)
+    : (cachedRoundData || cachedRoundRef.current || liveRound);
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
