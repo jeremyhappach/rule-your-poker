@@ -25,148 +25,140 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   const cardBackId = getCardBackId();
   const teamLogo = TEAM_LOGOS[cardBackId] || null;
   
-  // Generate a stable hand signature from card data
-  const handSignature = useMemo(() => 
-    cards.map(c => `${c.rank}${c.suit}`).join(','), 
-    [cards]
-  );
+  // All animation state in refs to avoid re-renders triggering effects
+  const animStateRef = useRef({
+    handId: '',
+    dealtCards: new Set<number>(),
+    flippedCards: new Set<number>(),
+    lastRevealedProcessed: 0,
+    isAnimating: false,
+    mountTime: Date.now(),
+  });
   
-  // Track which hand we've initialized for
-  const initializedHandRef = useRef<string>('');
-  // Track which cards have completed their deal animation
-  const [visibleCards, setVisibleCards] = useState<boolean[]>([]);
-  // Track which cards (index 2+) have been flipped
-  const [flippedIndices, setFlippedIndices] = useState<Set<number>>(new Set());
-  // Track which cards are currently in flip animation
-  const [flippingIndices, setFlippingIndices] = useState<Set<number>>(new Set());
-  // Track the last revealed count we processed for flip animation
-  const lastProcessedRevealedRef = useRef<number>(0);
-  // Track if this is initial page load (show all immediately)
-  const isInitialLoadRef = useRef<boolean>(true);
+  // Only render state - triggers re-renders for visual updates
+  const [renderTrigger, setRenderTrigger] = useState(0);
   
-  // Timeouts for cleanup
-  const dealTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
-  const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
-  
-  // Cleanup function
-  const clearAllTimeouts = () => {
-    dealTimeoutsRef.current.forEach(t => clearTimeout(t));
-    flipTimeoutsRef.current.forEach(t => clearTimeout(t));
-    dealTimeoutsRef.current = [];
-    flipTimeoutsRef.current = [];
+  // Cleanup timeouts
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const clearTimeouts = () => {
+    timeoutsRef.current.forEach(t => clearTimeout(t));
+    timeoutsRef.current = [];
   };
   
-  // Detect if this is a new hand (cards changed but we haven't processed yet)
-  const isNewHandTransition = handSignature !== initializedHandRef.current && handSignature.length > 0;
+  // Generate hand ID from cards
+  const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
-  // Handle new hand detection and deal animation
+  // Check if this is first mount (within 500ms of component mount)
+  const isFirstMount = Date.now() - animStateRef.current.mountTime < 500;
+  
+  // Detect new hand and handle deal animation
   useEffect(() => {
     if (cards.length === 0) return;
     
-    // Check if this is a new hand
-    if (handSignature !== initializedHandRef.current) {
-      clearAllTimeouts();
-      initializedHandRef.current = handSignature;
-      lastProcessedRevealedRef.current = revealed;
+    const state = animStateRef.current;
+    
+    // New hand detected
+    if (handId !== state.handId) {
+      clearTimeouts();
       
-      // On initial page load, show everything immediately
-      if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-        setVisibleCards(cards.map(() => true));
-        // Pre-flip any cards beyond index 1 that are already revealed
-        const preFlipped = new Set<number>();
-        for (let i = 2; i < revealed; i++) {
-          preFlipped.add(i);
+      // Reset state for new hand
+      state.handId = handId;
+      state.dealtCards = new Set<number>();
+      state.flippedCards = new Set<number>();
+      state.lastRevealedProcessed = revealed;
+      state.isAnimating = true;
+      
+      // On page load, show everything immediately
+      if (isFirstMount) {
+        for (let i = 0; i < cards.length; i++) {
+          state.dealtCards.add(i);
         }
-        setFlippedIndices(preFlipped);
-        setFlippingIndices(new Set());
+        // Pre-flip cards 2+ that are already revealed
+        for (let i = 2; i < revealed; i++) {
+          state.flippedCards.add(i);
+        }
+        state.isAnimating = false;
+        setRenderTrigger(r => r + 1);
         return;
       }
       
-      // New hand during gameplay - reset everything
-      setVisibleCards(cards.map(() => false));
-      setFlippedIndices(new Set());
-      setFlippingIndices(new Set());
-      
-      // Deal cards one-by-one with initial delay (player cards first)
+      // New hand during gameplay - animate deal with delay (player cards first)
       const INITIAL_DELAY = 800;
       const CARD_INTERVAL = 200;
       
       cards.forEach((_, index) => {
         const timeout = setTimeout(() => {
-          setVisibleCards(prev => {
-            const next = [...prev];
-            next[index] = true;
-            return next;
-          });
+          state.dealtCards.add(index);
+          setRenderTrigger(r => r + 1);
+          
+          // Check if all cards dealt
+          if (index === cards.length - 1) {
+            state.isAnimating = false;
+          }
         }, INITIAL_DELAY + index * CARD_INTERVAL);
-        dealTimeoutsRef.current.push(timeout);
+        timeoutsRef.current.push(timeout);
       });
+      
+      setRenderTrigger(r => r + 1);
     }
-  }, [handSignature, cards, revealed]);
+  }, [handId, cards, revealed, isFirstMount]);
   
-  // Handle flip animation when revealed increases (separate from deal animation)
+  // Handle flip animation when revealed increases (SEPARATE effect, no deps on animation state)
   useEffect(() => {
-    // Skip if no cards or hand not initialized yet
-    if (cards.length === 0 || initializedHandRef.current !== handSignature) return;
+    if (cards.length === 0) return;
     
-    // Only process if revealed increased beyond what we last processed
-    if (revealed <= lastProcessedRevealedRef.current) return;
+    const state = animStateRef.current;
     
-    const previousRevealed = lastProcessedRevealedRef.current;
-    lastProcessedRevealedRef.current = revealed;
+    // Only process if this is the current hand and revealed increased
+    if (handId !== state.handId) return;
+    if (revealed <= state.lastRevealedProcessed) return;
     
-    // Find cards that need to flip (index 2+ that weren't revealed before)
+    const previousRevealed = state.lastRevealedProcessed;
+    state.lastRevealedProcessed = revealed;
+    
+    // Find cards that need to flip (index 2+ only)
     const toFlip: number[] = [];
     for (let i = Math.max(2, previousRevealed); i < revealed; i++) {
-      if (!flippedIndices.has(i) && !flippingIndices.has(i)) {
+      if (!state.flippedCards.has(i)) {
         toFlip.push(i);
       }
     }
     
     if (toFlip.length === 0) return;
     
-    // Animate flips with stagger
+    // Animate flips with stagger - last card gets extra delay
     toFlip.forEach((cardIndex, arrayIndex) => {
       const isLastCard = arrayIndex === toFlip.length - 1 && toFlip.length > 1;
       const delay = isLastCard ? 1500 : arrayIndex * 200;
       
-      // Start flip
-      const startTimeout = setTimeout(() => {
-        setFlippingIndices(prev => new Set([...prev, cardIndex]));
-        
-        // End flip after animation duration
-        const endTimeout = setTimeout(() => {
-          setFlippedIndices(prev => new Set([...prev, cardIndex]));
-          setFlippingIndices(prev => {
-            const next = new Set(prev);
-            next.delete(cardIndex);
-            return next;
-          });
-        }, 1200);
-        flipTimeoutsRef.current.push(endTimeout);
+      const timeout = setTimeout(() => {
+        state.flippedCards.add(cardIndex);
+        setRenderTrigger(r => r + 1);
       }, delay);
-      flipTimeoutsRef.current.push(startTimeout);
+      timeoutsRef.current.push(timeout);
     });
-  }, [revealed, handSignature, cards.length, flippedIndices, flippingIndices]);
+  }, [revealed, handId, cards.length]);
   
   // Cleanup on unmount
   useEffect(() => {
-    return () => clearAllTimeouts();
+    return () => clearTimeouts();
   }, []);
   
-  // Don't render if no cards or during new hand transition (prevents flash of old cards)
+  // Don't render if no cards
   if (cards.length === 0) return null;
-  if (isNewHandTransition && !isInitialLoadRef.current) return null;
+  
+  // During new hand animation startup, hide to prevent flash of old cards
+  const state = animStateRef.current;
+  if (handId !== state.handId) return null;
+  if (state.isAnimating && state.dealtCards.size === 0) return null;
 
   return (
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
       <div className="flex gap-1" style={{ perspective: '1000px' }}>
         {cards.map((card, index) => {
-          const isVisible = visibleCards[index] ?? false;
-          const isFlipping = flippingIndices.has(index);
-          const hasFlipped = flippedIndices.has(index);
-          // Show front: first 2 cards always face-up, others only after flip completes
+          const isVisible = state.dealtCards.has(index);
+          const hasFlipped = state.flippedCards.has(index);
+          // First 2 cards always face-up, others need to flip
           const showFront = index < 2 || hasFlipped;
           const suitColor = (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-gray-900';
           
@@ -176,14 +168,8 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
               className="w-10 h-14 sm:w-12 sm:h-16 relative"
               style={{ 
                 transformStyle: 'preserve-3d',
-                transition: isFlipping 
-                  ? 'transform 1.2s ease-in-out' 
-                  : 'opacity 0.3s ease-out, transform 0.3s ease-out',
-                transform: isFlipping 
-                  ? 'rotateY(180deg)' 
-                  : isVisible 
-                    ? 'rotateY(0deg) translateY(0)' 
-                    : 'rotateY(0deg) translateY(-20px)',
+                transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
+                transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
                 opacity: isVisible ? 1 : 0,
               }}
             >
@@ -194,6 +180,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                   background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
                   backfaceVisibility: 'hidden',
                   transform: showFront ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  transition: 'transform 1.2s ease-in-out',
                 }}
               >
                 <div className="w-full h-full flex items-center justify-center p-1">
@@ -214,6 +201,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                   backgroundColor: 'white',
                   backfaceVisibility: 'hidden',
                   transform: showFront ? 'rotateY(0deg)' : 'rotateY(-180deg)',
+                  transition: 'transform 1.2s ease-in-out',
                 }}
               >
                 <div className="flex flex-col items-center justify-center">
