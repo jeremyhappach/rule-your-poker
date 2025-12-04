@@ -50,35 +50,27 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   // Track previous effective for animation triggering
   const prevEffectiveRef = useRef<number>(revealed);
   
-  if (isNewHand) {
-    // Clear timeouts and reset state for new hand
-    flipTimeoutsRef.current.forEach(t => clearTimeout(t));
-    dealTimeoutsRef.current.forEach(t => clearTimeout(t));
-    flipTimeoutsRef.current = [];
-    dealTimeoutsRef.current = [];
-    cardsIdentityRef.current = currentCardsIdentity;
-    maxRevealedRef.current = revealed;
-    prevEffectiveRef.current = revealed;
-  } else {
-    // Same hand - only increase max, never decrease
-    maxRevealedRef.current = Math.max(maxRevealedRef.current, revealed);
-  }
-  
-  // Use internal max for rendering
-  const effectiveRevealed = maxRevealedRef.current;
-  
-  // Handle new hand - deal cards with staggered animation
+  // Handle new hand detection and state updates
   useEffect(() => {
     if (isNewHand && cards.length > 0) {
+      // Clear timeouts
+      flipTimeoutsRef.current.forEach(t => clearTimeout(t));
+      dealTimeoutsRef.current.forEach(t => clearTimeout(t));
+      flipTimeoutsRef.current = [];
+      dealTimeoutsRef.current = [];
+      cardsIdentityRef.current = currentCardsIdentity;
+      maxRevealedRef.current = revealed;
+      prevEffectiveRef.current = revealed;
+      
       // On first mount (page load), show all cards immediately without animation
       if (isFirstMount) {
         isFirstMountRef.current = false;
         const allIndices = new Set(cards.map((_, i) => i));
         setDealtCards(allIndices);
         setFlippingCards(new Set());
-        // Pre-populate flipped state for revealed cards
+        // Pre-populate flipped state for revealed cards beyond first 2
         const alreadyRevealed = new Set<number>();
-        for (let i = 2; i < effectiveRevealed; i++) {
+        for (let i = 2; i < revealed; i++) {
           alreadyRevealed.add(i);
         }
         setFlippedCards(alreadyRevealed);
@@ -101,30 +93,38 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
         }, initialDelay + (index * dealInterval));
         dealTimeoutsRef.current.push(timeout);
       });
-      
-      // Pre-populate flippedCards for cards beyond index 2 if already revealed
-      const alreadyRevealed = new Set<number>();
-      for (let i = 2; i < effectiveRevealed; i++) {
-        alreadyRevealed.add(i);
-      }
-      // Set after deal animation completes
-      const flipTimeout = setTimeout(() => {
-        setFlippedCards(alreadyRevealed);
-      }, initialDelay + (cards.length * dealInterval) + 100);
-      dealTimeoutsRef.current.push(flipTimeout);
     }
   }, [currentCardsIdentity]);
   
-  // Handle revealing new cards - animation logic
+  // Track max revealed - only increase, never decrease (same hand)
   useEffect(() => {
-    // Only animate when effectiveRevealed increases
+    if (!isNewHand && revealed > maxRevealedRef.current) {
+      maxRevealedRef.current = revealed;
+    }
+  }, [revealed, isNewHand]);
+  
+  // Use internal max for rendering
+  const effectiveRevealed = maxRevealedRef.current;
+  
+  // Handle revealing new cards - animation logic (separate from new hand logic)
+  useEffect(() => {
+    // Skip if new hand just started (handled by new hand effect)
+    if (isNewHand) return;
+    
+    // Only animate when effectiveRevealed increases beyond what we've tracked
     if (effectiveRevealed > prevEffectiveRef.current) {
       const newlyRevealed: number[] = [];
       for (let i = prevEffectiveRef.current; i < effectiveRevealed; i++) {
-        if (!flippedCards.has(i)) {
+        // Only flip cards at index 2+ (first 2 are always face-up)
+        if (i >= 2 && !flippedCards.has(i)) {
           newlyRevealed.push(i);
         }
       }
+      
+      // Update ref immediately to prevent re-triggering
+      prevEffectiveRef.current = effectiveRevealed;
+      
+      if (newlyRevealed.length === 0) return;
       
       // Stagger the flip animations - last card has 1.5s delay
       newlyRevealed.forEach((cardIndex, i) => {
@@ -148,10 +148,8 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
         
         flipTimeoutsRef.current.push(startTimeout);
       });
-      
-      prevEffectiveRef.current = effectiveRevealed;
     }
-  }, [effectiveRevealed, flippedCards]);
+  }, [effectiveRevealed, isNewHand]);
   
   // Cleanup on unmount
   useEffect(() => {
