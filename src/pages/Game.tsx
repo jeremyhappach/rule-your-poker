@@ -594,9 +594,16 @@ const Game = () => {
   // Extract current round info - use cached data during game_over to preserve community cards
   const liveRound = game?.rounds?.find(r => r.round_number === game.current_round);
   
-  // Cache round data when transitioning to game_over or during showdown
+  // Cache round data when transitioning to game_over, during showdown, or when Chucky is active
+  // This ensures community cards and Chucky cards remain visible after game ends
   useEffect(() => {
-    if (liveRound && (game?.status === 'game_over' || game?.all_decisions_in)) {
+    if (liveRound && (
+      game?.status === 'game_over' || 
+      game?.all_decisions_in || 
+      liveRound.chucky_active ||
+      liveRound.status === 'completed' ||
+      liveRound.status === 'showdown'
+    )) {
       setCachedRoundData(liveRound);
     }
     // Clear cache when starting new game
@@ -608,7 +615,7 @@ const Game = () => {
   // Use cached round during game_over if live round is unavailable
   const currentRound = (game?.status === 'game_over' && !liveRound && cachedRoundData) 
     ? cachedRoundData 
-    : liveRound;
+    : (liveRound || cachedRoundData);
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
