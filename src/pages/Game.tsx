@@ -1073,7 +1073,10 @@ const Game = () => {
       const isHolmGame = gameData.game_type === 'holm-game';
       const keepCards = gameData.status === 'game_over' || !isHolmGame || !gameData.awaiting_next_round;
       
-      if (keepCards) {
+      // Keep cards visible during results announcement (last_round_result exists)
+      const keepCardsForResults = isHolmGame && gameData.awaiting_next_round && gameData.last_round_result;
+      
+      if (keepCards || keepCardsForResults) {
         const { data: roundData } = await supabase
           .from('rounds')
           .select('id')
@@ -1095,9 +1098,9 @@ const Game = () => {
             })));
           }
         }
-      } else {
-        // Clear cards only for Holm games when awaiting next round
-        console.log('[FETCH] Clearing player cards (Holm game awaiting next round)');
+      } else if (isHolmGame && gameData.awaiting_next_round && !gameData.last_round_result) {
+        // Clear cards only for Holm games when awaiting next round AND results have been cleared
+        console.log('[FETCH] Clearing player cards (Holm game transitioning to next round)');
         setPlayerCards([]);
       }
     } else {
