@@ -636,20 +636,19 @@ const Game = () => {
   const currentRound = liveRound || cachedRoundData || cachedRoundRef.current;
   
   // Track max community cards revealed - never decrease during showdowns
+  // SYNCHRONOUS update to prevent race conditions where useEffect runs after render
   const maxRevealedRef = useRef<number>(0);
   
-  // Update max revealed, but reset when starting new game
-  useEffect(() => {
-    if (game?.status === 'game_selection' || game?.status === 'configuring') {
-      maxRevealedRef.current = 0;
-    } else if (currentRound?.community_cards_revealed !== undefined) {
-      maxRevealedRef.current = Math.max(maxRevealedRef.current, currentRound.community_cards_revealed);
-    }
-  }, [currentRound?.community_cards_revealed, game?.status]);
+  // Reset when starting new game, otherwise track max synchronously
+  if (game?.status === 'game_selection' || game?.status === 'configuring') {
+    maxRevealedRef.current = 0;
+  } else if (currentRound?.community_cards_revealed !== undefined) {
+    maxRevealedRef.current = Math.max(maxRevealedRef.current, currentRound.community_cards_revealed);
+  }
   
-  // Effective revealed count - use max during showdowns to prevent re-hiding
+  // Effective revealed count - use max during showdowns/game_over to prevent re-hiding
   const effectiveCommunityCardsRevealed = (game?.status === 'game_over' || game?.all_decisions_in)
-    ? Math.max(currentRound?.community_cards_revealed ?? 0, maxRevealedRef.current)
+    ? maxRevealedRef.current
     : (currentRound?.community_cards_revealed ?? 0);
 
   // Auto-trigger bot decisions when appropriate
