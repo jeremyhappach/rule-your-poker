@@ -261,7 +261,8 @@ export const GameTable = ({
           )}
 
           {/* Chucky's Hand for Holm Game - positioned below community cards, offset left */}
-          {gameType === 'holm-game' && chuckyActive && chuckyCards && !awaitingNextRound && (
+          {/* Keep Chucky visible during results announcement (awaitingNextRound) */}
+          {gameType === 'holm-game' && chuckyActive && chuckyCards && (
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
