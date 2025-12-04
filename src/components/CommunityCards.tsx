@@ -51,6 +51,9 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
     cardsLength: cards.length
   });
   
+  // Track previous effective for animation triggering
+  const prevEffectiveRef = useRef<number>(revealed);
+  
   if (isNewHand) {
     // Clear timeouts and reset state for new hand
     console.log('[COMMUNITY_CARDS] NEW HAND DETECTED - resetting state');
@@ -58,6 +61,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
     flipTimeoutsRef.current = [];
     cardsIdentityRef.current = currentCardsIdentity;
     maxRevealedRef.current = revealed;
+    prevEffectiveRef.current = revealed; // CRITICAL: Reset so animations trigger on increase
   } else {
     // Same hand - only increase max, never decrease
     const oldMax = maxRevealedRef.current;
@@ -91,8 +95,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
     }
   }, [currentCardsIdentity, effectiveRevealed]);
   
-  // Handle revealing new cards
-  const prevEffectiveRef = useRef(effectiveRevealed);
+  // Handle revealing new cards - animation logic
   useEffect(() => {
     // Only animate when effectiveRevealed increases
     if (effectiveRevealed > prevEffectiveRef.current) {
