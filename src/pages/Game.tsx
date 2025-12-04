@@ -506,6 +506,24 @@ const Game = () => {
 
   // Check if ante dialog should show
   useEffect(() => {
+    console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
+      gameStatus: game?.status,
+      hasUser: !!user,
+      userId: user?.id,
+      playersCount: players.length,
+      allPlayers: players.map(p => ({ 
+        id: p.id, 
+        user_id: p.user_id, 
+        position: p.position, 
+        ante_decision: p.ante_decision,
+        is_bot: p.is_bot,
+        sitting_out: p.sitting_out
+      })),
+      dealerPosition: game?.dealer_position,
+      anteDeadline: game?.ante_decision_deadline,
+      configComplete: game ? (game as any).config_complete : undefined
+    });
+    
     if (game?.status === 'ante_decision' && user) {
       const currentPlayer = players.find(p => p.user_id === user.id);
       const isDealer = currentPlayer?.position === game.dealer_position;
@@ -514,16 +532,22 @@ const Game = () => {
         gameStatus: game?.status,
         hasUser: !!user,
         hasCurrentPlayer: !!currentPlayer,
+        currentPlayerId: currentPlayer?.id,
+        currentPlayerUserId: currentPlayer?.user_id,
         anteDecision: currentPlayer?.ante_decision,
+        anteDecisionType: typeof currentPlayer?.ante_decision,
+        anteDecisionIsNull: currentPlayer?.ante_decision === null,
+        anteDecisionIsUndefined: currentPlayer?.ante_decision === undefined,
         isDealer,
         dealerPosition: game.dealer_position,
-        playerPosition: currentPlayer?.position
+        playerPosition: currentPlayer?.position,
+        shouldShow: currentPlayer && currentPlayer.ante_decision === null && !isDealer
       });
       
       // Don't show ante dialog for dealer (they auto ante up)
       // Show dialog if player exists and hasn't made ante decision and isn't dealer
       if (currentPlayer && currentPlayer.ante_decision === null && !isDealer) {
-        console.log('[ANTE DIALOG] Showing ante dialog for player');
+        console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', currentPlayer.id);
         setShowAnteDialog(true);
         
         // Calculate ante time left
@@ -531,13 +555,23 @@ const Game = () => {
           const deadline = new Date(game.ante_decision_deadline).getTime();
           const now = Date.now();
           const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+          console.log('[ANTE DIALOG] Time left calculation:', { deadline, now, remaining });
           setAnteTimeLeft(remaining);
         }
       } else {
-        console.log('[ANTE DIALOG] NOT showing ante dialog');
+        console.log('[ANTE DIALOG] ❌ NOT showing ante dialog - reasons:', {
+          noCurrentPlayer: !currentPlayer,
+          anteDecisionNotNull: currentPlayer?.ante_decision !== null,
+          isDealer
+        });
         setShowAnteDialog(false);
       }
     } else {
+      console.log('[ANTE DIALOG] ❌ Conditions not met for ante dialog:', {
+        statusNotAnteDecision: game?.status !== 'ante_decision',
+        noUser: !user,
+        actualStatus: game?.status
+      });
       setShowAnteDialog(false);
     }
   }, [game?.status, game?.ante_decision_deadline, game?.dealer_position, players, user]);
@@ -1074,7 +1108,13 @@ const Game = () => {
       return;
     }
 
-    console.log('[FETCH] Players fetched:', playersData?.length, 'Ante decisions:', playersData?.map(p => ({ pos: p.position, ante: p.ante_decision })));
+    console.log('[FETCH] Players fetched:', playersData?.length, 'Status:', gameData?.status, 'Ante decisions:', playersData?.map(p => ({ 
+      id: p.id, 
+      user_id: p.user_id, 
+      pos: p.position, 
+      ante: p.ante_decision, 
+      is_bot: p.is_bot 
+    })));
 
     // Users join as observers - they must select a seat to become a player
 

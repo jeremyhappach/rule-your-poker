@@ -107,6 +107,8 @@ export const DealerConfig = ({
   }, [isBot, gameId, dealerPlayerId, currentAnteAmount, currentLegValue, currentPussyTaxEnabled, currentPussyTaxValue, currentLegsToWin, currentPotMaxEnabled, currentPotMaxValue, onConfigComplete]);
 
   const handleSubmit = async () => {
+    console.log('[DEALER CONFIG] handleSubmit called');
+    
     // Validation
     if (anteAmount < 1 || legValue < 1 || legsToWin < 1) {
       toast({
@@ -136,6 +138,7 @@ export const DealerConfig = ({
     }
 
     // Update game config
+    const anteDeadline = new Date(Date.now() + 10000).toISOString();
     const updateData: any = {
       ante_amount: anteAmount,
       leg_value: legValue,
@@ -147,7 +150,7 @@ export const DealerConfig = ({
       pot_max_value: potMaxValue,
       config_complete: true,
       status: 'ante_decision',
-      ante_decision_deadline: new Date(Date.now() + 10000).toISOString(), // 10 seconds
+      ante_decision_deadline: anteDeadline,
     };
 
     if (isHolmGame) {
@@ -155,12 +158,18 @@ export const DealerConfig = ({
       // Buck position will be calculated by startHolmRound
     }
 
-    const { error } = await supabase
+    console.log('[DEALER CONFIG] Updating game with:', updateData);
+
+    const { error, data: gameUpdateResult } = await supabase
       .from('games')
       .update(updateData)
-      .eq('id', gameId);
+      .eq('id', gameId)
+      .select();
+
+    console.log('[DEALER CONFIG] Game update result:', { error, gameUpdateResult });
 
     if (error) {
+      console.error('[DEALER CONFIG] Game update error:', error);
       toast({
         title: "Error",
         description: "Failed to save configuration",
@@ -170,21 +179,30 @@ export const DealerConfig = ({
     }
 
     // Reset ante_decision for all non-dealer players so they get the popup
-    await supabase
+    console.log('[DEALER CONFIG] Resetting ante_decision for non-dealer players, dealerPlayerId:', dealerPlayerId);
+    const { error: resetError, data: resetResult } = await supabase
       .from('players')
       .update({ ante_decision: null })
       .eq('game_id', gameId)
-      .neq('id', dealerPlayerId);
+      .neq('id', dealerPlayerId)
+      .select();
+
+    console.log('[DEALER CONFIG] Reset ante_decision result:', { resetError, resetResult });
 
     // Automatically ante up the dealer
-    await supabase
+    console.log('[DEALER CONFIG] Setting dealer ante_decision to ante_up');
+    const { error: dealerError, data: dealerResult } = await supabase
       .from('players')
       .update({ 
         ante_decision: 'ante_up',
         sitting_out: false
       })
-      .eq('id', dealerPlayerId);
+      .eq('id', dealerPlayerId)
+      .select();
 
+    console.log('[DEALER CONFIG] Dealer ante update result:', { dealerError, dealerResult });
+
+    console.log('[DEALER CONFIG] ✅ Config complete, calling onConfigComplete');
     onConfigComplete();
   };
 
