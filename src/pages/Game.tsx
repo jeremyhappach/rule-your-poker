@@ -661,9 +661,12 @@ const Game = () => {
         round: game?.current_round
       });
       
+      // Capture the turn position now to pass to the bot logic (avoids stale DB reads)
+      const capturedTurnPosition = currentRound?.current_turn_position;
+      
       const botDecisionTimer = setTimeout(() => {
-        console.log('[BOT TRIGGER] *** CALLING makeBotDecisions ***');
-        makeBotDecisions(gameId!);
+        console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
+        makeBotDecisions(gameId!, capturedTurnPosition);
       }, 500);
       
       return () => {

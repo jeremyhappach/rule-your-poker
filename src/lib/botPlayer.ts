@@ -98,8 +98,8 @@ export async function addBotPlayer(gameId: string) {
   return botPlayer;
 }
 
-export async function makeBotDecisions(gameId: string) {
-  console.log('[BOT] ========== Making bot decisions for game:', gameId, '==========');
+export async function makeBotDecisions(gameId: string, passedTurnPosition?: number | null) {
+  console.log('[BOT] ========== Making bot decisions for game:', gameId, 'passedTurnPosition:', passedTurnPosition, '==========');
   
   // Check if this is a Holm game
   const { data: game } = await supabase
@@ -122,9 +122,14 @@ export async function makeBotDecisions(gameId: string) {
     return;
   }
   
+  // Use passed turn position (from frontend state) if available, otherwise fall back to DB value
+  const effectiveTurnPosition = passedTurnPosition ?? currentRound.current_turn_position;
+  
   console.log('[BOT] Current round data:', {
     round_number: currentRound.round_number,
     current_turn_position: currentRound.current_turn_position,
+    passed_turn_position: passedTurnPosition,
+    effective_turn_position: effectiveTurnPosition,
     status: currentRound.status
   });
   
@@ -152,16 +157,16 @@ export async function makeBotDecisions(gameId: string) {
 
   if (isHolmGame) {
     // HOLM GAME: Turn-based - only process the bot whose turn it is
-    if (!currentRound.current_turn_position) {
-      console.log('[BOT] HOLM: No current turn position set in round');
+    if (!effectiveTurnPosition) {
+      console.log('[BOT] HOLM: No current turn position set');
       return;
     }
 
-    console.log('[BOT] HOLM: Looking for bot at turn position:', currentRound.current_turn_position);
-    const currentTurnBot = botPlayers.find(bot => bot.position === currentRound.current_turn_position);
+    console.log('[BOT] HOLM: Looking for bot at turn position:', effectiveTurnPosition);
+    const currentTurnBot = botPlayers.find(bot => bot.position === effectiveTurnPosition);
     
     if (!currentTurnBot) {
-      console.log('[BOT] HOLM: Current turn position', currentRound.current_turn_position, 'is not a bot or bot already decided');
+      console.log('[BOT] HOLM: Current turn position', effectiveTurnPosition, 'is not a bot or bot already decided');
       console.log('[BOT] HOLM: Available bot positions:', botPlayers.map(b => b.position));
       return;
     }
