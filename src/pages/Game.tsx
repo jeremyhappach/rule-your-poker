@@ -2024,13 +2024,13 @@ const Game = () => {
             pendingSessionEnd={game.pending_session_end || false}
             awaitingNextRound={game.awaiting_next_round || false}
             gameType={game.game_type}
-            communityCards={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards as CardType[] | undefined}
-            communityCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.community_cards_revealed}
+            communityCards={currentRound?.community_cards as CardType[] | undefined}
+            communityCardsRevealed={currentRound?.community_cards_revealed}
             buckPosition={game.buck_position}
             currentTurnPosition={game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
-            chuckyCards={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards as CardType[] | undefined}
-            chuckyActive={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_active}
-            chuckyCardsRevealed={game.rounds?.find(r => r.round_number === game.current_round)?.chucky_cards_revealed}
+            chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
+            chuckyActive={currentRound?.chucky_active}
+            chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
             roundStatus={currentRound?.status}
             pendingDecision={pendingDecision}
             isPaused={game.is_paused || false}
