@@ -47,6 +47,10 @@ export function shuffleDeck(deck: Card[]): Card[] {
 export function evaluateHand(cards: Card[], useWildCards: boolean = true): { rank: HandRank; value: number } {
   if (cards.length === 0) return { rank: 'high-card', value: 0 };
 
+  // Log input cards
+  const cardStr = cards.map(c => `${c.rank}${c.suit}`).join(', ');
+  console.log('[EVAL] Evaluating:', cardStr, 'useWildCards:', useWildCards);
+
   // Determine wild card based on number of cards dealt (if wild cards are enabled)
   const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A';
 
@@ -89,6 +93,15 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
   const secondCount = counts[1] || 0;
   const secondRank = rankGroups[1]?.[0] as Rank;
+
+  console.log('[EVAL] Rank analysis:', {
+    bestRank,
+    bestCount,
+    secondRank,
+    secondCount,
+    rankCounts,
+    totalCards: cards.length
+  });
 
   // ROUND 1 (3 cards): Only three-of-a-kind, pair, or high card are possible
   if (cards.length === 3) {
