@@ -632,17 +632,25 @@ const Game = () => {
   }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed]);
   
   // Use cached round during game_over if live round is unavailable
-  // Priority: whichever has more community cards revealed (to prevent re-hiding)
-  const cachedRevealed = Math.max(
-    cachedRoundData?.community_cards_revealed ?? 0,
-    cachedRoundRef.current?.community_cards_revealed ?? 0
-  );
-  const liveRevealed = liveRound?.community_cards_revealed ?? 0;
+  // Priority: liveRound > state cache > ref cache
+  const currentRound = liveRound || cachedRoundData || cachedRoundRef.current;
   
-  // Use cache if it has more revealed cards than live data
-  const currentRound = (liveRevealed >= cachedRevealed) 
-    ? (liveRound || cachedRoundData || cachedRoundRef.current)
-    : (cachedRoundData || cachedRoundRef.current || liveRound);
+  // Track max community cards revealed - never decrease during showdowns
+  const maxRevealedRef = useRef<number>(0);
+  
+  // Update max revealed, but reset when starting new game
+  useEffect(() => {
+    if (game?.status === 'game_selection' || game?.status === 'configuring') {
+      maxRevealedRef.current = 0;
+    } else if (currentRound?.community_cards_revealed !== undefined) {
+      maxRevealedRef.current = Math.max(maxRevealedRef.current, currentRound.community_cards_revealed);
+    }
+  }, [currentRound?.community_cards_revealed, game?.status]);
+  
+  // Effective revealed count - use max during showdowns to prevent re-hiding
+  const effectiveCommunityCardsRevealed = (game?.status === 'game_over' || game?.all_decisions_in)
+    ? Math.max(currentRound?.community_cards_revealed ?? 0, maxRevealedRef.current)
+    : (currentRound?.community_cards_revealed ?? 0);
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
@@ -1795,7 +1803,7 @@ const Game = () => {
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
                   communityCards={currentRound?.community_cards as CardType[] | undefined}
-                  communityCardsRevealed={currentRound?.community_cards_revealed}
+                  communityCardsRevealed={effectiveCommunityCardsRevealed}
                   chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
                   chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
                   chuckyActive={currentRound?.chucky_active}
@@ -2037,7 +2045,7 @@ const Game = () => {
             awaitingNextRound={game.awaiting_next_round || false}
             gameType={game.game_type}
             communityCards={currentRound?.community_cards as CardType[] | undefined}
-            communityCardsRevealed={currentRound?.community_cards_revealed}
+            communityCardsRevealed={effectiveCommunityCardsRevealed}
             buckPosition={game.buck_position}
             currentTurnPosition={game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
             chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
