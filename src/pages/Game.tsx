@@ -597,8 +597,13 @@ const Game = () => {
   
   // Immediately cache round data in ref when we have valid data with community cards
   // This ensures we capture it before game_over clears current_round
+  // Only update cache if revealed count is >= current cached count (never decrease)
   if (liveRound && liveRound.community_cards) {
-    cachedRoundRef.current = liveRound;
+    const currentCachedRevealed = cachedRoundRef.current?.community_cards_revealed ?? 0;
+    const liveRevealed = liveRound.community_cards_revealed ?? 0;
+    if (liveRevealed >= currentCachedRevealed) {
+      cachedRoundRef.current = liveRound;
+    }
   }
   
   // Cache round data when transitioning to game_over, during showdown, or when Chucky is active
@@ -611,15 +616,20 @@ const Game = () => {
       liveRound.status === 'completed' ||
       liveRound.status === 'showdown'
     )) {
-      setCachedRoundData(liveRound);
-      cachedRoundRef.current = liveRound;
+      // Only update cache if revealed count is >= current cached count (never decrease)
+      const currentCachedRevealed = cachedRoundData?.community_cards_revealed ?? 0;
+      const liveRevealed = liveRound.community_cards_revealed ?? 0;
+      if (liveRevealed >= currentCachedRevealed) {
+        setCachedRoundData(liveRound);
+        cachedRoundRef.current = liveRound;
+      }
     }
     // Clear cache when starting new game
     if (game?.status === 'game_selection' || game?.status === 'configuring') {
       setCachedRoundData(null);
       cachedRoundRef.current = null;
     }
-  }, [liveRound, game?.status, game?.all_decisions_in]);
+  }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed]);
   
   // Use cached round during game_over if live round is unavailable
   // Priority: liveRound > state cache > ref cache
