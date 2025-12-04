@@ -127,6 +127,7 @@ const Game = () => {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
+  const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
 
   // Clear pending decision when backend confirms
   useEffect(() => {
@@ -594,6 +595,12 @@ const Game = () => {
   // Extract current round info - use cached data during game_over to preserve community cards
   const liveRound = game?.rounds?.find(r => r.round_number === game.current_round);
   
+  // Immediately cache round data in ref when we have valid data with community cards
+  // This ensures we capture it before game_over clears current_round
+  if (liveRound && liveRound.community_cards) {
+    cachedRoundRef.current = liveRound;
+  }
+  
   // Cache round data when transitioning to game_over, during showdown, or when Chucky is active
   // This ensures community cards and Chucky cards remain visible after game ends
   useEffect(() => {
@@ -605,17 +612,18 @@ const Game = () => {
       liveRound.status === 'showdown'
     )) {
       setCachedRoundData(liveRound);
+      cachedRoundRef.current = liveRound;
     }
     // Clear cache when starting new game
     if (game?.status === 'game_selection' || game?.status === 'configuring') {
       setCachedRoundData(null);
+      cachedRoundRef.current = null;
     }
   }, [liveRound, game?.status, game?.all_decisions_in]);
   
   // Use cached round during game_over if live round is unavailable
-  const currentRound = (game?.status === 'game_over' && !liveRound && cachedRoundData) 
-    ? cachedRoundData 
-    : (liveRound || cachedRoundData);
+  // Priority: liveRound > state cache > ref cache
+  const currentRound = liveRound || cachedRoundData || cachedRoundRef.current;
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
