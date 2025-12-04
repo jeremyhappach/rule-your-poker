@@ -49,28 +49,37 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
   // Log input cards
   const cardStr = cards.map(c => `${c.rank}${c.suit}`).join(', ');
-  console.log('[EVAL] Evaluating:', cardStr, 'useWildCards:', useWildCards);
+  console.log('[EVAL] ========== START EVALUATION ==========');
+  console.log('[EVAL] Cards:', cardStr);
+  console.log('[EVAL] Card count:', cards.length, '| useWildCards:', useWildCards);
 
   // Determine wild card based on number of cards dealt (if wild cards are enabled)
   const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A';
+  console.log('[EVAL] Wild rank for this hand:', wildRank);
 
   // Count wildcards (only if wildcards are enabled)
   const wildcards = useWildCards ? cards.filter(c => c.rank === wildRank) : [];
   const nonWildcards = useWildCards ? cards.filter(c => c.rank !== wildRank) : cards;
   const wildcardCount = wildcards.length;
+  console.log('[EVAL] Wildcards found:', wildcardCount, wildcards.map(c => `${c.rank}${c.suit}`).join(', '));
 
   // If all cards are wildcards in round 1 (3 cards), treat as best possible: three of a kind
   if (cards.length === 3 && wildcardCount === cards.length) {
-    return { rank: 'three-of-a-kind', value: calculateValue(3, [14, 14]) };
+    const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [14, 14]) };
+    console.log('[EVAL] RESULT: All wildcards (3 cards) -> three-of-a-kind, value:', result.value);
+    return result;
   }
 
   // If all cards are wildcards in round 2+ (5 or 7 cards), treat as straight flush
   if (cards.length >= 5 && wildcardCount === cards.length) {
-    return { rank: 'straight-flush', value: calculateValue(8, [14]) };
+    const result = { rank: 'straight-flush' as HandRank, value: calculateValue(8, [14]) };
+    console.log('[EVAL] RESULT: All wildcards (5+ cards) -> straight-flush, value:', result.value);
+    return result;
   }
 
   const sortedCards = [...nonWildcards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
   const ranks = sortedCards.map(c => c.rank);
+  console.log('[EVAL] Non-wild cards sorted:', sortedCards.map(c => `${c.rank}${c.suit}`).join(', '));
 
   // Count ranks (excluding wildcards)
   const rankCounts = ranks.reduce((acc, rank) => {
@@ -94,17 +103,14 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   const secondCount = counts[1] || 0;
   const secondRank = rankGroups[1]?.[0] as Rank;
 
-  console.log('[EVAL] Rank analysis:', {
-    bestRank,
-    bestCount,
-    secondRank,
-    secondCount,
-    rankCounts,
-    totalCards: cards.length
-  });
+  console.log('[EVAL] Rank counts:', JSON.stringify(rankCounts));
+  console.log('[EVAL] Best rank:', bestRank, 'count:', bestCount, '(includes', wildcardCount, 'wildcards)');
+  console.log('[EVAL] Second rank:', secondRank, 'count:', secondCount);
 
   // ROUND 1 (3 cards): Only three-of-a-kind, pair, or high card are possible
   if (cards.length === 3) {
+    console.log('[EVAL] Round 1 (3 cards) - checking: three-of-a-kind, pair, high-card only');
+    
     // Three of a Kind
     if (bestCount >= 3) {
       const tripRank = bestRank;
@@ -112,7 +118,9 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
         .filter(c => c.rank !== tripRank)
         .map(c => RANK_VALUES[c.rank])
         .slice(0, 2);
-      return { rank: 'three-of-a-kind', value: calculateValue(3, [RANK_VALUES[tripRank], ...kickers]) };
+      const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [RANK_VALUES[tripRank], ...kickers]) };
+      console.log('[EVAL] RESULT: three-of-a-kind of', tripRank, 'value:', result.value);
+      return result;
     }
 
     // Pair (including with wildcards)
@@ -122,66 +130,93 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
         .filter(c => c.rank !== pairRank)
         .map(c => RANK_VALUES[c.rank])
         .slice(0, 3);
-      return { rank: 'pair', value: calculateValue(1, [RANK_VALUES[pairRank], ...kickers]) };
+      const result = { rank: 'pair' as HandRank, value: calculateValue(1, [RANK_VALUES[pairRank], ...kickers]) };
+      console.log('[EVAL] RESULT: pair of', pairRank, 'value:', result.value);
+      return result;
     }
 
     // High Card
     const allValues = sortedCards.map(c => RANK_VALUES[c.rank]).slice(0, 5);
-    return { rank: 'high-card', value: calculateValue(0, allValues) };
+    const result = { rank: 'high-card' as HandRank, value: calculateValue(0, allValues) };
+    console.log('[EVAL] RESULT: high-card, values:', allValues, 'value:', result.value);
+    return result;
   }
 
   // ROUND 2+ (5 or 7 cards): All hands are possible
+  console.log('[EVAL] Round 2+ (' + cards.length + ' cards) - checking all hand types');
   
   // Check for potential straight flush with wildcards
+  console.log('[EVAL] Checking straight flush...');
   const straightFlushResult = checkStraightFlush(sortedCards, wildcardCount);
+  console.log('[EVAL] Straight flush result:', straightFlushResult);
   if (straightFlushResult.possible) {
-    return { rank: 'straight-flush', value: calculateValue(8, [straightFlushResult.highCard]) };
+    const result = { rank: 'straight-flush' as HandRank, value: calculateValue(8, [straightFlushResult.highCard]) };
+    console.log('[EVAL] RESULT: straight-flush, high:', straightFlushResult.highCard, 'value:', result.value);
+    return result;
   }
 
   // Four of a Kind
+  console.log('[EVAL] Checking four-of-a-kind... bestCount:', bestCount);
   if (bestCount >= 4) {
     const quadRank = bestRank;
     const kickers = sortedCards
       .filter(c => c.rank !== quadRank)
       .map(c => RANK_VALUES[c.rank])
       .slice(0, 1);
-    return { rank: 'four-of-a-kind', value: calculateValue(7, [RANK_VALUES[quadRank], ...kickers]) };
+    const result = { rank: 'four-of-a-kind' as HandRank, value: calculateValue(7, [RANK_VALUES[quadRank], ...kickers]) };
+    console.log('[EVAL] RESULT: four-of-a-kind of', quadRank, 'value:', result.value);
+    return result;
   }
 
   // Full House (3 + 2)
+  console.log('[EVAL] Checking full house... bestCount:', bestCount, 'secondCount:', secondCount);
   if (bestCount >= 3 && secondCount >= 2) {
     const tripRank = bestRank;
     const pairRank = secondRank;
-    return { rank: 'full-house', value: calculateValue(6, [RANK_VALUES[tripRank], RANK_VALUES[pairRank]]) };
+    const result = { rank: 'full-house' as HandRank, value: calculateValue(6, [RANK_VALUES[tripRank], RANK_VALUES[pairRank]]) };
+    console.log('[EVAL] RESULT: full-house', tripRank, 'full of', pairRank, 'value:', result.value);
+    return result;
   }
 
   // Flush with wildcards
+  console.log('[EVAL] Checking flush...');
   const flushResult = checkFlush(sortedCards, wildcardCount);
+  console.log('[EVAL] Flush result:', flushResult);
   if (flushResult.possible) {
     const flushCards = sortedCards
       .filter(c => flushResult.suit ? c.suit === flushResult.suit : true)
       .map(c => RANK_VALUES[c.rank])
       .slice(0, 5);
-    return { rank: 'flush', value: calculateValue(5, flushCards) };
+    const result = { rank: 'flush' as HandRank, value: calculateValue(5, flushCards) };
+    console.log('[EVAL] RESULT: flush, cards:', flushCards, 'value:', result.value);
+    return result;
   }
 
   // Straight with wildcards
+  console.log('[EVAL] Checking straight...');
   const straightResult = checkStraightWithWildcards(ranks, wildcardCount);
+  console.log('[EVAL] Straight result:', straightResult);
   if (straightResult.possible) {
-    return { rank: 'straight', value: calculateValue(4, [straightResult.highCard]) };
+    const result = { rank: 'straight' as HandRank, value: calculateValue(4, [straightResult.highCard]) };
+    console.log('[EVAL] RESULT: straight, high:', straightResult.highCard, 'value:', result.value);
+    return result;
   }
 
   // Three of a Kind
+  console.log('[EVAL] Checking three-of-a-kind... bestCount:', bestCount);
   if (bestCount >= 3) {
     const tripRank = bestRank;
     const kickers = sortedCards
       .filter(c => c.rank !== tripRank)
       .map(c => RANK_VALUES[c.rank])
       .slice(0, 2);
-    return { rank: 'three-of-a-kind', value: calculateValue(3, [RANK_VALUES[tripRank], ...kickers]) };
+    const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [RANK_VALUES[tripRank], ...kickers]) };
+    console.log('[EVAL] RESULT: three-of-a-kind of', tripRank, 'value:', result.value);
+    return result;
   }
 
   // Two Pair
+  console.log('[EVAL] Checking two-pair... bestCount:', bestCount, 'secondCount:', secondCount);
   if (bestCount >= 2 && secondCount >= 2) {
     const highPairRank = bestRank;
     const lowPairRank = secondRank;
@@ -189,22 +224,29 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
       .filter(c => c.rank !== highPairRank && c.rank !== lowPairRank)
       .map(c => RANK_VALUES[c.rank])
       .slice(0, 1);
-    return { rank: 'two-pair', value: calculateValue(2, [RANK_VALUES[highPairRank], RANK_VALUES[lowPairRank], ...kickers]) };
+    const result = { rank: 'two-pair' as HandRank, value: calculateValue(2, [RANK_VALUES[highPairRank], RANK_VALUES[lowPairRank], ...kickers]) };
+    console.log('[EVAL] RESULT: two-pair', highPairRank, 'and', lowPairRank, 'value:', result.value);
+    return result;
   }
 
   // Pair (including with wildcards)
+  console.log('[EVAL] Checking pair... bestCount:', bestCount);
   if (bestCount >= 2) {
     const pairRank = bestRank;
     const kickers = sortedCards
       .filter(c => c.rank !== pairRank)
       .map(c => RANK_VALUES[c.rank])
       .slice(0, 3);
-    return { rank: 'pair', value: calculateValue(1, [RANK_VALUES[pairRank], ...kickers]) };
+    const result = { rank: 'pair' as HandRank, value: calculateValue(1, [RANK_VALUES[pairRank], ...kickers]) };
+    console.log('[EVAL] RESULT: pair of', pairRank, 'value:', result.value);
+    return result;
   }
 
   // High Card
   const allValues = sortedCards.map(c => RANK_VALUES[c.rank]).slice(0, 5);
-  return { rank: 'high-card', value: calculateValue(0, allValues) };
+  const result = { rank: 'high-card' as HandRank, value: calculateValue(0, allValues) };
+  console.log('[EVAL] RESULT: high-card, values:', allValues, 'value:', result.value);
+  return result;
 }
 
 /**
@@ -277,24 +319,32 @@ function checkFlush(cards: Card[], wildcards: number): { possible: boolean; high
 }
 
 function checkStraightWithWildcards(ranks: Rank[], wildcards: number): { possible: boolean; highCard: number } {
-  if (ranks.length + wildcards < 5) return { possible: false, highCard: 0 };
+  console.log('[STRAIGHT] checkStraightWithWildcards called with ranks:', ranks, 'wildcards:', wildcards);
+  if (ranks.length + wildcards < 5) {
+    console.log('[STRAIGHT] Not enough cards for straight');
+    return { possible: false, highCard: 0 };
+  }
   
   const values = ranks.map(r => RANK_VALUES[r]).sort((a, b) => b - a);
+  console.log('[STRAIGHT] Values (sorted desc):', values);
   return canMakeStraight(values, wildcards);
 }
 
 function canMakeStraight(values: number[], wildcards: number): { possible: boolean; highCard: number } {
   // Remove duplicates
   const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  console.log('[STRAIGHT] canMakeStraight uniqueValues:', uniqueValues, 'wildcards:', wildcards);
   
   // Try to find a sequence of 5 that can be completed with wildcards
   // Check regular straights (high to low)
   for (let start = 14; start >= 5; start--) {
     let needed = 0;
     let cardsInSequence = 0;
+    const sequenceCheck: number[] = [];
     
     for (let i = 0; i < 5; i++) {
       const targetValue = start - i;
+      sequenceCheck.push(targetValue);
       if (uniqueValues.includes(targetValue)) {
         cardsInSequence++;
       } else {
@@ -302,7 +352,9 @@ function canMakeStraight(values: number[], wildcards: number): { possible: boole
       }
     }
     
-    if (needed <= wildcards && cardsInSequence + needed >= 5) {
+    // Only log when we find a potential match or are close
+    if (needed <= wildcards) {
+      console.log('[STRAIGHT] Found straight! start:', start, 'sequence:', sequenceCheck, 'have:', cardsInSequence, 'need wildcards:', needed);
       return { possible: true, highCard: start };
     }
   }
@@ -320,10 +372,13 @@ function canMakeStraight(values: number[], wildcards: number): { possible: boole
     }
   }
   
+  console.log('[STRAIGHT] Wheel check: have:', wheelHave, 'need:', wheelNeeded, 'wildcards:', wildcards);
   if (wheelNeeded <= wildcards && wheelHave + wheelNeeded >= 5) {
+    console.log('[STRAIGHT] Found wheel straight!');
     return { possible: true, highCard: 5 }; // Wheel straight high card is 5
   }
   
+  console.log('[STRAIGHT] No straight found');
   return { possible: false, highCard: 0 };
 }
 
@@ -375,8 +430,11 @@ function rankNamePlural(rankValue: number): string {
 export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = false): string {
   if (cards.length === 0) return 'No Cards';
   
+  console.log('[FORMAT] formatHandRankDetailed called with:', cards.map(c => `${c.rank}${c.suit}`).join(', '));
+  
   const eval_ = evaluateHand(cards, useWildCards);
   const rank = eval_.rank;
+  console.log('[FORMAT] Evaluated rank:', rank, 'value:', eval_.value);
   
   // Sort cards by value descending
   const sortedCards = [...cards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
@@ -394,52 +452,115 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
       return RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank];
     });
   
+  let result: string;
+  
   switch (rank) {
     case 'straight-flush': {
-      const highCard = valueToRankName(sortedCards[0] ? RANK_VALUES[sortedCards[0].rank] : 14);
-      return `Straight Flush, ${highCard} high`;
+      // For straight flush, find actual straight high card, not just highest card
+      const straightHigh = findStraightHighCard(cards, useWildCards);
+      result = `Straight Flush, ${valueToRankName(straightHigh)} high`;
+      break;
     }
     case 'four-of-a-kind': {
       const quadRank = rankGroups.find(([_, count]) => count >= 4)?.[0] || sortedCards[0]?.rank;
-      return `Four of a Kind, ${rankNamePlural(RANK_VALUES[quadRank as Rank])}`;
+      result = `Four of a Kind, ${rankNamePlural(RANK_VALUES[quadRank as Rank])}`;
+      break;
     }
     case 'full-house': {
       const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0];
       const pairRank = rankGroups.find(([r, count]) => count >= 2 && r !== tripRank)?.[0];
       if (tripRank && pairRank) {
-        return `Full House, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} full of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+        result = `Full House, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} full of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      } else {
+        result = 'Full House';
       }
-      return 'Full House';
+      break;
     }
     case 'flush': {
       const highCard = valueToRankName(RANK_VALUES[sortedCards[0].rank]);
-      return `Flush, ${highCard} high`;
+      result = `Flush, ${highCard} high`;
+      break;
     }
     case 'straight': {
-      const highCard = valueToRankName(RANK_VALUES[sortedCards[0].rank]);
-      return `Straight, ${highCard} high`;
+      // For straight, find actual straight high card, not just highest card in hand
+      const straightHigh = findStraightHighCard(cards, useWildCards);
+      result = `Straight, ${valueToRankName(straightHigh)} high`;
+      break;
     }
     case 'three-of-a-kind': {
       const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0] || sortedCards[0]?.rank;
-      return `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
+      result = `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
+      break;
     }
     case 'two-pair': {
       const pairs = rankGroups.filter(([_, count]) => count >= 2).slice(0, 2);
       if (pairs.length >= 2) {
         const highPair = rankNamePlural(RANK_VALUES[pairs[0][0] as Rank]);
         const lowPair = rankNamePlural(RANK_VALUES[pairs[1][0] as Rank]);
-        return `Two Pair, ${highPair} and ${lowPair}`;
+        result = `Two Pair, ${highPair} and ${lowPair}`;
+      } else {
+        result = 'Two Pair';
       }
-      return 'Two Pair';
+      break;
     }
     case 'pair': {
       const pairRank = rankGroups.find(([_, count]) => count >= 2)?.[0] || sortedCards[0]?.rank;
-      return `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      result = `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      break;
     }
     case 'high-card':
     default: {
       const highCard = valueToRankName(RANK_VALUES[sortedCards[0].rank]);
-      return `${highCard} High`;
+      result = `${highCard} High`;
+      break;
     }
   }
+  
+  console.log('[FORMAT] Result:', result);
+  return result;
+}
+
+/**
+ * Find the actual high card of a straight in a hand
+ */
+function findStraightHighCard(cards: Card[], useWildCards: boolean): number {
+  const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A';
+  const wildcardCount = useWildCards ? cards.filter(c => c.rank === wildRank).length : 0;
+  const nonWildcards = useWildCards ? cards.filter(c => c.rank !== wildRank) : cards;
+  const values = nonWildcards.map(c => RANK_VALUES[c.rank]);
+  const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  
+  console.log('[STRAIGHT-HIGH] Finding straight high card. Values:', uniqueValues, 'wildcards:', wildcardCount);
+  
+  // Try to find the highest possible straight
+  for (let start = 14; start >= 5; start--) {
+    let needed = 0;
+    for (let i = 0; i < 5; i++) {
+      const targetValue = start - i;
+      if (!uniqueValues.includes(targetValue)) {
+        needed++;
+      }
+    }
+    if (needed <= wildcardCount) {
+      console.log('[STRAIGHT-HIGH] Found straight with high card:', start);
+      return start;
+    }
+  }
+  
+  // Check wheel (A-2-3-4-5)
+  const wheelCards = [14, 2, 3, 4, 5];
+  let wheelNeeded = 0;
+  for (const val of wheelCards) {
+    if (!uniqueValues.includes(val)) {
+      wheelNeeded++;
+    }
+  }
+  if (wheelNeeded <= wildcardCount) {
+    console.log('[STRAIGHT-HIGH] Found wheel straight, high card: 5');
+    return 5;
+  }
+  
+  // Fallback to highest card (shouldn't happen if we have a straight)
+  console.log('[STRAIGHT-HIGH] No straight found, using highest card:', uniqueValues[0]);
+  return uniqueValues[0] || 14;
 }
