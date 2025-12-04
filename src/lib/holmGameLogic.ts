@@ -940,10 +940,21 @@ async function handleMultiPlayerShowdown(
     })
   );
 
+  // Debug: Log each player's evaluation
+  console.log('[HOLM MULTI] === HAND EVALUATIONS ===');
+  evaluations.forEach(e => {
+    const playerName = e.player.profiles?.username || e.player.user_id;
+    const allCards = [...e.cards, ...communityCards];
+    const cardStr = allCards.map(c => `${c.rank}${c.suit}`).join(', ');
+    console.log(`[HOLM MULTI] ${playerName}: ${e.evaluation.rank} (value: ${e.evaluation.value}) - Cards: ${cardStr}`);
+  });
+
   // Find winner(s)
   const maxValue = Math.max(...evaluations.map(e => e.evaluation.value));
+  console.log('[HOLM MULTI] Max value:', maxValue);
   const winners = evaluations.filter(e => e.evaluation.value === maxValue);
   const losers = evaluations.filter(e => e.evaluation.value < maxValue);
+  console.log('[HOLM MULTI] Winners count:', winners.length, 'Losers count:', losers.length);
 
   if (winners.length === 1) {
     const winner = winners[0];
