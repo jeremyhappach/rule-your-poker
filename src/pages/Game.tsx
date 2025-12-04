@@ -638,11 +638,23 @@ const Game = () => {
   // Track max community cards revealed - never decrease during showdowns
   // SYNCHRONOUS update to prevent race conditions where useEffect runs after render
   const maxRevealedRef = useRef<number>(0);
+  // Track card identity to detect new hands (when cards change completely)
+  const cardIdentityRef = useRef<string>('');
   
-  // Reset when starting new game, otherwise track max synchronously
+  // Compute current card identity to detect new hands
+  const communityCards = currentRound?.community_cards as CardType[] | undefined;
+  const currentCardIdentity = communityCards?.map(c => `${c.rank}${c.suit}`).join(',') || '';
+  
+  // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring') {
     maxRevealedRef.current = 0;
+    cardIdentityRef.current = '';
+  } else if (currentCardIdentity && currentCardIdentity !== cardIdentityRef.current) {
+    // Cards changed - this is a new hand, reset the max
+    cardIdentityRef.current = currentCardIdentity;
+    maxRevealedRef.current = currentRound?.community_cards_revealed ?? 0;
   } else if (currentRound?.community_cards_revealed !== undefined) {
+    // Same hand, only increase max (never decrease)
     maxRevealedRef.current = Math.max(maxRevealedRef.current, currentRound.community_cards_revealed);
   }
   
