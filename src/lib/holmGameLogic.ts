@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
+import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -580,18 +580,21 @@ export async function endHolmRound(gameId: string) {
       .single();
 
     let playerEval: any = null;
+    let playerCards: Card[] = [];
     if (playerCardsData) {
-      const playerCards = playerCardsData.cards as unknown as Card[];
+      playerCards = playerCardsData.cards as unknown as Card[];
       const playerAllCards = [...playerCards, ...communityCards];
       playerEval = evaluateHand(playerAllCards, false);
       
-      console.log('[HOLM END] Step 4: Player has:', formatHandRank(playerEval.rank));
+      // Get detailed hand description with card values
+      const handDescription = formatHandRankDetailed(playerAllCards, false);
+      console.log('[HOLM END] Step 4: Player has:', handDescription);
       
-      // Show hand rank announcement - explicitly ensure awaiting_next_round is false
+      // Show hand rank announcement with player name - explicitly ensure awaiting_next_round is false
       await supabase
         .from('games')
         .update({ 
-          last_round_result: formatHandRank(playerEval.rank),
+          last_round_result: `${playerUsername} has ${handDescription}`,
           awaiting_next_round: false
         })
         .eq('id', gameId);
@@ -776,8 +779,12 @@ async function handleChuckyShowdown(
   const playerEval = evaluateHand(playerAllCards, false); // No wild cards in Holm
   const chuckyEval = evaluateHand(chuckyAllCards, false); // No wild cards in Holm
 
-  console.log('[HOLM SHOWDOWN] Player hand:', formatHandRank(playerEval.rank), 'value:', playerEval.value);
-  console.log('[HOLM SHOWDOWN] Chucky hand:', formatHandRank(chuckyEval.rank), 'value:', chuckyEval.value);
+  // Get detailed hand descriptions
+  const playerHandDesc = formatHandRankDetailed(playerAllCards, false);
+  const chuckyHandDesc = formatHandRankDetailed(chuckyAllCards, false);
+
+  console.log('[HOLM SHOWDOWN] Player hand:', playerHandDesc, 'value:', playerEval.value);
+  console.log('[HOLM SHOWDOWN] Chucky hand:', chuckyHandDesc, 'value:', chuckyEval.value);
 
   const playerWins = playerEval.value > chuckyEval.value;
 
@@ -817,7 +824,7 @@ async function handleChuckyShowdown(
     await supabase
       .from('games')
       .update({
-        last_round_result: `${playerUsername} beat Chucky with ${formatHandRank(playerEval.rank)}!`
+        last_round_result: `${playerUsername} beat Chucky with ${playerHandDesc}!`
       })
       .eq('id', gameId);
     
@@ -868,7 +875,7 @@ async function handleChuckyShowdown(
     const { error: gameUpdateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `Chucky beat ${playerUsername} with ${formatHandRank(chuckyEval.rank)}`,
+        last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}`,
         awaiting_next_round: true,
         pot: newPot
       })
@@ -974,10 +981,14 @@ async function handleMultiPlayerShowdown(
 
     // Set pot to losers' matched amount (no re-anting in Holm)
     console.log('[HOLM MULTI] New pot from losers match:', newPot);
+    // Get detailed hand description for winner
+    const winnerAllCards = [...winner.cards, ...communityCards];
+    const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
+    
     const { error: updateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `${winnerUsername} wins with ${formatHandRank(winner.evaluation.rank)} and takes $${roundPot}!`,
+        last_round_result: `${winnerUsername} wins with ${winnerHandDesc} and takes $${roundPot}!`,
         awaiting_next_round: true,
         pot: newPot
       })
@@ -1059,8 +1070,9 @@ async function handleMultiPlayerShowdown(
     // Evaluate each tied player against Chucky
     const chuckyAllCards = [...chuckyCards, ...communityCards];
     const chuckyEval = evaluateHand(chuckyAllCards, false);
+    const chuckyHandDesc = formatHandRankDetailed(chuckyAllCards, false);
     
-    console.log('[HOLM TIE] Chucky hand:', formatHandRank(chuckyEval.rank), 'value:', chuckyEval.value);
+    console.log('[HOLM TIE] Chucky hand:', chuckyHandDesc, 'value:', chuckyEval.value);
     
     const playersBeatChucky = winners.filter(w => w.evaluation.value > chuckyEval.value);
     const playersLoseToChucky = winners.filter(w => w.evaluation.value <= chuckyEval.value);
@@ -1101,7 +1113,7 @@ async function handleMultiPlayerShowdown(
       await supabase
         .from('games')
         .update({
-          last_round_result: `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${formatHandRank(chuckyEval.rank)}. $${totalMatched} added to pot.`,
+          last_round_result: `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`,
           awaiting_next_round: true,
           pot: newPot
         })

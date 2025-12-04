@@ -330,3 +330,96 @@ export function formatHandRank(rank: HandRank): string {
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ');
 }
+
+// Helper to convert rank value back to display string
+function valueToRankName(value: number): string {
+  const rankNames: Record<number, string> = {
+    14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: '10',
+    9: '9', 8: '8', 7: '7', 6: '6', 5: '5', 4: '4', 3: '3', 2: '2'
+  };
+  return rankNames[value] || String(value);
+}
+
+// Helper to make rank names more readable (plural for pairs)
+function rankNamePlural(rankValue: number): string {
+  const name = valueToRankName(rankValue);
+  if (name === '6') return '6s';
+  if (name.length === 1) return name + 's';
+  return name + 's';
+}
+
+/**
+ * Format hand rank with card details for display
+ * e.g., "Two Pair, Js and 8s", "Straight, K high", "Three of a Kind, 4s"
+ */
+export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = false): string {
+  if (cards.length === 0) return 'No Cards';
+  
+  const eval_ = evaluateHand(cards, useWildCards);
+  const rank = eval_.rank;
+  
+  // Sort cards by value descending
+  const sortedCards = [...cards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+  
+  // Count ranks
+  const rankCounts: Record<string, number> = {};
+  cards.forEach(c => {
+    rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1;
+  });
+  
+  // Sort rank groups by count, then by value
+  const rankGroups = Object.entries(rankCounts)
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank];
+    });
+  
+  switch (rank) {
+    case 'straight-flush': {
+      const highCard = valueToRankName(sortedCards[0] ? RANK_VALUES[sortedCards[0].rank] : 14);
+      return `Straight Flush, ${highCard} high`;
+    }
+    case 'four-of-a-kind': {
+      const quadRank = rankGroups.find(([_, count]) => count >= 4)?.[0] || sortedCards[0]?.rank;
+      return `Four of a Kind, ${rankNamePlural(RANK_VALUES[quadRank as Rank])}`;
+    }
+    case 'full-house': {
+      const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0];
+      const pairRank = rankGroups.find(([r, count]) => count >= 2 && r !== tripRank)?.[0];
+      if (tripRank && pairRank) {
+        return `Full House, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} full of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      }
+      return 'Full House';
+    }
+    case 'flush': {
+      const highCard = valueToRankName(RANK_VALUES[sortedCards[0].rank]);
+      return `Flush, ${highCard} high`;
+    }
+    case 'straight': {
+      const highCard = valueToRankName(RANK_VALUES[sortedCards[0].rank]);
+      return `Straight, ${highCard} high`;
+    }
+    case 'three-of-a-kind': {
+      const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0] || sortedCards[0]?.rank;
+      return `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
+    }
+    case 'two-pair': {
+      const pairs = rankGroups.filter(([_, count]) => count >= 2).slice(0, 2);
+      if (pairs.length >= 2) {
+        const highPair = rankNamePlural(RANK_VALUES[pairs[0][0] as Rank]);
+        const lowPair = rankNamePlural(RANK_VALUES[pairs[1][0] as Rank]);
+        return `Two Pair, ${highPair} and ${lowPair}`;
+      }
+      return 'Two Pair';
+    }
+    case 'pair': {
+      const pairRank = rankGroups.find(([_, count]) => count >= 2)?.[0] || sortedCards[0]?.rank;
+      return `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+    }
+    case 'high-card':
+    default: {
+      const highCard = valueToRankName(RANK_VALUES[sortedCards[0].rank]);
+      return `${highCard} High`;
+    }
+  }
+}

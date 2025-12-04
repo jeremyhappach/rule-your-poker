@@ -126,6 +126,7 @@ const Game = () => {
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
+  const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
 
   // Clear pending decision when backend confirms
   useEffect(() => {
@@ -590,8 +591,24 @@ const Game = () => {
     return () => clearInterval(pollInterval);
   }, [game?.status, players, gameId]);
 
-  // Extract current round info
-  const currentRound = game?.rounds?.find(r => r.round_number === game.current_round);
+  // Extract current round info - use cached data during game_over to preserve community cards
+  const liveRound = game?.rounds?.find(r => r.round_number === game.current_round);
+  
+  // Cache round data when transitioning to game_over or during showdown
+  useEffect(() => {
+    if (liveRound && (game?.status === 'game_over' || game?.all_decisions_in)) {
+      setCachedRoundData(liveRound);
+    }
+    // Clear cache when starting new game
+    if (game?.status === 'game_selection' || game?.status === 'configuring') {
+      setCachedRoundData(null);
+    }
+  }, [liveRound, game?.status, game?.all_decisions_in]);
+  
+  // Use cached round during game_over if live round is unavailable
+  const currentRound = (game?.status === 'game_over' && !liveRound && cachedRoundData) 
+    ? cachedRoundData 
+    : liveRound;
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
