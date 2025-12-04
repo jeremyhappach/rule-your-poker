@@ -1601,8 +1601,10 @@ const Game = () => {
 
     const currentPlayer = players.find(p => p.user_id === user.id);
     
-    // If game is already in progress (not waiting), new players should sit out until next game
-    const gameInProgress = game?.status !== 'waiting';
+    // Setup states where new players can join immediately (not sitting out)
+    const setupStates = ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
+    // If game is actively playing (not in setup/config), new players should sit out until next game
+    const gameInProgress = !setupStates.includes(game?.status || '');
     
     try {
       if (!currentPlayer) {
@@ -1615,7 +1617,8 @@ const Game = () => {
             user_id: user.id,
             chips: 0,
             position: position,
-            sitting_out: gameInProgress
+            sitting_out: gameInProgress,
+            ante_decision: null // Ensure ante_decision is null so they get the popup
           });
 
         if (joinError) {
