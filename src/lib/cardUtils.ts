@@ -196,20 +196,23 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
 /**
  * Calculate a hand value that properly compares hands of the same rank.
- * Base value is handType * 10000000 (10 million) to ensure hand type always wins,
- * then each card adds diminishing value:
- * First card: value * 10000
- * Second card: value * 100
- * Third card: value * 1
- * Fourth card: value * 0.01
- * Fifth card: value * 0.0001
+ * Uses integer math only to avoid floating-point comparison issues.
+ * Base value is handType * 1,000,000,000 (1 billion) to ensure hand type always wins,
+ * then each card adds diminishing value using powers of 15:
+ * First card: value * 15^4 = 50625
+ * Second card: value * 15^3 = 3375
+ * Third card: value * 15^2 = 225
+ * Fourth card: value * 15^1 = 15
+ * Fifth card: value * 15^0 = 1
  * 
- * This ensures a pair (type 1) = 10,000,000 ALWAYS beats high card (type 0) = 140,000 max
+ * Max card value is 14 (Ace), so each position can hold values 2-14 without overflow.
+ * This ensures a pair (type 1) ALWAYS beats high card (type 0).
  */
 function calculateValue(handType: number, cardValues: number[]): number {
-  const weights = [10000, 100, 1, 0.01, 0.0001];
-  // Use 10 million as base so hand rank always wins over card values
-  let value = handType * 10000000;
+  // Powers of 15 to ensure each card position can hold max value of 14
+  const weights = [50625, 3375, 225, 15, 1];
+  // Use 1 billion as base so hand rank always wins over card values
+  let value = handType * 1000000000;
   
   cardValues.forEach((cardValue, index) => {
     if (index < weights.length) {
