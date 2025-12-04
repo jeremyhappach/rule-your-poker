@@ -30,6 +30,28 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const prevRevealedRef = useRef(revealed);
   const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  // Track the max revealed count - NEVER decrease during a hand
+  const maxRevealedRef = useRef(revealed);
+  // Track the cards identity to know when it's a NEW hand
+  const cardsIdentityRef = useRef<string>('');
+  
+  // Compute cards identity to detect new hands
+  const currentCardsIdentity = cards.map(c => `${c.rank}${c.suit}`).join(',');
+  
+  // Detect new hand (cards changed completely) - reset everything
+  if (currentCardsIdentity !== cardsIdentityRef.current && currentCardsIdentity.length > 0) {
+    cardsIdentityRef.current = currentCardsIdentity;
+    maxRevealedRef.current = revealed;
+    prevRevealedRef.current = revealed;
+  }
+  
+  // Update max revealed (only increase, never decrease within same hand)
+  if (revealed > maxRevealedRef.current) {
+    maxRevealedRef.current = revealed;
+  }
+  
+  // Use the max revealed count for rendering
+  const effectiveRevealed = maxRevealedRef.current;
   
   useEffect(() => {
     // Clear any pending timeouts
@@ -37,9 +59,9 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
     flipTimeoutsRef.current = [];
     
     // Check if revealed count increased (new cards being revealed)
-    if (revealed > prevRevealedRef.current) {
+    if (effectiveRevealed > prevRevealedRef.current) {
       const newlyRevealed: number[] = [];
-      for (let i = prevRevealedRef.current; i < revealed; i++) {
+      for (let i = prevRevealedRef.current; i < effectiveRevealed; i++) {
         newlyRevealed.push(i);
       }
       
@@ -67,23 +89,10 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
         
         flipTimeoutsRef.current.push(startTimeout);
       });
-    } else if (revealed < prevRevealedRef.current) {
-      // Reset when revealed count decreases (new round)
-      setFlippingCards(new Set());
-      setFlippedCards(new Set());
+      
+      prevRevealedRef.current = effectiveRevealed;
     }
-    
-    prevRevealedRef.current = revealed;
-  }, [revealed]);
-  
-  // Reset flipped state when cards change (new round)
-  useEffect(() => {
-    flipTimeoutsRef.current.forEach(t => clearTimeout(t));
-    flipTimeoutsRef.current = [];
-    setFlippingCards(new Set());
-    setFlippedCards(new Set());
-    prevRevealedRef.current = revealed;
-  }, [cards.length]);
+  }, [effectiveRevealed]);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -98,7 +107,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
       <div className="flex gap-1" style={{ perspective: '1000px' }}>
         {cards.map((card, index) => {
-          const isRevealed = index < revealed;
+          const isRevealed = index < effectiveRevealed;
           const isFlipping = flippingCards.has(index);
           const hasFlipped = flippedCards.has(index);
           // Show front if: card has completed flip animation, or was already revealed before this render
