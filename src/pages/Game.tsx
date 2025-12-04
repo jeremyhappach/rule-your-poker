@@ -1736,7 +1736,7 @@ const Game = () => {
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended') && (
           <>
-            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result ? (
+            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
               <div className="relative">
                 <GameTable
                   players={players}
