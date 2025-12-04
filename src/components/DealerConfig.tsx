@@ -82,6 +82,13 @@ export const DealerConfig = ({
           .eq('id', gameId);
 
         if (!error) {
+          // Reset ante_decision for all non-dealer players so they get the popup
+          await supabase
+            .from('players')
+            .update({ ante_decision: null })
+            .eq('game_id', gameId)
+            .neq('id', dealerPlayerId);
+
           // Automatically ante up the dealer (bot)
           await supabase
             .from('players')
@@ -161,6 +168,13 @@ export const DealerConfig = ({
       });
       return;
     }
+
+    // Reset ante_decision for all non-dealer players so they get the popup
+    await supabase
+      .from('players')
+      .update({ ante_decision: null })
+      .eq('game_id', gameId)
+      .neq('id', dealerPlayerId);
 
     // Automatically ante up the dealer
     await supabase
