@@ -75,12 +75,21 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
   console.log('[COMMUNITY_CARDS] effectiveRevealed =', effectiveRevealed);
   
   // Handle new hand reset via useEffect (for state updates)
+  // CRITICAL: When component mounts with cards already revealed beyond index 2,
+  // pre-populate flippedCards so they show immediately (no animation needed)
   useEffect(() => {
     if (isNewHand) {
       setFlippingCards(new Set());
-      setFlippedCards(new Set());
+      // Cards 0-1 show via the (isRevealed && index < 2) check
+      // Cards 2+ need to be in flippedCards to show, so pre-populate if already revealed
+      const alreadyRevealed = new Set<number>();
+      for (let i = 2; i < effectiveRevealed; i++) {
+        alreadyRevealed.add(i);
+      }
+      console.log('[COMMUNITY_CARDS] isNewHand - pre-populating flippedCards:', Array.from(alreadyRevealed));
+      setFlippedCards(alreadyRevealed);
     }
-  }, [currentCardsIdentity]);
+  }, [currentCardsIdentity, effectiveRevealed]);
   
   // Handle revealing new cards
   const prevEffectiveRef = useRef(effectiveRevealed);
