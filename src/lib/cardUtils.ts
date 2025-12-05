@@ -78,13 +78,15 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
   // Determine wild card based on number of cards dealt (if wild cards are enabled)
   const wildRank: Rank = useWildCards ? (validatedCards.length <= 3 ? '3' : validatedCards.length === 5 ? '5' : '7') : 'A';
-  console.log('[EVAL] Wild rank for this hand:', wildRank);
-
+  
   // Count wildcards (only if wildcards are enabled)
   const wildcards = useWildCards ? validatedCards.filter(c => c.rank === wildRank) : [];
   const nonWildcards = useWildCards ? validatedCards.filter(c => c.rank !== wildRank) : validatedCards;
   const wildcardCount = wildcards.length;
-  console.log('[EVAL] Wildcards found:', wildcardCount, wildcards.map(c => `${c.rank}${c.suit}`).join(', '));
+  
+  if (useWildCards) {
+    console.log('[EVAL] Wild rank:', wildRank, '| Wildcards found:', wildcardCount);
+  }
 
   // If all cards are wildcards in round 1 (3 cards), treat as best possible: three of a kind
   if (validatedCards.length === 3 && wildcardCount === validatedCards.length) {
@@ -102,7 +104,6 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
   const sortedCards = [...nonWildcards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
   const ranks = sortedCards.map(c => c.rank);
-  console.log('[EVAL] Non-wild cards sorted:', sortedCards.map(c => `${c.rank}${c.suit}`).join(', '));
 
   // Count ranks (excluding wildcards)
   const rankCounts = ranks.reduce((acc, rank) => {
@@ -127,10 +128,9 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   const secondRank = rankGroups[1]?.[0] as Rank;
 
   console.log('[EVAL] Rank counts:', JSON.stringify(rankCounts));
-  console.log('[EVAL] Rank groups (sorted):', JSON.stringify(rankGroups));
-  console.log('[EVAL] Best rank:', bestRank, 'count:', bestCount, '(includes', wildcardCount, 'wildcards)');
-  console.log('[EVAL] Second rank:', secondRank, 'count:', secondCount);
-  console.log('[EVAL] Full house check: bestCount>=3?', bestCount >= 3, 'secondCount>=2?', secondCount >= 2);
+  console.log('[EVAL] Sorted rank groups:', rankGroups.map(([r,c]) => `${r}:${c}`).join(', '));
+  console.log('[EVAL] bestRank:', bestRank, 'bestCount:', bestCount, '| secondRank:', secondRank, 'secondCount:', secondCount);
+  console.log('[EVAL] Full house check: bestCount>=3?', bestCount >= 3, '&& secondCount>=2?', secondCount >= 2, '=', bestCount >= 3 && secondCount >= 2);
 
   // ROUND 1 (3 cards): Only three-of-a-kind, pair, or high card are possible
   if (validatedCards.length === 3) {

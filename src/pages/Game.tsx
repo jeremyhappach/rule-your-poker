@@ -248,11 +248,15 @@ const Game = () => {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
               if (debounceTimer) clearTimeout(debounceTimer);
               fetchGameData();
-              // Extra delayed fetch to catch any race conditions
+              // Extra delayed fetches to catch any race conditions with player updates
               setTimeout(() => {
-                console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 500ms');
+                console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 300ms');
                 fetchGameData();
-              }, 500);
+              }, 300);
+              setTimeout(() => {
+                console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 700ms');
+                fetchGameData();
+              }, 700);
             } else {
               debouncedFetch();
             }
@@ -552,6 +556,7 @@ const Game = () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
     const isSittingOut = currentPlayer?.sitting_out === true;
     const needsAnteDecision = currentPlayer?.ante_decision === null && game?.status === 'ante_decision';
+    const isDealer = currentPlayer?.position === game?.dealer_position;
     
     // Check if player just anted up but has no cards yet (critical race condition)
     const justAntedUpNoCards = 
@@ -562,9 +567,17 @@ const Game = () => {
       playerCards.length === 0;
     
     // Check if we're waiting for ante_decision status after config complete
+    // Non-dealers should poll aggressively when game is in ante_decision but they haven't seen the dialog yet
+    const waitingForAnteDialog = 
+      game?.status === 'ante_decision' && 
+      currentPlayer && 
+      currentPlayer.ante_decision === null && 
+      !isDealer &&
+      !showAnteDialog;
+    
     const waitingForAnteStatus = 
       game?.status === 'configuring' || 
-      (game?.status === 'ante_decision' && needsAnteDecision);
+      waitingForAnteDialog;
     
     const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus;
     
@@ -574,22 +587,26 @@ const Game = () => {
       isSittingOut,
       needsAnteDecision,
       justAntedUpNoCards,
+      waitingForAnteDialog,
       waitingForAnteStatus,
+      showAnteDialog,
       gameStatus: game?.status,
       playerCardsCount: playerCards.length
     });
     
-    // Poll every 500ms for critical situations
-    const pollInterval = setInterval(() => {
-      console.log('[CRITICAL POLL] Polling game data...');
+    // Poll more frequently (250ms) for ante dialog propagation
+    const pollInterval = waitingForAnteDialog ? 250 : 500;
+    
+    const intervalId = setInterval(() => {
+      console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
       fetchGameData();
-    }, 500);
+    }, pollInterval);
     
     return () => {
       console.log('[CRITICAL POLL] Stopping polling');
-      clearInterval(pollInterval);
+      clearInterval(intervalId);
     };
-  }, [game?.status, players, user?.id, gameId, playerCards.length]);
+  }, [game?.status, game?.dealer_position, players, user?.id, gameId, playerCards.length, showAnteDialog]);
   useEffect(() => {
     console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
       gameStatus: game?.status,
