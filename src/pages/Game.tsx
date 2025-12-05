@@ -128,6 +128,7 @@ const Game = () => {
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
+  const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
 
   // Clear pending decision when backend confirms
   useEffect(() => {
@@ -237,6 +238,12 @@ const Game = () => {
             fullPayload: payload
           });
           
+          // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI
+          if (gameTypeSwitchingRef.current) {
+            console.log('[REALTIME] ⏸️ Skipping fetch - game type switch in progress');
+            return;
+          }
+
           // CRITICAL: Immediately fetch if current_round changed (round transition)
           // This ensures ALL clients sync when a round changes, not just the one that triggered it
           if (payload.new && 'current_round' in payload.new) {
@@ -1491,6 +1498,9 @@ const Game = () => {
 
     console.log('[GAME SELECTION] Selected game:', gameType);
 
+    // GUARD: Prevent realtime updates from overwriting optimistic UI during switch
+    gameTypeSwitchingRef.current = true;
+
     // IMMEDIATELY clear all card-related state for the dealer
     // This prevents stale card rendering while waiting for database update
     setPlayerCards([]);
@@ -1534,8 +1544,16 @@ const Game = () => {
       return;
     }
 
-    // Manual refetch to update UI
-    setTimeout(() => fetchGameData(), 100);
+    // Manual refetch to update UI after DB is updated
+    // Clear the guard AFTER the fetch so realtime doesn't overwrite during transition
+    setTimeout(() => {
+      fetchGameData();
+      // Clear guard after a longer delay to ensure optimistic update isn't overwritten
+      setTimeout(() => {
+        gameTypeSwitchingRef.current = false;
+        console.log('[GAME SELECTION] Cleared game type switching guard');
+      }, 500);
+    }, 100);
   };
 
   const handleGameOverComplete = useCallback(async () => {
