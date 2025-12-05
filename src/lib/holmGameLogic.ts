@@ -762,28 +762,47 @@ async function handleChuckyShowdown(
   const playerCardsData = playerCardsArray[0];
 
   const playerCards = playerCardsData.cards as unknown as Card[];
-  console.log('[HOLM SHOWDOWN] Player cards:', playerCards);
+  
+  // CRITICAL DEBUG: Log raw card data to diagnose evaluation issues
+  console.log('[HOLM SHOWDOWN] ========== RAW CARD DATA ==========');
+  console.log('[HOLM SHOWDOWN] Player cards RAW:', JSON.stringify(playerCards));
+  console.log('[HOLM SHOWDOWN] Chucky cards RAW:', JSON.stringify(chuckyCards));
+  console.log('[HOLM SHOWDOWN] Community cards RAW:', JSON.stringify(communityCards));
+  
+  // Log card strings for human readability
+  const playerCardStr = playerCards.map(c => `${c.rank}${c.suit}`).join(' ');
+  const chuckyCardStr = chuckyCards.map(c => `${c.rank}${c.suit}`).join(' ');
+  const communityCardStr = communityCards.map(c => `${c.rank}${c.suit}`).join(' ');
+  console.log('[HOLM SHOWDOWN] Player cards:', playerCardStr);
+  console.log('[HOLM SHOWDOWN] Chucky cards:', chuckyCardStr);
+  console.log('[HOLM SHOWDOWN] Community cards:', communityCardStr);
 
   // Evaluate hands (best 5 from 4 player + 4 community for player, best 5 from X chucky + 4 community for chucky)
   const playerAllCards = [...playerCards, ...communityCards];
   const chuckyAllCards = [...chuckyCards, ...communityCards];
 
-  console.log('[HOLM SHOWDOWN] Player all cards:', playerAllCards);
-  console.log('[HOLM SHOWDOWN] Chucky all cards:', chuckyAllCards);
+  const playerAllStr = playerAllCards.map(c => `${c.rank}${c.suit}`).join(' ');
+  const chuckyAllStr = chuckyAllCards.map(c => `${c.rank}${c.suit}`).join(' ');
+  console.log('[HOLM SHOWDOWN] Player ALL cards (hand + community):', playerAllStr);
+  console.log('[HOLM SHOWDOWN] Chucky ALL cards (chucky + community):', chuckyAllStr);
 
+  console.log('[HOLM SHOWDOWN] ========== EVALUATING PLAYER ==========');
   const playerEval = evaluateHand(playerAllCards, false); // No wild cards in Holm
+  console.log('[HOLM SHOWDOWN] ========== EVALUATING CHUCKY ==========');
   const chuckyEval = evaluateHand(chuckyAllCards, false); // No wild cards in Holm
 
   // Get detailed hand descriptions
   const playerHandDesc = formatHandRankDetailed(playerAllCards, false);
   const chuckyHandDesc = formatHandRankDetailed(chuckyAllCards, false);
 
-  console.log('[HOLM SHOWDOWN] Player hand:', playerHandDesc, 'value:', playerEval.value);
-  console.log('[HOLM SHOWDOWN] Chucky hand:', chuckyHandDesc, 'value:', chuckyEval.value);
+  console.log('[HOLM SHOWDOWN] ========== COMPARISON ==========');
+  console.log('[HOLM SHOWDOWN] Player:', playerHandDesc, '| rank:', playerEval.rank, '| value:', playerEval.value);
+  console.log('[HOLM SHOWDOWN] Chucky:', chuckyHandDesc, '| rank:', chuckyEval.rank, '| value:', chuckyEval.value);
+  console.log('[HOLM SHOWDOWN] Player value > Chucky value?', playerEval.value, '>', chuckyEval.value, '=', playerEval.value > chuckyEval.value);
 
   const playerWins = playerEval.value > chuckyEval.value;
 
-  console.log('[HOLM SHOWDOWN] Winner:', playerWins ? 'Player' : 'Chucky');
+  console.log('[HOLM SHOWDOWN] *** WINNER:', playerWins ? 'PLAYER' : 'CHUCKY', '***');
   
   // Get player username
   const playerUsername = player.profiles?.username || player.user_id;
@@ -976,14 +995,26 @@ async function handleMultiPlayerShowdown(
   );
 
   // Debug: Log each player's evaluation with detailed hand description
-  console.log('[HOLM MULTI] ========== HAND EVALUATIONS ==========');
+  console.log('[HOLM MULTI] ========== HAND EVALUATIONS (RAW DATA) ==========');
+  console.log('[HOLM MULTI] Community cards RAW:', JSON.stringify(communityCards));
+  console.log('[HOLM MULTI] Community cards:', communityCards.map(c => `${c.rank}${c.suit}`).join(' '));
+  
   evaluations.forEach(e => {
     const playerName = e.player.profiles?.username || e.player.user_id;
     const allCards = [...e.cards, ...communityCards];
-    const cardStr = allCards.map(c => `${c.rank}${c.suit}`).join(', ');
+    const playerCardStr = e.cards.map(c => `${c.rank}${c.suit}`).join(' ');
+    const allCardStr = allCards.map(c => `${c.rank}${c.suit}`).join(' ');
+    
+    console.log(`[HOLM MULTI] ---------- ${playerName} ----------`);
+    console.log(`[HOLM MULTI] Player cards RAW:`, JSON.stringify(e.cards));
+    console.log(`[HOLM MULTI] Player cards: ${playerCardStr}`);
+    console.log(`[HOLM MULTI] All cards: ${allCardStr}`);
+    
+    // Re-evaluate with logging
+    console.log(`[HOLM MULTI] Evaluating ${playerName}...`);
+    const eval2 = evaluateHand(allCards, false);
     const handDesc = formatHandRankDetailed(allCards, false);
-    console.log(`[HOLM MULTI] ${playerName}: ${handDesc} | rank: ${e.evaluation.rank} | value: ${e.evaluation.value}`);
-    console.log(`[HOLM MULTI]   -> Cards: ${cardStr}`);
+    console.log(`[HOLM MULTI] ${playerName} RESULT: ${handDesc} | rank: ${eval2.rank} | value: ${eval2.value}`);
   });
 
   // Find winner(s)
