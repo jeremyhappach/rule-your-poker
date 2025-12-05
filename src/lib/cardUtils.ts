@@ -240,11 +240,25 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
     return result;
   }
 
-  // Two Pair
+  // Two Pair - CRITICAL: Need BOTH bestCount and secondCount >= 2
+  // bestCount already includes wildcards, secondCount is raw count from second rank group
   console.log('[EVAL] Checking two-pair... bestCount:', bestCount, 'secondCount:', secondCount);
-  if (bestCount >= 2 && secondCount >= 2) {
-    const highPairRank = bestRank;
-    const lowPairRank = secondRank;
+  console.log('[EVAL] Two-pair check details: bestRank=', bestRank, 'secondRank=', secondRank);
+  console.log('[EVAL] All rank groups with counts:', rankGroups.map(([r, c]) => `${r}:${c}`).join(', '));
+  
+  // Find all ranks that have count >= 2 (pairs)
+  const pairsFound = rankGroups.filter(([_, count]) => count >= 2);
+  console.log('[EVAL] Pairs found (count >= 2):', pairsFound.map(([r, c]) => `${r}:${c}`).join(', ') || 'NONE');
+  
+  // CRITICAL FIX: Two-pair requires TWO DIFFERENT ranks with count >= 2
+  // The old check was wrong - it used bestCount (which includes wildcards) and secondCount (raw)
+  // We should check if we have at least 2 pairs from the actual rank counts
+  const hasTwoPair = pairsFound.length >= 2;
+  console.log('[EVAL] Has two pair?', hasTwoPair, '(need 2+ pairs, found:', pairsFound.length, ')');
+  
+  if (hasTwoPair) {
+    const highPairRank = pairsFound[0][0] as Rank;
+    const lowPairRank = pairsFound[1][0] as Rank;
     const kickers = sortedCards
       .filter(c => c.rank !== highPairRank && c.rank !== lowPairRank)
       .map(c => RANK_VALUES[c.rank])
