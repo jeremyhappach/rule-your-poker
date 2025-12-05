@@ -330,11 +330,18 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] Player cards changed:', payload);
-          // Immediate fetch for INSERT (cards dealt) - critical for observers to see card backs
+          // Immediate fetch for INSERT (cards dealt) - critical for observers and newly active players
           if (payload.eventType === 'INSERT') {
-            console.log('[REALTIME] 🃏 CARDS DEALT - Immediate fetch for observers!');
+            console.log('[REALTIME] 🃏 CARDS DEALT - Immediate fetch!');
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
+            // CRITICAL: Cards are inserted BEFORE game status is updated to 'in_progress'
+            // This causes a race condition where fetchGameData won't fetch cards because
+            // the status check fails. Add delayed refetch to catch the updated status.
+            setTimeout(() => {
+              console.log('[REALTIME] 🃏 CARDS DEALT - Delayed refetch after status update');
+              fetchGameData();
+            }, 500);
           } else {
             debouncedFetch();
           }
