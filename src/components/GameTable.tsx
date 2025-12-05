@@ -306,7 +306,7 @@ export const GameTable = ({
             const y = 50 + radius * Math.sin(angle);
             
             // Get cards for this player
-            const actualCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
+            const rawCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
             
             // Calculate expected card count based on game type
             const getExpectedCardCount = (round: number): number => {
@@ -321,21 +321,33 @@ export const GameTable = ({
             };
             const expectedCardCount = getExpectedCardCount(currentRound);
             
+            // CRITICAL: Validate cards match expected count for current game type/round
+            // If card count doesn't match, these are stale cards from a previous game - reject them
+            const actualCards = (rawCards.length > 0 && rawCards.length !== expectedCardCount && expectedCardCount > 0)
+              ? [] // Stale cards - wrong count for current game type/round
+              : rawCards;
+            
+            if (rawCards.length > 0 && rawCards.length !== expectedCardCount && expectedCardCount > 0) {
+              console.log('[STALE_CARDS] Rejecting stale cards:', {
+                playerId: player?.id,
+                rawCardCount: rawCards.length,
+                expectedCardCount,
+                gameType,
+                currentRound
+              });
+            }
+            
             // Show cards when there's an active round and player isn't sitting out
             const shouldShowCards = player && !player.sitting_out && currentRound > 0;
             
             // For observers (no currentUserId or not a player), show placeholder card backs
             const isObserver = !currentUserId || !players.some(p => p.user_id === currentUserId);
             
-            // Show actual cards if we have them, OR placeholder cards for observers (empty cards with isHidden=true)
-            // When observer has no actual cards, we use empty placeholder cards that will render as hidden card backs
-            const cards: CardType[] = shouldShowCards 
-              ? (actualCards.length > 0 
-                  ? actualCards 
-                  : (isObserver && expectedCardCount > 0 
-                      ? [] // Empty array - PlayerHand will render hidden card backs based on expected count
-                      : []))
-              : [];
+            // Track if we had to reject stale cards
+            const hadStaleCards = rawCards.length > 0 && rawCards.length !== expectedCardCount && expectedCardCount > 0;
+            
+            // Final cards to display - use validated actualCards
+            const cards: CardType[] = shouldShowCards ? actualCards : [];
             
             // Handle empty seat click
             if (isEmptySeat) {
@@ -456,7 +468,7 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center">
-                        {(cards.length > 0 || (isObserver && expectedCardCount > 0)) ? (
+                        {(cards.length > 0 || (shouldShowCards && expectedCardCount > 0)) ? (
                           <PlayerHand 
                             cards={cards} 
                             expectedCardCount={expectedCardCount}
@@ -464,11 +476,12 @@ export const GameTable = ({
                               // Show cards if: 
                               // 1. It's the current user, OR
                               // 2. In Holm game, round is in showdown/completed phase AND player stayed
-                              !isCurrentUser && !(
+                              // 3. OR stale cards were rejected (show card backs while waiting)
+                              hadStaleCards || (!isCurrentUser && !(
                                 gameType === 'holm-game' && 
                                 (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4) && 
                                 playerDecision === 'stay'
-                              )
+                              ))
                             } 
                           />
                         ) : (
