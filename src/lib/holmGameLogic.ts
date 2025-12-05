@@ -800,6 +800,7 @@ async function handleChuckyShowdown(
       .eq('id', player.id);
 
     // Reset all players for new game (keep chips, clear ante decisions)
+    // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
     console.log('[HOLM SHOWDOWN] Resetting player states for new game');
     await supabase
       .from('players')
@@ -807,7 +808,6 @@ async function handleChuckyShowdown(
         status: 'active',
         current_decision: null,
         decision_locked: false,
-        sitting_out: false,
         ante_decision: null
       })
       .eq('game_id', gameId);
