@@ -549,7 +549,7 @@ const Game = () => {
   }, [game?.status, gameId]);
 
   // CRITICAL: Aggressive polling fallback for realtime reliability issues
-  // This handles: newly active players needing cards, ante dialog not showing
+  // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
   useEffect(() => {
     if (!gameId || !user) return;
     
@@ -579,7 +579,20 @@ const Game = () => {
       game?.status === 'configuring' || 
       waitingForAnteDialog;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus;
+    // CRITICAL: Poll when stuck on game_over - dealer may have moved on to game_selection/configuring/ante_decision
+    // Non-dealers should poll to detect when the game has transitioned past game_over
+    const stuckOnGameOver = 
+      game?.status === 'game_over' && 
+      currentPlayer && 
+      !isDealer;
+    
+    // Also poll during game_selection if not the dealer - wait for configuring transition
+    const waitingForConfig = 
+      game?.status === 'game_selection' && 
+      currentPlayer && 
+      !isDealer;
+    
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig;
     
     if (!shouldPoll) return;
     
@@ -589,13 +602,15 @@ const Game = () => {
       justAntedUpNoCards,
       waitingForAnteDialog,
       waitingForAnteStatus,
+      stuckOnGameOver,
+      waitingForConfig,
       showAnteDialog,
       gameStatus: game?.status,
       playerCardsCount: playerCards.length
     });
     
-    // Poll more frequently (250ms) for ante dialog propagation
-    const pollInterval = waitingForAnteDialog ? 250 : 500;
+    // Poll more frequently (250ms) for critical transitions, 500ms otherwise
+    const pollInterval = (waitingForAnteDialog || stuckOnGameOver || waitingForConfig) ? 250 : 500;
     
     const intervalId = setInterval(() => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
