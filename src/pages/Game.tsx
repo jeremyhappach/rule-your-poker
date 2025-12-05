@@ -240,6 +240,12 @@ const Game = () => {
             console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
+          } else if (payload.new && 'status' in payload.new && payload.new.status === 'ante_decision') {
+            // CRITICAL: Immediately fetch when status changes to ante_decision
+            // This ensures players state is updated with reset ante_decision values before dialog shows
+            console.log('[REALTIME] 🎲 ANTE DECISION STATUS - IMMEDIATE FETCH!');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
           } else if (payload.new && 'is_paused' in payload.new) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', payload.new.is_paused, 'remaining:', payload.new.paused_time_remaining);
@@ -275,7 +281,14 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] Players table changed:', payload);
-          debouncedFetch();
+          // Immediate fetch when ante_decision changes (critical for ante dialog)
+          if (payload.new && 'ante_decision' in payload.new) {
+            console.log('[REALTIME] 🎲 ANTE DECISION CHANGED - IMMEDIATE FETCH!', payload.new.ante_decision);
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+          } else {
+            debouncedFetch();
+          }
         }
       )
       .on(
