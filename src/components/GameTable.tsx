@@ -41,6 +41,7 @@ interface GameTableProps {
   currentRound: number;
   allDecisionsIn: boolean;
   playerCards: PlayerCards[];
+  authoritativeCardCount?: number; // From round.cards_dealt - bypasses state sync issues
   timeLeft: number | null;
   lastRoundResult: string | null;
   dealerPosition: number | null;
@@ -73,6 +74,7 @@ export const GameTable = ({
   currentRound,
   allDecisionsIn,
   playerCards,
+  authoritativeCardCount,
   timeLeft,
   lastRoundResult,
   dealerPosition,
@@ -308,8 +310,14 @@ export const GameTable = ({
             // Get cards for this player
             const rawCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
             
-            // Calculate expected card count based on game type
+            // CRITICAL: Use authoritative card count from round record if available
+            // This bypasses state sync issues - the count comes from the same round as the cards
             const getExpectedCardCount = (round: number): number => {
+              // If we have authoritative count from the round record, use it
+              if (authoritativeCardCount && authoritativeCardCount > 0) {
+                return authoritativeCardCount;
+              }
+              // Fallback to calculating from round number (may be stale)
               if (gameType === 'holm-game') {
                 return 4; // Holm game always has 4 cards per player
               }
@@ -332,6 +340,7 @@ export const GameTable = ({
                 playerId: player?.id,
                 rawCardCount: rawCards.length,
                 expectedCardCount,
+                authoritativeCardCount,
                 gameType,
                 currentRound
               });

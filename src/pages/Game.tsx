@@ -103,6 +103,13 @@ interface PlayerCards {
   cards: CardType[];
 }
 
+// Authoritative card count from the round record - bypasses state sync issues
+interface CardStateContext {
+  roundId: string;
+  roundNumber: number;
+  cardsDealt: number; // Authoritative expected card count
+}
+
 const Game = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
@@ -111,6 +118,7 @@ const Game = () => {
   const [game, setGame] = useState<GameData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
+  const [cardStateContext, setCardStateContext] = useState<CardStateContext | null>(null); // Authoritative card count
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
@@ -266,6 +274,7 @@ const Game = () => {
             lastKnownGameTypeRef.current = incomingGameType;
             // Clear all card state for this client
             setPlayerCards([]);
+            setCardStateContext(null);
             setCachedRoundData(null);
             cachedRoundRef.current = null;
             maxRevealedRef.current = 0;
@@ -329,6 +338,7 @@ const Game = () => {
               if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'game_selection') {
                 console.log('[REALTIME] 🧹 NEW GAME SETUP DETECTED - CLEARING ALL CARD STATE!');
                 setPlayerCards([]);
+                setCardStateContext(null);
                 setCachedRoundData(null);
                 cachedRoundRef.current = null;
                 maxRevealedRef.current = 0;
@@ -1423,12 +1433,12 @@ const Game = () => {
       if (keepCards || keepCardsForResults) {
         // CRITICAL: Fetch cards from most recent round if current_round is not set yet
         // This fixes the race condition where cards are inserted before current_round is updated
-        let roundData = null;
+        let roundData: { id: string; round_number: number; cards_dealt: number } | null = null;
         
         if (gameData.current_round) {
           const { data } = await supabase
             .from('rounds')
-            .select('id')
+            .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .eq('round_number', gameData.current_round)
             .single();
@@ -1437,7 +1447,7 @@ const Game = () => {
           // Fallback: get the most recent round
           const { data } = await supabase
             .from('rounds')
-            .select('id')
+            .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .order('round_number', { ascending: false })
             .limit(1)
@@ -1447,6 +1457,15 @@ const Game = () => {
         }
 
         if (roundData) {
+          // Store authoritative card context from the round record
+          const newCardContext: CardStateContext = {
+            roundId: roundData.id,
+            roundNumber: roundData.round_number,
+            cardsDealt: roundData.cards_dealt
+          };
+          console.log('[FETCH] Setting card state context:', newCardContext);
+          setCardStateContext(newCardContext);
+          
           const { data: cardsData } = await supabase
             .from('player_cards')
             .select('player_id, cards')
@@ -2490,6 +2509,7 @@ const Game = () => {
             currentRound={game.current_round || 1}
             allDecisionsIn={game.all_decisions_in || false}
             playerCards={playerCards}
+            authoritativeCardCount={cardStateContext?.cardsDealt}
             timeLeft={timeLeft}
             lastRoundResult={(game as any).last_round_result || null}
             dealerPosition={game.dealer_position}
