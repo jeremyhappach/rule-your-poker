@@ -2222,6 +2222,7 @@ const Game = () => {
               <AnteUpDialog
                 gameId={gameId!}
                 playerId={players.find(p => p.user_id === user.id)?.id || ''}
+                gameType={game.game_type}
                 anteAmount={game.ante_amount}
                 legValue={game.leg_value || 1}
                 pussyTaxEnabled={game.pussy_tax_enabled ?? true}
@@ -2229,6 +2230,7 @@ const Game = () => {
                 legsToWin={game.legs_to_win || 3}
                 potMaxEnabled={game.pot_max_enabled ?? true}
                 potMaxValue={game.pot_max_value || 10}
+                chuckyCards={game.chucky_cards}
                 onDecisionMade={() => setShowAnteDialog(false)}
               />
             )}
