@@ -827,25 +827,37 @@ async function handleChuckyShowdown(
     console.log('[HOLM SHOWDOWN] Pausing 2 seconds for announcement...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Calculate next dealer position (rotate clockwise to next active player)
-    const { data: allPlayers } = await supabase
+    // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
+    // Dealer cannot pass to a bot or a sitting_out player
+    const { data: eligibleDealers } = await supabase
       .from('players')
-      .select('position, sitting_out')
+      .select('position, is_bot, sitting_out')
       .eq('game_id', gameId)
       .eq('sitting_out', false)
+      .eq('is_bot', false)
       .order('position', { ascending: true });
     
-    const occupiedPositions = allPlayers?.map(p => p.position) || [];
     const currentDealerPosition = game.dealer_position || 1;
-    const currentDealerIndex = occupiedPositions.indexOf(currentDealerPosition);
-    const nextDealerIndex = currentDealerIndex === -1 
-      ? 0 
-      : (currentDealerIndex + 1) % occupiedPositions.length;
-    const nextDealerPosition = occupiedPositions[nextDealerIndex] || 1;
+    let nextDealerPosition = currentDealerPosition; // Default: keep current dealer
+    
+    if (eligibleDealers && eligibleDealers.length > 0) {
+      const eligiblePositions = eligibleDealers.map(p => p.position);
+      const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);
+      
+      if (currentDealerIndex === -1) {
+        // Current dealer not in eligible list, pick first eligible
+        nextDealerPosition = eligiblePositions[0];
+      } else if (eligiblePositions.length > 1) {
+        // Rotate to next eligible position
+        const nextDealerIndex = (currentDealerIndex + 1) % eligiblePositions.length;
+        nextDealerPosition = eligiblePositions[nextDealerIndex];
+      }
+      // If only 1 eligible dealer, keep them as dealer
+    }
     
     console.log('[HOLM SHOWDOWN] Dealer rotation:', {
       current: currentDealerPosition,
-      occupiedPositions,
+      eligiblePositions: eligibleDealers?.map(p => p.position) || [],
       nextDealer: nextDealerPosition
     });
     
@@ -963,20 +975,35 @@ async function handleMultiPlayerShowdown(
     })
   );
 
-  // Debug: Log each player's evaluation
-  console.log('[HOLM MULTI] === HAND EVALUATIONS ===');
+  // Debug: Log each player's evaluation with detailed hand description
+  console.log('[HOLM MULTI] ========== HAND EVALUATIONS ==========');
   evaluations.forEach(e => {
     const playerName = e.player.profiles?.username || e.player.user_id;
     const allCards = [...e.cards, ...communityCards];
     const cardStr = allCards.map(c => `${c.rank}${c.suit}`).join(', ');
-    console.log(`[HOLM MULTI] ${playerName}: ${e.evaluation.rank} (value: ${e.evaluation.value}) - Cards: ${cardStr}`);
+    const handDesc = formatHandRankDetailed(allCards, false);
+    console.log(`[HOLM MULTI] ${playerName}: ${handDesc} | rank: ${e.evaluation.rank} | value: ${e.evaluation.value}`);
+    console.log(`[HOLM MULTI]   -> Cards: ${cardStr}`);
   });
 
   // Find winner(s)
   const maxValue = Math.max(...evaluations.map(e => e.evaluation.value));
-  console.log('[HOLM MULTI] Max value:', maxValue);
+  console.log('[HOLM MULTI] Max evaluation value:', maxValue);
   const winners = evaluations.filter(e => e.evaluation.value === maxValue);
   const losers = evaluations.filter(e => e.evaluation.value < maxValue);
+  
+  // Log detailed comparison for tie detection
+  if (winners.length > 1) {
+    console.log('[HOLM MULTI] *** TIE DETECTED ***');
+    console.log('[HOLM MULTI] Tied players:');
+    winners.forEach(w => {
+      const name = w.player.profiles?.username || w.player.user_id;
+      const handDesc = formatHandRankDetailed([...w.cards, ...communityCards], false);
+      console.log(`[HOLM MULTI]   - ${name}: ${handDesc} (value: ${w.evaluation.value})`);
+    });
+  } else {
+    console.log('[HOLM MULTI] Single winner - no tie');
+  }
   console.log('[HOLM MULTI] Winners count:', winners.length, 'Losers count:', losers.length);
 
   if (winners.length === 1) {
