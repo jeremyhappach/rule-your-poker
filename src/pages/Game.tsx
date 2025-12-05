@@ -1903,7 +1903,9 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
-        console.log('[PLAYER DECISION] *** Realtime will trigger refetch ***');
+        console.log('[PLAYER DECISION] *** Explicitly fetching after turn advance ***');
+        // Explicitly fetch to get updated turn position - don't rely on realtime alone
+        setTimeout(() => fetchGameData(), 100);
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
@@ -1927,7 +1929,9 @@ const Game = () => {
       // Check if round is complete after decision
       if (game?.game_type === 'holm-game') {
         await checkHolmRoundComplete(gameId);
-        console.log('[PLAYER DECISION] *** Realtime will trigger refetch (fold) ***');
+        console.log('[PLAYER DECISION] *** Explicitly fetching after turn advance (fold) ***');
+        // Explicitly fetch to get updated turn position - don't rely on realtime alone
+        setTimeout(() => fetchGameData(), 100);
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
