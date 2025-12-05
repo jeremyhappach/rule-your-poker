@@ -350,7 +350,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const activeGames = games.filter(g => 
-    ['waiting', 'dealer_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress'].includes(g.status)
+    ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over'].includes(g.status)
   );
   
   const historicalGames = games.filter(g => g.status === 'session_ended');
