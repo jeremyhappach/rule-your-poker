@@ -232,6 +232,7 @@ const Game = () => {
             newKeys: payload.new ? Object.keys(payload.new) : [],
             awaiting_next_round: payload.new?.awaiting_next_round,
             is_paused: payload.new?.is_paused,
+            status: payload.new?.status,
             fullPayload: payload
           });
           
@@ -240,17 +241,21 @@ const Game = () => {
             console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
-          } else if (payload.new && 'status' in payload.new && payload.new.status === 'ante_decision') {
-            // CRITICAL: Immediately fetch when status changes to ante_decision
-            // This ensures players state is updated with reset ante_decision values before dialog shows
-            console.log('[REALTIME] 🎲 ANTE DECISION STATUS - IMMEDIATE FETCH! Game ID:', gameId, 'User:', user?.id);
-            if (debounceTimer) clearTimeout(debounceTimer);
-            // Force multiple fetches to ensure we get the latest data (workaround for potential timing issues)
-            fetchGameData();
-            setTimeout(() => {
-              console.log('[REALTIME] 🎲 ANTE DECISION - Second fetch after 500ms');
+          } else if (payload.new && 'status' in payload.new) {
+            const newStatus = payload.new.status;
+            // CRITICAL: Immediately fetch for any status change that affects UI flow
+            if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection') {
+              console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
+              if (debounceTimer) clearTimeout(debounceTimer);
               fetchGameData();
-            }, 500);
+              // Extra delayed fetch to catch any race conditions
+              setTimeout(() => {
+                console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 500ms');
+                fetchGameData();
+              }, 500);
+            } else {
+              debouncedFetch();
+            }
           } else if (payload.new && 'is_paused' in payload.new) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', payload.new.is_paused, 'remaining:', payload.new.paused_time_remaining);
@@ -291,6 +296,16 @@ const Game = () => {
             console.log('[REALTIME] 🎲 ANTE DECISION CHANGED - IMMEDIATE FETCH!', payload.new.ante_decision);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
+          } else if (payload.new && 'sitting_out' in payload.new && payload.new.sitting_out === false) {
+            // CRITICAL: Player just became active (anted up) - immediate fetch for cards
+            console.log('[REALTIME] 🎮 PLAYER BECAME ACTIVE - IMMEDIATE FETCH FOR CARDS!');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+            // Extra delayed fetch to catch cards that may be dealt after status update
+            setTimeout(() => {
+              console.log('[REALTIME] 🎮 PLAYER BECAME ACTIVE - Delayed refetch after 1s');
+              fetchGameData();
+            }, 1000);
           } else {
             debouncedFetch();
           }
@@ -1592,7 +1607,10 @@ const Game = () => {
       } else {
         await startRound(gameId, 1);
       }
+      // Multiple fetches with increasing delays to catch all card data
       setTimeout(() => fetchGameData(), 500);
+      setTimeout(() => fetchGameData(), 1500);
+      setTimeout(() => fetchGameData(), 3000);
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
       anteProcessingRef.current = false;

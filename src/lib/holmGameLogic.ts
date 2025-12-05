@@ -827,20 +827,43 @@ async function handleChuckyShowdown(
     console.log('[HOLM SHOWDOWN] Pausing 2 seconds for announcement...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    // Calculate next dealer position (rotate clockwise to next active player)
+    const { data: allPlayers } = await supabase
+      .from('players')
+      .select('position, sitting_out')
+      .eq('game_id', gameId)
+      .eq('sitting_out', false)
+      .order('position', { ascending: true });
+    
+    const occupiedPositions = allPlayers?.map(p => p.position) || [];
+    const currentDealerPosition = game.dealer_position || 1;
+    const currentDealerIndex = occupiedPositions.indexOf(currentDealerPosition);
+    const nextDealerIndex = currentDealerIndex === -1 
+      ? 0 
+      : (currentDealerIndex + 1) % occupiedPositions.length;
+    const nextDealerPosition = occupiedPositions[nextDealerIndex] || 1;
+    
+    console.log('[HOLM SHOWDOWN] Dealer rotation:', {
+      current: currentDealerPosition,
+      occupiedPositions,
+      nextDealer: nextDealerPosition
+    });
+    
     // Now set game_over status so dealer can click Next Game button
     const { error: gameOverError } = await supabase
       .from('games')
       .update({
         status: 'game_over',
         pot: 0,
-        awaiting_next_round: false
+        awaiting_next_round: false,
+        dealer_position: nextDealerPosition
       })
       .eq('id', gameId);
     
     if (gameOverError) {
       console.error('[HOLM SHOWDOWN] ERROR setting game_over status:', gameOverError);
     } else {
-      console.log('[HOLM SHOWDOWN] Successfully set game_over status (awaiting dealer confirmation)');
+      console.log('[HOLM SHOWDOWN] Successfully set game_over status with new dealer:', nextDealerPosition);
     }
   } else {
     console.log('[HOLM SHOWDOWN] Chucky wins!');
