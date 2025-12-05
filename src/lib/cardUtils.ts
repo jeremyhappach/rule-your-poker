@@ -530,45 +530,26 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
 
 /**
  * Find the actual high card of a straight in a hand
+ * Uses the same logic as canMakeStraight for consistency with evaluation
  */
 function findStraightHighCard(cards: Card[], useWildCards: boolean): number {
   const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A';
   const wildcardCount = useWildCards ? cards.filter(c => c.rank === wildRank).length : 0;
   const nonWildcards = useWildCards ? cards.filter(c => c.rank !== wildRank) : cards;
-  const values = nonWildcards.map(c => RANK_VALUES[c.rank]);
-  const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+  const ranks = nonWildcards.map(c => c.rank);
   
-  console.log('[STRAIGHT-HIGH] Finding straight high card. Values:', uniqueValues, 'wildcards:', wildcardCount);
+  console.log('[STRAIGHT-HIGH] Finding straight high card. Ranks:', ranks, 'wildcards:', wildcardCount);
   
-  // Try to find the highest possible straight
-  for (let start = 14; start >= 5; start--) {
-    let needed = 0;
-    for (let i = 0; i < 5; i++) {
-      const targetValue = start - i;
-      if (!uniqueValues.includes(targetValue)) {
-        needed++;
-      }
-    }
-    if (needed <= wildcardCount) {
-      console.log('[STRAIGHT-HIGH] Found straight with high card:', start);
-      return start;
-    }
+  // Use the exact same function that evaluation uses
+  const result = checkStraightWithWildcards(ranks, wildcardCount);
+  
+  if (result.possible) {
+    console.log('[STRAIGHT-HIGH] Found straight with high card:', result.highCard);
+    return result.highCard;
   }
   
-  // Check wheel (A-2-3-4-5)
-  const wheelCards = [14, 2, 3, 4, 5];
-  let wheelNeeded = 0;
-  for (const val of wheelCards) {
-    if (!uniqueValues.includes(val)) {
-      wheelNeeded++;
-    }
-  }
-  if (wheelNeeded <= wildcardCount) {
-    console.log('[STRAIGHT-HIGH] Found wheel straight, high card: 5');
-    return 5;
-  }
-  
-  // Fallback to highest card (shouldn't happen if we have a straight)
-  console.log('[STRAIGHT-HIGH] No straight found, using highest card:', uniqueValues[0]);
-  return uniqueValues[0] || 14;
+  // Fallback - get highest card value (shouldn't happen if we have a straight)
+  const values = nonWildcards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a);
+  console.log('[STRAIGHT-HIGH] WARNING: No straight found by checkStraightWithWildcards, using highest card:', values[0]);
+  return values[0] || 14;
 }
