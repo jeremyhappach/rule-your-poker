@@ -311,7 +311,10 @@ function checkFlush(cards: Card[], wildcards: number): { possible: boolean; high
   const maxSuitCount = Math.max(...Object.values(suitCounts));
   if (maxSuitCount + wildcards >= 5) {
     const flushSuit = Object.entries(suitCounts).find(([_, count]) => count === maxSuitCount)?.[0] as Suit;
-    const highCard = cards[0] ? RANK_VALUES[cards[0].rank] : 14;
+    // CRITICAL: Get highest card IN THE FLUSH SUIT, not just highest card overall
+    const flushCards = cards.filter(c => c.suit === flushSuit).sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+    const highCard = flushCards[0] ? RANK_VALUES[flushCards[0].rank] : 14;
+    console.log('[FLUSH] Found flush in suit:', flushSuit, 'high card:', highCard, 'flush cards:', flushCards.map(c => `${c.rank}${c.suit}`).join(', '));
     return { possible: true, highCard, suit: flushSuit };
   }
   
@@ -477,7 +480,12 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
       break;
     }
     case 'flush': {
-      const highCard = valueToRankName(RANK_VALUES[sortedCards[0].rank]);
+      // Find the flush suit first, then get highest card in that suit
+      const suitCounts: Record<Suit, number> = { '♠': 0, '♥': 0, '♦': 0, '♣': 0 };
+      cards.forEach(c => suitCounts[c.suit]++);
+      const flushSuit = (Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0]) as Suit;
+      const flushCards = cards.filter(c => c.suit === flushSuit).sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+      const highCard = valueToRankName(RANK_VALUES[flushCards[0]?.rank || sortedCards[0].rank]);
       result = `Flush, ${highCard} high`;
       break;
     }
