@@ -238,7 +238,20 @@ const Game = () => {
             fullPayload: payload
           });
           
-          // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI
+          // CRITICAL: Detect game_type changes and clear card state for ALL clients (not just dealer)
+          if (payload.new && payload.old && 'game_type' in payload.new && payload.new.game_type !== payload.old.game_type) {
+            console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED:', payload.old.game_type, '->', payload.new.game_type, '- CLEARING ALL CARD STATE!');
+            // Clear all card state for this client
+            setPlayerCards([]);
+            setCachedRoundData(null);
+            cachedRoundRef.current = null;
+            if (debounceTimer) clearTimeout(debounceTimer);
+            // Fetch fresh data after a short delay to allow DB to settle
+            setTimeout(() => fetchGameData(), 200);
+            return;
+          }
+          
+          // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI (dealer only)
           if (gameTypeSwitchingRef.current) {
             console.log('[REALTIME] ⏸️ Skipping fetch - game type switch in progress');
             return;
