@@ -577,26 +577,48 @@ const Game = () => {
     if (!gameId || !game?.status) return;
     if (game.status !== 'in_progress' && game.status !== 'game_over') return;
     
-    const syncCards = async () => {
+    const syncGameState = async () => {
       try {
-        // Get current round directly from DB
-        const { data: gameData } = await supabase
+        // Get FULL game state directly from DB - this is the authoritative source
+        const { data: dbGame } = await supabase
           .from('games')
-          .select('current_round, game_type')
+          .select('current_round, game_type, all_decisions_in, awaiting_next_round, last_round_result')
           .eq('id', gameId)
           .single();
         
-        if (!gameData?.current_round) return;
+        if (!dbGame?.current_round) return;
+        
+        // CRITICAL: Sync game state if it differs from local
+        // This fixes buttons/timer disappearing due to stale all_decisions_in
+        const localAllDecisionsIn = game?.all_decisions_in;
+        const dbAllDecisionsIn = dbGame.all_decisions_in;
+        
+        if (localAllDecisionsIn !== dbAllDecisionsIn) {
+          console.log('[GAME SYNC] 🔴 all_decisions_in MISMATCH! Local:', localAllDecisionsIn, 'DB:', dbAllDecisionsIn, '- FORCING UPDATE');
+          setGame(prev => prev ? { ...prev, all_decisions_in: dbAllDecisionsIn } : prev);
+        }
+        
+        // Also sync awaiting_next_round and last_round_result
+        if (game?.awaiting_next_round !== dbGame.awaiting_next_round) {
+          console.log('[GAME SYNC] 🔴 awaiting_next_round MISMATCH! Local:', game?.awaiting_next_round, 'DB:', dbGame.awaiting_next_round);
+          setGame(prev => prev ? { ...prev, awaiting_next_round: dbGame.awaiting_next_round } : prev);
+        }
         
         // Get the actual round record to get cards_dealt
         const { data: roundData } = await supabase
           .from('rounds')
-          .select('id, round_number, cards_dealt')
+          .select('id, round_number, cards_dealt, decision_deadline')
           .eq('game_id', gameId)
-          .eq('round_number', gameData.current_round)
+          .eq('round_number', dbGame.current_round)
           .single();
         
         if (!roundData) return;
+        
+        // Sync decision deadline for timer
+        if (roundData.decision_deadline && roundData.decision_deadline !== decisionDeadline) {
+          console.log('[GAME SYNC] 🔴 decision_deadline MISMATCH! Updating...');
+          setDecisionDeadline(roundData.decision_deadline);
+        }
         
         const dbCardsDealt = roundData.cards_dealt;
         const localCards = localCardsCountRef.current;
@@ -604,7 +626,7 @@ const Game = () => {
         
         // Determine expected card count for this game type and round
         let expectedCards = dbCardsDealt;
-        if (gameData.game_type === '3-5-7-game') {
+        if (dbGame.game_type === '3-5-7-game') {
           // In 3-5-7, cards_dealt represents which round (1=3cards, 2=5cards, 3=7cards)
           const cardCountMap: Record<number, number> = { 1: 3, 2: 5, 3: 7 };
           expectedCards = cardCountMap[dbCardsDealt] || dbCardsDealt;
@@ -641,17 +663,17 @@ const Game = () => {
           }
         }
       } catch (err) {
-        console.error('[CARD SYNC] Error:', err);
+        console.error('[GAME SYNC] Error:', err);
       }
     };
     
     // Run immediately
-    syncCards();
+    syncGameState();
     
     // Poll every 500ms for aggressive sync
-    const syncInterval = setInterval(syncCards, 500);
+    const syncInterval = setInterval(syncGameState, 500);
     return () => clearInterval(syncInterval);
-  }, [gameId, game?.status, game?.current_round]);
+  }, [gameId, game?.status, game?.current_round, game?.all_decisions_in, decisionDeadline]);
 
   // Handle paused time display separately from interval management
   useEffect(() => {
