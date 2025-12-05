@@ -1474,6 +1474,17 @@ const Game = () => {
     cachedRoundRef.current = null;
     maxRevealedRef.current = 0;
 
+    // OPTIMISTIC UI UPDATE: Immediately update local game state with new game_type
+    // This ensures the dealer sees the correct rendering immediately
+    setGame(prevGame => prevGame ? {
+      ...prevGame,
+      game_type: gameType,
+      status: 'configuring',
+      config_complete: false,
+      current_round: null,
+      awaiting_next_round: false
+    } : null);
+
     // Reset ante_decision for ALL seated players so they all get the ante popup
     const { error: resetError } = await supabase
       .from('players')
