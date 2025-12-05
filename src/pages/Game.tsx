@@ -1326,6 +1326,16 @@ const Game = () => {
 
     console.log('[GAME SELECTION] Selected game:', gameType);
 
+    // Reset ante_decision for ALL seated players so they all get the ante popup
+    const { error: resetError } = await supabase
+      .from('players')
+      .update({ ante_decision: null })
+      .eq('game_id', gameId);
+
+    if (resetError) {
+      console.error('[GAME SELECTION] Failed to reset ante decisions:', resetError);
+    }
+
     // Save the game type and transition to configuring phase
     const { error } = await supabase
       .from('games')
