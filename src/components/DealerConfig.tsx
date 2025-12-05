@@ -82,20 +82,11 @@ export const DealerConfig = ({
           .eq('id', gameId);
 
         if (!error) {
-          // Reset ante_decision for all non-dealer players who are NOT sitting out
+          // Reset ante_decision for all non-dealer players so they get the popup (including sitting_out players)
           await supabase
             .from('players')
             .update({ ante_decision: null })
             .eq('game_id', gameId)
-            .eq('sitting_out', false)
-            .neq('id', dealerPlayerId);
-
-          // Players who are sitting_out automatically get sit_out decision (they don't participate)
-          await supabase
-            .from('players')
-            .update({ ante_decision: 'sit_out' })
-            .eq('game_id', gameId)
-            .eq('sitting_out', true)
             .neq('id', dealerPlayerId);
 
           // Automatically ante up the dealer (bot)
@@ -187,29 +178,16 @@ export const DealerConfig = ({
       return;
     }
 
-    // Reset ante_decision for all non-dealer players who are NOT sitting out
-    console.log('[DEALER CONFIG] Resetting ante_decision for non-dealer active players, dealerPlayerId:', dealerPlayerId);
+    // Reset ante_decision for all non-dealer players so they get the popup (including sitting_out players)
+    console.log('[DEALER CONFIG] Resetting ante_decision for non-dealer players, dealerPlayerId:', dealerPlayerId);
     const { error: resetError, data: resetResult } = await supabase
       .from('players')
       .update({ ante_decision: null })
       .eq('game_id', gameId)
-      .eq('sitting_out', false)
       .neq('id', dealerPlayerId)
       .select();
 
     console.log('[DEALER CONFIG] Reset ante_decision result:', { resetError, resetResult });
-
-    // Players who are sitting_out automatically get sit_out decision (they don't participate)
-    console.log('[DEALER CONFIG] Setting sit_out decision for sitting_out players');
-    const { error: sitOutError, data: sitOutResult } = await supabase
-      .from('players')
-      .update({ ante_decision: 'sit_out' })
-      .eq('game_id', gameId)
-      .eq('sitting_out', true)
-      .neq('id', dealerPlayerId)
-      .select();
-
-    console.log('[DEALER CONFIG] Sit out players result:', { sitOutError, sitOutResult });
 
     // Automatically ante up the dealer
     console.log('[DEALER CONFIG] Setting dealer ante_decision to ante_up');
