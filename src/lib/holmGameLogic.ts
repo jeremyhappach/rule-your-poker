@@ -1055,25 +1055,40 @@ async function handleMultiPlayerShowdown(
   console.log('[HOLM MULTI] Max evaluation value:', maxValue);
   
   // CRITICAL DEBUG: Log all player values to help identify why ties happen
-  console.log('[HOLM MULTI] All player values:', evaluations.map(e => ({
-    name: e.player.profiles?.username || e.player.user_id,
-    rank: e.evaluation.rank,
-    value: e.evaluation.value,
-    isMax: e.evaluation.value === maxValue
-  })));
+  console.log('[HOLM MULTI] ===== ALL PLAYER VALUES (TIE DEBUG) =====');
+  evaluations.forEach(e => {
+    const name = e.player.profiles?.username || e.player.user_id;
+    const playerCardStr = e.cards.map(c => `${c.rank}${c.suit}`).join(' ');
+    const allCardsStr = [...e.cards, ...communityCards].map(c => `${c.rank}${c.suit}`).join(' ');
+    console.log(`[HOLM MULTI] ${name}: cards=[${playerCardStr}] all=[${allCardsStr}] rank=${e.evaluation.rank} value=${e.evaluation.value} isMax=${e.evaluation.value === maxValue}`);
+  });
   
   const winners = evaluations.filter(e => e.evaluation.value === maxValue);
   const losers = evaluations.filter(e => e.evaluation.value < maxValue);
   
-  // Log detailed comparison for tie detection
+  // CRITICAL: Enhanced tie detection logging to catch miscalculations
   if (winners.length > 1) {
-    console.log('[HOLM MULTI] *** TIE DETECTED ***');
-    console.log('[HOLM MULTI] Tied players:');
-    winners.forEach(w => {
+    console.error('[HOLM MULTI] ⚠️⚠️⚠️ TIE DETECTED - CHECK FOR EVALUATION BUG ⚠️⚠️⚠️');
+    console.error('[HOLM MULTI] Tied player count:', winners.length);
+    winners.forEach((w, i) => {
       const name = w.player.profiles?.username || w.player.user_id;
-      const handDesc = formatHandRankDetailed([...w.cards, ...communityCards], false);
-      console.log(`[HOLM MULTI]   - ${name}: ${handDesc} (value: ${w.evaluation.value})`);
+      const playerCardStr = w.cards.map(c => `${c.rank}${c.suit}`).join(' ');
+      const allCards = [...w.cards, ...communityCards];
+      const allCardStr = allCards.map(c => `${c.rank}${c.suit}`).join(' ');
+      const handDesc = formatHandRankDetailed(allCards, false);
+      console.error(`[HOLM MULTI] TIE ${i+1}: ${name}`);
+      console.error(`[HOLM MULTI]   Player cards: ${playerCardStr}`);
+      console.error(`[HOLM MULTI]   All cards: ${allCardStr}`);
+      console.error(`[HOLM MULTI]   Hand: ${handDesc}`);
+      console.error(`[HOLM MULTI]   Rank: ${w.evaluation.rank}`);
+      console.error(`[HOLM MULTI]   Value: ${w.evaluation.value}`);
     });
+    // Also log what hand rank type each has for easier debugging
+    const handTypes = winners.map(w => w.evaluation.rank);
+    const uniqueTypes = [...new Set(handTypes)];
+    if (uniqueTypes.length > 1) {
+      console.error(`[HOLM MULTI] ❌ BUG DETECTED: Different hand types are tied! Types: ${uniqueTypes.join(', ')}`);
+    }
   } else {
     console.log('[HOLM MULTI] Single winner - no tie');
   }
