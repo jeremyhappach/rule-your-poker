@@ -1467,6 +1467,13 @@ const Game = () => {
 
     console.log('[GAME SELECTION] Selected game:', gameType);
 
+    // IMMEDIATELY clear all card-related state for the dealer
+    // This prevents stale card rendering while waiting for database update
+    setPlayerCards([]);
+    setCachedRoundData(null);
+    cachedRoundRef.current = null;
+    maxRevealedRef.current = 0;
+
     // Reset ante_decision for ALL seated players so they all get the ante popup
     const { error: resetError } = await supabase
       .from('players')
