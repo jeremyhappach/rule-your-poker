@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings, Bot } from 'lucide-react';
+import { Settings, Bot, DollarSign, Timer } from 'lucide-react';
 
 interface GameDefaults {
   id: string;
@@ -17,6 +18,14 @@ interface GameDefaults {
   chucky_last_card_delay_seconds: number;
   bot_fold_probability: number;
   bot_decision_delay_seconds: number;
+  ante_amount: number;
+  pot_max_enabled: boolean;
+  pot_max_value: number;
+  chucky_cards: number;
+  leg_value: number;
+  legs_to_win: number;
+  pussy_tax_enabled: boolean;
+  pussy_tax_value: number;
 }
 
 interface GameDefaultsConfigProps {
@@ -51,7 +60,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     setLoading(false);
   };
 
-  const updateDefault = (gameType: string, field: keyof GameDefaults, value: number) => {
+  const updateDefault = (gameType: string, field: keyof GameDefaults, value: number | boolean) => {
     setDefaults(prev => 
       prev.map(d => 
         d.game_type === gameType ? { ...d, [field]: value } : d
@@ -71,6 +80,14 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
             bot_fold_probability: defaultConfig.bot_fold_probability,
             bot_decision_delay_seconds: defaultConfig.bot_decision_delay_seconds,
+            ante_amount: defaultConfig.ante_amount,
+            pot_max_enabled: defaultConfig.pot_max_enabled,
+            pot_max_value: defaultConfig.pot_max_value,
+            chucky_cards: defaultConfig.chucky_cards,
+            leg_value: defaultConfig.leg_value,
+            legs_to_win: defaultConfig.legs_to_win,
+            pussy_tax_enabled: defaultConfig.pussy_tax_enabled,
+            pussy_tax_value: defaultConfig.pussy_tax_value,
           })
           .eq('game_type', defaultConfig.game_type);
 
@@ -87,6 +104,84 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
   const getDefaultByType = (gameType: string) => 
     defaults.find(d => d.game_type === gameType);
+
+  const renderGameSettings = (gameType: string) => {
+    const gameDefaults = getDefaultByType(gameType);
+    if (!gameDefaults) return null;
+
+    return (
+      <div className="space-y-4 pt-4 border-t">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <DollarSign className="h-4 w-4" />
+          Game Settings
+        </div>
+        
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor={`${gameType}-ante`}>Ante Amount ($)</Label>
+            <Input
+              id={`${gameType}-ante`}
+              type="number"
+              min={1}
+              max={100}
+              value={gameDefaults.ante_amount}
+              onChange={(e) => updateDefault(gameType, 'ante_amount', parseInt(e.target.value) || 2)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Pot Max Enabled</Label>
+              <p className="text-xs text-muted-foreground">Limit pot matching</p>
+            </div>
+            <Switch
+              checked={gameDefaults.pot_max_enabled}
+              onCheckedChange={(checked) => updateDefault(gameType, 'pot_max_enabled', checked)}
+            />
+          </div>
+
+          {gameDefaults.pot_max_enabled && (
+            <div className="space-y-2">
+              <Label htmlFor={`${gameType}-pot-max`}>Pot Max Value ($)</Label>
+              <Input
+                id={`${gameType}-pot-max`}
+                type="number"
+                min={1}
+                max={1000}
+                value={gameDefaults.pot_max_value}
+                onChange={(e) => updateDefault(gameType, 'pot_max_value', parseInt(e.target.value) || 10)}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Pussy Tax Enabled</Label>
+              <p className="text-xs text-muted-foreground">Fee for folding</p>
+            </div>
+            <Switch
+              checked={gameDefaults.pussy_tax_enabled}
+              onCheckedChange={(checked) => updateDefault(gameType, 'pussy_tax_enabled', checked)}
+            />
+          </div>
+
+          {gameDefaults.pussy_tax_enabled && (
+            <div className="space-y-2">
+              <Label htmlFor={`${gameType}-pussy-tax`}>Pussy Tax Value ($)</Label>
+              <Input
+                id={`${gameType}-pussy-tax`}
+                type="number"
+                min={1}
+                max={100}
+                value={gameDefaults.pussy_tax_value}
+                onChange={(e) => updateDefault(gameType, 'pussy_tax_value', parseInt(e.target.value) || 1)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderBotSettings = (gameType: string) => {
     const gameDefaults = getDefaultByType(gameType);
@@ -159,6 +254,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                 if (!holmDefaults) return null;
                 return (
                   <>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Timer className="h-4 w-4" />
+                      Timing Settings
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="holm-timer">Decision Timer (seconds)</Label>
                       <Input
@@ -200,6 +300,25 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                       <p className="text-xs text-muted-foreground">Delay before revealing Chucky's final card</p>
                     </div>
 
+                    <div className="space-y-4 pt-4 border-t">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        Chucky Settings
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="holm-chucky-cards">Chucky Cards</Label>
+                        <Input
+                          id="holm-chucky-cards"
+                          type="number"
+                          min={1}
+                          max={7}
+                          value={holmDefaults.chucky_cards}
+                          onChange={(e) => updateDefault('holm', 'chucky_cards', parseInt(e.target.value) || 4)}
+                        />
+                        <p className="text-xs text-muted-foreground">Number of cards Chucky receives</p>
+                      </div>
+                    </div>
+
+                    {renderGameSettings('holm')}
                     {renderBotSettings('holm')}
                   </>
                 );
@@ -212,6 +331,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                 if (!defaults357) return null;
                 return (
                   <>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Timer className="h-4 w-4" />
+                      Timing Settings
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="357-timer">Decision Timer (seconds)</Label>
                       <Input
@@ -222,9 +346,40 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                         value={defaults357.decision_timer_seconds}
                         onChange={(e) => updateDefault('3-5-7', 'decision_timer_seconds', parseInt(e.target.value) || 10)}
                       />
-                      <p className="text-xs text-muted-foreground">Time players have to make stay/fold decisions</p>
+                      <p className="text-xs text-muted-foreground">Time players have to make stay/drop decisions</p>
                     </div>
 
+                    <div className="space-y-4 pt-4 border-t">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        Legs Settings
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="357-leg-value">Leg Value ($)</Label>
+                        <Input
+                          id="357-leg-value"
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={defaults357.leg_value}
+                          onChange={(e) => updateDefault('3-5-7', 'leg_value', parseInt(e.target.value) || 1)}
+                        />
+                        <p className="text-xs text-muted-foreground">Dollar value per leg</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="357-legs-to-win">Legs to Win</Label>
+                        <Input
+                          id="357-legs-to-win"
+                          type="number"
+                          min={1}
+                          max={10}
+                          value={defaults357.legs_to_win}
+                          onChange={(e) => updateDefault('3-5-7', 'legs_to_win', parseInt(e.target.value) || 3)}
+                        />
+                        <p className="text-xs text-muted-foreground">Number of legs required to win</p>
+                      </div>
+                    </div>
+
+                    {renderGameSettings('3-5-7')}
                     {renderBotSettings('3-5-7')}
                   </>
                 );

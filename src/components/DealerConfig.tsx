@@ -49,31 +49,66 @@ export const DealerConfig = ({
   const [potMaxEnabled, setPotMaxEnabled] = useState(currentPotMaxEnabled ?? true);
   const [potMaxValue, setPotMaxValue] = useState(currentPotMaxValue || 10);
   const [chuckyCards, setChuckyCards] = useState(currentChuckyCards || 4);
+  const [loadingDefaults, setLoadingDefaults] = useState(true);
   
   const isHolmGame = gameType === 'holm-game';
 
-  // Auto-submit for bots
+  // Fetch defaults from game_defaults table
   useEffect(() => {
-    if (isBot) {
+    const fetchDefaults = async () => {
+      // Map frontend game type to database game type
+      const dbGameType = isHolmGame ? 'holm' : '3-5-7';
+      
+      const { data, error } = await supabase
+        .from('game_defaults')
+        .select('*')
+        .eq('game_type', dbGameType)
+        .single();
+
+      if (!error && data) {
+        console.log('[DEALER CONFIG] Loaded defaults:', data);
+        setAnteAmount(data.ante_amount);
+        setPotMaxEnabled(data.pot_max_enabled);
+        setPotMaxValue(data.pot_max_value);
+        setPussyTaxEnabled(data.pussy_tax_enabled);
+        setPussyTaxValue(data.pussy_tax_value);
+        
+        if (isHolmGame) {
+          setChuckyCards(data.chucky_cards);
+        } else {
+          setLegValue(data.leg_value);
+          setLegsToWin(data.legs_to_win);
+        }
+      } else {
+        console.log('[DEALER CONFIG] No defaults found, using fallbacks');
+      }
+      setLoadingDefaults(false);
+    };
+
+    fetchDefaults();
+  }, [isHolmGame]);
+
+  // Auto-submit for bots - wait for defaults to load first
+  useEffect(() => {
+    if (isBot && !loadingDefaults) {
       const autoSubmit = async () => {
-        // Update game config using current settings
+        // Update game config using loaded default settings
         const updateData: any = {
-          ante_amount: currentAnteAmount,
-          leg_value: currentLegValue,
-          pussy_tax_enabled: currentPussyTaxEnabled,
-          pussy_tax_value: currentPussyTaxValue,
-          pussy_tax: currentPussyTaxValue,
-          legs_to_win: currentLegsToWin,
-          pot_max_enabled: currentPotMaxEnabled,
-          pot_max_value: currentPotMaxValue,
+          ante_amount: anteAmount,
+          leg_value: legValue,
+          pussy_tax_enabled: pussyTaxEnabled,
+          pussy_tax_value: pussyTaxValue,
+          pussy_tax: pussyTaxValue,
+          legs_to_win: legsToWin,
+          pot_max_enabled: potMaxEnabled,
+          pot_max_value: potMaxValue,
           config_complete: true,
           status: 'ante_decision',
           ante_decision_deadline: new Date(Date.now() + 10000).toISOString(),
         };
 
         if (isHolmGame) {
-          updateData.chucky_cards = currentChuckyCards;
-          // Buck position will be calculated by startHolmRound
+          updateData.chucky_cards = chuckyCards;
         }
 
         const { error } = await supabase
@@ -104,7 +139,7 @@ export const DealerConfig = ({
       
       autoSubmit();
     }
-  }, [isBot, gameId, dealerPlayerId, currentAnteAmount, currentLegValue, currentPussyTaxEnabled, currentPussyTaxValue, currentLegsToWin, currentPotMaxEnabled, currentPotMaxValue, onConfigComplete]);
+  }, [isBot, loadingDefaults, gameId, dealerPlayerId, anteAmount, legValue, pussyTaxEnabled, pussyTaxValue, legsToWin, potMaxEnabled, potMaxValue, chuckyCards, isHolmGame, onConfigComplete]);
 
   const handleSubmit = async () => {
     console.log('[DEALER CONFIG] handleSubmit called');
@@ -215,8 +250,20 @@ export const DealerConfig = ({
               {dealerUsername} is the dealer
             </p>
             <p className="text-muted-foreground">
-              Configuring game with default settings...
+              {loadingDefaults ? 'Loading defaults...' : 'Configuring game with default settings...'}
             </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loadingDefaults) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center space-y-4">
+            <p className="text-muted-foreground">Loading game defaults...</p>
           </div>
         </CardContent>
       </Card>
