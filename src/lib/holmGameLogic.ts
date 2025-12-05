@@ -461,9 +461,26 @@ export async function endHolmRound(gameId: string) {
     chucky_active: round.chucky_active
   });
 
-  // Extract community cards for later use
-  const communityCards = (round.community_cards as unknown as Card[]) || [];
-  console.log('[HOLM END] Community cards:', communityCards);
+  // Extract community cards for later use - ensure proper parsing from JSON
+  let communityCards: Card[] = [];
+  try {
+    const rawCommunity = round.community_cards;
+    if (Array.isArray(rawCommunity)) {
+      communityCards = rawCommunity.map((c: any) => ({
+        suit: (c.suit || c.Suit) as Suit,
+        rank: String(c.rank || c.Rank) as Rank
+      }));
+    } else if (typeof rawCommunity === 'string') {
+      const parsed = JSON.parse(rawCommunity);
+      communityCards = parsed.map((c: any) => ({
+        suit: (c.suit || c.Suit) as Suit,
+        rank: String(c.rank || c.Rank) as Rank
+      }));
+    }
+  } catch (e) {
+    console.error('[HOLM END] ERROR parsing community cards:', e);
+  }
+  console.log('[HOLM END] Community cards:', communityCards.map(c => `${c.rank}${c.suit}`).join(' '));
 
   // Get all players and their decisions
   const { data: players } = await supabase
@@ -779,11 +796,31 @@ async function handleChuckyShowdown(
   
   const playerCardsData = playerCardsArray[0];
 
-  const playerCards = playerCardsData.cards as unknown as Card[];
+  // CRITICAL: Ensure cards are properly parsed from JSON
+  let playerCards: Card[] = [];
+  try {
+    const rawCards = playerCardsData.cards;
+    if (Array.isArray(rawCards)) {
+      playerCards = rawCards.map((c: any) => ({
+        suit: (c.suit || c.Suit) as Suit,
+        rank: String(c.rank || c.Rank) as Rank
+      }));
+    } else if (typeof rawCards === 'string') {
+      const parsed = JSON.parse(rawCards);
+      playerCards = parsed.map((c: any) => ({
+        suit: (c.suit || c.Suit) as Suit,
+        rank: String(c.rank || c.Rank) as Rank
+      }));
+    }
+  } catch (e) {
+    console.error('[HOLM SHOWDOWN] ERROR parsing player cards:', e, playerCardsData.cards);
+    return;
+  }
   
   // CRITICAL DEBUG: Log raw card data to diagnose evaluation issues
   console.log('[HOLM SHOWDOWN] ========== RAW CARD DATA ==========');
   console.log('[HOLM SHOWDOWN] Player cards RAW:', JSON.stringify(playerCards));
+  console.log('[HOLM SHOWDOWN] Player cards type:', typeof playerCardsData.cards, Array.isArray(playerCardsData.cards));
   console.log('[HOLM SHOWDOWN] Chucky cards RAW:', JSON.stringify(chuckyCards));
   console.log('[HOLM SHOWDOWN] Community cards RAW:', JSON.stringify(communityCards));
   
