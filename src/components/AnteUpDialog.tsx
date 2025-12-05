@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 interface AnteUpDialogProps {
   gameId: string;
   playerId: string;
+  gameType: string | null;
   anteAmount: number;
   legValue: number;
   pussyTaxEnabled: boolean;
@@ -15,12 +16,14 @@ interface AnteUpDialogProps {
   legsToWin: number;
   potMaxEnabled: boolean;
   potMaxValue: number;
+  chuckyCards: number | null;
   onDecisionMade: () => void;
 }
 
 export const AnteUpDialog = ({
   gameId,
   playerId,
+  gameType,
   anteAmount,
   legValue,
   pussyTaxEnabled,
@@ -28,8 +31,11 @@ export const AnteUpDialog = ({
   legsToWin,
   potMaxEnabled,
   potMaxValue,
+  chuckyCards,
   onDecisionMade,
 }: AnteUpDialogProps) => {
+  const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
+  const gameDisplayName = isHolmGame ? 'Holm Game' : '3-5-7';
   const { toast } = useToast();
   const [timeLeft, setTimeLeft] = useState(10);
   const [hasDecided, setHasDecided] = useState(false);
@@ -117,18 +123,31 @@ export const AnteUpDialog = ({
         </DialogHeader>
         
         <div className="space-y-3 py-4">
+          <div className="text-center mb-4">
+            <span className="text-xl font-bold text-primary">{gameDisplayName}</span>
+          </div>
+          
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div className="font-semibold">Ante Amount:</div>
             <div className="text-right">${anteAmount}</div>
             
-            <div className="font-semibold">Leg Value:</div>
-            <div className="text-right">${legValue}</div>
+            {isHolmGame ? (
+              <>
+                <div className="font-semibold">Chucky Cards:</div>
+                <div className="text-right">{chuckyCards || 4}</div>
+              </>
+            ) : (
+              <>
+                <div className="font-semibold">Leg Value:</div>
+                <div className="text-right">${legValue}</div>
+                
+                <div className="font-semibold">Legs to Win:</div>
+                <div className="text-right">{legsToWin}</div>
+              </>
+            )}
             
             <div className="font-semibold">Pussy Tax:</div>
             <div className="text-right">{pussyTaxEnabled ? `$${pussyTaxValue}` : 'Disabled'}</div>
-            
-            <div className="font-semibold">Legs to Win:</div>
-            <div className="text-right">{legsToWin}</div>
             
             <div className="font-semibold">Pot Maximum:</div>
             <div className="text-right">{potMaxEnabled ? `$${potMaxValue}` : 'Unlimited'}</div>
