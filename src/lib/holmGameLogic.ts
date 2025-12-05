@@ -8,6 +8,9 @@ import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand,
 export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
   
+  // Small delay to ensure DB write has propagated before reading
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
   const { data: game } = await supabase
     .from('games')
     .select('*')
@@ -113,7 +116,10 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     .eq('id', gameId)
     .single();
     
-  if (!game) return;
+  if (!game) {
+    console.error('[HOLM TURN] ERROR: Game not found');
+    return;
+  }
   
   const { data: round } = await supabase
     .from('rounds')
@@ -122,7 +128,10 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     .eq('round_number', game.current_round)
     .single();
     
-  if (!round) return;
+  if (!round) {
+    console.error('[HOLM TURN] ERROR: Round not found');
+    return;
+  }
   
   const { data: players } = await supabase
     .from('players')
@@ -132,7 +141,10 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     .eq('sitting_out', false)
     .order('position');
     
-  if (!players || players.length === 0) return;
+  if (!players || players.length === 0) {
+    console.error('[HOLM TURN] ERROR: No active players found');
+    return;
+  }
   
   const positions = players.map(p => p.position).sort((a, b) => a - b);
   const currentIndex = positions.indexOf(round.current_turn_position);
@@ -140,16 +152,22 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   const nextPosition = positions[nextIndex];
   
   console.log('[HOLM TURN] *** MOVING TURN from position', round.current_turn_position, 'to', nextPosition, '***');
+  console.log('[HOLM TURN] positions:', positions, 'currentIndex:', currentIndex, 'nextIndex:', nextIndex);
   
   // Update turn position and reset timer using game_defaults
   const deadline = new Date(Date.now() + timerSeconds * 1000);
-  await supabase
+  const { error: updateError } = await supabase
     .from('rounds')
     .update({ 
       current_turn_position: nextPosition,
       decision_deadline: deadline.toISOString()
     })
     .eq('id', round.id);
+  
+  if (updateError) {
+    console.error('[HOLM TURN] ERROR updating turn position:', updateError);
+    return;
+  }
     
   console.log('[HOLM TURN] *** TURN UPDATE COMPLETE - DB updated to position', nextPosition, '***');
   

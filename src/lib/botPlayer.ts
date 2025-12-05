@@ -98,7 +98,7 @@ export async function addBotPlayer(gameId: string) {
   return botPlayer;
 }
 
-export async function makeBotDecisions(gameId: string, passedTurnPosition?: number | null) {
+export async function makeBotDecisions(gameId: string, passedTurnPosition?: number | null): Promise<boolean> {
   console.log('[BOT] ========== Making bot decisions for game:', gameId, 'passedTurnPosition:', passedTurnPosition, '==========');
   
   // Check if this is a Holm game
@@ -113,13 +113,13 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   
   if (!game?.current_round) {
     console.log('[BOT] ERROR: No active round found');
-    return;
+    return false;
   }
 
   const currentRound = game.rounds?.find((r: any) => r.round_number === game.current_round);
   if (!currentRound) {
     console.log('[BOT] ERROR: Current round not found in game.rounds');
-    return;
+    return false;
   }
   
   // Use passed turn position (from frontend state) if available, otherwise fall back to DB value
@@ -152,14 +152,14 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 
   if (!botPlayers || botPlayers.length === 0) {
     console.log('[BOT] No undecided bot players found');
-    return;
+    return false;
   }
 
   if (isHolmGame) {
     // HOLM GAME: Turn-based - only process the bot whose turn it is
     if (!effectiveTurnPosition) {
       console.log('[BOT] HOLM: No current turn position set');
-      return;
+      return false;
     }
 
     console.log('[BOT] HOLM: Looking for bot at turn position:', effectiveTurnPosition);
@@ -168,7 +168,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     if (!currentTurnBot) {
       console.log('[BOT] HOLM: Current turn position', effectiveTurnPosition, 'is not a bot or bot already decided');
       console.log('[BOT] HOLM: Available bot positions:', botPlayers.map(b => b.position));
-      return;
+      return false;
     }
 
     console.log('[BOT] HOLM: ✓ Found bot at turn position! Processing decision for bot:', {
@@ -188,6 +188,10 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     
     const { checkHolmRoundComplete } = await import('./holmGameLogic');
     await checkHolmRoundComplete(gameId);
+    console.log('[BOT] HOLM: *** checkHolmRoundComplete finished, turn should have advanced ***');
+    
+    // Return true to signal that bot made a decision and caller should refetch
+    return true;
   } else {
     // 3-5-7 GAME: Simultaneous decisions - all bots decide instantly with small delay
     console.log('[BOT] 3-5-7: Processing', botPlayers.length, 'bot decisions simultaneously');
@@ -208,6 +212,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   }
   
   console.log('[BOT] ========== Bot decision complete ==========');
+  return false;
 }
 
 export async function makeBotAnteDecisions(gameId: string) {

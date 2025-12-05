@@ -1012,9 +1012,15 @@ const Game = () => {
       // Capture the turn position now to pass to the bot logic (avoids stale DB reads)
       const capturedTurnPosition = currentRound?.current_turn_position;
       
-      const botDecisionTimer = setTimeout(() => {
+      const botDecisionTimer = setTimeout(async () => {
         console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
-        makeBotDecisions(gameId!, capturedTurnPosition);
+        const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+        
+        // If bot made a decision, explicitly fetch to get updated turn position
+        if (botMadeDecision) {
+          console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
+          setTimeout(() => fetchGameData(), 100);
+        }
       }, 500);
       
       return () => {
