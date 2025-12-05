@@ -258,7 +258,9 @@ const Game = () => {
           const incomingGameType = newData?.game_type;
           const localGameType = lastKnownGameTypeRef.current;
           
-          if (incomingGameType && localGameType && incomingGameType !== localGameType) {
+          // CRITICAL FIX: Also clear cards on ANY game_type change, even from null
+          // This ensures players who join mid-session get fresh state
+          if (incomingGameType && incomingGameType !== localGameType) {
             console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED (detected via local state):', localGameType, '->', incomingGameType, '- CLEARING ALL CARD STATE!');
             // Update ref immediately
             lastKnownGameTypeRef.current = incomingGameType;
@@ -321,6 +323,17 @@ const Game = () => {
             // CRITICAL: Immediately fetch for any status change that affects UI flow
             if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
+              
+              // CRITICAL FIX: Clear ALL card state when a new game is being set up
+              // This ensures stale cards from previous game types are removed
+              if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'game_selection') {
+                console.log('[REALTIME] 🧹 NEW GAME SETUP DETECTED - CLEARING ALL CARD STATE!');
+                setPlayerCards([]);
+                setCachedRoundData(null);
+                cachedRoundRef.current = null;
+                maxRevealedRef.current = 0;
+              }
+              
               if (debounceTimer) clearTimeout(debounceTimer);
               fetchGameData();
               // Extra delayed fetches to catch any race conditions with player updates
@@ -1361,8 +1374,9 @@ const Game = () => {
       round_numbers: gameData?.rounds?.map((r: any) => r.round_number)
     });
     
-    // CRITICAL: If game type changed since last fetch, clear all card state
-    if (prevGameType && gameData?.game_type && prevGameType !== gameData?.game_type) {
+    // CRITICAL: If game type changed since last fetch (including from null), clear all card state
+    // This catches the initial load case where prevGameType is null
+    if (gameData?.game_type && prevGameType !== gameData?.game_type) {
       console.log('[FETCH] 🎯🎯🎯 GAME TYPE CHANGE DETECTED IN FETCH:', prevGameType, '->', gameData.game_type, '- CLEARING CARDS!');
       setPlayerCards([]);
       setCachedRoundData(null);
