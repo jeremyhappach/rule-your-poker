@@ -561,6 +561,98 @@ const Game = () => {
     return () => clearInterval(pollInterval);
   }, [gameId]);
 
+  // CRITICAL: Dedicated card sync polling - bypasses all realtime unreliability
+  // This directly checks rounds table and forces card sync when local state doesn't match DB
+  const localCardsCountRef = useRef<number>(0);
+  const lastSyncedRoundRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    // Track local card count for sync detection
+    localCardsCountRef.current = playerCards.length > 0 
+      ? (playerCards[0]?.cards?.length || 0)
+      : 0;
+  }, [playerCards]);
+
+  useEffect(() => {
+    if (!gameId || !game?.status) return;
+    if (game.status !== 'in_progress' && game.status !== 'game_over') return;
+    
+    const syncCards = async () => {
+      try {
+        // Get current round directly from DB
+        const { data: gameData } = await supabase
+          .from('games')
+          .select('current_round, game_type')
+          .eq('id', gameId)
+          .single();
+        
+        if (!gameData?.current_round) return;
+        
+        // Get the actual round record to get cards_dealt
+        const { data: roundData } = await supabase
+          .from('rounds')
+          .select('id, round_number, cards_dealt')
+          .eq('game_id', gameId)
+          .eq('round_number', gameData.current_round)
+          .single();
+        
+        if (!roundData) return;
+        
+        const dbCardsDealt = roundData.cards_dealt;
+        const localCards = localCardsCountRef.current;
+        const isSameRound = lastSyncedRoundRef.current === roundData.id;
+        
+        // Determine expected card count for this game type and round
+        let expectedCards = dbCardsDealt;
+        if (gameData.game_type === '3-5-7-game') {
+          // In 3-5-7, cards_dealt represents which round (1=3cards, 2=5cards, 3=7cards)
+          const cardCountMap: Record<number, number> = { 1: 3, 2: 5, 3: 7 };
+          expectedCards = cardCountMap[dbCardsDealt] || dbCardsDealt;
+        }
+        
+        // Check if we're out of sync
+        const outOfSync = localCards !== expectedCards || !isSameRound;
+        
+        if (outOfSync) {
+          console.log('[CARD SYNC] 🔴 OUT OF SYNC! Local:', localCards, 'Expected:', expectedCards, 
+            'Round ID same:', isSameRound, '- FORCING CARD REFRESH');
+          
+          // Fetch fresh cards for this round
+          const { data: cardsData } = await supabase
+            .from('player_cards')
+            .select('player_id, cards')
+            .eq('round_id', roundData.id);
+          
+          if (cardsData && cardsData.length > 0) {
+            console.log('[CARD SYNC] ✅ Fetched', cardsData.length, 'player cards, first player has', 
+              (cardsData[0].cards as any[])?.length, 'cards');
+            setPlayerCards(cardsData.map(cd => ({
+              player_id: cd.player_id,
+              cards: cd.cards as unknown as CardType[]
+            })));
+            lastSyncedRoundRef.current = roundData.id;
+            
+            // Also update card state context
+            setCardStateContext({
+              roundId: roundData.id,
+              roundNumber: roundData.round_number,
+              cardsDealt: roundData.cards_dealt
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[CARD SYNC] Error:', err);
+      }
+    };
+    
+    // Run immediately
+    syncCards();
+    
+    // Poll every 500ms for aggressive sync
+    const syncInterval = setInterval(syncCards, 500);
+    return () => clearInterval(syncInterval);
+  }, [gameId, game?.status, game?.current_round]);
+
   // Handle paused time display separately from interval management
   useEffect(() => {
     if (game?.is_paused && game.paused_time_remaining !== null && game.paused_time_remaining !== undefined) {
