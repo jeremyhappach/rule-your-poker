@@ -243,9 +243,14 @@ const Game = () => {
           } else if (payload.new && 'status' in payload.new && payload.new.status === 'ante_decision') {
             // CRITICAL: Immediately fetch when status changes to ante_decision
             // This ensures players state is updated with reset ante_decision values before dialog shows
-            console.log('[REALTIME] 🎲 ANTE DECISION STATUS - IMMEDIATE FETCH!');
+            console.log('[REALTIME] 🎲 ANTE DECISION STATUS - IMMEDIATE FETCH! Game ID:', gameId, 'User:', user?.id);
             if (debounceTimer) clearTimeout(debounceTimer);
+            // Force multiple fetches to ensure we get the latest data (workaround for potential timing issues)
             fetchGameData();
+            setTimeout(() => {
+              console.log('[REALTIME] 🎲 ANTE DECISION - Second fetch after 500ms');
+              fetchGameData();
+            }, 500);
           } else if (payload.new && 'is_paused' in payload.new) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', payload.new.is_paused, 'remaining:', payload.new.paused_time_remaining);
@@ -517,7 +522,36 @@ const Game = () => {
     }
   }, [game?.status, gameId]);
 
-  // Check if ante dialog should show
+  // CRITICAL: Polling fallback for sitting_out players during game transitions
+  // Realtime updates may not always reach these clients reliably
+  useEffect(() => {
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    const isSittingOut = currentPlayer?.sitting_out === true;
+    const needsAnteDecision = currentPlayer?.ante_decision === null;
+    
+    // Only poll if user is sitting_out and waiting for game to reach ante_decision
+    // or if they need to make an ante decision but dialog might not have shown
+    const shouldPoll = isSittingOut || (game?.status === 'ante_decision' && needsAnteDecision);
+    
+    if (!shouldPoll || !gameId || !user) return;
+    
+    console.log('[SITTING_OUT POLL] Starting polling for sitting_out player:', {
+      isSittingOut,
+      needsAnteDecision,
+      gameStatus: game?.status
+    });
+    
+    // Poll more frequently (every 1 second) to catch status transitions quickly
+    const pollInterval = setInterval(() => {
+      console.log('[SITTING_OUT POLL] Polling game data for sitting_out player...');
+      fetchGameData();
+    }, 1000);
+    
+    return () => {
+      console.log('[SITTING_OUT POLL] Stopping polling');
+      clearInterval(pollInterval);
+    };
+  }, [game?.status, players, user?.id, gameId]);
   useEffect(() => {
     console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
       gameStatus: game?.status,
