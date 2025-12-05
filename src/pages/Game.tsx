@@ -544,36 +544,52 @@ const Game = () => {
     }
   }, [game?.status, gameId]);
 
-  // CRITICAL: Polling fallback for sitting_out players during game transitions
-  // Realtime updates may not always reach these clients reliably
+  // CRITICAL: Aggressive polling fallback for realtime reliability issues
+  // This handles: newly active players needing cards, ante dialog not showing
   useEffect(() => {
+    if (!gameId || !user) return;
+    
     const currentPlayer = players.find(p => p.user_id === user?.id);
     const isSittingOut = currentPlayer?.sitting_out === true;
-    const needsAnteDecision = currentPlayer?.ante_decision === null;
+    const needsAnteDecision = currentPlayer?.ante_decision === null && game?.status === 'ante_decision';
     
-    // Only poll if user is sitting_out and waiting for game to reach ante_decision
-    // or if they need to make an ante decision but dialog might not have shown
-    const shouldPoll = isSittingOut || (game?.status === 'ante_decision' && needsAnteDecision);
+    // Check if player just anted up but has no cards yet (critical race condition)
+    const justAntedUpNoCards = 
+      currentPlayer && 
+      currentPlayer.ante_decision === 'ante_up' && 
+      !currentPlayer.sitting_out &&
+      game?.status === 'in_progress' &&
+      playerCards.length === 0;
     
-    if (!shouldPoll || !gameId || !user) return;
+    // Check if we're waiting for ante_decision status after config complete
+    const waitingForAnteStatus = 
+      game?.status === 'configuring' || 
+      (game?.status === 'ante_decision' && needsAnteDecision);
     
-    console.log('[SITTING_OUT POLL] Starting polling for sitting_out player:', {
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus;
+    
+    if (!shouldPoll) return;
+    
+    console.log('[CRITICAL POLL] Starting aggressive polling:', {
       isSittingOut,
       needsAnteDecision,
-      gameStatus: game?.status
+      justAntedUpNoCards,
+      waitingForAnteStatus,
+      gameStatus: game?.status,
+      playerCardsCount: playerCards.length
     });
     
-    // Poll more frequently (every 1 second) to catch status transitions quickly
+    // Poll every 500ms for critical situations
     const pollInterval = setInterval(() => {
-      console.log('[SITTING_OUT POLL] Polling game data for sitting_out player...');
+      console.log('[CRITICAL POLL] Polling game data...');
       fetchGameData();
-    }, 1000);
+    }, 500);
     
     return () => {
-      console.log('[SITTING_OUT POLL] Stopping polling');
+      console.log('[CRITICAL POLL] Stopping polling');
       clearInterval(pollInterval);
     };
-  }, [game?.status, players, user?.id, gameId]);
+  }, [game?.status, players, user?.id, gameId, playerCards.length]);
   useEffect(() => {
     console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
       gameStatus: game?.status,
@@ -1203,7 +1219,8 @@ const Game = () => {
     // Users join as observers - they must select a seat to become a player
 
     // Fetch player cards if game is in progress or game_over (keep cards visible during announcements)
-    const shouldFetchCards = (gameData.status === 'in_progress' || gameData.status === 'game_over') && gameData.current_round;
+    // CRITICAL: Also fetch if current_round is null but status is in_progress (race condition fix)
+    const shouldFetchCards = gameData.status === 'in_progress' || gameData.status === 'game_over';
     
     if (shouldFetchCards) {
       // For Holm games, don't fetch cards during round transitions (awaiting_next_round) UNLESS game_over
@@ -1214,12 +1231,30 @@ const Game = () => {
       const keepCardsForResults = isHolmGame && gameData.awaiting_next_round && gameData.last_round_result;
       
       if (keepCards || keepCardsForResults) {
-        const { data: roundData } = await supabase
-          .from('rounds')
-          .select('id')
-          .eq('game_id', gameId)
-          .eq('round_number', gameData.current_round)
-          .single();
+        // CRITICAL: Fetch cards from most recent round if current_round is not set yet
+        // This fixes the race condition where cards are inserted before current_round is updated
+        let roundData = null;
+        
+        if (gameData.current_round) {
+          const { data } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId)
+            .eq('round_number', gameData.current_round)
+            .single();
+          roundData = data;
+        } else {
+          // Fallback: get the most recent round
+          const { data } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId)
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .single();
+          roundData = data;
+          console.log('[FETCH] current_round is null, using most recent round:', roundData?.id);
+        }
 
         if (roundData) {
           const { data: cardsData } = await supabase
@@ -1227,12 +1262,15 @@ const Game = () => {
             .select('player_id, cards')
             .eq('round_id', roundData.id);
 
-          if (cardsData) {
-            console.log('[FETCH] Setting player cards for round', gameData.current_round, ':', cardsData.length, 'players');
+          if (cardsData && cardsData.length > 0) {
+            console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
             setPlayerCards(cardsData.map(cd => ({
               player_id: cd.player_id,
               cards: cd.cards as unknown as CardType[]
             })));
+          } else {
+            console.log('[FETCH] No cards found for round, keeping existing cards');
+            // Don't clear cards if none found - might just be a timing issue
           }
         }
       } else if (isHolmGame && gameData.awaiting_next_round && !gameData.last_round_result) {
@@ -1240,9 +1278,9 @@ const Game = () => {
         console.log('[FETCH] Clearing player cards (Holm game transitioning to next round)');
         setPlayerCards([]);
       }
-    } else {
-      // Clear cards when not in active play (but preserve during game_over)
-      console.log('[FETCH] Clearing player cards (not in active play)');
+    } else if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') {
+      // Only clear cards when explicitly NOT in active play states
+      console.log('[FETCH] Clearing player cards (status:', gameData.status, ')');
       setPlayerCards([]);
     }
 
