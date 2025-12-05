@@ -546,6 +546,7 @@ const Game = () => {
         position: p.position, 
         ante_decision: p.ante_decision, 
         user_id: p.user_id,
+        sitting_out: p.sitting_out,
         is_me: p.user_id === user?.id
       }))
     });
