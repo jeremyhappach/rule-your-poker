@@ -47,31 +47,54 @@ export function shuffleDeck(deck: Card[]): Card[] {
 export function evaluateHand(cards: Card[], useWildCards: boolean = true): { rank: HandRank; value: number } {
   if (cards.length === 0) return { rank: 'high-card', value: 0 };
 
+  // CRITICAL: Validate and normalize card data from database
+  const validatedCards: Card[] = cards.map(c => {
+    // Handle potential JSON parsing issues - ensure we have proper card objects
+    const card = c as any;
+    const suit = (card.suit || card.Suit || '') as Suit;
+    const rank = (card.rank || card.Rank || '') as Rank;
+    return { suit, rank };
+  }).filter(c => c.suit && c.rank && RANKS.includes(c.rank) && SUITS.includes(c.suit));
+
+  if (validatedCards.length === 0) {
+    console.error('[EVAL] ERROR: No valid cards after validation!', cards);
+    return { rank: 'high-card', value: 0 };
+  }
+
+  if (validatedCards.length !== cards.length) {
+    console.warn('[EVAL] WARNING: Some cards were invalid!', {
+      original: cards.length,
+      validated: validatedCards.length,
+      originalCards: cards,
+      validatedCards
+    });
+  }
+
   // Log input cards
-  const cardStr = cards.map(c => `${c.rank}${c.suit}`).join(', ');
+  const cardStr = validatedCards.map(c => `${c.rank}${c.suit}`).join(', ');
   console.log('[EVAL] ========== START EVALUATION ==========');
   console.log('[EVAL] Cards:', cardStr);
-  console.log('[EVAL] Card count:', cards.length, '| useWildCards:', useWildCards);
+  console.log('[EVAL] Card count:', validatedCards.length, '| useWildCards:', useWildCards);
 
   // Determine wild card based on number of cards dealt (if wild cards are enabled)
-  const wildRank: Rank = useWildCards ? (cards.length <= 3 ? '3' : cards.length === 5 ? '5' : '7') : 'A';
+  const wildRank: Rank = useWildCards ? (validatedCards.length <= 3 ? '3' : validatedCards.length === 5 ? '5' : '7') : 'A';
   console.log('[EVAL] Wild rank for this hand:', wildRank);
 
   // Count wildcards (only if wildcards are enabled)
-  const wildcards = useWildCards ? cards.filter(c => c.rank === wildRank) : [];
-  const nonWildcards = useWildCards ? cards.filter(c => c.rank !== wildRank) : cards;
+  const wildcards = useWildCards ? validatedCards.filter(c => c.rank === wildRank) : [];
+  const nonWildcards = useWildCards ? validatedCards.filter(c => c.rank !== wildRank) : validatedCards;
   const wildcardCount = wildcards.length;
   console.log('[EVAL] Wildcards found:', wildcardCount, wildcards.map(c => `${c.rank}${c.suit}`).join(', '));
 
   // If all cards are wildcards in round 1 (3 cards), treat as best possible: three of a kind
-  if (cards.length === 3 && wildcardCount === cards.length) {
+  if (validatedCards.length === 3 && wildcardCount === validatedCards.length) {
     const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [14, 14]) };
     console.log('[EVAL] RESULT: All wildcards (3 cards) -> three-of-a-kind, value:', result.value);
     return result;
   }
 
   // If all cards are wildcards in round 2+ (5 or 7 cards), treat as straight flush
-  if (cards.length >= 5 && wildcardCount === cards.length) {
+  if (validatedCards.length >= 5 && wildcardCount === validatedCards.length) {
     const result = { rank: 'straight-flush' as HandRank, value: calculateValue(8, [14]) };
     console.log('[EVAL] RESULT: All wildcards (5+ cards) -> straight-flush, value:', result.value);
     return result;
@@ -104,11 +127,13 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   const secondRank = rankGroups[1]?.[0] as Rank;
 
   console.log('[EVAL] Rank counts:', JSON.stringify(rankCounts));
+  console.log('[EVAL] Rank groups (sorted):', JSON.stringify(rankGroups));
   console.log('[EVAL] Best rank:', bestRank, 'count:', bestCount, '(includes', wildcardCount, 'wildcards)');
   console.log('[EVAL] Second rank:', secondRank, 'count:', secondCount);
+  console.log('[EVAL] Full house check: bestCount>=3?', bestCount >= 3, 'secondCount>=2?', secondCount >= 2);
 
   // ROUND 1 (3 cards): Only three-of-a-kind, pair, or high card are possible
-  if (cards.length === 3) {
+  if (validatedCards.length === 3) {
     console.log('[EVAL] Round 1 (3 cards) - checking: three-of-a-kind, pair, high-card only');
     
     // Three of a Kind
@@ -143,7 +168,7 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   }
 
   // ROUND 2+ (5 or 7 cards): All hands are possible
-  console.log('[EVAL] Round 2+ (' + cards.length + ' cards) - checking all hand types');
+  console.log('[EVAL] Round 2+ (' + validatedCards.length + ' cards) - checking all hand types');
   
   // Check for potential straight flush with wildcards
   console.log('[EVAL] Checking straight flush...');
