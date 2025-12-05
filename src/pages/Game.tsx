@@ -233,14 +233,38 @@ const Game = () => {
             awaiting_next_round: payload.new?.awaiting_next_round,
             is_paused: payload.new?.is_paused,
             status: payload.new?.status,
+            current_round: payload.new?.current_round,
             fullPayload: payload
           });
           
-          // Immediately fetch if awaiting_next_round changed to true (critical for round transitions)
-          if (payload.new && 'awaiting_next_round' in payload.new && payload.new.awaiting_next_round === true) {
-            console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
+          // CRITICAL: Immediately fetch if current_round changed (round transition)
+          // This ensures ALL clients sync when a round changes, not just the one that triggered it
+          if (payload.new && 'current_round' in payload.new) {
+            console.log('[REALTIME] 🔄🔄🔄 CURRENT_ROUND CHANGED to', payload.new.current_round, '- IMMEDIATE FETCH! 🔄🔄🔄');
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
+            // Extra fetch after short delay to catch any cards that may be dealt asynchronously
+            setTimeout(() => {
+              console.log('[REALTIME] 🔄 ROUND CHANGE - Delayed refetch after 300ms');
+              fetchGameData();
+            }, 300);
+          }
+          // Immediately fetch if awaiting_next_round changed (either direction - critical for round transitions)
+          else if (payload.new && 'awaiting_next_round' in payload.new) {
+            if (payload.new.awaiting_next_round === true) {
+              console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
+            } else {
+              console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (round transitioning) - IMMEDIATE FETCH! ⚡⚡⚡');
+            }
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+            // Extra fetch after delay when awaiting is cleared (round is transitioning)
+            if (payload.new.awaiting_next_round === false) {
+              setTimeout(() => {
+                console.log('[REALTIME] ⚡ AWAITING CLEARED - Delayed refetch after 500ms');
+                fetchGameData();
+              }, 500);
+            }
           } else if (payload.new && 'status' in payload.new) {
             const newStatus = payload.new.status;
             // CRITICAL: Immediately fetch for any status change that affects UI flow
