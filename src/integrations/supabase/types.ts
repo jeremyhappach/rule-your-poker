@@ -16,36 +16,60 @@ export type Database = {
     Tables: {
       game_defaults: {
         Row: {
+          ante_amount: number
           bot_decision_delay_seconds: number
           bot_fold_probability: number
+          chucky_cards: number
           chucky_last_card_delay_seconds: number
           chucky_second_to_last_delay_seconds: number
           created_at: string
           decision_timer_seconds: number
           game_type: string
           id: string
+          leg_value: number
+          legs_to_win: number
+          pot_max_enabled: boolean
+          pot_max_value: number
+          pussy_tax_enabled: boolean
+          pussy_tax_value: number
           updated_at: string
         }
         Insert: {
+          ante_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
+          chucky_cards?: number
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
           decision_timer_seconds?: number
           game_type: string
           id?: string
+          leg_value?: number
+          legs_to_win?: number
+          pot_max_enabled?: boolean
+          pot_max_value?: number
+          pussy_tax_enabled?: boolean
+          pussy_tax_value?: number
           updated_at?: string
         }
         Update: {
+          ante_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
+          chucky_cards?: number
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
           decision_timer_seconds?: number
           game_type?: string
           id?: string
+          leg_value?: number
+          legs_to_win?: number
+          pot_max_enabled?: boolean
+          pot_max_value?: number
+          pussy_tax_enabled?: boolean
+          pussy_tax_value?: number
           updated_at?: string
         }
         Relationships: []
