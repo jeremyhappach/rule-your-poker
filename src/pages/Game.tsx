@@ -129,6 +129,16 @@ const Game = () => {
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
+  
+  // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
+  const lastKnownGameTypeRef = useRef<string | null>(null);
+  const lastKnownRoundRef = useRef<number | null>(null);
+  
+  // Track max community cards revealed - never decrease during showdowns
+  // Must be defined here (not inline) so it's accessible in realtime handlers
+  const maxRevealedRef = useRef<number>(0);
+  // Track card identity to detect new hands (when cards change completely)
+  const cardIdentityRef = useRef<string>('');
 
   // Clear pending decision when backend confirms
   useEffect(() => {
@@ -227,24 +237,36 @@ const Game = () => {
           filter: `id=eq.${gameId}`
         },
         (payload) => {
-          console.log('[REALTIME] Games table UPDATE:', {
+          const newData = payload.new as any;
+          const oldData = payload.old as any;
+          
+          console.log('[REALTIME] 🔔 Games table UPDATE:', {
             eventType: payload.eventType,
-            hasNew: !!payload.new,
-            newKeys: payload.new ? Object.keys(payload.new) : [],
-            awaiting_next_round: payload.new?.awaiting_next_round,
-            is_paused: payload.new?.is_paused,
-            status: payload.new?.status,
-            current_round: payload.new?.current_round,
-            fullPayload: payload
+            newGameType: newData?.game_type,
+            oldGameType: oldData?.game_type,
+            localGameType: lastKnownGameTypeRef.current,
+            newRound: newData?.current_round,
+            oldRound: oldData?.current_round,
+            localRound: lastKnownRoundRef.current,
+            status: newData?.status,
+            awaiting_next_round: newData?.awaiting_next_round,
+            is_paused: newData?.is_paused
           });
           
-          // CRITICAL: Detect game_type changes and clear card state for ALL clients (not just dealer)
-          if (payload.new && payload.old && 'game_type' in payload.new && payload.new.game_type !== payload.old.game_type) {
-            console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED:', payload.old.game_type, '->', payload.new.game_type, '- CLEARING ALL CARD STATE!');
+          // CRITICAL: Detect game_type changes using LOCAL STATE (refs) as source of truth
+          // Realtime payload.old may be empty/incomplete depending on REPLICA IDENTITY settings
+          const incomingGameType = newData?.game_type;
+          const localGameType = lastKnownGameTypeRef.current;
+          
+          if (incomingGameType && localGameType && incomingGameType !== localGameType) {
+            console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED (detected via local state):', localGameType, '->', incomingGameType, '- CLEARING ALL CARD STATE!');
+            // Update ref immediately
+            lastKnownGameTypeRef.current = incomingGameType;
             // Clear all card state for this client
             setPlayerCards([]);
             setCachedRoundData(null);
             cachedRoundRef.current = null;
+            maxRevealedRef.current = 0;
             if (debounceTimer) clearTimeout(debounceTimer);
             // Fetch fresh data after a short delay to allow DB to settle
             setTimeout(() => fetchGameData(), 200);
@@ -257,21 +279,30 @@ const Game = () => {
             return;
           }
 
-          // CRITICAL: Immediately fetch if current_round changed (round transition)
-          // This ensures ALL clients sync when a round changes, not just the one that triggered it
-          if (payload.new && 'current_round' in payload.new) {
-            console.log('[REALTIME] 🔄🔄🔄 CURRENT_ROUND CHANGED to', payload.new.current_round, '- IMMEDIATE FETCH! 🔄🔄🔄');
+          // CRITICAL: Detect round changes using LOCAL STATE for 3-5-7 sync
+          const incomingRound = newData?.current_round;
+          const localRound = lastKnownRoundRef.current;
+          
+          if (incomingRound !== undefined && incomingRound !== null && localRound !== null && incomingRound !== localRound) {
+            console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED (detected via local state):', localRound, '->', incomingRound, '- FORCING SYNC!');
+            lastKnownRoundRef.current = incomingRound;
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
-            // Extra fetch after short delay to catch any cards that may be dealt asynchronously
+            // Multiple delayed fetches to ensure all clients sync
             setTimeout(() => {
               console.log('[REALTIME] 🔄 ROUND CHANGE - Delayed refetch after 300ms');
               fetchGameData();
             }, 300);
+            setTimeout(() => {
+              console.log('[REALTIME] 🔄 ROUND CHANGE - Delayed refetch after 800ms');
+              fetchGameData();
+            }, 800);
+            return;
           }
+          
           // Immediately fetch if awaiting_next_round changed (either direction - critical for round transitions)
-          else if (payload.new && 'awaiting_next_round' in payload.new) {
-            if (payload.new.awaiting_next_round === true) {
+          if (newData && 'awaiting_next_round' in newData) {
+            if (newData.awaiting_next_round === true) {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             } else {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (round transitioning) - IMMEDIATE FETCH! ⚡⚡⚡');
@@ -279,14 +310,14 @@ const Game = () => {
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
             // Extra fetch after delay when awaiting is cleared (round is transitioning)
-            if (payload.new.awaiting_next_round === false) {
+            if (newData.awaiting_next_round === false) {
               setTimeout(() => {
                 console.log('[REALTIME] ⚡ AWAITING CLEARED - Delayed refetch after 500ms');
                 fetchGameData();
               }, 500);
             }
-          } else if (payload.new && 'status' in payload.new) {
-            const newStatus = payload.new.status;
+          } else if (newData && 'status' in newData) {
+            const newStatus = newData.status;
             // CRITICAL: Immediately fetch for any status change that affects UI flow
             if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
@@ -304,13 +335,13 @@ const Game = () => {
             } else {
               debouncedFetch();
             }
-          } else if (payload.new && 'is_paused' in payload.new) {
+          } else if (newData && 'is_paused' in newData) {
             // Immediately update local game state for pause - don't wait for fetch
-            console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', payload.new.is_paused, 'remaining:', payload.new.paused_time_remaining);
+            console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', newData.is_paused, 'remaining:', newData.paused_time_remaining);
             
             // CRITICAL: Update ref and clear interval SYNCHRONOUSLY before React render cycle
-            isPausedRef.current = payload.new.is_paused;
-            if (payload.new.is_paused && timerIntervalRef.current) {
+            isPausedRef.current = newData.is_paused;
+            if (newData.is_paused && timerIntervalRef.current) {
               console.log('[REALTIME] ⏸️ Clearing timer interval synchronously on pause');
               clearInterval(timerIntervalRef.current);
               timerIntervalRef.current = null;
@@ -318,13 +349,13 @@ const Game = () => {
             
             setGame(prev => prev ? {
               ...prev,
-              is_paused: payload.new.is_paused,
-              paused_time_remaining: payload.new.paused_time_remaining
+              is_paused: newData.is_paused,
+              paused_time_remaining: newData.paused_time_remaining
             } : prev);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
           } else {
-            console.log('[REALTIME] No awaiting trigger, using debounced fetch');
+            console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
           }
         }
@@ -666,6 +697,57 @@ const Game = () => {
       clearInterval(intervalId);
     };
   }, [game?.status, game?.dealer_position, players, user?.id, gameId, playerCards.length, showAnteDialog]);
+  
+  // CRITICAL: 3-5-7 specific round sync polling
+  // This catches desync issues where one player moves to next round but others don't
+  useEffect(() => {
+    if (!gameId || !game) return;
+    
+    const is357Game = game?.game_type === '3-5-7-game';
+    const isActiveGame = game?.status === 'in_progress';
+    
+    if (!is357Game || !isActiveGame) return;
+    
+    console.log('[357 SYNC POLL] Starting 3-5-7 round sync polling');
+    
+    const syncPoll = async () => {
+      const { data: freshGame, error } = await supabase
+        .from('games')
+        .select('current_round, awaiting_next_round, status')
+        .eq('id', gameId)
+        .single();
+      
+      if (error || !freshGame) return;
+      
+      // Compare with local state
+      const localRound = game?.current_round;
+      const dbRound = freshGame.current_round;
+      
+      console.log('[357 SYNC POLL] Checking sync:', {
+        localRound,
+        dbRound,
+        localRef: lastKnownRoundRef.current,
+        awaiting: freshGame.awaiting_next_round,
+        status: freshGame.status
+      });
+      
+      // Detect desync: DB round is different from local round
+      if (dbRound !== null && localRound !== null && dbRound !== localRound) {
+        console.log('[357 SYNC POLL] ⚠️⚠️⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound, '- FORCING REFETCH');
+        lastKnownRoundRef.current = dbRound;
+        fetchGameData();
+      }
+    };
+    
+    // Poll every 1.5 seconds for 3-5-7 sync
+    const pollInterval = setInterval(syncPoll, 1500);
+    
+    return () => {
+      console.log('[357 SYNC POLL] Stopping sync poll');
+      clearInterval(pollInterval);
+    };
+  }, [gameId, game?.game_type, game?.status, game?.current_round]);
+  
   useEffect(() => {
     console.log('[ANTE DIALOG DEBUG] Effect triggered:', {
       gameStatus: game?.status,
@@ -857,12 +939,6 @@ const Game = () => {
   // Use cached round during game_over if live round is unavailable
   // Priority: liveRound > state cache > ref cache
   const currentRound = liveRound || cachedRoundData || cachedRoundRef.current;
-  
-  // Track max community cards revealed - never decrease during showdowns
-  // SYNCHRONOUS update to prevent race conditions where useEffect runs after render
-  const maxRevealedRef = useRef<number>(0);
-  // Track card identity to detect new hands (when cards change completely)
-  const cardIdentityRef = useRef<string>('');
   
   // Compute current card identity to detect new hands
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
@@ -1262,13 +1338,31 @@ const Game = () => {
       return;
     }
     
+    // CRITICAL: Update refs for detecting changes via local state comparison
+    const prevGameType = lastKnownGameTypeRef.current;
+    const prevRound = lastKnownRoundRef.current;
+    lastKnownGameTypeRef.current = gameData?.game_type || null;
+    lastKnownRoundRef.current = gameData?.current_round ?? null;
+    
     console.log('[FETCH] Game data received:', {
       current_round: gameData?.current_round,
+      prev_round: prevRound,
       status: gameData?.status,
+      game_type: gameData?.game_type,
+      prev_game_type: prevGameType,
       awaiting_next_round: gameData?.awaiting_next_round,
       rounds_count: gameData?.rounds?.length,
       round_numbers: gameData?.rounds?.map((r: any) => r.round_number)
     });
+    
+    // CRITICAL: If game type changed since last fetch, clear all card state
+    if (prevGameType && gameData?.game_type && prevGameType !== gameData?.game_type) {
+      console.log('[FETCH] 🎯🎯🎯 GAME TYPE CHANGE DETECTED IN FETCH:', prevGameType, '->', gameData.game_type, '- CLEARING CARDS!');
+      setPlayerCards([]);
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      maxRevealedRef.current = 0;
+    }
 
     const { data: playersData, error: playersError } = await supabase
       .from('players')
@@ -1509,17 +1603,22 @@ const Game = () => {
   const handleGameSelection = async (gameType: string) => {
     if (!gameId) return;
 
-    console.log('[GAME SELECTION] Selected game:', gameType);
+    console.log('[GAME SELECTION] Selected game:', gameType, 'Previous:', lastKnownGameTypeRef.current);
 
     // GUARD: Prevent realtime updates from overwriting optimistic UI during switch
     gameTypeSwitchingRef.current = true;
 
+    // IMMEDIATELY update the ref so realtime can detect changes for other clients
+    lastKnownGameTypeRef.current = gameType;
+    lastKnownRoundRef.current = null;
+    
     // IMMEDIATELY clear all card-related state for the dealer
     // This prevents stale card rendering while waiting for database update
     setPlayerCards([]);
     setCachedRoundData(null);
     cachedRoundRef.current = null;
     maxRevealedRef.current = 0;
+    cardIdentityRef.current = '';
 
     // OPTIMISTIC UI UPDATE: Immediately update local game state with new game_type
     // This ensures the dealer sees the correct rendering immediately
