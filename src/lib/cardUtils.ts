@@ -48,25 +48,43 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   if (cards.length === 0) return { rank: 'high-card', value: 0 };
 
   // CRITICAL: Validate and normalize card data from database
+  // Handle various formats: lowercase, number ranks, different casing
   const validatedCards: Card[] = cards.map(c => {
-    // Handle potential JSON parsing issues - ensure we have proper card objects
     const card = c as any;
-    const suit = (card.suit || card.Suit || '') as Suit;
-    const rank = (card.rank || card.Rank || '') as Rank;
-    return { suit, rank };
-  }).filter(c => c.suit && c.rank && RANKS.includes(c.rank) && SUITS.includes(c.suit));
+    
+    // Get suit - handle various formats
+    let suit = (card.suit || card.Suit || '') as string;
+    
+    // Get rank - handle numbers and strings, uppercase
+    let rank = String(card.rank || card.Rank || '').toUpperCase();
+    
+    // Normalize rank: handle face cards that might be lowercase
+    if (rank === 'J' || rank === 'JACK') rank = 'J';
+    if (rank === 'Q' || rank === 'QUEEN') rank = 'Q';
+    if (rank === 'K' || rank === 'KING') rank = 'K';
+    if (rank === 'A' || rank === 'ACE') rank = 'A';
+    
+    return { suit: suit as Suit, rank: rank as Rank };
+  }).filter(c => {
+    const suitValid = c.suit && SUITS.includes(c.suit);
+    const rankValid = c.rank && RANKS.includes(c.rank);
+    if (!suitValid || !rankValid) {
+      console.error('[EVAL] Invalid card filtered out:', c, 'suitValid:', suitValid, 'rankValid:', rankValid);
+    }
+    return suitValid && rankValid;
+  });
 
   if (validatedCards.length === 0) {
-    console.error('[EVAL] ERROR: No valid cards after validation!', cards);
+    console.error('[EVAL] ERROR: No valid cards after validation! Original cards:', JSON.stringify(cards));
     return { rank: 'high-card', value: 0 };
   }
 
   if (validatedCards.length !== cards.length) {
-    console.warn('[EVAL] WARNING: Some cards were invalid!', {
+    console.error('[EVAL] ⚠️ CARD VALIDATION ISSUE! Some cards were invalid:', {
       original: cards.length,
       validated: validatedCards.length,
-      originalCards: cards,
-      validatedCards
+      originalCards: JSON.stringify(cards),
+      validatedCards: validatedCards.map(c => `${c.rank}${c.suit}`)
     });
   }
 
@@ -102,8 +120,27 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
     return result;
   }
 
-  const sortedCards = [...nonWildcards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+  // CRITICAL: Filter out any cards with invalid/missing rank values before sorting
+  const cardsWithValidRanks = nonWildcards.filter(c => RANK_VALUES[c.rank] !== undefined);
+  if (cardsWithValidRanks.length !== nonWildcards.length) {
+    console.error('[EVAL] ⚠️ Some cards have invalid ranks!', {
+      nonWildcards: nonWildcards.map(c => `${c.rank}${c.suit}`),
+      valid: cardsWithValidRanks.map(c => `${c.rank}${c.suit}`)
+    });
+  }
+
+  const sortedCards = [...cardsWithValidRanks].sort((a, b) => {
+    const valA = RANK_VALUES[a.rank];
+    const valB = RANK_VALUES[b.rank];
+    if (valA === undefined || valB === undefined) {
+      console.error('[EVAL] ⚠️ UNDEFINED RANK VALUE!', { a, valA, b, valB });
+      return 0;
+    }
+    return valB - valA;
+  });
   const ranks = sortedCards.map(c => c.rank);
+  
+  console.log('[EVAL] Sorted cards:', sortedCards.map(c => `${c.rank}${c.suit}`).join(', '));
 
   // Count ranks (excluding wildcards)
   const rankCounts = ranks.reduce((acc, rank) => {
