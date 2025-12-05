@@ -537,6 +537,19 @@ const Game = () => {
       configComplete: game ? (game as any).config_complete : undefined
     });
     
+    console.log('[ANTE DIALOG] ===== useEffect TRIGGERED =====', {
+      userId: user?.id,
+      userEmail: user?.email,
+      gameStatus: game?.status,
+      playersCount: players.length,
+      allPlayersAnteDecisions: players.map(p => ({ 
+        position: p.position, 
+        ante_decision: p.ante_decision, 
+        user_id: p.user_id,
+        is_me: p.user_id === user?.id
+      }))
+    });
+    
     if (game?.status === 'ante_decision' && user) {
       const currentPlayer = players.find(p => p.user_id === user.id);
       const isDealer = currentPlayer?.position === game.dealer_position;
@@ -575,6 +588,7 @@ const Game = () => {
         console.log('[ANTE DIALOG] ❌ NOT showing ante dialog - reasons:', {
           noCurrentPlayer: !currentPlayer,
           anteDecisionNotNull: currentPlayer?.ante_decision !== null,
+          anteDecisionValue: currentPlayer?.ante_decision,
           isDealer
         });
         setShowAnteDialog(false);
