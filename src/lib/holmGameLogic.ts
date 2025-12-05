@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
+import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -982,7 +982,17 @@ async function handleMultiPlayerShowdown(
         .eq('round_id', roundId)
         .single();
 
-      const playerCards = (playerCardsData?.cards as unknown as Card[]) || [];
+      // CRITICAL: Validate card data from database
+      const rawCards = (playerCardsData?.cards as unknown as any[]) || [];
+      const playerCards: Card[] = rawCards.map(c => ({
+        suit: (c.suit || c.Suit || '') as Suit,
+        rank: (c.rank || c.Rank || '') as Rank
+      })).filter(c => c.suit && c.rank);
+      
+      if (playerCards.length !== rawCards.length) {
+        console.warn('[HOLM MULTI] Card validation issue for player:', player.id, { raw: rawCards, validated: playerCards });
+      }
+      
       const allCards = [...playerCards, ...communityCards];
       const evaluation = evaluateHand(allCards, false); // No wild cards in Holm
 
@@ -1009,17 +1019,31 @@ async function handleMultiPlayerShowdown(
     console.log(`[HOLM MULTI] Player cards RAW:`, JSON.stringify(e.cards));
     console.log(`[HOLM MULTI] Player cards: ${playerCardStr}`);
     console.log(`[HOLM MULTI] All cards: ${allCardStr}`);
+    console.log(`[HOLM MULTI] ${playerName} STORED EVAL: rank=${e.evaluation.rank}, value=${e.evaluation.value}`);
     
-    // Re-evaluate with logging
-    console.log(`[HOLM MULTI] Evaluating ${playerName}...`);
+    // Re-evaluate with full logging to debug
     const eval2 = evaluateHand(allCards, false);
     const handDesc = formatHandRankDetailed(allCards, false);
-    console.log(`[HOLM MULTI] ${playerName} RESULT: ${handDesc} | rank: ${eval2.rank} | value: ${eval2.value}`);
+    console.log(`[HOLM MULTI] ${playerName} FRESH EVAL: ${handDesc} | rank: ${eval2.rank} | value: ${eval2.value}`);
+    
+    // CRITICAL: Check if stored eval matches fresh eval
+    if (e.evaluation.value !== eval2.value || e.evaluation.rank !== eval2.rank) {
+      console.error(`[HOLM MULTI] ⚠️ MISMATCH for ${playerName}! stored: ${e.evaluation.rank}/${e.evaluation.value}, fresh: ${eval2.rank}/${eval2.value}`);
+    }
   });
 
   // Find winner(s)
   const maxValue = Math.max(...evaluations.map(e => e.evaluation.value));
   console.log('[HOLM MULTI] Max evaluation value:', maxValue);
+  
+  // CRITICAL DEBUG: Log all player values to help identify why ties happen
+  console.log('[HOLM MULTI] All player values:', evaluations.map(e => ({
+    name: e.player.profiles?.username || e.player.user_id,
+    rank: e.evaluation.rank,
+    value: e.evaluation.value,
+    isMax: e.evaluation.value === maxValue
+  })));
+  
   const winners = evaluations.filter(e => e.evaluation.value === maxValue);
   const losers = evaluations.filter(e => e.evaluation.value < maxValue);
   
