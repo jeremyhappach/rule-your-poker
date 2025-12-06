@@ -260,19 +260,7 @@ export const MobileGameTable = ({
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background">
-      {/* Minimal top bar - only status badges */}
-      {(pendingSessionEnd || isPaused) && (
-        <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-0.5">
-          <div className="flex items-center justify-center gap-2">
-            {pendingSessionEnd && (
-              <Badge variant="destructive" className="text-[9px] px-1.5 py-0.5">LAST HAND</Badge>
-            )}
-            {isPaused && (
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
       <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
@@ -368,6 +356,20 @@ export const MobileGameTable = ({
         className="flex-1 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-auto"
         {...swipeHandlers}
       >
+        {/* Status badges */}
+        {(pendingSessionEnd || isPaused) && (
+          <div className="px-4 py-1.5">
+            <div className="flex items-center justify-center gap-2">
+              {pendingSessionEnd && (
+                <Badge variant="destructive" className="text-xs px-2 py-0.5">LAST HAND</Badge>
+              )}
+              {isPaused && (
+                <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Result message - in bottom section */}
         {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
           <div className="px-4 py-2">
