@@ -413,7 +413,16 @@ const Game = () => {
           filter: `game_id=eq.${gameId}`
         },
         (payload) => {
-          console.log('[REALTIME] Players table changed:', payload);
+          console.log('[REALTIME] Players table changed:', payload.eventType, payload);
+          
+          // CRITICAL: Immediate fetch for INSERT (new player joined) - essential for PreGameLobby
+          if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
+            console.log('[REALTIME] 👤 PLAYER JOINED/LEFT - IMMEDIATE FETCH!');
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+            return;
+          }
+          
           // Immediate fetch when ante_decision changes (critical for ante dialog)
           if (payload.new && 'ante_decision' in payload.new) {
             console.log('[REALTIME] 🎲 ANTE DECISION CHANGED - IMMEDIATE FETCH!', payload.new.ante_decision);
