@@ -327,26 +327,15 @@ const Game = () => {
             return;
           }
           
-          // Immediately fetch if awaiting_next_round changed (either direction - critical for round transitions)
-          if (newData && 'awaiting_next_round' in newData) {
-            if (newData.awaiting_next_round === true) {
-              console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
-            } else {
-              console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (new hand starting) - CLEARING CACHE & FETCH! ⚡⚡⚡');
-              // CRITICAL: Clear cache when new Holm hand starts (awaiting becomes false)
-              // This ensures stale Chucky cards and old community cards are cleared
-              setCardStateContext(null);
-              setCachedRoundData(null);
-              cachedRoundRef.current = null;
-              maxRevealedRef.current = 0;
-              // Don't call setPlayerCards([]) - let fetchGameData atomically replace them
-            }
-            if (debounceTimer) clearTimeout(debounceTimer);
-            fetchGameData();
-          } else if (newData && 'status' in newData) {
+          // CRITICAL: Track if we've already handled this update to avoid double-fetching
+          let handled = false;
+          
+          // CRITICAL FIX: Check status changes FIRST - this is most important for game flow
+          // When game starts, status changes from 'waiting' to 'ante_decision'/'configuring'
+          if (newData && 'status' in newData) {
             const newStatus = newData.status;
             // CRITICAL: Immediately fetch for any status change that affects UI flow
-            if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection') {
+            if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
               
               // CRITICAL FIX: Clear ALL card state when a new game is being set up
@@ -371,10 +360,31 @@ const Game = () => {
                 console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 700ms');
                 fetchGameData();
               }, 700);
-            } else {
-              debouncedFetch();
+              handled = true;
             }
-          } else if (newData && 'is_paused' in newData) {
+          }
+          
+          // Handle awaiting_next_round changes (for round transitions within a game)
+          if (!handled && newData && 'awaiting_next_round' in newData) {
+            if (newData.awaiting_next_round === true) {
+              console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
+            } else {
+              console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (new hand starting) - CLEARING CACHE & FETCH! ⚡⚡⚡');
+              // CRITICAL: Clear cache when new Holm hand starts (awaiting becomes false)
+              // This ensures stale Chucky cards and old community cards are cleared
+              setCardStateContext(null);
+              setCachedRoundData(null);
+              cachedRoundRef.current = null;
+              maxRevealedRef.current = 0;
+              // Don't call setPlayerCards([]) - let fetchGameData atomically replace them
+            }
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
+            handled = true;
+          }
+          
+          // Handle pause state changes
+          if (!handled && newData && 'is_paused' in newData) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', newData.is_paused, 'remaining:', newData.paused_time_remaining);
             
@@ -393,12 +403,20 @@ const Game = () => {
             } : prev);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
-          } else if (newData && 'pot' in newData) {
+            handled = true;
+          }
+          
+          // Handle pot changes
+          if (!handled && newData && 'pot' in newData) {
             // CRITICAL: Pot changes need immediate sync for all players
             console.log('[REALTIME] 💰 POT CHANGED - IMMEDIATE FETCH!', newData.pot);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
-          } else {
+            handled = true;
+          }
+          
+          // Fallback to debounced fetch if nothing else handled
+          if (!handled) {
             console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
           }
