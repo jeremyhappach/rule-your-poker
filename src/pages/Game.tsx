@@ -736,6 +736,7 @@ const Game = () => {
     const isSittingOut = currentPlayer?.sitting_out === true;
     const needsAnteDecision = currentPlayer?.ante_decision === null && game?.status === 'ante_decision';
     const isDealer = currentPlayer?.position === game?.dealer_position;
+    const isCreator = currentPlayer?.position === 1;
     
     // Check if player just anted up but has no cards yet (critical race condition)
     const justAntedUpNoCards = 
@@ -771,7 +772,13 @@ const Game = () => {
       currentPlayer && 
       !isDealer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig;
+    // CRITICAL: Poll during waiting/dealer_selection for non-creators to detect game start
+    const waitingForGameStart = 
+      (game?.status === 'waiting' || game?.status === 'dealer_selection') && 
+      currentPlayer && 
+      !isCreator;
+    
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart;
     
     if (!shouldPoll) return;
     
@@ -783,13 +790,14 @@ const Game = () => {
       waitingForAnteStatus,
       stuckOnGameOver,
       waitingForConfig,
+      waitingForGameStart,
       showAnteDialog,
       gameStatus: game?.status,
       playerCardsCount: playerCards.length
     });
     
     // Poll more frequently (250ms) for critical transitions, 500ms otherwise
-    const pollInterval = (waitingForAnteDialog || stuckOnGameOver || waitingForConfig) ? 250 : 500;
+    const pollInterval = (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart) ? 250 : 500;
     
     const intervalId = setInterval(() => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);

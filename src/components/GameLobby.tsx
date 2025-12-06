@@ -83,6 +83,11 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     fetchGames();
     checkSuperuser();
 
+    // Polling fallback for realtime reliability - poll every 2 seconds
+    const pollingInterval = setInterval(() => {
+      fetchGames();
+    }, 2000);
+
     const gamesChannel = supabase
       .channel('games-lobby-channel')
       .on(
@@ -121,6 +126,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       });
 
     return () => {
+      clearInterval(pollingInterval);
       supabase.removeChannel(gamesChannel);
       supabase.removeChannel(playersChannel);
     };
