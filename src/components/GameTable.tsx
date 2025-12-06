@@ -1028,8 +1028,23 @@ export const GameTable = ({
                           // For 3-5-7: Show visual feedback when decision is made
                           const is357Game = gameType === '3-5-7-game';
                           const myDecision = pendingDecision || (hasPlayerDecided ? playerDecision : null);
-                          const showStayFeedback = is357Game && isCurrentUser && myDecision === 'stay' && !allDecisionsIn;
-                          const showFoldFeedback = is357Game && isCurrentUser && myDecision === 'fold' && !allDecisionsIn;
+                          // Show feedback while waiting for other players (before allDecisionsIn)
+                          // OR even after allDecisionsIn if we have a pending decision (immediate feedback)
+                          const showStayFeedback = is357Game && isCurrentUser && myDecision === 'stay' && (!allDecisionsIn || pendingDecision === 'stay');
+                          const showFoldFeedback = is357Game && isCurrentUser && myDecision === 'fold' && (!allDecisionsIn || pendingDecision === 'fold');
+                          
+                          // Debug: Log 3-5-7 feedback state
+                          if (is357Game && isCurrentUser) {
+                            console.log('[357 FEEDBACK]', {
+                              pendingDecision,
+                              hasPlayerDecided,
+                              playerDecision,
+                              myDecision,
+                              allDecisionsIn,
+                              showStayFeedback,
+                              showFoldFeedback
+                            });
+                          }
                           
                           // In 3-5-7, once you've decided, hide the other button and enlarge your choice
                           if (is357Game && isCurrentUser && (showStayFeedback || showFoldFeedback)) {
