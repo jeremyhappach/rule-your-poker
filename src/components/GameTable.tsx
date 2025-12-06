@@ -658,8 +658,9 @@ export const GameTable = ({
                   </div>
                   
                   {/* Timer - hide during transitions, results, showdowns, and when all decisions in */}
+                  {/* For Holm games, show timer when round is betting and it's someone's turn */}
                   {timeLeft !== null && timeLeft >= 1 && !awaitingNextRound && !lastRoundResult && 
-                   roundStatus !== 'completed' && (gameType === 'holm-game' ? true : !allDecisionsIn) && (
+                   (gameType === 'holm-game' ? roundStatus === 'betting' : (roundStatus !== 'completed' && !allDecisionsIn)) && (
                     <div className="relative">
                       <div className={`bg-poker-felt-dark/90 rounded-lg p-1 sm:p-1.5 md:p-2 backdrop-blur-sm border-2 ${timeLeft <= 3 ? 'border-red-500 animate-pulse' : 'border-blue-500'} shadow-2xl`}>
                         <p className={`text-xl sm:text-2xl md:text-3xl font-black ${timeLeft <= 3 ? 'text-red-500' : 'text-white'} drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]`}>
