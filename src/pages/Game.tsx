@@ -389,6 +389,11 @@ const Game = () => {
             } : prev);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
+          } else if (newData && 'pot' in newData) {
+            // CRITICAL: Pot changes need immediate sync for all players
+            console.log('[REALTIME] 💰 POT CHANGED - IMMEDIATE FETCH!', newData.pot);
+            if (debounceTimer) clearTimeout(debounceTimer);
+            fetchGameData();
           } else {
             console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
@@ -1510,10 +1515,17 @@ const Game = () => {
           console.log('[FETCH] Setting card state context:', newCardContext);
           setCardStateContext(newCardContext);
           
-          const { data: cardsData } = await supabase
+          const { data: cardsData, error: cardsError } = await supabase
             .from('player_cards')
             .select('player_id, cards')
             .eq('round_id', roundData.id);
+
+          console.log('[FETCH] 🃏 Cards fetch result:', {
+            roundId: roundData.id,
+            cardsCount: cardsData?.length || 0,
+            cardsError: cardsError?.message,
+            playerIds: cardsData?.map(c => c.player_id)
+          });
 
           if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
@@ -1521,6 +1533,8 @@ const Game = () => {
               player_id: cd.player_id,
               cards: cd.cards as unknown as CardType[]
             })));
+          } else if (cardsError) {
+            console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
           } else {
             console.log('[FETCH] No cards found for round, keeping existing cards');
             // Don't clear cards if none found - might just be a timing issue
