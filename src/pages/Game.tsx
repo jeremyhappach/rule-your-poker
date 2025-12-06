@@ -139,7 +139,8 @@ const Game = () => {
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
   
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
-  const [debugHolmPaused, setDebugHolmPaused] = useState(true); // Set to true to enable debug mode
+  // Set to true to enable debug mode (shows "Proceed to Next Round" button)
+  const [debugHolmPaused, setDebugHolmPaused] = useState(false); // TEMPORARILY DISABLED - set to true to re-enable
   
   // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
   const lastKnownGameTypeRef = useRef<string | null>(null);
