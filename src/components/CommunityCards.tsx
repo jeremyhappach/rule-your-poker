@@ -139,7 +139,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
 
   return (
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-      <div className="flex gap-1" style={{ perspective: '1000px' }}>
+      <div className="flex gap-0.5" style={{ perspective: '1000px' }}>
         {cards.map((card, index) => {
           const isVisible = dealtCards.has(index);
           const hasFlipped = flippedCards.has(index);
@@ -150,7 +150,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
           return (
             <div
               key={index}
-              className="w-10 h-14 sm:w-12 sm:h-16 relative"
+              className="w-9 h-12 sm:w-10 sm:h-14 relative"
               style={{ 
                 transformStyle: 'preserve-3d',
                 transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
@@ -168,7 +168,7 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                   transition: 'transform 1.2s ease-in-out',
                 }}
               >
-                <div className="w-full h-full flex items-center justify-center p-1">
+                <div className="w-full h-full flex items-center justify-center p-0.5">
                   {teamLogo ? (
                     <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
                   ) : (
@@ -179,9 +179,9 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                 </div>
               </Card>
               
-              {/* Card Front */}
+              {/* Card Front - matching PlayerHand format */}
               <Card 
-                className="absolute inset-0 w-full h-full flex items-center justify-center border border-poker-gold shadow-lg"
+                className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 border border-poker-gold shadow-lg"
                 style={{
                   backgroundColor: 'white',
                   backfaceVisibility: 'hidden',
@@ -189,14 +189,12 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                   transition: 'transform 1.2s ease-in-out',
                 }}
               >
-                <div className="flex flex-col items-center justify-center">
-                  <div className={`text-lg sm:text-xl font-bold ${suitColor}`}>
-                    {card.rank}
-                  </div>
-                  <div className={`text-base sm:text-lg ${suitColor}`}>
-                    {card.suit}
-                  </div>
-                </div>
+                <span className={`text-xl sm:text-2xl font-black leading-none -mb-1 ${suitColor}`}>
+                  {card.rank}
+                </span>
+                <span className={`text-2xl sm:text-3xl leading-none ${suitColor}`}>
+                  {card.suit}
+                </span>
               </Card>
             </div>
           );

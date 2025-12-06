@@ -40,37 +40,37 @@ export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: Playe
   const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
   
   // Calculate size and spacing based on number of cards
-  // Card sizing - larger suits, less overlap for visibility
+  // COMPACT: Minimal whitespace, big values, big suits
   const getCardClasses = () => {
     if (displayCardCount >= 7) {
-      // Round 3: 7 cards - less overlap, bigger suits
+      // Round 3: 7 cards - tight spacing
       return {
-        card: 'w-8 h-11 sm:w-9 sm:h-12',
-        text: 'text-sm sm:text-base font-bold',
-        suit: 'text-xl sm:text-2xl',
+        card: 'w-7 h-10 sm:w-8 sm:h-11',
+        text: 'text-base sm:text-lg font-black',
+        suit: 'text-lg sm:text-xl',
         overlap: '-ml-2 sm:-ml-2 first:ml-0'
       };
     } else if (displayCardCount >= 5) {
-      // Round 2: 5 cards - medium overlap, big suits
+      // Round 2: 5 cards
       return {
-        card: 'w-9 h-12 sm:w-10 sm:h-14',
-        text: 'text-base sm:text-lg font-bold',
-        suit: 'text-2xl sm:text-3xl',
-        overlap: '-ml-2 sm:-ml-3 first:ml-0'
+        card: 'w-8 h-11 sm:w-9 sm:h-12',
+        text: 'text-lg sm:text-xl font-black',
+        suit: 'text-xl sm:text-2xl',
+        overlap: '-ml-2 sm:-ml-2 first:ml-0'
       };
     } else if (displayCardCount >= 4) {
       // Holm: 4 cards
       return {
-        card: 'w-10 h-14 sm:w-11 sm:h-15',
-        text: 'text-lg sm:text-xl font-bold',
+        card: 'w-9 h-12 sm:w-10 sm:h-14',
+        text: 'text-xl sm:text-2xl font-black',
         suit: 'text-2xl sm:text-3xl',
-        overlap: '-ml-2 first:ml-0'
+        overlap: '-ml-1 first:ml-0'
       };
     }
-    // Round 1: 3 cards - base size, big suits
+    // Round 1: 3 cards
     return {
-      card: 'w-11 h-15 sm:w-12 sm:h-16',
-      text: 'text-lg sm:text-xl font-bold',
+      card: 'w-10 h-14 sm:w-11 sm:h-15',
+      text: 'text-2xl sm:text-3xl font-black',
       suit: 'text-3xl sm:text-4xl',
       overlap: '-ml-1 first:ml-0'
     };
@@ -130,19 +130,19 @@ export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: Playe
       {sortedCards.map((card, index) => (
         <Card
           key={index}
-          className={`${classes.card} ${classes.overlap} flex flex-col items-center justify-center p-0.5 bg-white shadow-xl border border-gray-300 transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
+          className={`${classes.card} ${classes.overlap} flex flex-col items-center justify-center p-0 bg-white shadow-xl border border-gray-300 transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
           style={{ 
             transform: `rotate(${index * 2 - (sortedCards.length - 1)}deg)`,
             animationDelay: `${index * 150}ms`,
             animationFillMode: 'backwards'
           }}
         >
-          <span className={`${classes.text} leading-none ${
+          <span className={`${classes.text} leading-none -mb-1 ${
             card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-black'
           }`}>
             {card.rank}
           </span>
-          <span className={`${classes.suit} leading-tight ${
+          <span className={`${classes.suit} leading-none ${
             card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-black'
           }`}>
             {card.suit}
