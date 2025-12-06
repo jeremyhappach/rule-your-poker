@@ -1094,39 +1094,36 @@ async function handleMultiPlayerShowdown(
 
   // Evaluate each player's hand
   // CRITICAL: Use limit(1) + order to handle potential duplicate card records gracefully
+  // CRITICAL: Fetch ALL cards for this round FIRST in a single query, then match to players
+  // This prevents race conditions and ensures consistent data
+  console.log('[HOLM MULTI] Fetching ALL player cards for round:', roundId);
+  const { data: allCardsForRound, error: allCardsError } = await supabase
+    .from('player_cards')
+    .select('*')
+    .eq('round_id', roundId);
+  
+  if (allCardsError) {
+    console.error('[HOLM MULTI] ERROR fetching all cards for round:', allCardsError);
+  }
+  
+  console.log('[HOLM MULTI] All cards for round:', allCardsForRound?.map(pc => ({
+    player_id: pc.player_id,
+    cards_count: (pc.cards as any[])?.length,
+    cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`)
+  })));
+
   const evaluations = await Promise.all(
     stayedPlayers.map(async (player) => {
-      console.log(`[HOLM MULTI] Fetching cards for player: ${player.profiles?.username} | ID: ${player.id} | roundId: ${roundId}`);
+      console.log(`[HOLM MULTI] Looking up cards for player: ${player.profiles?.username} | ID: ${player.id}`);
       
-      // CRITICAL FIX: Fetch the MOST RECENT cards for this player, then verify they match the roundId
-      // This prevents issues where roundId might be stale or mismatched
-      const { data: allPlayerCards, error: cardsError } = await supabase
-        .from('player_cards')
-        .select('*, rounds!inner(game_id)')
-        .eq('player_id', player.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (cardsError) {
-        console.error('[HOLM MULTI] ERROR fetching cards for player:', player.id, cardsError);
+      // Find this player's cards from the pre-fetched array
+      const playerCardsData = allCardsForRound?.find(pc => pc.player_id === player.id);
+      
+      if (!playerCardsData) {
+        console.error(`[HOLM MULTI] ⚠️⚠️⚠️ NO CARDS FOUND for player ${player.profiles?.username} | ID: ${player.id}`);
+        console.error(`[HOLM MULTI] ⚠️⚠️⚠️ Available player_ids in round:`, allCardsForRound?.map(pc => pc.player_id));
+        console.error(`[HOLM MULTI] ⚠️⚠️⚠️ Stayed player IDs:`, stayedPlayers.map(p => p.id));
       }
-
-      console.log(`[HOLM MULTI] All recent cards for ${player.profiles?.username}:`, 
-        allPlayerCards?.map(pc => ({ round_id: pc.round_id, cards_count: (pc.cards as any[])?.length })));
-
-      // First try to find cards for the exact roundId
-      let playerCardsData = allPlayerCards?.find(pc => pc.round_id === roundId);
-      
-      // If not found, use the most recent cards for this game
-      if (!playerCardsData && allPlayerCards && allPlayerCards.length > 0) {
-        // Get the most recent one that belongs to this game
-        playerCardsData = allPlayerCards.find(pc => (pc.rounds as any)?.game_id === gameId);
-        if (playerCardsData) {
-          console.warn(`[HOLM MULTI] ⚠️ Using fallback cards for ${player.profiles?.username} from round ${playerCardsData.round_id} instead of ${roundId}`);
-        }
-      }
-      
-      console.log(`[HOLM MULTI] Query result for ${player.profiles?.username}:`, playerCardsData ? `Found ${(playerCardsData.cards as any[])?.length} cards (round: ${playerCardsData.round_id})` : 'NO DATA FOUND');
       
       // CRITICAL: Validate card data from database
       const rawCards = (playerCardsData?.cards as unknown as any[]) || [];
@@ -1135,16 +1132,18 @@ async function handleMultiPlayerShowdown(
         rank: String(c.rank || c.Rank || '').toUpperCase() as Rank
       })).filter(c => c.suit && c.rank);
       
-      // CRITICAL: Log if no cards found - this is the bug causing all ties
-      if (rawCards.length === 0) {
-        console.error('[HOLM MULTI] ⚠️⚠️⚠️ NO CARDS FOUND for player:', player.id, 'round:', roundId);
-        console.error('[HOLM MULTI] ⚠️⚠️⚠️ Available cards:', allPlayerCards?.map(pc => pc.round_id));
-      } else if (playerCards.length !== rawCards.length) {
-        console.warn('[HOLM MULTI] Card validation issue for player:', player.id, { raw: rawCards, validated: playerCards });
+      console.log(`[HOLM MULTI] ${player.profiles?.username}: ${playerCards.length} cards validated from ${rawCards.length} raw`);
+      
+      if (playerCards.length !== 4) {
+        console.error(`[HOLM MULTI] ⚠️ INVALID CARD COUNT for ${player.profiles?.username}: expected 4, got ${playerCards.length}`);
       }
       
       const allCards = [...playerCards, ...communityCards];
+      console.log(`[HOLM MULTI] ${player.profiles?.username} total cards for eval: ${allCards.length} (${playerCards.length} player + ${communityCards.length} community)`);
+      
       const evaluation = evaluateHand(allCards, false); // No wild cards in Holm
+      
+      console.log(`[HOLM MULTI] ${player.profiles?.username} hand: ${playerCards.map(c => `${c.rank}${c.suit}`).join(' ')} | eval: rank=${evaluation.rank} value=${evaluation.value}`);
 
       return {
         player,
