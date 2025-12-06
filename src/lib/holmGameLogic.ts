@@ -23,17 +23,22 @@ export async function checkHolmRoundComplete(gameId: string) {
     return;
   }
 
+  // CRITICAL: For Holm games, always use the LATEST round by round_number
+  // game.current_round can be stale due to race conditions
   const { data: round } = await supabase
     .from('rounds')
     .select('*')
     .eq('game_id', gameId)
-    .eq('round_number', game.current_round)
+    .order('round_number', { ascending: false })
+    .limit(1)
     .single();
     
   if (!round) {
     console.log('[HOLM CHECK] Round not found');
     return;
   }
+  
+  console.log('[HOLM CHECK] Using latest round:', round.round_number, '(game.current_round was:', game.current_round, ')');
   
   const { data: players } = await supabase
     .from('players')
