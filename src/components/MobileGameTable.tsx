@@ -288,16 +288,16 @@ export const MobileGameTable = ({
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
-        {/* Pot display - directly above community cards */}
-        <div className="absolute top-[15%] left-1/2 transform -translate-x-1/2 z-20">
+        {/* Pot display - above community cards, vertically centered */}
+        <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-full z-20">
           <div className="bg-black/70 backdrop-blur-sm rounded-full px-5 py-1.5 border border-poker-gold/60">
             <span className="text-poker-gold font-bold text-xl">${pot}</span>
           </div>
         </div>
         
-        {/* Community Cards - centered, HUGE */}
+        {/* Community Cards - vertically centered */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
-          <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
@@ -305,9 +305,9 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Chucky's Hand - below community cards, also huge */}
+        {/* Chucky's Hand - below center */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && (
-          <div className="absolute top-[72%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-150">
+          <div className="absolute top-[75%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-150">
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
