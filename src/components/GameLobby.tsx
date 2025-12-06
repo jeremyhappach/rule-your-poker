@@ -372,47 +372,50 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   return (
     <div className="space-y-6">
       {/* Header with Peoria Skyline Backdrop */}
-      <div className="relative overflow-hidden rounded-xl border border-amber-700/30">
-        {/* Skyline Background */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${peoriaSkyline})` }}
+      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 min-h-[200px] sm:min-h-[240px]">
+        {/* Skyline Background - Full visibility */}
+        <img 
+          src={peoriaSkyline} 
+          alt="Peoria Illinois Skyline"
+          className="absolute inset-0 w-full h-full object-cover"
         />
-        {/* Dark Overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/80" />
+        {/* Gradient Overlay - lighter at top to show skyline, darker at bottom for text */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
         
-        {/* Content */}
-        <div className="relative z-10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 p-4 sm:p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
-              <span className="text-black text-2xl">♠</span>
+        {/* Content - positioned at bottom */}
+        <div className="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50">
+                <span className="text-black text-3xl">♠</span>
+              </div>
+              <div>
+                <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                  Peoria Poker League
+                </h1>
+                <p className="text-amber-200/80 text-sm mt-1">Game Lobby</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-lg">
-                Peoria Poker League
-              </h1>
-              <p className="text-amber-200/60 text-sm">Game Lobby</p>
-            </div>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            {isSuperuser && (
+            <div className="flex gap-2 w-full sm:w-auto">
+              {isSuperuser && (
+                <Button 
+                  onClick={() => setShowDefaultsConfig(true)} 
+                  size="lg" 
+                  variant="outline"
+                  className="flex-1 sm:flex-none border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Defaults
+                </Button>
+              )}
               <Button 
-                onClick={() => setShowDefaultsConfig(true)} 
+                onClick={() => setShowCreateDialog(true)} 
                 size="lg" 
-                variant="outline"
-                className="flex-1 sm:flex-none border-amber-600/50 text-amber-400 hover:bg-amber-600/10 bg-black/40 backdrop-blur-sm"
+                className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30"
               >
-                <Settings className="h-4 w-4 mr-2" />
-                Defaults
+                Create New Game
               </Button>
-            )}
-            <Button 
-              onClick={() => setShowCreateDialog(true)} 
-              size="lg" 
-              className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/20"
-            >
-              Create New Game
-            </Button>
+            </div>
           </div>
         </div>
       </div>
