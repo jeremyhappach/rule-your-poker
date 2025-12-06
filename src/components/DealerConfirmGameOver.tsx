@@ -52,29 +52,46 @@ export const DealerConfirmGameOver = ({
       
       {/* Debug Info Panel */}
       {debugData && (
-        <div className="bg-black/50 rounded-lg p-3 text-left text-xs font-mono border border-yellow-500/50">
-          <p className="text-yellow-400 font-bold mb-2 text-center">🔍 DEBUG: Round {debugData.roundId?.substring(0, 8)}...</p>
-          <p className="text-gray-300 mb-2">Community: <span className="text-white">{debugData.communityCards}</span></p>
+        <div className="bg-black/80 rounded-lg p-4 text-left text-xs font-mono border border-yellow-500/50 mt-3">
+          <p className="text-yellow-400 font-bold mb-3 text-center text-sm">
+            🔍 DEBUG INFO
+          </p>
+          <p className="text-gray-300 mb-1">
+            Round: <span className="text-white">{debugData.roundId?.substring(0, 8)}...</span>
+          </p>
+          <p className="text-gray-300 mb-3">
+            Community: <span className="text-white">{debugData.communityCards}</span>
+          </p>
           
-          <div className="space-y-2">
+          <div className="space-y-3">
             {debugData.evaluations?.map((evalData, idx) => (
               <div 
                 key={idx} 
-                className={`p-2 rounded ${evalData.name === debugData?.winnerName ? 'bg-green-900/50 border border-green-500' : 'bg-gray-800/50 border border-gray-600'}`}
+                className={`p-3 rounded ${evalData.name === debugData?.winnerName ? 'bg-green-900/60 border-2 border-green-500' : 'bg-gray-800/60 border border-gray-600'}`}
               >
-                <p className="text-amber-300 font-bold">{evalData.name} {evalData.name === debugData?.winnerName && '👑 WINNER'}</p>
-                <p className="text-gray-300">Cards: <span className="text-white">{evalData.cards}</span></p>
-                <p className="text-gray-300">Hand: <span className="text-cyan-400">{evalData.handDesc}</span></p>
-                <p className="text-gray-300">
+                <p className="text-amber-300 font-bold text-sm mb-1">
+                  {evalData.name} {evalData.name === debugData?.winnerName && '👑 WINNER'}
+                </p>
+                <p className="text-gray-300 mb-1">
+                  Cards: <span className="text-white">{evalData.cards}</span>
+                </p>
+                <p className="text-gray-300 mb-1">
+                  Hand: <span className="text-cyan-400 font-semibold">{evalData.handDesc}</span>
+                </p>
+                <p className="text-gray-300 mb-1">
                   Value: <span className={evalData.value === debugData?.maxValue ? 'text-green-400 font-bold' : 'text-red-400'}>{evalData.value}</span>
                   {evalData.value === debugData?.maxValue && ' (MAX)'}
                 </p>
-                <p className="text-gray-400">Rank: {evalData.rank}</p>
+                <p className="text-gray-400">
+                  Rank: {evalData.rank}
+                </p>
               </div>
             ))}
           </div>
           
-          <p className="text-gray-400 mt-2 text-center">Max Value: {debugData.maxValue}</p>
+          <p className="text-gray-400 mt-3 text-center border-t border-gray-600 pt-2">
+            Max Value: <span className="text-green-400 font-bold">{debugData.maxValue}</span>
+          </p>
         </div>
       )}
       
