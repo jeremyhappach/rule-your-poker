@@ -281,12 +281,90 @@ export const GameTable = ({
   // USE LOCAL CARDS (fetched by GameTable) - only fallback to props if local is empty
   const playerCards = localPlayerCards.length > 0 ? localPlayerCards : propPlayerCards;
   
+  // Find the current player's record
+  const currentPlayerRecord = players.find(p => p.user_id === currentUserId);
+  const currentPlayerHasCards = currentPlayerRecord && playerCards.some(pc => pc.player_id === currentPlayerRecord.id);
+  
+  // CRITICAL FIX: Self-healing card fetch for current user
+  // If we're in a round but current user has no cards, aggressively poll until we get them
+  const cardHealingRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    // Only run healing if:
+    // 1. We have a round and game ID
+    // 2. We have a current player record
+    // 3. Current player doesn't have cards
+    // 4. Round is active (effectiveRoundNumber > 0)
+    const shouldHeal = 
+      gameId &&
+      realtimeRound?.id &&
+      currentPlayerRecord &&
+      !currentPlayerHasCards &&
+      effectiveRoundNumber > 0 &&
+      !currentPlayerRecord.sitting_out;
+    
+    if (shouldHeal) {
+      console.log('[GAMETABLE HEAL] 🚑 Current user missing cards - starting aggressive polling');
+      
+      const healingPoll = async () => {
+        if (!realtimeRound?.id || !currentPlayerRecord) return;
+        
+        console.log('[GAMETABLE HEAL] 🔄 Fetching cards for current user...');
+        
+        const { data: cardsData, error } = await supabase
+          .from('player_cards')
+          .select('player_id, cards')
+          .eq('round_id', realtimeRound.id);
+        
+        if (error) {
+          console.error('[GAMETABLE HEAL] ❌ Error:', error.message);
+          return;
+        }
+        
+        if (cardsData && cardsData.length > 0) {
+          const hasCurrentUserCards = cardsData.some(c => c.player_id === currentPlayerRecord.id);
+          console.log('[GAMETABLE HEAL] ✅ Got cards:', { count: cardsData.length, hasCurrentUserCards });
+          
+          if (hasCurrentUserCards) {
+            setLocalPlayerCards(cardsData.map(cd => ({
+              player_id: cd.player_id,
+              cards: cd.cards as unknown as CardType[]
+            })));
+            lastFetchedRoundIdRef.current = realtimeRound.id;
+            
+            // Stop polling once we have our cards
+            if (cardHealingRef.current) {
+              clearInterval(cardHealingRef.current);
+              cardHealingRef.current = null;
+            }
+          }
+        }
+      };
+      
+      // Start polling every 300ms
+      healingPoll(); // Immediate first attempt
+      cardHealingRef.current = setInterval(healingPoll, 300);
+      
+      return () => {
+        if (cardHealingRef.current) {
+          clearInterval(cardHealingRef.current);
+          cardHealingRef.current = null;
+        }
+      };
+    } else if (cardHealingRef.current && currentPlayerHasCards) {
+      // Stop polling if we got cards
+      clearInterval(cardHealingRef.current);
+      cardHealingRef.current = null;
+    }
+  }, [gameId, realtimeRound?.id, currentPlayerRecord?.id, currentPlayerHasCards, effectiveRoundNumber, currentPlayerRecord?.sitting_out]);
+  
   // Debug: Log card sources
   console.log('[GAMETABLE] 🃏 Card sources:', {
     localCards: localPlayerCards.length,
     propCards: propPlayerCards.length,
     usingLocal: localPlayerCards.length > 0,
     currentUserId,
+    currentPlayerHasCards,
     realtimeRound: realtimeRound?.round_number,
     propRound: currentRound,
     effectiveRound: effectiveRoundNumber
