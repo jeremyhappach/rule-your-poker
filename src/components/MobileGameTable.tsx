@@ -274,11 +274,11 @@ export const MobileGameTable = ({
         </div>
       )}
       
-      {/* Main table area - horizontal orientation, shorter height */}
-      <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '35vh' }}>
+      {/* Main table area - USE MORE VERTICAL SPACE */}
+      <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
         {/* Table felt background - wide horizontal ellipse */}
         <div 
-          className="absolute inset-x-0 inset-y-2 rounded-[50%/40%] border-2 border-amber-900 shadow-inner"
+          className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner"
           style={{
             background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
             boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
@@ -289,15 +289,15 @@ export const MobileGameTable = ({
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
         {/* Pot display - directly above community cards */}
-        <div className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-20">
-          <div className="bg-black/70 backdrop-blur-sm rounded-full px-4 py-1 border border-poker-gold/60">
-            <span className="text-poker-gold font-bold text-lg">${pot}</span>
+        <div className="absolute top-[15%] left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-black/70 backdrop-blur-sm rounded-full px-5 py-1.5 border border-poker-gold/60">
+            <span className="text-poker-gold font-bold text-xl">${pot}</span>
           </div>
         </div>
         
-        {/* Community Cards - centered, MASSIVE, can overlap */}
+        {/* Community Cards - centered, HUGE */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
-          <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-150">
+          <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
@@ -305,9 +305,9 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Chucky's Hand - below community cards */}
+        {/* Chucky's Hand - below community cards, also huge */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && (
-          <div className="absolute top-[70%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-125">
+          <div className="absolute top-[72%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-150">
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
