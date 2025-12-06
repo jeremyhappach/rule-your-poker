@@ -549,20 +549,27 @@ export const GameTable = ({
   }, []);
   
   // Detect when Chucky wins against the current player in Holm game
+  // Only show "YOU GOT CHOPPED" to the player who actually lost
   useEffect(() => {
     if (
       gameType === 'holm-game' && 
       lastRoundResult && 
-      lastRoundResult.includes('Chucky beat') &&
       lastRoundResult !== lastChoppedResultRef.current &&
       currentUserId
     ) {
-      // Check if current user was the one who lost by checking if their username is in the result
+      // Get current player info
       const currentPlayer = players.find(p => p.user_id === currentUserId);
       const currentUsername = currentPlayer?.profiles?.username || '';
       
-      // Show chopped animation if the current player's name is in the "Chucky beat X" message
-      if (currentUsername && lastRoundResult.includes(`Chucky beat ${currentUsername}`)) {
+      // Only show chopped if THIS player specifically lost to Chucky
+      // Check for exact match: "Chucky beat {username}" - this is 1v1 loss
+      // Or in tie-breaker: check if username is in the losers list
+      const is1v1Loss = currentUsername && lastRoundResult.includes(`Chucky beat ${currentUsername}`);
+      const isTieBreakerLoss = currentUsername && 
+        lastRoundResult.includes('lose to Chucky') && 
+        lastRoundResult.includes(currentUsername);
+      
+      if (is1v1Loss || isTieBreakerLoss) {
         lastChoppedResultRef.current = lastRoundResult;
         setShowChopped(true);
       }
@@ -1021,17 +1028,33 @@ export const GameTable = ({
                             });
                           }
                           
+                          // For 3-5-7: Show visual feedback when decision is locked
+                          const is357Game = gameType === '3-5-7-game';
+                          const showEnlargedStay = is357Game && hasDecidedStay && !allDecisionsIn;
+                          const showEnlargedFold = is357Game && hasDecidedFold && !allDecisionsIn;
+                          const hideButtons357 = is357Game && (showEnlargedStay || showEnlargedFold);
+                          
                           return (
                             <>
-                              {/* Fold button (left) - shown when no decision or when fold is chosen */}
-                              {canDecide ? (
+                              {/* Fold/Drop button (left) - hidden if stay was chosen in 3-5-7 */}
+                              {canDecide && !showEnlargedStay ? (
                                 <Button 
                                   variant="destructive" 
                                   size="sm"
                                   onClick={onFold}
-                                  className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
+                                  className={`text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto transition-all duration-300
+                                    ${showEnlargedFold ? 'scale-125 sm:scale-150 ring-2 ring-red-400 shadow-lg shadow-red-500/50' : ''}`}
                                 >
-                                  {gameType === 'holm-game' ? 'Fold' : 'Drop'}
+                                  {gameType === 'holm-game' ? 'Fold' : (showEnlargedFold ? '✓ DROPPED' : 'Drop')}
+                                </Button>
+                              ) : showEnlargedFold ? (
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  disabled
+                                  className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto scale-125 sm:scale-150 ring-2 ring-red-400 shadow-lg shadow-red-500/50"
+                                >
+                                  ✓ DROPPED
                                 </Button>
                               ) : (
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
@@ -1044,14 +1067,23 @@ export const GameTable = ({
                                 </p>
                               </div>
                               
-                              {/* Stay button (right) - shown when no decision or when stay is chosen */}
-                              {canDecide ? (
+                              {/* Stay button (right) - hidden if fold was chosen in 3-5-7 */}
+                              {canDecide && !showEnlargedFold ? (
                                 <Button 
                                   size="sm"
                                   onClick={onStay}
-                                  className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
+                                  className={`bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto transition-all duration-300
+                                    ${showEnlargedStay ? 'scale-125 sm:scale-150 ring-2 ring-green-400 shadow-lg shadow-green-500/50' : ''}`}
                                 >
-                                  Stay
+                                  {showEnlargedStay ? '✓ STAYED' : 'Stay'}
+                                </Button>
+                              ) : showEnlargedStay ? (
+                                <Button 
+                                  size="sm"
+                                  disabled
+                                  className="bg-poker-chip-green text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto scale-125 sm:scale-150 ring-2 ring-green-400 shadow-lg shadow-green-500/50"
+                                >
+                                  ✓ STAYED
                                 </Button>
                               ) : (
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
