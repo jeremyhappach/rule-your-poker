@@ -805,8 +805,8 @@ const Game = () => {
       }
     };
     
-    // Poll every 1.5 seconds as fallback (critical for round sync)
-    const pollInterval = setInterval(syncPoll, 1500);
+    // Poll every 750ms as aggressive fallback (critical for round sync)
+    const pollInterval = setInterval(syncPoll, 750);
     
     // Also sync immediately on mount
     syncPoll();
