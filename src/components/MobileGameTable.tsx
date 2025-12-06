@@ -211,7 +211,7 @@ export const MobileGameTable = ({
   const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
   const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
 
-  // Render player chip - larger and more visible
+  // Render player chip - chipstack in center, name below
   const renderPlayerChip = (player: Player) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const playerDecision = player.current_decision;
@@ -224,38 +224,36 @@ export const MobileGameTable = ({
           timeLeft={timeLeft}
           maxTime={maxTime}
           isActive={isTheirTurn && roundStatus === 'betting'}
-          size={42}
+          size={52}
         >
           <div className={`
-            w-9 h-9 rounded-full flex items-center justify-center font-bold text-[11px]
-            ${playerDecision === 'fold' ? 'bg-muted text-muted-foreground opacity-50' : 'bg-amber-900 text-amber-100'}
+            w-12 h-12 rounded-full flex flex-col items-center justify-center
+            ${playerDecision === 'fold' ? 'bg-muted/80 opacity-50' : 'bg-amber-900/90'}
             ${playerDecision === 'stay' ? 'ring-2 ring-green-500' : ''}
             ${player.sitting_out ? 'opacity-40 grayscale' : ''}
-            ${isTheirTurn ? 'ring-2 ring-yellow-400 animate-pulse' : ''}
+            ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
           `}>
-            {player.profiles?.username?.substring(0, 2).toUpperCase() || 
-             (player.is_bot ? '🤖' : `P${player.position}`)}
+            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+              ${player.chips}
+            </span>
           </div>
         </MobilePlayerTimer>
-        <span className="text-[10px] text-amber-100 truncate max-w-[60px] leading-none font-medium">
-          {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
-        </span>
-        <span className={`text-[11px] font-bold leading-none ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-          ${player.chips}
-        </span>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           {player.position === dealerPosition && (
-            <Badge className="text-[7px] px-1 py-0 bg-poker-gold text-black h-3.5">D</Badge>
+            <Badge className="text-[8px] px-1 py-0 bg-poker-gold text-black h-4">D</Badge>
           )}
-          {/* Mini cards - slightly larger */}
-          {cards.length > 0 && (
-            <div className="flex gap-0.5">
-              {cards.slice(0, 4).map((_, i) => (
-                <div key={i} className="w-2.5 h-4 bg-gradient-to-br from-blue-800 to-blue-950 rounded-[2px] border border-blue-600/50" />
-              ))}
-            </div>
-          )}
+          <span className="text-[11px] text-amber-100 truncate max-w-[60px] leading-none font-semibold">
+            {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
+          </span>
         </div>
+        {/* Mini cards indicator */}
+        {cards.length > 0 && (
+          <div className="flex gap-0.5">
+            {cards.slice(0, 4).map((_, i) => (
+              <div key={i} className="w-2 h-3 bg-gradient-to-br from-blue-800 to-blue-950 rounded-[1px] border border-blue-600/50" />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -292,16 +290,16 @@ export const MobileGameTable = ({
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
-        {/* Pot display in center of table */}
-        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
-          <div className="bg-black/60 backdrop-blur-sm rounded-full px-4 py-1 border border-poker-gold/50">
-            <span className="text-poker-gold font-bold text-lg">${pot}</span>
+        {/* Pot display - just value, no label */}
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="bg-black/70 backdrop-blur-sm rounded-full px-5 py-1.5 border border-poker-gold/60">
+            <span className="text-poker-gold font-bold text-xl">${pot}</span>
           </div>
         </div>
         
-        {/* Community Cards - centered, LARGER */}
+        {/* Community Cards - centered, MUCH LARGER */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-90">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-110">
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
@@ -309,9 +307,9 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Chucky's Hand - LARGER */}
+        {/* Chucky's Hand - MUCH LARGER */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 scale-90">
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 scale-110">
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
