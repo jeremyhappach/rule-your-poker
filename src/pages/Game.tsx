@@ -670,8 +670,8 @@ const Game = () => {
     // Run immediately
     syncGameState();
     
-    // Poll every 500ms for aggressive sync
-    const syncInterval = setInterval(syncGameState, 500);
+    // Poll every 2 seconds for sync (reduced from 500ms to avoid overload)
+    const syncInterval = setInterval(syncGameState, 2000);
     return () => clearInterval(syncInterval);
   }, [gameId, game?.status, game?.current_round, game?.all_decisions_in, decisionDeadline]);
 
