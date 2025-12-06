@@ -310,14 +310,20 @@ export const GameTable = ({
             // Get cards for this player
             const rawCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
             
-            // CRITICAL: Use authoritative card count from round record if available
-            // This bypasses state sync issues - the count comes from the same round as the cards
+            // CRITICAL FIX: For card rendering, ONLY use authoritativeCardCount if it's valid
+            // The authoritative count must come from the SAME round - if cards exist, trust them
+            // For observers without cards, use authoritative count for placeholder backs
             const getExpectedCardCount = (round: number): number => {
-              // If we have authoritative count from the round record, use it
+              // If player has actual cards, that IS the authoritative count
+              // This prevents mismatches between fetched cards and stale authoritativeCardCount
+              if (rawCards.length > 0) {
+                return rawCards.length;
+              }
+              // For observers without cards, use authoritative count from round record
               if (authoritativeCardCount && authoritativeCardCount > 0) {
                 return authoritativeCardCount;
               }
-              // Fallback to calculating from round number (may be stale)
+              // Fallback to calculating from round number
               if (gameType === 'holm-game') {
                 return 4; // Holm game always has 4 cards per player
               }
@@ -329,22 +335,9 @@ export const GameTable = ({
             };
             const expectedCardCount = getExpectedCardCount(currentRound);
             
-            // CRITICAL: Validate cards match expected count for current game type/round
-            // If card count doesn't match, these are stale cards from a previous game - reject them
-            const actualCards = (rawCards.length > 0 && rawCards.length !== expectedCardCount && expectedCardCount > 0)
-              ? [] // Stale cards - wrong count for current game type/round
-              : rawCards;
-            
-            if (rawCards.length > 0 && rawCards.length !== expectedCardCount && expectedCardCount > 0) {
-              console.log('[STALE_CARDS] Rejecting stale cards:', {
-                playerId: player?.id,
-                rawCardCount: rawCards.length,
-                expectedCardCount,
-                authoritativeCardCount,
-                gameType,
-                currentRound
-              });
-            }
+            // CRITICAL FIX: Don't reject cards - trust them if they exist
+            // The issue was rejecting valid cards due to stale expectedCardCount
+            const actualCards = rawCards;
             
             // Show cards when there's an active round and player isn't sitting out
             const shouldShowCards = player && !player.sitting_out && currentRound > 0;

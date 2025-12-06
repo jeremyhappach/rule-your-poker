@@ -297,17 +297,14 @@ const Game = () => {
           if (incomingRound !== undefined && incomingRound !== null && localRound !== null && incomingRound !== localRound) {
             console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED (detected via local state):', localRound, '->', incomingRound, '- FORCING SYNC!');
             lastKnownRoundRef.current = incomingRound;
+            
+            // CRITICAL FIX: Clear card state context on round change
+            // The new round will have different cards_dealt value - don't use stale context
+            setCardStateContext(null);
+            setPlayerCards([]);
+            
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
-            // Multiple delayed fetches to ensure all clients sync
-            setTimeout(() => {
-              console.log('[REALTIME] 🔄 ROUND CHANGE - Delayed refetch after 300ms');
-              fetchGameData();
-            }, 300);
-            setTimeout(() => {
-              console.log('[REALTIME] 🔄 ROUND CHANGE - Delayed refetch after 800ms');
-              fetchGameData();
-            }, 800);
             return;
           }
           
@@ -317,16 +314,13 @@ const Game = () => {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             } else {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (round transitioning) - IMMEDIATE FETCH! ⚡⚡⚡');
+              // CRITICAL FIX: Clear card state context when round is transitioning
+              // New round will have new cards_dealt value
+              setCardStateContext(null);
+              setPlayerCards([]);
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
-            // Extra fetch after delay when awaiting is cleared (round is transitioning)
-            if (newData.awaiting_next_round === false) {
-              setTimeout(() => {
-                console.log('[REALTIME] ⚡ AWAITING CLEARED - Delayed refetch after 500ms');
-                fetchGameData();
-              }, 500);
-            }
           } else if (newData && 'status' in newData) {
             const newStatus = newData.status;
             // CRITICAL: Immediately fetch for any status change that affects UI flow
@@ -724,8 +718,8 @@ const Game = () => {
     };
   }, [game?.status, game?.dealer_position, players, user?.id, gameId, playerCards.length, showAnteDialog]);
   
-  // CRITICAL: 3-5-7 specific round sync polling
-  // This catches desync issues where one player moves to next round but others don't
+  // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
+  // Reduced frequency - realtime should handle most cases now
   useEffect(() => {
     if (!gameId || !game) return;
     
@@ -733,8 +727,6 @@ const Game = () => {
     const isActiveGame = game?.status === 'in_progress';
     
     if (!is357Game || !isActiveGame) return;
-    
-    console.log('[357 SYNC POLL] Starting 3-5-7 round sync polling');
     
     const syncPoll = async () => {
       const { data: freshGame, error } = await supabase
@@ -745,33 +737,24 @@ const Game = () => {
       
       if (error || !freshGame) return;
       
-      // Compare with local state
       const localRound = game?.current_round;
       const dbRound = freshGame.current_round;
       
-      console.log('[357 SYNC POLL] Checking sync:', {
-        localRound,
-        dbRound,
-        localRef: lastKnownRoundRef.current,
-        awaiting: freshGame.awaiting_next_round,
-        status: freshGame.status
-      });
-      
       // Detect desync: DB round is different from local round
       if (dbRound !== null && localRound !== null && dbRound !== localRound) {
-        console.log('[357 SYNC POLL] ⚠️⚠️⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound, '- FORCING REFETCH');
+        console.log('[357 SYNC POLL] ⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound);
         lastKnownRoundRef.current = dbRound;
+        // Clear stale card context before fetch
+        setCardStateContext(null);
+        setPlayerCards([]);
         fetchGameData();
       }
     };
     
-    // Poll every 1.5 seconds for 3-5-7 sync
-    const pollInterval = setInterval(syncPoll, 1500);
+    // Poll every 3 seconds as fallback (reduced from 1.5s - realtime handles most cases)
+    const pollInterval = setInterval(syncPoll, 3000);
     
-    return () => {
-      console.log('[357 SYNC POLL] Stopping sync poll');
-      clearInterval(pollInterval);
-    };
+    return () => clearInterval(pollInterval);
   }, [gameId, game?.game_type, game?.status, game?.current_round]);
   
   useEffect(() => {
@@ -1497,6 +1480,10 @@ const Game = () => {
     }
 
     setGame(gameData);
+    
+    // CRITICAL: Update refs with current game state for realtime change detection
+    lastKnownGameTypeRef.current = gameData.game_type;
+    lastKnownRoundRef.current = gameData.current_round;
     
     // CRITICAL: Update pause ref immediately when fetching game data
     // This ensures timer stops even if realtime updates aren't working for observers
