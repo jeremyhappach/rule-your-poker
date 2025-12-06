@@ -318,12 +318,18 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   if (round2) {
     console.log('[HOLM] Resetting round 2 for new hand...');
     
-    // Delete old player cards
-    await supabase
+    // Delete old player cards - CRITICAL: await and verify deletion
+    const { error: deleteError, count: deleteCount } = await supabase
       .from('player_cards')
       .delete()
       .eq('round_id', round2.id);
     
+    if (deleteError) {
+      console.error('[HOLM] ERROR deleting old player cards:', deleteError);
+    } else {
+      console.log('[HOLM] Deleted old player cards, count:', deleteCount);
+    }
+
     // Reset round 2 with fresh cards
     await supabase
       .from('rounds')
@@ -1031,15 +1037,23 @@ async function handleMultiPlayerShowdown(
   console.log('[HOLM MULTI] Evaluating hands...');
 
   // Evaluate each player's hand
+  // CRITICAL: Use limit(1) + order to handle potential duplicate card records gracefully
   const evaluations = await Promise.all(
     stayedPlayers.map(async (player) => {
-      const { data: playerCardsData } = await supabase
+      const { data: playerCardsArray, error: cardsError } = await supabase
         .from('player_cards')
         .select('*')
         .eq('player_id', player.id)
         .eq('round_id', roundId)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
+      if (cardsError) {
+        console.error('[HOLM MULTI] ERROR fetching cards for player:', player.id, cardsError);
+      }
+
+      const playerCardsData = playerCardsArray?.[0];
+      
       // CRITICAL: Validate card data from database
       const rawCards = (playerCardsData?.cards as unknown as any[]) || [];
       const playerCards: Card[] = rawCards.map(c => ({
@@ -1047,7 +1061,10 @@ async function handleMultiPlayerShowdown(
         rank: String(c.rank || c.Rank || '').toUpperCase() as Rank
       })).filter(c => c.suit && c.rank);
       
-      if (playerCards.length !== rawCards.length) {
+      // CRITICAL: Log if no cards found - this is the bug causing all ties
+      if (rawCards.length === 0) {
+        console.error('[HOLM MULTI] ⚠️⚠️⚠️ NO CARDS FOUND for player:', player.id, 'round:', roundId);
+      } else if (playerCards.length !== rawCards.length) {
         console.warn('[HOLM MULTI] Card validation issue for player:', player.id, { raw: rawCards, validated: playerCards });
       }
       
