@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
+import { MobileGameTable } from "@/components/MobileGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
@@ -116,6 +118,7 @@ const Game = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
   const [game, setGame] = useState<GameData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -2961,42 +2964,77 @@ const Game = () => {
         )}
 
         {game.status === 'in_progress' && (
-          <GameTable
-            gameId={gameId}
-            players={players}
-            currentUserId={user?.id}
-            pot={game.pot || 0}
-            currentRound={game.current_round || 1}
-            allDecisionsIn={game.all_decisions_in || false}
-            playerCards={playerCards}
-            authoritativeCardCount={cardStateContext?.cardsDealt}
-            timeLeft={timeLeft}
-            lastRoundResult={(game as any).last_round_result || null}
-            dealerPosition={game.dealer_position}
-            legValue={game.leg_value || 1}
-            legsToWin={game.legs_to_win || 3}
-            potMaxEnabled={game.pot_max_enabled ?? true}
-            potMaxValue={game.pot_max_value || 10}
-            pendingSessionEnd={game.pending_session_end || false}
-            awaitingNextRound={game.awaiting_next_round || false}
-            gameType={game.game_type}
-            communityCards={currentRound?.community_cards as CardType[] | undefined}
-            communityCardsRevealed={effectiveCommunityCardsRevealed}
-            buckPosition={game.buck_position}
-            currentTurnPosition={game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
-            chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
-            chuckyActive={currentRound?.chucky_active}
-            chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
-            roundStatus={currentRound?.status}
-            pendingDecision={pendingDecision}
-            isPaused={game.is_paused || false}
-            debugHolmPaused={debugHolmPaused}
-            onStay={handleStay}
-            onFold={handleFold}
-            onSelectSeat={handleSelectSeat}
-            onRequestRefetch={fetchGameData}
-            onDebugProceed={handleDebugProceed}
-          />
+          isMobile ? (
+            <MobileGameTable
+              players={players}
+              currentUserId={user?.id}
+              pot={game.pot || 0}
+              currentRound={game.current_round || 1}
+              allDecisionsIn={game.all_decisions_in || false}
+              playerCards={playerCards}
+              timeLeft={timeLeft}
+              maxTime={decisionTimerSeconds}
+              lastRoundResult={(game as any).last_round_result || null}
+              dealerPosition={game.dealer_position}
+              legValue={game.leg_value || 1}
+              legsToWin={game.legs_to_win || 3}
+              potMaxEnabled={game.pot_max_enabled ?? true}
+              potMaxValue={game.pot_max_value || 10}
+              pendingSessionEnd={game.pending_session_end || false}
+              awaitingNextRound={game.awaiting_next_round || false}
+              gameType={game.game_type}
+              communityCards={currentRound?.community_cards as CardType[] | undefined}
+              communityCardsRevealed={effectiveCommunityCardsRevealed}
+              buckPosition={game.buck_position}
+              currentTurnPosition={game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
+              chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
+              chuckyActive={currentRound?.chucky_active}
+              chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
+              roundStatus={currentRound?.status}
+              pendingDecision={pendingDecision}
+              isPaused={game.is_paused || false}
+              onStay={handleStay}
+              onFold={handleFold}
+              onSelectSeat={handleSelectSeat}
+            />
+          ) : (
+            <GameTable
+              gameId={gameId}
+              players={players}
+              currentUserId={user?.id}
+              pot={game.pot || 0}
+              currentRound={game.current_round || 1}
+              allDecisionsIn={game.all_decisions_in || false}
+              playerCards={playerCards}
+              authoritativeCardCount={cardStateContext?.cardsDealt}
+              timeLeft={timeLeft}
+              lastRoundResult={(game as any).last_round_result || null}
+              dealerPosition={game.dealer_position}
+              legValue={game.leg_value || 1}
+              legsToWin={game.legs_to_win || 3}
+              potMaxEnabled={game.pot_max_enabled ?? true}
+              potMaxValue={game.pot_max_value || 10}
+              pendingSessionEnd={game.pending_session_end || false}
+              awaitingNextRound={game.awaiting_next_round || false}
+              gameType={game.game_type}
+              communityCards={currentRound?.community_cards as CardType[] | undefined}
+              communityCardsRevealed={effectiveCommunityCardsRevealed}
+              buckPosition={game.buck_position}
+              currentTurnPosition={game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
+              chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
+              chuckyActive={currentRound?.chucky_active}
+              chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
+              roundStatus={currentRound?.status}
+              pendingDecision={pendingDecision}
+              isPaused={game.is_paused || false}
+              debugHolmPaused={debugHolmPaused}
+              onStay={handleStay}
+              onFold={handleFold}
+              onSelectSeat={handleSelectSeat}
+              onRequestRefetch={fetchGameData}
+              onDebugProceed={handleDebugProceed}
+            />
+          )
         )}
       </div>
 
