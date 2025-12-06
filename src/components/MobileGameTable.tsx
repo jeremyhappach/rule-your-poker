@@ -431,25 +431,25 @@ export const MobileGameTable = ({
         
         {/* Expanded view - show cards large */}
         {isCardSectionExpanded && currentPlayer && (
-          <div className="px-4 pb-4">
-            {/* Current player info bar */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
+          <div className="px-2 pb-2 flex flex-col h-full">
+            {/* Compact player info bar */}
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
                 <MobilePlayerTimer
                   timeLeft={timeLeft}
                   maxTime={maxTime}
                   isActive={isPlayerTurn && roundStatus === 'betting' && !hasDecided}
-                  size={36}
+                  size={28}
                 >
-                  <div className="w-7 h-7 rounded-full bg-poker-gold flex items-center justify-center">
-                    <span className="text-black text-[10px] font-bold">YOU</span>
+                  <div className="w-6 h-6 rounded-full bg-poker-gold flex items-center justify-center">
+                    <span className="text-black text-[8px] font-bold">YOU</span>
                   </div>
                 </MobilePlayerTimer>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="text-xs font-semibold text-foreground leading-tight">
                     {currentPlayer.profiles?.username || 'You'}
                   </p>
-                  <p className={`text-xs font-bold ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                  <p className={`text-[10px] font-bold leading-tight ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
                     ${currentPlayer.chips.toLocaleString()}
                   </p>
                 </div>
@@ -457,52 +457,54 @@ export const MobileGameTable = ({
               
               {/* Hand evaluation */}
               {currentPlayerCards.length > 0 && gameType !== 'holm-game' && !chuckyActive && (
-                <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs">
+                <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-[10px] px-1.5 py-0">
                   {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
                 </Badge>
               )}
               
               {/* Legs indicator for 3-5-7 */}
               {gameType !== 'holm-game' && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   {currentPlayer.legs > 0 ? (
                     Array.from({ length: currentPlayer.legs }).map((_, i) => (
                       <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
                     ))
                   ) : (
-                    <span className="text-[10px] text-muted-foreground">No legs</span>
+                    <span className="text-[9px] text-muted-foreground">0 legs</span>
                   )}
                 </div>
               )}
             </div>
             
-            {/* Large cards display */}
-            <div className="flex justify-center mb-3">
+            {/* HUGE cards display - scale up significantly */}
+            <div className="flex-1 flex items-center justify-center">
               {currentPlayerCards.length > 0 ? (
-                <PlayerHand 
-                  cards={currentPlayerCards} 
-                  isHidden={false}
-                />
+                <div className="transform scale-[2.2] origin-center">
+                  <PlayerHand 
+                    cards={currentPlayerCards} 
+                    isHidden={false}
+                  />
+                </div>
               ) : (
-                <div className="text-sm text-muted-foreground py-8">Waiting for cards...</div>
+                <div className="text-sm text-muted-foreground">Waiting for cards...</div>
               )}
             </div>
             
-            {/* Action buttons */}
+            {/* Action buttons - fixed at bottom */}
             {canDecide && (
-              <div className="flex gap-3 justify-center">
+              <div className="flex gap-2 justify-center mt-1">
                 <Button
                   variant="destructive"
-                  size="lg"
+                  size="default"
                   onClick={onFold}
-                  className="flex-1 max-w-[140px] text-base font-bold"
+                  className="flex-1 max-w-[120px] text-sm font-bold h-9"
                 >
                   {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                 </Button>
                 <Button
-                  size="lg"
+                  size="default"
                   onClick={onStay}
-                  className="flex-1 max-w-[140px] bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-base font-bold"
+                  className="flex-1 max-w-[120px] bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-sm font-bold h-9"
                 >
                   Stay
                 </Button>
@@ -511,9 +513,9 @@ export const MobileGameTable = ({
             
             {/* Decision feedback */}
             {hasDecided && (
-              <div className="flex justify-center">
+              <div className="flex justify-center mt-1">
                 <Badge 
-                  className={`text-base px-4 py-1 ${
+                  className={`text-sm px-3 py-0.5 ${
                     (pendingDecision || currentPlayer.current_decision) === 'stay' 
                       ? 'bg-green-500 text-white' 
                       : 'bg-destructive text-destructive-foreground'
