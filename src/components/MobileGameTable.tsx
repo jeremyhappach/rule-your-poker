@@ -211,14 +211,12 @@ export const MobileGameTable = ({
   const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
   const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
 
-  // Render a compact player chip
-  const renderPlayerChip = (player: Player, size: 'sm' | 'md' = 'sm') => {
+  // Render player chip - larger and more visible
+  const renderPlayerChip = (player: Player) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const playerDecision = player.current_decision;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
     const cards = playerCardsData?.cards || [];
-    const chipSize = size === 'sm' ? 32 : 36;
-    const innerSize = size === 'sm' ? 'w-6 h-6 text-[8px]' : 'w-7 h-7 text-[9px]';
     
     return (
       <div key={player.id} className="flex flex-col items-center gap-0.5">
@@ -226,63 +224,65 @@ export const MobileGameTable = ({
           timeLeft={timeLeft}
           maxTime={maxTime}
           isActive={isTheirTurn && roundStatus === 'betting'}
-          size={chipSize}
+          size={42}
         >
           <div className={`
-            ${innerSize} rounded-full flex items-center justify-center font-bold
+            w-9 h-9 rounded-full flex items-center justify-center font-bold text-[11px]
             ${playerDecision === 'fold' ? 'bg-muted text-muted-foreground opacity-50' : 'bg-amber-900 text-amber-100'}
             ${playerDecision === 'stay' ? 'ring-2 ring-green-500' : ''}
             ${player.sitting_out ? 'opacity-40 grayscale' : ''}
+            ${isTheirTurn ? 'ring-2 ring-yellow-400 animate-pulse' : ''}
           `}>
             {player.profiles?.username?.substring(0, 2).toUpperCase() || 
              (player.is_bot ? '🤖' : `P${player.position}`)}
           </div>
         </MobilePlayerTimer>
-        <span className="text-[8px] text-amber-100 truncate max-w-[50px] leading-none">
+        <span className="text-[10px] text-amber-100 truncate max-w-[60px] leading-none font-medium">
           {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
         </span>
-        <span className={`text-[9px] font-bold leading-none ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+        <span className={`text-[11px] font-bold leading-none ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
           ${player.chips}
         </span>
-        {player.position === dealerPosition && (
-          <Badge className="text-[6px] px-0.5 py-0 bg-poker-gold text-black h-3">D</Badge>
-        )}
-        {/* Mini cards */}
-        {cards.length > 0 && (
-          <div className="flex gap-px">
-            {cards.slice(0, 4).map((_, i) => (
-              <div key={i} className="w-2 h-3 bg-gradient-to-br from-blue-800 to-blue-950 rounded-[1px] border border-blue-600/50" />
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-0.5">
+          {player.position === dealerPosition && (
+            <Badge className="text-[7px] px-1 py-0 bg-poker-gold text-black h-3.5">D</Badge>
+          )}
+          {/* Mini cards - slightly larger */}
+          {cards.length > 0 && (
+            <div className="flex gap-0.5">
+              {cards.slice(0, 4).map((_, i) => (
+                <div key={i} className="w-2.5 h-4 bg-gradient-to-br from-blue-800 to-blue-950 rounded-[2px] border border-blue-600/50" />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden">
-      {/* Top bar - Pot info (more compact) */}
-      <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border px-2 py-1">
+      {/* Minimal top bar - just essential info */}
+      <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-0.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground">Pot:</span>
-            <span className="text-sm font-bold text-poker-gold">${pot}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Lose:</span>
+            <span className="text-sm font-bold text-destructive">${loseAmount}</span>
           </div>
           {pendingSessionEnd && (
-            <Badge variant="destructive" className="text-[8px] px-1 py-0">LAST</Badge>
+            <Badge variant="destructive" className="text-[9px] px-1.5 py-0.5">LAST HAND</Badge>
           )}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-muted-foreground">Lose:</span>
-            <span className="text-xs font-semibold text-destructive">${loseAmount}</span>
-          </div>
+          {isPaused && (
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
+          )}
         </div>
       </div>
       
-      {/* Main table area - compressed height */}
-      <div className="flex-1 relative overflow-hidden min-h-0">
-        {/* Table felt background - full width, less rounded */}
+      {/* Main table area - tighter, less empty space */}
+      <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '45vh' }}>
+        {/* Table felt background - tighter padding */}
         <div 
-          className="absolute inset-x-0 inset-y-1 mx-1 rounded-[30%] border-2 border-amber-900 shadow-inner"
+          className="absolute inset-x-1 inset-y-0 rounded-[40%/50%] border-2 border-amber-900 shadow-inner"
           style={{
             background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
             boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
@@ -292,9 +292,16 @@ export const MobileGameTable = ({
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
-        {/* Community Cards - centered */}
+        {/* Pot display in center of table */}
+        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="bg-black/60 backdrop-blur-sm rounded-full px-4 py-1 border border-poker-gold/50">
+            <span className="text-poker-gold font-bold text-lg">${pot}</span>
+          </div>
+        </div>
+        
+        {/* Community Cards - centered, LARGER */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-75">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-90">
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
@@ -302,9 +309,9 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Chucky's Hand */}
+        {/* Chucky's Hand - LARGER */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && (
-          <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 scale-75">
+          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 scale-90">
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
@@ -313,9 +320,9 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Players arranged around table - 7 positions */}
-        {/* Top row: 3 players */}
-        <div className="absolute top-1 left-0 right-0 flex justify-between px-3">
+        {/* Players arranged around table edges - 7 positions */}
+        {/* Top row: 3 players - pushed to edge */}
+        <div className="absolute top-0 left-0 right-0 flex justify-between px-2 pt-8">
           <div className="flex-1 flex justify-start">
             {otherPlayers[0] && renderPlayerChip(otherPlayers[0])}
           </div>
@@ -327,30 +334,30 @@ export const MobileGameTable = ({
           </div>
         </div>
         
-        {/* Middle row: 2 players on sides */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-1 z-10">
+        {/* Side players - vertically centered */}
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10">
           {otherPlayers[3] && renderPlayerChip(otherPlayers[3])}
         </div>
-        <div className="absolute top-1/2 -translate-y-1/2 right-1 z-10">
+        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10">
           {otherPlayers[4] && renderPlayerChip(otherPlayers[4])}
         </div>
         
-        {/* Bottom corners: last 2 players (if more than 5 other players) */}
-        <div className="absolute bottom-2 left-4">
+        {/* Bottom corners */}
+        <div className="absolute bottom-1 left-2">
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
         </div>
-        <div className="absolute bottom-2 right-4">
+        <div className="absolute bottom-1 right-2">
           {otherPlayers[6] && renderPlayerChip(otherPlayers[6])}
         </div>
         
         {/* Open seats for seat selection */}
         {canSelectSeat && openSeats.length > 0 && (
-          <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 flex gap-1 z-20">
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
             {openSeats.slice(0, 5).map((pos) => (
               <button
                 key={pos}
                 onClick={() => onSelectSeat(pos)}
-                className="w-7 h-7 rounded-full bg-amber-900/30 border border-dashed border-amber-700/50 flex items-center justify-center text-amber-300/70 text-[8px] hover:bg-amber-900/50 transition-colors"
+                className="w-8 h-8 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-700/60 flex items-center justify-center text-amber-300 text-sm font-bold hover:bg-amber-900/60 transition-colors"
               >
                 {pos}
               </button>
@@ -360,9 +367,9 @@ export const MobileGameTable = ({
         
         {/* Result message overlay */}
         {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
-          <div className="absolute inset-x-2 top-1/2 transform -translate-y-1/2 z-20">
-            <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-2 py-1.5 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-xs text-center animate-pulse">
+          <div className="absolute inset-x-4 top-1/2 transform -translate-y-1/2 z-20">
+            <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center animate-pulse">
                 {lastRoundResult.split('|||DEBUG:')[0]}
               </p>
             </div>
