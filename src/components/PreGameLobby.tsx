@@ -54,12 +54,12 @@ export const PreGameLobby = ({
                         {player.position}
                       </span>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
                       <p className="text-amber-100 font-semibold">
                         {player.profiles?.username || `Player ${player.position}`}
                       </p>
                       {player.user_id === currentUserId && (
-                        <Badge variant="secondary" className="text-xs bg-poker-gold text-black border-0 mt-1">
+                        <Badge variant="secondary" className="text-xs bg-poker-gold text-black border-0">
                           You
                         </Badge>
                       )}
