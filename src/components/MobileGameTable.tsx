@@ -259,7 +259,7 @@ export const MobileGameTable = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background">
       {/* Minimal top bar - only status badges */}
       {(pendingSessionEnd || isPaused) && (
         <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-0.5">
@@ -365,7 +365,7 @@ export const MobileGameTable = ({
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div 
-        className="flex-shrink-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x"
+        className="flex-1 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-auto"
         {...swipeHandlers}
       >
         {/* Result message - in bottom section */}
