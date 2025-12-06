@@ -370,37 +370,64 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold">Game Lobby</h2>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
+            <span className="text-black text-xl">♠</span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">
+            Game Lobby
+          </h2>
+        </div>
         <div className="flex gap-2 w-full sm:w-auto">
           {isSuperuser && (
             <Button 
               onClick={() => setShowDefaultsConfig(true)} 
               size="lg" 
               variant="outline"
-              className="flex-1 sm:flex-none"
+              className="flex-1 sm:flex-none border-amber-600/50 text-amber-400 hover:bg-amber-600/10"
             >
               <Settings className="h-4 w-4 mr-2" />
               Defaults
             </Button>
           )}
-          <Button onClick={() => setShowCreateDialog(true)} size="lg" className="flex-1 sm:flex-none">
+          <Button 
+            onClick={() => setShowCreateDialog(true)} 
+            size="lg" 
+            className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/20"
+          >
             Create New Game
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="active">Active Sessions ({activeGames.length})</TabsTrigger>
-          <TabsTrigger value="historical">Historical ({historicalGames.length})</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 bg-slate-800/50 border border-amber-700/30">
+          <TabsTrigger 
+            value="active" 
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
+          >
+            Active Sessions ({activeGames.length})
+          </TabsTrigger>
+          <TabsTrigger 
+            value="historical"
+            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
+          >
+            Historical ({historicalGames.length})
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="active" className="space-y-3 mt-4">
           {activeGames.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground">No active games. Create one to get started!</p>
+            <Card className="bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/30">
+              <CardContent className="pt-8 pb-8">
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-amber-900/30 flex items-center justify-center border border-amber-600/30">
+                    <span className="text-3xl text-amber-400/50">♠</span>
+                  </div>
+                  <p className="text-amber-300/60">No active games. Create one to get started!</p>
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -409,19 +436,41 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
               const activePlayers = game.players?.filter(p => !p.sitting_out) || [];
               
               return (
-                <Card key={game.id} className="hover:border-primary transition-colors">
-                  <CardContent className="pt-6">
+                <Card 
+                  key={game.id} 
+                  className="bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/40 hover:border-amber-500/60 transition-all shadow-lg hover:shadow-amber-900/20"
+                >
+                  <CardContent className="pt-5 pb-4">
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <h3 className="font-semibold">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
-                        <Badge variant={isInProgress ? 'default' : 'secondary'}>
+                      {/* Game Header */}
+                      <div className="flex items-center gap-3 pb-3 border-b border-amber-700/30">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md">
+                          <span className="text-black text-sm font-bold">♦</span>
+                        </div>
+                        <h3 className="font-bold text-amber-100">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
+                        <Badge 
+                          variant={isInProgress ? 'default' : 'secondary'}
+                          className={isInProgress 
+                            ? 'bg-green-600/80 text-white border-0' 
+                            : 'bg-amber-600/30 text-amber-300 border-amber-600/50'
+                          }
+                        >
                           {game.status === 'waiting' ? 'Waiting' : 'Active'}
                         </Badge>
+                        {game.is_player && (
+                          <Badge className="bg-blue-600/30 text-blue-300 border-blue-500/50">
+                            Your Game
+                          </Badge>
+                        )}
                         <div className="flex gap-2 ml-auto">
                           <Button
                             size="sm"
                             onClick={() => joinGame(game.id)}
                             disabled={game.player_count >= 7 && !game.is_player}
+                            className={game.is_player 
+                              ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                              : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold'
+                            }
                           >
                             {game.is_player ? 'Re-Join' : 'Join'}
                           </Button>
@@ -430,6 +479,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                               size="sm"
                               variant="destructive"
                               onClick={() => setDeleteGameId(game.id)}
+                              className="bg-red-600/80 hover:bg-red-500"
                             >
                               Delete
                             </Button>
@@ -438,51 +488,77 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                       </div>
 
                       <div className="flex gap-6">
+                        {/* Game Info */}
                         <div className="flex-1 space-y-2">
-                          <div className="space-y-1 text-sm">
-                            <div><span className="text-muted-foreground">Host:</span> {game.host_username}</div>
-                            <div><span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, h:mm a')}</div>
-                            <div><span className="text-muted-foreground">Duration:</span> {game.duration_minutes} min</div>
-                            <div><span className="text-muted-foreground">Active Players:</span> {activePlayers.length}</div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-400/60">Host:</span> 
+                              <span className="text-amber-100">{game.host_username}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-400/60">Players:</span> 
+                              <span className="text-amber-100">{activePlayers.length}/7</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-400/60">Started:</span> 
+                              <span className="text-amber-100">{format(new Date(game.created_at), 'MMM d, h:mm a')}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-400/60">Duration:</span> 
+                              <span className="text-amber-100">{game.duration_minutes} min</span>
+                            </div>
                           </div>
 
                           {isInProgress && game.ante_amount !== undefined && (
-                            <div className="text-xs text-muted-foreground pt-2 border-t space-y-1">
-                              <div>
-                                <span className="font-medium">Last Game Played:</span> {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
-                              </div>
-                              <div>
-                                <span className="font-medium">Last Used Config:</span> ${game.ante_amount} Ante
+                            <div className="text-xs text-amber-300/70 pt-3 mt-2 border-t border-amber-700/30 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 font-medium">
+                                  {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
+                                </span>
+                                <span className="text-amber-400/50">•</span>
+                                <span>${game.ante_amount} Ante</span>
                                 {game.game_type === 'holm-game' ? (
-                                  <> • {game.chucky_cards || 4} Chucky Cards</>
+                                  <>
+                                    <span className="text-amber-400/50">•</span>
+                                    <span>{game.chucky_cards || 4} Chucky Cards</span>
+                                  </>
                                 ) : (
-                                  <> • ${game.leg_value} Legs ({game.legs_to_win} to win)</>
+                                  <>
+                                    <span className="text-amber-400/50">•</span>
+                                    <span>${game.leg_value} Legs ({game.legs_to_win} to win)</span>
+                                  </>
                                 )}
-                                {' • '}{game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : '$0 P Tax'}
-                                {' • '}{game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span>{game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : 'No P Tax'}</span>
+                                <span className="text-amber-400/50">•</span>
+                                <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}</span>
                               </div>
                             </div>
                           )}
                         </div>
                         
+                        {/* Players Table */}
                         {isInProgress && activePlayers.length > 0 && (
                           <div className="flex-1">
-                            <div className="text-xs font-medium text-muted-foreground mb-2">Active Players w/ Current Chip Stack</div>
-                            <div className="border rounded-md">
+                            <div className="text-xs font-medium text-amber-400/60 mb-2">Current Standings</div>
+                            <div className="border border-amber-700/30 rounded-lg overflow-hidden bg-slate-900/50">
                               <table className="w-full text-sm">
                                 <thead>
-                                  <tr className="border-b bg-muted/50">
-                                    <th className="text-left p-2 font-medium">Player</th>
-                                    <th className="text-right p-2 font-medium">Chips</th>
+                                  <tr className="bg-amber-900/20">
+                                    <th className="text-left p-2 font-medium text-amber-300">Player</th>
+                                    <th className="text-right p-2 font-medium text-amber-300">Chips</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {activePlayers
                                     .sort((a, b) => b.chips - a.chips)
                                     .map((player, idx) => (
-                                      <tr key={idx} className="border-b last:border-0">
-                                        <td className="p-2">{player.username}</td>
-                                        <td className="p-2 text-right font-mono">${player.chips}</td>
+                                      <tr key={idx} className="border-t border-amber-700/20">
+                                        <td className="p-2 text-amber-100">{player.username}</td>
+                                        <td className={`p-2 text-right font-mono ${player.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                          ${player.chips}
+                                        </td>
                                       </tr>
                                     ))}
                                 </tbody>
@@ -501,30 +577,42 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         
         <TabsContent value="historical" className="space-y-2 mt-4">
           {historicalGames.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground">No historical sessions yet.</p>
+            <Card className="bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/30">
+              <CardContent className="pt-8 pb-8">
+                <div className="text-center space-y-3">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-amber-900/30 flex items-center justify-center border border-amber-600/30">
+                    <span className="text-3xl text-amber-400/50">📜</span>
+                  </div>
+                  <p className="text-amber-300/60">No historical sessions yet.</p>
+                </div>
               </CardContent>
             </Card>
           ) : (
             historicalGames.map((game) => (
-              <Card key={game.id} className="hover:border-primary transition-colors">
+              <Card 
+                key={game.id} 
+                className="bg-gradient-to-br from-slate-900/80 via-slate-800/80 to-slate-900/80 border border-amber-700/30 hover:border-amber-600/50 transition-all"
+              >
                 <CardContent className="py-3">
                   <div className="flex justify-between items-center">
-                    <div className="flex gap-6 text-sm">
+                    <div className="flex flex-wrap gap-4 text-sm">
                       <div>
-                        <span className="text-muted-foreground">Host:</span> <span className="font-medium">{game.host_username}</span>
+                        <span className="text-amber-400/60">Host:</span>{' '}
+                        <span className="font-medium text-amber-100">{game.host_username}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Started:</span> {format(new Date(game.created_at), 'MMM d, yyyy h:mm a')}
+                        <span className="text-amber-400/60">Started:</span>{' '}
+                        <span className="text-amber-100">{format(new Date(game.created_at), 'MMM d, yyyy h:mm a')}</span>
                       </div>
                       {game.session_ended_at && (
                         <div>
-                          <span className="text-muted-foreground">Ended:</span> {format(new Date(game.session_ended_at), 'MMM d, yyyy h:mm a')}
+                          <span className="text-amber-400/60">Ended:</span>{' '}
+                          <span className="text-amber-100">{format(new Date(game.session_ended_at), 'MMM d, yyyy h:mm a')}</span>
                         </div>
                       )}
                       <div>
-                        <span className="text-muted-foreground">Players:</span> {game.player_count}
+                        <span className="text-amber-400/60">Players:</span>{' '}
+                        <span className="text-amber-100">{game.player_count}</span>
                       </div>
                     </div>
                     <Button
@@ -534,6 +622,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                         setSelectedSession(game);
                         setShowSessionResults(true);
                       }}
+                      className="border-amber-600/50 text-amber-400 hover:bg-amber-600/10"
                     >
                       See Results
                     </Button>
