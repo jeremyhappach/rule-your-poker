@@ -274,6 +274,32 @@ export const GameTable = ({
     };
   }, [gameId]);
   
+  // CRITICAL: Re-fetch cards when allDecisionsIn becomes true
+  // This is necessary because RLS policies allow access to other player cards during showdown
+  const lastAllDecisionsInRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (allDecisionsIn && !lastAllDecisionsInRef.current && gameId && realtimeRound?.id) {
+      console.log('[GAMETABLE] 🃏 allDecisionsIn changed to true - re-fetching cards for showdown visibility');
+      // Re-fetch cards so RLS allows us to see other player cards now
+      const refetchCards = async () => {
+        const { data: cardsData } = await supabase
+          .from('player_cards')
+          .select('player_id, cards')
+          .eq('round_id', realtimeRound.id);
+        
+        if (cardsData && cardsData.length > 0) {
+          console.log('[GAMETABLE] ✅ Re-fetched', cardsData.length, 'player cards for showdown');
+          setLocalPlayerCards(cardsData.map(cd => ({
+            player_id: cd.player_id,
+            cards: cd.cards as unknown as CardType[]
+          })));
+        }
+      };
+      refetchCards();
+    }
+    lastAllDecisionsInRef.current = allDecisionsIn;
+  }, [allDecisionsIn, gameId, realtimeRound?.id]);
+  
   // CRITICAL: Derive effective round from realtime data (source of truth), falling back to props
   const effectiveRoundNumber = realtimeRound?.round_number ?? currentRound;
   const effectiveCardsDealt = realtimeRound?.cards_dealt ?? authoritativeCardCount;
@@ -846,7 +872,8 @@ export const GameTable = ({
                           const buckIsAssigned = buckPosition !== null && buckPosition !== undefined;
                           const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
                           // Round is active during 'betting' phase (not 'pending', 'showdown', or 'completed')
-                          const roundIsActive = roundStatus === 'betting' || roundStatus === 'active';
+                          // Also allow undefined roundStatus as a fallback during game type transitions
+                          const roundIsActive = roundStatus === 'betting' || roundStatus === 'active' || (roundStatus === undefined && roundIsReady);
                           
                           const isPlayerTurn = gameType === 'holm-game' 
                             ? (buckIsAssigned && roundIsReady && roundIsActive && currentTurnPosition === player.position && !awaitingNextRound)
