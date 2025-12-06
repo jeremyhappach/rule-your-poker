@@ -1051,6 +1051,44 @@ const Game = () => {
     lastRoundResult: game?.last_round_result?.substring(0, 30)
   });
 
+  // CRITICAL: Healing poll for missing round/community cards in Holm games
+  // When we're in_progress with a Holm game but have no community cards, poll until we get them
+  const roundHealingRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    const isHolmGame = game?.game_type === 'holm-game';
+    const isInProgress = game?.status === 'in_progress';
+    const hasCommunityCards = communityCards && communityCards.length > 0;
+    const hasRoundData = currentRound && currentRound.community_cards;
+    
+    const needsHealing = isHolmGame && isInProgress && !hasCommunityCards && !hasRoundData && !game?.awaiting_next_round;
+    
+    if (needsHealing) {
+      console.log('[ROUND HEAL] 🚑 Holm game in progress but no community cards - starting healing poll');
+      
+      const healingPoll = async () => {
+        console.log('[ROUND HEAL] 🔄 Polling for round data...');
+        await fetchGameData();
+      };
+      
+      // Start polling every 300ms
+      healingPoll(); // Immediate first attempt
+      roundHealingRef.current = setInterval(healingPoll, 300);
+      
+      return () => {
+        if (roundHealingRef.current) {
+          clearInterval(roundHealingRef.current);
+          roundHealingRef.current = null;
+        }
+      };
+    } else if (roundHealingRef.current && hasCommunityCards) {
+      // Stop polling if we got community cards
+      console.log('[ROUND HEAL] ✅ Got community cards, stopping poll');
+      clearInterval(roundHealingRef.current);
+      roundHealingRef.current = null;
+    }
+  }, [game?.game_type, game?.status, communityCards, currentRound, game?.awaiting_next_round]);
+
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
     console.log('[BOT TRIGGER EFFECT] Running', {
