@@ -294,8 +294,15 @@ const Game = () => {
           const incomingRound = newData?.current_round;
           const localRound = lastKnownRoundRef.current;
           
-          if (incomingRound !== undefined && incomingRound !== null && localRound !== null && incomingRound !== localRound) {
-            console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED (detected via local state):', localRound, '->', incomingRound, '- FORCING SYNC!');
+          // CRITICAL FIX: Sync when:
+          // 1. Incoming round is valid AND different from local
+          // 2. OR local is null but incoming is valid (initial state sync)
+          // 3. OR local has a value but incoming is different
+          const needsRoundSync = incomingRound !== undefined && incomingRound !== null && 
+            (localRound === null || incomingRound !== localRound);
+          
+          if (needsRoundSync) {
+            console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED/SYNC:', localRound, '->', incomingRound, '- FORCING SYNC!');
             lastKnownRoundRef.current = incomingRound;
             
             // CRITICAL FIX: Clear card state context on round change
@@ -740,8 +747,10 @@ const Game = () => {
       const localRound = game?.current_round;
       const dbRound = freshGame.current_round;
       
-      // Detect desync: DB round is different from local round
-      if (dbRound !== null && localRound !== null && dbRound !== localRound) {
+      // Detect desync: DB round is different from local round (including when local is null)
+      const needsSync = dbRound !== null && (localRound === null || dbRound !== localRound);
+      
+      if (needsSync) {
         console.log('[357 SYNC POLL] ⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound);
         lastKnownRoundRef.current = dbRound;
         // Clear stale card context before fetch
