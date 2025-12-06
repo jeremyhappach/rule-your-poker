@@ -432,27 +432,130 @@ export const MobileGameTable = ({
           )}
         </button>
         
-        {/* Collapsed view - show table info */}
+        {/* Collapsed view - Game Lobby with all players */}
         {!isCardSectionExpanded && (
-          <div className="px-4 pb-3">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {players.slice(0, 6).map((player) => (
-                <div key={player.id} className="bg-card rounded p-1.5 border border-border">
-                  <p className="text-[10px] font-medium truncate text-foreground">
-                    {player.profiles?.username || `P${player.position}`}
-                  </p>
-                  <p className={`text-xs font-bold ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                    ${player.chips}
-                  </p>
-                  {gameType !== 'holm-game' && player.legs > 0 && (
-                    <div className="flex justify-center gap-0.5 mt-0.5">
-                      {Array.from({ length: player.legs }).map((_, i) => (
-                        <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
-                      ))}
+          <div className="px-3 pb-4 flex-1 overflow-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Pot: <span className="text-poker-gold font-bold">${pot}</span>
+                </span>
+              </div>
+            </div>
+            
+            {/* All players list */}
+            <div className="space-y-2">
+              {players
+                .sort((a, b) => a.position - b.position)
+                .map((player) => {
+                  const isCurrentUser = player.user_id === currentUserId;
+                  const isDealing = player.position === dealerPosition;
+                  const hasBuck = player.position === buckPosition;
+                  
+                  return (
+                    <div 
+                      key={player.id} 
+                      className={`
+                        flex items-center justify-between p-2.5 rounded-lg border
+                        ${isCurrentUser ? 'bg-primary/10 border-primary/30' : 'bg-card border-border'}
+                        ${player.sitting_out ? 'opacity-50' : ''}
+                      `}
+                    >
+                      {/* Left: Position, Name, Badges */}
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className={`
+                          w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
+                          ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}
+                        `}>
+                          {player.position}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-sm font-semibold truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
+                              {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `Player ${player.position}`)}
+                            </span>
+                            {isDealing && (
+                              <Badge className="text-[9px] px-1 py-0 bg-poker-gold text-black h-4">D</Badge>
+                            )}
+                            {hasBuck && gameType === 'holm-game' && (
+                              <Badge className="text-[9px] px-1 py-0 bg-amber-600 text-white h-4">Buck</Badge>
+                            )}
+                            {player.is_bot && (
+                              <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Bot</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {player.sitting_out && (
+                              <span className="text-[10px] text-muted-foreground">Sitting out</span>
+                            )}
+                            {player.current_decision && (
+                              <span className={`text-[10px] font-medium ${player.current_decision === 'stay' ? 'text-green-500' : 'text-red-400'}`}>
+                                {player.current_decision === 'stay' ? '✓ Stayed' : '✗ Folded'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Right: Chips and Legs */}
+                      <div className="flex items-center gap-3">
+                        {/* Legs for 3-5-7 */}
+                        {gameType !== 'holm-game' && (
+                          <div className="flex items-center gap-1">
+                            {player.legs > 0 ? (
+                              <div className="flex gap-0.5">
+                                {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
+                                  <div key={i} className="w-3 h-3 rounded-full bg-poker-gold" />
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">{player.legs}/{legsToWin}</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Chip stack */}
+                        <div className={`
+                          text-right min-w-[50px] font-bold text-sm
+                          ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}
+                        `}>
+                          ${player.chips}
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  );
+                })}
+            </div>
+            
+            {/* Game info footer */}
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {gameType !== 'holm-game' && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Legs to Win:</span>
+                      <span className="font-medium text-foreground">{legsToWin}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Leg Value:</span>
+                      <span className="font-medium text-foreground">${legValue}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pot Max:</span>
+                  <span className="font-medium text-foreground">{potMaxEnabled ? `$${potMaxValue}` : 'Off'}</span>
                 </div>
-              ))}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Round:</span>
+                  <span className="font-medium text-foreground">{currentRound}</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
