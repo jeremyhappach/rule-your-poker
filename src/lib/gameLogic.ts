@@ -127,21 +127,39 @@ export async function startRound(gameId: string, roundNumber: number) {
   let initialPot = 0;
   
   // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
+  // CRITICAL: Check if any round already exists for this game to prevent double-charging in race conditions
   if (roundNumber === 1) {
-    console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
+    const { data: anyExistingRounds } = await supabase
+      .from('rounds')
+      .select('id, round_number')
+      .eq('game_id', gameId)
+      .limit(1);
     
-    for (const player of activePlayers) {
-      initialPot += anteAmount;
+    if (anyExistingRounds && anyExistingRounds.length > 0) {
+      console.log('[START_ROUND] ⚠️ Round already exists for this game, skipping ante charge to prevent double-charge');
+      // Don't charge antes again, just use existing pot from game
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('pot')
+        .eq('id', gameId)
+        .single();
+      initialPot = gameData?.pot || 0;
+    } else {
+      console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
       
-      console.log('[START_ROUND] Charging player', player.id, 'position', player.position, 'ante of $', anteAmount, 'chips before:', player.chips);
+      for (const player of activePlayers) {
+        initialPot += anteAmount;
+        
+        console.log('[START_ROUND] Charging player', player.id, 'position', player.position, 'ante of $', anteAmount, 'chips before:', player.chips);
+        
+        await supabase
+          .from('players')
+          .update({ chips: player.chips - anteAmount })
+          .eq('id', player.id);
+      }
       
-      await supabase
-        .from('players')
-        .update({ chips: player.chips - anteAmount })
-        .eq('id', player.id);
+      console.log('[START_ROUND] Total ante pot:', initialPot);
     }
-    
-    console.log('[START_ROUND] Total ante pot:', initialPot);
   }
 
   // Safety check: delete any existing round with same game_id and round_number to prevent duplicates

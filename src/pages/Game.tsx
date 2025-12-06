@@ -2177,9 +2177,23 @@ const Game = () => {
       return;
     }
 
-    // Prevent duplicate calls if already in progress
-    if (game?.status === 'in_progress') {
-      console.log('[ANTE] Already in progress, skipping');
+    // CRITICAL: Fetch fresh game status from DB to prevent race conditions in multiplayer
+    // React state can be stale, causing both clients to attempt ante processing
+    const { data: freshGame, error: gameError } = await supabase
+      .from('games')
+      .select('status')
+      .eq('id', gameId)
+      .single();
+    
+    if (gameError || !freshGame) {
+      console.log('[ANTE] Error fetching fresh game status:', gameError);
+      anteProcessingRef.current = false;
+      return;
+    }
+    
+    // Prevent duplicate calls if already in progress (using FRESH DB data, not stale React state)
+    if (freshGame.status === 'in_progress') {
+      console.log('[ANTE] Already in progress (fresh check), skipping');
       anteProcessingRef.current = false;
       return;
     }
