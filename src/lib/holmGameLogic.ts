@@ -468,13 +468,13 @@ export async function endHolmRound(gameId: string) {
     if (Array.isArray(rawCommunity)) {
       communityCards = rawCommunity.map((c: any) => ({
         suit: (c.suit || c.Suit) as Suit,
-        rank: String(c.rank || c.Rank) as Rank
+        rank: String(c.rank || c.Rank).toUpperCase() as Rank
       }));
     } else if (typeof rawCommunity === 'string') {
       const parsed = JSON.parse(rawCommunity);
       communityCards = parsed.map((c: any) => ({
         suit: (c.suit || c.Suit) as Suit,
-        rank: String(c.rank || c.Rank) as Rank
+        rank: String(c.rank || c.Rank).toUpperCase() as Rank
       }));
     }
   } catch (e) {
@@ -1041,7 +1041,7 @@ async function handleMultiPlayerShowdown(
       const rawCards = (playerCardsData?.cards as unknown as any[]) || [];
       const playerCards: Card[] = rawCards.map(c => ({
         suit: (c.suit || c.Suit || '') as Suit,
-        rank: (c.rank || c.Rank || '') as Rank
+        rank: String(c.rank || c.Rank || '').toUpperCase() as Rank
       })).filter(c => c.suit && c.rank);
       
       if (playerCards.length !== rawCards.length) {
