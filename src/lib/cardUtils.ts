@@ -63,7 +63,7 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   
   // Debug log for hand evaluation
   const cardStr = sortedCards.map(c => `${c.rank}${c.suit}`).join(' ');
-  console.log('[EVAL] Evaluating:', cardStr, 'useWild:', useWildCards);
+  console.log('[EVAL] Evaluating:', cardStr, 'useWild:', useWildCards, 'cardCount:', validCards.length);
 
   // Determine wild rank if enabled
   const wildRank: Rank | null = useWildCards 
@@ -87,10 +87,16 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   const groups = Object.entries(rankCounts)
     .sort((a, b) => b[1] - a[1] || RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
 
+  // CRITICAL DEBUG: Log rank counts to identify pair detection issues
+  console.log('[EVAL] Rank counts:', JSON.stringify(rankCounts));
+  console.log('[EVAL] Groups (sorted):', JSON.stringify(groups));
+
   const bestRank = groups[0]?.[0] as Rank;
   const bestCount = (groups[0]?.[1] || 0) + wildcardCount;
   const secondCount = groups[1]?.[1] || 0;
   const secondRank = groups[1]?.[0] as Rank;
+
+  console.log('[EVAL] Best rank:', bestRank, 'bestCount:', bestCount, 'secondRank:', secondRank, 'secondCount:', secondCount);
 
   // Round 1 (3 cards): Only three-of-a-kind, pair, or high card
   if (validCards.length === 3) {
