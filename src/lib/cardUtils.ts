@@ -400,10 +400,14 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
       break;
     }
     case 'two-pair': {
-      const pairs = rankGroups.filter(([_, count]) => count >= 2).slice(0, 2);
-      if (pairs.length >= 2) {
-        const highPair = rankNamePlural(RANK_VALUES[pairs[0][0] as Rank]);
-        const lowPair = rankNamePlural(RANK_VALUES[pairs[1][0] as Rank]);
+      // Filter to only ranks that actually have 2+ cards (true pairs)
+      const truePairs = rankGroups.filter(([_, count]) => count >= 2);
+      console.log('[FORMAT] Two pair detection - truePairs:', truePairs);
+      if (truePairs.length >= 2) {
+        // Sort by card value descending to get high pair first
+        truePairs.sort((a, b) => RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
+        const highPair = rankNamePlural(RANK_VALUES[truePairs[0][0] as Rank]);
+        const lowPair = rankNamePlural(RANK_VALUES[truePairs[1][0] as Rank]);
         result = `Two Pair, ${highPair} and ${lowPair}`;
       } else {
         result = 'Two Pair';
