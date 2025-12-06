@@ -515,13 +515,21 @@ export const GameTable = ({
             }
             
             // Show cards ONLY when they match the current realtime round
-            const shouldShowCards = player && !player.sitting_out && cardsAreValidForCurrentRound && rawCards.length > 0;
+            const hasValidCards = player && !player.sitting_out && cardsAreValidForCurrentRound && rawCards.length > 0;
             
-            // Final cards to display
-            const cards: CardType[] = shouldShowCards ? rawCards : [];
+            // Final cards to display (only for current user or when cards are available)
+            const cards: CardType[] = hasValidCards ? rawCards : [];
+            
+            // For OTHER players: show card backs when round is active and they're not sitting out
+            // This shows card backs even when we don't have their actual card data (RLS blocks it)
+            const shouldShowCardBacks = player && 
+              !player.sitting_out && 
+              !isCurrentUser && 
+              effectiveRoundNumber > 0 && 
+              expectedCardCount > 0;
             
             // Debug logging for card sync issues
-            if (rawCards.length > 0 && !shouldShowCards) {
+            if (rawCards.length > 0 && !hasValidCards) {
               console.log('[GAMETABLE] Rejecting cards:', {
                 playerId: player?.id,
                 rawCardsCount: rawCards.length,
@@ -652,7 +660,7 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center">
-                        {(cards.length > 0 || (shouldShowCards && expectedCardCount > 0)) ? (
+                        {(cards.length > 0 || shouldShowCardBacks) ? (
                           <PlayerHand 
                             cards={cards} 
                             expectedCardCount={expectedCardCount}
