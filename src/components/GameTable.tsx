@@ -696,11 +696,15 @@ export const GameTable = ({
             // - Player is not sitting out
             // - Round is active (effectiveRoundNumber > 0)  
             // - We expect cards to exist
-            // This covers BOTH other players (RLS blocks their cards) AND current user during loading
+            // - For current user: ONLY show card backs if we have valid cards (never show backs while loading own cards)
+            // - For other players: show card backs even if their cards aren't fetched (RLS blocks them)
             const shouldShowCardBacks = player && 
               !player.sitting_out && 
               effectiveRoundNumber > 0 && 
-              expectedCardCount > 0;
+              expectedCardCount > 0 &&
+              // CRITICAL: Current user should NEVER see card backs for their own hand
+              // If we don't have their cards yet, show nothing rather than card backs
+              (!isCurrentUser || hasValidCards);
             
             // Debug logging for card sync issues
             if (isCurrentUser) {
