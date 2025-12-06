@@ -635,27 +635,84 @@ export const GameTable = ({
             allDecisionsIn || 
             chuckyActive ||
             (gameType === 'holm-game' && lastRoundResult.includes(' has '))
-          ) && (
-            <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
-              <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900">
-                <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center whitespace-nowrap drop-shadow-lg animate-pulse">
-                  {lastRoundResult}
-                </p>
-                
-                {/* DEBUG: Manual proceed button when debugHolmPaused is true */}
-                {gameType === 'holm-game' && debugHolmPaused && awaitingNextRound && onDebugProceed && (
-                  <div className="mt-3 flex justify-center">
-                    <Button 
-                      onClick={onDebugProceed}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2"
-                    >
-                      🔧 Proceed to Next Round
-                    </Button>
-                  </div>
-                )}
+          ) && (() => {
+            // Parse debug data from result message
+            let displayMessage = lastRoundResult;
+            let debugData: any = null;
+            
+            if (lastRoundResult.includes('|||DEBUG:')) {
+              const parts = lastRoundResult.split('|||DEBUG:');
+              displayMessage = parts[0];
+              try {
+                debugData = JSON.parse(parts[1]);
+              } catch (e) {
+                console.error('Failed to parse debug data:', e);
+              }
+            }
+            
+            return (
+              <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
+                <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 max-w-2xl">
+                  <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center drop-shadow-lg animate-pulse">
+                    {displayMessage}
+                  </p>
+                  
+                  {/* Debug Panel */}
+                  {debugData && (
+                    <div className="mt-3 bg-black/90 rounded-lg p-3 text-left text-xs font-mono border border-yellow-500 max-h-60 overflow-y-auto">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-yellow-400 font-bold">🔍 DEBUG</span>
+                        <button
+                          onClick={() => {
+                            let txt = `Round: ${debugData.roundId}\nCommunity: ${debugData.communityCards}\n\n`;
+                            debugData.evaluations?.forEach((e: any) => {
+                              txt += `${e.name}${e.name === debugData.winnerName ? ' (WINNER)' : ''}\n`;
+                              txt += `  Cards: ${e.cards}\n`;
+                              txt += `  Hand: ${e.handDesc}\n`;
+                              txt += `  Value: ${e.value}${e.value === debugData.maxValue ? ' (MAX)' : ''}\n\n`;
+                            });
+                            navigator.clipboard.writeText(txt);
+                          }}
+                          className="text-yellow-400 text-xs border border-yellow-500 px-2 py-1 rounded hover:bg-yellow-500/20"
+                        >
+                          📋 Copy
+                        </button>
+                      </div>
+                      <p className="text-gray-300 mb-1">Round: <span className="text-white">{debugData.roundId?.substring(0, 8)}</span></p>
+                      <p className="text-gray-300 mb-2">Community: <span className="text-white">{debugData.communityCards}</span></p>
+                      {debugData.evaluations?.map((evalData: any, idx: number) => (
+                        <div 
+                          key={idx} 
+                          className={`p-2 rounded mb-2 ${evalData.name === debugData.winnerName ? 'bg-green-900/70 border border-green-500' : 'bg-gray-800/70 border border-gray-600'}`}
+                        >
+                          <p className="text-amber-300 font-bold">
+                            {evalData.name} {evalData.name === debugData.winnerName && '👑'}
+                          </p>
+                          <p className="text-white">Cards: {evalData.cards}</p>
+                          <p className="text-cyan-400">Hand: {evalData.handDesc}</p>
+                          <p className={evalData.value === debugData.maxValue ? 'text-green-400' : 'text-red-400'}>
+                            Value: {evalData.value} {evalData.value === debugData.maxValue && '(MAX)'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* DEBUG: Manual proceed button when debugHolmPaused is true */}
+                  {gameType === 'holm-game' && debugHolmPaused && awaitingNextRound && onDebugProceed && (
+                    <div className="mt-3 flex justify-center">
+                      <Button 
+                        onClick={onDebugProceed}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2"
+                      >
+                        🔧 Proceed to Next Round
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Pot and Timer - shown when no result message */}
           {showPotAndTimer && (
