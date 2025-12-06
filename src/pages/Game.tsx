@@ -687,16 +687,12 @@ const Game = () => {
     return () => clearInterval(timer);
   }, [anteTimeLeft]);
 
-  // Trigger bot ante decisions
+  // Trigger bot ante decisions - INSTANT for bots
   useEffect(() => {
     if (game?.status === 'ante_decision') {
-      console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions');
-      const botAnteTimer = setTimeout(() => {
-        console.log('[ANTE PHASE] Calling makeBotAnteDecisions');
-        makeBotAnteDecisions(gameId!);
-      }, 500); // Give time for game data to be fetched
-
-      return () => clearTimeout(botAnteTimer);
+      console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions IMMEDIATELY');
+      // Call immediately - no delay needed for bots
+      makeBotAnteDecisions(gameId!);
     }
   }, [game?.status, gameId]);
 
@@ -1776,6 +1772,15 @@ const Game = () => {
     }
 
     console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
+
+    // CRITICAL: Clear all card state IMMEDIATELY when transitioning to new game
+    // This prevents stale cards from rendering while waiting for new game setup
+    console.log('[GAME OVER COMPLETE] 🧹 CLEARING ALL CARD STATE FOR NEW GAME');
+    setPlayerCards([]);
+    setCachedRoundData(null);
+    cachedRoundRef.current = null;
+    maxRevealedRef.current = 0;
+    cardIdentityRef.current = '';
 
     // Check if session should end
     const { data: gameData, error: fetchError } = await supabase
