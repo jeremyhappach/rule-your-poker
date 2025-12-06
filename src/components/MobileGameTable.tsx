@@ -305,9 +305,9 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Chucky's Hand - MASSIVE */}
+        {/* Chucky's Hand - below community cards */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && (
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10 scale-125">
+          <div className="absolute top-[70%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-125">
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
