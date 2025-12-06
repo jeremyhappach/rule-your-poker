@@ -10,8 +10,9 @@ import { BuckIndicator } from "./BuckIndicator";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
-import { useState, useMemo, useLayoutEffect, useEffect, useRef } from "react";
+import { useState, useMemo, useLayoutEffect, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Player {
   id: string;
@@ -35,6 +36,7 @@ interface PlayerCards {
 }
 
 interface GameTableProps {
+  gameId?: string; // NEW: for self-healing card fetch
   players: Player[];
   currentUserId: string | undefined;
   pot: number;
@@ -65,15 +67,17 @@ interface GameTableProps {
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
+  onRequestRefetch?: () => void; // NEW: callback to request parent to refetch
 }
 
 export const GameTable = ({
+  gameId,
   players,
   currentUserId,
   pot,
   currentRound,
   allDecisionsIn,
-  playerCards,
+  playerCards: propPlayerCards,
   authoritativeCardCount,
   timeLeft,
   lastRoundResult,
@@ -98,9 +102,86 @@ export const GameTable = ({
   onStay,
   onFold,
   onSelectSeat,
+  onRequestRefetch,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
+  
+  // SELF-HEALING: Local card state that can be fetched directly if prop cards are missing
+  const [localPlayerCards, setLocalPlayerCards] = useState<PlayerCards[]>([]);
+  const lastFetchedRoundRef = useRef<number | null>(null);
+  const isFetchingRef = useRef(false);
+  
+  // Use prop cards if available, otherwise use locally fetched cards
+  const playerCards = propPlayerCards.length > 0 ? propPlayerCards : localPlayerCards;
+  
+  // Self-healing: fetch cards directly if props are empty but should have cards
+  const fetchCardsDirectly = useCallback(async () => {
+    if (!gameId || !currentRound || currentRound <= 0 || isFetchingRef.current) return;
+    if (lastFetchedRoundRef.current === currentRound && localPlayerCards.length > 0) return;
+    
+    isFetchingRef.current = true;
+    console.log('[GAMETABLE SELF-HEAL] Fetching cards directly for round:', currentRound);
+    
+    try {
+      // Get the round ID for current round
+      const { data: roundData } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('round_number', currentRound)
+        .single();
+      
+      if (roundData) {
+        const { data: cardsData } = await supabase
+          .from('player_cards')
+          .select('player_id, cards')
+          .eq('round_id', roundData.id);
+        
+        if (cardsData && cardsData.length > 0) {
+          console.log('[GAMETABLE SELF-HEAL] Got cards:', cardsData.length, 'players');
+          setLocalPlayerCards(cardsData.map(cd => ({
+            player_id: cd.player_id,
+            cards: cd.cards as unknown as CardType[]
+          })));
+          lastFetchedRoundRef.current = currentRound;
+        }
+      }
+    } catch (e) {
+      console.error('[GAMETABLE SELF-HEAL] Error fetching cards:', e);
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, [gameId, currentRound, localPlayerCards.length]);
+  
+  // Self-healing effect: if we have no cards but should, fetch them
+  useEffect(() => {
+    const currentPlayerForCheck = players.find(p => p.user_id === currentUserId);
+    const shouldHaveCards = currentPlayerForCheck && 
+                           !currentPlayerForCheck.sitting_out && 
+                           currentRound > 0 && 
+                           gameType;
+    
+    const hasCards = propPlayerCards.length > 0 || localPlayerCards.length > 0;
+    
+    if (shouldHaveCards && !hasCards && gameId) {
+      console.log('[GAMETABLE SELF-HEAL] Missing cards, triggering fetch');
+      fetchCardsDirectly();
+      
+      // Also request parent to refetch
+      if (onRequestRefetch) {
+        onRequestRefetch();
+      }
+    }
+  }, [currentRound, propPlayerCards.length, localPlayerCards.length, players, currentUserId, gameId, gameType, fetchCardsDirectly, onRequestRefetch]);
+  
+  // Clear local cards when round changes to prevent stale data
+  useEffect(() => {
+    if (currentRound !== lastFetchedRoundRef.current) {
+      // Round changed, our local cards might be stale
+      // But don't clear immediately - let the new fetch happen first
+    }
+  }, [currentRound]);
   
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked || !!pendingDecision;
