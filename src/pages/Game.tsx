@@ -14,6 +14,7 @@ import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
 import { GameSelection } from "@/components/GameSelection";
+import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
 import { VisualPreferencesProvider } from "@/hooks/useVisualPreferences";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
@@ -137,6 +138,21 @@ const Game = () => {
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
+  
+  // Track previous game config for "Running it Back" detection
+  interface PreviousGameConfig {
+    game_type: string | null;
+    ante_amount: number;
+    leg_value: number;
+    legs_to_win: number;
+    pussy_tax_enabled: boolean;
+    pussy_tax_value: number;
+    pot_max_enabled: boolean;
+    pot_max_value: number;
+    chucky_cards: number;
+  }
+  const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
+  const [isRunningItBack, setIsRunningItBack] = useState(false);
   
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -971,6 +987,33 @@ const Game = () => {
       const currentPlayer = players.find(p => p.user_id === user.id);
       const isDealer = currentPlayer?.position === game.dealer_position;
       
+      // Check for "Running it Back" - same game type AND same config
+      const isRunBack = previousGameConfig !== null && 
+        previousGameConfig.game_type === game.game_type &&
+        previousGameConfig.ante_amount === (game.ante_amount || 2) &&
+        previousGameConfig.pussy_tax_enabled === (game.pussy_tax_enabled ?? true) &&
+        previousGameConfig.pussy_tax_value === (game.pussy_tax_value || 1) &&
+        previousGameConfig.pot_max_enabled === (game.pot_max_enabled ?? true) &&
+        previousGameConfig.pot_max_value === (game.pot_max_value || 10) &&
+        (game.game_type === 'holm-game' || game.game_type === 'holm' 
+          ? previousGameConfig.chucky_cards === (game.chucky_cards || 4)
+          : previousGameConfig.leg_value === (game.leg_value || 1) && 
+            previousGameConfig.legs_to_win === (game.legs_to_win || 3)
+        );
+      
+      console.log('[ANTE DIALOG] Running it back check:', { isRunBack, previousGameConfig, currentConfig: {
+        game_type: game.game_type,
+        ante_amount: game.ante_amount,
+        pussy_tax_enabled: game.pussy_tax_enabled,
+        pussy_tax_value: game.pussy_tax_value,
+        pot_max_enabled: game.pot_max_enabled,
+        pot_max_value: game.pot_max_value,
+        chucky_cards: game.chucky_cards,
+        leg_value: game.leg_value,
+        legs_to_win: game.legs_to_win
+      }});
+      setIsRunningItBack(isRunBack);
+      
       console.log('[ANTE DIALOG] Checking ante dialog:', {
         gameStatus: game?.status,
         hasUser: !!user,
@@ -1018,7 +1061,7 @@ const Game = () => {
       });
       setShowAnteDialog(false);
     }
-  }, [game?.status, game?.ante_decision_deadline, game?.dealer_position, players, user]);
+  }, [game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig]);
 
   // Auto-sit-out when ante timer reaches 0
   useEffect(() => {
@@ -2052,6 +2095,22 @@ const Game = () => {
     }
 
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
+    
+    // CAPTURE previous game config for "Running it Back" detection
+    if (game) {
+      console.log('[GAME OVER] Capturing previous game config for running-it-back detection');
+      setPreviousGameConfig({
+        game_type: game.game_type || null,
+        ante_amount: game.ante_amount || 2,
+        leg_value: game.leg_value || 1,
+        legs_to_win: game.legs_to_win || 3,
+        pussy_tax_enabled: game.pussy_tax_enabled ?? true,
+        pussy_tax_value: game.pussy_tax_value || 1,
+        pot_max_enabled: game.pot_max_enabled ?? true,
+        pot_max_value: game.pot_max_value || 10,
+        chucky_cards: game.chucky_cards || 4
+      });
+    }
 
     // CRITICAL: Delete all old rounds and player_cards from the previous game
     // This prevents stale round_number accumulation across game types
@@ -2774,18 +2833,11 @@ const Game = () => {
                 {(isDealer || dealerPlayer?.is_bot) && (
                   <GameSelection onSelectGame={handleGameSelection} />
                 )}
-                {/* Show waiting message for non-dealers who are actual players (not observers) */}
+                {/* Show unified waiting message for non-dealers who are actual players (not observers) */}
                 {!isDealer && !dealerPlayer?.is_bot && players.some(p => p.user_id === user?.id) && (
-                  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <Card className="max-w-md mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-                      <CardContent className="pt-8 pb-8 space-y-4 text-center">
-                        <h2 className="text-2xl font-bold text-poker-gold">Dealer Choosing Game</h2>
-                        <p className="text-amber-100">
-                          {dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`} is selecting the game variant...
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  <DealerSettingUpGame 
+                    dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                  />
                 )}
               </div>
             ) : (
@@ -2809,18 +2861,10 @@ const Game = () => {
                     onConfigComplete={handleConfigComplete}
                   />
                 ) : (
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="text-center space-y-4">
-                        <p className="text-lg font-semibold">
-                          {dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`} is the dealer
-                        </p>
-                        <p className="text-muted-foreground">
-                          Waiting for the dealer to configure game parameters...
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  // Non-dealer waiting - use unified message
+                  <DealerSettingUpGame 
+                    dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                  />
                 )}
               </>
             )}
@@ -2864,6 +2908,7 @@ const Game = () => {
                 potMaxEnabled={game.pot_max_enabled ?? true}
                 potMaxValue={game.pot_max_value || 10}
                 chuckyCards={game.chucky_cards}
+                isRunningItBack={isRunningItBack}
                 onDecisionMade={() => setShowAnteDialog(false)}
               />
             )}

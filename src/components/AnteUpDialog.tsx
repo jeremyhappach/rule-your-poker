@@ -17,6 +17,7 @@ interface AnteUpDialogProps {
   potMaxEnabled: boolean;
   potMaxValue: number;
   chuckyCards: number | null;
+  isRunningItBack?: boolean;
   onDecisionMade: () => void;
 }
 
@@ -32,6 +33,7 @@ export const AnteUpDialog = ({
   potMaxEnabled,
   potMaxValue,
   chuckyCards,
+  isRunningItBack = false,
   onDecisionMade,
 }: AnteUpDialogProps) => {
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
@@ -116,9 +118,13 @@ export const AnteUpDialog = ({
     <Dialog open={!hasDecided} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="text-center text-2xl">Game Configuration Set!</DialogTitle>
+          <DialogTitle className="text-center text-2xl">
+            {isRunningItBack ? "🔥 Running it Back!" : "Game Configuration Set!"}
+          </DialogTitle>
           <DialogDescription className="text-center">
-            The dealer has configured the game rules
+            {isRunningItBack 
+              ? "Same game, same rules - let's go!" 
+              : "The dealer has configured the game rules"}
           </DialogDescription>
         </DialogHeader>
         
