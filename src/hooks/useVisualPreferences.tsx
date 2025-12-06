@@ -23,7 +23,7 @@ export const CARD_BACKS = [
 
 // 4-color deck: each suit has a distinct background color
 export const FOUR_COLOR_SUITS: Record<string, { bg: string; name: string }> = {
-  '♠': { bg: '#1a1a1a', name: 'Spades' },      // Black
+  '♠': { bg: '#B8860B', name: 'Spades' },      // Gold
   '♥': { bg: '#B22222', name: 'Hearts' },      // Dark Red
   '♦': { bg: '#1E90FF', name: 'Diamonds' },    // Blue
   '♣': { bg: '#228B22', name: 'Clubs' },       // Green
