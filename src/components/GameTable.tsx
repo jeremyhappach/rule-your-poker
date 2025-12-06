@@ -107,44 +107,97 @@ export const GameTable = ({
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
   
-  // REALTIME ROUND SYNC: Subscribe directly to round changes for accurate state
+  // REALTIME ROUND SYNC: Subscribe directly to round changes - THIS IS THE SOURCE OF TRUTH
   const [realtimeRound, setRealtimeRound] = useState<{
+    id: string;
     round_number: number;
     cards_dealt: number;
     status: string;
   } | null>(null);
   
-  // SELF-HEALING: Local card state that can be fetched directly if prop cards are missing
+  // LOCAL CARDS: GameTable owns card state - fetched AFTER round is confirmed
   const [localPlayerCards, setLocalPlayerCards] = useState<PlayerCards[]>([]);
-  const lastFetchedRoundRef = useRef<number | null>(null);
+  const lastFetchedRoundIdRef = useRef<string | null>(null);
   const isFetchingRef = useRef(false);
+  const realtimeRoundRef = useRef<typeof realtimeRound>(null); // Ref for async closures
   
-  // REALTIME ROUND SUBSCRIPTION: Get round updates directly
+  // Keep ref in sync with state
+  realtimeRoundRef.current = realtimeRound;
+  
+  // REALTIME ROUND SUBSCRIPTION: Get round updates directly - THEN fetch cards
   useEffect(() => {
     if (!gameId) return;
     
     console.log('[GAMETABLE RT] Setting up round subscription for game:', gameId);
     
-    // Initial fetch of current round
-    const fetchCurrentRound = async () => {
-      const { data } = await supabase
+    // Fetch cards for a specific round ID
+    const fetchCardsForRound = async (roundId: string, roundNum: number, retryCount = 0) => {
+      if (isFetchingRef.current && retryCount === 0) return;
+      isFetchingRef.current = true;
+      
+      console.log('[GAMETABLE CARDS] Fetching cards for round:', roundNum, 'id:', roundId, 'retry:', retryCount);
+      
+      try {
+        const { data: cardsData } = await supabase
+          .from('player_cards')
+          .select('player_id, cards')
+          .eq('round_id', roundId);
+        
+        if (cardsData && cardsData.length > 0) {
+          console.log('[GAMETABLE CARDS] ✅ Got', cardsData.length, 'player cards for round', roundNum);
+          setLocalPlayerCards(cardsData.map(cd => ({
+            player_id: cd.player_id,
+            cards: cd.cards as unknown as CardType[]
+          })));
+          lastFetchedRoundIdRef.current = roundId;
+          isFetchingRef.current = false;
+        } else if (retryCount < 5) {
+          console.log('[GAMETABLE CARDS] ⏳ No cards yet for round', roundNum, '- retry', retryCount + 1);
+          // Retry after 200ms if no cards found (up to 5 retries = 1s max)
+          setTimeout(() => {
+            // Use ref to check current round (avoids stale closure)
+            if (realtimeRoundRef.current?.id === roundId) {
+              fetchCardsForRound(roundId, roundNum, retryCount + 1);
+            } else {
+              isFetchingRef.current = false;
+            }
+          }, 200);
+        } else {
+          console.log('[GAMETABLE CARDS] ❌ Gave up fetching cards after 5 retries');
+          isFetchingRef.current = false;
+        }
+      } catch (e) {
+        console.error('[GAMETABLE CARDS] Error:', e);
+        isFetchingRef.current = false;
+      }
+    };
+    
+    // Fetch round and then cards atomically
+    const fetchRoundAndCards = async () => {
+      const { data: roundData } = await supabase
         .from('rounds')
-        .select('round_number, cards_dealt, status')
+        .select('id, round_number, cards_dealt, status')
         .eq('game_id', gameId)
         .order('round_number', { ascending: false })
         .limit(1)
         .single();
       
-      if (data) {
-        console.log('[GAMETABLE RT] Initial round:', data);
-        setRealtimeRound(data);
+      if (roundData) {
+        console.log('[GAMETABLE RT] Round synced:', roundData);
+        setRealtimeRound(roundData);
+        
+        // NOW fetch cards for this confirmed round
+        if (roundData.id !== lastFetchedRoundIdRef.current) {
+          await fetchCardsForRound(roundData.id, roundData.round_number);
+        }
       }
     };
     
-    fetchCurrentRound();
+    // Initial fetch
+    fetchRoundAndCards();
     
     // Subscribe to round changes for this game
-    const channel = supabase
+    const roundChannel = supabase
       .channel(`gametable-rounds-${gameId}`)
       .on(
         'postgres_changes',
@@ -154,100 +207,71 @@ export const GameTable = ({
           table: 'rounds',
           filter: `game_id=eq.${gameId}`
         },
-        (payload) => {
+        async (payload) => {
           console.log('[GAMETABLE RT] Round change:', payload.eventType, payload.new);
           const newRound = payload.new as any;
-          if (newRound && newRound.round_number) {
+          
+          if (newRound?.id && newRound?.round_number) {
+            // Round changed - clear old cards immediately
+            if (realtimeRound?.id !== newRound.id) {
+              console.log('[GAMETABLE RT] 🔄 NEW ROUND DETECTED - clearing old cards');
+              setLocalPlayerCards([]);
+              lastFetchedRoundIdRef.current = null;
+            }
+            
+            // Update round state
             setRealtimeRound({
+              id: newRound.id,
               round_number: newRound.round_number,
               cards_dealt: newRound.cards_dealt,
               status: newRound.status
             });
             
-            // Clear local cards when round changes to prevent stale rendering
-            if (lastFetchedRoundRef.current !== newRound.round_number) {
-              console.log('[GAMETABLE RT] Round changed, clearing local cards');
-              setLocalPlayerCards([]);
-              lastFetchedRoundRef.current = null;
-            }
+            // Fetch cards for new round (with small delay to ensure cards are inserted)
+            setTimeout(async () => {
+              if (newRound.id !== lastFetchedRoundIdRef.current) {
+                await fetchCardsForRound(newRound.id, newRound.round_number);
+              }
+            }, 100);
+          }
+        }
+      )
+      .subscribe();
+    
+    // Also subscribe to player_cards for immediate card updates
+    const cardsChannel = supabase
+      .channel(`gametable-cards-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'player_cards'
+        },
+        async (payload) => {
+          console.log('[GAMETABLE RT] 🃏 Card INSERT detected:', payload.new);
+          // If we have a current round, refetch cards for it (use ref for current value)
+          const currentRoundData = realtimeRoundRef.current;
+          if (currentRoundData?.id) {
+            await fetchCardsForRound(currentRoundData.id, currentRoundData.round_number);
           }
         }
       )
       .subscribe();
     
     return () => {
-      console.log('[GAMETABLE RT] Cleaning up round subscription');
-      supabase.removeChannel(channel);
+      console.log('[GAMETABLE RT] Cleaning up subscriptions');
+      supabase.removeChannel(roundChannel);
+      supabase.removeChannel(cardsChannel);
     };
   }, [gameId]);
   
-  // CRITICAL: Derive effective round from realtime data, falling back to props
+  // CRITICAL: Derive effective round from realtime data (source of truth), falling back to props
   const effectiveRoundNumber = realtimeRound?.round_number ?? currentRound;
   const effectiveCardsDealt = realtimeRound?.cards_dealt ?? authoritativeCardCount;
   
-  // Use prop cards if available, otherwise use locally fetched cards
-  const playerCards = propPlayerCards.length > 0 ? propPlayerCards : localPlayerCards;
-  
-  // Self-healing: fetch cards directly if props are empty but should have cards
-  const fetchCardsDirectly = useCallback(async () => {
-    const roundToFetch = effectiveRoundNumber;
-    if (!gameId || !roundToFetch || roundToFetch <= 0 || isFetchingRef.current) return;
-    if (lastFetchedRoundRef.current === roundToFetch && localPlayerCards.length > 0) return;
-    
-    isFetchingRef.current = true;
-    console.log('[GAMETABLE SELF-HEAL] Fetching cards directly for round:', roundToFetch);
-    
-    try {
-      // Get the round ID for current round
-      const { data: roundData } = await supabase
-        .from('rounds')
-        .select('id')
-        .eq('game_id', gameId)
-        .eq('round_number', roundToFetch)
-        .single();
-      
-      if (roundData) {
-        const { data: cardsData } = await supabase
-          .from('player_cards')
-          .select('player_id, cards')
-          .eq('round_id', roundData.id);
-        
-        if (cardsData && cardsData.length > 0) {
-          console.log('[GAMETABLE SELF-HEAL] Got cards:', cardsData.length, 'players');
-          setLocalPlayerCards(cardsData.map(cd => ({
-            player_id: cd.player_id,
-            cards: cd.cards as unknown as CardType[]
-          })));
-          lastFetchedRoundRef.current = roundToFetch;
-        }
-      }
-    } catch (e) {
-      console.error('[GAMETABLE SELF-HEAL] Error fetching cards:', e);
-    } finally {
-      isFetchingRef.current = false;
-    }
-  }, [gameId, effectiveRoundNumber, localPlayerCards.length]);
-  
-  // Self-healing effect: if we have no cards but should, fetch them
-  useEffect(() => {
-    const currentPlayerForCheck = players.find(p => p.user_id === currentUserId);
-    const shouldHaveCards = currentPlayerForCheck && 
-                           !currentPlayerForCheck.sitting_out && 
-                           effectiveRoundNumber > 0 && 
-                           gameType;
-    
-    const hasCards = propPlayerCards.length > 0 || localPlayerCards.length > 0;
-    
-    if (shouldHaveCards && !hasCards && gameId) {
-      console.log('[GAMETABLE SELF-HEAL] Missing cards, triggering fetch');
-      fetchCardsDirectly();
-      
-      // Also request parent to refetch
-      if (onRequestRefetch) {
-        onRequestRefetch();
-      }
-    }
-  }, [effectiveRoundNumber, propPlayerCards.length, localPlayerCards.length, players, currentUserId, gameId, gameType, fetchCardsDirectly, onRequestRefetch]);
+  // USE LOCAL CARDS (fetched by GameTable) - only fallback to props if local is empty
+  const playerCards = localPlayerCards.length > 0 ? localPlayerCards : propPlayerCards;
   
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked || !!pendingDecision;
