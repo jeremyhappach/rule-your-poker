@@ -52,6 +52,7 @@ interface Game {
   chucky_cards?: number;
   player_count?: number;
   is_creator?: boolean;
+  is_player?: boolean;
   host_username?: string;
   duration_minutes?: number;
   players?: Array<{
@@ -179,6 +180,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         const host_username = hostPlayer?.profiles?.username || 'Unknown';
         
         const isCreator = playersData?.some(p => p.user_id === userId && p.position === 1) || false;
+        const isPlayer = playersData?.some(p => p.user_id === userId) || false;
         
         // Calculate duration
         const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
@@ -187,6 +189,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           ...game,
           player_count: playersData?.length || 0,
           is_creator: isCreator,
+          is_player: isPlayer,
           host_username,
           duration_minutes: durationMinutes,
           players: playersData?.map(p => ({
@@ -418,9 +421,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           <Button
                             size="sm"
                             onClick={() => joinGame(game.id)}
-                            disabled={game.player_count >= 7}
+                            disabled={game.player_count >= 7 && !game.is_player}
                           >
-                            Join
+                            {game.is_player ? 'Re-Join' : 'Join'}
                           </Button>
                           {game.is_creator && game.status === 'waiting' && (
                             <Button
