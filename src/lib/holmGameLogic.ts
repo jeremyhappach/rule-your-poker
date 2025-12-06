@@ -1136,25 +1136,12 @@ async function handleMultiPlayerShowdown(
     cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`)
   })));
   
-  // Filter to only players who stayed (using fresh data from players table via join)
-  // BUT: if current_decision was reset (race condition), fall back to ALL cards for round
-  // since we know handleMultiPlayerShowdown is only called when multiple players stayed
-  let cardsOfStayedPlayers = allCardsForRound?.filter(pc => {
-    const playerData = pc.players as any;
-    return playerData?.current_decision === 'stay';
-  }) || [];
+  // CRITICAL: Use ALL player cards for this round - don't filter by current_decision
+  // This function is ONLY called when multiple players stayed (verified by caller)
+  // Filtering by current_decision is unreliable due to race conditions resetting it
+  const cardsOfStayedPlayers = allCardsForRound || [];
   
-  // CRITICAL FIX: Fallback if FEWER THAN 2 players found (not just 0)
-  // This function is ONLY called when multiple players stayed, so if we find < 2,
-  // it means current_decision was reset for some players (race condition)
-  // Use all cards for the round to ensure we evaluate everyone
-  if (cardsOfStayedPlayers.length < 2 && allCardsForRound && allCardsForRound.length >= 2) {
-    console.warn('[HOLM MULTI] ⚠️ Only found', cardsOfStayedPlayers.length, 'stayed players but need 2+ - falling back to all cards for round');
-    console.warn('[HOLM MULTI] This indicates current_decision was reset for some players (race condition)');
-    cardsOfStayedPlayers = allCardsForRound;
-  }
-  
-  console.log('[HOLM MULTI] Stayed players (from cards join):', cardsOfStayedPlayers.length);
+  console.log('[HOLM MULTI] Using ALL cards for round (no filtering):', cardsOfStayedPlayers.length);
   cardsOfStayedPlayers.forEach(pc => {
     const playerData = pc.players as any;
     console.log(`[HOLM MULTI] Stayed (via cards): ${playerData?.profiles?.username} | ID: ${pc.player_id} | decision: ${playerData?.current_decision}`);
@@ -1241,29 +1228,14 @@ async function handleMultiPlayerShowdown(
   console.log('[HOLM MULTI] Community cards:', communityCards.map(c => `${c.rank}${c.suit}`).join(' '));
   console.log('[HOLM MULTI] Community cards count:', communityCards.length);
   
+  // Log evaluations - NO re-evaluation, just use stored values
   evaluations.forEach(e => {
     const playerName = e.player.profiles?.username || e.player.user_id;
-    const allCards = [...e.cards, ...communityCards];
     const playerCardStr = e.cards.map(c => `${c.rank}${c.suit}`).join(' ');
-    const allCardStr = allCards.map(c => `${c.rank}${c.suit}`).join(' ');
+    const allCardStr = [...e.cards, ...communityCards].map(c => `${c.rank}${c.suit}`).join(' ');
+    const handDesc = formatHandRankDetailed([...e.cards, ...communityCards], false);
     
-    console.log(`[HOLM MULTI] ---------- ${playerName} ----------`);
-    console.log(`[HOLM MULTI] Player cards RAW:`, JSON.stringify(e.cards));
-    console.log(`[HOLM MULTI] Player cards count:`, e.cards.length);
-    console.log(`[HOLM MULTI] Player cards: ${playerCardStr}`);
-    console.log(`[HOLM MULTI] All cards count:`, allCards.length);
-    console.log(`[HOLM MULTI] All cards: ${allCardStr}`);
-    console.log(`[HOLM MULTI] ${playerName} STORED EVAL: rank=${e.evaluation.rank}, value=${e.evaluation.value}`);
-    
-    // Re-evaluate with full logging to debug
-    const eval2 = evaluateHand(allCards, false);
-    const handDesc = formatHandRankDetailed(allCards, false);
-    console.log(`[HOLM MULTI] ${playerName} FRESH EVAL: ${handDesc} | rank: ${eval2.rank} | value: ${eval2.value}`);
-    
-    // CRITICAL: Check if stored eval matches fresh eval
-    if (e.evaluation.value !== eval2.value || e.evaluation.rank !== eval2.rank) {
-      console.error(`[HOLM MULTI] ⚠️ MISMATCH for ${playerName}! stored: ${e.evaluation.rank}/${e.evaluation.value}, fresh: ${eval2.rank}/${eval2.value}`);
-    }
+    console.log(`[HOLM MULTI] ${playerName}: cards=[${playerCardStr}] all=[${allCardStr}] hand=${handDesc} rank=${e.evaluation.rank} value=${e.evaluation.value}`);
   });
 
   // Build debug data for each player before finding winner
