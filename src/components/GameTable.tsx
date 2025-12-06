@@ -273,6 +273,17 @@ export const GameTable = ({
   // USE LOCAL CARDS (fetched by GameTable) - only fallback to props if local is empty
   const playerCards = localPlayerCards.length > 0 ? localPlayerCards : propPlayerCards;
   
+  // Debug: Log card sources
+  console.log('[GAMETABLE] 🃏 Card sources:', {
+    localCards: localPlayerCards.length,
+    propCards: propPlayerCards.length,
+    usingLocal: localPlayerCards.length > 0,
+    currentUserId,
+    realtimeRound: realtimeRound?.round_number,
+    propRound: currentRound,
+    effectiveRound: effectiveRoundNumber
+  });
+  
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked || !!pendingDecision;
   
