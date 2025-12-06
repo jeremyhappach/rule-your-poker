@@ -2626,117 +2626,128 @@ const Game = () => {
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
-    <div className="min-h-screen p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
-            <p className="text-muted-foreground">{gameName}</p>
-            <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
-            <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
-          </div>
-          <div className="flex gap-2">
-            {game.status === 'in_progress' && (
-              <div className="flex flex-col items-end gap-1">
-                {isCreator && (
-                  <Button 
-                    variant={game.is_paused ? "default" : "outline"} 
-                    onClick={async () => {
-                      const newPausedState = !game.is_paused;
-                      
-                      // Get current round for deadline updates - use latest round for Holm games
-                      const currentRoundData = game.game_type === 'holm-game'
-                        ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
-                        : game.rounds?.find(r => r.round_number === game.current_round);
-                      
-                      if (newPausedState) {
-                        // PAUSING: Save current remaining time
-                        const remainingTime = timeLeft ?? 0;
-                        console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
+    <div className={`min-h-screen ${isMobile ? 'p-0' : 'p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
+      <div className={`${isMobile ? '' : 'max-w-7xl mx-auto space-y-6'}`}>
+        {/* Desktop header */}
+        {!isMobile && (
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
+              <p className="text-muted-foreground">{gameName}</p>
+              <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
+              <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
+            </div>
+            <div className="flex gap-2">
+              {game.status === 'in_progress' && (
+                <div className="flex flex-col items-end gap-1">
+                  {isCreator && (
+                    <Button 
+                      variant={game.is_paused ? "default" : "outline"} 
+                      onClick={async () => {
+                        const newPausedState = !game.is_paused;
                         
-                        // Optimistic UI update
-                        setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
+                        // Get current round for deadline updates - use latest round for Holm games
+                        const currentRoundData = game.game_type === 'holm-game'
+                          ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
+                          : game.rounds?.find(r => r.round_number === game.current_round);
                         
-                        const { error } = await supabase
-                          .from('games')
-                          .update({ 
-                            is_paused: true, 
-                            paused_time_remaining: remainingTime 
-                          })
-                          .eq('id', gameId);
-                        
-                        if (error) {
-                          console.error('[PAUSE] Error pausing:', error);
-                          setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-                          toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
-                        }
-                      } else {
-                        // RESUMING: Set new deadline = now + paused_time_remaining
-                        const savedTime = game.paused_time_remaining ?? decisionTimerRef.current;
-                        const newDeadline = new Date(Date.now() + savedTime * 1000).toISOString();
-                        console.log('[PAUSE] Resuming game, setting new deadline:', newDeadline, 'with', savedTime, 'seconds');
-                        
-                        // Optimistic UI update
-                        setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-                        setDecisionDeadline(newDeadline);
-                        
-                        // Update game and current round deadline
-                        const { error: gameError } = await supabase
-                          .from('games')
-                          .update({ 
-                            is_paused: false, 
-                            paused_time_remaining: null 
-                          })
-                          .eq('id', gameId);
-                        
-                        if (currentRoundData?.id) {
-                          const { error: roundError } = await supabase
-                            .from('rounds')
-                            .update({ decision_deadline: newDeadline })
-                            .eq('id', currentRoundData.id);
+                        if (newPausedState) {
+                          // PAUSING: Save current remaining time
+                          const remainingTime = timeLeft ?? 0;
+                          console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
                           
-                          if (roundError) {
-                            console.error('[PAUSE] Error updating round deadline:', roundError);
+                          // Optimistic UI update
+                          setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
+                          
+                          const { error } = await supabase
+                            .from('games')
+                            .update({ 
+                              is_paused: true, 
+                              paused_time_remaining: remainingTime 
+                            })
+                            .eq('id', gameId);
+                          
+                          if (error) {
+                            console.error('[PAUSE] Error pausing:', error);
+                            setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+                            toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
+                          }
+                        } else {
+                          // RESUMING: Set new deadline = now + paused_time_remaining
+                          const savedTime = game.paused_time_remaining ?? decisionTimerRef.current;
+                          const newDeadline = new Date(Date.now() + savedTime * 1000).toISOString();
+                          console.log('[PAUSE] Resuming game, setting new deadline:', newDeadline, 'with', savedTime, 'seconds');
+                          
+                          // Optimistic UI update
+                          setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+                          setDecisionDeadline(newDeadline);
+                          
+                          // Update game and current round deadline
+                          const { error: gameError } = await supabase
+                            .from('games')
+                            .update({ 
+                              is_paused: false, 
+                              paused_time_remaining: null 
+                            })
+                            .eq('id', gameId);
+                          
+                          if (currentRoundData?.id) {
+                            const { error: roundError } = await supabase
+                              .from('rounds')
+                              .update({ decision_deadline: newDeadline })
+                              .eq('id', currentRoundData.id);
+                            
+                            if (roundError) {
+                              console.error('[PAUSE] Error updating round deadline:', roundError);
+                            }
+                          }
+                          
+                          if (gameError) {
+                            console.error('[PAUSE] Error resuming:', gameError);
+                            setGame(prev => prev ? { ...prev, is_paused: true } : prev);
+                            toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
                           }
                         }
-                        
-                        if (gameError) {
-                          console.error('[PAUSE] Error resuming:', gameError);
-                          setGame(prev => prev ? { ...prev, is_paused: true } : prev);
-                          toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
-                        }
-                      }
-                    }}
-                  >
-                    {game.is_paused ? '▶️ Resume' : '⏸️ Pause'}
-                  </Button>
-                )}
-                {game.is_paused && (
-                  <Badge variant="destructive" className="animate-pulse text-sm px-3 py-1">
-                    ⏸️ GAME PAUSED
-                  </Badge>
-                )}
-              </div>
-            )}
-            {game.status === 'waiting' && (
-              <Button variant="default" onClick={handleInvite}>
-                <Share2 className="w-4 h-4 mr-2" />
-                Invite Players
-              </Button>
-            )}
-            {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) && (
-              <Button variant="destructive" onClick={() => setShowEndSessionDialog(true)}>
-                End Session
-              </Button>
-            )}
-            {/* Only show Leave Game if player is sitting out or is an observer */}
-            {(!players.find(p => p.user_id === user?.id) || players.find(p => p.user_id === user?.id)?.sitting_out) && (
-              <Button variant="outline" onClick={leaveGame}>
-                Leave Game
-              </Button>
-            )}
+                      }}
+                    >
+                      {game.is_paused ? '▶️ Resume' : '⏸️ Pause'}
+                    </Button>
+                  )}
+                  {game.is_paused && (
+                    <Badge variant="destructive" className="animate-pulse text-sm px-3 py-1">
+                      ⏸️ GAME PAUSED
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {game.status === 'waiting' && (
+                <Button variant="default" onClick={handleInvite}>
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Invite Players
+                </Button>
+              )}
+              {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) && (
+                <Button variant="destructive" onClick={() => setShowEndSessionDialog(true)}>
+                  End Session
+                </Button>
+              )}
+              {/* Only show Leave Game if player is sitting out or is an observer */}
+              {(!players.find(p => p.user_id === user?.id) || players.find(p => p.user_id === user?.id)?.sitting_out) && (
+                <Button variant="outline" onClick={leaveGame}>
+                  Leave Game
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Mobile header - minimal */}
+        {isMobile && (
+          <div className="flex items-center justify-between px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border">
+            <span className="text-sm font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">PPL</span>
+            <span className="text-xs text-muted-foreground">{gameName}</span>
+          </div>
+        )}
 
         {game.status === 'waiting' && (
           <PreGameLobby
