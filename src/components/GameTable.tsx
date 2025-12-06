@@ -152,10 +152,20 @@ export const GameTable = ({
         
         if (cardsData && cardsData.length > 0) {
           console.log('[GAMETABLE CARDS] ✅ Got', cardsData.length, 'player cards for round', roundNum);
-          setLocalPlayerCards(cardsData.map(cd => ({
+          
+          // Map cards and validate card counts are appropriate
+          const mappedCards = cardsData.map(cd => ({
             player_id: cd.player_id,
             cards: cd.cards as unknown as CardType[]
+          }));
+          
+          // Log card counts for debugging
+          console.log('[GAMETABLE CARDS] Card counts:', mappedCards.map(c => ({
+            playerId: c.player_id,
+            count: c.cards?.length
           })));
+          
+          setLocalPlayerCards(mappedCards);
           lastFetchedRoundIdRef.current = roundId;
           isFetchingRef.current = false;
         } else if (retryCount < 5) {
@@ -257,11 +267,19 @@ export const GameTable = ({
           table: 'player_cards'
         },
         async (payload) => {
-          console.log('[GAMETABLE RT] 🃏 Card INSERT detected:', payload.new);
-          // If we have a current round, refetch cards for it (use ref for current value)
+          const newCard = payload.new as { round_id: string; player_id: string };
           const currentRoundData = realtimeRoundRef.current;
-          if (currentRoundData?.id) {
+          
+          // CRITICAL: Only process card inserts for the current round
+          // This prevents race conditions where cards from different rounds get mixed
+          if (currentRoundData?.id && newCard.round_id === currentRoundData.id) {
+            console.log('[GAMETABLE RT] 🃏 Card INSERT for current round:', newCard.round_id);
             await fetchCardsForRound(currentRoundData.id, currentRoundData.round_number);
+          } else {
+            console.log('[GAMETABLE RT] ⚠️ Card INSERT for different round, ignoring:', {
+              cardRoundId: newCard.round_id,
+              currentRoundId: currentRoundData?.id
+            });
           }
         }
       )
@@ -352,16 +370,19 @@ export const GameTable = ({
     // Only run healing if:
     // 1. We have a game ID
     // 2. We have a current player record
-    // 3. Current player doesn't have cards
-    // 4. Game is in_progress (most reliable indicator something is happening)
+    // 3. Current player doesn't have cards (or has invalid card count for game type)
+    // 4. Game appears to be active
     // 5. Player is not sitting out
-    const gameIsActive = roundStatus === 'betting' || roundStatus === 'active' || !awaitingNextRound;
+    // EXPANDED CONDITIONS to catch edge cases on first hand of new game
+    const gameIsActive = roundStatus === 'betting' || roundStatus === 'active' || roundStatus === 'showdown' || !awaitingNextRound;
     const roundIsActive = effectiveRoundNumber > 0 || currentRound > 0;
+    // For Holm games specifically, also heal if we have no round data yet but game is in_progress
+    const isHolmNeedingCards = gameType === 'holm-game' && !currentPlayerHasCards;
     const shouldHeal = 
       gameId &&
       currentPlayerRecord &&
       !currentPlayerHasCards &&
-      (roundIsActive || gameIsActive) &&
+      (roundIsActive || gameIsActive || isHolmNeedingCards) &&
       !currentPlayerRecord.sitting_out;
     
     if (shouldHeal) {
@@ -419,16 +440,34 @@ export const GameTable = ({
           console.log('[GAMETABLE HEAL] ✅ Got cards:', { count: cardsData.length, hasCurrentUserCards });
           
           if (hasCurrentUserCards) {
-            setLocalPlayerCards(cardsData.map(cd => ({
-              player_id: cd.player_id,
-              cards: cd.cards as unknown as CardType[]
-            })));
-            lastFetchedRoundIdRef.current = roundId;
+            // Validate card counts before accepting
+            const currentUserCards = cardsData.find(c => c.player_id === currentPlayerRecord.id);
+            const cardCount = (currentUserCards?.cards as any[])?.length || 0;
             
-            // Stop polling once we have our cards
-            if (cardHealingRef.current) {
-              clearInterval(cardHealingRef.current);
-              cardHealingRef.current = null;
+            // Use ref to get current game type (avoids stale closure)
+            const currentGameType = lastGameTypeRef.current;
+            
+            // For Holm, only accept if we have exactly 4 cards
+            // For 3-5-7, accept 3, 5, or 7 cards
+            const isValidForHolm = currentGameType === 'holm-game' && cardCount === 4;
+            const isValidFor357 = currentGameType === '3-5-7-game' && [3, 5, 7].includes(cardCount);
+            const isValid = isValidForHolm || isValidFor357 || (!currentGameType);
+            
+            if (isValid) {
+              console.log('[GAMETABLE HEAL] ✅ Valid card count for game type:', { currentGameType, cardCount });
+              setLocalPlayerCards(cardsData.map(cd => ({
+                player_id: cd.player_id,
+                cards: cd.cards as unknown as CardType[]
+              })));
+              lastFetchedRoundIdRef.current = roundId;
+              
+              // Stop polling once we have valid cards
+              if (cardHealingRef.current) {
+                clearInterval(cardHealingRef.current);
+                cardHealingRef.current = null;
+              }
+            } else {
+              console.log('[GAMETABLE HEAL] ⚠️ Invalid card count for game type, continuing poll:', { currentGameType, cardCount });
             }
           }
         }
