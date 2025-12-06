@@ -501,14 +501,46 @@ const Game = () => {
   }, [gameId, user]);
 
   // Timer countdown effect
-  // Subscribe to real-time updates for rounds to catch turn changes immediately
+  // Subscribe to real-time updates for rounds to catch turn changes and NEW ROUNDS immediately
   useEffect(() => {
     if (!gameId || !game) return;
 
-    console.log('[REALTIME] Setting up realtime subscription for rounds');
+    console.log('[REALTIME] Setting up realtime subscription for rounds (INSERT + UPDATE)');
     
     const channel = supabase
       .channel(`rounds-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'rounds',
+          filter: `game_id=eq.${gameId}`
+        },
+        (payload) => {
+          console.log('[REALTIME] *** NEW ROUND CREATED ***', payload);
+          const newRoundNumber = (payload.new as any)?.round_number;
+          console.log('[REALTIME] 🎲🎲🎲 NEW ROUND:', newRoundNumber, '- CRITICAL SYNC NEEDED!');
+          
+          // CRITICAL: Update ref immediately to prevent desync
+          if (newRoundNumber !== undefined && newRoundNumber !== null) {
+            lastKnownRoundRef.current = newRoundNumber;
+          }
+          
+          // Clear stale cards before fetching new round's cards
+          setCardStateContext(null);
+          setPlayerCards([]);
+          
+          // Immediate fetch
+          fetchGameData();
+          
+          // Delayed fetch to catch cards that are dealt after round creation
+          setTimeout(() => {
+            console.log('[REALTIME] 🎲 NEW ROUND - Delayed fetch for cards');
+            fetchGameData();
+          }, 300);
+        }
+      )
       .on(
         'postgres_changes',
         {
@@ -519,7 +551,8 @@ const Game = () => {
         },
         (payload) => {
           console.log('[REALTIME] *** ROUND UPDATE RECEIVED ***', payload);
-          console.log('[REALTIME] New turn position:', payload.new.current_turn_position);
+          console.log('[REALTIME] New turn position:', (payload.new as any).current_turn_position);
+          console.log('[REALTIME] Round status:', (payload.new as any).status);
           console.log('[REALTIME] Immediately refetching game data');
           fetchGameData();
         }
@@ -738,7 +771,7 @@ const Game = () => {
   }, [game?.status, game?.dealer_position, players, user?.id, gameId, playerCards.length, showAnteDialog]);
   
   // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
-  // Reduced frequency - realtime should handle most cases now
+  // More aggressive polling to prevent round desync between clients
   useEffect(() => {
     if (!gameId || !game) return;
     
@@ -763,7 +796,7 @@ const Game = () => {
       const needsSync = dbRound !== null && (localRound === null || dbRound !== localRound);
       
       if (needsSync) {
-        console.log('[357 SYNC POLL] ⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound);
+        console.log('[357 SYNC POLL] ⚠️⚠️⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound, '- FORCING SYNC!');
         lastKnownRoundRef.current = dbRound;
         // Clear stale card context before fetch
         setCardStateContext(null);
@@ -772,8 +805,11 @@ const Game = () => {
       }
     };
     
-    // Poll every 3 seconds as fallback (reduced from 1.5s - realtime handles most cases)
-    const pollInterval = setInterval(syncPoll, 3000);
+    // Poll every 1.5 seconds as fallback (critical for round sync)
+    const pollInterval = setInterval(syncPoll, 1500);
+    
+    // Also sync immediately on mount
+    syncPoll();
     
     return () => clearInterval(pollInterval);
   }, [gameId, game?.game_type, game?.status, game?.current_round]);
