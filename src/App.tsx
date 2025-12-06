@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Game from "./pages/Game";
 import HandEvalTest from "./pages/HandEvalTest";
+import HandEvalDebug from "./pages/HandEvalDebug";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/game/:gameId" element={<Game />} />
           <Route path="/test-hands" element={<HandEvalTest />} />
+          <Route path="/debug-hands" element={<HandEvalDebug />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

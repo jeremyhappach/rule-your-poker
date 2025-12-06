@@ -310,40 +310,40 @@ export const GameTable = ({
             // Get cards for this player
             const rawCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
             
-            // CRITICAL FIX: Calculate expected card count based on CURRENT game type
-            // This is the authoritative source - NOT stale cards from previous game
-            // Return 0 if no valid round is active (prevents stale card rendering during transitions)
+            // Calculate expected card count based on game type and round
+            // If round is invalid, we still allow cards that match valid game patterns
             const getExpectedCardCountForGameType = (gameTypeArg: string | null | undefined, round: number): number => {
-              // No cards expected if round is not a valid positive number
-              if (!round || round <= 0) {
-                return 0;
-              }
               if (gameTypeArg === 'holm-game') {
                 return 4; // Holm game always has 4 cards per player
               }
-              // 3-5-7 game
+              // 3-5-7 game - calculate from round number
               if (round === 1) return 3;
               if (round === 2) return 5;
               if (round === 3) return 7;
+              // Fallback: if round is invalid, try to infer from card count
               return 0;
             };
             
             const expectedCardCount = getExpectedCardCountForGameType(gameType, currentRound);
             
-            // CRITICAL FIX: Reject cards if they don't match expected count for current game type
-            // This prevents stale cards from previous game type from rendering briefly
-            const cardsMatchGameType = rawCards.length === 0 || rawCards.length === expectedCardCount;
+            // CRITICAL: Don't reject cards if they are a valid count for the game type
+            // This prevents race conditions where currentRound is temporarily null/0
+            const isValidCardCountForHolm = rawCards.length === 4;
+            const isValid357CardCount = rawCards.length === 3 || rawCards.length === 5 || rawCards.length === 7;
+            const cardsAreValid = gameType === 'holm-game' 
+              ? isValidCardCountForHolm 
+              : isValid357CardCount;
+            
+            // Cards match if: no cards OR cards match expected OR cards are valid for the game type
+            const cardsMatchGameType = rawCards.length === 0 || rawCards.length === expectedCardCount || cardsAreValid;
             const actualCards = cardsMatchGameType ? rawCards : [];
             
-            // Show cards when there's an active round and player isn't sitting out
-            // AND cards match the expected count for this game type
-            const shouldShowCards = player && !player.sitting_out && currentRound > 0 && cardsMatchGameType;
+            // Show cards when player exists, isn't sitting out, and has valid cards
+            // No longer strictly require currentRound > 0 since cards themselves indicate an active round
+            const shouldShowCards = player && !player.sitting_out && cardsMatchGameType && rawCards.length > 0;
             
-            // For observers (no currentUserId or not a player), show placeholder card backs
-            const isObserver = !currentUserId || !players.some(p => p.user_id === currentUserId);
-            
-            // Track if we had to reject stale cards
-            const hadStaleCards = rawCards.length > 0 && rawCards.length !== expectedCardCount && expectedCardCount > 0;
+            // Track if we had to reject stale cards - only if cards exist and aren't valid for ANY game type pattern
+            const hadStaleCards = rawCards.length > 0 && !cardsMatchGameType;
             
             // Final cards to display - use validated actualCards
             const cards: CardType[] = shouldShowCards ? actualCards : [];
