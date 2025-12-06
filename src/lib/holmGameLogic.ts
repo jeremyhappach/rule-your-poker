@@ -127,17 +127,22 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     return;
   }
   
+  // CRITICAL: For Holm games, always use the LATEST round by round_number
+  // game.current_round can be stale due to race conditions
   const { data: round } = await supabase
     .from('rounds')
     .select('*')
     .eq('game_id', gameId)
-    .eq('round_number', game.current_round)
-    .single();
+    .order('round_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
     
   if (!round) {
-    console.error('[HOLM TURN] ERROR: Round not found');
+    console.error('[HOLM TURN] ERROR: No rounds found for game');
     return;
   }
+  
+  console.log('[HOLM TURN] Using latest round:', round.round_number, '(game.current_round was:', game.current_round, ')');
   
   const { data: players } = await supabase
     .from('players')
@@ -406,7 +411,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   }
 
   // Update game status with the new round number
-  await supabase
+  console.log('[HOLM] Updating game current_round to:', nextRoundNumber, 'for gameId:', gameId);
+  const { error: gameUpdateError } = await supabase
     .from('games')
     .update({
       status: 'in_progress',
@@ -416,6 +422,12 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       last_round_result: null
     })
     .eq('id', gameId);
+
+  if (gameUpdateError) {
+    console.error('[HOLM] ERROR updating game current_round:', gameUpdateError);
+  } else {
+    console.log('[HOLM] ✅ Successfully updated current_round to', nextRoundNumber);
+  }
 
   console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', isFirstHand);
 }
@@ -446,17 +458,22 @@ export async function endHolmRound(gameId: string) {
     status: game.status
   });
 
+  // CRITICAL: Fetch the MOST RECENT round by round_number, not game.current_round
+  // This prevents issues when current_round is stale due to race conditions
   const { data: round } = await supabase
     .from('rounds')
     .select('*')
     .eq('game_id', gameId)
-    .eq('round_number', game.current_round)
-    .single();
+    .order('round_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (!round) {
-    console.log('[HOLM END] ERROR: Round not found for round_number:', game.current_round);
+    console.log('[HOLM END] ERROR: No rounds found for game');
     return;
   }
+  
+  console.log('[HOLM END] Using most recent round:', round.round_number, '(game.current_round was:', game.current_round, ')');
 
   // Guard: Prevent multiple simultaneous calls - if round is completed or Chucky is already active, exit
   // Check chucky_active alone (not revealed count) to prevent race conditions during initial dealing
