@@ -1083,9 +1083,9 @@ async function handleMultiPlayerShowdown(
   console.log('[HOLM MULTI] ========== handleMultiPlayerShowdown ==========');
   console.log('[HOLM MULTI] gameId:', gameId);
   console.log('[HOLM MULTI] roundId:', roundId);
-  console.log('[HOLM MULTI] stayedPlayers count:', stayedPlayers.length);
+  console.log('[HOLM MULTI] PASSED stayedPlayers count:', stayedPlayers.length);
   stayedPlayers.forEach(p => {
-    console.log(`[HOLM MULTI] Stayed player: ${p.profiles?.username} | ID: ${p.id} | position: ${p.position}`);
+    console.log(`[HOLM MULTI] PASSED Stayed player: ${p.profiles?.username} | ID: ${p.id} | position: ${p.position}`);
   });
   console.log('[HOLM MULTI] roundPot:', roundPot, 'game.pot:', game.pot);
 
@@ -1103,14 +1103,13 @@ async function handleMultiPlayerShowdown(
 
   console.log('[HOLM MULTI] Evaluating hands...');
 
-  // Evaluate each player's hand
-  // CRITICAL: Use limit(1) + order to handle potential duplicate card records gracefully
-  // CRITICAL: Fetch ALL cards for this round FIRST in a single query, then match to players
-  // This prevents race conditions and ensures consistent data
+  // CRITICAL FIX: Instead of relying on passed-in stayedPlayers (which may have stale IDs),
+  // we derive the "who stayed" list directly from player_cards for THIS round.
+  // This guarantees we use the correct player_id values that match the cards.
   console.log('[HOLM MULTI] Fetching ALL player cards for round:', roundId);
   const { data: allCardsForRound, error: allCardsError } = await supabase
     .from('player_cards')
-    .select('*')
+    .select('*, players!inner(*, profiles(username))')
     .eq('round_id', roundId);
   
   if (allCardsError) {
@@ -1119,50 +1118,106 @@ async function handleMultiPlayerShowdown(
   
   console.log('[HOLM MULTI] All cards for round:', allCardsForRound?.map(pc => ({
     player_id: pc.player_id,
+    username: (pc.players as any)?.profiles?.username,
     cards_count: (pc.cards as any[])?.length,
     cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`)
   })));
+  
+  // Filter to only players who stayed (using fresh data from players table via join)
+  // BUT: if current_decision was reset (race condition), fall back to ALL cards for round
+  // since we know handleMultiPlayerShowdown is only called when multiple players stayed
+  let cardsOfStayedPlayers = allCardsForRound?.filter(pc => {
+    const playerData = pc.players as any;
+    return playerData?.current_decision === 'stay';
+  }) || [];
+  
+  // FALLBACK: If current_decision was reset, use all cards for this round
+  // This is safe because this function is only called when multiple players stayed
+  if (cardsOfStayedPlayers.length === 0 && allCardsForRound && allCardsForRound.length > 0) {
+    console.warn('[HOLM MULTI] ⚠️ current_decision was reset - falling back to all cards for round');
+    cardsOfStayedPlayers = allCardsForRound;
+  }
+  
+  console.log('[HOLM MULTI] Stayed players (from cards join):', cardsOfStayedPlayers.length);
+  cardsOfStayedPlayers.forEach(pc => {
+    const playerData = pc.players as any;
+    console.log(`[HOLM MULTI] Stayed (via cards): ${playerData?.profiles?.username} | ID: ${pc.player_id} | decision: ${playerData?.current_decision}`);
+  });
+  
+  // ALSO fetch prior round cards for debugging - helps identify stale card issues
+  // Get the current round number first
+  const { data: currentRoundData } = await supabase
+    .from('rounds')
+    .select('round_number')
+    .eq('id', roundId)
+    .single();
+  
+  const currentRoundNumber = currentRoundData?.round_number || 0;
+  let priorRoundCards: any[] = [];
+  
+  if (currentRoundNumber > 1) {
+    const { data: priorRound } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('round_number', currentRoundNumber - 1)
+      .single();
+    
+    if (priorRound) {
+      const { data: priorCards } = await supabase
+        .from('player_cards')
+        .select('*, players!inner(profiles(username))')
+        .eq('round_id', priorRound.id);
+      
+      priorRoundCards = priorCards || [];
+      console.log('[HOLM MULTI] Prior round cards for debugging:', priorRoundCards.map(pc => ({
+        player_id: pc.player_id,
+        username: pc.players?.profiles?.username,
+        cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`)
+      })));
+    }
+  }
 
-  const evaluations = await Promise.all(
-    stayedPlayers.map(async (player) => {
-      console.log(`[HOLM MULTI] Looking up cards for player: ${player.profiles?.username} | ID: ${player.id}`);
-      
-      // Find this player's cards from the pre-fetched array
-      const playerCardsData = allCardsForRound?.find(pc => pc.player_id === player.id);
-      
-      if (!playerCardsData) {
-        console.error(`[HOLM MULTI] ⚠️⚠️⚠️ NO CARDS FOUND for player ${player.profiles?.username} | ID: ${player.id}`);
-        console.error(`[HOLM MULTI] ⚠️⚠️⚠️ Available player_ids in round:`, allCardsForRound?.map(pc => pc.player_id));
-        console.error(`[HOLM MULTI] ⚠️⚠️⚠️ Stayed player IDs:`, stayedPlayers.map(p => p.id));
-      }
-      
-      // CRITICAL: Validate card data from database
-      const rawCards = (playerCardsData?.cards as unknown as any[]) || [];
-      const playerCards: Card[] = rawCards.map(c => ({
-        suit: (c.suit || c.Suit || '') as Suit,
-        rank: String(c.rank || c.Rank || '').toUpperCase() as Rank
-      })).filter(c => c.suit && c.rank);
-      
-      console.log(`[HOLM MULTI] ${player.profiles?.username}: ${playerCards.length} cards validated from ${rawCards.length} raw`);
-      
-      if (playerCards.length !== 4) {
-        console.error(`[HOLM MULTI] ⚠️ INVALID CARD COUNT for ${player.profiles?.username}: expected 4, got ${playerCards.length}`);
-      }
-      
-      const allCards = [...playerCards, ...communityCards];
-      console.log(`[HOLM MULTI] ${player.profiles?.username} total cards for eval: ${allCards.length} (${playerCards.length} player + ${communityCards.length} community)`);
-      
-      const evaluation = evaluateHand(allCards, false); // No wild cards in Holm
-      
-      console.log(`[HOLM MULTI] ${player.profiles?.username} hand: ${playerCards.map(c => `${c.rank}${c.suit}`).join(' ')} | eval: rank=${evaluation.rank} value=${evaluation.value}`);
+  // CRITICAL: Use cardsOfStayedPlayers (derived from player_cards join) instead of passed-in stayedPlayers
+  // This ensures player_id values match exactly with the cards stored for this round
+  const evaluations = cardsOfStayedPlayers.map((cardRecord) => {
+    const playerData = cardRecord.players as any;
+    const username = playerData?.profiles?.username || 'unknown';
+    
+    console.log(`[HOLM MULTI] Evaluating cards for: ${username} | ID: ${cardRecord.player_id}`);
+    
+    // Parse cards directly from the card record (guaranteed to match)
+    const rawCards = (cardRecord.cards as unknown as any[]) || [];
+    const playerCards: Card[] = rawCards.map(c => ({
+      suit: (c.suit || c.Suit || '') as Suit,
+      rank: String(c.rank || c.Rank || '').toUpperCase() as Rank
+    })).filter(c => c.suit && c.rank);
+    
+    console.log(`[HOLM MULTI] ${username}: ${playerCards.length} cards from record`);
+    
+    if (playerCards.length !== 4) {
+      console.error(`[HOLM MULTI] ⚠️ INVALID CARD COUNT for ${username}: expected 4, got ${playerCards.length}`);
+    }
+    
+    const allCards = [...playerCards, ...communityCards];
+    console.log(`[HOLM MULTI] ${username} total cards for eval: ${allCards.length} (${playerCards.length} player + ${communityCards.length} community)`);
+    
+    const evaluation = evaluateHand(allCards, false); // No wild cards in Holm
+    
+    console.log(`[HOLM MULTI] ${username} hand: ${playerCards.map(c => `${c.rank}${c.suit}`).join(' ')} | eval: rank=${evaluation.rank} value=${evaluation.value}`);
 
-      return {
-        player,
-        evaluation,
-        cards: playerCards
-      };
-    })
-  );
+    return {
+      player: {
+        id: cardRecord.player_id,
+        position: playerData?.position,
+        chips: playerData?.chips || 0,
+        profiles: playerData?.profiles,
+        user_id: playerData?.user_id
+      },
+      evaluation,
+      cards: playerCards
+    };
+  });
 
   // Debug: Log each player's evaluation with detailed hand description
   console.log('[HOLM MULTI] ========== HAND EVALUATIONS (RAW DATA) ==========');
@@ -1292,10 +1347,19 @@ async function handleMultiPlayerShowdown(
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
     
     // Build debug data object to embed in result message
+    // Include prior round cards to help diagnose stale card issues
+    const priorRoundDebug = priorRoundCards.map(pc => ({
+      playerId: pc.player_id,
+      username: pc.players?.profiles?.username || 'unknown',
+      cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`).join(' ') || '(none)'
+    }));
+    
     const debugData = {
       roundId: roundId,
+      roundNumber: currentRoundNumber,
       communityCards: communityCards.map(c => `${c.rank}${c.suit}`).join(' '),
       evaluations: debugEvaluations,
+      priorRoundCards: priorRoundDebug,
       winnerId: winner.player.id,
       winnerName: winnerUsername,
       maxValue: maxValue
