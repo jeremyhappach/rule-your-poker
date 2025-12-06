@@ -1145,15 +1145,20 @@ async function handleMultiPlayerShowdown(
 
   console.log('[HOLM MULTI] Evaluating hands using CACHED cards (fetched before delays)...');
 
-  // CRITICAL: Use cachedPlayerCards passed from endHolmRound (fetched BEFORE any delays)
-  // This eliminates race conditions where cards could be modified/deleted during delays
-  const cardsOfStayedPlayers = cachedPlayerCards;
+  // CRITICAL: Filter cachedPlayerCards to only include players who stayed
+  // cachedPlayerCards contains ALL player cards for the round (including folded players)
+  // stayedPlayers contains only players who have current_decision='stay'
+  const stayedPlayerIds = new Set(stayedPlayers.map(p => p.id));
+  console.log('[HOLM MULTI] stayedPlayerIds:', Array.from(stayedPlayerIds));
   
-  console.log('[HOLM MULTI] Using CACHED cards for evaluation:', cardsOfStayedPlayers.length);
+  const cardsOfStayedPlayers = cachedPlayerCards.filter(pc => stayedPlayerIds.has(pc.player_id));
+  
+  console.log('[HOLM MULTI] CACHED cards count (all):', cachedPlayerCards.length);
+  console.log('[HOLM MULTI] FILTERED to stayed players:', cardsOfStayedPlayers.length);
   cardsOfStayedPlayers.forEach(pc => {
     const playerData = pc.players as any;
     const cards = pc.cards as any[];
-    console.log(`[HOLM MULTI] Player ${playerData?.profiles?.username} | ID: ${pc.player_id} | Cards: ${cards?.map((c: any) => `${c.rank}${c.suit}`).join(' ')}`);
+    console.log(`[HOLM MULTI] Stayed player ${playerData?.profiles?.username} | ID: ${pc.player_id} | Cards: ${cards?.map((c: any) => `${c.rank}${c.suit}`).join(' ')}`);
   });
 
   // Get current round number for debug data
