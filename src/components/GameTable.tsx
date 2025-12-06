@@ -138,10 +138,17 @@ export const GameTable = ({
       console.log('[GAMETABLE CARDS] Fetching cards for round:', roundNum, 'id:', roundId, 'retry:', retryCount);
       
       try {
-        const { data: cardsData } = await supabase
+        const { data: cardsData, error: cardsError } = await supabase
           .from('player_cards')
           .select('player_id, cards')
           .eq('round_id', roundId);
+        
+        console.log('[GAMETABLE CARDS] Query result for round', roundNum, ':', {
+          roundId,
+          cardsCount: cardsData?.length || 0,
+          playerIds: cardsData?.map(c => c.player_id),
+          error: cardsError?.message
+        });
         
         if (cardsData && cardsData.length > 0) {
           console.log('[GAMETABLE CARDS] ✅ Got', cardsData.length, 'player cards for round', roundNum);
@@ -212,8 +219,9 @@ export const GameTable = ({
           const newRound = payload.new as any;
           
           if (newRound?.id && newRound?.round_number) {
-            // Round changed - clear old cards immediately
-            if (realtimeRound?.id !== newRound.id) {
+            // Round changed - clear old cards immediately (use ref to avoid stale closure)
+            const currentRealtimeRound = realtimeRoundRef.current;
+            if (!currentRealtimeRound || currentRealtimeRound.id !== newRound.id) {
               console.log('[GAMETABLE RT] 🔄 NEW ROUND DETECTED - clearing old cards');
               setLocalPlayerCards([]);
               lastFetchedRoundIdRef.current = null;
@@ -550,7 +558,18 @@ export const GameTable = ({
               expectedCardCount > 0;
             
             // Debug logging for card sync issues
-            if (rawCards.length > 0 && !hasValidCards) {
+            if (isCurrentUser) {
+              console.log('[GAMETABLE] Current user card check:', {
+                playerId: player?.id,
+                rawCardsCount: rawCards.length,
+                playerCardsTotal: playerCards.length,
+                playerCardIds: playerCards.map(pc => pc.player_id),
+                expectedCardCount,
+                effectiveRoundNumber,
+                hasValidCards,
+                cardsAreValidForCurrentRound
+              });
+            } else if (rawCards.length > 0 && !hasValidCards) {
               console.log('[GAMETABLE] Rejecting cards:', {
                 playerId: player?.id,
                 rawCardsCount: rawCards.length,
