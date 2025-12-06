@@ -148,24 +148,45 @@ const Game = () => {
   // Track card identity to detect new hands (when cards change completely)
   const cardIdentityRef = useRef<string>('');
 
-  // Clear pending decision when backend confirms
+  // Clear pending decision when backend confirms - but keep it visible for 3-5-7 feedback
   useEffect(() => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
-    if (currentPlayer?.decision_locked && pendingDecision) {
-      console.log('[PENDING_DECISION] Backend confirmed, clearing pending decision');
+    // For 3-5-7, don't clear immediately when decision_locked - keep showing the visual feedback
+    // Only clear when all_decisions_in becomes false again (next round)
+    if (currentPlayer?.decision_locked && pendingDecision && game?.game_type === 'holm-game') {
+      console.log('[PENDING_DECISION] Backend confirmed (Holm), clearing pending decision');
       setPendingDecision(null);
     }
-  }, [players, user?.id, pendingDecision]);
+  }, [players, user?.id, pendingDecision, game?.game_type]);
 
-  // Clear pending decision when round changes or awaiting next round
+  // Clear pending decision when a new round starts (awaiting_next_round goes from true to false, or new cards dealt)
+  const prevAwaitingRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (game?.awaiting_next_round || game?.all_decisions_in) {
-      if (pendingDecision) {
-        console.log('[PENDING_DECISION] Round complete/awaiting, clearing pending decision');
-        setPendingDecision(null);
-      }
+    const prevAwaiting = prevAwaitingRef.current;
+    const currentAwaiting = game?.awaiting_next_round || false;
+    
+    // Clear when round transitions: awaiting goes from true to false
+    if (prevAwaiting === true && currentAwaiting === false && pendingDecision) {
+      console.log('[PENDING_DECISION] Round transitioned (awaiting false), clearing pending decision');
+      setPendingDecision(null);
     }
-  }, [game?.awaiting_next_round, game?.all_decisions_in, pendingDecision]);
+    
+    prevAwaitingRef.current = currentAwaiting;
+  }, [game?.awaiting_next_round, pendingDecision]);
+  
+  // Also clear when current_round changes (new round started)
+  const prevRoundRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prevRound = prevRoundRef.current;
+    const currentRoundNum = game?.current_round || 0;
+    
+    if (prevRound !== null && currentRoundNum !== prevRound && pendingDecision) {
+      console.log('[PENDING_DECISION] Round number changed, clearing pending decision');
+      setPendingDecision(null);
+    }
+    
+    prevRoundRef.current = currentRoundNum;
+  }, [game?.current_round, pendingDecision]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -778,6 +799,12 @@ const Game = () => {
       currentPlayer && 
       !isCreator;
     
+    // CRITICAL: Host in waiting status should also poll to see new players joining
+    // Realtime INSERT events are unreliable
+    const hostWaitingForPlayers = 
+      game?.status === 'waiting' && 
+      isCreator;
+    
     // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
     // and no one can make a decision. This can happen due to race conditions.
     const latestRound = game?.rounds?.find((r: any) => r.round_number === game?.current_round);
@@ -789,7 +816,14 @@ const Game = () => {
       latestRound?.status === 'betting' &&
       currentPlayer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState;
+    // Also detect when Holm game started but no round was created
+    const holmNoRound = 
+      game?.game_type === 'holm-game' &&
+      game?.status === 'in_progress' &&
+      !game?.current_round &&
+      currentPlayer;
+    
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || stuckHolmState || holmNoRound;
     
     if (!shouldPoll) return;
     
@@ -802,14 +836,18 @@ const Game = () => {
       stuckOnGameOver,
       waitingForConfig,
       waitingForGameStart,
+      hostWaitingForPlayers,
       stuckHolmState,
+      holmNoRound,
       showAnteDialog,
       gameStatus: game?.status,
       playerCardsCount: playerCards.length
     });
     
     // Poll more frequently (250ms) for critical transitions, 500ms otherwise
-    const pollInterval = (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState) ? 250 : 500;
+    // Host waiting for players polls every 1 second (less aggressive)
+    const pollInterval = hostWaitingForPlayers ? 1000 : 
+      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState || holmNoRound) ? 250 : 500;
     
     const intervalId = setInterval(async () => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
@@ -824,6 +862,16 @@ const Game = () => {
           .eq('id', gameId)
           .eq('all_decisions_in', true)
           .eq('awaiting_next_round', false);
+      }
+      
+      // If Holm game started but no round created, try to create it
+      if (holmNoRound && isCreator) {
+        console.log('[CRITICAL POLL] Detected Holm game with no round - attempting to start round');
+        try {
+          await startHolmRound(gameId!, true);
+        } catch (e) {
+          console.error('[CRITICAL POLL] Failed to start Holm round:', e);
+        }
       }
       
       fetchGameData();
@@ -2081,28 +2129,20 @@ const Game = () => {
       return;
     }
 
-    console.log('[ANTE] Updating game status to in_progress');
+    console.log('[ANTE] Starting first round (status will be set by startHolmRound/startRound)');
 
-    // Update game status to in_progress
-    const { error } = await supabase
-      .from('games')
-      .update({ status: 'in_progress' })
-      .eq('id', gameId);
-
-    if (error) {
-      console.error('[ANTE] Error updating game status:', error);
-      anteProcessingRef.current = false;
-      return;
-    }
-
-    console.log('[ANTE] Starting first round');
-
-    // Start first round
+    // Start first round - let the round start functions handle the status change
     try {
       const isHolmGame = game?.game_type === 'holm-game';
       if (isHolmGame) {
+        // For Holm game, let startHolmRound handle everything including status
         await startHolmRound(gameId, true); // First hand - collect antes
       } else {
+        // For 3-5-7, update status first then start round
+        await supabase
+          .from('games')
+          .update({ status: 'in_progress' })
+          .eq('id', gameId);
         await startRound(gameId, 1);
       }
       // Multiple fetches with increasing delays to catch all card data
@@ -2111,6 +2151,11 @@ const Game = () => {
       setTimeout(() => fetchGameData(), 3000);
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
+      // If round start fails, reset status
+      await supabase
+        .from('games')
+        .update({ status: 'ante_decision' })
+        .eq('id', gameId);
       anteProcessingRef.current = false;
     }
   };
