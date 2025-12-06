@@ -291,30 +291,62 @@ export const GameTable = ({
   
   useEffect(() => {
     // Only run healing if:
-    // 1. We have a round and game ID
+    // 1. We have a game ID
     // 2. We have a current player record
     // 3. Current player doesn't have cards
-    // 4. Round is active (effectiveRoundNumber > 0)
+    // 4. Round appears active (effectiveRoundNumber > 0 OR currentRound prop > 0)
+    const roundIsActive = effectiveRoundNumber > 0 || currentRound > 0;
     const shouldHeal = 
       gameId &&
-      realtimeRound?.id &&
       currentPlayerRecord &&
       !currentPlayerHasCards &&
-      effectiveRoundNumber > 0 &&
+      roundIsActive &&
       !currentPlayerRecord.sitting_out;
     
     if (shouldHeal) {
-      console.log('[GAMETABLE HEAL] 🚑 Current user missing cards - starting aggressive polling');
+      console.log('[GAMETABLE HEAL] 🚑 Current user missing cards - starting aggressive polling', {
+        gameId,
+        realtimeRoundId: realtimeRound?.id,
+        currentRound,
+        effectiveRoundNumber,
+        currentPlayerRecordId: currentPlayerRecord.id
+      });
       
       const healingPoll = async () => {
-        if (!realtimeRound?.id || !currentPlayerRecord) return;
+        if (!currentPlayerRecord) return;
         
-        console.log('[GAMETABLE HEAL] 🔄 Fetching cards for current user...');
+        // First, ensure we have the round ID (fetch if needed)
+        let roundId = realtimeRound?.id;
+        
+        if (!roundId && gameId) {
+          console.log('[GAMETABLE HEAL] 🔍 No realtime round - fetching latest round...');
+          const { data: roundData } = await supabase
+            .from('rounds')
+            .select('id, round_number, cards_dealt, status')
+            .eq('game_id', gameId)
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (roundData) {
+            console.log('[GAMETABLE HEAL] 📦 Found round:', roundData.id, 'number:', roundData.round_number);
+            roundId = roundData.id;
+            // Also update our realtime round state
+            setRealtimeRound(roundData);
+          }
+        }
+        
+        if (!roundId) {
+          console.log('[GAMETABLE HEAL] ❓ Still no round ID - skipping this poll');
+          return;
+        }
+        
+        console.log('[GAMETABLE HEAL] 🔄 Fetching cards for round:', roundId);
         
         const { data: cardsData, error } = await supabase
           .from('player_cards')
           .select('player_id, cards')
-          .eq('round_id', realtimeRound.id);
+          .eq('round_id', roundId);
         
         if (error) {
           console.error('[GAMETABLE HEAL] ❌ Error:', error.message);
@@ -330,7 +362,7 @@ export const GameTable = ({
               player_id: cd.player_id,
               cards: cd.cards as unknown as CardType[]
             })));
-            lastFetchedRoundIdRef.current = realtimeRound.id;
+            lastFetchedRoundIdRef.current = roundId;
             
             // Stop polling once we have our cards
             if (cardHealingRef.current) {
@@ -356,7 +388,7 @@ export const GameTable = ({
       clearInterval(cardHealingRef.current);
       cardHealingRef.current = null;
     }
-  }, [gameId, realtimeRound?.id, currentPlayerRecord?.id, currentPlayerHasCards, effectiveRoundNumber, currentPlayerRecord?.sitting_out]);
+  }, [gameId, realtimeRound?.id, currentRound, currentPlayerRecord?.id, currentPlayerHasCards, effectiveRoundNumber, currentPlayerRecord?.sitting_out]);
   
   // Debug: Log card sources
   console.log('[GAMETABLE] 🃏 Card sources:', {
