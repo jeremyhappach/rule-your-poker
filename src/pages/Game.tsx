@@ -2884,26 +2884,50 @@ const Game = () => {
         {game.status === 'ante_decision' && (
           <>
             {/* Show table during ante decisions */}
-            <GameTable
-              players={players}
-              currentUserId={user?.id}
-              pot={game.pot || 0}
-              currentRound={0}
-              allDecisionsIn={false}
-              playerCards={[]}
-              timeLeft={anteTimeLeft}
-              lastRoundResult={null}
-              dealerPosition={game.dealer_position}
-              legValue={game.leg_value || 1}
-              legsToWin={game.legs_to_win || 3}
-              potMaxEnabled={game.pot_max_enabled ?? true}
-              potMaxValue={game.pot_max_value || 10}
-              pendingSessionEnd={game.pending_session_end || false}
-              awaitingNextRound={false}
-              onStay={() => {}}
-              onFold={() => {}}
-              onSelectSeat={handleSelectSeat}
-            />
+            {isMobile ? (
+              <MobileGameTable
+                players={players}
+                currentUserId={user?.id}
+                pot={game.pot || 0}
+                currentRound={0}
+                allDecisionsIn={false}
+                playerCards={[]}
+                timeLeft={anteTimeLeft}
+                lastRoundResult={null}
+                dealerPosition={game.dealer_position}
+                legValue={game.leg_value || 1}
+                legsToWin={game.legs_to_win || 3}
+                potMaxEnabled={game.pot_max_enabled ?? true}
+                potMaxValue={game.pot_max_value || 10}
+                pendingSessionEnd={game.pending_session_end || false}
+                awaitingNextRound={false}
+                onStay={() => {}}
+                onFold={() => {}}
+                onSelectSeat={handleSelectSeat}
+                gameType={game.game_type}
+              />
+            ) : (
+              <GameTable
+                players={players}
+                currentUserId={user?.id}
+                pot={game.pot || 0}
+                currentRound={0}
+                allDecisionsIn={false}
+                playerCards={[]}
+                timeLeft={anteTimeLeft}
+                lastRoundResult={null}
+                dealerPosition={game.dealer_position}
+                legValue={game.leg_value || 1}
+                legsToWin={game.legs_to_win || 3}
+                potMaxEnabled={game.pot_max_enabled ?? true}
+                potMaxValue={game.pot_max_value || 10}
+                pendingSessionEnd={game.pending_session_end || false}
+                awaitingNextRound={false}
+                onStay={() => {}}
+                onFold={() => {}}
+                onSelectSeat={handleSelectSeat}
+              />
+            )}
             
             {showAnteDialog && user && game.ante_amount !== undefined && (
               <AnteUpDialog
