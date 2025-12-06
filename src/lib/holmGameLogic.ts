@@ -1147,6 +1147,21 @@ async function handleMultiPlayerShowdown(
     }
   });
 
+  // Build debug data for each player before finding winner
+  const debugEvaluations = evaluations.map(e => {
+    const playerName = e.player.profiles?.username || e.player.user_id.substring(0, 8);
+    const playerCardStr = e.cards.map(c => `${c.rank}${c.suit}`).join(' ');
+    const allCards = [...e.cards, ...communityCards];
+    const handDesc = formatHandRankDetailed(allCards, false);
+    return {
+      name: playerName,
+      cards: playerCardStr,
+      handDesc: handDesc,
+      value: e.evaluation.value,
+      rank: e.evaluation.rank
+    };
+  });
+
   // Find winner(s)
   const maxValue = Math.max(...evaluations.map(e => e.evaluation.value));
   console.log('[HOLM MULTI] Max evaluation value:', maxValue);
@@ -1226,10 +1241,23 @@ async function handleMultiPlayerShowdown(
     const winnerAllCards = [...winner.cards, ...communityCards];
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
     
+    // Build debug data object to embed in result message
+    const debugData = {
+      roundId: roundId,
+      communityCards: communityCards.map(c => `${c.rank}${c.suit}`).join(' '),
+      evaluations: debugEvaluations,
+      winnerId: winner.player.id,
+      winnerName: winnerUsername,
+      maxValue: maxValue
+    };
+    
+    // Embed debug JSON after the result message with a delimiter
+    const resultWithDebug = `${winnerUsername} wins with ${winnerHandDesc} and takes $${roundPot}!|||DEBUG:${JSON.stringify(debugData)}`;
+    
     const { error: updateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `${winnerUsername} wins with ${winnerHandDesc} and takes $${roundPot}!`,
+        last_round_result: resultWithDebug,
         awaiting_next_round: true,
         pot: newPot
       })
