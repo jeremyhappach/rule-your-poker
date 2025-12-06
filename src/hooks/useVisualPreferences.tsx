@@ -21,12 +21,24 @@ export const CARD_BACKS = [
   { id: 'hawks', name: 'Blackhawks', color: '#CF0A2C', darkColor: '#FFD100' },
 ];
 
+// 4-color deck: each suit has a distinct background color
+export const FOUR_COLOR_SUITS: Record<string, { bg: string; name: string }> = {
+  '♠': { bg: '#1a1a1a', name: 'Spades' },      // Black
+  '♥': { bg: '#B22222', name: 'Hearts' },      // Dark Red
+  '♦': { bg: '#1E90FF', name: 'Diamonds' },    // Blue
+  '♣': { bg: '#228B22', name: 'Clubs' },       // Green
+};
+
+export type DeckColorMode = 'two_color' | 'four_color';
+
 interface VisualPreferencesContextType {
   tableLayout: string;
   cardBackDesign: string;
+  deckColorMode: DeckColorMode;
   getTableColors: () => { color: string; darkColor: string; border: string };
   getCardBackColors: () => { color: string; darkColor: string };
   getCardBackId: () => string;
+  getFourColorSuit: (suit: string) => { bg: string; name: string } | null;
   refreshPreferences: () => Promise<void>;
 }
 
@@ -41,6 +53,7 @@ export function VisualPreferencesProvider({
 }) {
   const [tableLayout, setTableLayout] = useState('black');
   const [cardBackDesign, setCardBackDesign] = useState('hawks');
+  const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('two_color');
 
   const fetchPreferences = async () => {
     if (!userId) return;
@@ -54,6 +67,7 @@ export function VisualPreferencesProvider({
     if (data) {
       setTableLayout((data as any).table_layout || 'classic');
       setCardBackDesign((data as any).card_back_design || 'red');
+      setDeckColorMode((data as any).deck_color_mode || 'two_color');
     }
   };
 
@@ -73,13 +87,20 @@ export function VisualPreferencesProvider({
 
   const getCardBackId = () => cardBackDesign;
 
+  const getFourColorSuit = (suit: string) => {
+    if (deckColorMode !== 'four_color') return null;
+    return FOUR_COLOR_SUITS[suit] || null;
+  };
+
   return (
     <VisualPreferencesContext.Provider value={{
       tableLayout,
       cardBackDesign,
+      deckColorMode,
       getTableColors,
       getCardBackColors,
       getCardBackId,
+      getFourColorSuit,
       refreshPreferences: fetchPreferences,
     }}>
       {children}
@@ -94,9 +115,11 @@ export function useVisualPreferences() {
     return {
       tableLayout: 'black',
       cardBackDesign: 'hawks',
+      deckColorMode: 'two_color' as DeckColorMode,
       getTableColors: () => ({ color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f' }),
       getCardBackColors: () => ({ color: '#CF0A2C', darkColor: '#FFD100' }),
       getCardBackId: () => 'red',
+      getFourColorSuit: () => null,
       refreshPreferences: async () => {},
     };
   }

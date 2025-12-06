@@ -324,6 +324,7 @@ export type Database = {
         Row: {
           card_back_design: string
           created_at: string
+          deck_color_mode: string
           id: string
           is_superuser: boolean
           table_layout: string
@@ -332,6 +333,7 @@ export type Database = {
         Insert: {
           card_back_design?: string
           created_at?: string
+          deck_color_mode?: string
           id: string
           is_superuser?: boolean
           table_layout?: string
@@ -340,6 +342,7 @@ export type Database = {
         Update: {
           card_back_design?: string
           created_at?: string
+          deck_color_mode?: string
           id?: string
           is_superuser?: boolean
           table_layout?: string

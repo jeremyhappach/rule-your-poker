@@ -1,6 +1,6 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
-import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
@@ -59,13 +59,33 @@ export const PlayingCard = ({
   style = {},
   borderColor = 'border-gray-300',
 }: PlayingCardProps) => {
-  const { getCardBackColors, getCardBackId } = useVisualPreferences();
+  const { getCardBackColors, getCardBackId, deckColorMode } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
   const cardBackId = getCardBackId();
   const teamLogo = TEAM_LOGOS[cardBackId] || null;
   
   const sizeClasses = SIZE_CLASSES[size];
-  const suitColor = card && (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-black';
+  
+  // Determine card styling based on deck color mode
+  const isFourColor = deckColorMode === 'four_color';
+  const fourColorConfig = card ? FOUR_COLOR_SUITS[card.suit] : null;
+  
+  // For 4-color deck: colored background with white text, no suit symbol
+  // For 2-color deck: white background with red/black text and suit symbol
+  const getCardFaceStyle = () => {
+    if (isFourColor && fourColorConfig) {
+      return {
+        backgroundColor: fourColorConfig.bg,
+        textColor: 'text-white',
+      };
+    }
+    return {
+      backgroundColor: 'white',
+      textColor: card && (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-black',
+    };
+  };
+  
+  const cardFaceStyle = getCardFaceStyle();
   
   // If hidden or no card, show card back
   if (isHidden || !card) {
@@ -122,17 +142,19 @@ export const PlayingCard = ({
         <Card 
           className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 ${borderColor} shadow-lg`}
           style={{
-            backgroundColor: 'white',
+            backgroundColor: cardFaceStyle.backgroundColor,
             backfaceVisibility: 'hidden',
             transform: showFront ? 'rotateY(0deg)' : 'rotateY(-180deg)',
           }}
         >
-          <span className={`${sizeClasses.rank} leading-none ${suitColor}`}>
+          <span className={`${sizeClasses.rank} leading-none ${cardFaceStyle.textColor}`}>
             {card.rank}
           </span>
-          <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${suitColor}`}>
-            {card.suit}
-          </span>
+          {!isFourColor && (
+            <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${cardFaceStyle.textColor}`}>
+              {card.suit}
+            </span>
+          )}
         </Card>
       </div>
     );
@@ -141,15 +163,17 @@ export const PlayingCard = ({
   // Standard face-up card
   return (
     <Card
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 bg-white shadow-xl ${borderColor} ${className}`}
-      style={style}
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${className}`}
+      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...style }}
     >
-      <span className={`${sizeClasses.rank} leading-none ${suitColor}`}>
+      <span className={`${sizeClasses.rank} leading-none ${cardFaceStyle.textColor}`}>
         {card.rank}
       </span>
-      <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${suitColor}`}>
-        {card.suit}
-      </span>
+      {!isFourColor && (
+        <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${cardFaceStyle.textColor}`}>
+          {card.suit}
+        </span>
+      )}
     </Card>
   );
 };

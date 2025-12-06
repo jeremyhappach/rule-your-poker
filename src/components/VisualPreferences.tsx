@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Palette } from 'lucide-react';
-import { TABLE_LAYOUTS, CARD_BACKS } from '@/hooks/useVisualPreferences';
+import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode } from '@/hooks/useVisualPreferences';
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
@@ -25,6 +25,7 @@ interface VisualPreferencesProps {
 export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
   const [tableLayout, setTableLayout] = useState('classic');
   const [cardBackDesign, setCardBackDesign] = useState('red');
+  const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('two_color');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +43,7 @@ export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
     if (data) {
       setTableLayout((data as any).table_layout || 'classic');
       setCardBackDesign((data as any).card_back_design || 'red');
+      setDeckColorMode((data as any).deck_color_mode || 'two_color');
     }
     setLoading(false);
   };
@@ -52,7 +54,8 @@ export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
       .from('profiles')
       .update({ 
         table_layout: tableLayout,
-        card_back_design: cardBackDesign 
+        card_back_design: cardBackDesign,
+        deck_color_mode: deckColorMode,
       } as any)
       .eq('id', userId);
 
@@ -74,6 +77,54 @@ export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
       <div className="flex items-center gap-2 pb-2 border-b">
         <Palette className="h-4 w-4" />
         <h3 className="font-semibold">Visual Preferences</h3>
+      </div>
+
+      {/* Deck Color Mode */}
+      <div className="space-y-3">
+        <Label>Deck Color Mode</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setDeckColorMode('two_color')}
+            className={`p-3 rounded-lg border-2 transition-all text-left ${
+              deckColorMode === 'two_color'
+                ? 'border-primary ring-2 ring-primary ring-offset-2'
+                : 'border-muted hover:border-muted-foreground/50'
+            }`}
+          >
+            <div className="font-medium text-sm mb-1">2-Color Deck</div>
+            <div className="text-xs text-muted-foreground mb-2">Traditional red & black suits</div>
+            <div className="flex gap-1">
+              <div className="w-6 h-8 bg-white rounded border flex items-center justify-center text-red-600 text-xs font-bold">♥</div>
+              <div className="w-6 h-8 bg-white rounded border flex items-center justify-center text-red-600 text-xs font-bold">♦</div>
+              <div className="w-6 h-8 bg-white rounded border flex items-center justify-center text-black text-xs font-bold">♠</div>
+              <div className="w-6 h-8 bg-white rounded border flex items-center justify-center text-black text-xs font-bold">♣</div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeckColorMode('four_color')}
+            className={`p-3 rounded-lg border-2 transition-all text-left ${
+              deckColorMode === 'four_color'
+                ? 'border-primary ring-2 ring-primary ring-offset-2'
+                : 'border-muted hover:border-muted-foreground/50'
+            }`}
+          >
+            <div className="font-medium text-sm mb-1">4-Color Deck</div>
+            <div className="text-xs text-muted-foreground mb-2">Unique color per suit, no symbols</div>
+            <div className="flex gap-1">
+              {Object.entries(FOUR_COLOR_SUITS).map(([suit, config]) => (
+                <div 
+                  key={suit}
+                  className="w-6 h-8 rounded border flex items-center justify-center text-white text-xs font-bold"
+                  style={{ backgroundColor: config.bg }}
+                >
+                  A
+                </div>
+              ))}
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Table Layout */}
