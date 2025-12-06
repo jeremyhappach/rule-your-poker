@@ -314,19 +314,29 @@ export const GameTable = ({
   // CRITICAL FIX: Self-healing card fetch for current user
   // If we're in a round but current user has no cards, aggressively poll until we get them
   const cardHealingRef = useRef<NodeJS.Timeout | null>(null);
+  const lastGameTypeRef = useRef<string | undefined>(gameType);
   
   useEffect(() => {
+    // Detect game type switch
+    const gameTypeJustChanged = lastGameTypeRef.current !== gameType;
+    if (gameTypeJustChanged) {
+      console.log('[GAMETABLE HEAL] 🔄 Game type changed from', lastGameTypeRef.current, 'to', gameType);
+      lastGameTypeRef.current = gameType;
+    }
+    
     // Only run healing if:
     // 1. We have a game ID
     // 2. We have a current player record
     // 3. Current player doesn't have cards
-    // 4. Round appears active (effectiveRoundNumber > 0 OR currentRound prop > 0)
+    // 4. Game is in_progress (most reliable indicator something is happening)
+    // 5. Player is not sitting out
+    const gameIsActive = roundStatus === 'betting' || roundStatus === 'active' || !awaitingNextRound;
     const roundIsActive = effectiveRoundNumber > 0 || currentRound > 0;
     const shouldHeal = 
       gameId &&
       currentPlayerRecord &&
       !currentPlayerHasCards &&
-      roundIsActive &&
+      (roundIsActive || gameIsActive) &&
       !currentPlayerRecord.sitting_out;
     
     if (shouldHeal) {
@@ -414,7 +424,7 @@ export const GameTable = ({
       clearInterval(cardHealingRef.current);
       cardHealingRef.current = null;
     }
-  }, [gameId, realtimeRound?.id, currentRound, currentPlayerRecord?.id, currentPlayerHasCards, effectiveRoundNumber, currentPlayerRecord?.sitting_out]);
+  }, [gameId, realtimeRound?.id, currentRound, currentPlayerRecord?.id, currentPlayerHasCards, effectiveRoundNumber, currentPlayerRecord?.sitting_out, gameType, roundStatus, awaitingNextRound]);
   
   // Debug: Log card sources
   console.log('[GAMETABLE] 🃏 Card sources:', {
