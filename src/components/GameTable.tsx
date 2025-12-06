@@ -1035,10 +1035,11 @@ export const GameTable = ({
                             });
                           }
                           
-                          // For 3-5-7: Show visual feedback when decision is locked
+                          // For 3-5-7: Show visual feedback when decision is locked or pending
                           const is357Game = gameType === '3-5-7-game';
-                          const showEnlargedStay = is357Game && hasDecidedStay && !allDecisionsIn;
-                          const showEnlargedFold = is357Game && hasDecidedFold && !allDecisionsIn;
+                          // Show enlarged state when player has decided (either via backend lock or pending decision)
+                          const showEnlargedStay = is357Game && isCurrentUser && (pendingDecision === 'stay' || (hasPlayerDecided && playerDecision === 'stay')) && !allDecisionsIn;
+                          const showEnlargedFold = is357Game && isCurrentUser && (pendingDecision === 'fold' || (hasPlayerDecided && playerDecision === 'fold')) && !allDecisionsIn;
                           const hideButtons357 = is357Game && (showEnlargedStay || showEnlargedFold);
                           
                           return (
