@@ -101,19 +101,25 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   // Round 1 (3 cards): Only three-of-a-kind, pair, or high card
   if (validCards.length === 3) {
     if (bestCount >= 3) {
-      const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 2);
+      const kickerCards = nonWildCards.filter(c => c.rank !== bestRank);
+      const sortedKickerValues = kickerCards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a);
+      const kickers = sortedKickerValues.slice(0, 2);
       const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [RANK_VALUES[bestRank], ...kickers]) };
-      console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+      console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'kickers:', kickers, 'value:', result.value);
       return result;
     }
     if (bestCount >= 2) {
-      const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 3);
+      const kickerCards = nonWildCards.filter(c => c.rank !== bestRank);
+      const sortedKickerValues = kickerCards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a);
+      const kickers = sortedKickerValues.slice(0, 3);
       const result = { rank: 'pair' as HandRank, value: calculateValue(1, [RANK_VALUES[bestRank], ...kickers]) };
-      console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+      console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'kickers:', kickers, 'value:', result.value);
       return result;
     }
-    const result = { rank: 'high-card' as HandRank, value: calculateValue(0, nonWildCards.map(c => RANK_VALUES[c.rank]).slice(0, 5)) };
-    console.log('[EVAL] Result:', result.rank, 'value:', result.value);
+    // High card - sort values before comparing
+    const sortedValues = nonWildCards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a).slice(0, 5);
+    const result = { rank: 'high-card' as HandRank, value: calculateValue(0, sortedValues) };
+    console.log('[EVAL] Result:', result.rank, 'values:', sortedValues, 'value:', result.value);
     return result;
   }
 
@@ -161,9 +167,11 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
 
   // Three of a Kind
   if (bestCount >= 3) {
-    const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 2);
+    const kickerCards = nonWildCards.filter(c => c.rank !== bestRank);
+    const sortedKickerValues = kickerCards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a);
+    const kickers = sortedKickerValues.slice(0, 2);
     const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [RANK_VALUES[bestRank], ...kickers]) };
-    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'kickers:', kickers, 'value:', result.value);
     return result;
   }
 
@@ -172,23 +180,29 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   if (pairs.length >= 2) {
     const highPair = pairs[0][0] as Rank;
     const lowPair = pairs[1][0] as Rank;
-    const kickers = nonWildCards.filter(c => c.rank !== highPair && c.rank !== lowPair).map(c => RANK_VALUES[c.rank]).slice(0, 1);
+    const kickerCards = nonWildCards.filter(c => c.rank !== highPair && c.rank !== lowPair);
+    const sortedKickerValues = kickerCards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a);
+    const kickers = sortedKickerValues.slice(0, 1);
     const result = { rank: 'two-pair' as HandRank, value: calculateValue(2, [RANK_VALUES[highPair], RANK_VALUES[lowPair], ...kickers]) };
-    console.log('[EVAL] Result:', result.rank, highPair, 'and', lowPair, 'value:', result.value);
+    console.log('[EVAL] Result:', result.rank, highPair, 'and', lowPair, 'kickers:', kickers, 'value:', result.value);
     return result;
   }
 
   // Pair
   if (bestCount >= 2) {
-    const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 3);
+    // CRITICAL: Sort kickers before slicing to ensure consistent ordering
+    const kickerCards = nonWildCards.filter(c => c.rank !== bestRank);
+    const sortedKickerValues = kickerCards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a);
+    const kickers = sortedKickerValues.slice(0, 3);
     const result = { rank: 'pair' as HandRank, value: calculateValue(1, [RANK_VALUES[bestRank], ...kickers]) };
-    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'kickers:', kickers, 'value:', result.value);
     return result;
   }
 
-  // High Card
-  const result = { rank: 'high-card' as HandRank, value: calculateValue(0, nonWildCards.map(c => RANK_VALUES[c.rank]).slice(0, 5)) };
-  console.log('[EVAL] Result:', result.rank, 'value:', result.value);
+  // High Card - sort values before comparing
+  const sortedValues = nonWildCards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a).slice(0, 5);
+  const result = { rank: 'high-card' as HandRank, value: calculateValue(0, sortedValues) };
+  console.log('[EVAL] Result:', result.rank, 'values:', sortedValues, 'value:', result.value);
   return result;
 }
 
