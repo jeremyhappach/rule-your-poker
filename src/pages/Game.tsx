@@ -272,6 +272,18 @@ const Game = () => {
             console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED (detected via local state):', localGameType, '->', incomingGameType, '- CLEARING ALL CARD STATE!');
             // Update ref immediately
             lastKnownGameTypeRef.current = incomingGameType;
+            lastKnownRoundRef.current = null;
+            
+            // CRITICAL FIX: Immediately update game state to prevent stale rendering
+            // This ensures GameTable sees the new game_type BEFORE fetchGameData completes
+            setGame(prevGame => prevGame ? {
+              ...prevGame,
+              game_type: incomingGameType,
+              current_round: null,  // Clear round to prevent stale card count calculation
+              awaiting_next_round: false,
+              status: newData?.status || prevGame.status
+            } : null);
+            
             // Clear all card state for this client
             setPlayerCards([]);
             setCardStateContext(null);
