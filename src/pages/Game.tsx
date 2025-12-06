@@ -2159,10 +2159,22 @@ const Game = () => {
 
     console.log('[ANTE] Starting handleAllAnteDecisionsIn');
 
-    // Get players who anted up
-    const antedPlayers = players.filter(p => p.ante_decision === 'ante_up');
+    // CRITICAL: Fetch fresh player data directly from database - don't use stale React state!
+    const { data: freshPlayers, error: playersError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('game_id', gameId);
+    
+    if (playersError || !freshPlayers) {
+      console.error('[ANTE] Error fetching players:', playersError);
+      anteProcessingRef.current = false;
+      return;
+    }
 
-    console.log('[ANTE] Anted players:', antedPlayers.length);
+    // Get players who anted up from FRESH database data
+    const antedPlayers = freshPlayers.filter(p => p.ante_decision === 'ante_up');
+
+    console.log('[ANTE] Anted players (from DB):', antedPlayers.length, 'Total players:', freshPlayers.length);
 
     if (antedPlayers.length === 0) {
       await supabase
