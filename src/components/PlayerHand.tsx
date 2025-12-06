@@ -40,39 +40,39 @@ export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: Playe
   const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
   
   // Calculate size and spacing based on number of cards
-  // Tighter spacing, larger suits, less whitespace
+  // Card sizing - larger suits, less overlap for visibility
   const getCardClasses = () => {
     if (displayCardCount >= 7) {
-      // Round 3: 7 cards - compact
-      return {
-        card: 'w-7 h-10 sm:w-8 sm:h-11',
-        text: 'text-xs sm:text-sm font-bold',
-        suit: 'text-base sm:text-lg',
-        overlap: '-ml-3 sm:-ml-3 first:ml-0'
-      };
-    } else if (displayCardCount >= 5) {
-      // Round 2: 5 cards - medium
+      // Round 3: 7 cards - less overlap, bigger suits
       return {
         card: 'w-8 h-11 sm:w-9 sm:h-12',
         text: 'text-sm sm:text-base font-bold',
-        suit: 'text-lg sm:text-xl',
-        overlap: '-ml-3 sm:-ml-4 first:ml-0'
+        suit: 'text-xl sm:text-2xl',
+        overlap: '-ml-2 sm:-ml-2 first:ml-0'
       };
-    } else if (displayCardCount >= 4) {
-      // Holm: 4 cards - medium-tight
+    } else if (displayCardCount >= 5) {
+      // Round 2: 5 cards - medium overlap, big suits
       return {
         card: 'w-9 h-12 sm:w-10 sm:h-14',
         text: 'text-base sm:text-lg font-bold',
-        suit: 'text-xl sm:text-2xl',
-        overlap: '-ml-3 first:ml-0'
+        suit: 'text-2xl sm:text-3xl',
+        overlap: '-ml-2 sm:-ml-3 first:ml-0'
+      };
+    } else if (displayCardCount >= 4) {
+      // Holm: 4 cards
+      return {
+        card: 'w-10 h-14 sm:w-11 sm:h-15',
+        text: 'text-lg sm:text-xl font-bold',
+        suit: 'text-2xl sm:text-3xl',
+        overlap: '-ml-2 first:ml-0'
       };
     }
-    // Round 1: 3 cards - base size
+    // Round 1: 3 cards - base size, big suits
     return {
-      card: 'w-10 h-14',
-      text: 'text-base font-bold',
-      suit: 'text-xl',
-      overlap: '-ml-2 first:ml-0'
+      card: 'w-11 h-15 sm:w-12 sm:h-16',
+      text: 'text-lg sm:text-xl font-bold',
+      suit: 'text-3xl sm:text-4xl',
+      overlap: '-ml-1 first:ml-0'
     };
   };
 
