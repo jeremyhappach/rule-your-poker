@@ -317,10 +317,10 @@ const Game = () => {
             console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED/SYNC:', localRound, '->', incomingRound, '- FORCING SYNC!');
             lastKnownRoundRef.current = incomingRound;
             
-            // CRITICAL FIX: Clear card state context on round change
-            // The new round will have different cards_dealt value - don't use stale context
+            // CRITICAL: Do NOT clear cards here - causes "Wait..." flash
+            // Let fetchGameData atomically replace cards with new round's cards
             setCardStateContext(null);
-            setPlayerCards([]);
+            // Don't call setPlayerCards([])
             
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -333,10 +333,9 @@ const Game = () => {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             } else {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (round transitioning) - IMMEDIATE FETCH! ⚡⚡⚡');
-              // CRITICAL FIX: Clear card state context when round is transitioning
-              // New round will have new cards_dealt value
+              // CRITICAL: Do NOT clear cards - let fetchGameData atomically replace them
               setCardStateContext(null);
-              setPlayerCards([]);
+              // Don't call setPlayerCards([])
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -527,9 +526,10 @@ const Game = () => {
             lastKnownRoundRef.current = newRoundNumber;
           }
           
-          // Clear stale cards before fetching new round's cards
+          // CRITICAL: Do NOT clear cards here - let fetchGameData atomically replace them
+          // Clearing cards causes brief "Wait..." flash while fetch is in progress
           setCardStateContext(null);
-          setPlayerCards([]);
+          // Don't call setPlayerCards([]) - just fetch and replace
           
           // Immediate fetch
           fetchGameData();
@@ -798,9 +798,10 @@ const Game = () => {
       if (needsSync) {
         console.log('[357 SYNC POLL] ⚠️⚠️⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound, '- FORCING SYNC!');
         lastKnownRoundRef.current = dbRound;
-        // Clear stale card context before fetch
+        // CRITICAL: Do NOT clear cards here - let fetchGameData atomically replace them
+        // Clearing cards causes brief "Wait..." flash
         setCardStateContext(null);
-        setPlayerCards([]);
+        // Don't call setPlayerCards([]) - just fetch and replace
         fetchGameData();
       }
     };
