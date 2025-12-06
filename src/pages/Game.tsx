@@ -1047,18 +1047,29 @@ const Game = () => {
       return;
     }
 
-    const checkAnteDecisions = () => {
+    const checkAnteDecisions = async () => {
       // Skip if already processing
       if (anteProcessingRef.current) {
         console.log('[ANTE CHECK] Already processing, skipping');
         return;
       }
       
-      const decidedCount = players.filter(p => p.ante_decision).length;
-      const allDecided = players.every(p => p.ante_decision);
-      console.log('[ANTE CHECK] Players:', players.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', players.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
+      // CRITICAL: Fetch fresh player data directly from database to avoid stale state issues
+      const { data: freshPlayers, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('game_id', gameId);
       
-      if (allDecided && players.length > 0) {
+      if (error || !freshPlayers) {
+        console.log('[ANTE CHECK] Error fetching players:', error);
+        return;
+      }
+      
+      const decidedCount = freshPlayers.filter(p => p.ante_decision).length;
+      const allDecided = freshPlayers.every(p => p.ante_decision);
+      console.log('[ANTE CHECK] Fresh players:', freshPlayers.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', freshPlayers.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
+      
+      if (allDecided && freshPlayers.length > 0) {
         console.log('[ANTE CHECK] All players decided, proceeding to start round');
         anteProcessingRef.current = true;
         handleAllAnteDecisionsIn();
@@ -1068,14 +1079,14 @@ const Game = () => {
     // Check immediately
     checkAnteDecisions();
 
-    // Poll every 2 seconds as fallback (reduced from 500ms to prevent flickering)
+    // Poll every 1 second as fallback for faster ante detection
     const pollInterval = setInterval(() => {
       console.log('[ANTE POLL] Polling for ante decisions...');
-      fetchGameData();
-    }, 2000);
+      checkAnteDecisions();
+    }, 1000);
 
     return () => clearInterval(pollInterval);
-  }, [game?.status, players, gameId]);
+  }, [game?.status, gameId]);
 
   // Extract current round info - use cached data during game_over to preserve community cards
   const liveRound = game?.rounds?.find(r => r.round_number === game.current_round);
