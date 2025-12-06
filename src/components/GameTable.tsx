@@ -520,11 +520,13 @@ export const GameTable = ({
             // Final cards to display (only for current user or when cards are available)
             const cards: CardType[] = hasValidCards ? rawCards : [];
             
-            // For OTHER players: show card backs when round is active and they're not sitting out
-            // This shows card backs even when we don't have their actual card data (RLS blocks it)
+            // Show card backs when:
+            // - Player is not sitting out
+            // - Round is active (effectiveRoundNumber > 0)  
+            // - We expect cards to exist
+            // This covers BOTH other players (RLS blocks their cards) AND current user during loading
             const shouldShowCardBacks = player && 
               !player.sitting_out && 
-              !isCurrentUser && 
               effectiveRoundNumber > 0 && 
               expectedCardCount > 0;
             
@@ -691,9 +693,18 @@ export const GameTable = ({
                           
                           const isPlayerTurn = gameType === 'holm-game' 
                             ? (buckIsAssigned && roundIsReady && roundIsActive && currentTurnPosition === player.position && !awaitingNextRound)
-                            : true;
+                            : true; // 3-5-7 is simultaneous - all players can decide at once
                           
-                          const canDecide = isCurrentUser && !hasPlayerDecided && player.status === 'active' && !allDecisionsIn && isPlayerTurn && !isPaused;
+                          // For 3-5-7 games: show buttons if player hasn't decided, has cards, and round is active
+                          const hasCards357 = gameType !== 'holm-game' && expectedCardCount > 0 && effectiveRoundNumber > 0;
+                          
+                          const canDecide = isCurrentUser && 
+                            !hasPlayerDecided && 
+                            player.status === 'active' && 
+                            !allDecisionsIn && 
+                            isPlayerTurn && 
+                            !isPaused &&
+                            (gameType === 'holm-game' || hasCards357);
                           const hasDecidedFold = isCurrentUser && (hasPlayerDecided && playerDecision === 'fold') || pendingDecision === 'fold';
                           const hasDecidedStay = isCurrentUser && (hasPlayerDecided && playerDecision === 'stay') || pendingDecision === 'stay';
                           
