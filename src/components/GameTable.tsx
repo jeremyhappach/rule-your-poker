@@ -393,11 +393,15 @@ export const GameTable = ({
   // Debug: Log card sources
   console.log('[GAMETABLE] 🃏 Card sources:', {
     localCards: localPlayerCards.length,
+    localCardPlayerIds: localPlayerCards.map(c => c.player_id),
     propCards: propPlayerCards.length,
     usingLocal: localPlayerCards.length > 0,
     currentUserId,
+    currentPlayerRecordId: currentPlayerRecord?.id,
     currentPlayerHasCards,
     realtimeRound: realtimeRound?.round_number,
+    // Critical: Check if current user's player.id is in the playerCards
+    playerCardsMatchesCurrentUser: playerCards.some(pc => pc.player_id === currentPlayerRecord?.id),
     propRound: currentRound,
     effectiveRound: effectiveRoundNumber
   });
@@ -631,13 +635,18 @@ export const GameTable = ({
             // This prevents rendering stale cards from previous rounds
             const cardsMatchExpectedCount = rawCards.length === expectedCardCount;
             
-            // For Holm, just check for 4 cards
-            const isValidCardCountForHolm = rawCards.length === 4;
-            
             // Determine if cards are valid based on game type
             let cardsAreValidForCurrentRound: boolean;
             if (gameType === 'holm-game') {
-              cardsAreValidForCurrentRound = isValidCardCountForHolm;
+              // HOLM FIX: For current user, ALWAYS show their cards if they have ANY cards
+              // RLS ensures they only see their own cards anyway
+              // Don't enforce strict card count - there may be timing issues or data transitions
+              if (isCurrentUser && rawCards.length > 0) {
+                cardsAreValidForCurrentRound = true;
+              } else {
+                // For other players in Holm, check for 4 cards (standard Holm hand)
+                cardsAreValidForCurrentRound = rawCards.length === 4;
+              }
             } else {
               // 3-5-7: For current user, show their cards even if count doesn't perfectly match
               // (prevents showing card backs during sync delays)
