@@ -655,10 +655,6 @@ export const GameTable = ({
                         <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">{legsToWin} legs to win</p>
                       )}
                     </div>
-                    {/* Round indicator for debugging */}
-                    <p className="text-[8px] sm:text-[10px] text-white/60 text-center mt-1">
-                      Round #: {effectiveRoundNumber || currentRound || 'N/A'}
-                    </p>
                   </div>
                   
                   {/* Timer - hide during transitions, results, showdowns, and when all decisions in */}
