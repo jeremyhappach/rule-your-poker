@@ -107,21 +107,95 @@ export const GameTable = ({
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
   
+  // REALTIME ROUND SYNC: Subscribe directly to round changes for accurate state
+  const [realtimeRound, setRealtimeRound] = useState<{
+    round_number: number;
+    cards_dealt: number;
+    status: string;
+  } | null>(null);
+  
   // SELF-HEALING: Local card state that can be fetched directly if prop cards are missing
   const [localPlayerCards, setLocalPlayerCards] = useState<PlayerCards[]>([]);
   const lastFetchedRoundRef = useRef<number | null>(null);
   const isFetchingRef = useRef(false);
+  
+  // REALTIME ROUND SUBSCRIPTION: Get round updates directly
+  useEffect(() => {
+    if (!gameId) return;
+    
+    console.log('[GAMETABLE RT] Setting up round subscription for game:', gameId);
+    
+    // Initial fetch of current round
+    const fetchCurrentRound = async () => {
+      const { data } = await supabase
+        .from('rounds')
+        .select('round_number, cards_dealt, status')
+        .eq('game_id', gameId)
+        .order('round_number', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (data) {
+        console.log('[GAMETABLE RT] Initial round:', data);
+        setRealtimeRound(data);
+      }
+    };
+    
+    fetchCurrentRound();
+    
+    // Subscribe to round changes for this game
+    const channel = supabase
+      .channel(`gametable-rounds-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rounds',
+          filter: `game_id=eq.${gameId}`
+        },
+        (payload) => {
+          console.log('[GAMETABLE RT] Round change:', payload.eventType, payload.new);
+          const newRound = payload.new as any;
+          if (newRound && newRound.round_number) {
+            setRealtimeRound({
+              round_number: newRound.round_number,
+              cards_dealt: newRound.cards_dealt,
+              status: newRound.status
+            });
+            
+            // Clear local cards when round changes to prevent stale rendering
+            if (lastFetchedRoundRef.current !== newRound.round_number) {
+              console.log('[GAMETABLE RT] Round changed, clearing local cards');
+              setLocalPlayerCards([]);
+              lastFetchedRoundRef.current = null;
+            }
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      console.log('[GAMETABLE RT] Cleaning up round subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [gameId]);
+  
+  // CRITICAL: Derive effective round from realtime data, falling back to props
+  const effectiveRoundNumber = realtimeRound?.round_number ?? currentRound;
+  const effectiveCardsDealt = realtimeRound?.cards_dealt ?? authoritativeCardCount;
   
   // Use prop cards if available, otherwise use locally fetched cards
   const playerCards = propPlayerCards.length > 0 ? propPlayerCards : localPlayerCards;
   
   // Self-healing: fetch cards directly if props are empty but should have cards
   const fetchCardsDirectly = useCallback(async () => {
-    if (!gameId || !currentRound || currentRound <= 0 || isFetchingRef.current) return;
-    if (lastFetchedRoundRef.current === currentRound && localPlayerCards.length > 0) return;
+    const roundToFetch = effectiveRoundNumber;
+    if (!gameId || !roundToFetch || roundToFetch <= 0 || isFetchingRef.current) return;
+    if (lastFetchedRoundRef.current === roundToFetch && localPlayerCards.length > 0) return;
     
     isFetchingRef.current = true;
-    console.log('[GAMETABLE SELF-HEAL] Fetching cards directly for round:', currentRound);
+    console.log('[GAMETABLE SELF-HEAL] Fetching cards directly for round:', roundToFetch);
     
     try {
       // Get the round ID for current round
@@ -129,7 +203,7 @@ export const GameTable = ({
         .from('rounds')
         .select('id')
         .eq('game_id', gameId)
-        .eq('round_number', currentRound)
+        .eq('round_number', roundToFetch)
         .single();
       
       if (roundData) {
@@ -144,7 +218,7 @@ export const GameTable = ({
             player_id: cd.player_id,
             cards: cd.cards as unknown as CardType[]
           })));
-          lastFetchedRoundRef.current = currentRound;
+          lastFetchedRoundRef.current = roundToFetch;
         }
       }
     } catch (e) {
@@ -152,14 +226,14 @@ export const GameTable = ({
     } finally {
       isFetchingRef.current = false;
     }
-  }, [gameId, currentRound, localPlayerCards.length]);
+  }, [gameId, effectiveRoundNumber, localPlayerCards.length]);
   
   // Self-healing effect: if we have no cards but should, fetch them
   useEffect(() => {
     const currentPlayerForCheck = players.find(p => p.user_id === currentUserId);
     const shouldHaveCards = currentPlayerForCheck && 
                            !currentPlayerForCheck.sitting_out && 
-                           currentRound > 0 && 
+                           effectiveRoundNumber > 0 && 
                            gameType;
     
     const hasCards = propPlayerCards.length > 0 || localPlayerCards.length > 0;
@@ -173,15 +247,7 @@ export const GameTable = ({
         onRequestRefetch();
       }
     }
-  }, [currentRound, propPlayerCards.length, localPlayerCards.length, players, currentUserId, gameId, gameType, fetchCardsDirectly, onRequestRefetch]);
-  
-  // Clear local cards when round changes to prevent stale data
-  useEffect(() => {
-    if (currentRound !== lastFetchedRoundRef.current) {
-      // Round changed, our local cards might be stale
-      // But don't clear immediately - let the new fetch happen first
-    }
-  }, [currentRound]);
+  }, [effectiveRoundNumber, propPlayerCards.length, localPlayerCards.length, players, currentUserId, gameId, gameType, fetchCardsDirectly, onRequestRefetch]);
   
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const hasDecided = currentPlayer?.decision_locked || !!pendingDecision;
@@ -392,7 +458,7 @@ export const GameTable = ({
             const rawCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
             
             // Calculate expected card count based on game type and round
-            // If round is invalid, we still allow cards that match valid game patterns
+            // Use realtime-derived round for accuracy
             const getExpectedCardCountForGameType = (gameTypeArg: string | null | undefined, round: number): number => {
               if (gameTypeArg === 'holm-game') {
                 return 4; // Holm game always has 4 cards per player
@@ -405,29 +471,42 @@ export const GameTable = ({
               return 0;
             };
             
-            const expectedCardCount = getExpectedCardCountForGameType(gameType, currentRound);
+            // CRITICAL: Use effectiveRoundNumber from realtime subscription for accurate validation
+            const expectedCardCount = getExpectedCardCountForGameType(gameType, effectiveRoundNumber);
             
-            // CRITICAL: Don't reject cards if they are a valid count for the game type
-            // This prevents race conditions where currentRound is temporarily null/0
+            // CRITICAL: For 3-5-7, STRICTLY match card count to realtime round
+            // This prevents rendering stale cards from previous rounds
+            const cardsMatchExpectedCount = rawCards.length === expectedCardCount;
+            
+            // For Holm, just check for 4 cards
             const isValidCardCountForHolm = rawCards.length === 4;
-            const isValid357CardCount = rawCards.length === 3 || rawCards.length === 5 || rawCards.length === 7;
-            const cardsAreValid = gameType === 'holm-game' 
-              ? isValidCardCountForHolm 
-              : isValid357CardCount;
             
-            // Cards match if: no cards OR cards match expected OR cards are valid for the game type
-            const cardsMatchGameType = rawCards.length === 0 || rawCards.length === expectedCardCount || cardsAreValid;
-            const actualCards = cardsMatchGameType ? rawCards : [];
+            // Determine if cards are valid based on game type
+            let cardsAreValidForCurrentRound: boolean;
+            if (gameType === 'holm-game') {
+              cardsAreValidForCurrentRound = isValidCardCountForHolm;
+            } else {
+              // 3-5-7: STRICT match - only show cards if they match the realtime round's expected count
+              cardsAreValidForCurrentRound = cardsMatchExpectedCount && effectiveRoundNumber > 0;
+            }
             
-            // Show cards when player exists, isn't sitting out, and has valid cards
-            // No longer strictly require currentRound > 0 since cards themselves indicate an active round
-            const shouldShowCards = player && !player.sitting_out && cardsMatchGameType && rawCards.length > 0;
+            // Show cards ONLY when they match the current realtime round
+            const shouldShowCards = player && !player.sitting_out && cardsAreValidForCurrentRound && rawCards.length > 0;
             
-            // Track if we had to reject stale cards - only if cards exist and aren't valid for ANY game type pattern
-            const hadStaleCards = rawCards.length > 0 && !cardsMatchGameType;
+            // Final cards to display
+            const cards: CardType[] = shouldShowCards ? rawCards : [];
             
-            // Final cards to display - use validated actualCards
-            const cards: CardType[] = shouldShowCards ? actualCards : [];
+            // Debug logging for card sync issues
+            if (rawCards.length > 0 && !shouldShowCards) {
+              console.log('[GAMETABLE] Rejecting cards:', {
+                playerId: player?.id,
+                rawCardsCount: rawCards.length,
+                expectedCardCount,
+                effectiveRoundNumber,
+                cardsAreValidForCurrentRound,
+                gameType
+              });
+            }
             
             // Handle empty seat click
             if (isEmptySeat) {
@@ -526,10 +605,11 @@ export const GameTable = ({
                         )}
                         
                         {/* Hand evaluation hint - only for non-Holm games, hide during Chucky showdown */}
+                        {/* For 3-5-7: use wildcards based on round (3s in R1, 5s in R2, 7s in R3) */}
                         {isCurrentUser && cards.length > 0 && gameType && gameType !== 'holm-game' && !chuckyActive && (
                           <div className="bg-poker-gold/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[7px] sm:text-[8px] md:text-[10px] font-bold">
-                              {formatHandRank(evaluateHand(cards).rank)}
+                              {formatHandRank(evaluateHand(cards, true).rank)}
                             </span>
                           </div>
                         )}
@@ -556,12 +636,11 @@ export const GameTable = ({
                               // Show cards if: 
                               // 1. It's the current user, OR
                               // 2. In Holm game, round is in showdown/completed phase AND player stayed
-                              // 3. OR stale cards were rejected (show card backs while waiting)
-                              hadStaleCards || (!isCurrentUser && !(
+                              !isCurrentUser && !(
                                 gameType === 'holm-game' && 
                                 (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4) && 
                                 playerDecision === 'stay'
-                              ))
+                              )
                             } 
                           />
                         ) : (
