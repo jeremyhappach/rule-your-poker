@@ -361,16 +361,6 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Result message overlay */}
-        {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
-          <div className="absolute inset-x-4 top-1/2 transform -translate-y-1/2 z-20">
-            <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center animate-pulse">
-                {lastRoundResult.split('|||DEBUG:')[0]}
-              </p>
-            </div>
-          </div>
-        )}
       </div>
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
@@ -378,6 +368,17 @@ export const MobileGameTable = ({
         className="flex-shrink-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x"
         {...swipeHandlers}
       >
+        {/* Result message - in bottom section */}
+        {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
+          <div className="px-4 py-2">
+            <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center">
+                {lastRoundResult.split('|||DEBUG:')[0]}
+              </p>
+            </div>
+          </div>
+        )}
+        
         {/* Swipe indicator bar */}
         <div className="flex justify-center py-1">
           <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
