@@ -332,10 +332,14 @@ const Game = () => {
             if (newData.awaiting_next_round === true) {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             } else {
-              console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (round transitioning) - IMMEDIATE FETCH! ⚡⚡⚡');
-              // CRITICAL: Do NOT clear cards - let fetchGameData atomically replace them
+              console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (new hand starting) - CLEARING CACHE & FETCH! ⚡⚡⚡');
+              // CRITICAL: Clear cache when new Holm hand starts (awaiting becomes false)
+              // This ensures stale Chucky cards and old community cards are cleared
               setCardStateContext(null);
-              // Don't call setPlayerCards([])
+              setCachedRoundData(null);
+              cachedRoundRef.current = null;
+              maxRevealedRef.current = 0;
+              // Don't call setPlayerCards([]) - let fetchGameData atomically replace them
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -979,9 +983,42 @@ const Game = () => {
     }
   }
   
+  // Track previous round state to detect new hands in Holm games
+  const prevRoundStateRef = useRef<{ communityCardsHash: string; status: string | undefined }>({ communityCardsHash: '', status: undefined });
+  
   // Cache round data when transitioning to game_over, during showdown, or when Chucky is active
   // This ensures community cards and Chucky cards remain visible after game ends
   useEffect(() => {
+    // CRITICAL: Detect new Holm hand by checking if community cards changed AND status is 'betting'
+    // This indicates startHolmRound reset the round for a new hand
+    const currentCommunityHash = JSON.stringify(liveRound?.community_cards || []);
+    const prevHash = prevRoundStateRef.current.communityCardsHash;
+    const prevStatus = prevRoundStateRef.current.status;
+    
+    const isNewHolmHand = 
+      game?.game_type === 'holm-game' &&
+      liveRound?.status === 'betting' &&
+      prevHash !== '' && // Not first load
+      currentCommunityHash !== prevHash; // Cards actually changed
+    
+    if (isNewHolmHand) {
+      console.log('[CACHE] 🔄 NEW HOLM HAND DETECTED - clearing cache', {
+        prevHash: prevHash.slice(0, 50),
+        newHash: currentCommunityHash.slice(0, 50),
+        prevStatus,
+        newStatus: liveRound?.status
+      });
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      maxRevealedRef.current = liveRound?.community_cards_revealed ?? 0;
+    }
+    
+    // Update tracking ref
+    prevRoundStateRef.current = { 
+      communityCardsHash: currentCommunityHash, 
+      status: liveRound?.status 
+    };
+    
     if (liveRound && (
       game?.status === 'game_over' || 
       game?.all_decisions_in || 
@@ -1002,7 +1039,7 @@ const Game = () => {
       setCachedRoundData(null);
       cachedRoundRef.current = null;
     }
-  }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed]);
+  }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type]);
   
   // Use cached round during game_over if live round is unavailable
   // Priority: liveRound > state cache > ref cache
