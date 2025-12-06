@@ -90,7 +90,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   }
 
   // Reset all players to active for the new round (folding only applies to current round)
-  await supabase
+  const { error: playerResetError } = await supabase
     .from('players')
     .update({ 
       current_decision: null,
@@ -98,6 +98,13 @@ export async function startRound(gameId: string, roundNumber: number) {
       status: 'active'
     })
     .eq('game_id', gameId);
+  
+  if (playerResetError) {
+    console.error('[START_ROUND] Failed to reset players:', playerResetError);
+    throw new Error(`Failed to reset players: ${playerResetError.message}`);
+  }
+  
+  console.log('[START_ROUND] Players reset for round', roundNumber);
 
   // Get all players
   const { data: players, error: playersError } = await supabase
@@ -178,6 +185,32 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
   console.log('[START_ROUND] Using decision timer:', timerSeconds, 'seconds');
+
+  // CRITICAL: Update game state BEFORE creating round to prevent race conditions
+  // This ensures current_round and all_decisions_in are correct before any realtime updates fire
+  const { data: currentGameForPot } = await supabase
+    .from('games')
+    .select('pot')
+    .eq('id', gameId)
+    .single();
+  
+  const currentPot = currentGameForPot?.pot || 0;
+  
+  const { error: gameUpdateError } = await supabase
+    .from('games')
+    .update({
+      current_round: roundNumber,
+      all_decisions_in: false,
+      pot: currentPot + initialPot  // Add antes to existing pot
+    })
+    .eq('id', gameId);
+  
+  if (gameUpdateError) {
+    console.error('[START_ROUND] Failed to update game state:', gameUpdateError);
+    throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
+  }
+  
+  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false');
 
   // Create round with configured deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
@@ -264,25 +297,6 @@ export async function startRound(gameId: string, roundNumber: number) {
         cards: playerCards as any
       });
   }
-
-  // Get current pot value to preserve it
-  const { data: currentGame } = await supabase
-    .from('games')
-    .select('pot')
-    .eq('id', gameId)
-    .single();
-
-  const currentPot = currentGame?.pot || 0;
-
-  // Update game state for new round - don't set last_round_result here since it's cleared before this
-  await supabase
-    .from('games')
-    .update({
-      current_round: roundNumber,
-      all_decisions_in: false,
-      pot: currentPot + initialPot  // Add antes to existing pot
-    })
-    .eq('id', gameId);
 
   return round;
 }
