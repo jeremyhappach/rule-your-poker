@@ -17,6 +17,33 @@ interface TestCase {
 
 // Test case from the screenshot
 const testCases: TestCase[] = [
+  // NEW TEST: Screenshot where A High supposedly beat Pair of 4s (BUG!)
+  // Player: 5♠ 7♥ K♥ A♣ + Community: 8♥ 9♣ Q♥ 4♦
+  // Chucky: 5♦ 4♠ + Community: 8♥ 9♣ Q♥ 4♦
+  // Chucky has pair of 4s (4♠ + 4♦), Player has A high
+  // CHUCKY SHOULD WIN
+  {
+    name: 'CRITICAL BUG: A High vs Pair of 4s (Chucky should win)',
+    player1Cards: [
+      { suit: '♠', rank: '5' },
+      { suit: '♥', rank: '7' },
+      { suit: '♥', rank: 'K' },
+      { suit: '♣', rank: 'A' },
+    ],
+    player2Cards: [
+      { suit: '♦', rank: '5' },
+      { suit: '♠', rank: '4' },
+    ],
+    communityCards: [
+      { suit: '♥', rank: '8' },
+      { suit: '♣', rank: '9' },
+      { suit: '♥', rank: 'Q' },
+      { suit: '♦', rank: '4' },
+    ],
+    expectedWinner: 'player2', // Chucky (pair) beats player (high card)
+    expectedP1Hand: 'A High',
+    expectedP2Hand: 'Pair of 4s',
+  },
   {
     name: 'Screenshot: Pair of Kings vs Pair of 3s',
     player1Cards: [
@@ -195,6 +222,12 @@ export function runHandEvaluationTests(): { passed: number; failed: number; resu
   results.forEach(r => console.log(r));
 
   return { passed, failed, results };
+}
+
+// Run tests automatically on import in dev environment
+if (typeof window !== 'undefined') {
+  console.log('Hand evaluation test suite loaded. Call runHandEvaluationTests() to run tests.');
+  (window as any).runHandEvaluationTests = runHandEvaluationTests;
 }
 
 // Export test cases for interactive testing
