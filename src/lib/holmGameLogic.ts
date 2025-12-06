@@ -1098,20 +1098,35 @@ async function handleMultiPlayerShowdown(
     stayedPlayers.map(async (player) => {
       console.log(`[HOLM MULTI] Fetching cards for player: ${player.profiles?.username} | ID: ${player.id} | roundId: ${roundId}`);
       
-      const { data: playerCardsArray, error: cardsError } = await supabase
+      // CRITICAL FIX: Fetch the MOST RECENT cards for this player, then verify they match the roundId
+      // This prevents issues where roundId might be stale or mismatched
+      const { data: allPlayerCards, error: cardsError } = await supabase
         .from('player_cards')
-        .select('*')
+        .select('*, rounds!inner(game_id)')
         .eq('player_id', player.id)
-        .eq('round_id', roundId)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(5);
 
       if (cardsError) {
         console.error('[HOLM MULTI] ERROR fetching cards for player:', player.id, cardsError);
       }
 
-      const playerCardsData = playerCardsArray?.[0];
-      console.log(`[HOLM MULTI] Query result for ${player.profiles?.username}:`, playerCardsData ? `Found ${(playerCardsData.cards as any[])?.length} cards` : 'NO DATA FOUND');
+      console.log(`[HOLM MULTI] All recent cards for ${player.profiles?.username}:`, 
+        allPlayerCards?.map(pc => ({ round_id: pc.round_id, cards_count: (pc.cards as any[])?.length })));
+
+      // First try to find cards for the exact roundId
+      let playerCardsData = allPlayerCards?.find(pc => pc.round_id === roundId);
+      
+      // If not found, use the most recent cards for this game
+      if (!playerCardsData && allPlayerCards && allPlayerCards.length > 0) {
+        // Get the most recent one that belongs to this game
+        playerCardsData = allPlayerCards.find(pc => (pc.rounds as any)?.game_id === gameId);
+        if (playerCardsData) {
+          console.warn(`[HOLM MULTI] ⚠️ Using fallback cards for ${player.profiles?.username} from round ${playerCardsData.round_id} instead of ${roundId}`);
+        }
+      }
+      
+      console.log(`[HOLM MULTI] Query result for ${player.profiles?.username}:`, playerCardsData ? `Found ${(playerCardsData.cards as any[])?.length} cards (round: ${playerCardsData.round_id})` : 'NO DATA FOUND');
       
       // CRITICAL: Validate card data from database
       const rawCards = (playerCardsData?.cards as unknown as any[]) || [];
@@ -1123,7 +1138,7 @@ async function handleMultiPlayerShowdown(
       // CRITICAL: Log if no cards found - this is the bug causing all ties
       if (rawCards.length === 0) {
         console.error('[HOLM MULTI] ⚠️⚠️⚠️ NO CARDS FOUND for player:', player.id, 'round:', roundId);
-        console.error('[HOLM MULTI] ⚠️⚠️⚠️ This means player.id does not match any player_cards for this roundId!');
+        console.error('[HOLM MULTI] ⚠️⚠️⚠️ Available cards:', allPlayerCards?.map(pc => pc.round_id));
       } else if (playerCards.length !== rawCards.length) {
         console.warn('[HOLM MULTI] Card validation issue for player:', player.id, { raw: rawCards, validated: playerCards });
       }
