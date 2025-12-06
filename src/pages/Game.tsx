@@ -44,6 +44,7 @@ interface Player {
   legs: number;
   is_bot: boolean;
   sitting_out: boolean;
+  sitting_out_hands: number;
   ante_decision: string | null;
   profiles?: {
     username: string;
@@ -2273,8 +2274,40 @@ const Game = () => {
 
     // Get players who anted up from FRESH database data
     const antedPlayers = freshPlayers.filter(p => p.ante_decision === 'ante_up');
+    const sittingOutPlayers = freshPlayers.filter(p => p.ante_decision === 'sit_out' || p.sitting_out);
 
-    console.log('[ANTE] Anted players (from DB):', antedPlayers.length, 'Total players:', freshPlayers.length);
+    console.log('[ANTE] Anted players (from DB):', antedPlayers.length, 'Sitting out:', sittingOutPlayers.length, 'Total players:', freshPlayers.length);
+
+    // Increment sitting_out_hands for players who are sitting out
+    // Remove players who have been sitting out for 20+ consecutive hands
+    for (const player of sittingOutPlayers) {
+      const newSittingOutHands = (player.sitting_out_hands || 0) + 1;
+      
+      if (newSittingOutHands >= 20) {
+        // Remove the player from the game
+        console.log(`[ANTE] Removing player ${player.id} (${player.position}) after 20 consecutive hands sitting out`);
+        await supabase
+          .from('players')
+          .delete()
+          .eq('id', player.id);
+      } else {
+        // Increment the counter
+        await supabase
+          .from('players')
+          .update({ sitting_out_hands: newSittingOutHands })
+          .eq('id', player.id);
+      }
+    }
+
+    // Reset sitting_out_hands for players who anted up
+    for (const player of antedPlayers) {
+      if (player.sitting_out_hands > 0) {
+        await supabase
+          .from('players')
+          .update({ sitting_out_hands: 0 })
+          .eq('id', player.id);
+      }
+    }
 
     if (antedPlayers.length === 0) {
       await supabase

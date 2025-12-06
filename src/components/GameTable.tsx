@@ -25,6 +25,7 @@ interface Player {
   legs: number;
   is_bot: boolean;
   sitting_out: boolean;
+  sitting_out_hands?: number;
   profiles?: {
     username: string;
   };
@@ -899,7 +900,13 @@ export const GameTable = ({
                         <ChipChangeIndicator currentChips={player.chips} playerId={player.id} />
                         <p className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px]">
                           {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
-                          {player.sitting_out && ' (Out)'}
+                          {player.sitting_out && (
+                            <span className="text-red-400">
+                              {' '}(Out{player.sitting_out_hands !== undefined && player.sitting_out_hands > 0 
+                                ? ` - ${20 - player.sitting_out_hands} left` 
+                                : ''})
+                            </span>
+                          )}
                         </p>
                         {player.position === dealerPosition && (
                           <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full bg-poker-gold flex items-center justify-center border border-black shadow-lg">

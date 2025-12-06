@@ -270,6 +270,7 @@ export type Database = {
           legs: number
           position: number
           sitting_out: boolean
+          sitting_out_hands: number
           status: string
           user_id: string
         }
@@ -285,6 +286,7 @@ export type Database = {
           legs?: number
           position: number
           sitting_out?: boolean
+          sitting_out_hands?: number
           status?: string
           user_id: string
         }
@@ -300,6 +302,7 @@ export type Database = {
           legs?: number
           position?: number
           sitting_out?: boolean
+          sitting_out_hands?: number
           status?: string
           user_id?: string
         }
