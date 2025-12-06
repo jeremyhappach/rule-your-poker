@@ -1144,10 +1144,13 @@ async function handleMultiPlayerShowdown(
     return playerData?.current_decision === 'stay';
   }) || [];
   
-  // FALLBACK: If current_decision was reset, use all cards for this round
-  // This is safe because this function is only called when multiple players stayed
-  if (cardsOfStayedPlayers.length === 0 && allCardsForRound && allCardsForRound.length > 0) {
-    console.warn('[HOLM MULTI] ⚠️ current_decision was reset - falling back to all cards for round');
+  // CRITICAL FIX: Fallback if FEWER THAN 2 players found (not just 0)
+  // This function is ONLY called when multiple players stayed, so if we find < 2,
+  // it means current_decision was reset for some players (race condition)
+  // Use all cards for the round to ensure we evaluate everyone
+  if (cardsOfStayedPlayers.length < 2 && allCardsForRound && allCardsForRound.length >= 2) {
+    console.warn('[HOLM MULTI] ⚠️ Only found', cardsOfStayedPlayers.length, 'stayed players but need 2+ - falling back to all cards for round');
+    console.warn('[HOLM MULTI] This indicates current_decision was reset for some players (race condition)');
     cardsOfStayedPlayers = allCardsForRound;
   }
   
