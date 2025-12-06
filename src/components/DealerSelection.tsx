@@ -75,20 +75,20 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
   }, [players.length]);
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-xl p-8 border-4 border-poker-gold shadow-2xl animate-scale-in">
-        <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="w-32 h-32 rounded-full bg-poker-gold flex items-center justify-center border-8 border-amber-900 shadow-2xl animate-pulse">
-              <span className="text-black font-black text-6xl">D</span>
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-xl p-4 sm:p-8 border-4 border-poker-gold shadow-2xl animate-scale-in max-w-[90vw]">
+        <div className="text-center space-y-4 sm:space-y-6">
+          <div className="relative mx-auto w-fit">
+            <div className="w-20 h-20 sm:w-32 sm:h-32 rounded-full bg-poker-gold flex items-center justify-center border-4 sm:border-8 border-amber-900 shadow-2xl animate-pulse">
+              <span className="text-black font-black text-4xl sm:text-6xl">D</span>
             </div>
-            <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[20px] border-r-[20px] border-t-[30px] border-l-transparent border-r-transparent border-t-poker-gold"></div>
+            <div className="absolute -bottom-3 sm:-bottom-4 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[15px] sm:border-l-[20px] border-r-[15px] sm:border-r-[20px] border-t-[22px] sm:border-t-[30px] border-l-transparent border-r-transparent border-t-poker-gold"></div>
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-3xl font-bold text-poker-gold">Selecting Dealer...</h2>
-            <div className="bg-poker-gold/20 backdrop-blur-sm rounded-lg p-4 border-2 border-poker-gold/40">
-              <p className="text-2xl font-bold text-white">
+            <h2 className="text-xl sm:text-3xl font-bold text-poker-gold">Selecting Dealer...</h2>
+            <div className="bg-poker-gold/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 border-2 border-poker-gold/40">
+              <p className="text-lg sm:text-2xl font-bold text-white truncate max-w-[200px] sm:max-w-none mx-auto">
                 {players.find(p => p.position === currentPosition)?.profiles?.username || 
                  `Player ${currentPosition}`}
                 {players.find(p => p.position === currentPosition)?.is_bot && ' 🤖'}
@@ -98,7 +98,7 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
           
           {!isSpinning && finalPosition && (
             <div className="animate-fade-in">
-              <p className="text-xl text-poker-gold font-semibold">
+              <p className="text-lg sm:text-xl text-poker-gold font-semibold">
                 ✨ Dealer Selected! ✨
               </p>
             </div>
