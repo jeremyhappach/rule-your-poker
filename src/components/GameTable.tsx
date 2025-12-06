@@ -992,10 +992,17 @@ export const GameTable = ({
                           // For 3-5-7 games: show buttons if player hasn't decided, has cards, and round is active
                           const hasCards357 = gameType !== 'holm-game' && expectedCardCount > 0 && effectiveRoundNumber > 0;
                           
+                          // For Holm: If it's player's turn, they should see buttons even if allDecisionsIn is stuck
+                          // This handles edge case where allDecisionsIn=true but round is still betting
+                          const holmPlayerCanDecide = gameType === 'holm-game' && 
+                            isPlayerTurn && 
+                            roundStatus === 'betting' && 
+                            !hasPlayerDecided;
+                          
                           const canDecide = isCurrentUser && 
                             !hasPlayerDecided && 
                             player.status === 'active' && 
-                            !allDecisionsIn && 
+                            (!allDecisionsIn || holmPlayerCanDecide) && 
                             isPlayerTurn && 
                             !isPaused &&
                             (gameType === 'holm-game' || hasCards357);
