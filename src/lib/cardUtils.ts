@@ -47,16 +47,23 @@ export function shuffleDeck(deck: Card[]): Card[] {
 export function evaluateHand(cards: Card[], useWildCards: boolean = true): { rank: HandRank; value: number } {
   if (cards.length === 0) return { rank: 'high-card', value: 0 };
 
-  // Normalize and validate cards
+  // Normalize and validate cards - CRITICAL: convert ranks to uppercase for matching
   const validCards: Card[] = cards.map(c => ({
     suit: (c.suit || (c as any).Suit || '') as Suit,
     rank: String(c.rank || (c as any).Rank || '').toUpperCase() as Rank
   })).filter(c => SUITS.includes(c.suit) && RANKS.includes(c.rank));
 
-  if (validCards.length === 0) return { rank: 'high-card', value: 0 };
+  if (validCards.length === 0) {
+    console.error('[EVAL] No valid cards after normalization! Input:', JSON.stringify(cards));
+    return { rank: 'high-card', value: 0 };
+  }
 
   // Sort by rank value descending
   const sortedCards = [...validCards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+  
+  // Debug log for hand evaluation
+  const cardStr = sortedCards.map(c => `${c.rank}${c.suit}`).join(' ');
+  console.log('[EVAL] Evaluating:', cardStr, 'useWild:', useWildCards);
 
   // Determine wild rank if enabled
   const wildRank: Rank | null = useWildCards 
@@ -89,47 +96,69 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   if (validCards.length === 3) {
     if (bestCount >= 3) {
       const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 2);
-      return { rank: 'three-of-a-kind', value: calculateValue(3, [RANK_VALUES[bestRank], ...kickers]) };
+      const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [RANK_VALUES[bestRank], ...kickers]) };
+      console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+      return result;
     }
     if (bestCount >= 2) {
       const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 3);
-      return { rank: 'pair', value: calculateValue(1, [RANK_VALUES[bestRank], ...kickers]) };
+      const result = { rank: 'pair' as HandRank, value: calculateValue(1, [RANK_VALUES[bestRank], ...kickers]) };
+      console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+      return result;
     }
-    return { rank: 'high-card', value: calculateValue(0, nonWildCards.map(c => RANK_VALUES[c.rank]).slice(0, 5)) };
+    const result = { rank: 'high-card' as HandRank, value: calculateValue(0, nonWildCards.map(c => RANK_VALUES[c.rank]).slice(0, 5)) };
+    console.log('[EVAL] Result:', result.rank, 'value:', result.value);
+    return result;
   }
 
   // Round 2+ (5+ cards): All hands possible
 
   // Straight Flush
   const sfResult = checkStraightFlush(nonWildCards, wildcardCount);
-  if (sfResult.possible) return { rank: 'straight-flush', value: calculateValue(8, [sfResult.highCard]) };
+  if (sfResult.possible) {
+    const result = { rank: 'straight-flush' as HandRank, value: calculateValue(8, [sfResult.highCard]) };
+    console.log('[EVAL] Result:', result.rank, 'high:', sfResult.highCard, 'value:', result.value);
+    return result;
+  }
 
   // Four of a Kind
   if (bestCount >= 4) {
     const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 1);
-    return { rank: 'four-of-a-kind', value: calculateValue(7, [RANK_VALUES[bestRank], ...kickers]) };
+    const result = { rank: 'four-of-a-kind' as HandRank, value: calculateValue(7, [RANK_VALUES[bestRank], ...kickers]) };
+    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+    return result;
   }
 
   // Full House
   if (bestCount >= 3 && secondCount >= 2) {
-    return { rank: 'full-house', value: calculateValue(6, [RANK_VALUES[bestRank], RANK_VALUES[secondRank]]) };
+    const result = { rank: 'full-house' as HandRank, value: calculateValue(6, [RANK_VALUES[bestRank], RANK_VALUES[secondRank]]) };
+    console.log('[EVAL] Result:', result.rank, bestRank, 'full of', secondRank, 'value:', result.value);
+    return result;
   }
 
   // Flush
   const flushResult = checkFlush(nonWildCards, wildcardCount);
   if (flushResult.possible) {
     const flushCards = nonWildCards.filter(c => c.suit === flushResult.suit).map(c => RANK_VALUES[c.rank]).slice(0, 5);
-    return { rank: 'flush', value: calculateValue(5, flushCards) };
+    const result = { rank: 'flush' as HandRank, value: calculateValue(5, flushCards) };
+    console.log('[EVAL] Result:', result.rank, 'high:', flushCards[0], 'value:', result.value);
+    return result;
   }
 
   // Straight
   const straightResult = checkStraightWithWildcards(nonWildCards.map(c => c.rank), wildcardCount);
-  if (straightResult.possible) return { rank: 'straight', value: calculateValue(4, [straightResult.highCard]) };
+  if (straightResult.possible) {
+    const result = { rank: 'straight' as HandRank, value: calculateValue(4, [straightResult.highCard]) };
+    console.log('[EVAL] Result:', result.rank, 'high:', straightResult.highCard, 'value:', result.value);
+    return result;
+  }
 
   // Three of a Kind
   if (bestCount >= 3) {
     const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 2);
-    return { rank: 'three-of-a-kind', value: calculateValue(3, [RANK_VALUES[bestRank], ...kickers]) };
+    const result = { rank: 'three-of-a-kind' as HandRank, value: calculateValue(3, [RANK_VALUES[bestRank], ...kickers]) };
+    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+    return result;
   }
 
   // Two Pair - need two different ranks with 2+ cards each
@@ -138,17 +167,23 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
     const highPair = pairs[0][0] as Rank;
     const lowPair = pairs[1][0] as Rank;
     const kickers = nonWildCards.filter(c => c.rank !== highPair && c.rank !== lowPair).map(c => RANK_VALUES[c.rank]).slice(0, 1);
-    return { rank: 'two-pair', value: calculateValue(2, [RANK_VALUES[highPair], RANK_VALUES[lowPair], ...kickers]) };
+    const result = { rank: 'two-pair' as HandRank, value: calculateValue(2, [RANK_VALUES[highPair], RANK_VALUES[lowPair], ...kickers]) };
+    console.log('[EVAL] Result:', result.rank, highPair, 'and', lowPair, 'value:', result.value);
+    return result;
   }
 
   // Pair
   if (bestCount >= 2) {
     const kickers = nonWildCards.filter(c => c.rank !== bestRank).map(c => RANK_VALUES[c.rank]).slice(0, 3);
-    return { rank: 'pair', value: calculateValue(1, [RANK_VALUES[bestRank], ...kickers]) };
+    const result = { rank: 'pair' as HandRank, value: calculateValue(1, [RANK_VALUES[bestRank], ...kickers]) };
+    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+    return result;
   }
 
   // High Card
-  return { rank: 'high-card', value: calculateValue(0, nonWildCards.map(c => RANK_VALUES[c.rank]).slice(0, 5)) };
+  const result = { rank: 'high-card' as HandRank, value: calculateValue(0, nonWildCards.map(c => RANK_VALUES[c.rank]).slice(0, 5)) };
+  console.log('[EVAL] Result:', result.rank, 'value:', result.value);
+  return result;
 }
 
 /**
