@@ -543,6 +543,18 @@ export async function endHolmRound(gameId: string) {
   const stayedPlayers = players.filter(p => p.current_decision === 'stay');
   const activePlayers = players.filter(p => p.status === 'active' && !p.sitting_out);
 
+  // CRITICAL DEBUG: Log exact player IDs to verify correct game context
+  console.log('[HOLM END] ⚠️ PLAYER ID DEBUG ⚠️');
+  console.log('[HOLM END] Game ID:', gameId);
+  console.log('[HOLM END] Round ID:', round.id);
+  players.forEach(p => {
+    console.log(`[HOLM END] Player: ${p.profiles?.username} | ID: ${p.id} | position: ${p.position} | decision: ${p.current_decision}`);
+  });
+  console.log('[HOLM END] Stayed players:');
+  stayedPlayers.forEach(p => {
+    console.log(`[HOLM END]   - ${p.profiles?.username} | ID: ${p.id}`);
+  });
+
   console.log('[HOLM END] Player decisions:', {
     total: players.length,
     stayed: stayedPlayers.length,
@@ -1057,7 +1069,14 @@ async function handleMultiPlayerShowdown(
   game: any,
   roundPot: number
 ) {
-  console.log('[HOLM] Multi-player showdown, roundPot:', roundPot, 'game.pot:', game.pot);
+  console.log('[HOLM MULTI] ========== handleMultiPlayerShowdown ==========');
+  console.log('[HOLM MULTI] gameId:', gameId);
+  console.log('[HOLM MULTI] roundId:', roundId);
+  console.log('[HOLM MULTI] stayedPlayers count:', stayedPlayers.length);
+  stayedPlayers.forEach(p => {
+    console.log(`[HOLM MULTI] Stayed player: ${p.profiles?.username} | ID: ${p.id} | position: ${p.position}`);
+  });
+  console.log('[HOLM MULTI] roundPot:', roundPot, 'game.pot:', game.pot);
 
   // Status already set to 'showdown' and 3-second delay already completed in endHolmRound
   // Now reveal the 2 hidden community cards (cards 3 and 4)
@@ -1077,6 +1096,8 @@ async function handleMultiPlayerShowdown(
   // CRITICAL: Use limit(1) + order to handle potential duplicate card records gracefully
   const evaluations = await Promise.all(
     stayedPlayers.map(async (player) => {
+      console.log(`[HOLM MULTI] Fetching cards for player: ${player.profiles?.username} | ID: ${player.id} | roundId: ${roundId}`);
+      
       const { data: playerCardsArray, error: cardsError } = await supabase
         .from('player_cards')
         .select('*')
@@ -1090,6 +1111,7 @@ async function handleMultiPlayerShowdown(
       }
 
       const playerCardsData = playerCardsArray?.[0];
+      console.log(`[HOLM MULTI] Query result for ${player.profiles?.username}:`, playerCardsData ? `Found ${(playerCardsData.cards as any[])?.length} cards` : 'NO DATA FOUND');
       
       // CRITICAL: Validate card data from database
       const rawCards = (playerCardsData?.cards as unknown as any[]) || [];
@@ -1101,6 +1123,7 @@ async function handleMultiPlayerShowdown(
       // CRITICAL: Log if no cards found - this is the bug causing all ties
       if (rawCards.length === 0) {
         console.error('[HOLM MULTI] ⚠️⚠️⚠️ NO CARDS FOUND for player:', player.id, 'round:', roundId);
+        console.error('[HOLM MULTI] ⚠️⚠️⚠️ This means player.id does not match any player_cards for this roundId!');
       } else if (playerCards.length !== rawCards.length) {
         console.warn('[HOLM MULTI] Card validation issue for player:', player.id, { raw: rawCards, validated: playerCards });
       }
