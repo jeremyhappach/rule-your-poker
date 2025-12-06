@@ -297,16 +297,48 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
   console.log('[HOLM] Using decision timer:', timerSeconds, 'seconds');
 
-  // Get next round number (increment for each new hand to avoid stale card issues)
-  const { data: maxRoundData } = await supabase
-    .from('rounds')
-    .select('round_number')
-    .eq('game_id', gameId)
-    .order('round_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // For first hand, clean up any stale rounds from previous games and start at round 1
+  // For subsequent hands, increment round number
+  let nextRoundNumber: number;
   
-  const nextRoundNumber = (maxRoundData?.round_number || 1) + 1;
+  if (isFirstHand) {
+    console.log('[HOLM] FIRST HAND - Cleaning up old rounds and starting at round 1');
+    
+    // Delete old player_cards and rounds from previous games
+    const { data: oldRounds } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId);
+    
+    if (oldRounds && oldRounds.length > 0) {
+      const oldRoundIds = oldRounds.map(r => r.id);
+      await supabase
+        .from('player_cards')
+        .delete()
+        .in('round_id', oldRoundIds);
+      
+      await supabase
+        .from('rounds')
+        .delete()
+        .eq('game_id', gameId);
+      
+      console.log('[HOLM] Deleted', oldRounds.length, 'stale rounds from previous game');
+    }
+    
+    nextRoundNumber = 1;
+  } else {
+    // Subsequent hand - increment from max existing round
+    const { data: maxRoundData } = await supabase
+      .from('rounds')
+      .select('round_number')
+      .eq('game_id', gameId)
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    nextRoundNumber = (maxRoundData?.round_number || 0) + 1;
+  }
+  
   console.log('[HOLM] Creating new round:', nextRoundNumber);
 
   // Deal fresh cards
