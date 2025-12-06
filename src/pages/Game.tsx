@@ -2556,12 +2556,6 @@ const Game = () => {
             <p className="text-muted-foreground">{gameName}</p>
             <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
             <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
-            {game.status === 'in_progress' && (
-              <p className="text-sm text-yellow-400 font-semibold">
-                Round #: {currentRound?.round_number || game.current_round || 'N/A'} | 
-                Status: {currentRound?.status || 'N/A'}
-              </p>
-            )}
           </div>
           <div className="flex gap-2">
             {game.status !== 'configuring' && (
