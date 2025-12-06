@@ -372,7 +372,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   return (
     <div className="space-y-6">
       {/* Header with Peoria Skyline Backdrop */}
-      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 min-h-[200px] sm:min-h-[240px]">
+      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 min-h-[140px] sm:min-h-[200px] md:min-h-[240px]">
         {/* Skyline Background - Full visibility */}
         <img 
           src={peoriaSkyline} 
@@ -383,35 +383,35 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
         
         {/* Content - positioned at bottom */}
-        <div className="relative z-10 h-full flex flex-col justify-end p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50">
-                <span className="text-black text-3xl">♠</span>
+        <div className="relative z-10 h-full flex flex-col justify-end p-3 sm:p-4 md:p-6">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:justify-between sm:items-end">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
+                <span className="text-black text-xl sm:text-3xl">♠</span>
               </div>
-              <div>
-                <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
                   Peoria Poker League
                 </h1>
-                <p className="text-amber-200/80 text-sm mt-1">Game Lobby</p>
+                <p className="text-amber-200/80 text-xs sm:text-sm mt-0.5">Game Lobby</p>
               </div>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               {isSuperuser && (
                 <Button 
                   onClick={() => setShowDefaultsConfig(true)} 
-                  size="lg" 
+                  size="sm"
                   variant="outline"
-                  className="flex-1 sm:flex-none border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm"
+                  className="flex-1 sm:flex-none border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm text-xs sm:text-sm"
                 >
-                  <Settings className="h-4 w-4 mr-2" />
+                  <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Defaults
                 </Button>
               )}
               <Button 
                 onClick={() => setShowCreateDialog(true)} 
-                size="lg" 
-                className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30"
+                size="sm"
+                className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm"
               >
                 Create New Game
               </Button>
@@ -424,15 +424,15 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         <TabsList className="grid w-full grid-cols-2 bg-slate-800/50 border border-amber-700/30">
           <TabsTrigger 
             value="active" 
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
+            className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
           >
-            Active Sessions ({activeGames.length})
+            Active ({activeGames.length})
           </TabsTrigger>
           <TabsTrigger 
             value="historical"
-            className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
+            className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
           >
-            Historical ({historicalGames.length})
+            History ({historicalGames.length})
           </TabsTrigger>
         </TabsList>
         
@@ -461,34 +461,38 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                   <CardContent className="pt-5 pb-4">
                     <div className="space-y-4">
                       {/* Game Header */}
-                      <div className="flex items-center gap-3 pb-3 border-b border-amber-700/30">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md">
-                          <span className="text-black text-sm font-bold">♦</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pb-3 border-b border-amber-700/30">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md flex-shrink-0">
+                            <span className="text-black text-xs sm:text-sm font-bold">♦</span>
+                          </div>
+                          <h3 className="font-bold text-amber-100 text-sm sm:text-base truncate">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
+                          <div className="flex gap-1 flex-shrink-0">
+                            <Badge 
+                              variant={isInProgress ? 'default' : 'secondary'}
+                              className={`text-xs ${isInProgress 
+                                ? 'bg-green-600/80 text-white border-0' 
+                                : 'bg-amber-600/30 text-amber-300 border-amber-600/50'
+                              }`}
+                            >
+                              {game.status === 'waiting' ? 'Waiting' : 'Active'}
+                            </Badge>
+                            {game.is_player && (
+                              <Badge className="bg-blue-600/30 text-blue-300 border-blue-500/50 text-xs">
+                                Yours
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <h3 className="font-bold text-amber-100">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
-                        <Badge 
-                          variant={isInProgress ? 'default' : 'secondary'}
-                          className={isInProgress 
-                            ? 'bg-green-600/80 text-white border-0' 
-                            : 'bg-amber-600/30 text-amber-300 border-amber-600/50'
-                          }
-                        >
-                          {game.status === 'waiting' ? 'Waiting' : 'Active'}
-                        </Badge>
-                        {game.is_player && (
-                          <Badge className="bg-blue-600/30 text-blue-300 border-blue-500/50">
-                            Your Game
-                          </Badge>
-                        )}
-                        <div className="flex gap-2 ml-auto">
+                        <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
                           <Button
                             size="sm"
                             onClick={() => joinGame(game.id)}
                             disabled={game.player_count >= 7 && !game.is_player}
-                            className={game.is_player 
+                            className={`flex-1 sm:flex-none text-xs sm:text-sm ${game.is_player 
                               ? 'bg-blue-600 hover:bg-blue-500 text-white'
                               : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold'
-                            }
+                            }`}
                           >
                             {game.is_player ? 'Re-Join' : 'Join'}
                           </Button>
@@ -497,7 +501,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                               size="sm"
                               variant="destructive"
                               onClick={() => setDeleteGameId(game.id)}
-                              className="bg-red-600/80 hover:bg-red-500"
+                              className="bg-red-600/80 hover:bg-red-500 text-xs sm:text-sm"
                             >
                               Delete
                             </Button>
@@ -505,32 +509,32 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                         </div>
                       </div>
 
-                      <div className="flex gap-6">
+                      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                         {/* Game Info */}
                         <div className="flex-1 space-y-2">
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            <div className="flex items-center gap-2">
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
+                            <div className="flex items-center gap-1 sm:gap-2">
                               <span className="text-amber-400/60">Host:</span> 
-                              <span className="text-amber-100">{game.host_username}</span>
+                              <span className="text-amber-100 truncate">{game.host_username}</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
                               <span className="text-amber-400/60">Players:</span> 
                               <span className="text-amber-100">{activePlayers.length}/7</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
                               <span className="text-amber-400/60">Started:</span> 
                               <span className="text-amber-100">{format(new Date(game.created_at), 'MMM d, h:mm a')}</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 sm:gap-2">
                               <span className="text-amber-400/60">Duration:</span> 
                               <span className="text-amber-100">{game.duration_minutes} min</span>
                             </div>
                           </div>
 
                           {isInProgress && game.ante_amount !== undefined && (
-                            <div className="text-xs text-amber-300/70 pt-3 mt-2 border-t border-amber-700/30 space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 font-medium">
+                            <div className="text-xs text-amber-300/70 pt-2 mt-2 border-t border-amber-700/30 space-y-1">
+                              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                                <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 font-medium">
                                   {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
                                 </span>
                                 <span className="text-amber-400/50">•</span>
@@ -538,7 +542,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                 {game.game_type === 'holm-game' ? (
                                   <>
                                     <span className="text-amber-400/50">•</span>
-                                    <span>{game.chucky_cards || 4} Chucky Cards</span>
+                                    <span>{game.chucky_cards || 4} Chucky</span>
                                   </>
                                 ) : (
                                   <>
@@ -547,10 +551,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                   </>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                                 <span>{game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : 'No P Tax'}</span>
                                 <span className="text-amber-400/50">•</span>
-                                <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max Match` : 'No Max Match'}</span>
+                                <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max` : 'No Max'}</span>
                               </div>
                             </div>
                           )}
@@ -558,14 +562,14 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                         
                         {/* Players Table */}
                         {isInProgress && activePlayers.length > 0 && (
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="text-xs font-medium text-amber-400/60 mb-2">Current Standings</div>
                             <div className="border border-amber-700/30 rounded-lg overflow-hidden bg-slate-900/50">
-                              <table className="w-full text-sm">
+                              <table className="w-full text-xs sm:text-sm">
                                 <thead>
                                   <tr className="bg-amber-900/20">
-                                    <th className="text-left p-2 font-medium text-amber-300">Player</th>
-                                    <th className="text-right p-2 font-medium text-amber-300">Chips</th>
+                                    <th className="text-left p-1.5 sm:p-2 font-medium text-amber-300">Player</th>
+                                    <th className="text-right p-1.5 sm:p-2 font-medium text-amber-300">Chips</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -573,8 +577,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                     .sort((a, b) => b.chips - a.chips)
                                     .map((player, idx) => (
                                       <tr key={idx} className="border-t border-amber-700/20">
-                                        <td className="p-2 text-amber-100">{player.username}</td>
-                                        <td className={`p-2 text-right font-mono ${player.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        <td className="p-1.5 sm:p-2 text-amber-100 truncate max-w-[100px] sm:max-w-none">{player.username}</td>
+                                        <td className={`p-1.5 sm:p-2 text-right font-mono ${player.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                           ${player.chips}
                                         </td>
                                       </tr>
