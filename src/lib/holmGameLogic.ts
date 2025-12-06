@@ -1155,7 +1155,9 @@ async function handleMultiPlayerShowdown(
     const handDesc = formatHandRankDetailed(allCards, false);
     return {
       name: playerName,
+      playerId: e.player.id,
       cards: playerCardStr,
+      cardCount: e.cards.length,
       handDesc: handDesc,
       value: e.evaluation.value,
       rank: e.evaluation.rank

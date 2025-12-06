@@ -678,23 +678,24 @@ export const GameTable = ({
                           📋 Copy
                         </button>
                       </div>
-                      <p className="text-gray-300 mb-1">Round: <span className="text-white">{debugData.roundId?.substring(0, 8)}</span></p>
-                      <p className="text-gray-300 mb-2">Community: <span className="text-white">{debugData.communityCards}</span></p>
-                      {debugData.evaluations?.map((evalData: any, idx: number) => (
-                        <div 
-                          key={idx} 
-                          className={`p-2 rounded mb-2 ${evalData.name === debugData.winnerName ? 'bg-green-900/70 border border-green-500' : 'bg-gray-800/70 border border-gray-600'}`}
-                        >
-                          <p className="text-amber-300 font-bold">
-                            {evalData.name} {evalData.name === debugData.winnerName && '👑'}
-                          </p>
-                          <p className="text-white">Cards: {evalData.cards}</p>
-                          <p className="text-cyan-400">Hand: {evalData.handDesc}</p>
-                          <p className={evalData.value === debugData.maxValue ? 'text-green-400' : 'text-red-400'}>
-                            Value: {evalData.value} {evalData.value === debugData.maxValue && '(MAX)'}
-                          </p>
-                        </div>
-                      ))}
+                        <p className="text-gray-300 mb-1">Round: <span className="text-white">{debugData.roundId?.substring(0, 8)}</span></p>
+                        <p className="text-gray-300 mb-2">Community: <span className="text-white">{debugData.communityCards}</span></p>
+                        {debugData.evaluations?.map((evalData: any, idx: number) => (
+                          <div 
+                            key={idx} 
+                            className={`p-2 rounded mb-2 ${evalData.name === debugData.winnerName ? 'bg-green-900/70 border border-green-500' : 'bg-gray-800/70 border border-gray-600'}`}
+                          >
+                            <p className="text-amber-300 font-bold">
+                              {evalData.name} {evalData.name === debugData.winnerName && '👑'}
+                            </p>
+                            <p className="text-gray-400 text-[10px]">ID: {evalData.playerId?.substring(0, 8)}</p>
+                            <p className="text-white">Cards ({evalData.cardCount || 0}): {evalData.cards || '(empty)'}</p>
+                            <p className="text-cyan-400">Hand: {evalData.handDesc}</p>
+                            <p className={evalData.value === debugData.maxValue ? 'text-green-400' : 'text-red-400'}>
+                              Value: {evalData.value} {evalData.value === debugData.maxValue && '(MAX)'}
+                            </p>
+                          </div>
+                        ))}
                     </div>
                   )}
                   
