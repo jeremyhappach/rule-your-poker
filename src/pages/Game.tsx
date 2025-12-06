@@ -2316,35 +2316,70 @@ const Game = () => {
     
     try {
       if (!currentPlayer) {
-        // User is an observer - insert them as a new player
-        // If game is in progress, they sit out until next game starts
-        const { error: joinError } = await supabase
+        // Check if this user already has a player record in this game (they left and are returning)
+        const { data: existingPlayer } = await supabase
           .from('players')
-          .insert({
-            game_id: gameId,
-            user_id: user.id,
-            chips: 0,
-            position: position,
-            sitting_out: gameInProgress,
-            ante_decision: null // Ensure ante_decision is null so they get the popup
-          });
-
-        if (joinError) {
-          console.error('Error joining game:', joinError);
-          toast({
-            title: "Error Joining Game",
-            description: joinError.message || "Failed to select seat. Please try again.",
-            variant: "destructive",
-          });
-          return;
-        }
+          .select('*')
+          .eq('game_id', gameId)
+          .eq('user_id', user.id)
+          .maybeSingle();
         
-        toast({
-          title: gameInProgress ? "Seat Reserved" : "Seat Selected",
-          description: gameInProgress 
-            ? `You'll join the game at seat #${position} when the next round starts.`
-            : `Welcome to seat #${position}!`,
-        });
+        if (existingPlayer) {
+          // Player is returning - update their position and sitting_out status, keep their chips
+          const { error: updateError } = await supabase
+            .from('players')
+            .update({
+              position: position,
+              sitting_out: gameInProgress,
+              ante_decision: null // Reset ante decision so they get the popup
+            })
+            .eq('id', existingPlayer.id);
+          
+          if (updateError) {
+            console.error('Error rejoining game:', updateError);
+            toast({
+              title: "Error Rejoining Game",
+              description: updateError.message || "Failed to select seat. Please try again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          toast({
+            title: "Welcome Back!",
+            description: `Returned to seat #${position} with $${existingPlayer.chips} chips.`,
+          });
+        } else {
+          // User is a new observer - insert them as a new player
+          // If game is in progress, they sit out until next game starts
+          const { error: joinError } = await supabase
+            .from('players')
+            .insert({
+              game_id: gameId,
+              user_id: user.id,
+              chips: 0,
+              position: position,
+              sitting_out: gameInProgress,
+              ante_decision: null // Ensure ante_decision is null so they get the popup
+            });
+
+          if (joinError) {
+            console.error('Error joining game:', joinError);
+            toast({
+              title: "Error Joining Game",
+              description: joinError.message || "Failed to select seat. Please try again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          toast({
+            title: gameInProgress ? "Seat Reserved" : "Seat Selected",
+            description: gameInProgress 
+              ? `You'll join the game at seat #${position} when the next round starts.`
+              : `Welcome to seat #${position}!`,
+          });
+        }
       } else {
         // Existing player changing seats
         // Keep sitting_out status if game is in progress
@@ -2509,9 +2544,12 @@ const Game = () => {
                 End Session
               </Button>
             )}
-            <Button variant="outline" onClick={leaveGame}>
-              Leave Game
-            </Button>
+            {/* Only show Leave Game if player is sitting out or is an observer */}
+            {(!players.find(p => p.user_id === user?.id) || players.find(p => p.user_id === user?.id)?.sitting_out) && (
+              <Button variant="outline" onClick={leaveGame}>
+                Leave Game
+              </Button>
+            )}
           </div>
         </div>
 
