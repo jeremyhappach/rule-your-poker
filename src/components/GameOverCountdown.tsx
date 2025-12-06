@@ -76,30 +76,30 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
   const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <Card className="max-w-2xl mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-        <CardContent className="pt-8 pb-8 space-y-6">
-          <div className="text-center space-y-4">
-            <div className="bg-poker-gold/30 p-6 rounded-xl border-2 border-poker-gold">
-              <p className="text-poker-gold font-black text-3xl mb-2">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="max-w-2xl w-full border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
+        <CardContent className="pt-4 sm:pt-8 pb-4 sm:pb-8 space-y-4 sm:space-y-6">
+          <div className="text-center space-y-3 sm:space-y-4">
+            <div className="bg-poker-gold/30 p-3 sm:p-6 rounded-xl border-2 border-poker-gold">
+              <p className="text-poker-gold font-black text-lg sm:text-3xl">
                 {winnerMessage}
               </p>
             </div>
             
-            <div className="bg-amber-950/50 p-6 rounded-lg border border-amber-800">
+            <div className="bg-amber-950/50 p-4 sm:p-6 rounded-lg border border-amber-800">
               {isSessionEnded || pendingSessionEnd ? (
-                <p className="text-poker-gold font-black text-4xl">
+                <p className="text-poker-gold font-black text-2xl sm:text-4xl">
                   {isSessionEnded ? 'SESSION ENDED' : 'SESSION ENDING...'}
                 </p>
               ) : (
                 <>
-                  <p className="text-amber-100 text-xl mb-3">
+                  <p className="text-amber-100 text-base sm:text-xl mb-2 sm:mb-3">
                     Next game starting in...
                   </p>
-                  <p className="text-poker-gold font-black text-6xl mb-3">
+                  <p className="text-poker-gold font-black text-4xl sm:text-6xl mb-2 sm:mb-3">
                     {timeLeft}
                   </p>
-                  <p className="text-amber-300 text-lg">
+                  <p className="text-amber-300 text-sm sm:text-lg">
                     <span className="font-bold">{nextDealerName}</span> will be the dealer
                   </p>
                 </>
