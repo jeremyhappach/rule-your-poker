@@ -1051,8 +1051,8 @@ const Game = () => {
     lastRoundResult: game?.last_round_result?.substring(0, 30)
   });
 
-  // CRITICAL: Healing poll for missing round/community cards in Holm games
-  // When we're in_progress with a Holm game but have no community cards, poll until we get them
+  // CRITICAL: Healing poll for missing round/community cards/player cards in Holm games
+  // When we're in_progress with a Holm game but have no community cards OR player cards, poll until we get them
   const roundHealingRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
@@ -1061,13 +1061,28 @@ const Game = () => {
     const hasCommunityCards = communityCards && communityCards.length > 0;
     const hasRoundData = currentRound && currentRound.community_cards;
     
-    const needsHealing = isHolmGame && isInProgress && !hasCommunityCards && !hasRoundData && !game?.awaiting_next_round;
+    // Also check for player cards - critical for game type switches
+    const hasPlayerCards = playerCards && playerCards.length > 0;
+    // For Holm, validate we have 4 cards per player
+    const hasValidPlayerCards = hasPlayerCards && playerCards.some(pc => {
+      const cards = pc.cards as unknown as any[];
+      return cards && cards.length === 4;
+    });
+    
+    const needsCommunityHealing = isHolmGame && isInProgress && !hasCommunityCards && !hasRoundData && !game?.awaiting_next_round;
+    const needsPlayerCardHealing = isHolmGame && isInProgress && !hasValidPlayerCards && !game?.awaiting_next_round;
+    const needsHealing = needsCommunityHealing || needsPlayerCardHealing;
     
     if (needsHealing) {
-      console.log('[ROUND HEAL] 🚑 Holm game in progress but no community cards - starting healing poll');
+      console.log('[ROUND HEAL] 🚑 Holm game needs healing:', {
+        needsCommunityHealing,
+        needsPlayerCardHealing,
+        playerCardsCount: playerCards?.length,
+        hasValidPlayerCards
+      });
       
       const healingPoll = async () => {
-        console.log('[ROUND HEAL] 🔄 Polling for round data...');
+        console.log('[ROUND HEAL] 🔄 Polling for round/player card data...');
         await fetchGameData();
       };
       
@@ -1081,13 +1096,13 @@ const Game = () => {
           roundHealingRef.current = null;
         }
       };
-    } else if (roundHealingRef.current && hasCommunityCards) {
-      // Stop polling if we got community cards
-      console.log('[ROUND HEAL] ✅ Got community cards, stopping poll');
+    } else if (roundHealingRef.current && hasCommunityCards && hasValidPlayerCards) {
+      // Stop polling if we got both community and player cards
+      console.log('[ROUND HEAL] ✅ Got community and player cards, stopping poll');
       clearInterval(roundHealingRef.current);
       roundHealingRef.current = null;
     }
-  }, [game?.game_type, game?.status, communityCards, currentRound, game?.awaiting_next_round]);
+  }, [game?.game_type, game?.status, communityCards, currentRound, game?.awaiting_next_round, playerCards]);
 
   // Auto-trigger bot decisions when appropriate
   useEffect(() => {
