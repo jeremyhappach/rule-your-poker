@@ -64,10 +64,12 @@ interface GameTableProps {
   roundStatus?: string;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
+  debugHolmPaused?: boolean; // DEBUG: pause auto-progression for debugging
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
   onRequestRefetch?: () => void; // NEW: callback to request parent to refetch
+  onDebugProceed?: () => void; // DEBUG: manual proceed to next round
 }
 
 export const GameTable = ({
@@ -99,10 +101,12 @@ export const GameTable = ({
   roundStatus,
   pendingDecision,
   isPaused,
+  debugHolmPaused,
   onStay,
   onFold,
   onSelectSeat,
   onRequestRefetch,
+  onDebugProceed,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -633,10 +637,22 @@ export const GameTable = ({
             (gameType === 'holm-game' && lastRoundResult.includes(' has '))
           ) && (
             <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
-              <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 animate-pulse">
-                <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center whitespace-nowrap drop-shadow-lg">
+              <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900">
+                <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center whitespace-nowrap drop-shadow-lg animate-pulse">
                   {lastRoundResult}
                 </p>
+                
+                {/* DEBUG: Manual proceed button when debugHolmPaused is true */}
+                {gameType === 'holm-game' && debugHolmPaused && awaitingNextRound && onDebugProceed && (
+                  <div className="mt-3 flex justify-center">
+                    <Button 
+                      onClick={onDebugProceed}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2"
+                    >
+                      🔧 Proceed to Next Round
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
