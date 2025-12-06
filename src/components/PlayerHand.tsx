@@ -137,12 +137,12 @@ export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: Playe
             animationFillMode: 'backwards'
           }}
         >
-          <span className={`${classes.text} leading-none -mb-1 ${
+          <span className={`${classes.text} leading-none ${
             card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-black'
           }`}>
             {card.rank}
           </span>
-          <span className={`${classes.suit} leading-none ${
+          <span className={`${classes.suit} leading-none -mt-1.5 ${
             card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-black'
           }`}>
             {card.suit}

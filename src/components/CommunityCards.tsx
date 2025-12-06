@@ -189,10 +189,10 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                   transition: 'transform 1.2s ease-in-out',
                 }}
               >
-                <span className={`text-xl sm:text-2xl font-black leading-none -mb-1 ${suitColor}`}>
+                <span className={`text-xl sm:text-2xl font-black leading-none ${suitColor}`}>
                   {card.rank}
                 </span>
-                <span className={`text-2xl sm:text-3xl leading-none ${suitColor}`}>
+                <span className={`text-2xl sm:text-3xl leading-none -mt-1.5 ${suitColor}`}>
                   {card.suit}
                 </span>
               </Card>
