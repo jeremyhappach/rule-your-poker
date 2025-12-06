@@ -309,7 +309,32 @@ export const GameTable = ({
   
   // Find the current player's record
   const currentPlayerRecord = players.find(p => p.user_id === currentUserId);
-  const currentPlayerHasCards = currentPlayerRecord && playerCards.some(pc => pc.player_id === currentPlayerRecord.id);
+  
+  // CRITICAL: Check if player has VALID cards for current game type
+  // For Holm: must have exactly 4 cards. For 3-5-7: must have 3, 5, or 7 cards matching round
+  const currentPlayerCardsRecord = playerCards.find(pc => pc.player_id === currentPlayerRecord?.id);
+  const currentPlayerCardCount = currentPlayerCardsRecord?.cards?.length ?? 0;
+  
+  const isValidCardCountForGameType = (() => {
+    if (!currentPlayerCardsRecord || currentPlayerCardCount === 0) return false;
+    if (gameType === 'holm-game') {
+      // Holm requires exactly 4 cards
+      return currentPlayerCardCount === 4;
+    } else if (gameType === '3-5-7-game') {
+      // 3-5-7 requires 3, 5, or 7 cards based on round
+      return [3, 5, 7].includes(currentPlayerCardCount);
+    }
+    return currentPlayerCardCount > 0;
+  })();
+  
+  const currentPlayerHasCards = currentPlayerRecord && isValidCardCountForGameType;
+  
+  console.log('[GAMETABLE] Card validation:', {
+    gameType,
+    currentPlayerCardCount,
+    isValidCardCountForGameType,
+    currentPlayerHasCards
+  });
   
   // CRITICAL FIX: Self-healing card fetch for current user
   // If we're in a round but current user has no cards, aggressively poll until we get them
