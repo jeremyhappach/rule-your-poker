@@ -2551,6 +2551,7 @@ const Game = () => {
 
         {game.status === 'in_progress' && (
           <GameTable
+            gameId={gameId}
             players={players}
             currentUserId={user?.id}
             pot={game.pot || 0}
@@ -2581,6 +2582,7 @@ const Game = () => {
             onStay={handleStay}
             onFold={handleFold}
             onSelectSeat={handleSelectSeat}
+            onRequestRefetch={fetchGameData}
           />
         )}
       </div>
