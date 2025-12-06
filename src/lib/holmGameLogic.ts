@@ -292,13 +292,17 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
   console.log('[HOLM] Using decision timer:', timerSeconds, 'seconds');
 
-  // Handle round 2 (gameplay round)
-  const { data: round2 } = await supabase
+  // Get next round number (increment for each new hand to avoid stale card issues)
+  const { data: maxRoundData } = await supabase
     .from('rounds')
-    .select('*')
+    .select('round_number')
     .eq('game_id', gameId)
-    .eq('round_number', 2)
+    .order('round_number', { ascending: false })
+    .limit(1)
     .maybeSingle();
+  
+  const nextRoundNumber = (maxRoundData?.round_number || 1) + 1;
+  console.log('[HOLM] Creating new round:', nextRoundNumber);
 
   // Deal fresh cards
   const deadline = new Date(Date.now() + timerSeconds * 1000);
@@ -313,65 +317,29 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     deck[cardIndex++]
   ];
 
-  let roundId: string;
+  // Always create a new round for each hand - unique round_id prevents stale card fetching
+  const { data: round, error: roundError } = await supabase
+    .from('rounds')
+    .insert({
+      game_id: gameId,
+      round_number: nextRoundNumber,
+      cards_dealt: 4,
+      status: 'betting',
+      pot: potForRound,
+      decision_deadline: deadline.toISOString(),
+      community_cards_revealed: 2,
+      community_cards: communityCards as any,
+      chucky_active: false,
+      current_turn_position: buckPosition
+    })
+    .select()
+    .single();
 
-  if (round2) {
-    console.log('[HOLM] Resetting round 2 for new hand...');
-    
-    // Delete old player cards - CRITICAL: await and verify deletion
-    const { error: deleteError, count: deleteCount } = await supabase
-      .from('player_cards')
-      .delete()
-      .eq('round_id', round2.id);
-    
-    if (deleteError) {
-      console.error('[HOLM] ERROR deleting old player cards:', deleteError);
-    } else {
-      console.log('[HOLM] Deleted old player cards, count:', deleteCount);
-    }
-
-    // Reset round 2 with fresh cards
-    await supabase
-      .from('rounds')
-      .update({
-        status: 'betting',
-        pot: potForRound,
-        decision_deadline: deadline.toISOString(),
-        community_cards_revealed: 2,
-        chucky_active: false,
-        chucky_cards: null,
-        chucky_cards_revealed: 0,
-        community_cards: communityCards as any,
-        current_turn_position: buckPosition
-      })
-      .eq('id', round2.id);
-    
-    roundId = round2.id;
-  } else {
-    console.log('[HOLM] Creating round 2 for gameplay');
-    const { data: round, error: roundError } = await supabase
-      .from('rounds')
-      .insert({
-        game_id: gameId,
-        round_number: 2,
-        cards_dealt: 4,
-        status: 'betting',
-        pot: potForRound,
-        decision_deadline: deadline.toISOString(),
-        community_cards_revealed: 2,
-        community_cards: communityCards as any,
-        chucky_active: false,
-        current_turn_position: buckPosition
-      })
-      .select()
-      .single();
-
-    if (roundError || !round) {
-      throw new Error(`Failed to create round: ${roundError?.message}`);
-    }
-    
-    roundId = round.id;
+  if (roundError || !round) {
+    throw new Error(`Failed to create round: ${roundError?.message}`);
   }
+  
+  const roundId = round.id;
 
   // Reset player decisions
   await supabase
@@ -400,12 +368,12 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       });
   }
 
-  // Update game status (DO NOT touch pot - it's already set correctly above)
+  // Update game status with the new round number
   await supabase
     .from('games')
     .update({
       status: 'in_progress',
-      current_round: 2,
+      current_round: nextRoundNumber,
       buck_position: buckPosition,
       all_decisions_in: false,
       last_round_result: null
