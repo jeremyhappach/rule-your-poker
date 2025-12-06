@@ -66,6 +66,19 @@ export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] All players decided?', allDecided);
   
   if (allDecided) {
+    // CRITICAL: Check if all_decisions_in is ALREADY true (another call beat us)
+    // This prevents multiple concurrent calls from all triggering endHolmRound
+    if (game.all_decisions_in) {
+      console.log('[HOLM CHECK] all_decisions_in already true - another call already processing, skipping');
+      return;
+    }
+    
+    // CRITICAL: Also check round status - if already processing/showdown/completed, skip
+    if (round.status === 'processing' || round.status === 'showdown' || round.status === 'completed') {
+      console.log('[HOLM CHECK] Round already in status:', round.status, '- skipping duplicate call');
+      return;
+    }
+    
     console.log('[HOLM CHECK] All players decided, setting all_decisions_in flag and calling endHolmRound');
     await supabase
       .from('games')
