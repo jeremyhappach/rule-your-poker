@@ -138,6 +138,9 @@ const Game = () => {
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
   
+  // DEBUG: Pause auto-progression for Holm games to debug stale card issues
+  const [debugHolmPaused, setDebugHolmPaused] = useState(true); // Set to true to enable debug mode
+  
   // CRITICAL: Track game state for detecting transitions without relying on realtime payload.old
   const lastKnownGameTypeRef = useRef<string | null>(null);
   const lastKnownRoundRef = useRef<number | null>(null);
@@ -1546,6 +1549,13 @@ const Game = () => {
       // Save the game state when we start the timer
       gameStateAtTimerStart.current = { awaiting: true, round: currentRound };
       
+      // DEBUG MODE: For Holm games, don't auto-proceed if debugHolmPaused is true
+      const isHolmGame = game?.game_type === 'holm-game';
+      if (isHolmGame && debugHolmPaused) {
+        console.log('[AWAITING_NEXT_ROUND] 🔧 DEBUG MODE: Auto-proceed paused. Click "Proceed to Next Round" button manually.');
+        return;
+      }
+      
       console.log('[AWAITING_NEXT_ROUND] Starting 4-second timer', {
         game_type: game?.game_type,
         current_round: currentRound,
@@ -2314,6 +2324,29 @@ const Game = () => {
     }
   };
 
+  // DEBUG: Manual proceed to next round (when debugHolmPaused is true)
+  const handleDebugProceed = async () => {
+    if (!gameId) return;
+    console.log('[DEBUG PROCEED] Manually proceeding to next round');
+    
+    try {
+      const isHolmGame = game?.game_type === 'holm-game';
+      if (isHolmGame) {
+        await proceedToNextHolmRound(gameId);
+      } else {
+        await proceedToNextRound(gameId);
+      }
+      
+      // Refetch after a short delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await fetchGameData();
+      
+      console.log('[DEBUG PROCEED] Done');
+    } catch (error) {
+      console.error('[DEBUG PROCEED] ERROR:', error);
+    }
+  };
+
 
   const handleEndSession = async () => {
     if (!gameId) return;
@@ -2508,6 +2541,12 @@ const Game = () => {
             <p className="text-muted-foreground">{gameName}</p>
             <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
             <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
+            {game.status === 'in_progress' && (
+              <p className="text-sm text-yellow-400 font-semibold">
+                Round #: {currentRound?.round_number || game.current_round || 'N/A'} | 
+                Status: {currentRound?.status || 'N/A'}
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             {game.status !== 'configuring' && (
@@ -2906,10 +2945,12 @@ const Game = () => {
             roundStatus={currentRound?.status}
             pendingDecision={pendingDecision}
             isPaused={game.is_paused || false}
+            debugHolmPaused={debugHolmPaused}
             onStay={handleStay}
             onFold={handleFold}
             onSelectSeat={handleSelectSeat}
             onRequestRefetch={fetchGameData}
+            onDebugProceed={handleDebugProceed}
           />
         )}
       </div>
