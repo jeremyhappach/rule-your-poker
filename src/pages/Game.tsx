@@ -8,12 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
 import { DealerConfig } from "@/components/DealerConfig";
+import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { DealerSelection } from "@/components/DealerSelection";
 import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
-import { GameSelection } from "@/components/GameSelection";
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
 import { VisualPreferencesProvider } from "@/hooks/useVisualPreferences";
 
@@ -1951,8 +1951,6 @@ const Game = () => {
   const selectDealer = async (dealerPosition: number) => {
     if (!gameId) return;
 
-    const dealerPlayer = players.find(p => p.position === dealerPosition);
-
     const { error } = await supabase
       .from('games')
       .update({ 
@@ -1966,15 +1964,8 @@ const Game = () => {
       return;
     }
 
-    // Make bot decision if dealer is a bot
-    if (dealerPlayer?.is_bot && gameId) {
-      // Bot immediately selects a game
-      setTimeout(() => {
-        handleGameSelection('3-5-7');
-      }, 1000);
-    }
-
     // Manual refetch to ensure UI updates immediately
+    // Bot dealers will be handled by DealerGameSetup component
     setTimeout(() => fetchGameData(), 500);
   };
 
@@ -2178,16 +2169,8 @@ const Game = () => {
     console.log('[GAME OVER] Successfully transitioned to game_selection');
 
     // Manual refetch to update UI
+    // Bot dealers will be handled automatically by DealerGameSetup component
     await fetchGameData();
-    
-    // Check if dealer is a bot and auto-select game
-    const dealerPlayer = players.find(p => p.position === gameData?.dealer_position);
-    if (dealerPlayer?.is_bot) {
-      console.log('[GAME OVER] Dealer is a bot, auto-selecting game');
-      setTimeout(() => {
-        handleGameSelection('3-5-7');
-      }, 1000);
-    }
   }, [gameId, navigate, players]);
 
   // Dealer confirms to skip countdown and go directly to game selection
@@ -2841,7 +2824,7 @@ const Game = () => {
                   }}
                 />
               </div>
-            ) : game.status === 'game_selection' ? (
+            ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
               <div className="relative">
                 <GameTable
                   players={players}
@@ -2863,44 +2846,24 @@ const Game = () => {
                   onFold={() => {}}
                   onSelectSeat={handleSelectSeat}
                 />
-                {(isDealer || dealerPlayer?.is_bot) && (
-                  <GameSelection onSelectGame={handleGameSelection} />
-                )}
-                {/* Show unified waiting message for non-dealers who are actual players (not observers) */}
-                {!isDealer && !dealerPlayer?.is_bot && players.some(p => p.user_id === user?.id) && (
-                  <DealerSettingUpGame 
-                    dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
-                  />
-                )}
-              </div>
-            ) : (
-              // Configuring phase
-              <>
-                {isDealer || dealerPlayer?.is_bot ? (
-                  <DealerConfig 
-                    gameId={gameId!} 
+                {(isDealer || dealerPlayer?.is_bot) ? (
+                  <DealerGameSetup
+                    gameId={gameId!}
                     dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
-                    gameType={game.game_type || '3-5-7'}
-                    currentAnteAmount={game.ante_amount || 2}
-                    currentLegValue={game.leg_value || 1}
-                    currentPussyTaxEnabled={game.pussy_tax_enabled ?? true}
-                    currentPussyTaxValue={game.pussy_tax_value || 1}
-                    currentLegsToWin={game.legs_to_win || 3}
-                    currentPotMaxEnabled={game.pot_max_enabled ?? true}
-                    currentPotMaxValue={game.pot_max_value || 10}
-                    currentChuckyCards={game.chucky_cards || 4}
                     onConfigComplete={handleConfigComplete}
                   />
                 ) : (
-                  // Non-dealer waiting - use unified message
-                  <DealerSettingUpGame 
-                    dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
-                  />
+                  // Non-dealer waiting message
+                  players.some(p => p.user_id === user?.id) && (
+                    <DealerSettingUpGame 
+                      dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                    />
+                  )
                 )}
-              </>
-            )}
+              </div>
+            ) : null}
           </>
         )}
 
