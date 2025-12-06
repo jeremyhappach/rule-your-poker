@@ -625,55 +625,8 @@ export const GameTable = ({
           {/* Chopped Animation - when Chucky beats you */}
           <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
           
-          {/* Result Message - displayed in center of table when available */}
-          {/* Show during: awaiting next round, completed rounds, showdowns, all decisions in, 
-              chucky active, or Holm hand description ("X has Y") */}
-          {lastRoundResult && (
-            awaitingNextRound || 
-            roundStatus === 'completed' || 
-            roundStatus === 'showdown' || 
-            allDecisionsIn || 
-            chuckyActive ||
-            (gameType === 'holm-game' && lastRoundResult.includes(' has '))
-          ) && (() => {
-            // Parse debug data from result message
-            let displayMessage = lastRoundResult;
-            let debugData: any = null;
-            
-            if (lastRoundResult.includes('|||DEBUG:')) {
-              const parts = lastRoundResult.split('|||DEBUG:');
-              displayMessage = parts[0];
-              try {
-                debugData = JSON.parse(parts[1]);
-              } catch (e) {
-                console.error('Failed to parse debug data:', e);
-              }
-            }
-            
-            return (
-              <div className={`absolute ${gameType === 'holm-game' ? 'bottom-4' : 'top-1/2 -translate-y-1/2'} left-1/2 transform -translate-x-1/2 z-30`}>
-                <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 max-w-2xl">
-                  <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center drop-shadow-lg animate-pulse">
-                    {displayMessage}
-                  </p>
-                  
-                  
-                  {/* DEBUG: Manual proceed button when debugHolmPaused is true */}
-                  {gameType === 'holm-game' && debugHolmPaused && awaitingNextRound && onDebugProceed && (
-                    <div className="mt-3 flex justify-center">
-                      <Button 
-                        onClick={onDebugProceed}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2"
-                      >
-                        🔧 Proceed to Next Round
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
+          {/* Result Message moved outside table - see below */}
+          
           {/* Pot and Timer - shown when no result message */}
           {showPotAndTimer && (
             <>
@@ -1169,8 +1122,40 @@ export const GameTable = ({
         </div>
       </div>
       
+      {/* Result Message - displayed below the felt */}
+      {lastRoundResult && (
+        awaitingNextRound || 
+        roundStatus === 'completed' || 
+        roundStatus === 'showdown' || 
+        allDecisionsIn || 
+        chuckyActive ||
+        (gameType === 'holm-game' && lastRoundResult.includes(' has '))
+      ) && (() => {
+        // Parse debug data from result message (strip it for display)
+        let displayMessage = lastRoundResult;
+        
+        if (lastRoundResult.includes('|||DEBUG:')) {
+          const parts = lastRoundResult.split('|||DEBUG:');
+          displayMessage = parts[0];
+        }
+        
+        return (
+          <div className="mt-4 flex justify-center">
+            <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 max-w-2xl">
+              <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center drop-shadow-lg animate-pulse">
+                {displayMessage}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+      
       {/* Debug Panel - Outside game table, below */}
+      {/* TEMPORARILY DISABLED - set SHOW_DEBUG_PANEL to true to re-enable */}
       {(() => {
+        const SHOW_DEBUG_PANEL = false; // Set to true to show debug panel
+        if (!SHOW_DEBUG_PANEL) return null;
+        
         if (!lastRoundResult || !lastRoundResult.includes('|||DEBUG:')) return null;
         
         const parts = lastRoundResult.split('|||DEBUG:');
