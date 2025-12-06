@@ -565,13 +565,24 @@ export const GameTable = ({
       const currentPlayer = players.find(p => p.user_id === currentUserId);
       const currentUsername = currentPlayer?.profiles?.username || '';
       
+      // Skip if we don't have a valid username to check
+      if (!currentUsername) {
+        console.log('[CHOPPED] No username for current user, skipping check');
+        return;
+      }
+      
       // Only show chopped if THIS player specifically lost to Chucky
       // Check for exact match: "Chucky beat {username}" - this is 1v1 loss
-      // Or in tie-breaker: check if username is in the losers list
-      const is1v1Loss = currentUsername && lastRoundResult.includes(`Chucky beat ${currentUsername}`);
-      const isTieBreakerLoss = currentUsername && 
-        lastRoundResult.includes('lose to Chucky') && 
-        lastRoundResult.includes(currentUsername);
+      const is1v1Loss = lastRoundResult.includes(`Chucky beat ${currentUsername} `);
+      
+      // Or in tie-breaker: check if username is in the losers list before "lose to Chucky"
+      // Format: "Tie broken by Chucky! username1 and username2 lose to Chucky's..."
+      const isTieBreakerLoss = lastRoundResult.includes('lose to Chucky') && 
+        (lastRoundResult.includes(`${currentUsername} and `) || 
+         lastRoundResult.includes(` and ${currentUsername} lose`) ||
+         lastRoundResult.includes(`! ${currentUsername} lose`));
+      
+      console.log('[CHOPPED] Check - username:', currentUsername, 'result:', lastRoundResult, 'is1v1Loss:', is1v1Loss, 'isTieBreakerLoss:', isTieBreakerLoss);
       
       if (is1v1Loss || isTieBreakerLoss) {
         lastChoppedResultRef.current = lastRoundResult;
