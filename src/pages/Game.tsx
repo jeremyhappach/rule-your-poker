@@ -1690,17 +1690,33 @@ const Game = () => {
       const keepCardsForResults = isHolmGame && gameData.awaiting_next_round && gameData.last_round_result;
       
       if (keepCards || keepCardsForResults) {
-        // CRITICAL: Fetch cards from most recent round if current_round is not set yet
-        // This fixes the race condition where cards are inserted before current_round is updated
+        // CRITICAL: For Holm games, ALWAYS fetch the most recent round by round_number DESC
+        // This prevents stale game.current_round from causing mismatched cards during evaluation
+        // The backend evaluation also uses round_number DESC, so frontend must match
         let roundData: { id: string; round_number: number; cards_dealt: number } | null = null;
         
-        if (gameData.current_round) {
+        if (isHolmGame) {
+          // HOLM: Always fetch most recent round - current_round can be stale
+          const { data } = await supabase
+            .from('rounds')
+            .select('id, round_number, cards_dealt')
+            .eq('game_id', gameId)
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          roundData = data;
+          
+          if (roundData && gameData.current_round && roundData.round_number !== gameData.current_round) {
+            console.warn('[FETCH] ⚠️ Round mismatch! game.current_round:', gameData.current_round, 'most recent round:', roundData.round_number);
+          }
+        } else if (gameData.current_round) {
+          // 3-5-7: Use current_round as it's critical for determining wild cards
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .eq('round_number', gameData.current_round)
-            .single();
+            .maybeSingle();
           roundData = data;
         } else {
           // Fallback: get the most recent round
@@ -1710,7 +1726,7 @@ const Game = () => {
             .eq('game_id', gameId)
             .order('round_number', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
           roundData = data;
           console.log('[FETCH] current_round is null, using most recent round:', roundData?.id);
         }
