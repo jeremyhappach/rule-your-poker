@@ -778,7 +778,18 @@ const Game = () => {
       currentPlayer && 
       !isCreator;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart;
+    // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
+    // and no one can make a decision. This can happen due to race conditions.
+    const latestRound = game?.rounds?.find((r: any) => r.round_number === game?.current_round);
+    const stuckHolmState = 
+      game?.game_type === 'holm-game' &&
+      game?.status === 'in_progress' &&
+      game?.all_decisions_in === true &&
+      !game?.awaiting_next_round &&
+      latestRound?.status === 'betting' &&
+      currentPlayer;
+    
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState;
     
     if (!shouldPoll) return;
     
@@ -791,16 +802,30 @@ const Game = () => {
       stuckOnGameOver,
       waitingForConfig,
       waitingForGameStart,
+      stuckHolmState,
       showAnteDialog,
       gameStatus: game?.status,
       playerCardsCount: playerCards.length
     });
     
     // Poll more frequently (250ms) for critical transitions, 500ms otherwise
-    const pollInterval = (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart) ? 250 : 500;
+    const pollInterval = (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState) ? 250 : 500;
     
-    const intervalId = setInterval(() => {
+    const intervalId = setInterval(async () => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
+      
+      // If stuck in Holm state, try to fix it by resetting all_decisions_in
+      if (stuckHolmState) {
+        console.log('[CRITICAL POLL] Detected stuck Holm state - attempting recovery');
+        // Reset all_decisions_in to allow the game to continue
+        await supabase
+          .from('games')
+          .update({ all_decisions_in: false })
+          .eq('id', gameId)
+          .eq('all_decisions_in', true)
+          .eq('awaiting_next_round', false);
+      }
+      
       fetchGameData();
     }, pollInterval);
     
@@ -808,7 +833,7 @@ const Game = () => {
       console.log('[CRITICAL POLL] Stopping polling');
       clearInterval(intervalId);
     };
-  }, [game?.status, game?.dealer_position, players, user?.id, gameId, playerCards.length, showAnteDialog]);
+  }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
   
   // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
   // More aggressive polling to prevent round desync between clients
