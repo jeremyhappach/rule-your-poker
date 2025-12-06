@@ -97,6 +97,10 @@ interface MobileGameTableProps {
   roundStatus?: string;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
+  // Game over props
+  isGameOver?: boolean;
+  isDealer?: boolean;
+  onNextGame?: () => void;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -130,6 +134,9 @@ export const MobileGameTable = ({
   roundStatus,
   pendingDecision,
   isPaused,
+  isGameOver,
+  isDealer,
+  onNextGame,
   onStay,
   onFold,
   onSelectSeat,
@@ -370,8 +377,29 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Result message - in bottom section */}
-        {lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
+        {/* Game Over state - result message with Next Game button */}
+        {isGameOver && lastRoundResult && (
+          <div className="px-4 py-3">
+            <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-base text-center mb-3">
+                {lastRoundResult.split('|||DEBUG:')[0]}
+              </p>
+              {isDealer && onNextGame ? (
+                <Button
+                  onClick={onNextGame}
+                  className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold"
+                >
+                  Next Game
+                </Button>
+              ) : (
+                <p className="text-slate-700 text-sm text-center">Waiting for dealer to proceed...</p>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Result message - in bottom section (non-game-over) */}
+        {!isGameOver && lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
           <div className="px-4 py-2">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center">

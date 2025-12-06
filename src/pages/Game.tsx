@@ -2763,34 +2763,88 @@ const Game = () => {
           <>
             {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
               <div className="relative">
-                <GameTable
-                  players={players}
-                  currentUserId={user?.id}
-                  pot={game.pot || 0}
-                  currentRound={game.current_round || 0}
-                  allDecisionsIn={true}
-                  playerCards={playerCards}
-                  timeLeft={null}
-                  lastRoundResult={null}
-                  dealerPosition={game.dealer_position}
-                  legValue={game.leg_value || 1}
-                  legsToWin={game.legs_to_win || 3}
-                  potMaxEnabled={game.pot_max_enabled ?? true}
-                  potMaxValue={game.pot_max_value || 10}
-                  pendingSessionEnd={false}
-                  awaitingNextRound={false}
-                  onStay={() => {}}
-                  onFold={() => {}}
-                  onSelectSeat={handleSelectSeat}
-                  communityCards={currentRound?.community_cards as CardType[] | undefined}
-                  communityCardsRevealed={effectiveCommunityCardsRevealed}
-                  chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
-                  chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
-                  chuckyActive={currentRound?.chucky_active}
-                  gameType={game.game_type}
-                  roundStatus={currentRound?.status}
-                />
-                {game.game_over_at ? (
+                {isMobile ? (
+                  <MobileGameTable
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={game.pot || 0}
+                    currentRound={game.current_round || 0}
+                    allDecisionsIn={true}
+                    playerCards={playerCards}
+                    timeLeft={null}
+                    lastRoundResult={game.last_round_result}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value || 1}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                    communityCards={currentRound?.community_cards as CardType[] | undefined}
+                    communityCardsRevealed={effectiveCommunityCardsRevealed}
+                    chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
+                    chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
+                    chuckyActive={currentRound?.chucky_active}
+                    gameType={game.game_type}
+                    roundStatus={currentRound?.status}
+                    isGameOver={!game.game_over_at}
+                    isDealer={isDealer || dealerPlayer?.is_bot || false}
+                    onNextGame={handleDealerConfirmGameOver}
+                  />
+                ) : (
+                  <>
+                    <GameTable
+                      players={players}
+                      currentUserId={user?.id}
+                      pot={game.pot || 0}
+                      currentRound={game.current_round || 0}
+                      allDecisionsIn={true}
+                      playerCards={playerCards}
+                      timeLeft={null}
+                      lastRoundResult={null}
+                      dealerPosition={game.dealer_position}
+                      legValue={game.leg_value || 1}
+                      legsToWin={game.legs_to_win || 3}
+                      potMaxEnabled={game.pot_max_enabled ?? true}
+                      potMaxValue={game.pot_max_value || 10}
+                      pendingSessionEnd={false}
+                      awaitingNextRound={false}
+                      onStay={() => {}}
+                      onFold={() => {}}
+                      onSelectSeat={handleSelectSeat}
+                      communityCards={currentRound?.community_cards as CardType[] | undefined}
+                      communityCardsRevealed={effectiveCommunityCardsRevealed}
+                      chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
+                      chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
+                      chuckyActive={currentRound?.chucky_active}
+                      gameType={game.game_type}
+                      roundStatus={currentRound?.status}
+                    />
+                    {game.game_over_at ? (
+                      <GameOverCountdown
+                        winnerMessage={game.last_round_result}
+                        nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
+                        onComplete={handleGameOverComplete}
+                        gameOverAt={game.game_over_at}
+                        isSessionEnded={game.status === 'session_ended'}
+                        pendingSessionEnd={game.pending_session_end || false}
+                      />
+                    ) : (
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+                        <DealerConfirmGameOver
+                          isDealer={isDealer || dealerPlayer?.is_bot || false}
+                          onConfirm={handleDealerConfirmGameOver}
+                          resultMessage={game.last_round_result}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+                {/* Mobile game over countdown */}
+                {isMobile && game.game_over_at && (
                   <GameOverCountdown
                     winnerMessage={game.last_round_result}
                     nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
@@ -2799,14 +2853,6 @@ const Game = () => {
                     isSessionEnded={game.status === 'session_ended'}
                     pendingSessionEnd={game.pending_session_end || false}
                   />
-                ) : (
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-                    <DealerConfirmGameOver
-                      isDealer={isDealer || dealerPlayer?.is_bot || false}
-                      onConfirm={handleDealerConfirmGameOver}
-                      resultMessage={game.last_round_result}
-                    />
-                  </div>
                 )}
               </div>
             ) : game.status === 'dealer_selection' ? (
