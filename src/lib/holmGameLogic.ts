@@ -183,9 +183,9 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
  * - Decision starts with buck position and rotates clockwise
  * - Uses firstHand flag: true = collect antes; false = preserve pot from showdown
  */
-export async function startHolmRound(gameId: string, isFirstHand: boolean = false) {
+export async function startHolmRound(gameId: string, isFirstHand: boolean = false, passedBuckPosition?: number) {
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
-  console.log('[HOLM] isFirstHand parameter:', isFirstHand);
+  console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
   
   // Fetch game configuration
   const { data: gameConfig } = await supabase
@@ -203,8 +203,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   const anteAmount = gameConfig.ante_amount || 2;
   const dealerPosition = gameConfig.dealer_position || 1;
   
-  // Use existing buck position or calculate for first hand
-  let buckPosition = gameConfig.buck_position;
+  // CRITICAL: Use passed buck position if provided, otherwise use existing or calculate
+  let buckPosition = passedBuckPosition ?? gameConfig.buck_position;
   
   if (!buckPosition || isFirstHand) {
     // First hand - buck starts one position to the left of dealer (counterclockwise)
@@ -229,6 +229,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       buckPosition = dealerPosition;
     }
   }
+  
+  console.log('[HOLM] Final buckPosition for round:', buckPosition);
 
   // Get all active players who aren't sitting out
   const { data: players } = await supabase
@@ -1420,7 +1422,8 @@ export async function proceedToNextHolmRound(gameId: string) {
   console.log('[HOLM NEXT] Updated total_hands to', newTotalHands);
 
   // Start new hand - NOT first hand, so preserve pot from showdown
-  await startHolmRound(gameId, false);
+  // CRITICAL: Pass the new buck position explicitly to avoid race conditions
+  await startHolmRound(gameId, false, newBuckPosition);
   
   // Clear awaiting flag
   await supabase
