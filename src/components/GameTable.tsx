@@ -1035,34 +1035,65 @@ export const GameTable = ({
                             });
                           }
                           
-                          // For 3-5-7: Show visual feedback when decision is locked or pending
+                          // For 3-5-7: Show visual feedback when decision is made
                           const is357Game = gameType === '3-5-7-game';
-                          // Show enlarged state when player has decided (either via backend lock or pending decision)
-                          const showEnlargedStay = is357Game && isCurrentUser && (pendingDecision === 'stay' || (hasPlayerDecided && playerDecision === 'stay')) && !allDecisionsIn;
-                          const showEnlargedFold = is357Game && isCurrentUser && (pendingDecision === 'fold' || (hasPlayerDecided && playerDecision === 'fold')) && !allDecisionsIn;
-                          const hideButtons357 = is357Game && (showEnlargedStay || showEnlargedFold);
+                          const myDecision = pendingDecision || (hasPlayerDecided ? playerDecision : null);
+                          const showStayFeedback = is357Game && isCurrentUser && myDecision === 'stay' && !allDecisionsIn;
+                          const showFoldFeedback = is357Game && isCurrentUser && myDecision === 'fold' && !allDecisionsIn;
                           
+                          // In 3-5-7, once you've decided, hide the other button and enlarge your choice
+                          if (is357Game && isCurrentUser && (showStayFeedback || showFoldFeedback)) {
+                            return (
+                              <>
+                                {/* Show enlarged DROPPED button if folded */}
+                                {showFoldFeedback ? (
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm"
+                                    disabled
+                                    className="text-[8px] sm:text-[10px] md:text-[12px] px-2 sm:px-3 py-1 h-auto scale-110 ring-2 ring-red-400 shadow-lg shadow-red-500/50"
+                                  >
+                                    ✓ DROPPED
+                                  </Button>
+                                ) : (
+                                  <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
+                                )}
+                                
+                                {/* Chip balance (center) */}
+                                <div className="flex items-center justify-center">
+                                  <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
+                                    ${player.chips.toLocaleString()}
+                                  </p>
+                                </div>
+                                
+                                {/* Show enlarged STAYED button if stayed */}
+                                {showStayFeedback ? (
+                                  <Button 
+                                    size="sm"
+                                    disabled
+                                    className="bg-poker-chip-green text-white text-[8px] sm:text-[10px] md:text-[12px] px-2 sm:px-3 py-1 h-auto scale-110 ring-2 ring-green-400 shadow-lg shadow-green-500/50"
+                                  >
+                                    ✓ STAYED
+                                  </Button>
+                                ) : (
+                                  <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
+                                )}
+                              </>
+                            );
+                          }
+                          
+                          // Default: show clickable buttons if canDecide
                           return (
                             <>
-                              {/* Fold/Drop button (left) - hidden if stay was chosen in 3-5-7 */}
-                              {canDecide && !showEnlargedStay ? (
+                              {/* Fold/Drop button (left) */}
+                              {canDecide ? (
                                 <Button 
                                   variant="destructive" 
                                   size="sm"
                                   onClick={onFold}
-                                  className={`text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto transition-all duration-300
-                                    ${showEnlargedFold ? 'scale-125 sm:scale-150 ring-2 ring-red-400 shadow-lg shadow-red-500/50' : ''}`}
+                                  className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
                                 >
-                                  {gameType === 'holm-game' ? 'Fold' : (showEnlargedFold ? '✓ DROPPED' : 'Drop')}
-                                </Button>
-                              ) : showEnlargedFold ? (
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm"
-                                  disabled
-                                  className="text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto scale-125 sm:scale-150 ring-2 ring-red-400 shadow-lg shadow-red-500/50"
-                                >
-                                  ✓ DROPPED
+                                  {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                                 </Button>
                               ) : (
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
@@ -1075,23 +1106,14 @@ export const GameTable = ({
                                 </p>
                               </div>
                               
-                              {/* Stay button (right) - hidden if fold was chosen in 3-5-7 */}
-                              {canDecide && !showEnlargedFold ? (
+                              {/* Stay button (right) */}
+                              {canDecide ? (
                                 <Button 
                                   size="sm"
                                   onClick={onStay}
-                                  className={`bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto transition-all duration-300
-                                    ${showEnlargedStay ? 'scale-125 sm:scale-150 ring-2 ring-green-400 shadow-lg shadow-green-500/50' : ''}`}
+                                  className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto"
                                 >
-                                  {showEnlargedStay ? '✓ STAYED' : 'Stay'}
-                                </Button>
-                              ) : showEnlargedStay ? (
-                                <Button 
-                                  size="sm"
-                                  disabled
-                                  className="bg-poker-chip-green text-white text-[7px] sm:text-[8px] md:text-[10px] px-1 sm:px-1.5 md:px-2 py-0.5 h-auto scale-125 sm:scale-150 ring-2 ring-green-400 shadow-lg shadow-green-500/50"
-                                >
-                                  ✓ STAYED
+                                  Stay
                                 </Button>
                               ) : (
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
