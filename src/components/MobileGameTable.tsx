@@ -8,9 +8,44 @@ import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { ChevronUp, ChevronDown } from "lucide-react";
+
+// Custom hook for swipe detection
+const useSwipeGesture = (onSwipeUp: () => void, onSwipeDown: () => void) => {
+  const touchStartY = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchEndY.current = null;
+    touchStartY.current = e.targetTouches[0].clientY;
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    touchEndY.current = e.targetTouches[0].clientY;
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    if (!touchStartY.current || !touchEndY.current) return;
+    
+    const distance = touchStartY.current - touchEndY.current;
+    const isSwipeUp = distance > minSwipeDistance;
+    const isSwipeDown = distance < -minSwipeDistance;
+
+    if (isSwipeUp) {
+      onSwipeUp();
+    } else if (isSwipeDown) {
+      onSwipeDown();
+    }
+    
+    touchStartY.current = null;
+    touchEndY.current = null;
+  }, [onSwipeUp, onSwipeDown]);
+
+  return { onTouchStart, onTouchMove, onTouchEnd };
+};
 
 interface Player {
   id: string;
@@ -104,6 +139,12 @@ export const MobileGameTable = ({
   
   // Collapsible card section state
   const [isCardSectionExpanded, setIsCardSectionExpanded] = useState(true);
+  
+  // Swipe gesture handlers
+  const swipeHandlers = useSwipeGesture(
+    () => setIsCardSectionExpanded(true),  // Swipe up = expand
+    () => setIsCardSectionExpanded(false)  // Swipe down = collapse
+  );
   
   // Chopped animation state
   const [showChopped, setShowChopped] = useState(false);
@@ -364,12 +405,20 @@ export const MobileGameTable = ({
         )}
       </div>
       
-      {/* Bottom section - Current player's cards and actions */}
-      <div className="flex-shrink-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border">
+      {/* Bottom section - Current player's cards and actions (swipeable) */}
+      <div 
+        className="flex-shrink-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x"
+        {...swipeHandlers}
+      >
+        {/* Swipe indicator bar */}
+        <div className="flex justify-center py-1">
+          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+        </div>
+        
         {/* Collapse toggle */}
         <button
           onClick={() => setIsCardSectionExpanded(!isCardSectionExpanded)}
-          className="w-full flex items-center justify-center py-1 text-muted-foreground hover:text-foreground transition-colors"
+          className="w-full flex items-center justify-center py-0.5 text-muted-foreground hover:text-foreground transition-colors"
         >
           {isCardSectionExpanded ? (
             <>
