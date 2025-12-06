@@ -121,6 +121,10 @@ export const GameTable = ({
   const isFetchingRef = useRef(false);
   const realtimeRoundRef = useRef<typeof realtimeRound>(null); // Ref for async closures
   
+  // CRITICAL: Track round reset hash (for Holm games where same round ID is reused)
+  // This detects when round 2 is reset for a new hand by comparing key fields
+  const lastRoundResetHashRef = useRef<string>('');
+  
   // Keep ref in sync with state
   realtimeRoundRef.current = realtimeRound;
   
@@ -229,13 +233,34 @@ export const GameTable = ({
           const newRound = payload.new as any;
           
           if (newRound?.id && newRound?.round_number) {
-            // Round changed - clear old cards immediately (use ref to avoid stale closure)
+            // CRITICAL: Generate a hash to detect Holm round resets (same round ID, new hand)
+            // In Holm games, round 2 is reused for each hand. We detect a new hand by:
+            // - Status changing TO 'betting' (indicates fresh hand setup)
+            // - community_cards changing (new cards dealt)
+            // - chucky_active becoming false (reset from previous showdown)
+            const communityCardsHash = JSON.stringify(newRound.community_cards || []);
+            const roundResetHash = `${newRound.id}-${newRound.status}-${communityCardsHash}-${newRound.chucky_active}`;
+            
+            // Check if this is a round reset (same ID but different state = new Holm hand)
             const currentRealtimeRound = realtimeRoundRef.current;
-            if (!currentRealtimeRound || currentRealtimeRound.id !== newRound.id) {
-              console.log('[GAMETABLE RT] 🔄 NEW ROUND DETECTED - clearing old cards');
+            const isNewRoundId = !currentRealtimeRound || currentRealtimeRound.id !== newRound.id;
+            const isRoundReset = lastRoundResetHashRef.current !== '' && 
+                                 lastRoundResetHashRef.current !== roundResetHash &&
+                                 newRound.status === 'betting'; // Only treat as reset when back to betting
+            
+            if (isNewRoundId || isRoundReset) {
+              console.log('[GAMETABLE RT] 🔄 NEW ROUND/HAND DETECTED - clearing old cards', {
+                isNewRoundId,
+                isRoundReset,
+                oldHash: lastRoundResetHashRef.current.slice(0, 50),
+                newHash: roundResetHash.slice(0, 50)
+              });
               setLocalPlayerCards([]);
               lastFetchedRoundIdRef.current = null;
             }
+            
+            // Update the reset hash
+            lastRoundResetHashRef.current = roundResetHash;
             
             // Update round state
             setRealtimeRound({
@@ -247,7 +272,7 @@ export const GameTable = ({
             
             // Fetch cards for new round (with small delay to ensure cards are inserted)
             setTimeout(async () => {
-              if (newRound.id !== lastFetchedRoundIdRef.current) {
+              if (newRound.id !== lastFetchedRoundIdRef.current || isRoundReset) {
                 await fetchCardsForRound(newRound.id, newRound.round_number);
               }
             }, 100);
