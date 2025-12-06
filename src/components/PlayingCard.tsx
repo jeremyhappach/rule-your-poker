@@ -1,0 +1,163 @@
+import { Card as CardType } from "@/lib/cardUtils";
+import { Card } from "@/components/ui/card";
+import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import bullsLogo from '@/assets/bulls-logo.png';
+import bearsLogo from '@/assets/bears-logo.png';
+import cubsLogo from '@/assets/cubs-logo.png';
+import hawksLogo from '@/assets/hawks-logo.png';
+
+const TEAM_LOGOS: Record<string, string> = {
+  bulls: bullsLogo,
+  bears: bearsLogo,
+  cubs: cubsLogo,
+  hawks: hawksLogo,
+};
+
+export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
+
+interface PlayingCardProps {
+  card?: CardType;
+  isHidden?: boolean;
+  size?: CardSize;
+  showFront?: boolean;
+  isFlipping?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  borderColor?: string;
+}
+
+const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
+  sm: {
+    container: 'w-7 h-10 sm:w-8 sm:h-11',
+    rank: 'text-base sm:text-lg font-black',
+    suit: 'text-lg sm:text-xl',
+  },
+  md: {
+    container: 'w-8 h-11 sm:w-9 sm:h-12',
+    rank: 'text-lg sm:text-xl font-black',
+    suit: 'text-xl sm:text-2xl',
+  },
+  lg: {
+    container: 'w-9 h-12 sm:w-10 sm:h-14',
+    rank: 'text-xl sm:text-2xl font-black',
+    suit: 'text-2xl sm:text-3xl',
+  },
+  xl: {
+    container: 'w-10 h-14 sm:w-11 sm:h-15',
+    rank: 'text-2xl sm:text-3xl font-black',
+    suit: 'text-3xl sm:text-4xl',
+  },
+};
+
+export const PlayingCard = ({
+  card,
+  isHidden = false,
+  size = 'lg',
+  showFront = true,
+  isFlipping = false,
+  className = '',
+  style = {},
+  borderColor = 'border-gray-300',
+}: PlayingCardProps) => {
+  const { getCardBackColors, getCardBackId } = useVisualPreferences();
+  const cardBackColors = getCardBackColors();
+  const cardBackId = getCardBackId();
+  const teamLogo = TEAM_LOGOS[cardBackId] || null;
+  
+  const sizeClasses = SIZE_CLASSES[size];
+  const suitColor = card && (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-black';
+  
+  // If hidden or no card, show card back
+  if (isHidden || !card) {
+    return (
+      <div
+        className={`${sizeClasses.container} rounded border-2 border-amber-400 shadow-xl relative overflow-hidden ${className}`}
+        style={{ 
+          background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+          ...style,
+        }}
+      >
+        <div className="absolute inset-0 flex items-center justify-center p-1">
+          {teamLogo ? (
+            <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
+          ) : (
+            <div className="w-6 h-10 border-2 border-amber-400/30 rounded" />
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  // For flip animation support
+  if (isFlipping !== undefined && !showFront) {
+    return (
+      <div
+        className={`${sizeClasses.container} relative ${className}`}
+        style={{ 
+          transformStyle: 'preserve-3d',
+          transition: isFlipping ? 'transform 1.2s ease-in-out' : 'none',
+          transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          ...style,
+        }}
+      >
+        {/* Card Back */}
+        <Card 
+          className={`absolute inset-0 w-full h-full flex items-center justify-center ${borderColor} shadow-lg`}
+          style={{
+            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+            backfaceVisibility: 'hidden',
+            transform: showFront ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}
+        >
+          <div className="w-full h-full flex items-center justify-center p-0.5">
+            {teamLogo ? (
+              <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
+            ) : (
+              <div className="text-poker-gold text-2xl font-bold opacity-30">?</div>
+            )}
+          </div>
+        </Card>
+        
+        {/* Card Front */}
+        <Card 
+          className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-0 ${borderColor} shadow-lg`}
+          style={{
+            backgroundColor: 'white',
+            backfaceVisibility: 'hidden',
+            transform: showFront ? 'rotateY(0deg)' : 'rotateY(-180deg)',
+          }}
+        >
+          <span className={`${sizeClasses.rank} leading-none ${suitColor}`}>
+            {card.rank}
+          </span>
+          <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${suitColor}`}>
+            {card.suit}
+          </span>
+        </Card>
+      </div>
+    );
+  }
+  
+  // Standard face-up card
+  return (
+    <Card
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 bg-white shadow-xl ${borderColor} ${className}`}
+      style={style}
+    >
+      <span className={`${sizeClasses.rank} leading-none ${suitColor}`}>
+        {card.rank}
+      </span>
+      <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${suitColor}`}>
+        {card.suit}
+      </span>
+    </Card>
+  );
+};
+
+// Helper to determine size based on card count
+export const getCardSize = (cardCount: number): CardSize => {
+  if (cardCount >= 7) return 'sm';
+  if (cardCount >= 5) return 'md';
+  if (cardCount >= 4) return 'lg';
+  return 'xl';
+};

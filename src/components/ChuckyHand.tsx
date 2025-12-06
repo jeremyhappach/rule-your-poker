@@ -1,18 +1,6 @@
 import { Card as CardType } from "@/lib/cardUtils";
-import { Card } from "@/components/ui/card";
-import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import { PlayingCard } from "@/components/PlayingCard";
 import { useState, useEffect, useRef } from "react";
-import bullsLogo from '@/assets/bulls-logo.png';
-import bearsLogo from '@/assets/bears-logo.png';
-import cubsLogo from '@/assets/cubs-logo.png';
-import hawksLogo from '@/assets/hawks-logo.png';
-
-const TEAM_LOGOS: Record<string, string> = {
-  bulls: bullsLogo,
-  bears: bearsLogo,
-  cubs: cubsLogo,
-  hawks: hawksLogo,
-};
 
 interface ChuckyHandProps {
   cards: CardType[];
@@ -23,30 +11,21 @@ interface ChuckyHandProps {
 }
 
 export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: ChuckyHandProps) => {
-  const { getCardBackColors, getCardBackId } = useVisualPreferences();
-  const cardBackColors = getCardBackColors();
-  const cardBackId = getCardBackId();
-  const teamLogo = TEAM_LOGOS[cardBackId] || null;
-  
-  // Track which cards are currently flipping and have flipped
   const [flippingCards, setFlippingCards] = useState<Set<number>>(new Set());
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const prevRevealedRef = useRef(revealed);
   const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   
   useEffect(() => {
-    // Clear any pending timeouts
     flipTimeoutsRef.current.forEach(t => clearTimeout(t));
     flipTimeoutsRef.current = [];
     
-    // Check if revealed count increased (new cards being revealed)
     if (revealed > prevRevealedRef.current) {
       const newlyRevealed: number[] = [];
       for (let i = prevRevealedRef.current; i < revealed; i++) {
         newlyRevealed.push(i);
       }
       
-      // Stagger the flip animations - last card has 1.5s delay
       newlyRevealed.forEach((cardIndex, i) => {
         const isLastCard = i === newlyRevealed.length - 1 && newlyRevealed.length > 1;
         const delay = isLastCard ? 1500 : i * 200;
@@ -76,7 +55,6 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
     prevRevealedRef.current = revealed;
   }, [revealed]);
   
-  // Reset when cards change
   useEffect(() => {
     flipTimeoutsRef.current.forEach(t => clearTimeout(t));
     flipTimeoutsRef.current = [];
@@ -112,56 +90,43 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             const isFlipping = flippingCards.has(index);
             const hasFlipped = flippedCards.has(index);
             const showFront = hasFlipped || (isRevealed && !isFlipping && index < prevRevealedRef.current);
-            const suitColor = (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-gray-900';
             
             return (
               <div
                 key={index}
-                className="w-8 h-12 sm:w-9 sm:h-13 md:w-10 md:h-14 relative"
+                className="w-9 h-12 sm:w-10 sm:h-14 relative"
                 style={{ 
                   transformStyle: 'preserve-3d',
                   transition: isFlipping ? 'transform 1.2s ease-in-out' : 'none',
                   transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
                 }}
               >
-                {/* Card Back */}
-                <Card 
-                  className="absolute inset-0 w-full h-full flex items-center justify-center border border-red-500 shadow-md"
+                <PlayingCard
+                  card={card}
+                  size="lg"
+                  isHidden={!showFront}
+                  showFront={showFront}
+                  isFlipping={isFlipping}
+                  borderColor="border-red-500"
+                  className="absolute inset-0"
                   style={{
-                    background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                    backfaceVisibility: 'hidden',
-                    transform: showFront ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                  }}
-                >
-                  <div className="w-full h-full flex items-center justify-center p-0.5">
-                    {teamLogo ? (
-                      <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
-                    ) : (
-                      <div className="text-poker-gold text-lg font-bold opacity-30">
-                        ?
-                      </div>
-                    )}
-                  </div>
-                </Card>
-                
-                {/* Card Front */}
-                <Card 
-                  className="absolute inset-0 w-full h-full flex items-center justify-center border border-red-500 shadow-md"
-                  style={{
-                    backgroundColor: 'white',
                     backfaceVisibility: 'hidden',
                     transform: showFront ? 'rotateY(0deg)' : 'rotateY(-180deg)',
+                    transition: 'transform 1.2s ease-in-out',
                   }}
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    <div className={`text-sm sm:text-base md:text-lg font-bold ${suitColor}`}>
-                      {card.rank}
-                    </div>
-                    <div className={`text-xs sm:text-sm md:text-base ${suitColor}`}>
-                      {card.suit}
-                    </div>
-                  </div>
-                </Card>
+                />
+                {!showFront && (
+                  <PlayingCard
+                    isHidden
+                    size="lg"
+                    borderColor="border-red-500"
+                    className="absolute inset-0"
+                    style={{
+                      backfaceVisibility: 'hidden',
+                      transform: showFront ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    }}
+                  />
+                )}
               </div>
             );
           })}
