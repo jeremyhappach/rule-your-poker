@@ -564,6 +564,25 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
+  // CRITICAL FIX: Fetch ALL player cards NOW, BEFORE any delays or status changes
+  // This prevents race conditions where cards get deleted/modified during delays
+  console.log('[HOLM END] ⚠️ FETCHING ALL PLAYER CARDS IMMEDIATELY (before any delays) ⚠️');
+  const { data: allPlayerCardsData, error: cardsError } = await supabase
+    .from('player_cards')
+    .select('*, players!inner(*, profiles(username))')
+    .eq('round_id', round.id);
+  
+  if (cardsError) {
+    console.error('[HOLM END] ERROR fetching player cards:', cardsError);
+  }
+  
+  console.log('[HOLM END] Cached player cards count:', allPlayerCardsData?.length || 0);
+  allPlayerCardsData?.forEach(pc => {
+    const playerData = pc.players as any;
+    const cards = pc.cards as any[];
+    console.log(`[HOLM END] Cached cards for ${playerData?.profiles?.username}: ${cards?.map((c: any) => `${c.rank}${c.suit}`).join(' ')}`);
+  });
+
   const stayedPlayers = players.filter(p => p.current_decision === 'stay');
   const activePlayers = players.filter(p => p.status === 'active' && !p.sitting_out);
 
@@ -841,7 +860,9 @@ export async function endHolmRound(gameId: string) {
   
   // Use round.pot as the authoritative pot value (game.pot may be stale)
   const roundPot = round.pot || game.pot || 0;
-  await handleMultiPlayerShowdown(gameId, capturedRoundId, stayedPlayers, communityCards, game, roundPot);
+  
+  // CRITICAL: Pass the cached cards (fetched at START of endHolmRound) to avoid race conditions
+  await handleMultiPlayerShowdown(gameId, capturedRoundId, stayedPlayers, communityCards, game, roundPot, allPlayerCardsData || []);
 }
 
 /**
@@ -1084,6 +1105,7 @@ async function handleChuckyShowdown(
 
 /**
  * Handle showdown between multiple players
+ * CRITICAL: cachedPlayerCards is fetched at START of endHolmRound to prevent race conditions
  */
 async function handleMultiPlayerShowdown(
   gameId: string,
@@ -1091,14 +1113,21 @@ async function handleMultiPlayerShowdown(
   stayedPlayers: any[],
   communityCards: Card[],
   game: any,
-  roundPot: number
+  roundPot: number,
+  cachedPlayerCards: any[]  // Cards fetched BEFORE any delays in endHolmRound
 ) {
   console.log('[HOLM MULTI] ========== handleMultiPlayerShowdown ==========');
   console.log('[HOLM MULTI] gameId:', gameId);
   console.log('[HOLM MULTI] roundId:', roundId);
   console.log('[HOLM MULTI] PASSED stayedPlayers count:', stayedPlayers.length);
+  console.log('[HOLM MULTI] CACHED player cards count:', cachedPlayerCards.length);
   stayedPlayers.forEach(p => {
     console.log(`[HOLM MULTI] PASSED Stayed player: ${p.profiles?.username} | ID: ${p.id} | position: ${p.position}`);
+  });
+  cachedPlayerCards.forEach(pc => {
+    const playerData = pc.players as any;
+    const cards = pc.cards as any[];
+    console.log(`[HOLM MULTI] CACHED cards for ${playerData?.profiles?.username}: ${cards?.map((c: any) => `${c.rank}${c.suit}`).join(' ')}`);
   });
   console.log('[HOLM MULTI] roundPot:', roundPot, 'game.pot:', game.pot);
 
@@ -1114,41 +1143,20 @@ async function handleMultiPlayerShowdown(
   console.log('[HOLM MULTI] Waiting 3 seconds for players to see final hands...');
   await new Promise(resolve => setTimeout(resolve, 3000));
 
-  console.log('[HOLM MULTI] Evaluating hands...');
+  console.log('[HOLM MULTI] Evaluating hands using CACHED cards (fetched before delays)...');
 
-  // CRITICAL FIX: Instead of relying on passed-in stayedPlayers (which may have stale IDs),
-  // we derive the "who stayed" list directly from player_cards for THIS round.
-  // This guarantees we use the correct player_id values that match the cards.
-  console.log('[HOLM MULTI] Fetching ALL player cards for round:', roundId);
-  const { data: allCardsForRound, error: allCardsError } = await supabase
-    .from('player_cards')
-    .select('*, players!inner(*, profiles(username))')
-    .eq('round_id', roundId);
+  // CRITICAL: Use cachedPlayerCards passed from endHolmRound (fetched BEFORE any delays)
+  // This eliminates race conditions where cards could be modified/deleted during delays
+  const cardsOfStayedPlayers = cachedPlayerCards;
   
-  if (allCardsError) {
-    console.error('[HOLM MULTI] ERROR fetching all cards for round:', allCardsError);
-  }
-  
-  console.log('[HOLM MULTI] All cards for round:', allCardsForRound?.map(pc => ({
-    player_id: pc.player_id,
-    username: (pc.players as any)?.profiles?.username,
-    cards_count: (pc.cards as any[])?.length,
-    cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`)
-  })));
-  
-  // CRITICAL: Use ALL player cards for this round - don't filter by current_decision
-  // This function is ONLY called when multiple players stayed (verified by caller)
-  // Filtering by current_decision is unreliable due to race conditions resetting it
-  const cardsOfStayedPlayers = allCardsForRound || [];
-  
-  console.log('[HOLM MULTI] Using ALL cards for round (no filtering):', cardsOfStayedPlayers.length);
+  console.log('[HOLM MULTI] Using CACHED cards for evaluation:', cardsOfStayedPlayers.length);
   cardsOfStayedPlayers.forEach(pc => {
     const playerData = pc.players as any;
-    console.log(`[HOLM MULTI] Stayed (via cards): ${playerData?.profiles?.username} | ID: ${pc.player_id} | decision: ${playerData?.current_decision}`);
+    const cards = pc.cards as any[];
+    console.log(`[HOLM MULTI] Player ${playerData?.profiles?.username} | ID: ${pc.player_id} | Cards: ${cards?.map((c: any) => `${c.rank}${c.suit}`).join(' ')}`);
   });
-  
-  // ALSO fetch prior round cards for debugging - helps identify stale card issues
-  // Get the current round number first
+
+  // Get current round number for debug data
   const { data: currentRoundData } = await supabase
     .from('rounds')
     .select('round_number')
@@ -1156,30 +1164,6 @@ async function handleMultiPlayerShowdown(
     .single();
   
   const currentRoundNumber = currentRoundData?.round_number || 0;
-  let priorRoundCards: any[] = [];
-  
-  if (currentRoundNumber > 1) {
-    const { data: priorRound } = await supabase
-      .from('rounds')
-      .select('id')
-      .eq('game_id', gameId)
-      .eq('round_number', currentRoundNumber - 1)
-      .single();
-    
-    if (priorRound) {
-      const { data: priorCards } = await supabase
-        .from('player_cards')
-        .select('*, players!inner(profiles(username))')
-        .eq('round_id', priorRound.id);
-      
-      priorRoundCards = priorCards || [];
-      console.log('[HOLM MULTI] Prior round cards for debugging:', priorRoundCards.map(pc => ({
-        player_id: pc.player_id,
-        username: pc.players?.profiles?.username,
-        cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`)
-      })));
-    }
-  }
 
   // CRITICAL: Use cardsOfStayedPlayers (derived from player_cards join) instead of passed-in stayedPlayers
   // This ensures player_id values match exactly with the cards stored for this round
@@ -1335,19 +1319,11 @@ async function handleMultiPlayerShowdown(
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
     
     // Build debug data object to embed in result message
-    // Include prior round cards to help diagnose stale card issues
-    const priorRoundDebug = priorRoundCards.map(pc => ({
-      playerId: pc.player_id,
-      username: pc.players?.profiles?.username || 'unknown',
-      cards: (pc.cards as any[])?.map((c: any) => `${c.rank}${c.suit}`).join(' ') || '(none)'
-    }));
-    
     const debugData = {
       roundId: roundId,
       roundNumber: currentRoundNumber,
       communityCards: communityCards.map(c => `${c.rank}${c.suit}`).join(' '),
       evaluations: debugEvaluations,
-      priorRoundCards: priorRoundDebug,
       winnerId: winner.player.id,
       winnerName: winnerUsername,
       maxValue: maxValue
