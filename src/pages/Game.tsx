@@ -2558,11 +2558,6 @@ const Game = () => {
             <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
           </div>
           <div className="flex gap-2">
-            {game.status !== 'configuring' && (
-              <Badge variant={game.status === 'in_progress' ? 'default' : 'secondary'}>
-                {game.status === 'in_progress' ? 'In Progress' : game.status}
-              </Badge>
-            )}
             {game.status === 'in_progress' && (
               <div className="flex flex-col items-end gap-1">
                 {isCreator && (
