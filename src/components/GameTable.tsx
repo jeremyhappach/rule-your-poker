@@ -510,8 +510,16 @@ export const GameTable = ({
             if (gameType === 'holm-game') {
               cardsAreValidForCurrentRound = isValidCardCountForHolm;
             } else {
-              // 3-5-7: STRICT match - only show cards if they match the realtime round's expected count
-              cardsAreValidForCurrentRound = cardsMatchExpectedCount && effectiveRoundNumber > 0;
+              // 3-5-7: For current user, show their cards even if count doesn't perfectly match
+              // (prevents showing card backs during sync delays)
+              // For other players, we don't have their cards anyway (RLS blocks them)
+              if (isCurrentUser && rawCards.length > 0) {
+                // Current user: show cards if they have ANY cards and round is active
+                cardsAreValidForCurrentRound = effectiveRoundNumber > 0;
+              } else {
+                // Other players: strict match (though RLS means this rarely matters)
+                cardsAreValidForCurrentRound = cardsMatchExpectedCount && effectiveRoundNumber > 0;
+              }
             }
             
             // Show cards ONLY when they match the current realtime round
