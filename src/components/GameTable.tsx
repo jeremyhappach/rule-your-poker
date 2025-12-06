@@ -903,7 +903,7 @@ export const GameTable = ({
                           {player.sitting_out && (
                             <span className="text-red-400">
                               {' '}(Out{player.sitting_out_hands !== undefined && player.sitting_out_hands > 0 
-                                ? ` - ${20 - player.sitting_out_hands} left` 
+                                ? ` - ${14 - player.sitting_out_hands} left` 
                                 : ''})
                             </span>
                           )}

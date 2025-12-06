@@ -2279,13 +2279,13 @@ const Game = () => {
     console.log('[ANTE] Anted players (from DB):', antedPlayers.length, 'Sitting out:', sittingOutPlayers.length, 'Total players:', freshPlayers.length);
 
     // Increment sitting_out_hands for players who are sitting out
-    // Remove players who have been sitting out for 20+ consecutive hands
+    // Remove players who have been sitting out for 14+ consecutive games
     for (const player of sittingOutPlayers) {
       const newSittingOutHands = (player.sitting_out_hands || 0) + 1;
       
-      if (newSittingOutHands >= 20) {
+      if (newSittingOutHands >= 14) {
         // Remove the player from the game
-        console.log(`[ANTE] Removing player ${player.id} (${player.position}) after 20 consecutive hands sitting out`);
+        console.log(`[ANTE] Removing player ${player.id} (${player.position}) after 14 consecutive games sitting out`);
         await supabase
           .from('players')
           .delete()
