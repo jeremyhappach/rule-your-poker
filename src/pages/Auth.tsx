@@ -110,7 +110,7 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Peoria Home Game Poker</CardTitle>
+          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</CardTitle>
           <CardDescription>Sign in to play online multiplayer poker</CardDescription>
         </CardHeader>
         <CardContent>

@@ -2552,7 +2552,7 @@ const Game = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Peoria Home Game Poker</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
             <p className="text-muted-foreground">{gameName}</p>
             <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
             <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>

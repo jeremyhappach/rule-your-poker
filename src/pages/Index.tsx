@@ -210,7 +210,7 @@ const Index = () => {
     <div className="min-h-screen p-4 bg-background">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <h1 className="text-2xl sm:text-4xl font-bold">Peoria Home Game Poker</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
           <div className="flex gap-2">
             <Button 
               variant="outline" 
