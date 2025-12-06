@@ -2026,6 +2026,32 @@ const Game = () => {
 
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
 
+    // CRITICAL: Delete all old rounds and player_cards from the previous game
+    // This prevents stale round_number accumulation across game types
+    console.log('[GAME OVER] Deleting old rounds and cards from previous game');
+    
+    // First delete player_cards (they reference rounds)
+    const { data: oldRounds } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId);
+    
+    if (oldRounds && oldRounds.length > 0) {
+      const oldRoundIds = oldRounds.map(r => r.id);
+      await supabase
+        .from('player_cards')
+        .delete()
+        .in('round_id', oldRoundIds);
+      
+      // Then delete the rounds themselves
+      await supabase
+        .from('rounds')
+        .delete()
+        .eq('game_id', gameId);
+      
+      console.log('[GAME OVER] Deleted', oldRounds.length, 'old rounds and their cards');
+    }
+
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
     console.log('[GAME OVER] Resetting player states for new game');
