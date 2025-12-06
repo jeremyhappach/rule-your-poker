@@ -1120,6 +1120,7 @@ async function handleMultiPlayerShowdown(
   console.log('[HOLM MULTI] ========== HAND EVALUATIONS (RAW DATA) ==========');
   console.log('[HOLM MULTI] Community cards RAW:', JSON.stringify(communityCards));
   console.log('[HOLM MULTI] Community cards:', communityCards.map(c => `${c.rank}${c.suit}`).join(' '));
+  console.log('[HOLM MULTI] Community cards count:', communityCards.length);
   
   evaluations.forEach(e => {
     const playerName = e.player.profiles?.username || e.player.user_id;
@@ -1129,7 +1130,9 @@ async function handleMultiPlayerShowdown(
     
     console.log(`[HOLM MULTI] ---------- ${playerName} ----------`);
     console.log(`[HOLM MULTI] Player cards RAW:`, JSON.stringify(e.cards));
+    console.log(`[HOLM MULTI] Player cards count:`, e.cards.length);
     console.log(`[HOLM MULTI] Player cards: ${playerCardStr}`);
+    console.log(`[HOLM MULTI] All cards count:`, allCards.length);
     console.log(`[HOLM MULTI] All cards: ${allCardStr}`);
     console.log(`[HOLM MULTI] ${playerName} STORED EVAL: rank=${e.evaluation.rank}, value=${e.evaluation.value}`);
     
