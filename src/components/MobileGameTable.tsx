@@ -234,7 +234,7 @@ export const MobileGameTable = ({
             ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
           `}>
             <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-              ${player.chips}
+              {player.chips}
             </span>
           </div>
         </MobilePlayerTimer>
@@ -260,27 +260,25 @@ export const MobileGameTable = ({
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden">
-      {/* Minimal top bar - just essential info */}
-      <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-0.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Lose:</span>
-            <span className="text-sm font-bold text-destructive">${loseAmount}</span>
+      {/* Minimal top bar - only status badges */}
+      {(pendingSessionEnd || isPaused) && (
+        <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-0.5">
+          <div className="flex items-center justify-center gap-2">
+            {pendingSessionEnd && (
+              <Badge variant="destructive" className="text-[9px] px-1.5 py-0.5">LAST HAND</Badge>
+            )}
+            {isPaused && (
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
+            )}
           </div>
-          {pendingSessionEnd && (
-            <Badge variant="destructive" className="text-[9px] px-1.5 py-0.5">LAST HAND</Badge>
-          )}
-          {isPaused && (
-            <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
-          )}
         </div>
-      </div>
+      )}
       
-      {/* Main table area - tighter, less empty space */}
-      <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '45vh' }}>
-        {/* Table felt background - tighter padding */}
+      {/* Main table area - horizontal orientation, shorter height */}
+      <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '35vh' }}>
+        {/* Table felt background - wide horizontal ellipse */}
         <div 
-          className="absolute inset-x-1 inset-y-0 rounded-[40%/50%] border-2 border-amber-900 shadow-inner"
+          className="absolute inset-x-0 inset-y-2 rounded-[50%/40%] border-2 border-amber-900 shadow-inner"
           style={{
             background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
             boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
@@ -290,16 +288,16 @@ export const MobileGameTable = ({
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
-        {/* Pot display - just value, no label */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10">
-          <div className="bg-black/70 backdrop-blur-sm rounded-full px-5 py-1.5 border border-poker-gold/60">
-            <span className="text-poker-gold font-bold text-xl">${pot}</span>
+        {/* Pot display - directly above community cards */}
+        <div className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-black/70 backdrop-blur-sm rounded-full px-4 py-1 border border-poker-gold/60">
+            <span className="text-poker-gold font-bold text-lg">${pot}</span>
           </div>
         </div>
         
-        {/* Community Cards - centered, MUCH LARGER */}
+        {/* Community Cards - centered, MASSIVE, can overlap */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-110">
+          <div className="absolute top-[45%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-150">
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
@@ -307,9 +305,9 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Chucky's Hand - MUCH LARGER */}
+        {/* Chucky's Hand - MASSIVE */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 scale-110">
+          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10 scale-125">
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
