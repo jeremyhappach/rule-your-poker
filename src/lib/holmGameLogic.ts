@@ -90,9 +90,24 @@ export async function checkHolmRoundComplete(gameId: string) {
     }
   } else {
     // Check if current player has decided - if so, move to next player's turn
-    const currentPlayer = players.find(p => p.position === round.current_turn_position);
-    if (currentPlayer?.decision_locked && currentPlayer.current_decision !== null) {
-      console.log('[HOLM CHECK] Current player decided, moving to next turn');
+    // CRITICAL: Re-fetch the current player's state to ensure we have fresh data
+    const { data: freshCurrentPlayer } = await supabase
+      .from('players')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('position', round.current_turn_position)
+      .eq('status', 'active')
+      .eq('sitting_out', false)
+      .maybeSingle();
+    
+    console.log('[HOLM CHECK] Fresh current player data:', {
+      position: freshCurrentPlayer?.position,
+      decision_locked: freshCurrentPlayer?.decision_locked,
+      current_decision: freshCurrentPlayer?.current_decision
+    });
+    
+    if (freshCurrentPlayer?.decision_locked && freshCurrentPlayer.current_decision !== null) {
+      console.log('[HOLM CHECK] Current player decided, moving to next turn from position', round.current_turn_position);
       await moveToNextHolmPlayerTurn(gameId);
     } else {
       console.log('[HOLM CHECK] Waiting for player at position', round.current_turn_position, 'to decide');
