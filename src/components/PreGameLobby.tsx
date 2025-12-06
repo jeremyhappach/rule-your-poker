@@ -47,87 +47,58 @@ export const PreGameLobby = ({
         <p className="text-amber-300/60 text-sm">Waiting for players to join...</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Player List Box */}
-        <Card className="bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/50 shadow-xl shadow-amber-900/20 backdrop-blur-sm">
-          <CardHeader className="border-b border-amber-700/30 pb-4">
-            <CardTitle className="flex items-center gap-2 text-amber-400">
-              <Users className="w-5 h-5" />
-              Players ({players.length}/7)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="space-y-3">
-              {players.map((player) => (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-950/40 to-amber-900/20 rounded-lg border border-amber-700/40 hover:border-amber-500/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
-                      <span className="text-black font-bold text-sm">
-                        {player.position}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-amber-100 font-semibold">
-                        {player.profiles?.username || `Player ${player.position}`}
-                      </p>
-                      {player.position === 1 && (
-                        <Crown className="w-4 h-4 text-amber-400" />
-                      )}
-                      {player.user_id === currentUserId && (
-                        <Badge variant="secondary" className="text-xs bg-amber-500 text-black border-0 font-bold">
-                          You
-                        </Badge>
-                      )}
-                    </div>
+      {/* Player List Box */}
+      <Card className="max-w-lg mx-auto bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/50 shadow-xl shadow-amber-900/20 backdrop-blur-sm">
+        <CardHeader className="border-b border-amber-700/30 pb-4">
+          <CardTitle className="flex items-center gap-2 text-amber-400">
+            <Users className="w-5 h-5" />
+            Players ({players.length}/7)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="space-y-3">
+            {players.map((player) => (
+              <div
+                key={player.id}
+                className="flex items-center justify-between p-3 bg-gradient-to-r from-amber-950/40 to-amber-900/20 rounded-lg border border-amber-700/40 hover:border-amber-500/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
+                    <span className="text-black font-bold text-sm">
+                      {player.position}
+                    </span>
                   </div>
-                  {player.is_bot && (
-                    <Badge className="bg-purple-600/80 text-white border-0 shadow-md">
-                      <Bot className="w-3 h-3 mr-1" />
-                      Bot
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <p className="text-amber-100 font-semibold">
+                      {player.profiles?.username || `Player ${player.position}`}
+                    </p>
+                    {player.position === 1 && (
+                      <Crown className="w-4 h-4 text-amber-400" />
+                    )}
+                    {player.user_id === currentUserId && (
+                      <Badge variant="secondary" className="text-xs bg-amber-500 text-black border-0 font-bold">
+                        You
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              ))}
-              {players.length < 7 && (
-                <div className="text-center py-6 text-amber-400/40 text-sm border-2 border-dashed border-amber-700/30 rounded-lg">
-                  <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                  Waiting for more players...
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Game Info Box */}
-        <Card className="bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/50 shadow-xl shadow-amber-900/20 backdrop-blur-sm">
-          <CardHeader className="border-b border-amber-700/30 pb-4">
-            <CardTitle className="flex items-center gap-2 text-amber-400">
-              <Spade className="w-5 h-5" />
-              Game Setup
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="space-y-4">
-              <div className="text-center py-8 px-4">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-400/20 to-amber-600/20 flex items-center justify-center border border-amber-500/30">
-                  <Spade className="w-8 h-8 text-amber-400" />
-                </div>
-                <p className="text-amber-100/80 text-sm leading-relaxed">
-                  Once the game starts, the <span className="text-amber-400 font-semibold">dealer</span> will select the game type and configure all game rules including ante, betting limits, and win conditions.
-                </p>
+                {player.is_bot && (
+                  <Badge className="bg-purple-600/80 text-white border-0 shadow-md">
+                    <Bot className="w-3 h-3 mr-1" />
+                    Bot
+                  </Badge>
+                )}
               </div>
-              <div className="pt-4 border-t border-amber-700/30">
-                <p className="text-xs text-amber-400/60 text-center font-medium tracking-wide uppercase">
-                  Dealer Call-It Home Game Poker
-                </p>
+            ))}
+            {players.length < 7 && (
+              <div className="text-center py-6 text-amber-400/40 text-sm border-2 border-dashed border-amber-700/30 rounded-lg">
+                <Users className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                Waiting for more players...
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Action Buttons */}
       {isCreator && (
