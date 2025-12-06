@@ -219,7 +219,7 @@ export const MobileGameTable = ({
     const cards = playerCardsData?.cards || [];
     
     return (
-      <div key={player.id} className="flex flex-col items-center gap-0.5">
+      <div key={player.id} className="flex flex-col items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg p-1.5">
         <MobilePlayerTimer
           timeLeft={timeLeft}
           maxTime={maxTime}
@@ -227,13 +227,13 @@ export const MobileGameTable = ({
           size={52}
         >
           <div className={`
-            w-12 h-12 rounded-full flex flex-col items-center justify-center
-            ${playerDecision === 'fold' ? 'bg-muted/80 opacity-50' : 'bg-amber-900/90'}
+            w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-amber-700/60
+            ${playerDecision === 'fold' ? 'bg-slate-700/80 opacity-50' : 'bg-amber-900'}
             ${playerDecision === 'stay' ? 'ring-2 ring-green-500' : ''}
             ${player.sitting_out ? 'opacity-40 grayscale' : ''}
             ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
           `}>
-            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-400' : 'text-poker-gold'}`}>
               {player.chips}
             </span>
           </div>
@@ -242,7 +242,7 @@ export const MobileGameTable = ({
           {player.position === dealerPosition && (
             <Badge className="text-[8px] px-1 py-0 bg-poker-gold text-black h-4">D</Badge>
           )}
-          <span className="text-[11px] text-amber-100 truncate max-w-[60px] leading-none font-semibold">
+          <span className="text-[11px] text-white truncate max-w-[60px] leading-none font-semibold drop-shadow-md">
             {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
         </div>
