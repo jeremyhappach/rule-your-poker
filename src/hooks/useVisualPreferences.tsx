@@ -53,7 +53,7 @@ export function VisualPreferencesProvider({
 }) {
   const [tableLayout, setTableLayout] = useState('black');
   const [cardBackDesign, setCardBackDesign] = useState('hawks');
-  const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('two_color');
+  const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
 
   const fetchPreferences = async () => {
     if (!userId) return;
@@ -115,7 +115,7 @@ export function useVisualPreferences() {
     return {
       tableLayout: 'black',
       cardBackDesign: 'hawks',
-      deckColorMode: 'two_color' as DeckColorMode,
+      deckColorMode: 'four_color' as DeckColorMode,
       getTableColors: () => ({ color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f' }),
       getCardBackColors: () => ({ color: '#CF0A2C', darkColor: '#FFD100' }),
       getCardBackId: () => 'red',

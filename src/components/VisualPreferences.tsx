@@ -25,7 +25,7 @@ interface VisualPreferencesProps {
 export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
   const [tableLayout, setTableLayout] = useState('classic');
   const [cardBackDesign, setCardBackDesign] = useState('red');
-  const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('two_color');
+  const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
