@@ -638,22 +638,22 @@ export const GameTable = ({
             // Determine if cards are valid based on game type
             let cardsAreValidForCurrentRound: boolean;
             if (gameType === 'holm-game') {
-              // HOLM FIX: For current user, ALWAYS show their cards if they have ANY cards
-              // RLS ensures they only see their own cards anyway
-              // Don't enforce strict card count - there may be timing issues or data transitions
-              if (isCurrentUser && rawCards.length > 0) {
-                cardsAreValidForCurrentRound = true;
+              // HOLM: Must have EXACTLY 4 cards - reject stale 3-5-7 data (3, 5, or 7 cards)
+              // This prevents showing 7-card hands from previous 3-5-7 game
+              const isValidHolmCardCount = rawCards.length === 4;
+              if (isCurrentUser) {
+                // Current user: show cards only if they have exactly 4 (Holm hand)
+                cardsAreValidForCurrentRound = isValidHolmCardCount;
               } else {
-                // For other players in Holm, check for 4 cards (standard Holm hand)
-                cardsAreValidForCurrentRound = rawCards.length === 4;
+                // For other players in Holm, also check for exactly 4 cards
+                cardsAreValidForCurrentRound = isValidHolmCardCount;
               }
             } else {
-              // 3-5-7: For current user, show their cards even if count doesn't perfectly match
-              // (prevents showing card backs during sync delays)
-              // For other players, we don't have their cards anyway (RLS blocks them)
+              // 3-5-7: For current user, show their cards if count matches expected for round
+              // This prevents stale cards from wrong round (e.g., 7 cards in round 1)
               if (isCurrentUser && rawCards.length > 0) {
-                // Current user: show cards if they have ANY cards and round is active
-                cardsAreValidForCurrentRound = effectiveRoundNumber > 0;
+                // Current user: show cards only if count matches expected for this round
+                cardsAreValidForCurrentRound = cardsMatchExpectedCount && effectiveRoundNumber > 0;
               } else {
                 // Other players: strict match (though RLS means this rarely matters)
                 cardsAreValidForCurrentRound = cardsMatchExpectedCount && effectiveRoundNumber > 0;
