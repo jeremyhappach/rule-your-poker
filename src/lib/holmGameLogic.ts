@@ -490,9 +490,9 @@ export async function endHolmRound(gameId: string) {
   
   console.log('[HOLM END] Using most recent round:', round.round_number, '(game.current_round was:', game.current_round, ')');
 
-  // Guard: Prevent multiple simultaneous calls - if round is completed or Chucky is already active, exit
-  // Check chucky_active alone (not revealed count) to prevent race conditions during initial dealing
-  if (round.status === 'completed' || round.status === 'showdown' || round.chucky_active) {
+  // Guard: Prevent multiple simultaneous calls - if round is completed, processing, or Chucky is already active, exit
+  // Check status and chucky_active to prevent race conditions
+  if (round.status === 'completed' || round.status === 'showdown' || round.status === 'processing' || round.chucky_active) {
     console.log('[HOLM END] Round already being processed or completed, skipping', {
       status: round.status,
       chucky_active: round.chucky_active
@@ -500,9 +500,20 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
+  // CRITICAL: Immediately mark round as 'processing' to prevent concurrent calls
+  // This closes the race window between guard check and actual processing
+  const capturedRoundId = round.id;
+  const capturedRoundNumber = round.round_number;
+  console.log('[HOLM END] Capturing round for processing:', capturedRoundId, 'round_number:', capturedRoundNumber);
+  
+  await supabase
+    .from('rounds')
+    .update({ status: 'processing' })
+    .eq('id', capturedRoundId);
+
   console.log('[HOLM END] Round data:', {
-    id: round.id,
-    status: round.status,
+    id: capturedRoundId,
+    status: 'processing (just set)',
     community_cards_revealed: round.community_cards_revealed,
     chucky_active: round.chucky_active
   });
@@ -604,7 +615,7 @@ export async function endHolmRound(gameId: string) {
         status: 'completed',
         pot: newPot  // Also update round pot
       })
-      .eq('id', round.id);
+      .eq('id', capturedRoundId);
     
     console.log('[HOLM END] Rounds pot update:', roundUpdateError ? `ERROR: ${roundUpdateError.message}` : 'SUCCESS');
 
@@ -617,7 +628,7 @@ export async function endHolmRound(gameId: string) {
   if (stayedPlayers.length === 1) {
     // Single player - reveal all 4 community cards first
     console.log('[HOLM END] Single player - revealing all 4 community cards...', {
-      roundId: round.id,
+      roundId: capturedRoundId,
       currentlyRevealed: round.community_cards_revealed,
       targetRevealed: 4
     });
@@ -625,7 +636,7 @@ export async function endHolmRound(gameId: string) {
     const { error: revealError } = await supabase
       .from('rounds')
       .update({ community_cards_revealed: 4 })
-      .eq('id', round.id);
+      .eq('id', capturedRoundId);
     
     if (revealError) {
       console.error('[HOLM END] ERROR revealing community cards:', revealError);
@@ -659,7 +670,7 @@ export async function endHolmRound(gameId: string) {
     await supabase
       .from('rounds')
       .update({ community_cards_revealed: 4 })
-      .eq('id', round.id);
+      .eq('id', capturedRoundId);
     
     // Brief pause to allow UI to update with community cards
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -744,7 +755,7 @@ export async function endHolmRound(gameId: string) {
         chucky_active: true,
         chucky_cards_revealed: 0
       })
-      .eq('id', round.id);
+      .eq('id', capturedRoundId);
 
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
     
@@ -769,7 +780,7 @@ export async function endHolmRound(gameId: string) {
       await supabase
         .from('rounds')
         .update({ chucky_cards_revealed: i })
-        .eq('id', round.id);
+        .eq('id', capturedRoundId);
       console.log('[HOLM END] Revealed Chucky card', i, 'of', chuckyCardCount);
     }
     
@@ -783,14 +794,14 @@ export async function endHolmRound(gameId: string) {
     // Use round.pot as the authoritative pot value (game.pot may be stale)
     const roundPot = round.pot || game.pot || 0;
     try {
-      await handleChuckyShowdown(gameId, round.id, player, communityCards, game, chuckyCards, roundPot);
+      await handleChuckyShowdown(gameId, capturedRoundId, player, communityCards, game, chuckyCards, roundPot);
     } catch (error) {
       console.error('[HOLM END] ERROR in handleChuckyShowdown:', error);
       // Attempt to at least mark round as completed to prevent stuck state
       await supabase
         .from('rounds')
         .update({ status: 'completed', chucky_active: false })
-        .eq('id', round.id);
+        .eq('id', capturedRoundId);
     }
     return;
   }
@@ -802,11 +813,11 @@ export async function endHolmRound(gameId: string) {
   // by marking the round as "showdown" phase - the UI will handle showing all cards
   console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown...');
   
-  // SET STATUS TO SHOWDOWN FIRST so UI reveals player cards
+  // SET STATUS TO SHOWDOWN (from 'processing') so UI reveals player cards
   await supabase
     .from('rounds')
     .update({ status: 'showdown' })
-    .eq('id', round.id);
+    .eq('id', capturedRoundId);
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
   console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');
@@ -817,7 +828,7 @@ export async function endHolmRound(gameId: string) {
   
   // Use round.pot as the authoritative pot value (game.pot may be stale)
   const roundPot = round.pot || game.pot || 0;
-  await handleMultiPlayerShowdown(gameId, round.id, stayedPlayers, communityCards, game, roundPot);
+  await handleMultiPlayerShowdown(gameId, capturedRoundId, stayedPlayers, communityCards, game, roundPot);
 }
 
 /**
