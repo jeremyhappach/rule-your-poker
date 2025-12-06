@@ -1295,11 +1295,11 @@ async function handleMultiPlayerShowdown(
         .eq('game_id', gameId)
         .eq('round_number', 1);
     } else {
-      // Some players beat Chucky - they split the pot, losers match it for next pot
-      console.log('[HOLM TIE] Some tied players beat Chucky');
+      // Some (or all) tied players beat Chucky - GAME ENDS, Chucky lost
+      console.log('[HOLM TIE] Players beat Chucky - GAME OVER');
       
-      // Winners split ONLY the pot
-      const splitAmount = Math.floor(game.pot / playersBeatChucky.length);
+      // Winners split the pot
+      const splitAmount = Math.floor(roundPot / playersBeatChucky.length);
       let winnerNames: string[] = [];
       
       for (const winner of playersBeatChucky) {
@@ -1314,29 +1314,84 @@ async function handleMultiPlayerShowdown(
           .eq('id', winner.player.id);
       }
       
-      // Losers match the pot (capped) - becomes the NEW pot
+      // If there are losers to Chucky, they still pay - but game ends regardless
       const potMatchAmount = game.pot_max_enabled 
-        ? Math.min(game.pot, game.pot_max_value) 
-        : game.pot;
+        ? Math.min(roundPot, game.pot_max_value) 
+        : roundPot;
       
-      let newPot = 0;
       for (const loser of playersLoseToChucky) {
         await supabase
           .from('players')
           .update({ chips: loser.player.chips - potMatchAmount })
           .eq('id', loser.player.id);
-        newPot += potMatchAmount;
       }
       
-      // Set pot to losers' matched amount (no re-anting in Holm)
+      // Reset all players for new game
+      console.log('[HOLM TIE] Resetting player states for new game');
+      await supabase
+        .from('players')
+        .update({ 
+          status: 'active',
+          current_decision: null,
+          decision_locked: false,
+          ante_decision: null
+        })
+        .eq('game_id', gameId);
+      
+      // First show the result announcement (round stays completed, game stays in_progress)
+      console.log('[HOLM TIE] *** PLAYERS BEAT CHUCKY! Showing announcement. ***');
+      
       await supabase
         .from('games')
         .update({
-          last_round_result: `Tie broken! ${winnerNames.join(' and ')} beat Chucky and take $${game.pot}!`,
-          awaiting_next_round: true,
-          pot: newPot
+          last_round_result: `${winnerNames.join(' and ')} beat Chucky and take $${roundPot}!`
         })
         .eq('id', gameId);
+      
+      // 2-second delay for players to see the winning announcement
+      console.log('[HOLM TIE] Pausing 2 seconds for announcement...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
+      const { data: eligibleDealers } = await supabase
+        .from('players')
+        .select('position, is_bot, sitting_out')
+        .eq('game_id', gameId)
+        .eq('sitting_out', false)
+        .eq('is_bot', false)
+        .order('position', { ascending: true });
+      
+      const currentDealerPosition = game.dealer_position || 1;
+      let nextDealerPosition = currentDealerPosition;
+      
+      if (eligibleDealers && eligibleDealers.length > 0) {
+        const eligiblePositions = eligibleDealers.map(p => p.position);
+        const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);
+        
+        if (currentDealerIndex === -1) {
+          nextDealerPosition = eligiblePositions[0];
+        } else {
+          const nextDealerIndex = (currentDealerIndex + 1) % eligiblePositions.length;
+          nextDealerPosition = eligiblePositions[nextDealerIndex];
+        }
+      }
+      
+      // Game ends - players beat Chucky
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          game_over_at: new Date().toISOString(),
+          dealer_position: nextDealerPosition,
+          buck_position: null,
+          total_hands: 0,
+          pot: 0,
+          awaiting_next_round: true
+        })
+        .eq('id', gameId);
+      
+      console.log('[HOLM TIE] Game over - Chucky was beaten by tied players');
+      return; // Early return - game is over
     }
   }
 

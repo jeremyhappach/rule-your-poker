@@ -83,10 +83,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     fetchGames();
     checkSuperuser();
 
-    // Polling fallback for realtime reliability - poll every 2 seconds
+    // Polling fallback for realtime reliability - poll every 1 second for faster updates
     const pollingInterval = setInterval(() => {
       fetchGames();
-    }, 2000);
+    }, 1000);
 
     const gamesChannel = supabase
       .channel('games-lobby-channel')
