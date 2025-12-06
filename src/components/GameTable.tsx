@@ -724,6 +724,21 @@ export const GameTable = ({
                             isPlayerTurn && 
                             !isPaused &&
                             (gameType === 'holm-game' || hasCards357);
+                          
+                          // Debug log for 3-5-7 button visibility issues
+                          if (gameType !== 'holm-game' && isCurrentUser) {
+                            console.log('[GAMETABLE] 357 Button check:', {
+                              position: player.position,
+                              hasCards357,
+                              expectedCardCount,
+                              effectiveRoundNumber,
+                              hasPlayerDecided,
+                              allDecisionsIn,
+                              isPaused,
+                              canDecide
+                            });
+                          }
+                          
                           const hasDecidedFold = isCurrentUser && (hasPlayerDecided && playerDecision === 'fold') || pendingDecision === 'fold';
                           const hasDecidedStay = isCurrentUser && (hasPlayerDecided && playerDecision === 'stay') || pendingDecision === 'stay';
                           
