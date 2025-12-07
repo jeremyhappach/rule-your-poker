@@ -282,11 +282,16 @@ export const MobileGameTable = ({
   }, [lastRoundResult, gameType, currentPlayer, currentUserId]);
 
   // Detect buck passed to current player (Holm games only)
+  // Also clear showdown state when buck moves - new hand is starting
   useEffect(() => {
     if (gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && currentPlayer && buckPosition === currentPlayer.position && lastBuckPositionRef.current !== buckPosition && lastBuckPositionRef.current !== null &&
     // Don't show on initial load
     !bucksOnYouShownRef.current // Don't re-trigger if already shown for this position
     ) {
+      // Clear showdown state - new hand starting
+      showdownRoundRef.current = null;
+      showdownCardsCache.current = new Map();
+      
       bucksOnYouShownRef.current = true;
       setShowBucksOnYou(true);
     }
