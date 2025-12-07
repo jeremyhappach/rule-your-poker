@@ -2933,7 +2933,6 @@ const Game = () => {
                     try {
                       await addBotPlayerSittingOut(gameId!);
                       fetchGameData();
-                      toast({ title: "Bot Added", description: "Bot will join at the next hand." });
                     } catch (error: any) {
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
@@ -2963,7 +2962,6 @@ const Game = () => {
                           try {
                             await addBotPlayerSittingOut(gameId!);
                             fetchGameData();
-                            toast({ title: "Bot Added", description: "Bot will join at the next hand." });
                           } catch (error: any) {
                             toast({ title: "Error", description: error.message, variant: "destructive" });
                           }
@@ -3037,7 +3035,6 @@ const Game = () => {
                     try {
                       await addBotPlayerSittingOut(gameId!);
                       fetchGameData();
-                      toast({ title: "Bot Added", description: "Bot will join at the next hand." });
                     } catch (error: any) {
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
