@@ -385,6 +385,9 @@ export const MobileGameTable = ({
     const isShowdown = gameType === 'holm-game' && 
       isPlayerCardsExposed(player.id) && cards.length > 0;
     
+    // During showdown (but NOT during awaitingNextRound), hide chip stack to make room for bigger cards
+    const hideChipForShowdown = isShowdown && !awaitingNextRound;
+    
     const chipElement = <div className="relative">
         {/* Leg indicator for 3-5-7 games */}
         <LegIndicator legs={gameType !== 'holm-game' ? player.legs : 0} maxLegs={legsToWin} />
@@ -410,9 +413,9 @@ export const MobileGameTable = ({
       </div>
     );
     
-    // Show actual cards during showdown, otherwise show mini card backs
+    // Show actual cards during showdown (BIGGER when chip is hidden), otherwise show mini card backs
     const cardsElement = isShowdown ? (
-      <div className="flex gap-0.5 scale-75 origin-top">
+      <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top`}>
         <PlayerHand cards={cards} isHidden={false} />
       </div>
     ) : (
@@ -431,12 +434,15 @@ export const MobileGameTable = ({
     return <div key={player.id} className="flex flex-col items-center gap-0.5" onClick={isBotClickable ? () => onBotClick(player) : undefined}>
         {/* Name above for bottom positions */}
         {isBottomPosition && nameElement}
-        <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
-          {chipElement}
-        </MobilePlayerTimer>
+        {/* Hide chip stack during showdown to make room for bigger cards */}
+        {!hideChipForShowdown && (
+          <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
+            {chipElement}
+          </MobilePlayerTimer>
+        )}
         {/* Name below for other positions */}
         {!isBottomPosition && nameElement}
-        {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
+        {/* Cards - show actual cards during showdown (bigger when chip hidden), or mini card backs otherwise */}
         {cardsElement}
       </div>;
   };
