@@ -458,7 +458,7 @@ export const MobileGameTable = ({
           ${chipBgColor}
           ${playerDecision === 'fold' ? 'opacity-50' : ''}
           ${playerDecision === 'stay' ? 'ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse' : ''}
-          ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
+          ${isTheirTurn && playerDecision !== 'stay' ? 'ring-3 ring-yellow-400' : ''}
           ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
         `}>
           <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
