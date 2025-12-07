@@ -484,15 +484,9 @@ export const MobileGameTable = ({
           className="w-full flex items-center justify-center py-0.5 text-muted-foreground hover:text-foreground transition-colors"
         >
           {isCardSectionExpanded ? (
-            <>
-              <ChevronDown className="w-4 h-4 mr-1" />
-              <span className="text-[10px]">Collapse</span>
-            </>
+            <ChevronDown className="w-5 h-5" />
           ) : (
-            <>
-              <ChevronUp className="w-4 h-4 mr-1" />
-              <span className="text-[10px]">Show Cards</span>
-            </>
+            <ChevronUp className="w-5 h-5" />
           )}
         </button>
         
