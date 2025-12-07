@@ -530,7 +530,7 @@ export const MobileGameTable = ({
           // Calculate pixel positions - closer to the edge of the felt
           let positionStyle: React.CSSProperties = {
             bottom: '8px',
-            left: '50%',
+            left: '45%',
             transform: 'translateX(-50%)',
             transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
           };
@@ -555,6 +555,48 @@ export const MobileGameTable = ({
             <div className="absolute z-20" style={positionStyle}>
               <div className="w-7 h-7 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
                 <span className="text-black font-bold text-xs">D</span>
+              </div>
+            </div>
+          );
+        })()}
+        
+        {/* Buck indicator on felt - Holm games only */}
+        {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && (() => {
+          // Find buck player in otherPlayers
+          const buckPlayerIndex = otherPlayers.findIndex(p => p.position === buckPosition);
+          const isCurrentPlayerBuck = currentPlayer?.position === buckPosition;
+          
+          // Calculate pixel positions - offset from dealer button
+          let positionStyle: React.CSSProperties = {
+            bottom: '8px',
+            left: '55%',
+            transform: 'translateX(-50%)',
+            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+          };
+          
+          if (!isCurrentPlayerBuck && buckPlayerIndex >= 0) {
+            if (buckPlayerIndex === 0) {
+              positionStyle = { top: '8px', left: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            } else if (buckPlayerIndex === 1) {
+              positionStyle = { top: '8px', right: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            } else if (buckPlayerIndex === 2) {
+              positionStyle = { top: '50%', left: '28px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            } else if (buckPlayerIndex === 3) {
+              positionStyle = { top: '50%', right: '28px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            } else if (buckPlayerIndex === 4) {
+              positionStyle = { bottom: '8px', left: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            } else if (buckPlayerIndex === 5) {
+              positionStyle = { bottom: '8px', right: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            }
+          }
+          
+          return (
+            <div className="absolute z-20" style={positionStyle}>
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
+                <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 flex items-center justify-center w-7 h-7">
+                  <img src={cubsLogo} alt="Buck" className="w-full h-full rounded-full object-cover" />
+                </div>
               </div>
             </div>
           );
@@ -829,23 +871,6 @@ export const MobileGameTable = ({
             {/* Chipstack and player info - below cards */}
             <div className="flex flex-col items-center gap-2 mt-16">
               <div className="flex items-center justify-center gap-4">
-                {/* Dealer button for current player */}
-                {dealerPosition === currentPlayer.position && (
-                  <div className="w-7 h-7 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
-                    <span className="text-black font-bold text-xs">D</span>
-                  </div>
-                )}
-                
-                {/* Buck indicator for current player in Holm games */}
-                {gameType === 'holm-game' && buckPosition === currentPlayer.position && (
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
-                    <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 animate-bounce flex items-center justify-center w-7 h-7">
-                      <img src={cubsLogo} alt="Buck" className="w-full h-full rounded-full object-cover" />
-                    </div>
-                  </div>
-                )}
-                
                 <div className="text-center">
                   <p className="text-sm font-semibold text-foreground leading-tight">
                     {currentPlayer.profiles?.username || 'You'}
