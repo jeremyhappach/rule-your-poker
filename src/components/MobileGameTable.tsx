@@ -280,6 +280,13 @@ export const MobileGameTable = ({
           }}
         />
         
+        {/* Game name on felt */}
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10">
+          <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+            {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+          </span>
+        </div>
+        
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
