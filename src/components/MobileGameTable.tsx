@@ -289,11 +289,16 @@ export const MobileGameTable = ({
   const winnerPlayerId = useMemo(() => {
     if (!isShowingAnnouncement || !lastRoundResult) return null;
     // Parse winner from announcement - format usually includes player username
-    // Look for patterns like "PlayerName beat" or "PlayerName won" or "PlayerName earns"
+    // Look for patterns like "PlayerName beat", "PlayerName won", "PlayerName wins", "PlayerName earns"
     const result = lastRoundResult.toLowerCase();
     for (const player of players) {
       const username = player.profiles?.username?.toLowerCase() || '';
-      if (username && (result.includes(`${username} beat`) || result.includes(`${username} won`) || result.includes(`${username} earns`))) {
+      if (username && (
+        result.includes(`${username} beat`) || 
+        result.includes(`${username} won`) || 
+        result.includes(`${username} wins`) || 
+        result.includes(`${username} earns`)
+      )) {
         return player.id;
       }
     }
