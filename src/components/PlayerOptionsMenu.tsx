@@ -22,10 +22,12 @@ interface PlayerOptionsMenuProps {
   onStandUpNow: () => void;
   onLeaveGameNow: () => void;
   variant?: 'mobile' | 'desktop';
-  // Host pause/resume props
+  // Host props
   isHost?: boolean;
   isPaused?: boolean;
   onTogglePause?: () => void;
+  onAddBot?: () => void;
+  canAddBot?: boolean;
 }
 
 export const PlayerOptionsMenu = ({
@@ -44,6 +46,8 @@ export const PlayerOptionsMenu = ({
   isHost = false,
   isPaused = false,
   onTogglePause,
+  onAddBot,
+  canAddBot = false,
 }: PlayerOptionsMenuProps) => {
   // Observers only see Leave Game Now option
   if (isObserver) {
@@ -97,12 +101,19 @@ export const PlayerOptionsMenu = ({
         align="start" 
         className="w-56 bg-popover border border-border z-50"
       >
-        {/* Host pause/resume option */}
-        {isHost && onTogglePause && (
+        {/* Host pause/resume and add bot options */}
+        {isHost && (onTogglePause || (onAddBot && canAddBot)) && (
           <>
-            <DropdownMenuItem onClick={onTogglePause}>
-              {isPaused ? '▶️ Resume Game' : '⏸️ Pause Game'}
-            </DropdownMenuItem>
+            {onTogglePause && (
+              <DropdownMenuItem onClick={onTogglePause}>
+                {isPaused ? '▶️ Resume Game' : '⏸️ Pause Game'}
+              </DropdownMenuItem>
+            )}
+            {onAddBot && canAddBot && (
+              <DropdownMenuItem onClick={onAddBot}>
+                🤖 Add Bot
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
           </>
         )}

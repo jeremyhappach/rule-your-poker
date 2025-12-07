@@ -21,7 +21,7 @@ import { VisualPreferencesProvider } from "@/hooks/useVisualPreferences";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
-import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
+import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot, Settings } from "lucide-react";
@@ -2863,6 +2863,16 @@ const Game = () => {
                   isHost={isCreator}
                   isPaused={game.is_paused}
                   onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
+                  onAddBot={async () => {
+                    try {
+                      await addBotPlayerSittingOut(gameId!);
+                      fetchGameData();
+                      toast({ title: "Bot Added", description: "Bot will join at the next hand." });
+                    } catch (error: any) {
+                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                    }
+                  }}
+                  canAddBot={players.length < 7 && game.status === 'in_progress'}
                 />
               )}
               <div>
@@ -2875,14 +2885,33 @@ const Game = () => {
             <div className="flex gap-2">
               {game.status === 'in_progress' && (
                 <div className="flex flex-col items-end gap-1">
-                  {isCreator && (
-                    <Button 
-                      variant={game.is_paused ? "default" : "outline"} 
-                      onClick={handleTogglePause}
-                    >
-                      {game.is_paused ? '▶️ Resume' : '⏸️ Pause'}
-                    </Button>
-                  )}
+                  <div className="flex gap-2">
+                    {isCreator && players.length < 7 && (
+                      <Button 
+                        variant="outline" 
+                        onClick={async () => {
+                          try {
+                            await addBotPlayerSittingOut(gameId!);
+                            fetchGameData();
+                            toast({ title: "Bot Added", description: "Bot will join at the next hand." });
+                          } catch (error: any) {
+                            toast({ title: "Error", description: error.message, variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Bot className="w-4 h-4 mr-2" />
+                        Add Bot
+                      </Button>
+                    )}
+                    {isCreator && (
+                      <Button 
+                        variant={game.is_paused ? "default" : "outline"} 
+                        onClick={handleTogglePause}
+                      >
+                        {game.is_paused ? '▶️ Resume' : '⏸️ Pause'}
+                      </Button>
+                    )}
+                  </div>
                   {game.is_paused && (
                     <Badge variant="destructive" className="animate-pulse text-sm px-3 py-1">
                       ⏸️ GAME PAUSED
@@ -2934,6 +2963,16 @@ const Game = () => {
                   isHost={isCreator}
                   isPaused={game.is_paused}
                   onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
+                  onAddBot={async () => {
+                    try {
+                      await addBotPlayerSittingOut(gameId!);
+                      fetchGameData();
+                      toast({ title: "Bot Added", description: "Bot will join at the next hand." });
+                    } catch (error: any) {
+                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                    }
+                  }}
+                  canAddBot={players.length < 7 && game.status === 'in_progress'}
                 />
               )}
             </div>

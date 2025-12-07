@@ -616,8 +616,10 @@ export const GameTable = ({
   const allPositions = Array.from({ length: maxSeats }, (_, i) => i + 1);
   const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
   
-  // Show seat selection for observers or sitting out players
-  const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
+  // Show seat selection ONLY for observers (users not in the players list at all)
+  // Seated players (including sitting_out) cannot change seats
+  const isObserver = !currentPlayerRecord;
+  const canSelectSeat = onSelectSeat && isObserver;
   
   // Combine players and open seats for rendering - no reordering needed
   const seatsToRender = [...players, ...(canSelectSeat ? openSeats.map(pos => ({ position: pos, isEmpty: true })) : [])];
