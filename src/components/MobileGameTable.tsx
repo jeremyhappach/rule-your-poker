@@ -195,7 +195,8 @@ export const MobileGameTable = ({
     showdownCardsCache.current = new Map();
   }
   
-  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante' || awaitingNextRound)) {
+  // Don't clear cache if we're showing a result announcement - keep cards visible
+  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante') && !lastRoundResult) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
