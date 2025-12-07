@@ -174,16 +174,7 @@ export const PlayingCard = ({
     ? { color: card && (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
     : {};
   
-  // Highlight styles for winning hand cards
-  const getHighlightClasses = () => {
-    if (isHighlighted) {
-      return 'ring-2 ring-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.8)]';
-    }
-    if (isKicker) {
-      return 'ring-1 ring-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]';
-    }
-    return '';
-  };
+  // No ring/glow highlighting - just use lift effect for winning cards
   
   // Dimming style for cards not part of winning hand
   const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
@@ -196,7 +187,7 @@ export const PlayingCard = ({
     
   return (
     <Card
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${getHighlightClasses()} ${className} transition-transform duration-200`}
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${className} transition-transform duration-200`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...style, transform: combinedTransform }}
     >
       <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
