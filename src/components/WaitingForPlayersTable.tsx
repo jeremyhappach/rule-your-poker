@@ -136,24 +136,24 @@ export const WaitingForPlayersTable = ({
     }
   };
 
-  // When 2+ players are seated, trigger game start (with "SHUFFLE UP AND DEAL" announcement)
-  useEffect(() => {
-    if (hasEnoughPlayers && !gameStartTriggeredRef.current) {
-      gameStartTriggeredRef.current = true;
-      
-      // Show announcement toast
-      toast({
-        title: "🃏 SHUFFLE UP AND DEAL! 🃏",
-        description: "The game is starting...",
-        duration: 3000,
-      });
-      
-      // Small delay to let players see the announcement
-      setTimeout(() => {
-        onGameStart();
-      }, 1500);
-    }
-  }, [hasEnoughPlayers, onGameStart, toast]);
+  // Handle host clicking Start Game button
+  const handleStartGame = () => {
+    if (!hasEnoughPlayers || gameStartTriggeredRef.current) return;
+    
+    gameStartTriggeredRef.current = true;
+    
+    // Show announcement toast
+    toast({
+      title: "🃏 SHUFFLE UP AND DEAL! 🃏",
+      description: "The game is starting...",
+      duration: 3000,
+    });
+    
+    // Small delay to let players see the announcement
+    setTimeout(() => {
+      onGameStart();
+    }, 1500);
+  };
 
   // Show notification when new player joins
   useEffect(() => {
@@ -194,26 +194,36 @@ export const WaitingForPlayersTable = ({
             <p className="text-amber-300/70 text-sm">
               {seatedPlayerCount}/2+ players seated
             </p>
-            <div className="flex gap-2 mt-3 pointer-events-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleInvite}
-                className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Invite
-              </Button>
-              {isHost && hasOpenSeats && (
+            <div className="flex flex-col gap-2 mt-3 pointer-events-auto">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleAddBot}
-                  disabled={addingBot}
+                  onClick={handleInvite}
                   className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
                 >
-                  <Bot className="w-4 h-4 mr-2" />
-                  {addingBot ? 'Adding...' : 'Add Bot'}
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Invite
+                </Button>
+                {isHost && hasOpenSeats && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddBot}
+                    disabled={addingBot}
+                    className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
+                  >
+                    <Bot className="w-4 h-4 mr-2" />
+                    {addingBot ? 'Adding...' : 'Add Bot'}
+                  </Button>
+                )}
+              </div>
+              {isHost && hasEnoughPlayers && (
+                <Button
+                  onClick={handleStartGame}
+                  className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
+                >
+                  🃏 Start Game
                 </Button>
               )}
             </div>

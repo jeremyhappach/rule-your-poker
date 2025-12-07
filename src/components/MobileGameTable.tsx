@@ -6,7 +6,7 @@ import { ChipStack } from "./ChipStack";
 import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
-import { DealerButtonAnimation } from "./DealerButtonAnimation";
+
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
@@ -102,9 +102,6 @@ interface MobileGameTableProps {
   isGameOver?: boolean;
   isDealer?: boolean;
   onNextGame?: () => void;
-  // Dealer selection animation
-  showDealerAnimation?: boolean;
-  onDealerAnimationComplete?: (position: number) => void;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -143,8 +140,6 @@ export const MobileGameTable = ({
   isGameOver,
   isDealer,
   onNextGame,
-  showDealerAnimation,
-  onDealerAnimationComplete,
   onStay,
   onFold,
   onSelectSeat,
@@ -556,13 +551,6 @@ export const MobileGameTable = ({
             </span>}
         </div>
         
-        {/* Dealer Button Animation - shown during dealer selection */}
-        {showDealerAnimation && onDealerAnimationComplete && (
-          <DealerButtonAnimation
-            players={players}
-            onComplete={onDealerAnimationComplete}
-          />
-        )}
         
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
