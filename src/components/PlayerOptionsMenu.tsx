@@ -111,6 +111,16 @@ export const PlayerOptionsMenu = ({
           align="start" 
           className="w-56 bg-popover border border-border z-50"
         >
+          {/* Host Add Bot option */}
+          {isHost && onAddBot && canAddBot && (
+            <>
+              <DropdownMenuItem onClick={onAddBot}>
+                🤖 Add Bot
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          
           {/* Deck color mode toggle */}
           {deckColorMode && onDeckColorModeChange && (
             <>
