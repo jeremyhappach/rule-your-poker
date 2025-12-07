@@ -403,15 +403,20 @@ export const MobileGameTable = ({
 
           // Card face styling based on deck mode
           const cardBg = isRevealed ? isFourColor && fourColorConfig ? fourColorConfig.bg : 'white' : undefined;
-          const textColor = isRevealed ? isFourColor ? 'text-white' : card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-slate-900' : '';
+          // Use inline color style for 2-color mode to override dark mode text colors
+          const twoColorTextStyle = !isFourColor && isRevealed 
+            ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
+            : {};
+          
           return <div key={index} className="w-10 h-14 sm:w-11 sm:h-15">
                   {isRevealed ? <div className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg" style={{
-              backgroundColor: cardBg
+              backgroundColor: cardBg,
+              ...twoColorTextStyle
             }}>
-                      <span className={`text-xl font-black leading-none ${textColor}`}>
+                      <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
                         {card.rank}
                       </span>
-                      {!isFourColor && <span className={`text-2xl leading-none -mt-0.5 ${textColor}`}>
+                      {!isFourColor && <span className="text-2xl leading-none -mt-0.5">
                           {card.suit}
                         </span>}
                     </div> : <div className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg" style={{
