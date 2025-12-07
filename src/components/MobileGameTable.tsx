@@ -304,7 +304,9 @@ export const MobileGameTable = ({
     
     // Show card backs for active players even if we don't have their cards data
     const isActivePlayer = player.status === 'active' && !player.sitting_out;
-    const showCardBacks = isActivePlayer && expectedCardCount > 0 && currentRound > 0;
+    // For Holm games, hide card backs when player folds
+    const hasFolded = gameType === 'holm-game' && playerDecision === 'fold';
+    const showCardBacks = isActivePlayer && expectedCardCount > 0 && currentRound > 0 && !hasFolded;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
     
     // Status chip background color
@@ -356,14 +358,19 @@ export const MobileGameTable = ({
             {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
         </div>
-        {/* Mini cards indicator - show for active players with expected card count */}
-        {showCardBacks && cardCountToShow > 0 && (
-          <div className="flex gap-0.5">
+        {/* Mini cards indicator - show for active players, animate fold in Holm */}
+        {isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
+          <div 
+            className={`flex gap-0.5 ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}
+          >
             {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
               <div 
                 key={i} 
                 className="w-2 h-3 rounded-[1px] border border-amber-600/50"
-                style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
+                style={{ 
+                  background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                  animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
+                }}
               />
             ))}
           </div>
