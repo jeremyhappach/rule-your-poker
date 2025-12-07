@@ -59,6 +59,7 @@ interface Player {
   is_bot: boolean;
   sitting_out: boolean;
   sitting_out_hands?: number;
+  waiting?: boolean;
   profiles?: {
     username: string;
   };
@@ -230,6 +231,17 @@ export const MobileGameTable = ({
   
   const expectedCardCount = getExpectedCardCount(currentRound);
 
+  // Get player status for display
+  const getPlayerStatusStyle = (player: Player) => {
+    if (player.sitting_out && !player.waiting) {
+      return ''; // transparent/no coloring for sitting out
+    }
+    if (player.waiting) {
+      return 'bg-yellow-400/30'; // pale yellow for waiting
+    }
+    return 'bg-green-500/30'; // pale green for active
+  };
+
   // Render player chip - chipstack in center, name below
   const renderPlayerChip = (player: Player) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
@@ -241,6 +253,9 @@ export const MobileGameTable = ({
     const isActivePlayer = player.status === 'active' && !player.sitting_out;
     const showCardBacks = isActivePlayer && expectedCardCount > 0 && currentRound > 0;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
+    
+    // Status background color
+    const statusBgClass = getPlayerStatusStyle(player);
     
     return (
       <div key={player.id} className="flex flex-col items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg p-1.5">
@@ -256,6 +271,7 @@ export const MobileGameTable = ({
             ${playerDecision === 'stay' ? 'ring-2 ring-green-500' : ''}
             ${player.sitting_out ? 'opacity-40 grayscale' : ''}
             ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
+            ${statusBgClass}
           `}>
             <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-400' : 'text-poker-gold'}`}>
               ${Math.round(player.chips)}
@@ -388,34 +404,19 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Players arranged around table edges - 7 positions */}
-        {/* Top row: 3 players - pushed to edge */}
-        <div className="absolute top-0 left-0 right-0 flex justify-between px-2 pt-8">
-          <div className="flex-1 flex justify-start">
-            {otherPlayers[0] && renderPlayerChip(otherPlayers[0])}
-          </div>
-          <div className="flex-1 flex justify-center">
-            {otherPlayers[1] && renderPlayerChip(otherPlayers[1])}
-          </div>
-          <div className="flex-1 flex justify-end">
-            {otherPlayers[2] && renderPlayerChip(otherPlayers[2])}
-          </div>
+        {/* Players arranged around table edges - 6 positions for other players */}
+        {/* Left side: 3 players stacked vertically */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+          {otherPlayers[0] && renderPlayerChip(otherPlayers[0])}
+          {otherPlayers[1] && renderPlayerChip(otherPlayers[1])}
+          {otherPlayers[2] && renderPlayerChip(otherPlayers[2])}
         </div>
         
-        {/* Side players - vertically centered */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10">
+        {/* Right side: 3 players stacked vertically */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
           {otherPlayers[3] && renderPlayerChip(otherPlayers[3])}
-        </div>
-        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10">
           {otherPlayers[4] && renderPlayerChip(otherPlayers[4])}
-        </div>
-        
-        {/* Bottom corners */}
-        <div className="absolute bottom-1 left-2">
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
-        </div>
-        <div className="absolute bottom-1 right-2">
-          {otherPlayers[6] && renderPlayerChip(otherPlayers[6])}
         </div>
         
         {/* Dealer button on felt - positioned near the dealer's seat */}
@@ -726,6 +727,14 @@ export const MobileGameTable = ({
                 <div className="text-center">
                   <p className="text-sm font-semibold text-foreground leading-tight">
                     {currentPlayer.profiles?.username || 'You'}
+                    {/* Status indicator */}
+                    {currentPlayer.sitting_out && !currentPlayer.waiting ? (
+                      <span className="ml-1 text-destructive font-bold">(sitting out)</span>
+                    ) : currentPlayer.waiting ? (
+                      <span className="ml-1 text-yellow-500">(waiting)</span>
+                    ) : (
+                      <span className="ml-1 text-green-500">(active)</span>
+                    )}
                   </p>
                   <p className={`text-xl font-bold leading-tight ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
                     ${currentPlayer.chips.toLocaleString()}
