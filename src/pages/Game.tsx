@@ -3159,26 +3159,49 @@ const Game = () => {
               </div>
             ) : game.status === 'dealer_selection' ? (
               <div className="relative">
-                <GameTable
-                  players={players}
-                  currentUserId={user?.id}
-                  pot={game.pot || 0}
-                  currentRound={0}
-                  allDecisionsIn={false}
-                  playerCards={[]}
-                  timeLeft={null}
-                  lastRoundResult={null}
-                  dealerPosition={game.dealer_position}
-                  legValue={game.leg_value || 1}
-                  legsToWin={game.legs_to_win || 3}
-                  potMaxEnabled={game.pot_max_enabled ?? true}
-                  potMaxValue={game.pot_max_value || 10}
-                  pendingSessionEnd={false}
-                  awaitingNextRound={false}
-                  onStay={() => {}}
-                  onFold={() => {}}
-                  onSelectSeat={handleSelectSeat}
-                />
+                {isMobile ? (
+                  <MobileGameTable
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={game.pot || 0}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value || 1}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                  />
+                ) : (
+                  <GameTable
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={game.pot || 0}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value || 1}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                  />
+                )}
                 <DealerSelection
                   players={players}
                   onComplete={(position) => {
@@ -3188,26 +3211,49 @@ const Game = () => {
               </div>
             ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
               <div className="relative">
-                <GameTable
-                  players={players}
-                  currentUserId={user?.id}
-                  pot={game.pot || 0}
-                  currentRound={0}
-                  allDecisionsIn={false}
-                  playerCards={[]}
-                  timeLeft={null}
-                  lastRoundResult={null}
-                  dealerPosition={game.dealer_position}
-                  legValue={game.leg_value || 1}
-                  legsToWin={game.legs_to_win || 3}
-                  potMaxEnabled={game.pot_max_enabled ?? true}
-                  potMaxValue={game.pot_max_value || 10}
-                  pendingSessionEnd={false}
-                  awaitingNextRound={false}
-                  onStay={() => {}}
-                  onFold={() => {}}
-                  onSelectSeat={handleSelectSeat}
-                />
+                {isMobile ? (
+                  <MobileGameTable
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={game.pot || 0}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value || 1}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                  />
+                ) : (
+                  <GameTable
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={game.pot || 0}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value || 1}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                  />
+                )}
                 {(isDealer || dealerPlayer?.is_bot) ? (
                   <DealerGameSetup
                     gameId={gameId!}
