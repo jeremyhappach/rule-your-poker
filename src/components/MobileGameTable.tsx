@@ -141,8 +141,9 @@ export const MobileGameTable = ({
   onFold,
   onSelectSeat,
 }: MobileGameTableProps) => {
-  const { getTableColors } = useVisualPreferences();
+  const { getTableColors, deckColorMode, getFourColorSuit, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
+  const cardBackColors = getCardBackColors();
   
   // Collapsible card section state
   const [isCardSectionExpanded, setIsCardSectionExpanded] = useState(true);
@@ -313,17 +314,41 @@ export const MobileGameTable = ({
             <span className="text-red-400 text-xs mr-1">👿</span>
             {chuckyCards.map((card, index) => {
               const isRevealed = index < (chuckyCardsRevealed || 0);
+              const isFourColor = deckColorMode === 'four_color';
+              const fourColorConfig = getFourColorSuit(card.suit);
+              
+              // Card face styling based on deck mode
+              const cardBg = isRevealed 
+                ? (isFourColor && fourColorConfig ? fourColorConfig.bg : 'white')
+                : undefined;
+              const textColor = isRevealed
+                ? (isFourColor ? 'text-white' : (card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-slate-900'))
+                : '';
+              
               return (
                 <div key={index} className="w-8 h-11 sm:w-9 sm:h-12">
-                  <div className={`w-full h-full rounded border ${isRevealed ? 'bg-white border-red-500' : 'bg-gradient-to-br from-red-800 to-red-950 border-red-600'} flex items-center justify-center shadow-md`}>
-                    {isRevealed ? (
-                      <span className={`text-sm font-bold ${card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-slate-900'}`}>
-                        {card.rank}{card.suit}
+                  {isRevealed ? (
+                    <div 
+                      className="w-full h-full rounded border border-red-500 flex flex-col items-center justify-center shadow-md"
+                      style={{ backgroundColor: cardBg }}
+                    >
+                      <span className={`text-base font-black leading-none ${textColor}`}>
+                        {card.rank}
                       </span>
-                    ) : (
-                      <span className="text-red-300 text-lg">?</span>
-                    )}
-                  </div>
+                      {!isFourColor && (
+                        <span className={`text-lg leading-none -mt-0.5 ${textColor}`}>
+                          {card.suit}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div 
+                      className="w-full h-full rounded border border-red-600 flex items-center justify-center shadow-md"
+                      style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
+                    >
+                      <span className="text-amber-400/50 text-lg">?</span>
+                    </div>
+                  )}
                 </div>
               );
             })}
