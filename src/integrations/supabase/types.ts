@@ -277,6 +277,7 @@ export type Database = {
           stand_up_next_hand: boolean
           status: string
           user_id: string
+          waiting: boolean
         }
         Insert: {
           ante_decision?: string | null
@@ -297,6 +298,7 @@ export type Database = {
           stand_up_next_hand?: boolean
           status?: string
           user_id: string
+          waiting?: boolean
         }
         Update: {
           ante_decision?: string | null
@@ -317,6 +319,7 @@ export type Database = {
           stand_up_next_hand?: boolean
           status?: string
           user_id?: string
+          waiting?: boolean
         }
         Relationships: [
           {
