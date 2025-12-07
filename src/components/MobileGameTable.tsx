@@ -607,23 +607,9 @@ export const MobileGameTable = ({
               )}
             </div>
             
-            {/* HUGE cards display - scale up significantly */}
-            <div className="flex-1 flex items-center justify-center">
-              {currentPlayerCards.length > 0 ? (
-                <div className="transform scale-[2.2] origin-center">
-                  <PlayerHand 
-                    cards={currentPlayerCards} 
-                    isHidden={false}
-                  />
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">Waiting for cards...</div>
-              )}
-            </div>
-            
-            {/* Action buttons - fixed at bottom */}
+            {/* Action buttons - ABOVE cards */}
             {canDecide && (
-              <div className="flex gap-2 justify-center mt-1">
+              <div className="flex gap-2 justify-center mb-2">
                 <Button
                   variant="destructive"
                   size="default"
@@ -642,9 +628,9 @@ export const MobileGameTable = ({
               </div>
             )}
             
-            {/* Decision feedback */}
+            {/* Decision feedback - above cards */}
             {hasDecided && (
-              <div className="flex justify-center mt-1">
+              <div className="flex justify-center mb-2">
                 <Badge 
                   className={`text-sm px-3 py-0.5 ${
                     (pendingDecision || currentPlayer.current_decision) === 'stay' 
@@ -656,6 +642,20 @@ export const MobileGameTable = ({
                 </Badge>
               </div>
             )}
+            
+            {/* HUGE cards display - scale up significantly */}
+            <div className="flex-1 flex items-center justify-center">
+              {currentPlayerCards.length > 0 ? (
+                <div className="transform scale-[2.2] origin-center">
+                  <PlayerHand 
+                    cards={currentPlayerCards} 
+                    isHidden={false}
+                  />
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">Waiting for cards...</div>
+              )}
+            </div>
           </div>
         )}
         
