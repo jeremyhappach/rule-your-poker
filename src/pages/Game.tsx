@@ -16,6 +16,7 @@ import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
+import { DealerSelection } from "@/components/DealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
@@ -2137,31 +2138,11 @@ const Game = () => {
       })
       .eq('game_id', gameId);
 
-    // Fetch current players to select a random human dealer
-    const { data: currentPlayers } = await supabase
-      .from('players')
-      .select('position, is_bot')
-      .eq('game_id', gameId);
-
-    // Filter to human players for dealer selection
-    const humanPlayers = currentPlayers?.filter(p => !p.is_bot) || [];
-    
-    // Randomly select a dealer from human players
-    let dealerPosition = 1;
-    if (humanPlayers.length > 0) {
-      const randomIndex = Math.floor(Math.random() * humanPlayers.length);
-      dealerPosition = humanPlayers[randomIndex].position;
-    } else if (currentPlayers && currentPlayers.length > 0) {
-      // Fallback to first player if no humans
-      dealerPosition = currentPlayers[0].position;
-    }
-
-    // Move directly to game_selection with dealer assigned
+    // Move to dealer_selection status - the DealerSelection component will handle the animation
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'game_selection',
-        dealer_position: dealerPosition
+        status: 'dealer_selection'
       })
       .eq('id', gameId);
 
@@ -3105,6 +3086,12 @@ const Game = () => {
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended') && (
           <>
+            {game.status === 'dealer_selection' && (
+              <DealerSelection 
+                players={players}
+                onComplete={selectDealer}
+              />
+            )}
             {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
               <div className="relative">
                 {isMobile ? (
