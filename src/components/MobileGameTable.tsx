@@ -259,10 +259,10 @@ export const MobileGameTable = ({
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && !allDecisionsIn && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
 
   // Check if ANY player has exposed cards (for hiding buck during showdown)
-  // Keep exposed during game_over so players can see final hands
+  // Keep exposed during game_over, or when announcement is showing (lastRoundResult)
   const isAnyPlayerInShowdown = gameType === 'holm-game' && 
     players.some(p => isPlayerCardsExposed(p.id)) && 
-    (!awaitingNextRound || isGameOver);
+    (!awaitingNextRound || isGameOver || !!lastRoundResult);
 
   // Detect Chucky chopped animation
   useEffect(() => {
