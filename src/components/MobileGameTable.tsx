@@ -995,10 +995,6 @@ export const MobileGameTable = ({
                   </div>}
               </div>
               
-              {/* Timer display when it's player's turn */}
-              {isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && <div className={`text-sm font-bold ${timeLeft <= 3 ? 'text-destructive animate-pulse' : timeLeft <= 5 ? 'text-yellow-500' : 'text-green-500'}`}>
-                  On You: {timeLeft}s
-                </div>}
             </div>
           </div>}
         
