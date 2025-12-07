@@ -397,40 +397,41 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         {/* Gradient Overlay - lighter at top to show skyline, darker at bottom for text */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
         
-        {/* Content - positioned at bottom */}
-        <div className="relative z-10 h-full flex flex-col justify-end p-3 sm:p-4 md:p-6 pb-2 sm:pb-4 md:pb-6">
-          <div className="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:justify-between sm:items-end">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
-                <span className="text-black text-xl sm:text-3xl">♠</span>
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
-                  Peoria Poker League
-                </h1>
-                <p className="text-amber-200/80 text-xs sm:text-sm mt-0.5">Game Lobby</p>
-              </div>
+        {/* Content - title at top, buttons at bottom */}
+        <div className="relative z-10 h-full flex flex-col justify-between p-3 sm:p-4 md:p-6">
+          {/* Title section */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
+              <span className="text-black text-xl sm:text-3xl">♠</span>
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              {isSuperuser && (
-                <Button 
-                  onClick={() => setShowDefaultsConfig(true)} 
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 sm:flex-none border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm text-xs sm:text-sm"
-                >
-                  <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Defaults
-                </Button>
-              )}
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
+                Peoria Poker League
+              </h1>
+              <p className="text-amber-200/80 text-xs sm:text-sm mt-0.5">Game Lobby</p>
+            </div>
+          </div>
+          
+          {/* Buttons section - at bottom */}
+          <div className="flex gap-2 w-full sm:w-auto sm:justify-end mt-auto">
+            {isSuperuser && (
               <Button 
-                onClick={() => setShowCreateDialog(true)} 
+                onClick={() => setShowDefaultsConfig(true)} 
                 size="sm"
-                className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm"
+                variant="outline"
+                className="flex-1 sm:flex-none border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm text-xs sm:text-sm"
               >
-                Create New Game
+                <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Defaults
               </Button>
-            </div>
+            )}
+            <Button 
+              onClick={() => setShowCreateDialog(true)} 
+              size="sm"
+              className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm"
+            >
+              Create New Game
+            </Button>
           </div>
         </div>
       </div>
@@ -476,13 +477,29 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                   <CardContent className="pt-5 pb-4">
                     <div className="space-y-4">
                       {/* Game Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pb-3 border-b border-amber-700/30">
-                        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <div className="flex flex-col gap-2 pb-3 border-b border-amber-700/30">
+                        {/* Game name - full width */}
+                        <div className="flex items-center gap-2 sm:gap-3">
                           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md flex-shrink-0">
                             <span className="text-black text-xs sm:text-sm font-bold">♦</span>
                           </div>
-                          <h3 className="font-bold text-amber-100 text-sm sm:text-base truncate">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
-                          <div className="flex gap-1 flex-shrink-0">
+                          <h3 className="font-bold text-amber-100 text-sm sm:text-base flex-1">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
+                        </div>
+                        
+                        {/* Button and badges row */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => joinGame(game.id)}
+                            disabled={game.player_count >= 7 && !game.is_player}
+                            className={`w-1/2 sm:w-auto text-xs sm:text-sm ${game.is_player 
+                              ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                              : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold'
+                            }`}
+                          >
+                            {game.is_player ? 'Re-Join' : 'Join'}
+                          </Button>
+                          <div className="flex gap-1 flex-1">
                             <Badge 
                               variant={isInProgress ? 'default' : 'secondary'}
                               className={`text-xs ${isInProgress 
@@ -498,19 +515,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                               </Badge>
                             )}
                           </div>
-                        </div>
-                        <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
-                          <Button
-                            size="sm"
-                            onClick={() => joinGame(game.id)}
-                            disabled={game.player_count >= 7 && !game.is_player}
-                            className={`flex-1 sm:flex-none text-xs sm:text-sm ${game.is_player 
-                              ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                              : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold'
-                            }`}
-                          >
-                            {game.is_player ? 'Re-Join' : 'Join'}
-                          </Button>
                           {game.is_creator && game.status === 'waiting' && (
                             <Button
                               size="sm"
