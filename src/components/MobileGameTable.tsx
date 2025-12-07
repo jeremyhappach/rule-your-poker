@@ -672,29 +672,38 @@ export const MobileGameTable = ({
             </div>
             
             {/* Chipstack and player info - below cards */}
-            <div className="flex items-center justify-center gap-4 mt-16">
-              <div className="text-center">
-                <p className="text-sm font-semibold text-foreground leading-tight">
-                  {currentPlayer.profiles?.username || 'You'}
-                </p>
-                <p className={`text-xl font-bold leading-tight ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                  ${currentPlayer.chips.toLocaleString()}
-                </p>
+            <div className="flex flex-col items-center gap-2 mt-16">
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-foreground leading-tight">
+                    {currentPlayer.profiles?.username || 'You'}
+                  </p>
+                  <p className={`text-xl font-bold leading-tight ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                    ${currentPlayer.chips.toLocaleString()}
+                  </p>
+                </div>
+              
+                {/* Hand evaluation for 3-5-7 */}
+                {currentPlayerCards.length > 0 && gameType !== 'holm-game' && !chuckyActive && (
+                  <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
+                    {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
+                  </Badge>
+                )}
+                
+                {/* Legs indicator for 3-5-7 */}
+                {gameType !== 'holm-game' && currentPlayer.legs > 0 && (
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: currentPlayer.legs }).map((_, i) => (
+                      <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
+                    ))}
+                  </div>
+                )}
               </div>
               
-              {/* Hand evaluation for 3-5-7 */}
-              {currentPlayerCards.length > 0 && gameType !== 'holm-game' && !chuckyActive && (
-                <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
-                  {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
-                </Badge>
-              )}
-              
-              {/* Legs indicator for 3-5-7 */}
-              {gameType !== 'holm-game' && currentPlayer.legs > 0 && (
-                <div className="flex items-center gap-0.5">
-                  {Array.from({ length: currentPlayer.legs }).map((_, i) => (
-                    <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
-                  ))}
+              {/* Timer display when it's player's turn */}
+              {isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && (
+                <div className={`text-sm font-bold ${timeLeft <= 3 ? 'text-destructive animate-pulse' : timeLeft <= 5 ? 'text-yellow-500' : 'text-green-500'}`}>
+                  On You: {timeLeft}s
                 </div>
               )}
             </div>
