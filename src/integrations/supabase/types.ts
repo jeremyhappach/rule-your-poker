@@ -265,6 +265,7 @@ export type Database = {
           created_at: string
           current_decision: string | null
           decision_locked: boolean | null
+          deck_color_mode: string | null
           game_id: string
           id: string
           is_bot: boolean
@@ -286,6 +287,7 @@ export type Database = {
           created_at?: string
           current_decision?: string | null
           decision_locked?: boolean | null
+          deck_color_mode?: string | null
           game_id: string
           id?: string
           is_bot?: boolean
@@ -307,6 +309,7 @@ export type Database = {
           created_at?: string
           current_decision?: string | null
           decision_locked?: boolean | null
+          deck_color_mode?: string | null
           game_id?: string
           id?: string
           is_bot?: boolean

@@ -17,7 +17,7 @@ import { PreGameLobby } from "@/components/PreGameLobby";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
-import { VisualPreferencesProvider } from "@/hooks/useVisualPreferences";
+import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
@@ -29,6 +29,7 @@ import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import { BotOptionsDialog } from "@/components/BotOptionsDialog";
+import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +58,7 @@ interface Player {
   sit_out_next_hand: boolean;
   stand_up_next_hand: boolean;
   waiting: boolean;
+  deck_color_mode?: string | null;
   profiles?: {
     username: string;
   };
@@ -2800,6 +2802,13 @@ const Game = () => {
           });
         } else {
           // User is a new observer - insert them as a new player
+          // Fetch user's profile to get their deck_color_mode preference
+          const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('deck_color_mode')
+            .eq('id', user.id)
+            .maybeSingle();
+          
           // If game is in progress, they sit out until next game starts
           // Set waiting = true so they'll be dealt in at the beginning of the next game
           const { error: joinError } = await supabase
@@ -2811,7 +2820,8 @@ const Game = () => {
               position: position,
               sitting_out: gameInProgress,
               waiting: gameInProgress, // If game in progress, mark as waiting to join next game
-              ante_decision: null // Ensure ante_decision is null so they get the popup
+              ante_decision: null, // Ensure ante_decision is null so they get the popup
+              deck_color_mode: userProfile?.deck_color_mode || null // Copy from profile
             });
 
           if (joinError) {
@@ -2890,6 +2900,11 @@ const Game = () => {
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
+      <GameDeckColorModeSync 
+        playerId={currentPlayer?.id} 
+        playerDeckColorMode={currentPlayer?.deck_color_mode}
+        onModeChange={() => {}}
+      />
     <div className={`min-h-screen ${isMobile ? 'p-0' : 'p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
       <div className={`${isMobile ? '' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
@@ -2924,6 +2939,10 @@ const Game = () => {
                     }
                   }}
                   canAddBot={players.length < 7 && game.status === 'in_progress'}
+                  deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
+                  onDeckColorModeChange={async (mode) => {
+                    await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
+                  }}
                 />
               )}
               <div>
@@ -3024,6 +3043,10 @@ const Game = () => {
                     }
                   }}
                   canAddBot={players.length < 7 && game.status === 'in_progress'}
+                  deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
+                  onDeckColorModeChange={async (mode) => {
+                    await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
+                  }}
                 />
               )}
             </div>
