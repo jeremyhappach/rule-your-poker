@@ -315,6 +315,11 @@ export const MobileGameTable = ({
     // Bottom positions (slot 0 = bottom-left, slot 5 = bottom-right) need name above chip
     const isBottomPosition = slotIndex === 0 || slotIndex === 5;
     
+    // Determine if we should show this player's actual cards (during showdown)
+    const isShowdown = gameType === 'holm-game' && 
+      (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn) &&
+      playerDecision === 'stay' && cards.length > 0;
+    
     const chipElement = <div className="relative">
         {/* Leg indicator for 3-5-7 games */}
         <LegIndicator legs={gameType !== 'holm-game' ? player.legs : 0} maxLegs={legsToWin} />
@@ -340,15 +345,22 @@ export const MobileGameTable = ({
       </div>
     );
     
-    const miniCards = isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
-      <div className={`flex gap-0.5 ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
-        {Array.from({
-          length: Math.min(cardCountToShow, 7)
-        }, (_, i) => <div key={i} className="w-2 h-3 rounded-[1px] border border-amber-600/50" style={{
-          background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-          animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
-        }} />)}
+    // Show actual cards during showdown, otherwise show mini card backs
+    const cardsElement = isShowdown ? (
+      <div className="flex gap-0.5 scale-75 origin-top">
+        <PlayerHand cards={cards} isHidden={false} />
       </div>
+    ) : (
+      isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
+        <div className={`flex gap-0.5 ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
+          {Array.from({
+            length: Math.min(cardCountToShow, 7)
+          }, (_, i) => <div key={i} className="w-2 h-3 rounded-[1px] border border-amber-600/50" style={{
+            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+            animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
+          }} />)}
+        </div>
+      )
     );
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5" onClick={isBotClickable ? () => onBotClick(player) : undefined}>
@@ -359,8 +371,8 @@ export const MobileGameTable = ({
         </MobilePlayerTimer>
         {/* Name below for other positions */}
         {!isBottomPosition && nameElement}
-        {/* Mini cards indicator - show for active players, animate fold in Holm */}
-        {miniCards}
+        {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
+        {cardsElement}
       </div>;
   };
   return <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background">
