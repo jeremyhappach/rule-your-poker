@@ -744,9 +744,11 @@ export const GameTable = ({
             });
             
             // Use seat position (1-7) for stable angle calculation
+            // CLOCKWISE direction: negate the angle to reverse direction
             const seatPosition = seat.position;
             const totalSeats = 7; // Max seats around table
-            const angle = ((seatPosition - 1) / totalSeats) * 2 * Math.PI - Math.PI / 2;
+            // Position 1 at top, increasing positions go CLOCKWISE (negative angle direction)
+            const angle = -((seatPosition - 1) / totalSeats) * 2 * Math.PI - Math.PI / 2;
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
