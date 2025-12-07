@@ -12,7 +12,6 @@ import { MobileGameTable } from "@/components/MobileGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
-import { DealerButtonAnimation } from "@/components/DealerButtonAnimation";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
@@ -3198,6 +3197,8 @@ const Game = () => {
                     potMaxValue={game.pot_max_value || 10}
                     pendingSessionEnd={false}
                     awaitingNextRound={false}
+                    showDealerAnimation={true}
+                    onDealerAnimationComplete={(position) => selectDealer(position)}
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
@@ -3219,17 +3220,13 @@ const Game = () => {
                     potMaxValue={game.pot_max_value || 10}
                     pendingSessionEnd={false}
                     awaitingNextRound={false}
+                    showDealerAnimation={true}
+                    onDealerAnimationComplete={(position) => selectDealer(position)}
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
                   />
                 )}
-                <DealerButtonAnimation
-                  players={players}
-                  onComplete={(position) => {
-                    selectDealer(position);
-                  }}
-                />
               </div>
             ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
               <div className="relative">
