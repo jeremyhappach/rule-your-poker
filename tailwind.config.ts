@@ -108,6 +108,20 @@ export default {
           "0%": { transform: "rotateY(0deg)" },
           "100%": { transform: "rotateY(180deg)" },
         },
+        "foldCards": {
+          "0%": { 
+            transform: "translateY(0) scale(1)", 
+            opacity: "1" 
+          },
+          "40%": { 
+            transform: "translateY(20px) scale(0.9)", 
+            opacity: "0.7" 
+          },
+          "100%": { 
+            transform: "translateY(30px) scale(0.5)", 
+            opacity: "0" 
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -117,6 +131,7 @@ export default {
         "scale-in": "scale-in 0.2s ease-out",
         "pulse": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "card-flip": "card-flip 1.2s ease-in-out forwards",
+        "fold-cards": "foldCards 1.5s ease-out forwards",
       },
     },
   },
