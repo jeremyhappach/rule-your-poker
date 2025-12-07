@@ -425,28 +425,29 @@ export const MobileGameTable = ({
         
         {/* Players arranged clockwise around table from current player's perspective */}
         {/* otherPlayers are sorted by clockwise distance from current player */}
-        {/* Slot 0 (1 seat clockwise): Bottom-right */}
-        <div className="absolute bottom-2 right-10 z-10">
+        {/* Clockwise from player's view means LEFT first, then up-left, top-left, top-right, right, bottom-right */}
+        {/* Slot 0 (1 seat clockwise): Bottom-left */}
+        <div className="absolute bottom-2 left-10 z-10">
           {otherPlayers[0] && renderPlayerChip(otherPlayers[0])}
         </div>
-        {/* Slot 1 (2 seats clockwise): Middle-right */}
-        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10">
+        {/* Slot 1 (2 seats clockwise): Middle-left */}
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10">
           {otherPlayers[1] && renderPlayerChip(otherPlayers[1])}
         </div>
-        {/* Slot 2 (3 seats clockwise): Top-right */}
-        <div className="absolute top-2 right-10 z-10">
+        {/* Slot 2 (3 seats clockwise): Top-left */}
+        <div className="absolute top-2 left-10 z-10">
           {otherPlayers[2] && renderPlayerChip(otherPlayers[2])}
         </div>
-        {/* Slot 3 (4 seats clockwise): Top-left */}
-        <div className="absolute top-2 left-10 z-10">
+        {/* Slot 3 (4 seats clockwise): Top-right */}
+        <div className="absolute top-2 right-10 z-10">
           {otherPlayers[3] && renderPlayerChip(otherPlayers[3])}
         </div>
-        {/* Slot 4 (5 seats clockwise): Middle-left */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10">
+        {/* Slot 4 (5 seats clockwise): Middle-right */}
+        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10">
           {otherPlayers[4] && renderPlayerChip(otherPlayers[4])}
         </div>
-        {/* Slot 5 (6 seats clockwise): Bottom-left */}
-        <div className="absolute bottom-2 left-10 z-10">
+        {/* Slot 5 (6 seats clockwise): Bottom-right */}
+        <div className="absolute bottom-2 right-10 z-10">
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
         </div>
         
@@ -465,44 +466,44 @@ export const MobileGameTable = ({
         };
         if (!isCurrentPlayerDealer && dealerPlayerIndex >= 0) {
           // Slot positions match clockwise layout:
-          // 0: Bottom-right, 1: Middle-right, 2: Top-right
-          // 3: Top-left, 4: Middle-left, 5: Bottom-left
+          // 0: Bottom-left, 1: Middle-left, 2: Top-left
+          // 3: Top-right, 4: Middle-right, 5: Bottom-right
           if (dealerPlayerIndex === 0) {
             positionStyle = {
               bottom: '8px',
-              right: '40px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerPlayerIndex === 1) {
-            positionStyle = {
-              top: '50%',
-              right: '8px',
-              transform: 'translateY(-50%)',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerPlayerIndex === 2) {
-            positionStyle = {
-              top: '8px',
-              right: '40px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerPlayerIndex === 3) {
-            positionStyle = {
-              top: '8px',
               left: '40px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (dealerPlayerIndex === 4) {
+          } else if (dealerPlayerIndex === 1) {
             positionStyle = {
               top: '50%',
               left: '8px',
               transform: 'translateY(-50%)',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
+          } else if (dealerPlayerIndex === 2) {
+            positionStyle = {
+              top: '8px',
+              left: '40px',
+              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            };
+          } else if (dealerPlayerIndex === 3) {
+            positionStyle = {
+              top: '8px',
+              right: '40px',
+              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            };
+          } else if (dealerPlayerIndex === 4) {
+            positionStyle = {
+              top: '50%',
+              right: '8px',
+              transform: 'translateY(-50%)',
+              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            };
           } else if (dealerPlayerIndex === 5) {
             positionStyle = {
               bottom: '8px',
-              left: '40px',
+              right: '40px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           }
@@ -529,42 +530,42 @@ export const MobileGameTable = ({
         };
         if (!isCurrentPlayerBuck && buckPlayerIndex >= 0) {
           // Slot positions match clockwise layout:
-          // 0: Bottom-right, 1: Middle-right, 2: Top-right
-          // 3: Top-left, 4: Middle-left, 5: Bottom-left
+          // 0: Bottom-left, 1: Middle-left, 2: Top-left
+          // 3: Top-right, 4: Middle-right, 5: Bottom-right
           if (buckPlayerIndex === 0) {
             positionStyle = {
               bottom: '46px',
-              right: '72px',
+              left: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 1) {
             positionStyle = {
               top: '40%',
-              right: '42px',
+              left: '42px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 2) {
             positionStyle = {
               top: '38px',
-              right: '72px',
+              left: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 3) {
             positionStyle = {
               top: '38px',
-              left: '72px',
+              right: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 4) {
             positionStyle = {
               top: '40%',
-              left: '42px',
+              right: '42px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 5) {
             positionStyle = {
               bottom: '46px',
-              left: '72px',
+              right: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           }
