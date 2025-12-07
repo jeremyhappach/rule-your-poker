@@ -187,11 +187,25 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   
   const positions = players.map(p => p.position).sort((a, b) => a - b);
   const currentIndex = positions.indexOf(round.current_turn_position);
-  const nextIndex = (currentIndex + 1) % positions.length;
-  const nextPosition = positions[nextIndex];
+  
+  // CRITICAL: Turn order should be CLOCKWISE from buck, which means:
+  // In a 7-seat table with positions [1,2,4], if we're at position 4,
+  // the next clockwise position is 1 (wrapping around), not 2
+  // We need to find the next HIGHER position, wrapping to lowest if at max
+  let nextPosition: number;
+  
+  // Find the next position that is HIGHER than current, or wrap to lowest
+  const higherPositions = positions.filter(p => p > round.current_turn_position);
+  if (higherPositions.length > 0) {
+    // There's a higher position, take the lowest one (next clockwise)
+    nextPosition = Math.min(...higherPositions);
+  } else {
+    // No higher positions, wrap to the lowest position
+    nextPosition = Math.min(...positions);
+  }
   
   console.log('[HOLM TURN] *** MOVING TURN from position', round.current_turn_position, 'to', nextPosition, '***');
-  console.log('[HOLM TURN] positions:', positions, 'currentIndex:', currentIndex, 'nextIndex:', nextIndex);
+  console.log('[HOLM TURN] positions:', positions, 'currentIndex:', currentIndex, 'nextPosition (clockwise):', nextPosition);
   
   // Update turn position and reset timer using game_defaults
   const deadline = new Date(Date.now() + timerSeconds * 1000);
