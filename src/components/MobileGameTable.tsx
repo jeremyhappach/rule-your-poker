@@ -12,6 +12,7 @@ import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
+import cubsLogo from "@/assets/cubs-logo.png";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { ChevronUp, ChevronDown } from "lucide-react";
@@ -828,6 +829,23 @@ export const MobileGameTable = ({
             {/* Chipstack and player info - below cards */}
             <div className="flex flex-col items-center gap-2 mt-16">
               <div className="flex items-center justify-center gap-4">
+                {/* Dealer button for current player */}
+                {dealerPosition === currentPlayer.position && (
+                  <div className="w-7 h-7 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
+                    <span className="text-black font-bold text-xs">D</span>
+                  </div>
+                )}
+                
+                {/* Buck indicator for current player in Holm games */}
+                {gameType === 'holm-game' && buckPosition === currentPlayer.position && (
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
+                    <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 animate-bounce flex items-center justify-center w-7 h-7">
+                      <img src={cubsLogo} alt="Buck" className="w-full h-full rounded-full object-cover" />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="text-center">
                   <p className="text-sm font-semibold text-foreground leading-tight">
                     {currentPlayer.profiles?.username || 'You'}
