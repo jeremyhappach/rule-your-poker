@@ -6,6 +6,8 @@ import { ChipStack } from "./ChipStack";
 import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
+import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
+import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
@@ -165,6 +167,15 @@ export const MobileGameTable = ({
   const [showChopped, setShowChopped] = useState(false);
   const lastChoppedResultRef = useRef<string | null>(null);
   
+  // Buck's on you animation state
+  const [showBucksOnYou, setShowBucksOnYou] = useState(false);
+  const lastBuckPositionRef = useRef<number | null>(null);
+  
+  // Leg earned animation state
+  const [showLegEarned, setShowLegEarned] = useState(false);
+  const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
+  const playerLegsRef = useRef<Record<string, number>>({});
+  
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerCards = currentPlayer 
@@ -215,6 +226,41 @@ export const MobileGameTable = ({
       }
     }
   }, [lastRoundResult, gameType, currentPlayer, currentUserId]);
+
+  // Detect buck passed to current player (Holm games only)
+  useEffect(() => {
+    if (
+      gameType === 'holm-game' && 
+      buckPosition !== null && 
+      buckPosition !== undefined &&
+      currentPlayer &&
+      buckPosition === currentPlayer.position &&
+      lastBuckPositionRef.current !== buckPosition &&
+      lastBuckPositionRef.current !== null // Don't show on initial load
+    ) {
+      setShowBucksOnYou(true);
+    }
+    lastBuckPositionRef.current = buckPosition ?? null;
+  }, [buckPosition, currentPlayer, gameType]);
+
+  // Detect when a player earns a leg (3-5-7 games only)
+  useEffect(() => {
+    if (gameType === 'holm-game') return;
+    
+    players.forEach(player => {
+      const prevLegs = playerLegsRef.current[player.id] ?? 0;
+      const currentLegs = player.legs;
+      
+      // Player gained a leg
+      if (currentLegs > prevLegs && prevLegs >= 0) {
+        const playerName = player.profiles?.username || `Player ${player.position}`;
+        setLegEarnedPlayerName(playerName);
+        setShowLegEarned(true);
+      }
+      
+      playerLegsRef.current[player.id] = currentLegs;
+    });
+  }, [players, gameType]);
 
   // Get other players (not current user)
   const otherPlayers = players.filter(p => p.user_id !== currentUserId);
@@ -355,6 +401,16 @@ export const MobileGameTable = ({
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
+        {/* Buck's On You Animation (Holm only) */}
+        <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
+        
+        {/* Leg Earned Animation (3-5-7 only) */}
+        <LegEarnedAnimation 
+          show={showLegEarned} 
+          playerName={legEarnedPlayerName}
+          onComplete={() => setShowLegEarned(false)} 
+        />
+        
         {/* Pot display - above community cards, vertically centered */}
         <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-full z-20">
           <div className="bg-black/70 backdrop-blur-sm rounded-full px-5 py-1.5 border border-poker-gold/60">
@@ -444,35 +500,40 @@ export const MobileGameTable = ({
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
         </div>
         
-        {/* Dealer button on felt - positioned near the dealer's seat */}
+        {/* Dealer button on felt - with slide animation */}
         {dealerPosition !== null && dealerPosition !== undefined && (() => {
           // Find dealer player in otherPlayers
           const dealerPlayerIndex = otherPlayers.findIndex(p => p.position === dealerPosition);
           const isCurrentPlayerDealer = currentPlayer?.position === dealerPosition;
           
-          // Position the dealer button based on where the dealer is
-          let buttonPosition = 'bottom-16 left-1/2 transform -translate-x-1/2'; // default center bottom for current player
+          // Calculate pixel positions for smooth transition
+          let positionStyle: React.CSSProperties = {
+            bottom: '64px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+          };
           
           if (!isCurrentPlayerDealer && dealerPlayerIndex >= 0) {
-            // Position based on other player's location
-            if (dealerPlayerIndex <= 2) {
-              // Top row
-              if (dealerPlayerIndex === 0) buttonPosition = 'top-24 left-8';
-              else if (dealerPlayerIndex === 1) buttonPosition = 'top-24 left-1/2 transform -translate-x-1/2';
-              else buttonPosition = 'top-24 right-8';
+            if (dealerPlayerIndex === 0) {
+              positionStyle = { top: '96px', left: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            } else if (dealerPlayerIndex === 1) {
+              positionStyle = { top: '96px', left: '50%', transform: 'translateX(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+            } else if (dealerPlayerIndex === 2) {
+              positionStyle = { top: '96px', right: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 3) {
-              buttonPosition = 'top-1/2 -translate-y-1/2 left-16';
+              positionStyle = { top: '50%', left: '64px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 4) {
-              buttonPosition = 'top-1/2 -translate-y-1/2 right-16';
+              positionStyle = { top: '50%', right: '64px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 5) {
-              buttonPosition = 'bottom-16 left-8';
+              positionStyle = { bottom: '64px', left: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 6) {
-              buttonPosition = 'bottom-16 right-8';
+              positionStyle = { bottom: '64px', right: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             }
           }
           
           return (
-            <div className={`absolute ${buttonPosition} z-20`}>
+            <div className="absolute z-20" style={positionStyle}>
               <div className="w-7 h-7 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
                 <span className="text-black font-bold text-xs">D</span>
               </div>
