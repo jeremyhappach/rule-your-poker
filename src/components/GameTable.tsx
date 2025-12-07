@@ -10,7 +10,7 @@ import { BuckIndicator } from "./BuckIndicator";
 import { LegIndicator } from "./LegIndicator";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
-import { DealerButtonAnimation } from "./DealerButtonAnimation";
+
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useMemo, useLayoutEffect, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
@@ -70,9 +70,6 @@ interface GameTableProps {
   isPaused?: boolean;
   debugHolmPaused?: boolean; // DEBUG: pause auto-progression for debugging
   isHost?: boolean; // Host can control bots
-  // Dealer selection animation
-  showDealerAnimation?: boolean;
-  onDealerAnimationComplete?: (position: number) => void;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -112,8 +109,6 @@ export const GameTable = ({
   isPaused,
   debugHolmPaused,
   isHost,
-  showDealerAnimation,
-  onDealerAnimationComplete,
   onStay,
   onFold,
   onSelectSeat,
@@ -716,14 +711,6 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
         <div className="relative h-full">
-          {/* Dealer Button Animation - shown during dealer selection */}
-          {showDealerAnimation && onDealerAnimationComplete && (
-            <DealerButtonAnimation
-              players={players}
-              onComplete={onDealerAnimationComplete}
-            />
-          )}
-          
           {/* Chopped Animation - when Chucky beats you */}
           <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
           

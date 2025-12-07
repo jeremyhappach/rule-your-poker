@@ -2136,11 +2136,31 @@ const Game = () => {
       })
       .eq('game_id', gameId);
 
-    // Move to dealer_selection
+    // Fetch current players to select a random human dealer
+    const { data: currentPlayers } = await supabase
+      .from('players')
+      .select('position, is_bot')
+      .eq('game_id', gameId);
+
+    // Filter to human players for dealer selection
+    const humanPlayers = currentPlayers?.filter(p => !p.is_bot) || [];
+    
+    // Randomly select a dealer from human players
+    let dealerPosition = 1;
+    if (humanPlayers.length > 0) {
+      const randomIndex = Math.floor(Math.random() * humanPlayers.length);
+      dealerPosition = humanPlayers[randomIndex].position;
+    } else if (currentPlayers && currentPlayers.length > 0) {
+      // Fallback to first player if no humans
+      dealerPosition = currentPlayers[0].position;
+    }
+
+    // Move directly to game_selection with dealer assigned
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'dealer_selection',
+        status: 'game_selection',
+        dealer_position: dealerPosition
       })
       .eq('id', gameId);
 
@@ -3175,56 +3195,6 @@ const Game = () => {
                     gameOverAt={game.game_over_at}
                     isSessionEnded={game.status === 'session_ended'}
                     pendingSessionEnd={game.pending_session_end || false}
-                  />
-                )}
-              </div>
-            ) : game.status === 'dealer_selection' ? (
-              <div className="relative">
-                {isMobile ? (
-                  <MobileGameTable
-                    players={players}
-                    currentUserId={user?.id}
-                    pot={game.pot || 0}
-                    currentRound={0}
-                    allDecisionsIn={false}
-                    playerCards={[]}
-                    timeLeft={null}
-                    lastRoundResult={null}
-                    dealerPosition={game.dealer_position}
-                    legValue={game.leg_value || 1}
-                    legsToWin={game.legs_to_win || 3}
-                    potMaxEnabled={game.pot_max_enabled ?? true}
-                    potMaxValue={game.pot_max_value || 10}
-                    pendingSessionEnd={false}
-                    awaitingNextRound={false}
-                    showDealerAnimation={true}
-                    onDealerAnimationComplete={(position) => selectDealer(position)}
-                    onStay={() => {}}
-                    onFold={() => {}}
-                    onSelectSeat={handleSelectSeat}
-                  />
-                ) : (
-                  <GameTable
-                    players={players}
-                    currentUserId={user?.id}
-                    pot={game.pot || 0}
-                    currentRound={0}
-                    allDecisionsIn={false}
-                    playerCards={[]}
-                    timeLeft={null}
-                    lastRoundResult={null}
-                    dealerPosition={game.dealer_position}
-                    legValue={game.leg_value || 1}
-                    legsToWin={game.legs_to_win || 3}
-                    potMaxEnabled={game.pot_max_enabled ?? true}
-                    potMaxValue={game.pot_max_value || 10}
-                    pendingSessionEnd={false}
-                    awaitingNextRound={false}
-                    showDealerAnimation={true}
-                    onDealerAnimationComplete={(position) => selectDealer(position)}
-                    onStay={() => {}}
-                    onFold={() => {}}
-                    onSelectSeat={handleSelectSeat}
                   />
                 )}
               </div>
