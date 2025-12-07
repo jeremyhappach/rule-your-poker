@@ -334,11 +334,7 @@ export const MobileGameTable = ({
     
     const nameElement = (
       <div className="flex items-center gap-1">
-        <span className={`text-[11px] truncate max-w-[70px] leading-none font-semibold ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}
-          style={{ 
-            color: isBottomPosition ? '#1e293b' : 'white',
-            textShadow: isBottomPosition ? '0 0 4px white, 0 0 8px white' : '0 1px 2px rgba(0,0,0,0.8)'
-          }}>
+        <span className={`text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}>
           {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
         </span>
       </div>
