@@ -3214,7 +3214,9 @@ const Game = () => {
                     dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
+                    dealerPosition={game.dealer_position || 1}
                     onConfigComplete={handleConfigComplete}
+                    onSessionEnd={() => fetchGameData()}
                   />
                 ) : (
                   // Non-dealer waiting message
