@@ -2952,7 +2952,7 @@ const Game = () => {
                   gameStatus={game.status}
                   isHost={isCreator}
                   isPaused={game.is_paused}
-                  onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
+                  onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection') ? handleTogglePause : undefined}
                   onAddBot={async () => {
                     try {
                       await addBotPlayerSittingOut(gameId!);
@@ -3055,7 +3055,7 @@ const Game = () => {
                   gameStatus={game.status}
                   isHost={isCreator}
                   isPaused={game.is_paused}
-                  onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
+                  onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection') ? handleTogglePause : undefined}
                   onAddBot={async () => {
                     try {
                       await addBotPlayerSittingOut(gameId!);
