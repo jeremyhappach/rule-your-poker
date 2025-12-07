@@ -600,7 +600,7 @@ export const MobileGameTable = ({
             )}
             
             {/* Cards display - moved up, less padding */}
-            <div className="flex-1 flex items-start justify-center pt-2">
+            <div className="flex items-start justify-center">
               {currentPlayerCards.length > 0 ? (
                 <div className="transform scale-[2.2] origin-top">
                   <PlayerHand 
@@ -613,8 +613,8 @@ export const MobileGameTable = ({
               )}
             </div>
             
-            {/* Chipstack and player info at bottom */}
-            <div className="flex items-center justify-center gap-4 pt-2 pb-1 border-t border-border/30 mt-auto">
+            {/* Chipstack and player info - closer to cards */}
+            <div className="flex items-center justify-center gap-4 pt-1 mt-auto">
               <MobilePlayerTimer
                 timeLeft={timeLeft}
                 maxTime={maxTime}
