@@ -592,7 +592,7 @@ export const MobileGameTable = ({
             <div className="absolute z-20" style={positionStyle}>
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
-                <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 flex items-center justify-center w-7 h-7">
+                <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 animate-bounce flex items-center justify-center w-7 h-7">
                   <img src={cubsLogo} alt="Buck" className="w-full h-full rounded-full object-cover" />
                 </div>
               </div>
