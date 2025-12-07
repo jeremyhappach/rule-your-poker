@@ -2,9 +2,10 @@ interface ChipStackProps {
   amount: number;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'leg';
+  playerStatus?: 'active' | 'waiting' | 'sitting_out';
 }
 
-export const ChipStack = ({ amount, size = 'md', variant = 'default' }: ChipStackProps) => {
+export const ChipStack = ({ amount, size = 'md', variant = 'default', playerStatus }: ChipStackProps) => {
   const getChipColor = (value: number) => {
     if (variant === 'leg') return 'bg-black';
     if (value >= 100) return 'bg-poker-chip-black';
@@ -14,6 +15,17 @@ export const ChipStack = ({ amount, size = 'md', variant = 'default' }: ChipStac
     return 'bg-poker-chip-white';
   };
 
+  // Status background colors (pale for visibility)
+  const getStatusBackground = () => {
+    if (!playerStatus) return '';
+    switch (playerStatus) {
+      case 'active': return 'bg-green-500/20 ring-1 ring-green-500/30';
+      case 'waiting': return 'bg-yellow-500/20 ring-1 ring-yellow-500/30';
+      case 'sitting_out': return '';
+      default: return '';
+    }
+  };
+
   const sizeClasses = {
     sm: 'w-8 h-8 text-xs',
     md: 'w-10 h-10 text-sm',
@@ -21,7 +33,7 @@ export const ChipStack = ({ amount, size = 'md', variant = 'default' }: ChipStac
   };
 
   return (
-    <div className="relative inline-flex items-center justify-center">
+    <div className={`relative inline-flex items-center justify-center rounded-full p-0.5 ${getStatusBackground()}`}>
       <div className={`${sizeClasses[size]} ${getChipColor(amount)} rounded-full border-4 border-white shadow-lg flex items-center justify-center font-bold text-white relative overflow-hidden`}>
         {/* Chip pattern */}
         <div className="absolute inset-0 border-4 border-dashed border-white/30 rounded-full" />

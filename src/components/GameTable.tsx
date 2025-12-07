@@ -26,6 +26,7 @@ interface Player {
   is_bot: boolean;
   sitting_out: boolean;
   sitting_out_hands?: number;
+  waiting?: boolean;
   profiles?: {
     username: string;
   };
@@ -66,11 +67,13 @@ interface GameTableProps {
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   debugHolmPaused?: boolean; // DEBUG: pause auto-progression for debugging
+  isHost?: boolean; // Host can control bots
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
   onRequestRefetch?: () => void; // NEW: callback to request parent to refetch
   onDebugProceed?: () => void; // DEBUG: manual proceed to next round
+  onBotClick?: (botPlayer: Player) => void; // Host clicks bot to control it
 }
 
 export const GameTable = ({
@@ -103,11 +106,13 @@ export const GameTable = ({
   pendingDecision,
   isPaused,
   debugHolmPaused,
+  isHost,
   onStay,
   onFold,
   onSelectSeat,
   onRequestRefetch,
   onDebugProceed,
+  onBotClick,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -898,16 +903,33 @@ export const GameTable = ({
                     <div className="space-y-0.5 sm:space-y-1 md:space-y-1.5">
                       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5 relative">
                         <ChipChangeIndicator currentChips={player.chips} playerId={player.id} />
-                        <p className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px]">
-                          {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
-                          {player.sitting_out && (
-                            <span className="text-red-400">
-                              {' '}(Out{player.sitting_out_hands !== undefined && player.sitting_out_hands > 0 
-                                ? ` - ${14 - player.sitting_out_hands} left` 
-                                : ''})
-                            </span>
-                          )}
-                        </p>
+                        {/* Player name - clickable for host if it's a bot */}
+                        {isHost && player.is_bot && onBotClick ? (
+                          <button
+                            onClick={() => onBotClick(player)}
+                            className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px] hover:text-amber-300 cursor-pointer underline underline-offset-2 decoration-dotted"
+                          >
+                            {player.profiles?.username || `Bot ${player.position}`}
+                            {player.sitting_out && (
+                              <span className="text-red-400">
+                                {' '}(Out{player.sitting_out_hands !== undefined && player.sitting_out_hands > 0 
+                                  ? ` - ${14 - player.sitting_out_hands} left` 
+                                  : ''})
+                              </span>
+                            )}
+                          </button>
+                        ) : (
+                          <p className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px]">
+                            {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
+                            {player.sitting_out && (
+                              <span className="text-red-400">
+                                {' '}(Out{player.sitting_out_hands !== undefined && player.sitting_out_hands > 0 
+                                  ? ` - ${14 - player.sitting_out_hands} left` 
+                                  : ''})
+                              </span>
+                            )}
+                          </p>
+                        )}
                         {player.position === dealerPosition && (
                           <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full bg-poker-gold flex items-center justify-center border border-black shadow-lg">
                             <span className="text-black font-black text-[7px] sm:text-[8px] md:text-[10px]">D</span>
@@ -1079,8 +1101,10 @@ export const GameTable = ({
                                   <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
                                 )}
                                 
-                                {/* Chip balance (center) */}
-                                <div className="flex items-center justify-center">
+                                {/* Chip balance (center) with status indicator */}
+                                <div className={`flex items-center justify-center px-1.5 py-0.5 rounded ${
+                                  player.sitting_out ? '' : player.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
+                                }`}>
                                   <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                                     ${player.chips.toLocaleString()}
                                   </p>
@@ -1119,8 +1143,10 @@ export const GameTable = ({
                                 <div className="w-6 sm:w-8 md:w-10 lg:w-12"></div>
                               )}
                               
-                              {/* Chip balance (center) */}
-                              <div className="flex items-center justify-center">
+                              {/* Chip balance (center) with status indicator */}
+                              <div className={`flex items-center justify-center px-1.5 py-0.5 rounded ${
+                                player.sitting_out ? '' : player.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
+                              }`}>
                                 <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                                   ${player.chips.toLocaleString()}
                                 </p>

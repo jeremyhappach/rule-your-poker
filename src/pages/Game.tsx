@@ -28,6 +28,7 @@ import { Share2, Bot, Settings } from "lucide-react";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
+import { BotOptionsDialog } from "@/components/BotOptionsDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -166,6 +167,8 @@ const Game = () => {
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   const [isRunningItBack, setIsRunningItBack] = useState(false);
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
+  const [selectedBot, setSelectedBot] = useState<Player | null>(null);
+  const [showBotOptions, setShowBotOptions] = useState(false);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
@@ -2274,13 +2277,14 @@ const Game = () => {
 
     // STEP 1: Evaluate player states BEFORE dealer rotation
     console.log('[GAME OVER] Evaluating player states end-of-game');
-    const { activePlayerCount, playersRemoved } = await evaluatePlayerStatesEndOfGame(gameId);
+    const { activePlayerCount, eligibleDealerCount, playersRemoved } = await evaluatePlayerStatesEndOfGame(gameId);
     
-    console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'removed:', playersRemoved.length);
+    console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'eligible dealers:', eligibleDealerCount, 'removed:', playersRemoved.length);
 
-    // STEP 2: Check if we have enough active players
-    if (activePlayerCount < 2) {
-      console.log('[GAME OVER] Not enough active players! Showing countdown');
+    // STEP 2: Check if we have enough players to continue
+    // Need: 1+ eligible dealer (non-sitting-out, non-bot) AND 2+ active players (including bots)
+    if (eligibleDealerCount < 1 || activePlayerCount < 2) {
+      console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount);
       setShowNotEnoughPlayers(true);
       return; // The countdown component will handle session end
     }
@@ -3302,10 +3306,20 @@ const Game = () => {
               onSelectSeat={handleSelectSeat}
               onRequestRefetch={fetchGameData}
               onDebugProceed={handleDebugProceed}
+              isHost={isCreator}
+              onBotClick={(bot) => { setSelectedBot(bot as Player); setShowBotOptions(true); }}
             />
           )
         )}
       </div>
+
+      {/* Bot options dialog for host */}
+      <BotOptionsDialog
+        open={showBotOptions}
+        onOpenChange={setShowBotOptions}
+        bot={selectedBot}
+        onUpdate={fetchGameData}
+      />
 
       {/* Not enough players countdown overlay */}
       {showNotEnoughPlayers && (
