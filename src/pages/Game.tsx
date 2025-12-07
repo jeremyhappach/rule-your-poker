@@ -1625,11 +1625,13 @@ const Game = () => {
             return;
           }
           
+          // CRITICAL: Fetch latest round by round_number DESC, NOT game.current_round which may be stale
           const { data: freshRound } = await supabase
             .from('rounds')
             .select('*')
             .eq('game_id', gameId!)
-            .eq('round_number', game.current_round)
+            .order('round_number', { ascending: false })
+            .limit(1)
             .single();
             
           if (!freshRound) {
