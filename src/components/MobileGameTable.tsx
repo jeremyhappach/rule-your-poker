@@ -314,6 +314,9 @@ export const MobileGameTable = ({
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
             {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
           </span>
+          <span className="text-white/40 text-xs font-medium">
+            {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+          </span>
           {gameType !== 'holm-game' && (
             <span className="text-white/40 text-xs font-medium">
               {legsToWin} legs to win
