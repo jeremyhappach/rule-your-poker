@@ -398,8 +398,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
         
         {/* Content - positioned at bottom */}
-        <div className="relative z-10 h-full flex flex-col justify-end p-3 sm:p-4 md:p-6">
-          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:justify-between sm:items-end">
+        <div className="relative z-10 h-full flex flex-col justify-end p-3 sm:p-4 md:p-6 pb-2 sm:pb-4 md:pb-6">
+          <div className="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:justify-between sm:items-end">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
                 <span className="text-black text-xl sm:text-3xl">♠</span>
