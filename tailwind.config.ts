@@ -122,6 +122,16 @@ export default {
             opacity: "0" 
           },
         },
+        "turn-pulse": {
+          "0%, 100%": { 
+            opacity: "1",
+            transform: "scale(1)",
+          },
+          "50%": { 
+            opacity: "0.5",
+            transform: "scale(0.95)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -132,6 +142,7 @@ export default {
         "pulse": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "card-flip": "card-flip 1.2s ease-in-out forwards",
         "fold-cards": "foldCards 1.5s ease-out forwards",
+        "turn-pulse": "turn-pulse 0.8s ease-in-out infinite",
       },
     },
   },
