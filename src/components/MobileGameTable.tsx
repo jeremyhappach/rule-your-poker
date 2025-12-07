@@ -612,8 +612,12 @@ export const MobileGameTable = ({
         <div className="absolute bottom-2 left-10 z-10">
           {otherPlayers[0] && renderPlayerChip(otherPlayers[0], 0)}
         </div>
-        {/* Slot 1 (2 seats clockwise): Middle-left */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10">
+        {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards */}
+        <div className={`absolute left-0 z-10 transition-all duration-300 ${
+          otherPlayers[1] && isPlayerCardsExposed(otherPlayers[1].id) 
+            ? 'top-[20%] -translate-y-1/2' 
+            : 'top-1/2 -translate-y-1/2'
+        }`}>
           {otherPlayers[1] && renderPlayerChip(otherPlayers[1], 1)}
         </div>
         {/* Slot 2 (3 seats clockwise): Top-left */}
@@ -624,8 +628,12 @@ export const MobileGameTable = ({
         <div className="absolute top-2 right-10 z-10">
           {otherPlayers[3] && renderPlayerChip(otherPlayers[3], 3)}
         </div>
-        {/* Slot 4 (5 seats clockwise): Middle-right */}
-        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10">
+        {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards */}
+        <div className={`absolute right-0 z-10 transition-all duration-300 ${
+          otherPlayers[4] && isPlayerCardsExposed(otherPlayers[4].id) 
+            ? 'top-[20%] -translate-y-1/2' 
+            : 'top-1/2 -translate-y-1/2'
+        }`}>
           {otherPlayers[4] && renderPlayerChip(otherPlayers[4], 4)}
         </div>
         {/* Slot 5 (6 seats clockwise): Bottom-right */}
