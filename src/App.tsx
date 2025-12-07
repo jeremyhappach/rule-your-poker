@@ -10,7 +10,7 @@ import Game from "./pages/Game";
 import HandEvalTest from "./pages/HandEvalTest";
 import HandEvalDebug from "./pages/HandEvalDebug";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient(); // rebuild trigger
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
