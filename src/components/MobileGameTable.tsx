@@ -916,6 +916,22 @@ export const MobileGameTable = ({
         
         {/* Expanded view - show cards large */}
         {isCardSectionExpanded && currentPlayer && <div className="px-2 flex flex-col">
+            {/* Progress bar timer - shows when it's player's turn */}
+            {isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && maxTime && (
+              <div className="mb-2 px-2">
+                <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
+                  <div 
+                    className={`h-full transition-all duration-200 ${
+                      timeLeft <= 3 ? 'bg-red-500' : 
+                      timeLeft <= 5 ? 'bg-yellow-500' : 
+                      'bg-green-500'
+                    }`}
+                    style={{ width: `${(timeLeft / maxTime) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            
             {/* Action buttons - ABOVE cards */}
             {canDecide && <div className="flex gap-2 justify-center mb-1">
                 <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
