@@ -136,9 +136,9 @@ export const GameTable = ({
   // This detects when round 2 is reset for a new hand by comparing key fields
   const lastRoundResetHashRef = useRef<string>('');
   
-  // Track the round ID when showdown started - cards stay exposed until round changes
+  // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<string | null>(null);
-  const showdownPlayerIdsRef = useRef<Set<string>>(new Set());
+  const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
   
   // Compute showdown state synchronously during render
   const isShowdownActive = gameType === 'holm-game' && 
@@ -147,32 +147,54 @@ export const GameTable = ({
   // Get current round ID for tracking
   const currentRoundId = realtimeRound?.id || null;
   
-  // If we're in a new round, clear the showdown tracking
+  // If we're in a new round with betting phase, clear the showdown cache
   if (currentRoundId && showdownRoundRef.current !== currentRoundId) {
     if (roundStatus === 'pending' || roundStatus === 'ante' || roundStatus === 'betting') {
       showdownRoundRef.current = null;
-      showdownPlayerIdsRef.current = new Set();
+      showdownCardsCache.current = new Map();
     }
   }
   
-  // If showdown is active, record the round and add stayed players
+  // If showdown is active, cache cards for players who stayed
   if (isShowdownActive && currentRoundId) {
     if (showdownRoundRef.current === null) {
       showdownRoundRef.current = currentRoundId;
     }
-    // Only track if we're in the same round as when showdown started
+    // Cache cards for stayed players during this showdown
     if (showdownRoundRef.current === currentRoundId) {
       players
         .filter(p => p.current_decision === 'stay')
-        .forEach(p => showdownPlayerIdsRef.current.add(p.id));
+        .forEach(p => {
+          // Only cache if we have cards and haven't cached yet
+          if (!showdownCardsCache.current.has(p.id)) {
+            const playerCardData = localPlayerCards.find(pc => pc.player_id === p.id);
+            if (playerCardData && playerCardData.cards.length > 0) {
+              showdownCardsCache.current.set(p.id, [...playerCardData.cards]);
+            }
+          }
+        });
     }
   }
+  
+  // Function to get cards for a player (use cache during showdown)
+  const getPlayerCards = (playerId: string): CardType[] => {
+    const liveCards = localPlayerCards.find(pc => pc.player_id === playerId)?.cards || [];
+    
+    // During showdown, prefer cached cards if live cards are empty
+    if (isShowdownActive && showdownRoundRef.current === currentRoundId) {
+      const cachedCards = showdownCardsCache.current.get(playerId);
+      if (cachedCards && cachedCards.length > 0 && liveCards.length === 0) {
+        return cachedCards;
+      }
+    }
+    return liveCards;
+  };
   
   // Function to check if a player's cards should be shown
   const isPlayerCardsExposed = (playerId: string): boolean => {
     if (!currentRoundId) return false;
-    // Cards are exposed if: showdown started in this round AND player is in the exposed set
-    return showdownRoundRef.current === currentRoundId && showdownPlayerIdsRef.current.has(playerId);
+    // Cards are exposed if: we're in showdown AND player has cached cards
+    return showdownRoundRef.current === currentRoundId && showdownCardsCache.current.has(playerId);
   };
   
   // Keep ref in sync with state
@@ -791,8 +813,8 @@ export const GameTable = ({
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
-            // Get cards for this player
-            const rawCards = player ? playerCards.find(pc => pc.player_id === player.id)?.cards || [] : [];
+            // Get cards for this player - use getPlayerCards which handles showdown caching
+            const rawCards = player ? getPlayerCards(player.id) : [];
             
             // Calculate expected card count based on game type and round
             // Use realtime-derived round for accuracy
