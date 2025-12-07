@@ -33,6 +33,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
   const [newUsername, setNewUsername] = useState("");
@@ -43,25 +44,41 @@ const Index = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-        fetchUsername(session.user.id);
+    let mounted = true;
+    
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        if (!session) {
+          navigate("/auth");
+        } else {
+          setUser(session.user);
+          fetchUsername(session.user.id);
+        }
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-    });
+    };
+    
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
       if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);
         fetchUsername(session.user.id);
+        setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const fetchUsername = async (userId: string) => {
@@ -204,12 +221,16 @@ const Index = () => {
     setShowProfileDialog(false);
   };
 
-  if (!user) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <p className="text-white text-xl">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-foreground text-xl">Loading...</p>
       </div>
     );
+  }
+
+  if (!user) {
+    return null; // Will redirect to /auth
   }
 
   return (
