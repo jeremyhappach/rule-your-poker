@@ -219,12 +219,28 @@ export const MobileGameTable = ({
   const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
   const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
 
+  // Calculate expected card count for 3-5-7 games
+  const getExpectedCardCount = (round: number): number => {
+    if (gameType === 'holm-game') return 4;
+    if (round === 1) return 3;
+    if (round === 2) return 5;
+    if (round === 3) return 7;
+    return 3;
+  };
+  
+  const expectedCardCount = getExpectedCardCount(currentRound);
+
   // Render player chip - chipstack in center, name below
   const renderPlayerChip = (player: Player) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const playerDecision = player.current_decision;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
     const cards = playerCardsData?.cards || [];
+    
+    // Show card backs for active players even if we don't have their cards data
+    const isActivePlayer = player.status === 'active' && !player.sitting_out;
+    const showCardBacks = isActivePlayer && expectedCardCount > 0 && currentRound > 0;
+    const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
     
     return (
       <div key={player.id} className="flex flex-col items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg p-1.5">
@@ -254,11 +270,15 @@ export const MobileGameTable = ({
             {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
         </div>
-        {/* Mini cards indicator */}
-        {cards.length > 0 && (
+        {/* Mini cards indicator - show for active players with expected card count */}
+        {showCardBacks && cardCountToShow > 0 && (
           <div className="flex gap-0.5">
-            {cards.slice(0, 4).map((_, i) => (
-              <div key={i} className="w-2 h-3 bg-gradient-to-br from-blue-800 to-blue-950 rounded-[1px] border border-blue-600/50" />
+            {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
+              <div 
+                key={i} 
+                className="w-2 h-3 rounded-[1px] border border-amber-600/50"
+                style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
+              />
             ))}
           </div>
         )}
