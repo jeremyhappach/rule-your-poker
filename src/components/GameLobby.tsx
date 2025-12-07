@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
 import { Settings } from "lucide-react";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
+import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -381,11 +382,17 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     <div className="space-y-6">
       {/* Header with Peoria Skyline Backdrop */}
       <div className="relative overflow-hidden rounded-xl border border-amber-700/30 min-h-[140px] sm:min-h-[200px] md:min-h-[240px]">
-        {/* Skyline Background - Full visibility */}
+        {/* Skyline Background - Desktop */}
         <img 
           src={peoriaSkyline} 
           alt="Peoria Illinois Skyline"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover hidden sm:block"
+        />
+        {/* Bridge Background - Mobile */}
+        <img 
+          src={peoriaBridgeMobile} 
+          alt="I-74 Bridge Peoria Illinois"
+          className="absolute inset-0 w-full h-full object-cover sm:hidden"
         />
         {/* Gradient Overlay - lighter at top to show skyline, darker at bottom for text */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
