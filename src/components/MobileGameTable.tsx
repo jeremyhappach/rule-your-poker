@@ -563,53 +563,9 @@ export const MobileGameTable = ({
         {/* Expanded view - show cards large */}
         {isCardSectionExpanded && currentPlayer && (
           <div className="px-2 pb-2 flex flex-col h-full">
-            {/* Compact player info bar */}
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <MobilePlayerTimer
-                  timeLeft={timeLeft}
-                  maxTime={maxTime}
-                  isActive={isPlayerTurn && roundStatus === 'betting' && !hasDecided}
-                  size={28}
-                >
-                  <div className="w-6 h-6 rounded-full bg-poker-gold flex items-center justify-center">
-                    <span className="text-black text-[8px] font-bold">YOU</span>
-                  </div>
-                </MobilePlayerTimer>
-                <div>
-                  <p className="text-xs font-semibold text-foreground leading-tight">
-                    {currentPlayer.profiles?.username || 'You'}
-                  </p>
-                  <p className={`text-[10px] font-bold leading-tight ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                    ${currentPlayer.chips.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              
-              {/* Hand evaluation */}
-              {currentPlayerCards.length > 0 && gameType !== 'holm-game' && !chuckyActive && (
-                <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-[10px] px-1.5 py-0">
-                  {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
-                </Badge>
-              )}
-              
-              {/* Legs indicator for 3-5-7 */}
-              {gameType !== 'holm-game' && (
-                <div className="flex items-center gap-0.5">
-                  {currentPlayer.legs > 0 ? (
-                    Array.from({ length: currentPlayer.legs }).map((_, i) => (
-                      <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
-                    ))
-                  ) : (
-                    <span className="text-[9px] text-muted-foreground">0 legs</span>
-                  )}
-                </div>
-              )}
-            </div>
-            
             {/* Action buttons - ABOVE cards */}
             {canDecide && (
-              <div className="flex gap-2 justify-center mb-2">
+              <div className="flex gap-2 justify-center mb-1">
                 <Button
                   variant="destructive"
                   size="default"
@@ -630,7 +586,7 @@ export const MobileGameTable = ({
             
             {/* Decision feedback - above cards */}
             {hasDecided && (
-              <div className="flex justify-center mb-2">
+              <div className="flex justify-center mb-1">
                 <Badge 
                   className={`text-sm px-3 py-0.5 ${
                     (pendingDecision || currentPlayer.current_decision) === 'stay' 
@@ -643,10 +599,10 @@ export const MobileGameTable = ({
               </div>
             )}
             
-            {/* HUGE cards display - scale up significantly */}
-            <div className="flex-1 flex items-center justify-center">
+            {/* Cards display - moved up, less padding */}
+            <div className="flex-1 flex items-start justify-center pt-2">
               {currentPlayerCards.length > 0 ? (
-                <div className="transform scale-[2.2] origin-center">
+                <div className="transform scale-[2.2] origin-top">
                   <PlayerHand 
                     cards={currentPlayerCards} 
                     isHidden={false}
@@ -654,6 +610,45 @@ export const MobileGameTable = ({
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground">Waiting for cards...</div>
+              )}
+            </div>
+            
+            {/* Chipstack and player info at bottom */}
+            <div className="flex items-center justify-center gap-4 pt-2 pb-1 border-t border-border/30 mt-auto">
+              <MobilePlayerTimer
+                timeLeft={timeLeft}
+                maxTime={maxTime}
+                isActive={isPlayerTurn && roundStatus === 'betting' && !hasDecided}
+                size={36}
+              >
+                <div className="w-8 h-8 rounded-full bg-poker-gold flex items-center justify-center">
+                  <span className="text-black text-[10px] font-bold">YOU</span>
+                </div>
+              </MobilePlayerTimer>
+              
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground leading-tight">
+                  {currentPlayer.profiles?.username || 'You'}
+                </p>
+                <p className={`text-xl font-bold leading-tight ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                  ${currentPlayer.chips.toLocaleString()}
+                </p>
+              </div>
+              
+              {/* Hand evaluation for 3-5-7 */}
+              {currentPlayerCards.length > 0 && gameType !== 'holm-game' && !chuckyActive && (
+                <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
+                  {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
+                </Badge>
+              )}
+              
+              {/* Legs indicator for 3-5-7 */}
+              {gameType !== 'holm-game' && currentPlayer.legs > 0 && (
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: currentPlayer.legs }).map((_, i) => (
+                    <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
+                  ))}
+                </div>
               )}
             </div>
           </div>
