@@ -186,24 +186,9 @@ export const MobileGameTable = ({
   const isShowdownActive = gameType === 'holm-game' && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
   
-  // Clear showdown cache when:
-  // 1. A new round starts (round number changes)
-  // 2. Round status resets to early phases
-  // 3. awaitingNextRound becomes false (new hand is starting - clear BEFORE new community cards appear)
+  // Clear showdown cache ONLY when a new round number is detected (new hand started)
+  // This is the safest trigger - round number only changes when a completely new hand begins
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
-    showdownRoundRef.current = null;
-    showdownCardsCache.current = new Map();
-  }
-  
-  // Clear cache when new hand is starting (awaitingNextRound becomes false)
-  // This must happen BEFORE new community cards appear
-  if (showdownRoundRef.current !== null && !awaitingNextRound && !lastRoundResult) {
-    showdownRoundRef.current = null;
-    showdownCardsCache.current = new Map();
-  }
-  
-  // Also clear on early round phases when not in showdown
-  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante') && !isShowdownActive) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
