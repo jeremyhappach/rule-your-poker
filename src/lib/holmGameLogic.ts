@@ -1015,9 +1015,9 @@ async function handleChuckyShowdown(
       })
       .eq('id', gameId);
     
-    // 2-second delay for players to see the winning announcement
-    console.log('[HOLM SHOWDOWN] Pausing 2 seconds for announcement...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 5-second delay for players to see exposed cards and winning announcement
+    console.log('[HOLM SHOWDOWN] Pausing 5 seconds for players to see results...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
     // Dealer cannot pass to a bot or a sitting_out player
@@ -1053,14 +1053,17 @@ async function handleChuckyShowdown(
       nextDealer: nextDealerPosition
     });
     
-    // Now set game_over status so dealer can click Next Game button
+    // Set game_over status with game_over_at to trigger countdown timer (like 3-5-7)
     const { error: gameOverError } = await supabase
       .from('games')
       .update({
         status: 'game_over',
+        game_over_at: new Date(Date.now() + 5000).toISOString(), // 5 second countdown
         pot: 0,
         awaiting_next_round: false,
-        dealer_position: nextDealerPosition
+        dealer_position: nextDealerPosition,
+        buck_position: null,
+        total_hands: (game.total_hands || 0) + 1
       })
       .eq('id', gameId);
     
