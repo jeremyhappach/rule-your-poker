@@ -2505,13 +2505,63 @@ const Game = () => {
       }
     }
 
-    if (antedPlayers.length === 0) {
+    // Check if we have enough active players (need at least 2)
+    if (antedPlayers.length < 2) {
+      console.log('[ANTE] Not enough players to play this hand:', antedPlayers.length);
+      
+      // Set a message to display
       await supabase
         .from('games')
-        .update({ status: 'waiting' })
+        .update({ 
+          last_round_result: 'Not enough players to play this hand',
+          status: 'game_over'
+        })
         .eq('id', gameId);
       
-      anteProcessingRef.current = false;
+      // Wait 3 seconds then trigger game over flow
+      setTimeout(async () => {
+        // Re-fetch fresh players to evaluate states
+        const { data: latestPlayers } = await supabase
+          .from('players')
+          .select('*')
+          .eq('game_id', gameId);
+        
+        if (latestPlayers) {
+          // Evaluate player states and determine if session should end or continue
+          const { activePlayerCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
+          
+          console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Eligible dealers:', eligibleDealerCount);
+          
+          // Need at least 1 eligible dealer AND 2+ active players to continue
+          if (eligibleDealerCount >= 1 && activePlayerCount >= 2) {
+            // Rotate dealer and start new game selection
+            const currentDealerPos = game?.dealer_position || 1;
+            await rotateDealerPosition(gameId, currentDealerPos);
+            await supabase
+              .from('games')
+              .update({ 
+                status: 'game_selection',
+                last_round_result: null,
+                awaiting_next_round: false
+              })
+              .eq('id', gameId);
+          } else {
+            // Start session end countdown
+            setShowNotEnoughPlayers(true);
+            await supabase
+              .from('games')
+              .update({ 
+                pending_session_end: true,
+                game_over_at: new Date(Date.now() + 30000).toISOString()
+              })
+              .eq('id', gameId);
+          }
+        }
+        
+        anteProcessingRef.current = false;
+        fetchGameData();
+      }, 3000);
+      
       return;
     }
 
