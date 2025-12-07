@@ -673,17 +673,6 @@ export const MobileGameTable = ({
             
             {/* Chipstack and player info - below cards */}
             <div className="flex items-center justify-center gap-4 mt-16">
-              <MobilePlayerTimer
-                timeLeft={timeLeft}
-                maxTime={maxTime}
-                isActive={isPlayerTurn && roundStatus === 'betting' && !hasDecided}
-                size={36}
-              >
-                <div className="w-8 h-8 rounded-full bg-poker-gold flex items-center justify-center">
-                  <span className="text-black text-[10px] font-bold">YOU</span>
-                </div>
-              </MobilePlayerTimer>
-              
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground leading-tight">
                   {currentPlayer.profiles?.username || 'You'}
