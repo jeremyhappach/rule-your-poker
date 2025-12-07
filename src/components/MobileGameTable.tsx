@@ -400,7 +400,7 @@ export const MobileGameTable = ({
           w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
           ${chipBgColor}
           ${playerDecision === 'fold' ? 'opacity-50' : ''}
-          ${playerDecision === 'stay' ? 'ring-2 ring-green-600' : ''}
+          ${playerDecision === 'stay' ? 'ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse' : ''}
           ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
           ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
         `}>
