@@ -136,6 +136,22 @@ export const GameTable = ({
   // This detects when round 2 is reset for a new hand by comparing key fields
   const lastRoundResetHashRef = useRef<string>('');
   
+  // Track showdown state - once entered, cards stay visible until round resets
+  const showdownEnteredRef = useRef(false);
+  const lastShowdownRoundRef = useRef<number | null>(null);
+  
+  // Reset showdown tracking when round changes
+  if (currentRound !== lastShowdownRoundRef.current) {
+    showdownEnteredRef.current = false;
+    lastShowdownRoundRef.current = currentRound;
+  }
+  
+  // Mark showdown as entered if conditions are met
+  if (gameType === 'holm-game' && 
+      (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) {
+    showdownEnteredRef.current = true;
+  }
+  
   // Keep ref in sync with state
   realtimeRoundRef.current = realtimeRound;
   
@@ -983,11 +999,10 @@ export const GameTable = ({
                             isHidden={
                               // Show cards if: 
                               // 1. It's the current user, OR
-                              // 2. In Holm game, round is in showdown/completed phase AND player stayed, OR
-                              // 3. allDecisionsIn is true and player stayed (showdown in progress)
+                              // 2. In Holm game, showdown has been entered (sticky) AND player stayed
                               !isCurrentUser && !(
                                 gameType === 'holm-game' && 
-                                (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn) && 
+                                showdownEnteredRef.current && 
                                 playerDecision === 'stay'
                               )
                             }

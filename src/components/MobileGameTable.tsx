@@ -177,6 +177,22 @@ export const MobileGameTable = ({
   const [showLegEarned, setShowLegEarned] = useState(false);
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
   const playerLegsRef = useRef<Record<string, number>>({});
+  
+  // Track showdown state - once entered, cards stay visible until round resets
+  const showdownEnteredRef = useRef(false);
+  const lastShowdownRoundRef = useRef<number | null>(null);
+  
+  // Reset showdown tracking when round changes
+  if (currentRound !== lastShowdownRoundRef.current) {
+    showdownEnteredRef.current = false;
+    lastShowdownRoundRef.current = currentRound;
+  }
+  
+  // Mark showdown as entered if conditions are met
+  if (gameType === 'holm-game' && 
+      (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) {
+    showdownEnteredRef.current = true;
+  }
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
@@ -315,9 +331,9 @@ export const MobileGameTable = ({
     // Bottom positions (slot 0 = bottom-left, slot 5 = bottom-right) need name above chip
     const isBottomPosition = slotIndex === 0 || slotIndex === 5;
     
-    // Determine if we should show this player's actual cards (during showdown)
+    // Determine if we should show this player's actual cards (during showdown - sticky once entered)
     const isShowdown = gameType === 'holm-game' && 
-      (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn) &&
+      showdownEnteredRef.current &&
       playerDecision === 'stay' && cards.length > 0;
     
     const chipElement = <div className="relative">
