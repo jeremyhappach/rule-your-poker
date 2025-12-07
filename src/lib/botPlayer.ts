@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
+import { checkHolmRoundComplete } from "./holmGameLogic";
 
 export async function addBotPlayer(gameId: string) {
   console.log('[BOT CREATION] Starting bot creation for game:', gameId);
@@ -263,6 +264,10 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     console.log('[BOT DECISIONS] Bot at position', bot.position, 'deciding:', decision);
     
     await makeDecision(gameId, bot.id, decision);
+    
+    // CRITICAL: After bot decision, check if round is complete and advance turn
+    console.log('[BOT DECISIONS] Calling checkHolmRoundComplete to advance turn');
+    await checkHolmRoundComplete(gameId);
     
     // Return true to indicate a decision was made (caller may need to refetch)
     return true;
