@@ -983,13 +983,14 @@ export const GameTable = ({
                             isHidden={
                               // Show cards if: 
                               // 1. It's the current user, OR
-                              // 2. In Holm game, round is in showdown/completed phase AND player stayed
+                              // 2. In Holm game, round is in showdown/completed phase AND player stayed, OR
+                              // 3. allDecisionsIn is true and player stayed (showdown in progress)
                               !isCurrentUser && !(
                                 gameType === 'holm-game' && 
-                                (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4) && 
+                                (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn) && 
                                 playerDecision === 'stay'
                               )
-                            } 
+                            }
                           />
                         ) : (
                           <div className="text-[7px] sm:text-[8px] md:text-[10px] text-amber-300/50">Wait...</div>
