@@ -186,12 +186,16 @@ export const MobileGameTable = ({
   const isShowdownActive = gameType === 'holm-game' && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
   
-  // If we're in a new round with betting phase, clear the showdown cache
+  // If we're in a new round, ALWAYS clear the showdown cache
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
-    if (roundStatus === 'pending' || roundStatus === 'ante' || roundStatus === 'betting') {
-      showdownRoundRef.current = null;
-      showdownCardsCache.current = new Map();
-    }
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+  }
+  
+  // Also clear if round status explicitly resets to early phases (handles same-round edge cases)
+  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante')) {
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
   }
   
   // If showdown is active, cache cards for players who stayed
