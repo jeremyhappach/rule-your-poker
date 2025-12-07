@@ -204,7 +204,13 @@ const Index = () => {
     setShowProfileDialog(false);
   };
 
-  if (!user) return null; // Force rebuild
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <p className="text-white text-xl">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 bg-background">
