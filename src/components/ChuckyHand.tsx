@@ -92,6 +92,24 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             // Show front if: has completed flip animation, OR is revealed and not currently flipping
             const showFront = hasFlipped || (isRevealed && !isFlipping);
             
+            // If card is fully revealed (not animating), render a simple PlayingCard
+            if (showFront && !isFlipping) {
+              return (
+                <div
+                  key={index}
+                  className="w-9 h-12 sm:w-10 sm:h-14"
+                >
+                  <PlayingCard
+                    card={card}
+                    size="lg"
+                    isHidden={false}
+                    borderColor="border-red-500"
+                  />
+                </div>
+              );
+            }
+            
+            // Flip animation rendering
             return (
               <div
                 key={index}
