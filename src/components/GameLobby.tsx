@@ -210,11 +210,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const createGame = async () => {
+    // Create game with waiting_for_players status - no auto-seating
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
         buy_in: 100,
-        status: 'waiting',
+        status: 'waiting_for_players',
         name: generateGameName()
       })
       .select()
@@ -229,24 +230,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    const { error: playerError } = await supabase
-      .from('players')
-      .insert({
-        game_id: game.id,
-        user_id: userId,
-        chips: 0,
-        position: 1
-      });
-
-    if (playerError) {
-      toast({
-        title: "Error",
-        description: "Failed to join game",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Navigate to game - creator will choose their seat there
     setShowCreateDialog(false);
     navigate(`/game/${game.id}`);
   };
@@ -369,7 +353,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const activeGames = games.filter(g => 
-    ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over'].includes(g.status)
+    ['waiting_for_players', 'waiting', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over'].includes(g.status)
   );
   
   const historicalGames = games.filter(g => g.status === 'session_ended');
