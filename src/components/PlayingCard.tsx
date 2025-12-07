@@ -187,11 +187,14 @@ export const PlayingCard = ({
   
   // Dimming style for cards not part of winning hand
   const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
+  
+  // Lift effect for highlighted/kicker cards (move up by ~25% of card height)
+  const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
     
   return (
     <Card
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${getHighlightClasses()} ${className}`}
-      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...style }}
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${getHighlightClasses()} ${className} transition-transform duration-200`}
+      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, transform: liftTransform, ...style }}
     >
       <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
         {card.rank}
