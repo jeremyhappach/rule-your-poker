@@ -52,6 +52,7 @@ interface Player {
   auto_ante: boolean;
   sit_out_next_hand: boolean;
   stand_up_next_hand: boolean;
+  mobile_view: boolean | null;
   profiles?: {
     username: string;
   };
@@ -167,6 +168,7 @@ const Game = () => {
     autoAnte: false,
     sitOutNextHand: false,
     standUpNextHand: false,
+    mobileView: null as boolean | null,
   });
   
   // Player options - synced with database
@@ -233,6 +235,25 @@ const Game = () => {
     }
   };
   
+  const handleMobileViewChange = async (value: boolean) => {
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (!currentPlayer) return;
+    
+    // Optimistic update
+    setPlayerOptions(prev => ({ ...prev, mobileView: value }));
+    
+    // Persist to database
+    const { error } = await supabase
+      .from('players')
+      .update({ mobile_view: value })
+      .eq('id', currentPlayer.id);
+    
+    if (error) {
+      console.error('[PLAYER OPTIONS] Failed to save mobile_view:', error);
+      setPlayerOptions(prev => ({ ...prev, mobileView: !value }));
+    }
+  };
+  
 
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -256,6 +277,7 @@ const Game = () => {
         autoAnte: currentPlayer.auto_ante || false,
         sitOutNextHand: currentPlayer.sit_out_next_hand || false,
         standUpNextHand: currentPlayer.stand_up_next_hand || false,
+        mobileView: currentPlayer.mobile_view,
       });
     }
   }, [players, user?.id]);
@@ -2712,13 +2734,16 @@ const Game = () => {
   const dealerPlayer = players.find(p => p.position === game.dealer_position);
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
+  
+  // Effective mobile view: use player preference if set, otherwise fall back to auto-detection
+  const effectiveMobileView = playerOptions.mobileView ?? isMobile;
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
-    <div className={`min-h-screen ${isMobile ? 'p-0' : 'p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
-      <div className={`${isMobile ? '' : 'max-w-7xl mx-auto space-y-6'}`}>
+    <div className={`min-h-screen ${effectiveMobileView ? 'p-0' : 'p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
+      <div className={`${effectiveMobileView ? '' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
-        {!isMobile && (
+        {!effectiveMobileView && (
           <div className="flex justify-between items-center">
             <div className="flex items-start gap-3">
               {/* Player Options Menu - only show if player is seated */}
@@ -2728,9 +2753,11 @@ const Game = () => {
                   autoAnte={playerOptions.autoAnte}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
+                  mobileView={effectiveMobileView}
                   onAutoAnteChange={(v) => handlePlayerOptionChange('auto_ante', v)}
                   onSitOutNextHandChange={(v) => handlePlayerOptionChange('sit_out_next_hand', v)}
                   onStandUpNextHandChange={(v) => handlePlayerOptionChange('stand_up_next_hand', v)}
+                  onMobileViewChange={handleMobileViewChange}
                   onStandUpNow={handleStandUpNow}
                   onLeaveGameNow={handleLeaveGameNow}
                   variant="desktop"
@@ -2848,7 +2875,7 @@ const Game = () => {
         )}
 
         {/* Mobile header - minimal */}
-        {isMobile && (
+        {effectiveMobileView && (
           <div className="flex items-center justify-between px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">PPL</span>
@@ -2859,9 +2886,11 @@ const Game = () => {
                   autoAnte={playerOptions.autoAnte}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
+                  mobileView={effectiveMobileView}
                   onAutoAnteChange={(v) => handlePlayerOptionChange('auto_ante', v)}
                   onSitOutNextHandChange={(v) => handlePlayerOptionChange('sit_out_next_hand', v)}
                   onStandUpNextHandChange={(v) => handlePlayerOptionChange('stand_up_next_hand', v)}
+                  onMobileViewChange={handleMobileViewChange}
                   onStandUpNow={handleStandUpNow}
                   onLeaveGameNow={handleLeaveGameNow}
                   variant="mobile"
@@ -2886,7 +2915,7 @@ const Game = () => {
           <>
             {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
               <div className="relative">
-                {isMobile ? (
+                {effectiveMobileView ? (
                   <MobileGameTable
                     players={players}
                     currentUserId={user?.id}
@@ -3053,7 +3082,7 @@ const Game = () => {
         {game.status === 'ante_decision' && (
           <>
             {/* Show table during ante decisions */}
-            {isMobile ? (
+            {effectiveMobileView ? (
               <MobileGameTable
                 players={players}
                 currentUserId={user?.id}
@@ -3168,7 +3197,7 @@ const Game = () => {
         )}
 
         {game.status === 'in_progress' && (
-          isMobile ? (
+          effectiveMobileView ? (
             <MobileGameTable
               players={players}
               currentUserId={user?.id}
