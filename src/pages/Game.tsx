@@ -3359,6 +3359,8 @@ const Game = () => {
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}
+              isHost={isCreator}
+              onBotClick={(bot) => { setSelectedBot(bot as Player); setShowBotOptions(true); }}
             />
           ) : (
             <GameTable
