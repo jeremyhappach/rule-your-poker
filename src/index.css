@@ -97,3 +97,13 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Rapid flash animation for urgent timer */
+@keyframes rapid-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-rapid-flash {
+  animation: rapid-flash 0.2s ease-in-out infinite;
+}
