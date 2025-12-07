@@ -245,8 +245,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   let buckPosition = passedBuckPosition ?? gameConfig.buck_position;
   
   if (!buckPosition || isFirstHand) {
-    // First hand - buck starts one position to the left of dealer (counterclockwise)
-    // Must find the actual next occupied seat, not just dealerPosition - 1
+    // First hand - buck starts one position to the LEFT of dealer (clockwise order)
+    // In clockwise rotation, LEFT means the NEXT higher position number
     const { data: allPlayers } = await supabase
       .from('players')
       .select('position')
@@ -259,10 +259,11 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       const occupiedPositions = allPlayers.map(p => p.position).sort((a, b) => a - b);
       const dealerIndex = occupiedPositions.indexOf(dealerPosition);
       
-      // Get the previous position in the sorted array (wrapping to end if at start)
-      const prevIndex = dealerIndex <= 0 ? occupiedPositions.length - 1 : dealerIndex - 1;
-      buckPosition = occupiedPositions[prevIndex];
-      console.log('[HOLM] Occupied positions:', occupiedPositions, 'Dealer at:', dealerPosition, 'Buck goes to:', buckPosition);
+      // Get the NEXT position in clockwise order (one to the LEFT of dealer)
+      // Clockwise = ascending position numbers, wrapping from max to min
+      const nextIndex = (dealerIndex + 1) % occupiedPositions.length;
+      buckPosition = occupiedPositions[nextIndex];
+      console.log('[HOLM] Occupied positions:', occupiedPositions, 'Dealer at index:', dealerIndex, 'Buck goes to index:', nextIndex, 'position:', buckPosition);
     } else {
       buckPosition = dealerPosition;
     }
