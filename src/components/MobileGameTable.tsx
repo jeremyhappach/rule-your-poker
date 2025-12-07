@@ -258,14 +258,11 @@ export const MobileGameTable = ({
             ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
           `}>
             <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-400' : 'text-poker-gold'}`}>
-              {player.chips}
+              ${Math.round(player.chips)}
             </span>
           </div>
         </MobilePlayerTimer>
         <div className="flex items-center gap-1">
-          {player.position === dealerPosition && (
-            <Badge className="text-[8px] px-1 py-0 bg-poker-gold text-black h-4">D</Badge>
-          )}
           <span className="text-[11px] text-white truncate max-w-[60px] leading-none font-semibold drop-shadow-md">
             {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
@@ -330,7 +327,7 @@ export const MobileGameTable = ({
         {/* Pot display - above community cards, vertically centered */}
         <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-full z-20">
           <div className="bg-black/70 backdrop-blur-sm rounded-full px-5 py-1.5 border border-poker-gold/60">
-            <span className="text-poker-gold font-bold text-xl">${pot}</span>
+            <span className="text-poker-gold font-bold text-xl">${Math.round(pot)}</span>
           </div>
         </div>
         
@@ -420,6 +417,42 @@ export const MobileGameTable = ({
         <div className="absolute bottom-1 right-2">
           {otherPlayers[6] && renderPlayerChip(otherPlayers[6])}
         </div>
+        
+        {/* Dealer button on felt - positioned near the dealer's seat */}
+        {dealerPosition !== null && dealerPosition !== undefined && (() => {
+          // Find dealer player in otherPlayers
+          const dealerPlayerIndex = otherPlayers.findIndex(p => p.position === dealerPosition);
+          const isCurrentPlayerDealer = currentPlayer?.position === dealerPosition;
+          
+          // Position the dealer button based on where the dealer is
+          let buttonPosition = 'bottom-16 left-1/2 transform -translate-x-1/2'; // default center bottom for current player
+          
+          if (!isCurrentPlayerDealer && dealerPlayerIndex >= 0) {
+            // Position based on other player's location
+            if (dealerPlayerIndex <= 2) {
+              // Top row
+              if (dealerPlayerIndex === 0) buttonPosition = 'top-24 left-8';
+              else if (dealerPlayerIndex === 1) buttonPosition = 'top-24 left-1/2 transform -translate-x-1/2';
+              else buttonPosition = 'top-24 right-8';
+            } else if (dealerPlayerIndex === 3) {
+              buttonPosition = 'top-1/2 -translate-y-1/2 left-16';
+            } else if (dealerPlayerIndex === 4) {
+              buttonPosition = 'top-1/2 -translate-y-1/2 right-16';
+            } else if (dealerPlayerIndex === 5) {
+              buttonPosition = 'bottom-16 left-8';
+            } else if (dealerPlayerIndex === 6) {
+              buttonPosition = 'bottom-16 right-8';
+            }
+          }
+          
+          return (
+            <div className={`absolute ${buttonPosition} z-20`}>
+              <div className="w-7 h-7 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
+                <span className="text-black font-bold text-xs">D</span>
+              </div>
+            </div>
+          );
+        })()}
         
         {/* Open seats for seat selection */}
         {canSelectSeat && openSeats.length > 0 && (
@@ -517,7 +550,7 @@ export const MobileGameTable = ({
                   {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  Pot: <span className="text-poker-gold font-bold">${pot}</span>
+                  Pot: <span className="text-poker-gold font-bold">${Math.round(pot)}</span>
                 </span>
               </div>
             </div>
@@ -598,7 +631,7 @@ export const MobileGameTable = ({
                           text-right min-w-[50px] font-bold text-sm
                           ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}
                         `}>
-                          ${player.chips}
+                          ${Math.round(player.chips)}
                         </div>
                       </div>
                     </div>
