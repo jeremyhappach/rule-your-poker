@@ -178,40 +178,62 @@ export const MobileGameTable = ({
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
   const playerLegsRef = useRef<Record<string, number>>({});
   
-  // Track the round number when showdown started - cards stay exposed until round changes
+  // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<number | null>(null);
-  const showdownPlayerIdsRef = useRef<Set<string>>(new Set());
+  const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
   
   // Compute showdown state synchronously during render
   const isShowdownActive = gameType === 'holm-game' && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
   
-  // If we're in a new round, clear the showdown tracking
+  // If we're in a new round with betting phase, clear the showdown cache
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
     if (roundStatus === 'pending' || roundStatus === 'ante' || roundStatus === 'betting') {
       showdownRoundRef.current = null;
-      showdownPlayerIdsRef.current = new Set();
+      showdownCardsCache.current = new Map();
     }
   }
   
-  // If showdown is active, record the round and add stayed players
+  // If showdown is active, cache cards for players who stayed
   if (isShowdownActive && currentRound) {
     if (showdownRoundRef.current === null) {
       showdownRoundRef.current = currentRound;
     }
-    // Only track if we're in the same round as when showdown started
+    // Cache cards for stayed players during this showdown
     if (showdownRoundRef.current === currentRound) {
       players
         .filter(p => p.current_decision === 'stay')
-        .forEach(p => showdownPlayerIdsRef.current.add(p.id));
+        .forEach(p => {
+          // Only cache if we have cards and haven't cached yet
+          if (!showdownCardsCache.current.has(p.id)) {
+            const playerCardData = playerCards.find(pc => pc.player_id === p.id);
+            if (playerCardData && playerCardData.cards.length > 0) {
+              showdownCardsCache.current.set(p.id, [...playerCardData.cards]);
+            }
+          }
+        });
     }
   }
+  
+  // Function to get cards for a player (use cache during showdown)
+  const getPlayerCards = (playerId: string): CardType[] => {
+    const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
+    
+    // During showdown, prefer cached cards if live cards are empty
+    if (isShowdownActive && showdownRoundRef.current === currentRound) {
+      const cachedCards = showdownCardsCache.current.get(playerId);
+      if (cachedCards && cachedCards.length > 0 && liveCards.length === 0) {
+        return cachedCards;
+      }
+    }
+    return liveCards;
+  };
   
   // Function to check if a player's cards should be shown
   const isPlayerCardsExposed = (playerId: string): boolean => {
     if (!currentRound) return false;
-    // Cards are exposed if: showdown started in this round AND player is in the exposed set
-    return showdownRoundRef.current === currentRound && showdownPlayerIdsRef.current.has(playerId);
+    // Cards are exposed if: we're in showdown AND player has cached cards
+    return showdownRoundRef.current === currentRound && showdownCardsCache.current.has(playerId);
   };
 
   // Find current player and their cards
@@ -333,7 +355,8 @@ export const MobileGameTable = ({
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const playerDecision = player.current_decision;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
-    const cards = playerCardsData?.cards || [];
+    // Use getPlayerCards for showdown caching
+    const cards = getPlayerCards(player.id);
 
     // Show card backs for active players even if we don't have their cards data
     const isActivePlayer = player.status === 'active' && !player.sitting_out;
