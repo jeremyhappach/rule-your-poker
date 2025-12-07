@@ -12,8 +12,8 @@ import { MobileGameTable } from "@/components/MobileGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
-import { DealerSelection } from "@/components/DealerSelection";
-import { PreGameLobby } from "@/components/PreGameLobby";
+import { DealerButtonAnimation } from "@/components/DealerButtonAnimation";
+import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
@@ -2122,10 +2122,22 @@ const Game = () => {
     setLoading(false);
   };
 
-  const startGame = async () => {
+  // This function is called when 2+ players are seated in waiting_for_players status
+  const startGameFromWaitingForPlayers = async () => {
     if (!gameId) return;
 
-    // Start game and show table immediately - dealer selection will happen on the table
+    console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
+    
+    // Set all seated players to active (sitting_out=false, waiting=false)
+    await supabase
+      .from('players')
+      .update({ 
+        sitting_out: false,
+        waiting: false
+      })
+      .eq('game_id', gameId);
+
+    // Move to dealer_selection
     const { error } = await supabase
       .from('games')
       .update({ 
@@ -2762,9 +2774,12 @@ const Game = () => {
     const currentPlayer = players.find(p => p.user_id === user.id);
     
     // Setup states where new players can join immediately (not sitting out)
-    const setupStates = ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
+    const setupStates = ['waiting_for_players', 'waiting', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
     // If game is actively playing (not in setup/config), new players should sit out until next game
     const gameInProgress = !setupStates.includes(game?.status || '');
+    
+    // For waiting_for_players status, players join in "waiting" status (ready to play)
+    const isWaitingForPlayers = game?.status === 'waiting_for_players';
     
     try {
       if (!currentPlayer) {
@@ -2811,8 +2826,9 @@ const Game = () => {
             .eq('id', user.id)
             .maybeSingle();
           
-          // If game is in progress, they sit out until next game starts
-          // Set waiting = true so they'll be dealt in at the beginning of the next game
+          // For waiting_for_players: players join with waiting=true (ready to play when game starts)
+          // For other setup phases: players join immediately
+          // For in_progress games: players sit out until next game
           const { error: joinError } = await supabase
             .from('players')
             .insert({
@@ -2821,7 +2837,7 @@ const Game = () => {
               chips: 0,
               position: position,
               sitting_out: gameInProgress,
-              waiting: gameInProgress, // If game in progress, mark as waiting to join next game
+              waiting: isWaitingForPlayers ? true : gameInProgress, // waiting_for_players: mark as waiting
               ante_decision: null, // Ensure ante_decision is null so they get the popup
               deck_color_mode: userProfile?.deck_color_mode || null // Copy from profile
             });
@@ -3053,13 +3069,15 @@ const Game = () => {
           </div>
         )}
 
-        {game.status === 'waiting' && (
-          <PreGameLobby
+        {/* waiting_for_players status - show empty table with seat selection */}
+        {game.status === 'waiting_for_players' && (
+          <WaitingForPlayersTable
+            gameId={gameId!}
             players={players}
             currentUserId={user?.id}
-            onStartGame={startGame}
-            onAddBot={handleAddBot}
-            canStart={canStart}
+            onSelectSeat={handleSelectSeat}
+            onGameStart={startGameFromWaitingForPlayers}
+            isMobile={isMobile}
           />
         )}
 
@@ -3204,7 +3222,7 @@ const Game = () => {
                     onSelectSeat={handleSelectSeat}
                   />
                 )}
-                <DealerSelection
+                <DealerButtonAnimation
                   players={players}
                   onComplete={(position) => {
                     selectDealer(position);

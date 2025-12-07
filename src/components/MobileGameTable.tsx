@@ -804,12 +804,57 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Open seats for seat selection */}
-        {canSelectSeat && openSeats.length > 0 && <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
-            {openSeats.slice(0, 5).map(pos => <button key={pos} onClick={() => onSelectSeat(pos)} className="w-8 h-8 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-700/60 flex items-center justify-center text-amber-300 text-sm font-bold hover:bg-amber-900/60 transition-colors">
-                {pos}
-              </button>)}
-          </div>}
+        {/* Open seats for seat selection - show in actual positions around the table */}
+        {canSelectSeat && openSeats.length > 0 && (() => {
+          // Calculate positions for open seats based on clockwise distance from current player
+          // If current player is not seated, show in absolute positions
+          const getOpenSeatSlotIndex = (seatPosition: number): number => {
+            if (!currentPlayer) {
+              // Not seated - use position directly (seat 1-7 maps to slots)
+              // Slot 0 = bottom-left, 1 = left, 2 = top-left, 3 = top-right, 4 = right, 5 = bottom-right
+              // Map seat positions 1-7 around the table
+              const positionToSlot: Record<number, number> = {
+                1: 2, // Seat 1 -> top-left
+                2: 3, // Seat 2 -> top-right  
+                3: 4, // Seat 3 -> right
+                4: 5, // Seat 4 -> bottom-right
+                5: 0, // Seat 5 -> bottom-left
+                6: 1, // Seat 6 -> left
+                7: 2, // Seat 7 -> top-left (overlap with 1)
+              };
+              return positionToSlot[seatPosition] ?? 0;
+            }
+            // Current player is seated - calculate clockwise distance
+            let distance = seatPosition - currentPos;
+            if (distance <= 0) distance += 7;
+            return distance - 1; // Convert 1-6 distance to 0-5 slot index
+          };
+
+          const slotPositions: Record<number, string> = {
+            0: 'bottom-2 left-10',        // Bottom-left
+            1: 'top-1/2 -translate-y-1/2 left-0', // Left
+            2: 'top-2 left-10',           // Top-left
+            3: 'top-2 right-10',          // Top-right
+            4: 'top-1/2 -translate-y-1/2 right-0', // Right
+            5: 'bottom-2 right-10',       // Bottom-right
+          };
+
+          return openSeats.map(pos => {
+            const slotIndex = getOpenSeatSlotIndex(pos);
+            const positionClass = slotPositions[slotIndex] || slotPositions[0];
+            
+            return (
+              <div key={pos} className={`absolute z-20 ${positionClass}`}>
+                <button 
+                  onClick={() => onSelectSeat && onSelectSeat(pos)} 
+                  className="w-12 h-12 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-600/70 flex items-center justify-center hover:bg-amber-800/60 hover:border-amber-500 transition-all active:scale-95"
+                >
+                  <span className="text-amber-300 text-xl">+</span>
+                </button>
+              </div>
+            );
+          });
+        })()}
         
       </div>
       
