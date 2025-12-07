@@ -265,7 +265,8 @@ export const MobileGameTable = ({
   // 1. Any player has exposed cards during active showdown, OR
   // 2. We have a result announcement showing (lastRoundResult is set)
   const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
-  const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && awaitingNextRound;
+  // Check if we're showing an announcement (either normal round result or game-over)
+  const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && (awaitingNextRound || isGameOver);
   const isAnyPlayerInShowdown = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
 
   // Determine winner from lastRoundResult for dimming logic
