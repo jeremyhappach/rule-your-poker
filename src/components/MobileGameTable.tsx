@@ -323,8 +323,8 @@ export const MobileGameTable = ({
           {chipElement}
         </MobilePlayerTimer>
         <div className="flex items-center gap-1">
-          <span className={`text-[11px] text-white truncate max-w-[60px] leading-none font-semibold drop-shadow-md ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}>
-            {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
+        <span className={`text-[11px] text-white truncate max-w-[70px] leading-none font-semibold drop-shadow-md ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}>
+            <span className="text-yellow-400">[{player.position}]</span> {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
         </div>
         {/* Mini cards indicator - show for active players, animate fold in Holm */}
