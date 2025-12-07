@@ -147,12 +147,16 @@ export const GameTable = ({
   // Get current round ID for tracking
   const currentRoundId = realtimeRound?.id || null;
   
-  // If we're in a new round with betting phase, clear the showdown cache
-  if (currentRoundId && showdownRoundRef.current !== currentRoundId) {
-    if (roundStatus === 'pending' || roundStatus === 'ante' || roundStatus === 'betting') {
-      showdownRoundRef.current = null;
-      showdownCardsCache.current = new Map();
-    }
+  // If we're in a new round, ALWAYS clear the showdown cache
+  if (currentRoundId && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRoundId) {
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+  }
+  
+  // Also clear if round status explicitly resets to early phases (handles same-round edge cases)
+  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante')) {
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
   }
   
   // If showdown is active, cache cards for players who stayed
