@@ -137,20 +137,24 @@ export const GameTable = ({
   const lastRoundResetHashRef = useRef<string>('');
   
   // Track showdown state - once entered, cards stay visible until round resets
-  const showdownEnteredRef = useRef(false);
+  const [showdownEntered, setShowdownEntered] = useState(false);
   const lastShowdownRoundRef = useRef<number | null>(null);
   
-  // Reset showdown tracking when round changes
-  if (currentRound !== lastShowdownRoundRef.current) {
-    showdownEnteredRef.current = false;
-    lastShowdownRoundRef.current = currentRound;
-  }
-  
-  // Mark showdown as entered if conditions are met
-  if (gameType === 'holm-game' && 
-      (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) {
-    showdownEnteredRef.current = true;
-  }
+  // Use effect to manage showdown state - only goes true, never back to false until round changes
+  useEffect(() => {
+    // Reset when round changes
+    if (currentRound !== lastShowdownRoundRef.current) {
+      setShowdownEntered(false);
+      lastShowdownRoundRef.current = currentRound;
+      return;
+    }
+    
+    // Mark showdown as entered if conditions are met (only set true, never false)
+    if (gameType === 'holm-game' && 
+        (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) {
+      setShowdownEntered(true);
+    }
+  }, [currentRound, gameType, roundStatus, communityCardsRevealed, allDecisionsIn]);
   
   // Keep ref in sync with state
   realtimeRoundRef.current = realtimeRound;
@@ -1002,7 +1006,7 @@ export const GameTable = ({
                               // 2. In Holm game, showdown has been entered (sticky) AND player stayed
                               !isCurrentUser && !(
                                 gameType === 'holm-game' && 
-                                showdownEnteredRef.current && 
+                                showdownEntered && 
                                 playerDecision === 'stay'
                               )
                             }
