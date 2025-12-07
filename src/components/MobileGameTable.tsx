@@ -259,11 +259,13 @@ export const MobileGameTable = ({
   const isPlayerTurn = gameType === 'holm-game' ? buckIsAssigned && roundIsReady && roundIsActive && currentTurnPosition === currentPlayer?.position && !awaitingNextRound : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && !allDecisionsIn && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
 
-  // Check if ANY player has exposed cards (for hiding buck during showdown)
-  // Keep exposed during game_over, or when announcement is showing (lastRoundResult)
-  const isAnyPlayerInShowdown = gameType === 'holm-game' && 
-    players.some(p => isPlayerCardsExposed(p.id)) && 
-    (!awaitingNextRound || isGameOver || !!lastRoundResult);
+  // Check if we should be in showdown display mode (hide chipstacks, buck, show larger cards)
+  // This is true when: 
+  // 1. Any player has exposed cards during active showdown, OR
+  // 2. We have a result announcement showing (lastRoundResult is set)
+  const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
+  const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && awaitingNextRound;
+  const isAnyPlayerInShowdown = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
 
   // Detect Chucky chopped animation
   useEffect(() => {
