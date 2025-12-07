@@ -2122,8 +2122,8 @@ const Game = () => {
     setLoading(false);
   };
 
-  // This function is called when 2+ players are seated in waiting_for_players status
-  const startGameFromWaitingForPlayers = async () => {
+  // This function is called when 2+ players are seated in waiting status
+  const startGameFromWaiting = async () => {
     if (!gameId) return;
 
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
@@ -2774,12 +2774,12 @@ const Game = () => {
     const currentPlayer = players.find(p => p.user_id === user.id);
     
     // Setup states where new players can join immediately (not sitting out)
-    const setupStates = ['waiting_for_players', 'waiting', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
+    const setupStates = ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
     // If game is actively playing (not in setup/config), new players should sit out until next game
     const gameInProgress = !setupStates.includes(game?.status || '');
     
-    // For waiting_for_players status, players join in "waiting" status (ready to play)
-    const isWaitingForPlayers = game?.status === 'waiting_for_players';
+    // For waiting status (before game starts), players join in "waiting" status (ready to play)
+    const isWaitingForPlayers = game?.status === 'waiting';
     
     try {
       if (!currentPlayer) {
@@ -2826,7 +2826,7 @@ const Game = () => {
             .eq('id', user.id)
             .maybeSingle();
           
-          // For waiting_for_players: players join with waiting=true (ready to play when game starts)
+          // For waiting status: players join with waiting=true (ready to play when game starts)
           // For other setup phases: players join immediately
           // For in_progress games: players sit out until next game
           const { error: joinError } = await supabase
@@ -2837,7 +2837,7 @@ const Game = () => {
               chips: 0,
               position: position,
               sitting_out: gameInProgress,
-              waiting: isWaitingForPlayers ? true : gameInProgress, // waiting_for_players: mark as waiting
+              waiting: isWaitingForPlayers ? true : gameInProgress, // waiting: mark as waiting to play
               ante_decision: null, // Ensure ante_decision is null so they get the popup
               deck_color_mode: userProfile?.deck_color_mode || null // Copy from profile
             });
@@ -3069,14 +3069,14 @@ const Game = () => {
           </div>
         )}
 
-        {/* waiting_for_players status - show empty table with seat selection */}
-        {game.status === 'waiting_for_players' && (
+        {/* waiting status - show empty table with seat selection */}
+        {game.status === 'waiting' && (
           <WaitingForPlayersTable
             gameId={gameId!}
             players={players}
             currentUserId={user?.id}
             onSelectSeat={handleSelectSeat}
-            onGameStart={startGameFromWaitingForPlayers}
+            onGameStart={startGameFromWaiting}
             isMobile={isMobile}
           />
         )}
