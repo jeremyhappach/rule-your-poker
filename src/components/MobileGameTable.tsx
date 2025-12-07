@@ -292,8 +292,8 @@ export const MobileGameTable = ({
     return 'bg-green-400'; // green for active
   };
 
-  // Render player chip - chipstack in center, name below
-  const renderPlayerChip = (player: Player) => {
+  // Render player chip - chipstack in center, name below (or above for bottom positions)
+  const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const playerDecision = player.current_decision;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
@@ -311,6 +311,10 @@ export const MobileGameTable = ({
 
     // Check if this bot is clickable by host
     const isBotClickable = isHost && player.is_bot && onBotClick;
+    
+    // Bottom positions (slot 0 = bottom-left, slot 5 = bottom-right) need name above chip
+    const isBottomPosition = slotIndex === 0 || slotIndex === 5;
+    
     const chipElement = <div className="relative">
         {/* Leg indicator for 3-5-7 games */}
         <LegIndicator legs={gameType !== 'holm-game' ? player.legs : 0} maxLegs={legsToWin} />
@@ -327,24 +331,40 @@ export const MobileGameTable = ({
           </span>
         </div>
       </div>;
-    return <div key={player.id} className="flex flex-col items-center gap-0.5" onClick={isBotClickable ? () => onBotClick(player) : undefined}>
-        <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
-          {chipElement}
-        </MobilePlayerTimer>
-        <div className="flex items-center gap-1">
-        <span className={`text-[11px] text-white truncate max-w-[70px] leading-none font-semibold drop-shadow-md ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}>
-            <span className="text-yellow-400">[{player.position}]</span> {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
-          </span>
-        </div>
-        {/* Mini cards indicator - show for active players, animate fold in Holm */}
-        {isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && <div className={`flex gap-0.5 ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
-            {Array.from({
+    
+    const nameElement = (
+      <div className="flex items-center gap-1">
+        <span className={`text-[11px] truncate max-w-[70px] leading-none font-semibold ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}
+          style={{ 
+            color: isBottomPosition ? '#1e293b' : 'white',
+            textShadow: isBottomPosition ? '0 0 4px white, 0 0 8px white' : '0 1px 2px rgba(0,0,0,0.8)'
+          }}>
+          {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
+        </span>
+      </div>
+    );
+    
+    const miniCards = isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
+      <div className={`flex gap-0.5 ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
+        {Array.from({
           length: Math.min(cardCountToShow, 7)
         }, (_, i) => <div key={i} className="w-2 h-3 rounded-[1px] border border-amber-600/50" style={{
           background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
           animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
         }} />)}
-          </div>}
+      </div>
+    );
+    
+    return <div key={player.id} className="flex flex-col items-center gap-0.5" onClick={isBotClickable ? () => onBotClick(player) : undefined}>
+        {/* Name above for bottom positions */}
+        {isBottomPosition && nameElement}
+        <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
+          {chipElement}
+        </MobilePlayerTimer>
+        {/* Name below for other positions */}
+        {!isBottomPosition && nameElement}
+        {/* Mini cards indicator - show for active players, animate fold in Holm */}
+        {miniCards}
       </div>;
   };
   return <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background">
@@ -434,27 +454,27 @@ export const MobileGameTable = ({
         {/* Clockwise from player's view means LEFT first, then up-left, top-left, top-right, right, bottom-right */}
         {/* Slot 0 (1 seat clockwise): Bottom-left */}
         <div className="absolute bottom-2 left-10 z-10">
-          {otherPlayers[0] && renderPlayerChip(otherPlayers[0])}
+          {otherPlayers[0] && renderPlayerChip(otherPlayers[0], 0)}
         </div>
         {/* Slot 1 (2 seats clockwise): Middle-left */}
         <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10">
-          {otherPlayers[1] && renderPlayerChip(otherPlayers[1])}
+          {otherPlayers[1] && renderPlayerChip(otherPlayers[1], 1)}
         </div>
         {/* Slot 2 (3 seats clockwise): Top-left */}
         <div className="absolute top-2 left-10 z-10">
-          {otherPlayers[2] && renderPlayerChip(otherPlayers[2])}
+          {otherPlayers[2] && renderPlayerChip(otherPlayers[2], 2)}
         </div>
         {/* Slot 3 (4 seats clockwise): Top-right */}
         <div className="absolute top-2 right-10 z-10">
-          {otherPlayers[3] && renderPlayerChip(otherPlayers[3])}
+          {otherPlayers[3] && renderPlayerChip(otherPlayers[3], 3)}
         </div>
         {/* Slot 4 (5 seats clockwise): Middle-right */}
         <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10">
-          {otherPlayers[4] && renderPlayerChip(otherPlayers[4])}
+          {otherPlayers[4] && renderPlayerChip(otherPlayers[4], 4)}
         </div>
         {/* Slot 5 (6 seats clockwise): Bottom-right */}
         <div className="absolute bottom-2 right-10 z-10">
-          {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
+          {otherPlayers[5] && renderPlayerChip(otherPlayers[5], 5)}
         </div>
         
         {/* Dealer button on felt - with slide animation, positioned at edge of table */}
