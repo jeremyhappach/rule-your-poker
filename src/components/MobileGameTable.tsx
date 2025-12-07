@@ -178,42 +178,41 @@ export const MobileGameTable = ({
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
   const playerLegsRef = useRef<Record<string, number>>({});
   
-  // Track which players have had cards exposed - only clear on new hand
-  const [exposedPlayerIds, setExposedPlayerIds] = useState<Set<string>>(new Set());
-  const prevAwaitingRef = useRef(awaitingNextRound);
+  // Track the round number when showdown started - cards stay exposed until round changes
+  const showdownRoundRef = useRef<number | null>(null);
+  const showdownPlayerIdsRef = useRef<Set<string>>(new Set());
   
-  // Clear exposed players when a new hand starts (awaitingNextRound transitions from true to false)
-  useEffect(() => {
-    if (prevAwaitingRef.current === true && awaitingNextRound === false) {
-      setExposedPlayerIds(new Set());
+  // Compute showdown state synchronously during render
+  const isShowdownActive = gameType === 'holm-game' && 
+    (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
+  
+  // If we're in a new round, clear the showdown tracking
+  if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
+    if (roundStatus === 'pending' || roundStatus === 'ante' || roundStatus === 'betting') {
+      showdownRoundRef.current = null;
+      showdownPlayerIdsRef.current = new Set();
     }
-    prevAwaitingRef.current = awaitingNextRound;
-  }, [awaitingNextRound]);
+  }
   
-  // Also clear when game status changes to setup phases
-  useEffect(() => {
-    if (roundStatus === 'pending' || roundStatus === 'ante') {
-      setExposedPlayerIds(new Set());
+  // If showdown is active, record the round and add stayed players
+  if (isShowdownActive && currentRound) {
+    if (showdownRoundRef.current === null) {
+      showdownRoundRef.current = currentRound;
     }
-  }, [roundStatus]);
-  
-  // Add players to exposed set when showdown conditions are met
-  useEffect(() => {
-    if (gameType === 'holm-game' && 
-        (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) {
-      const stayedPlayerIds = players
+    // Only track if we're in the same round as when showdown started
+    if (showdownRoundRef.current === currentRound) {
+      players
         .filter(p => p.current_decision === 'stay')
-        .map(p => p.id);
-      
-      if (stayedPlayerIds.length > 0) {
-        setExposedPlayerIds(prev => {
-          const next = new Set(prev);
-          stayedPlayerIds.forEach(id => next.add(id));
-          return next;
-        });
-      }
+        .forEach(p => showdownPlayerIdsRef.current.add(p.id));
     }
-  }, [gameType, roundStatus, communityCardsRevealed, allDecisionsIn, players]);
+  }
+  
+  // Function to check if a player's cards should be shown
+  const isPlayerCardsExposed = (playerId: string): boolean => {
+    if (!currentRound) return false;
+    // Cards are exposed if: showdown started in this round AND player is in the exposed set
+    return showdownRoundRef.current === currentRound && showdownPlayerIdsRef.current.has(playerId);
+  };
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
@@ -354,7 +353,7 @@ export const MobileGameTable = ({
     
     // Determine if we should show this player's actual cards (tracked by exposed player IDs)
     const isShowdown = gameType === 'holm-game' && 
-      exposedPlayerIds.has(player.id) && cards.length > 0;
+      isPlayerCardsExposed(player.id) && cards.length > 0;
     
     const chipElement = <div className="relative">
         {/* Leg indicator for 3-5-7 games */}
