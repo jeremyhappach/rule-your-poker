@@ -465,7 +465,7 @@ export const MobileGameTable = ({
           relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
           ${chipBgColor}
           ${playerDecision === 'fold' ? 'opacity-50' : ''}
-          ${isTheirTurn && playerDecision !== 'stay' ? 'animate-pulse' : ''}
+          ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
           ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
         `}>
           <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
