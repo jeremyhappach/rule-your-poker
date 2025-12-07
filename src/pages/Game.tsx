@@ -2557,13 +2557,14 @@ const Game = () => {
           if (eligibleDealerCount >= 1 && activePlayerCount >= 2) {
             // Rotate dealer and start new game selection
             const currentDealerPos = game?.dealer_position || 1;
-            await rotateDealerPosition(gameId, currentDealerPos);
+            const newDealerPos = await rotateDealerPosition(gameId, currentDealerPos);
             await supabase
               .from('games')
               .update({ 
                 status: 'game_selection',
                 last_round_result: null,
-                awaiting_next_round: false
+                awaiting_next_round: false,
+                dealer_position: newDealerPos
               })
               .eq('id', gameId);
           } else {
