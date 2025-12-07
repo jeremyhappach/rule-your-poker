@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GameTable } from "./GameTable";
 import { MobileGameTable } from "./MobileGameTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Share2, Users } from "lucide-react";
+import { Share2, Users, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Player {
   id: string;
@@ -43,14 +44,97 @@ export const WaitingForPlayersTable = ({
   const { toast } = useToast();
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
+  const [addingBot, setAddingBot] = useState(false);
   
   // Check if current user is seated
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const isSeated = !!currentPlayer;
+  const isHost = currentPlayer?.position === 1;
   
   // Count seated players (in waiting status)
   const seatedPlayerCount = players.filter(p => p.waiting === true || !p.sitting_out).length;
   const hasEnoughPlayers = seatedPlayerCount >= 2;
+  const hasOpenSeats = players.length < 7;
+
+  // Add bot for waiting phase (joins as active, ready to play)
+  const handleAddBot = async () => {
+    if (!hasOpenSeats || addingBot) return;
+    
+    setAddingBot(true);
+    try {
+      // Find open positions
+      const occupiedPositions = new Set(players.map(p => p.position));
+      const allPositions = [1, 2, 3, 4, 5, 6, 7];
+      const openPositions = allPositions.filter(pos => !occupiedPositions.has(pos));
+      
+      if (openPositions.length === 0) {
+        toast({
+          title: "Table Full",
+          description: "No open seats available",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Pick a random open position
+      const randomIndex = Math.floor(Math.random() * openPositions.length);
+      const nextPosition = openPositions[randomIndex];
+      
+      // Create bot profile
+      const botId = crypto.randomUUID();
+      const { data: existingBotProfiles } = await supabase
+        .from('profiles')
+        .select('username')
+        .like('username', 'Bot %');
+      
+      const botNumber = (existingBotProfiles?.length || 0) + 1;
+      const botName = `Bot ${botNumber}`;
+      
+      // Insert bot profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: botId,
+          username: botName
+        });
+
+      if (profileError) {
+        throw new Error(`Failed to create bot profile: ${profileError.message}`);
+      }
+
+      // Create bot player - active and ready to play (not sitting out)
+      const { error: playerError } = await supabase
+        .from('players')
+        .insert({
+          user_id: botId,
+          game_id: gameId,
+          position: nextPosition,
+          chips: 0,
+          is_bot: true,
+          status: 'active',
+          sitting_out: false,
+          waiting: true // Waiting to start game
+        });
+
+      if (playerError) {
+        throw new Error(`Failed to add bot: ${playerError.message}`);
+      }
+
+      toast({
+        title: "Bot Added",
+        description: `${botName} joined at seat #${nextPosition}`,
+      });
+    } catch (error: any) {
+      console.error('Error adding bot:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add bot",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingBot(false);
+    }
+  };
 
   // When 2+ players are seated, trigger game start (with "SHUFFLE UP AND DEAL" announcement)
   useEffect(() => {
@@ -110,15 +194,29 @@ export const WaitingForPlayersTable = ({
             <p className="text-amber-300/70 text-sm">
               {seatedPlayerCount}/2+ players seated
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleInvite}
-              className="mt-3 pointer-events-auto border-amber-600 text-amber-300 hover:bg-amber-600/20"
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              Invite Players
-            </Button>
+            <div className="flex gap-2 mt-3 pointer-events-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleInvite}
+                className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                Invite
+              </Button>
+              {isHost && hasOpenSeats && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddBot}
+                  disabled={addingBot}
+                  className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
+                >
+                  <Bot className="w-4 h-4 mr-2" />
+                  {addingBot ? 'Adding...' : 'Add Bot'}
+                </Button>
+              )}
+            </div>
           </>
         )}
       </div>
