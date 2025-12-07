@@ -105,6 +105,9 @@ interface MobileGameTableProps {
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
+  // Host bot control
+  isHost?: boolean;
+  onBotClick?: (botPlayer: Player) => void;
 }
 
 export const MobileGameTable = ({
@@ -141,6 +144,8 @@ export const MobileGameTable = ({
   onStay,
   onFold,
   onSelectSeat,
+  isHost,
+  onBotClick,
 }: MobileGameTableProps) => {
   const { getTableColors, deckColorMode, getFourColorSuit, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -257,28 +262,40 @@ export const MobileGameTable = ({
     // Status chip background color
     const chipBgColor = getPlayerChipBgColor(player);
     
+    // Check if this bot is clickable by host
+    const isBotClickable = isHost && player.is_bot && onBotClick;
+    
+    const chipElement = (
+      <div className={`
+        w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
+        ${chipBgColor}
+        ${playerDecision === 'fold' ? 'opacity-50' : ''}
+        ${playerDecision === 'stay' ? 'ring-2 ring-green-600' : ''}
+        ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
+        ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
+      `}>
+        <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+          ${Math.round(player.chips)}
+        </span>
+      </div>
+    );
+    
     return (
-      <div key={player.id} className="flex flex-col items-center gap-0.5">
+      <div 
+        key={player.id} 
+        className="flex flex-col items-center gap-0.5"
+        onClick={isBotClickable ? () => onBotClick(player) : undefined}
+      >
         <MobilePlayerTimer
           timeLeft={timeLeft}
           maxTime={maxTime}
           isActive={isTheirTurn && roundStatus === 'betting'}
           size={52}
         >
-          <div className={`
-            w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
-            ${chipBgColor}
-            ${playerDecision === 'fold' ? 'opacity-50' : ''}
-            ${playerDecision === 'stay' ? 'ring-2 ring-green-600' : ''}
-            ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
-          `}>
-            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-              ${Math.round(player.chips)}
-            </span>
-          </div>
+          {chipElement}
         </MobilePlayerTimer>
         <div className="flex items-center gap-1">
-          <span className="text-[11px] text-white truncate max-w-[60px] leading-none font-semibold drop-shadow-md">
+          <span className={`text-[11px] text-white truncate max-w-[60px] leading-none font-semibold drop-shadow-md ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}>
             {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
           {/* Legs indicator for 3-5-7 games */}
