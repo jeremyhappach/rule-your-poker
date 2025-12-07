@@ -310,10 +310,15 @@ export const MobileGameTable = ({
         />
         
         {/* Game name on felt */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
             {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
           </span>
+          {gameType !== 'holm-game' && (
+            <span className="text-white/40 text-xs font-medium">
+              {legsToWin} legs to win
+            </span>
+          )}
         </div>
         
         {/* Chopped Animation */}
