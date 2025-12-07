@@ -210,12 +210,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const createGame = async () => {
-    // Create game with waiting_for_players status - no auto-seating
+    // Create game with waiting status - no auto-seating, players select seats
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
         buy_in: 100,
-        status: 'waiting_for_players',
+        status: 'waiting',
         name: generateGameName()
       })
       .select()
@@ -353,7 +353,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const activeGames = games.filter(g => 
-    ['waiting_for_players', 'waiting', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over'].includes(g.status)
+    ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over'].includes(g.status)
   );
   
   const historicalGames = games.filter(g => g.status === 'session_ended');
