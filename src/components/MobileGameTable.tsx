@@ -240,8 +240,18 @@ export const MobileGameTable = ({
     });
   }, [players, gameType]);
 
-  // Get other players (not current user)
-  const otherPlayers = players.filter(p => p.user_id !== currentUserId);
+  // Get other players (not current user), sorted by position for clockwise layout
+  // Positions are ordered clockwise around the table, so sort ascending
+  const otherPlayers = players
+    .filter(p => p.user_id !== currentUserId)
+    .sort((a, b) => {
+      // Sort by position relative to current player for clockwise layout
+      // Players with positions greater than current player come first (clockwise order)
+      const currentPos = currentPlayer?.position ?? 0;
+      const aOffset = a.position > currentPos ? a.position - currentPos : a.position + 7 - currentPos;
+      const bOffset = b.position > currentPos ? b.position - currentPos : b.position + 7 - currentPos;
+      return aOffset - bOffset;
+    });
 
   // Get occupied positions for open seats
   const occupiedPositions = new Set(players.map(p => p.position));
