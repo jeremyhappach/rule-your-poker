@@ -921,7 +921,7 @@ export const MobileGameTable = ({
               <div className="mb-2 px-2">
                 <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
                   <div 
-                    className={`h-full transition-all duration-200 ${
+                    className={`h-full transition-[width] duration-1000 ease-linear ${
                       timeLeft <= 3 ? 'bg-red-500' : 
                       timeLeft <= 5 ? 'bg-yellow-500' : 
                       'bg-green-500'
