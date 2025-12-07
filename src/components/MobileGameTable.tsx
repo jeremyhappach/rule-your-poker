@@ -310,8 +310,8 @@ export const MobileGameTable = ({
         
         {/* Chucky's Hand - directly below community cards, no container */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && (
-          <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1">
-            <span className="text-red-400 text-xs mr-1">👿</span>
+          <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
+            <span className="text-red-400 text-sm mr-1">👿</span>
             {chuckyCards.map((card, index) => {
               const isRevealed = index < (chuckyCardsRevealed || 0);
               const isFourColor = deckColorMode === 'four_color';
@@ -326,27 +326,27 @@ export const MobileGameTable = ({
                 : '';
               
               return (
-                <div key={index} className="w-8 h-11 sm:w-9 sm:h-12">
+                <div key={index} className="w-10 h-14 sm:w-11 sm:h-15">
                   {isRevealed ? (
                     <div 
-                      className="w-full h-full rounded border border-red-500 flex flex-col items-center justify-center shadow-md"
+                      className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg"
                       style={{ backgroundColor: cardBg }}
                     >
-                      <span className={`text-base font-black leading-none ${textColor}`}>
+                      <span className={`text-xl font-black leading-none ${textColor}`}>
                         {card.rank}
                       </span>
                       {!isFourColor && (
-                        <span className={`text-lg leading-none -mt-0.5 ${textColor}`}>
+                        <span className={`text-2xl leading-none -mt-0.5 ${textColor}`}>
                           {card.suit}
                         </span>
                       )}
                     </div>
                   ) : (
                     <div 
-                      className="w-full h-full rounded border border-red-600 flex items-center justify-center shadow-md"
+                      className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg"
                       style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
                     >
-                      <span className="text-amber-400/50 text-lg">?</span>
+                      <span className="text-amber-400/50 text-xl">?</span>
                     </div>
                   )}
                 </div>
