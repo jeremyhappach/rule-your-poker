@@ -9,13 +9,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 
 interface DealerGameSetupProps {
   gameId: string;
   dealerUsername: string;
   isBot: boolean;
   dealerPlayerId: string;
+  dealerPosition: number;
   onConfigComplete: () => void;
+  onSessionEnd: () => void;
 }
 
 interface GameDefaults {
@@ -34,7 +37,9 @@ export const DealerGameSetup = ({
   dealerUsername,
   isBot,
   dealerPlayerId,
+  dealerPosition,
   onConfigComplete,
+  onSessionEnd,
 }: DealerGameSetupProps) => {
   const { toast } = useToast();
   const [selectedGameType, setSelectedGameType] = useState<string>("holm-game");
@@ -104,6 +109,59 @@ export const DealerGameSetup = ({
     }
   };
 
+  // Handle dealer timeout - mark as sitting out and re-evaluate
+  const handleDealerTimeout = async () => {
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
+    
+    console.log('[DEALER SETUP] Dealer timed out, marking as sitting out');
+    
+    // Mark dealer as sitting out
+    await supabase
+      .from('players')
+      .update({ sitting_out: true, waiting: false })
+      .eq('id', dealerPlayerId);
+    
+    // Evaluate all player states
+    const { activePlayerCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
+    
+    console.log('[DEALER SETUP] After timeout evaluation - active:', activePlayerCount, 'eligible dealers:', eligibleDealerCount);
+    
+    // Check if we can continue
+    if (activePlayerCount < 2 || eligibleDealerCount < 1) {
+      console.log('[DEALER SETUP] Not enough players, ending session');
+      // End session
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          pending_session_end: true,
+          session_ended_at: new Date().toISOString()
+        })
+        .eq('id', gameId);
+      
+      onSessionEnd();
+      return;
+    }
+    
+    // Rotate dealer to next eligible player
+    const newDealerPosition = await rotateDealerPosition(gameId, dealerPosition);
+    
+    console.log('[DEALER SETUP] Rotating dealer from', dealerPosition, 'to', newDealerPosition);
+    
+    // Update game with new dealer and reset config_complete to trigger new dealer setup
+    await supabase
+      .from('games')
+      .update({
+        dealer_position: newDealerPosition,
+        config_complete: false
+      })
+      .eq('id', gameId);
+    
+    // The game state change will trigger re-render with new dealer
+    onConfigComplete();
+  };
+
   // Countdown timer
   useEffect(() => {
     if (isBot || loadingDefaults) return;
@@ -112,9 +170,9 @@ export const DealerGameSetup = ({
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Auto-submit with current settings when timer expires
+          // Dealer timed out - mark as sitting out and re-evaluate
           if (!hasSubmittedRef.current) {
-            handleSubmit();
+            handleDealerTimeout();
           }
           return 0;
         }
@@ -414,7 +472,7 @@ export const DealerGameSetup = ({
           </Button>
 
           <p className="text-xs text-amber-200/60 text-center">
-            Game will auto-start with current settings when timer expires
+            If timer expires without action, you'll be marked as sitting out
           </p>
         </CardContent>
       </Card>
