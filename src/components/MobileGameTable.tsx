@@ -777,6 +777,33 @@ export const MobileGameTable = ({
             </div>;
       })()}
         
+        {/* Current player's legs indicator on felt - 3-5-7 games only */}
+        {gameType !== 'holm-game' && currentPlayer && currentPlayer.legs > 0 && (
+          <div 
+            className="absolute z-20"
+            style={{
+              bottom: '8px',
+              left: '65%',
+              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            <div className="flex">
+              {Array.from({ length: Math.min(currentPlayer.legs, legsToWin) }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className="w-7 h-7 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
+                  style={{
+                    marginLeft: i > 0 ? '-10px' : '0',
+                    zIndex: Math.min(currentPlayer.legs, legsToWin) - i
+                  }}
+                >
+                  <span className="text-slate-800 font-bold text-xs">L</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {/* Open seats for seat selection */}
         {canSelectSeat && openSeats.length > 0 && <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-2 z-20">
             {openSeats.slice(0, 5).map(pos => <button key={pos} onClick={() => onSelectSeat(pos)} className="w-8 h-8 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-700/60 flex items-center justify-center text-amber-300 text-sm font-bold hover:bg-amber-900/60 transition-colors">
@@ -1000,17 +1027,7 @@ export const MobileGameTable = ({
                     {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
                   </Badge>}
                 
-                {/* Legs indicator for 3-5-7 - overlapping L circles */}
-                {gameType !== 'holm-game' && currentPlayer.legs > 0 && <div className="flex">
-                    {Array.from({
-                length: Math.min(currentPlayer.legs, legsToWin)
-              }).map((_, i) => <div key={i} className="w-6 h-6 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm" style={{
-                marginLeft: i > 0 ? '-8px' : '0',
-                zIndex: Math.min(currentPlayer.legs, legsToWin) - i
-              }}>
-                        <span className="text-slate-800 font-bold text-xs">L</span>
-                      </div>)}
-                  </div>}
+                {/* Legs indicator moved to felt - no longer shown here */}
               </div>
               
             </div>
