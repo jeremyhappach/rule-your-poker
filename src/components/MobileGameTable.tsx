@@ -783,7 +783,7 @@ export const MobileGameTable = ({
             className="absolute z-20"
             style={{
               bottom: '8px',
-              left: '65%',
+              left: '55%',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
