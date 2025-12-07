@@ -26,9 +26,9 @@ export const LegIndicator = ({ legs, maxLegs = 3 }: LegIndicatorProps) => {
               <div className="absolute inset-0 bg-amber-400 rounded-full blur-md animate-pulse opacity-75" />
             )}
             
-            {/* Main leg indicator - smaller white circle with L */}
-            <div className="relative bg-white rounded-full shadow-lg border border-slate-400 flex items-center justify-center w-5 h-5">
-              <span className="text-slate-800 font-bold text-[9px]">L</span>
+            {/* Main leg indicator - gold outlined circle with L */}
+            <div className="relative bg-white rounded-full shadow-lg border-2 border-amber-500 flex items-center justify-center w-6 h-6">
+              <span className="text-slate-800 font-bold text-[10px]">L</span>
             </div>
           </div>
         ))}
