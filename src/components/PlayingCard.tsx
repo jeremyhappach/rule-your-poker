@@ -146,13 +146,14 @@ export const PlayingCard = ({
             backgroundColor: cardFaceStyle.backgroundColor,
             backfaceVisibility: 'hidden',
             transform: showFront ? 'rotateY(0deg)' : 'rotateY(-180deg)',
+            ...(!isFourColor ? { color: card && (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
-          <span className={`${sizeClasses.rank} leading-none ${cardFaceStyle.textColor}`}>
+          <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
             {card.rank}
           </span>
           {!isFourColor && (
-            <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${cardFaceStyle.textColor}`}>
+            <span className={`${sizeClasses.suit} leading-none -mt-1.5`}>
               {card.suit}
             </span>
           )}
@@ -162,16 +163,21 @@ export const PlayingCard = ({
   }
   
   // Standard face-up card
+  // For 2-color mode, we need to explicitly set text color inline to override dark mode's text-card-foreground
+  const textColorStyle = !isFourColor 
+    ? { color: card && (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
+    : {};
+    
   return (
     <Card
       className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${className}`}
-      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...style }}
+      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...style }}
     >
-      <span className={`${sizeClasses.rank} leading-none ${cardFaceStyle.textColor}`}>
+      <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
         {card.rank}
       </span>
       {!isFourColor && (
-        <span className={`${sizeClasses.suit} leading-none -mt-1.5 ${cardFaceStyle.textColor}`}>
+        <span className={`${sizeClasses.suit} leading-none -mt-1.5`}>
           {card.suit}
         </span>
       )}
