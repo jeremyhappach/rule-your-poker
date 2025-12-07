@@ -195,10 +195,14 @@ export const MobileGameTable = ({
     showdownCardsCache.current = new Map();
   }
   
-  // Don't clear cache if we're showing a result announcement - keep cards visible
-  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante') && !lastRoundResult) {
-    showdownRoundRef.current = null;
-    showdownCardsCache.current = new Map();
+  // Clear cache when round status resets (new hand starting)
+  // awaitingNextRound becoming false signals new hand is ready
+  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante' || !awaitingNextRound)) {
+    // Only clear if we're NOT currently in showdown state
+    if (!isShowdownActive) {
+      showdownRoundRef.current = null;
+      showdownCardsCache.current = new Map();
+    }
   }
   
   // If showdown is active, cache cards for players who stayed
