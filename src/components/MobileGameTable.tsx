@@ -269,6 +269,14 @@ export const MobileGameTable = ({
           <span className="text-[11px] text-white truncate max-w-[60px] leading-none font-semibold drop-shadow-md">
             {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
+          {/* Legs indicator for 3-5-7 games */}
+          {gameType !== 'holm-game' && player.legs > 0 && (
+            <div className="flex gap-0.5">
+              {Array.from({ length: Math.min(player.legs, legsToWin) }, (_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full bg-poker-gold" />
+              ))}
+            </div>
+          )}
         </div>
         {/* Mini cards indicator - show for active players with expected card count */}
         {showCardBacks && cardCountToShow > 0 && (
