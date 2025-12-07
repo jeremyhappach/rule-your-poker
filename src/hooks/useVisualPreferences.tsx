@@ -35,11 +35,14 @@ interface VisualPreferencesContextType {
   tableLayout: string;
   cardBackDesign: string;
   deckColorMode: DeckColorMode;
+  sessionDeckColorMode: DeckColorMode | null;
+  setSessionDeckColorMode: (mode: DeckColorMode | null) => void;
   getTableColors: () => { color: string; darkColor: string; border: string };
   getCardBackColors: () => { color: string; darkColor: string };
   getCardBackId: () => string;
   getFourColorSuit: (suit: string) => { bg: string; name: string } | null;
   refreshPreferences: () => Promise<void>;
+  getEffectiveDeckColorMode: () => DeckColorMode;
 }
 
 const VisualPreferencesContext = createContext<VisualPreferencesContextType | null>(null);
@@ -54,6 +57,7 @@ export function VisualPreferencesProvider({
   const [tableLayout, setTableLayout] = useState('black');
   const [cardBackDesign, setCardBackDesign] = useState('hawks');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
+  const [sessionDeckColorMode, setSessionDeckColorMode] = useState<DeckColorMode | null>(null);
 
   const fetchPreferences = async () => {
     if (!userId) return;
@@ -87,8 +91,13 @@ export function VisualPreferencesProvider({
 
   const getCardBackId = () => cardBackDesign;
 
+  const getEffectiveDeckColorMode = (): DeckColorMode => {
+    return sessionDeckColorMode ?? deckColorMode;
+  };
+
   const getFourColorSuit = (suit: string) => {
-    if (deckColorMode !== 'four_color') return null;
+    const effectiveMode = getEffectiveDeckColorMode();
+    if (effectiveMode !== 'four_color') return null;
     return FOUR_COLOR_SUITS[suit] || null;
   };
 
@@ -97,11 +106,14 @@ export function VisualPreferencesProvider({
       tableLayout,
       cardBackDesign,
       deckColorMode,
+      sessionDeckColorMode,
+      setSessionDeckColorMode,
       getTableColors,
       getCardBackColors,
       getCardBackId,
       getFourColorSuit,
       refreshPreferences: fetchPreferences,
+      getEffectiveDeckColorMode,
     }}>
       {children}
     </VisualPreferencesContext.Provider>
@@ -116,11 +128,14 @@ export function useVisualPreferences() {
       tableLayout: 'black',
       cardBackDesign: 'hawks',
       deckColorMode: 'four_color' as DeckColorMode,
+      sessionDeckColorMode: null as DeckColorMode | null,
+      setSessionDeckColorMode: () => {},
       getTableColors: () => ({ color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f' }),
       getCardBackColors: () => ({ color: '#CF0A2C', darkColor: '#FFD100' }),
       getCardBackId: () => 'red',
       getFourColorSuit: () => null,
       refreshPreferences: async () => {},
+      getEffectiveDeckColorMode: () => 'four_color' as DeckColorMode,
     };
   }
   return context;

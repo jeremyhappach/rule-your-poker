@@ -28,6 +28,9 @@ interface PlayerOptionsMenuProps {
   onTogglePause?: () => void;
   onAddBot?: () => void;
   canAddBot?: boolean;
+  // Deck color mode props
+  deckColorMode?: 'two_color' | 'four_color';
+  onDeckColorModeChange?: (mode: 'two_color' | 'four_color') => void;
 }
 
 export const PlayerOptionsMenu = ({
@@ -48,6 +51,8 @@ export const PlayerOptionsMenu = ({
   onTogglePause,
   onAddBot,
   canAddBot = false,
+  deckColorMode,
+  onDeckColorModeChange,
 }: PlayerOptionsMenuProps) => {
   // Observers only see Leave Game Now option
   if (isObserver) {
@@ -140,6 +145,19 @@ export const PlayerOptionsMenu = ({
         >
           Stand Up Next Hand
         </DropdownMenuCheckboxItem>
+        
+        {/* Deck color mode toggle */}
+        {deckColorMode && onDeckColorModeChange && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={deckColorMode === 'four_color'}
+              onCheckedChange={(checked) => onDeckColorModeChange(checked ? 'four_color' : 'two_color')}
+            >
+              4-Color Deck
+            </DropdownMenuCheckboxItem>
+          </>
+        )}
         
         {isSittingOut && (
           <>

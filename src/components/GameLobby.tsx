@@ -308,6 +308,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
     const nextPosition = players.length + 1;
 
+    // Fetch user's profile to get their deck_color_mode preference
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('deck_color_mode')
+      .eq('id', userId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from('players')
       .insert({
@@ -315,7 +322,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         user_id: userId,
         chips: 0,
         position: nextPosition,
-        sitting_out: false
+        sitting_out: false,
+        deck_color_mode: userProfile?.deck_color_mode || null
       });
 
     if (error) {
