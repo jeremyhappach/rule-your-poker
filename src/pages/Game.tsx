@@ -23,7 +23,8 @@ import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from 
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { Card as CardType } from "@/lib/cardUtils";
-import { Share2, Bot } from "lucide-react";
+import { Share2, Bot, Settings } from "lucide-react";
+import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -157,6 +158,13 @@ const Game = () => {
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   const [isRunningItBack, setIsRunningItBack] = useState(false);
+  
+  // Player options state
+  const [playerOptions, setPlayerOptions] = useState({
+    autoAnte: false,
+    sitOutNextHand: false,
+    standUpNextHand: false,
+  });
   
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -2623,6 +2631,7 @@ const Game = () => {
   const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
   const dealerPlayer = players.find(p => p.position === game.dealer_position);
   const isDealer = dealerPlayer?.user_id === user?.id;
+  const currentPlayer = players.find(p => p.user_id === user?.id);
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
@@ -2631,11 +2640,28 @@ const Game = () => {
         {/* Desktop header */}
         {!isMobile && (
           <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
-              <p className="text-muted-foreground">{gameName}</p>
-              <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
-              <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
+            <div className="flex items-start gap-3">
+              {/* Player Options Menu - only show if player is seated */}
+              {currentPlayer && (
+                <PlayerOptionsMenu
+                  isSittingOut={currentPlayer.sitting_out}
+                  autoAnte={playerOptions.autoAnte}
+                  sitOutNextHand={playerOptions.sitOutNextHand}
+                  standUpNextHand={playerOptions.standUpNextHand}
+                  onAutoAnteChange={(v) => setPlayerOptions(prev => ({ ...prev, autoAnte: v }))}
+                  onSitOutNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, sitOutNextHand: v }))}
+                  onStandUpNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, standUpNextHand: v }))}
+                  onStandUpNow={() => console.log('Stand up now')}
+                  onLeaveGameNow={() => console.log('Leave game now')}
+                  variant="desktop"
+                />
+              )}
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
+                <p className="text-muted-foreground">{gameName}</p>
+                <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
+                <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
+              </div>
             </div>
             <div className="flex gap-2">
               {game.status === 'in_progress' && (
@@ -2744,7 +2770,24 @@ const Game = () => {
         {/* Mobile header - minimal */}
         {isMobile && (
           <div className="flex items-center justify-between px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border">
-            <span className="text-sm font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">PPL</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">PPL</span>
+              {/* Player Options Menu - only show if player is seated */}
+              {currentPlayer && (
+                <PlayerOptionsMenu
+                  isSittingOut={currentPlayer.sitting_out}
+                  autoAnte={playerOptions.autoAnte}
+                  sitOutNextHand={playerOptions.sitOutNextHand}
+                  standUpNextHand={playerOptions.standUpNextHand}
+                  onAutoAnteChange={(v) => setPlayerOptions(prev => ({ ...prev, autoAnte: v }))}
+                  onSitOutNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, sitOutNextHand: v }))}
+                  onStandUpNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, standUpNextHand: v }))}
+                  onStandUpNow={() => console.log('Stand up now')}
+                  onLeaveGameNow={() => console.log('Leave game now')}
+                  variant="mobile"
+                />
+              )}
+            </div>
             <span className="text-xs text-muted-foreground">{gameName}</span>
           </div>
         )}
