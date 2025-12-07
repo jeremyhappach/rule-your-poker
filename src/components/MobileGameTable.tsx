@@ -507,37 +507,37 @@ export const MobileGameTable = ({
         if (!isCurrentPlayerBuck && buckPlayerIndex >= 0) {
           if (buckPlayerIndex === 0) {
             positionStyle = {
-              top: '42px',
+              top: '38px',
               left: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 1) {
             positionStyle = {
-              top: '42px',
+              top: '38px',
               right: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 2) {
             positionStyle = {
-              top: '42%',
+              top: '40%',
               left: '42px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 3) {
             positionStyle = {
-              top: '42%',
+              top: '40%',
               right: '42px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 4) {
             positionStyle = {
-              bottom: '42px',
+              bottom: '46px',
               left: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckPlayerIndex === 5) {
             positionStyle = {
-              bottom: '42px',
+              bottom: '46px',
               right: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
