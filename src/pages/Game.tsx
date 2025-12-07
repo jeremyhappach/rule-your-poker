@@ -18,6 +18,7 @@ import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
 import { DealerSelection } from "@/components/DealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
+import { useGameChat } from "@/hooks/useGameChat";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
@@ -172,6 +173,9 @@ const Game = () => {
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
   const [selectedBot, setSelectedBot] = useState<Player | null>(null);
   const [showBotOptions, setShowBotOptions] = useState(false);
+  
+  // Chat functionality
+  const { chatBubbles, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
@@ -3406,6 +3410,10 @@ const Game = () => {
               onSelectSeat={handleSelectSeat}
               isHost={isCreator}
               onBotClick={(bot) => { setSelectedBot(bot as Player); setShowBotOptions(true); }}
+              chatBubbles={chatBubbles}
+              onSendChat={sendChatMessage}
+              isChatSending={isChatSending}
+              getPositionForUserId={getPositionForUserId}
             />
           ) : (
             <GameTable
@@ -3445,6 +3453,10 @@ const Game = () => {
               onDebugProceed={handleDebugProceed}
               isHost={isCreator}
               onBotClick={(bot) => { setSelectedBot(bot as Player); setShowBotOptions(true); }}
+              chatBubbles={chatBubbles}
+              onSendChat={sendChatMessage}
+              isChatSending={isChatSending}
+              getPositionForUserId={getPositionForUserId}
             />
           )
         )}
