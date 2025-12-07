@@ -390,12 +390,14 @@ export const MobileGameTable = ({
     // Bottom positions (slot 0 = bottom-left, slot 5 = bottom-right) need name above chip
     const isBottomPosition = slotIndex === 0 || slotIndex === 5;
     
-    // Determine if we should show this player's actual cards (tracked by exposed player IDs)
-    const isShowdown = gameType === 'holm-game' && 
-      isPlayerCardsExposed(player.id) && cards.length > 0;
+    // Determine if we should show this player's actual cards
+    // Either: player has exposed cards in cache, OR we're showing announcement for a stayed player
+    const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
+    const isInAnnouncementShowdown = isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
+    const isShowdown = gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown);
     
-    // During showdown (but NOT during awaitingNextRound), hide chip stack to make room for bigger cards
-    const hideChipForShowdown = isShowdown && !awaitingNextRound;
+    // During showdown/announcement, hide chip stack to make room for bigger cards
+    const hideChipForShowdown = isShowdown;
     
     const chipElement = <div className="relative">
         {/* Leg indicator for 3-5-7 games */}
