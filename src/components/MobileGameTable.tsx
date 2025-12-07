@@ -258,7 +258,7 @@ export const MobileGameTable = ({
     const statusBgClass = getPlayerStatusStyle(player);
     
     return (
-      <div key={player.id} className="flex flex-col items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg p-1.5">
+      <div key={player.id} className="flex flex-col items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg px-0.5 py-1">
         <MobilePlayerTimer
           timeLeft={timeLeft}
           maxTime={maxTime}
