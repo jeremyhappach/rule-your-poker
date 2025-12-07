@@ -22,6 +22,7 @@ interface Player {
  */
 export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   activePlayerCount: number;
+  eligibleDealerCount: number;
   playersRemoved: string[];
 }> {
   console.log('[PLAYER EVAL] ========== Evaluating player states for game:', gameId, '==========');
@@ -35,7 +36,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   
   if (error || !players) {
     console.error('[PLAYER EVAL] Error fetching players:', error);
-    return { activePlayerCount: 0, playersRemoved: [] };
+    return { activePlayerCount: 0, eligibleDealerCount: 0, playersRemoved: [] };
   }
   
   console.log('[PLAYER EVAL] Players to evaluate:', players.map(p => ({
@@ -112,22 +113,26 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     console.log('[PLAYER EVAL] Player', player.position, 'no state changes');
   }
   
-  // After evaluation, count active players (not sitting_out, not removed)
+  // After evaluation, count remaining players with their status
   const { data: remainingPlayers, error: countError } = await supabase
     .from('players')
-    .select('id, sitting_out')
+    .select('id, sitting_out, is_bot')
     .eq('game_id', gameId);
   
   if (countError || !remainingPlayers) {
     console.error('[PLAYER EVAL] Error counting remaining players:', countError);
-    return { activePlayerCount: 0, playersRemoved };
+    return { activePlayerCount: 0, eligibleDealerCount: 0, playersRemoved };
   }
   
+  // Count active players (not sitting_out) - includes bots
   const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out).length;
   
-  console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Removed:', playersRemoved.length);
+  // Count eligible dealers (non-sitting-out AND non-bot humans)
+  const eligibleDealerCount = remainingPlayers.filter(p => !p.sitting_out && !p.is_bot).length;
   
-  return { activePlayerCount, playersRemoved };
+  console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Eligible dealers:', eligibleDealerCount, 'Removed:', playersRemoved.length);
+  
+  return { activePlayerCount, eligibleDealerCount, playersRemoved };
 }
 
 /**
