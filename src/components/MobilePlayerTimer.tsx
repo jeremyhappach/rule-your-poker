@@ -34,8 +34,13 @@ export const MobilePlayerTimer = ({
     return 'hsl(0, 84%, 60%)'; // Red
   };
 
+  const isUrgent = isActive && timeLeft !== null && timeLeft <= 3;
+
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+    <div 
+      className={`relative inline-flex items-center justify-center ${isUrgent ? 'animate-pulse' : ''}`} 
+      style={{ width: size, height: size }}
+    >
       {/* SVG Timer Ring */}
       <svg
         className="absolute inset-0 -rotate-90"
@@ -59,17 +64,26 @@ export const MobilePlayerTimer = ({
             r={radius}
             fill="none"
             stroke={getStrokeColor()}
-            strokeWidth={strokeWidth}
+            strokeWidth={strokeWidth + (isUrgent ? 2 : 0)}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-1000 ease-linear"
+            className={`transition-all duration-1000 ease-linear ${isUrgent ? 'animate-pulse' : ''}`}
             style={{
-              filter: timeLeft !== null && timeLeft <= 3 ? 'drop-shadow(0 0 4px hsl(0, 84%, 60%))' : undefined
+              filter: isUrgent ? 'drop-shadow(0 0 8px hsl(0, 84%, 60%))' : undefined
             }}
           />
         )}
       </svg>
+      {/* Red flashing ring when urgent */}
+      {isUrgent && (
+        <div 
+          className="absolute inset-0 rounded-full border-2 border-red-500 animate-pulse"
+          style={{ 
+            boxShadow: '0 0 12px hsl(0, 84%, 60%), inset 0 0 8px hsl(0, 84%, 60% / 0.3)'
+          }}
+        />
+      )}
       {/* Content inside the ring */}
       <div className="relative z-10">
         {children}
