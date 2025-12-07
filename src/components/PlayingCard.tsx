@@ -26,6 +26,7 @@ interface PlayingCardProps {
   borderColor?: string;
   isHighlighted?: boolean;  // Card is part of winning hand
   isKicker?: boolean;       // Card is a kicker
+  isDimmed?: boolean;       // Card is not part of winning hand (dim it)
 }
 
 const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
@@ -62,6 +63,7 @@ export const PlayingCard = ({
   borderColor = 'border-gray-300',
   isHighlighted = false,
   isKicker = false,
+  isDimmed = false,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
@@ -182,11 +184,14 @@ export const PlayingCard = ({
     }
     return '';
   };
+  
+  // Dimming style for cards not part of winning hand
+  const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
     
   return (
     <Card
       className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${getHighlightClasses()} ${className}`}
-      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...style }}
+      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...style }}
     >
       <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
         {card.rank}

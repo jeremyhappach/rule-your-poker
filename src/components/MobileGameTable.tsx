@@ -271,17 +271,19 @@ export const MobileGameTable = ({
   const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && awaitingNextRound;
   const isAnyPlayerInShowdown = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
 
-  // Calculate winning card highlights when in showdown with current player's cards exposed
+  // Calculate winning card highlights ONLY during announcement phase (all cards exposed)
   const winningCardHighlights = useMemo(() => {
-    if (!isAnyPlayerInShowdown || !currentPlayerCards.length || !communityCards?.length) {
-      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [] };
+    // Only highlight during announcement phase, not during card reveal
+    if (!isShowingAnnouncement || !currentPlayerCards.length || !communityCards?.length) {
+      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
     }
     // Only highlight if current player stayed (not folded)
     if (currentPlayer?.current_decision !== 'stay') {
-      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [] };
+      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
     }
-    return getWinningCardIndices(currentPlayerCards, communityCards, false);
-  }, [isAnyPlayerInShowdown, currentPlayerCards, communityCards, currentPlayer?.current_decision]);
+    const result = getWinningCardIndices(currentPlayerCards, communityCards, false);
+    return { ...result, hasHighlights: true };
+  }, [isShowingAnnouncement, currentPlayerCards, communityCards, currentPlayer?.current_decision]);
 
   // Detect Chucky chopped animation
   useEffect(() => {
@@ -527,6 +529,7 @@ export const MobileGameTable = ({
               revealed={communityCardsRevealed || 2} 
               highlightedIndices={winningCardHighlights.communityIndices}
               kickerIndices={winningCardHighlights.kickerCommunityIndices}
+              hasHighlights={winningCardHighlights.hasHighlights}
             />
           </div>}
         
@@ -902,6 +905,7 @@ export const MobileGameTable = ({
                     isHidden={false} 
                     highlightedIndices={winningCardHighlights.playerIndices}
                     kickerIndices={winningCardHighlights.kickerPlayerIndices}
+                    hasHighlights={winningCardHighlights.hasHighlights}
                   />
                 </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
             </div>
