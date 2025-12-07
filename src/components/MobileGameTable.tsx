@@ -186,14 +186,16 @@ export const MobileGameTable = ({
   const isShowdownActive = gameType === 'holm-game' && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
   
-  // If we're in a new round, ALWAYS clear the showdown cache
+  // Clear showdown cache when:
+  // 1. A new round starts (round number changes)
+  // 2. Round status resets to early phases
+  // 3. awaitingNextRound becomes true (hand ended, transitioning to next)
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
   
-  // Also clear if round status explicitly resets to early phases (handles same-round edge cases)
-  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante')) {
+  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante' || awaitingNextRound)) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
