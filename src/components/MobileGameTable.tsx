@@ -189,20 +189,23 @@ export const MobileGameTable = ({
   // Clear showdown cache when:
   // 1. A new round starts (round number changes)
   // 2. Round status resets to early phases
-  // 3. awaitingNextRound becomes true (hand ended, transitioning to next)
+  // 3. awaitingNextRound becomes false (new hand is starting - clear BEFORE new community cards appear)
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
   
-  // Clear cache when round status resets (new hand starting)
-  // awaitingNextRound becoming false signals new hand is ready
-  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante' || !awaitingNextRound)) {
-    // Only clear if we're NOT currently in showdown state
-    if (!isShowdownActive) {
-      showdownRoundRef.current = null;
-      showdownCardsCache.current = new Map();
-    }
+  // Clear cache when new hand is starting (awaitingNextRound becomes false)
+  // This must happen BEFORE new community cards appear
+  if (showdownRoundRef.current !== null && !awaitingNextRound && !lastRoundResult) {
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+  }
+  
+  // Also clear on early round phases when not in showdown
+  if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante') && !isShowdownActive) {
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
   }
   
   // If showdown is active, cache cards for players who stayed
