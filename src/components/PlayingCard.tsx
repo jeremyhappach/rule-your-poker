@@ -59,15 +59,16 @@ export const PlayingCard = ({
   style = {},
   borderColor = 'border-gray-300',
 }: PlayingCardProps) => {
-  const { getCardBackColors, getCardBackId, deckColorMode } = useVisualPreferences();
+  const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
   const cardBackId = getCardBackId();
   const teamLogo = TEAM_LOGOS[cardBackId] || null;
   
   const sizeClasses = SIZE_CLASSES[size];
   
-  // Determine card styling based on deck color mode
-  const isFourColor = deckColorMode === 'four_color';
+  // Determine card styling based on effective deck color mode (considers session override)
+  const effectiveDeckColorMode = getEffectiveDeckColorMode();
+  const isFourColor = effectiveDeckColorMode === 'four_color';
   const fourColorConfig = card ? FOUR_COLOR_SUITS[card.suit] : null;
   
   // For 4-color deck: colored background with white text, no suit symbol

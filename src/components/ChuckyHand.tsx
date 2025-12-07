@@ -89,7 +89,8 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             const isRevealed = index < revealed;
             const isFlipping = flippingCards.has(index);
             const hasFlipped = flippedCards.has(index);
-            const showFront = hasFlipped || (isRevealed && !isFlipping && index < prevRevealedRef.current);
+            // Show front if: has completed flip animation, OR is revealed and not currently flipping
+            const showFront = hasFlipped || (isRevealed && !isFlipping);
             
             return (
               <div
