@@ -2845,6 +2845,8 @@ const Game = () => {
               {currentPlayer && (
                 <PlayerOptionsMenu
                   isSittingOut={currentPlayer.sitting_out}
+                  isObserver={false}
+                  waiting={currentPlayer.waiting}
                   autoAnte={playerOptions.autoAnte}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
@@ -2914,6 +2916,8 @@ const Game = () => {
               {currentPlayer && (
                 <PlayerOptionsMenu
                   isSittingOut={currentPlayer.sitting_out}
+                  isObserver={false}
+                  waiting={currentPlayer.waiting}
                   autoAnte={playerOptions.autoAnte}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
@@ -3307,7 +3311,12 @@ const Game = () => {
       {showNotEnoughPlayers && (
         <NotEnoughPlayersCountdown 
           gameId={gameId!} 
-          onComplete={() => setShowNotEnoughPlayers(false)} 
+          onComplete={() => setShowNotEnoughPlayers(false)}
+          onResume={() => {
+            setShowNotEnoughPlayers(false);
+            // Re-run the end-of-game evaluation which will now find enough players
+            handleGameOverComplete();
+          }}
         />
       )}
 
