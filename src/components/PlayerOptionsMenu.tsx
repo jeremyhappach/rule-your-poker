@@ -22,6 +22,8 @@ interface PlayerOptionsMenuProps {
   onStandUpNow: () => void;
   onLeaveGameNow: () => void;
   variant?: 'mobile' | 'desktop';
+  // Game status to adjust available options
+  gameStatus?: string;
   // Host props
   isHost?: boolean;
   isPaused?: boolean;
@@ -46,6 +48,7 @@ export const PlayerOptionsMenu = ({
   onStandUpNow,
   onLeaveGameNow,
   variant = 'desktop',
+  gameStatus,
   isHost = false,
   isPaused = false,
   onTogglePause,
@@ -54,6 +57,9 @@ export const PlayerOptionsMenu = ({
   deckColorMode,
   onDeckColorModeChange,
 }: PlayerOptionsMenuProps) => {
+  // Check if we're in the waiting phase (before game starts)
+  const isWaitingPhase = gameStatus === 'waiting';
+  
   // Observers only see Leave Game Now option
   if (isObserver) {
     return (
@@ -74,6 +80,53 @@ export const PlayerOptionsMenu = ({
           align="start" 
           className="w-56 bg-popover border border-border z-50"
         >
+          <DropdownMenuItem 
+            onClick={onLeaveGameNow}
+            className="text-destructive focus:text-destructive"
+          >
+            Leave Game Now
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  // During waiting phase, only show Stand Up Now and Leave Game Now
+  if (isWaitingPhase) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className={variant === 'mobile' 
+              ? "h-8 w-8 text-slate-900 hover:text-slate-700 hover:bg-slate-200/50" 
+              : "h-9 w-9 text-muted-foreground hover:text-foreground"
+            }
+          >
+            <Settings className={variant === 'mobile' ? "h-5 w-5" : "h-5 w-5"} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent 
+          align="start" 
+          className="w-56 bg-popover border border-border z-50"
+        >
+          {/* Deck color mode toggle */}
+          {deckColorMode && onDeckColorModeChange && (
+            <>
+              <DropdownMenuCheckboxItem
+                checked={deckColorMode === 'four_color'}
+                onCheckedChange={(checked) => onDeckColorModeChange(checked ? 'four_color' : 'two_color')}
+              >
+                4-Color Deck
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          
+          <DropdownMenuItem onClick={onStandUpNow}>
+            Stand Up Now
+          </DropdownMenuItem>
           <DropdownMenuItem 
             onClick={onLeaveGameNow}
             className="text-destructive focus:text-destructive"

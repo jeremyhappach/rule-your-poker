@@ -2944,6 +2944,7 @@ const Game = () => {
                   onStandUpNow={handleStandUpNow}
                   onLeaveGameNow={handleLeaveGameNow}
                   variant="desktop"
+                  gameStatus={game.status}
                   isHost={isCreator}
                   isPaused={game.is_paused}
                   onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
@@ -3046,6 +3047,7 @@ const Game = () => {
                   onStandUpNow={handleStandUpNow}
                   onLeaveGameNow={handleLeaveGameNow}
                   variant="mobile"
+                  gameStatus={game.status}
                   isHost={isCreator}
                   isPaused={game.is_paused}
                   onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
