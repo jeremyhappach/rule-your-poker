@@ -258,6 +258,11 @@ export const MobileGameTable = ({
   const isPlayerTurn = gameType === 'holm-game' ? buckIsAssigned && roundIsReady && roundIsActive && currentTurnPosition === currentPlayer?.position && !awaitingNextRound : true;
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && !allDecisionsIn && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
 
+  // Check if ANY player has exposed cards (for hiding buck during showdown)
+  const isAnyPlayerInShowdown = gameType === 'holm-game' && 
+    players.some(p => isPlayerCardsExposed(p.id)) && 
+    !awaitingNextRound;
+
   // Detect Chucky chopped animation
   useEffect(() => {
     if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
@@ -620,8 +625,8 @@ export const MobileGameTable = ({
             </div>;
       })()}
         
-        {/* Buck indicator on felt - Holm games only */}
-        {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && (() => {
+        {/* Buck indicator on felt - Holm games only, hide during showdown */}
+        {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdown && (() => {
         // Find buck player in otherPlayers
         const buckPlayerIndex = otherPlayers.findIndex(p => p.position === buckPosition);
         const isCurrentPlayerBuck = currentPlayer?.position === buckPosition;
