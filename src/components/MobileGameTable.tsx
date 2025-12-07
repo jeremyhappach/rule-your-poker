@@ -219,10 +219,11 @@ export const MobileGameTable = ({
   const getPlayerCards = (playerId: string): CardType[] => {
     const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
     
-    // During showdown, prefer cached cards if live cards are empty
-    if (isShowdownActive && showdownRoundRef.current === currentRound) {
+    // CRITICAL: Once cards are cached for this round, ALWAYS use cache
+    // This prevents flickering when isShowdownActive temporarily becomes false
+    if (showdownRoundRef.current === currentRound) {
       const cachedCards = showdownCardsCache.current.get(playerId);
-      if (cachedCards && cachedCards.length > 0 && liveCards.length === 0) {
+      if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
       }
     }
@@ -232,7 +233,7 @@ export const MobileGameTable = ({
   // Function to check if a player's cards should be shown
   const isPlayerCardsExposed = (playerId: string): boolean => {
     if (!currentRound) return false;
-    // Cards are exposed if: we're in showdown AND player has cached cards
+    // Cards are exposed if: we're in showdown round AND player has cached cards
     return showdownRoundRef.current === currentRound && showdownCardsCache.current.has(playerId);
   };
 
