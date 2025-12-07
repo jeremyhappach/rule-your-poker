@@ -5,9 +5,11 @@ import { useState, useEffect, useRef, useMemo } from "react";
 interface CommunityCardsProps {
   cards: CardType[];
   revealed: number;
+  highlightedIndices?: number[];  // Indices of cards that are part of winning hand
+  kickerIndices?: number[];       // Indices of kicker cards
 }
 
-export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
+export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [] }: CommunityCardsProps) => {
   const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
   const [animatedHandId, setAnimatedHandId] = useState<string>('');
@@ -128,6 +130,8 @@ export const CommunityCards = ({ cards, revealed }: CommunityCardsProps) => {
                   card={card}
                   size="lg"
                   borderColor="border-poker-gold"
+                  isHighlighted={highlightedIndices.includes(index)}
+                  isKicker={kickerIndices.includes(index)}
                   className="absolute inset-0"
                   style={{
                     backfaceVisibility: 'hidden',

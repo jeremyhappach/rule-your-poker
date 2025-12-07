@@ -11,9 +11,9 @@ import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
-import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
+import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
 import cubsLogo from "@/assets/cubs-logo.png";
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
@@ -267,6 +267,18 @@ export const MobileGameTable = ({
   const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && awaitingNextRound;
   const isAnyPlayerInShowdown = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
 
+  // Calculate winning card highlights when in showdown with current player's cards exposed
+  const winningCardHighlights = useMemo(() => {
+    if (!isAnyPlayerInShowdown || !currentPlayerCards.length || !communityCards?.length) {
+      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [] };
+    }
+    // Only highlight if current player stayed (not folded)
+    if (currentPlayer?.current_decision !== 'stay') {
+      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [] };
+    }
+    return getWinningCardIndices(currentPlayerCards, communityCards, false);
+  }, [isAnyPlayerInShowdown, currentPlayerCards, communityCards, currentPlayer?.current_decision]);
+
   // Detect Chucky chopped animation
   useEffect(() => {
     if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
@@ -506,7 +518,12 @@ export const MobileGameTable = ({
         
         {/* Community Cards - vertically centered */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
-            <CommunityCards cards={communityCards} revealed={communityCardsRevealed || 2} />
+            <CommunityCards 
+              cards={communityCards} 
+              revealed={communityCardsRevealed || 2} 
+              highlightedIndices={winningCardHighlights.communityIndices}
+              kickerIndices={winningCardHighlights.kickerCommunityIndices}
+            />
           </div>}
         
         {/* Chucky's Hand - directly below community cards, no container */}
@@ -876,7 +893,12 @@ export const MobileGameTable = ({
             {/* Cards display - moved up, less padding */}
             <div className="flex items-start justify-center">
               {currentPlayerCards.length > 0 ? <div className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''}`}>
-                  <PlayerHand cards={currentPlayerCards} isHidden={false} />
+                  <PlayerHand 
+                    cards={currentPlayerCards} 
+                    isHidden={false} 
+                    highlightedIndices={winningCardHighlights.playerIndices}
+                    kickerIndices={winningCardHighlights.kickerPlayerIndices}
+                  />
                 </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
             </div>
             

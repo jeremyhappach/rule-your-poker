@@ -429,7 +429,12 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
     }
     case 'three-of-a-kind': {
       const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0] || sortedCards[0]?.rank;
-      result = `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
+      // Get kickers for three of a kind (up to 2 kickers matter)
+      const kickerCards = sortedCards.filter(c => c.rank !== tripRank).slice(0, 2);
+      const kickerStr = formatKickers(kickerCards);
+      result = kickerStr
+        ? `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} (${kickerStr})`
+        : `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
       break;
     }
     case 'two-pair': {
@@ -441,7 +446,12 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
         truePairs.sort((a, b) => RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
         const highPair = rankNamePlural(RANK_VALUES[truePairs[0][0] as Rank]);
         const lowPair = rankNamePlural(RANK_VALUES[truePairs[1][0] as Rank]);
-        result = `Two Pair, ${highPair} and ${lowPair}`;
+        // Get kicker for two pair (only 1 kicker matters)
+        const kickerCards = sortedCards.filter(c => c.rank !== truePairs[0][0] && c.rank !== truePairs[1][0]).slice(0, 1);
+        const kickerStr = formatKickers(kickerCards);
+        result = kickerStr
+          ? `Two Pair, ${highPair} and ${lowPair} (${kickerStr})`
+          : `Two Pair, ${highPair} and ${lowPair}`;
       } else {
         result = 'Two Pair';
       }
@@ -449,7 +459,12 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
     }
     case 'pair': {
       const pairRank = rankGroups.find(([_, count]) => count >= 2)?.[0] || sortedCards[0]?.rank;
-      result = `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      // Get kickers for pair (up to 3 kickers matter)
+      const kickerCards = sortedCards.filter(c => c.rank !== pairRank).slice(0, 3);
+      const kickerStr = formatKickers(kickerCards);
+      result = kickerStr 
+        ? `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])} (${kickerStr})`
+        : `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
       break;
     }
     case 'high-card':
@@ -462,6 +477,21 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
   
   console.log('[FORMAT] Result:', result);
   return result;
+}
+
+/**
+ * Format kicker cards for display
+ * e.g., "K kicker" or "A, Q, J kickers"
+ */
+function formatKickers(kickerCards: Card[]): string {
+  if (kickerCards.length === 0) return '';
+  
+  const kickerNames = kickerCards.map(c => valueToRankName(RANK_VALUES[c.rank]));
+  
+  if (kickerNames.length === 1) {
+    return `${kickerNames[0]} kicker`;
+  }
+  return `${kickerNames.join(', ')} kickers`;
 }
 
 /**
@@ -488,4 +518,155 @@ function findStraightHighCard(cards: Card[], useWildCards: boolean): number {
   const values = nonWildcards.map(c => RANK_VALUES[c.rank]).sort((a, b) => b - a);
   console.log('[STRAIGHT-HIGH] WARNING: No straight found by checkStraightWithWildcards, using highest card:', values[0]);
   return values[0] || 14;
+}
+
+/**
+ * Get indices of cards that make up the winning hand (for highlighting)
+ * Returns indices into the sorted card array for both player cards and community cards
+ * Also returns which kickers were used if relevant
+ */
+export function getWinningCardIndices(
+  playerCards: Card[], 
+  communityCards: Card[], 
+  useWildCards: boolean = false
+): { playerIndices: number[]; communityIndices: number[]; kickerPlayerIndices: number[]; kickerCommunityIndices: number[] } {
+  const allCards = [...playerCards, ...communityCards];
+  if (allCards.length === 0) {
+    return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [] };
+  }
+  
+  const eval_ = evaluateHand(allCards, useWildCards);
+  const rank = eval_.rank;
+  
+  // Sort by rank value for finding hands
+  const sortedAllCards = [...allCards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+  
+  // Count ranks
+  const rankCounts: Record<string, number> = {};
+  allCards.forEach(c => { rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1; });
+  
+  // Get rank groups sorted by count then value
+  const rankGroups = Object.entries(rankCounts)
+    .sort((a, b) => b[1] - a[1] || RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
+  
+  const playerIndices: number[] = [];
+  const communityIndices: number[] = [];
+  const kickerPlayerIndices: number[] = [];
+  const kickerCommunityIndices: number[] = [];
+  
+  // Helper to find card index in original arrays
+  const findCardIndex = (card: Card, searchIn: Card[], usedIndices: Set<number>): number => {
+    for (let i = 0; i < searchIn.length; i++) {
+      if (!usedIndices.has(i) && searchIn[i].rank === card.rank && searchIn[i].suit === card.suit) {
+        usedIndices.add(i);
+        return i;
+      }
+    }
+    return -1;
+  };
+  
+  const usedPlayerIndices = new Set<number>();
+  const usedCommunityIndices = new Set<number>();
+  
+  // Helper to add card to appropriate index array
+  const addCard = (card: Card, isKicker: boolean = false) => {
+    let idx = findCardIndex(card, playerCards, usedPlayerIndices);
+    if (idx !== -1) {
+      if (isKicker) kickerPlayerIndices.push(idx);
+      else playerIndices.push(idx);
+      return;
+    }
+    idx = findCardIndex(card, communityCards, usedCommunityIndices);
+    if (idx !== -1) {
+      if (isKicker) kickerCommunityIndices.push(idx);
+      else communityIndices.push(idx);
+    }
+  };
+  
+  switch (rank) {
+    case 'five-of-a-kind':
+    case 'four-of-a-kind':
+    case 'three-of-a-kind': {
+      const targetRank = rankGroups[0]?.[0];
+      if (targetRank) {
+        allCards.filter(c => c.rank === targetRank).forEach(c => addCard(c));
+      }
+      break;
+    }
+    case 'full-house': {
+      const tripRank = rankGroups[0]?.[0];
+      const pairRank = rankGroups[1]?.[0];
+      if (tripRank) allCards.filter(c => c.rank === tripRank).forEach(c => addCard(c));
+      if (pairRank) allCards.filter(c => c.rank === pairRank).slice(0, 2).forEach(c => addCard(c));
+      break;
+    }
+    case 'two-pair': {
+      const truePairs = rankGroups.filter(([_, count]) => count >= 2);
+      truePairs.sort((a, b) => RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
+      if (truePairs[0]) allCards.filter(c => c.rank === truePairs[0][0]).slice(0, 2).forEach(c => addCard(c));
+      if (truePairs[1]) allCards.filter(c => c.rank === truePairs[1][0]).slice(0, 2).forEach(c => addCard(c));
+      // Add kicker
+      const kicker = sortedAllCards.find(c => c.rank !== truePairs[0]?.[0] && c.rank !== truePairs[1]?.[0]);
+      if (kicker) addCard(kicker, true);
+      break;
+    }
+    case 'pair': {
+      const pairRank = rankGroups.find(([_, count]) => count >= 2)?.[0];
+      if (pairRank) allCards.filter(c => c.rank === pairRank).slice(0, 2).forEach(c => addCard(c));
+      // Add kickers (up to 3)
+      const kickers = sortedAllCards.filter(c => c.rank !== pairRank).slice(0, 3);
+      kickers.forEach(c => addCard(c, true));
+      break;
+    }
+    case 'straight':
+    case 'straight-flush': {
+      // Find the 5 cards that make the straight
+      const values = sortedAllCards.map(c => RANK_VALUES[c.rank]);
+      const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+      
+      // Find best 5-card straight run
+      for (let i = 0; i <= uniqueValues.length - 5; i++) {
+        const run = uniqueValues.slice(i, i + 5);
+        if (run[0] - run[4] === 4) {
+          run.forEach(val => {
+            const card = sortedAllCards.find(c => 
+              RANK_VALUES[c.rank] === val && 
+              !playerIndices.includes(playerCards.indexOf(c)) && 
+              !communityIndices.includes(communityCards.indexOf(c))
+            );
+            if (card) addCard(card);
+          });
+          break;
+        }
+      }
+      // Check wheel (A-2-3-4-5)
+      if (playerIndices.length + communityIndices.length < 5) {
+        const wheel = [14, 5, 4, 3, 2];
+        if (wheel.every(v => values.includes(v))) {
+          wheel.forEach(val => {
+            const card = sortedAllCards.find(c => RANK_VALUES[c.rank] === val);
+            if (card) addCard(card);
+          });
+        }
+      }
+      break;
+    }
+    case 'flush': {
+      // Find flush suit and highlight 5 highest cards of that suit
+      const suitCounts: Record<Suit, number> = { '♠': 0, '♥': 0, '♦': 0, '♣': 0 };
+      allCards.forEach(c => suitCounts[c.suit]++);
+      const flushSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0] as Suit;
+      const flushCards = sortedAllCards.filter(c => c.suit === flushSuit).slice(0, 5);
+      flushCards.forEach(c => addCard(c));
+      break;
+    }
+    case 'high-card':
+    default: {
+      // Just highlight the highest card
+      if (sortedAllCards[0]) addCard(sortedAllCards[0]);
+      break;
+    }
+  }
+  
+  return { playerIndices, communityIndices, kickerPlayerIndices, kickerCommunityIndices };
 }

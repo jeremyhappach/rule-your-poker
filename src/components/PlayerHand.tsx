@@ -5,17 +5,27 @@ interface PlayerHandProps {
   cards: CardType[];
   isHidden?: boolean;
   expectedCardCount?: number;
+  highlightedIndices?: number[];  // Indices of cards that are part of winning hand
+  kickerIndices?: number[];       // Indices of kicker cards
 }
 
-export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: PlayerHandProps) => {
+export const PlayerHand = ({ 
+  cards, 
+  isHidden = false, 
+  expectedCardCount,
+  highlightedIndices = [],
+  kickerIndices = []
+}: PlayerHandProps) => {
   // Sort cards from lowest to highest
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
     '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
   };
   
-  const sortedCards = [...cards].sort((a, b) => 
-    RANK_ORDER[a.rank] - RANK_ORDER[b.rank]
+  // Create sorted cards with original indices for highlighting
+  const cardsWithIndices = cards.map((card, index) => ({ card, originalIndex: index }));
+  const sortedCardsWithIndices = [...cardsWithIndices].sort((a, b) => 
+    RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank]
   );
   
   const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
@@ -54,19 +64,26 @@ export const PlayerHand = ({ cards, isHidden = false, expectedCardCount }: Playe
 
   return (
     <div className="flex">
-      {sortedCards.map((card, index) => (
-        <PlayingCard
-          key={index}
-          card={card}
-          size={cardSize}
-          className={`${overlapClass} transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
-          style={{ 
-            transform: `rotate(${index * 2 - (sortedCards.length - 1)}deg)`,
-            animationDelay: `${index * 150}ms`,
-            animationFillMode: 'backwards'
-          }}
-        />
-      ))}
+      {sortedCardsWithIndices.map(({ card, originalIndex }, displayIndex) => {
+        const isHighlighted = highlightedIndices.includes(originalIndex);
+        const isKicker = kickerIndices.includes(originalIndex);
+        
+        return (
+          <PlayingCard
+            key={displayIndex}
+            card={card}
+            size={cardSize}
+            isHighlighted={isHighlighted}
+            isKicker={isKicker}
+            className={`${overlapClass} transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
+            style={{ 
+              transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
+              animationDelay: `${displayIndex * 150}ms`,
+              animationFillMode: 'backwards'
+            }}
+          />
+        );
+      })}
     </div>
   );
 };
