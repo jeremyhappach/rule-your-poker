@@ -15,7 +15,8 @@ export type HandRank =
   | 'flush'
   | 'full-house'
   | 'four-of-a-kind'
-  | 'straight-flush';
+  | 'straight-flush'
+  | 'five-of-a-kind';
 
 export const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
 export const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -124,6 +125,13 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   }
 
   // Round 2+ (5+ cards): All hands possible
+
+  // Five of a Kind (only possible with wildcards)
+  if (bestCount >= 5) {
+    const result = { rank: 'five-of-a-kind' as HandRank, value: calculateValue(9, [RANK_VALUES[bestRank]]) };
+    console.log('[EVAL] Result:', result.rank, 'of', bestRank, 'value:', result.value);
+    return result;
+  }
 
   // Straight Flush
   const sfResult = checkStraightFlush(nonWildCards, wildcardCount);
@@ -377,6 +385,11 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
   let result: string;
   
   switch (rank) {
+    case 'five-of-a-kind': {
+      const quintRank = rankGroups.find(([_, count]) => count >= 5)?.[0] || sortedCards[0]?.rank;
+      result = `Five of a Kind, ${rankNamePlural(RANK_VALUES[quintRank as Rank])}`;
+      break;
+    }
     case 'straight-flush': {
       // For straight flush, find actual straight high card, not just highest card
       const straightHigh = findStraightHighCard(cards, useWildCards);
