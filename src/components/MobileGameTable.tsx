@@ -231,15 +231,15 @@ export const MobileGameTable = ({
   
   const expectedCardCount = getExpectedCardCount(currentRound);
 
-  // Get player status for display - lime green for active like reference image
-  const getPlayerStatusStyle = (player: Player) => {
+  // Get player status chip background color based on status
+  const getPlayerChipBgColor = (player: Player) => {
     if (player.sitting_out && !player.waiting) {
-      return ''; // transparent/no coloring for sitting out
+      return 'bg-white'; // white for sitting out
     }
-    if (player.waiting) {
-      return 'bg-yellow-300/40'; // pale yellow for waiting
+    if (player.sitting_out && player.waiting) {
+      return 'bg-yellow-300'; // yellow for waiting
     }
-    return 'bg-lime-400/50'; // light lime green for active (matches reference image)
+    return 'bg-green-400'; // green for active
   };
 
   // Render player chip - chipstack in center, name below
@@ -254,11 +254,11 @@ export const MobileGameTable = ({
     const showCardBacks = isActivePlayer && expectedCardCount > 0 && currentRound > 0;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
     
-    // Status background color
-    const statusBgClass = getPlayerStatusStyle(player);
+    // Status chip background color
+    const chipBgColor = getPlayerChipBgColor(player);
     
     return (
-      <div key={player.id} className="flex flex-col items-center gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg px-0.5 py-1">
+      <div key={player.id} className="flex flex-col items-center gap-0.5">
         <MobilePlayerTimer
           timeLeft={timeLeft}
           maxTime={maxTime}
@@ -266,14 +266,13 @@ export const MobileGameTable = ({
           size={52}
         >
           <div className={`
-            w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-amber-700/60
-            ${playerDecision === 'fold' ? 'bg-slate-700/80 opacity-50' : 'bg-amber-900'}
-            ${playerDecision === 'stay' ? 'ring-2 ring-green-500' : ''}
-            ${player.sitting_out ? 'opacity-40 grayscale' : ''}
+            w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
+            ${chipBgColor}
+            ${playerDecision === 'fold' ? 'opacity-50' : ''}
+            ${playerDecision === 'stay' ? 'ring-2 ring-green-600' : ''}
             ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
-            ${statusBgClass}
           `}>
-            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-400' : 'text-poker-gold'}`}>
+            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
               ${Math.round(player.chips)}
             </span>
           </div>
@@ -405,11 +404,11 @@ export const MobileGameTable = ({
         )}
         
         {/* Players arranged around table edges - 6 positions for other players */}
-        {/* Top row: 2 players at top corners */}
-        <div className="absolute top-2 left-4 z-10">
+        {/* Top row: 2 players at top corners - indented toward center */}
+        <div className="absolute top-2 left-10 z-10">
           {otherPlayers[0] && renderPlayerChip(otherPlayers[0])}
         </div>
-        <div className="absolute top-2 right-4 z-10">
+        <div className="absolute top-2 right-10 z-10">
           {otherPlayers[1] && renderPlayerChip(otherPlayers[1])}
         </div>
         
@@ -421,11 +420,11 @@ export const MobileGameTable = ({
           {otherPlayers[3] && renderPlayerChip(otherPlayers[3])}
         </div>
         
-        {/* Bottom row: 2 players at bottom corners */}
-        <div className="absolute bottom-2 left-4 z-10">
+        {/* Bottom row: 2 players at bottom corners - indented toward center */}
+        <div className="absolute bottom-2 left-10 z-10">
           {otherPlayers[4] && renderPlayerChip(otherPlayers[4])}
         </div>
-        <div className="absolute bottom-2 right-4 z-10">
+        <div className="absolute bottom-2 right-10 z-10">
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
         </div>
         
