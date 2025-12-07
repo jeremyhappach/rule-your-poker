@@ -453,12 +453,19 @@ export const MobileGameTable = ({
     const chipElement = <div className="relative">
         {/* Leg indicator for 3-5-7 games */}
         <LegIndicator legs={gameType !== 'holm-game' ? player.legs : 0} maxLegs={legsToWin} />
+        {/* Pulsing green ring for stayed players - separate element so inner circle doesn't pulse */}
+        {playerDecision === 'stay' && (
+          <div className="absolute inset-0 rounded-full ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse" />
+        )}
+        {/* Yellow ring for current turn (no pulse on ring, pulse on circle) */}
+        {isTheirTurn && playerDecision !== 'stay' && (
+          <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
+        )}
         <div className={`
-          w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
+          relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
           ${chipBgColor}
           ${playerDecision === 'fold' ? 'opacity-50' : ''}
-          ${playerDecision === 'stay' ? 'ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse' : ''}
-          ${isTheirTurn && playerDecision !== 'stay' ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
+          ${isTheirTurn && playerDecision !== 'stay' ? 'animate-pulse' : ''}
           ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
         `}>
           <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
