@@ -136,25 +136,42 @@ export const GameTable = ({
   // This detects when round 2 is reset for a new hand by comparing key fields
   const lastRoundResetHashRef = useRef<string>('');
   
-  // Track showdown state - once entered, cards stay visible until round resets
-  const [showdownEntered, setShowdownEntered] = useState(false);
-  const lastShowdownRoundRef = useRef<number | null>(null);
+  // Track which players have had cards exposed - only clear on new hand
+  const [exposedPlayerIds, setExposedPlayerIds] = useState<Set<string>>(new Set());
+  const prevAwaitingRef = useRef(awaitingNextRound);
   
-  // Use effect to manage showdown state - only goes true, never back to false until round changes
+  // Clear exposed players when a new hand starts (awaitingNextRound transitions from true to false)
   useEffect(() => {
-    // Reset when round changes
-    if (currentRound !== lastShowdownRoundRef.current) {
-      setShowdownEntered(false);
-      lastShowdownRoundRef.current = currentRound;
-      return;
+    if (prevAwaitingRef.current === true && awaitingNextRound === false) {
+      setExposedPlayerIds(new Set());
     }
-    
-    // Mark showdown as entered if conditions are met (only set true, never false)
+    prevAwaitingRef.current = awaitingNextRound;
+  }, [awaitingNextRound]);
+  
+  // Also clear when game status changes to setup phases
+  useEffect(() => {
+    if (roundStatus === 'pending' || roundStatus === 'ante') {
+      setExposedPlayerIds(new Set());
+    }
+  }, [roundStatus]);
+  
+  // Add players to exposed set when showdown conditions are met
+  useEffect(() => {
     if (gameType === 'holm-game' && 
         (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) {
-      setShowdownEntered(true);
+      const stayedPlayerIds = players
+        .filter(p => p.current_decision === 'stay')
+        .map(p => p.id);
+      
+      if (stayedPlayerIds.length > 0) {
+        setExposedPlayerIds(prev => {
+          const next = new Set(prev);
+          stayedPlayerIds.forEach(id => next.add(id));
+          return next;
+        });
+      }
     }
-  }, [currentRound, gameType, roundStatus, communityCardsRevealed, allDecisionsIn]);
+  }, [gameType, roundStatus, communityCardsRevealed, allDecisionsIn, players]);
   
   // Keep ref in sync with state
   realtimeRoundRef.current = realtimeRound;
@@ -1003,11 +1020,10 @@ export const GameTable = ({
                             isHidden={
                               // Show cards if: 
                               // 1. It's the current user, OR
-                              // 2. In Holm game, showdown has been entered (sticky) AND player stayed
+                              // 2. In Holm game, this player's cards have been exposed (tracked by ID)
                               !isCurrentUser && !(
                                 gameType === 'holm-game' && 
-                                showdownEntered && 
-                                playerDecision === 'stay'
+                                exposedPlayerIds.has(player.id)
                               )
                             }
                           />
