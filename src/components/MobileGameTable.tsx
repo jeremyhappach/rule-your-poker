@@ -183,9 +183,9 @@ export const MobileGameTable = ({
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
   
   // Compute showdown state synchronously during render
-  // Only consider it showdown if we're NOT in an early betting phase
+  // This should trigger when we need to show exposed cards
   const isInEarlyPhase = roundStatus === 'betting' || roundStatus === 'pending' || roundStatus === 'ante';
-  const isShowdownActive = gameType === 'holm-game' && !isInEarlyPhase &&
+  const isShowdownActive = gameType === 'holm-game' && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
   
   // Clear showdown cache when:
@@ -196,8 +196,8 @@ export const MobileGameTable = ({
     showdownCardsCache.current = new Map();
   }
   
-  // Also clear if we're in betting phase and not showing announcement
-  if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult) {
+  // Also clear if we're in early phase, no announcement, AND allDecisionsIn is false (truly new hand)
+  if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult && !allDecisionsIn) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
