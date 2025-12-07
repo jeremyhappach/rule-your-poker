@@ -753,7 +753,7 @@ export const MobileGameTable = ({
             
             {/* Cards display - moved up, less padding */}
             <div className="flex items-start justify-center">
-              {currentPlayerCards.length > 0 ? <div className="transform scale-[2.2] origin-top">
+              {currentPlayerCards.length > 0 ? <div className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''}`}>
                   <PlayerHand cards={currentPlayerCards} isHidden={false} />
                 </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
             </div>
