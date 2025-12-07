@@ -6,6 +6,8 @@ import { ChipStack } from "./ChipStack";
 import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
+import { ChatBubble } from "./ChatBubble";
+import { ChatInput } from "./ChatInput";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -70,6 +72,14 @@ interface PlayerCards {
   player_id: string;
   cards: CardType[];
 }
+interface ChatBubbleData {
+  id: string;
+  user_id: string;
+  message: string;
+  username?: string;
+  expiresAt: number;
+}
+
 interface MobileGameTableProps {
   players: Player[];
   currentUserId: string | undefined;
@@ -108,6 +118,11 @@ interface MobileGameTableProps {
   // Host bot control
   isHost?: boolean;
   onBotClick?: (botPlayer: Player) => void;
+  // Chat props
+  chatBubbles?: ChatBubbleData[];
+  onSendChat?: (message: string) => void;
+  isChatSending?: boolean;
+  getPositionForUserId?: (userId: string) => number | undefined;
 }
 export const MobileGameTable = ({
   players,
@@ -144,7 +159,11 @@ export const MobileGameTable = ({
   onFold,
   onSelectSeat,
   isHost,
-  onBotClick
+  onBotClick,
+  chatBubbles = [],
+  onSendChat,
+  isChatSending = false,
+  getPositionForUserId,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -452,6 +471,21 @@ export const MobileGameTable = ({
     const hideChipForShowdown = isShowdown;
     
     const chipElement = <div className="relative">
+        {/* Chat bubbles above player */}
+        {getPositionForUserId && chatBubbles.length > 0 && (
+          <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1">
+            {chatBubbles
+              .filter(b => getPositionForUserId(b.user_id) === player.position)
+              .map((bubble) => (
+                <ChatBubble
+                  key={bubble.id}
+                  username={bubble.username || 'Unknown'}
+                  message={bubble.message}
+                  expiresAt={bubble.expiresAt}
+                />
+              ))}
+          </div>
+        )}
         {/* Leg indicator for 3-5-7 games */}
         <LegIndicator legs={gameType !== 'holm-game' ? player.legs : 0} maxLegs={legsToWin} />
         {/* Pulsing green ring for stayed players - separate element so inner circle doesn't pulse */}
@@ -526,6 +560,12 @@ export const MobileGameTable = ({
       </div>;
   };
   return <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background">
+      {/* Chat input - top right */}
+      {onSendChat && (
+        <div className="absolute top-2 right-2 z-50">
+          <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
+        </div>
+      )}
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}

@@ -10,6 +10,8 @@ import { BuckIndicator } from "./BuckIndicator";
 import { LegIndicator } from "./LegIndicator";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
+import { ChatBubble } from "./ChatBubble";
+import { ChatInput } from "./ChatInput";
 
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useMemo, useLayoutEffect, useEffect, useRef, useCallback } from "react";
@@ -37,6 +39,14 @@ interface Player {
 interface PlayerCards {
   player_id: string;
   cards: CardType[];
+}
+
+interface ChatBubbleData {
+  id: string;
+  user_id: string;
+  message: string;
+  username?: string;
+  expiresAt: number;
 }
 
 interface GameTableProps {
@@ -70,6 +80,11 @@ interface GameTableProps {
   isPaused?: boolean;
   debugHolmPaused?: boolean; // DEBUG: pause auto-progression for debugging
   isHost?: boolean; // Host can control bots
+  // Chat props
+  chatBubbles?: ChatBubbleData[];
+  onSendChat?: (message: string) => void;
+  isChatSending?: boolean;
+  getPositionForUserId?: (userId: string) => number | undefined;
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
@@ -109,6 +124,10 @@ export const GameTable = ({
   isPaused,
   debugHolmPaused,
   isHost,
+  chatBubbles = [],
+  onSendChat,
+  isChatSending = false,
+  getPositionForUserId,
   onStay,
   onFold,
   onSelectSeat,
@@ -699,6 +718,12 @@ export const GameTable = ({
 
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
+      {/* Chat input - bottom right of table */}
+      {onSendChat && (
+        <div className="absolute bottom-2 right-2 z-50">
+          <ChatInput onSend={onSendChat} isSending={isChatSending} />
+        </div>
+      )}
       {/* Poker Table - scale down on very small screens */}
       <div 
         className="relative rounded-[50%] aspect-[2/1] w-full max-w-5xl mx-auto p-1 sm:p-2 md:p-4 lg:p-8 xl:p-12 shadow-2xl border-2 sm:border-3 md:border-4 lg:border-6 xl:border-8 border-amber-900 scale-90 sm:scale-95 md:scale-100"
@@ -949,6 +974,21 @@ export const GameTable = ({
                 style={{ left: `${x}%`, top: `${y}%` }}
               >
                 <div className="relative">
+                  {/* Chat bubbles above player */}
+                  {getPositionForUserId && chatBubbles.length > 0 && (
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1">
+                      {chatBubbles
+                        .filter(b => getPositionForUserId(b.user_id) === player.position)
+                        .map((bubble) => (
+                          <ChatBubble
+                            key={bubble.id}
+                            username={bubble.username || 'Unknown'}
+                            message={bubble.message}
+                            expiresAt={bubble.expiresAt}
+                          />
+                        ))}
+                    </div>
+                  )}
                   <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
                   <LegIndicator 
                     legs={gameType !== 'holm-game' ? player.legs : 0} 
