@@ -1263,6 +1263,7 @@ const Game = () => {
           .update({
             ante_decision: 'sit_out',
             sitting_out: true,
+            waiting: false,
           })
           .eq('id', currentPlayer.id);
       }
