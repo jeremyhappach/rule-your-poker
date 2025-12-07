@@ -92,20 +92,28 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             // Show front if: has completed flip animation, OR is revealed and not currently flipping
             const showFront = hasFlipped || (isRevealed && !isFlipping);
             
-            // If card is fully revealed (not animating), render a simple PlayingCard
+            // If card is fully revealed (not animating), render a simple PlayingCard without any transform styles
             if (showFront && !isFlipping) {
               return (
-                <div
+                <PlayingCard
                   key={index}
-                  className="w-9 h-12 sm:w-10 sm:h-14"
-                >
-                  <PlayingCard
-                    card={card}
-                    size="lg"
-                    isHidden={false}
-                    borderColor="border-red-500"
-                  />
-                </div>
+                  card={card}
+                  size="lg"
+                  isHidden={false}
+                  borderColor="border-red-500"
+                />
+              );
+            }
+            
+            // Card back (not yet revealed)
+            if (!isRevealed && !isFlipping) {
+              return (
+                <PlayingCard
+                  key={index}
+                  isHidden
+                  size="lg"
+                  borderColor="border-red-500"
+                />
               );
             }
             
@@ -116,36 +124,39 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
                 className="w-9 h-12 sm:w-10 sm:h-14 relative"
                 style={{ 
                   transformStyle: 'preserve-3d',
-                  transition: isFlipping ? 'transform 1.2s ease-in-out' : 'none',
+                  transition: 'transform 1.2s ease-in-out',
                   transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
                 }}
               >
-                <PlayingCard
-                  card={card}
-                  size="lg"
-                  isHidden={!showFront}
-                  showFront={showFront}
-                  isFlipping={isFlipping}
-                  borderColor="border-red-500"
+                {/* Card Front */}
+                <div
                   className="absolute inset-0"
                   style={{
                     backfaceVisibility: 'hidden',
-                    transform: showFront ? 'rotateY(0deg)' : 'rotateY(-180deg)',
-                    transition: 'transform 1.2s ease-in-out',
+                    transform: 'rotateY(0deg)',
                   }}
-                />
-                {!showFront && (
+                >
+                  <PlayingCard
+                    card={card}
+                    size="lg"
+                    isHidden={false}
+                    borderColor="border-red-500"
+                  />
+                </div>
+                {/* Card Back */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backfaceVisibility: 'hidden',
+                    transform: 'rotateY(180deg)',
+                  }}
+                >
                   <PlayingCard
                     isHidden
                     size="lg"
                     borderColor="border-red-500"
-                    className="absolute inset-0"
-                    style={{
-                      backfaceVisibility: 'hidden',
-                      transform: showFront ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                    }}
                   />
-                )}
+                </div>
               </div>
             );
           })}
