@@ -574,17 +574,17 @@ export const MobileGameTable = ({
           
           if (!isCurrentPlayerBuck && buckPlayerIndex >= 0) {
             if (buckPlayerIndex === 0) {
-              positionStyle = { top: '8px', left: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '35px', left: '85px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (buckPlayerIndex === 1) {
-              positionStyle = { top: '8px', right: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '35px', right: '85px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (buckPlayerIndex === 2) {
-              positionStyle = { top: '50%', left: '28px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '35%', left: '55px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (buckPlayerIndex === 3) {
-              positionStyle = { top: '50%', right: '28px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '35%', right: '55px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (buckPlayerIndex === 4) {
-              positionStyle = { bottom: '8px', left: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { bottom: '35px', left: '85px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (buckPlayerIndex === 5) {
-              positionStyle = { bottom: '8px', right: '60px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { bottom: '35px', right: '85px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             }
           }
           
