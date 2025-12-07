@@ -260,6 +260,7 @@ export type Database = {
       players: {
         Row: {
           ante_decision: string | null
+          auto_ante: boolean
           chips: number
           created_at: string
           current_decision: string | null
@@ -269,13 +270,16 @@ export type Database = {
           is_bot: boolean
           legs: number
           position: number
+          sit_out_next_hand: boolean
           sitting_out: boolean
           sitting_out_hands: number
+          stand_up_next_hand: boolean
           status: string
           user_id: string
         }
         Insert: {
           ante_decision?: string | null
+          auto_ante?: boolean
           chips?: number
           created_at?: string
           current_decision?: string | null
@@ -285,13 +289,16 @@ export type Database = {
           is_bot?: boolean
           legs?: number
           position: number
+          sit_out_next_hand?: boolean
           sitting_out?: boolean
           sitting_out_hands?: number
+          stand_up_next_hand?: boolean
           status?: string
           user_id: string
         }
         Update: {
           ante_decision?: string | null
+          auto_ante?: boolean
           chips?: number
           created_at?: string
           current_decision?: string | null
@@ -301,8 +308,10 @@ export type Database = {
           is_bot?: boolean
           legs?: number
           position?: number
+          sit_out_next_hand?: boolean
           sitting_out?: boolean
           sitting_out_hands?: number
+          stand_up_next_hand?: boolean
           status?: string
           user_id?: string
         }

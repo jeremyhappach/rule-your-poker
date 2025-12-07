@@ -49,6 +49,9 @@ interface Player {
   sitting_out: boolean;
   sitting_out_hands: number;
   ante_decision: string | null;
+  auto_ante: boolean;
+  sit_out_next_hand: boolean;
+  stand_up_next_hand: boolean;
   profiles?: {
     username: string;
   };
@@ -166,6 +169,71 @@ const Game = () => {
     standUpNextHand: false,
   });
   
+  // Player options - synced with database
+  const handlePlayerOptionChange = async (option: 'auto_ante' | 'sit_out_next_hand' | 'stand_up_next_hand', value: boolean) => {
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (!currentPlayer) return;
+    
+    // Optimistic update
+    setPlayerOptions(prev => ({
+      ...prev,
+      [option === 'auto_ante' ? 'autoAnte' : option === 'sit_out_next_hand' ? 'sitOutNextHand' : 'standUpNextHand']: value
+    }));
+    
+    // Persist to database
+    const { error } = await supabase
+      .from('players')
+      .update({ [option]: value })
+      .eq('id', currentPlayer.id);
+    
+    if (error) {
+      console.error('[PLAYER OPTIONS] Failed to save:', error);
+      // Revert on error
+      setPlayerOptions(prev => ({
+        ...prev,
+        [option === 'auto_ante' ? 'autoAnte' : option === 'sit_out_next_hand' ? 'sitOutNextHand' : 'standUpNextHand']: !value
+      }));
+    }
+  };
+  
+  const handleStandUpNow = async () => {
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (!currentPlayer) return;
+    
+    // Stand up = set sitting_out to false and remove from seat
+    const { error } = await supabase
+      .from('players')
+      .update({ 
+        sitting_out: false,
+        status: 'standing'
+      })
+      .eq('id', currentPlayer.id);
+    
+    if (error) {
+      console.error('[PLAYER OPTIONS] Failed to stand up:', error);
+      toast({ title: "Error", description: "Failed to stand up", variant: "destructive" });
+    }
+  };
+  
+  const handleLeaveGameNow = async () => {
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (!currentPlayer) return;
+    
+    // Delete the player record entirely
+    const { error } = await supabase
+      .from('players')
+      .delete()
+      .eq('id', currentPlayer.id);
+    
+    if (error) {
+      console.error('[PLAYER OPTIONS] Failed to leave game:', error);
+      toast({ title: "Error", description: "Failed to leave game", variant: "destructive" });
+    } else {
+      navigate('/');
+    }
+  };
+  
+
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
   const [debugHolmPaused, setDebugHolmPaused] = useState(false); // TEMPORARILY DISABLED - set to true to re-enable
@@ -179,6 +247,18 @@ const Game = () => {
   const maxRevealedRef = useRef<number>(0);
   // Track card identity to detect new hands (when cards change completely)
   const cardIdentityRef = useRef<string>('');
+
+  // Load player options from current player when player data changes
+  useEffect(() => {
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (currentPlayer) {
+      setPlayerOptions({
+        autoAnte: currentPlayer.auto_ante || false,
+        sitOutNextHand: currentPlayer.sit_out_next_hand || false,
+        standUpNextHand: currentPlayer.stand_up_next_hand || false,
+      });
+    }
+  }, [players, user?.id]);
 
   // Clear pending decision when backend confirms - but keep it visible for 3-5-7 feedback
   useEffect(() => {
@@ -2648,11 +2728,11 @@ const Game = () => {
                   autoAnte={playerOptions.autoAnte}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
-                  onAutoAnteChange={(v) => setPlayerOptions(prev => ({ ...prev, autoAnte: v }))}
-                  onSitOutNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, sitOutNextHand: v }))}
-                  onStandUpNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, standUpNextHand: v }))}
-                  onStandUpNow={() => console.log('Stand up now')}
-                  onLeaveGameNow={() => console.log('Leave game now')}
+                  onAutoAnteChange={(v) => handlePlayerOptionChange('auto_ante', v)}
+                  onSitOutNextHandChange={(v) => handlePlayerOptionChange('sit_out_next_hand', v)}
+                  onStandUpNextHandChange={(v) => handlePlayerOptionChange('stand_up_next_hand', v)}
+                  onStandUpNow={handleStandUpNow}
+                  onLeaveGameNow={handleLeaveGameNow}
                   variant="desktop"
                 />
               )}
@@ -2779,11 +2859,11 @@ const Game = () => {
                   autoAnte={playerOptions.autoAnte}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
-                  onAutoAnteChange={(v) => setPlayerOptions(prev => ({ ...prev, autoAnte: v }))}
-                  onSitOutNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, sitOutNextHand: v }))}
-                  onStandUpNextHandChange={(v) => setPlayerOptions(prev => ({ ...prev, standUpNextHand: v }))}
-                  onStandUpNow={() => console.log('Stand up now')}
-                  onLeaveGameNow={() => console.log('Leave game now')}
+                  onAutoAnteChange={(v) => handlePlayerOptionChange('auto_ante', v)}
+                  onSitOutNextHandChange={(v) => handlePlayerOptionChange('sit_out_next_hand', v)}
+                  onStandUpNextHandChange={(v) => handlePlayerOptionChange('stand_up_next_hand', v)}
+                  onStandUpNow={handleStandUpNow}
+                  onLeaveGameNow={handleLeaveGameNow}
                   variant="mobile"
                 />
               )}
