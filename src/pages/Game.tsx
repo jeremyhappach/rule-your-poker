@@ -22,9 +22,12 @@ import { VisualPreferencesProvider } from "@/hooks/useVisualPreferences";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { addBotPlayer, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
 import { Share2, Bot, Settings } from "lucide-react";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
+import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
+import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +55,7 @@ interface Player {
   auto_ante: boolean;
   sit_out_next_hand: boolean;
   stand_up_next_hand: boolean;
+  waiting: boolean;
   profiles?: {
     username: string;
   };
@@ -161,6 +165,7 @@ const Game = () => {
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   const [isRunningItBack, setIsRunningItBack] = useState(false);
+  const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
@@ -1188,8 +1193,29 @@ const Game = () => {
         isDealer,
         dealerPosition: game.dealer_position,
         playerPosition: currentPlayer?.position,
-        shouldShow: currentPlayer && currentPlayer.ante_decision === null && !isDealer
+        autoAnte: currentPlayer?.auto_ante,
+        shouldShow: currentPlayer && currentPlayer.ante_decision === null && !isDealer && !currentPlayer.auto_ante
       });
+      
+      // AUTO-ANTE: If player has auto_ante enabled, automatically accept ante (no dialog)
+      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && currentPlayer.auto_ante) {
+        console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id);
+        
+        // Auto-accept the ante
+        supabase
+          .from('players')
+          .update({
+            ante_decision: 'ante_up',
+            sitting_out: false,
+          })
+          .eq('id', currentPlayer.id)
+          .then(() => {
+            console.log('[ANTE DIALOG] Auto-ante complete');
+          });
+        
+        setShowAnteDialog(false);
+        return;
+      }
       
       // Don't show ante dialog for dealer (they auto ante up)
       // Show dialog if player exists and hasn't made ante decision and isn't dealer
@@ -2246,6 +2272,25 @@ const Game = () => {
       return;
     }
 
+    // STEP 1: Evaluate player states BEFORE dealer rotation
+    console.log('[GAME OVER] Evaluating player states end-of-game');
+    const { activePlayerCount, playersRemoved } = await evaluatePlayerStatesEndOfGame(gameId);
+    
+    console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'removed:', playersRemoved.length);
+
+    // STEP 2: Check if we have enough active players
+    if (activePlayerCount < 2) {
+      console.log('[GAME OVER] Not enough active players! Showing countdown');
+      setShowNotEnoughPlayers(true);
+      return; // The countdown component will handle session end
+    }
+
+    // STEP 3: Rotate dealer to next eligible position
+    const currentDealerPosition = gameData?.dealer_position || 1;
+    const newDealerPosition = await rotateDealerPosition(gameId, currentDealerPosition);
+    
+    console.log('[GAME OVER] Dealer rotation:', currentDealerPosition, '->', newDealerPosition);
+
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
     
     // CAPTURE previous game config for "Running it Back" detection
@@ -2299,7 +2344,9 @@ const Game = () => {
         status: 'active',
         current_decision: null,
         decision_locked: false,
-        ante_decision: null
+        ante_decision: null,
+        sit_out_next_hand: false,
+        stand_up_next_hand: false
       })
       .eq('game_id', gameId);
 
@@ -2317,7 +2364,8 @@ const Game = () => {
         all_decisions_in: false,
         game_over_at: null,
         buck_position: null,
-        total_hands: 0
+        total_hands: 0,
+        dealer_position: newDealerPosition // Set new dealer position
       })
       .eq('id', gameId);
 
@@ -2331,7 +2379,7 @@ const Game = () => {
     // Manual refetch to update UI
     // Bot dealers will be handled automatically by DealerGameSetup component
     await fetchGameData();
-  }, [gameId, navigate, players]);
+  }, [gameId, navigate, players, game]);
 
   // Dealer confirms to skip countdown and go directly to game selection
   const handleDealerConfirmGameOver = useCallback(async () => {
@@ -2676,6 +2724,7 @@ const Game = () => {
             .update({
               position: position,
               sitting_out: gameInProgress,
+              waiting: gameInProgress, // If game in progress, mark as waiting to join next game
               ante_decision: null // Reset ante decision so they get the popup
             })
             .eq('id', existingPlayer.id);
@@ -2697,6 +2746,7 @@ const Game = () => {
         } else {
           // User is a new observer - insert them as a new player
           // If game is in progress, they sit out until next game starts
+          // Set waiting = true so they'll be dealt in at the beginning of the next game
           const { error: joinError } = await supabase
             .from('players')
             .insert({
@@ -2705,6 +2755,7 @@ const Game = () => {
               chips: 0,
               position: position,
               sitting_out: gameInProgress,
+              waiting: gameInProgress, // If game in progress, mark as waiting to join next game
               ante_decision: null // Ensure ante_decision is null so they get the popup
             });
 
@@ -3251,6 +3302,14 @@ const Game = () => {
           )
         )}
       </div>
+
+      {/* Not enough players countdown overlay */}
+      {showNotEnoughPlayers && (
+        <NotEnoughPlayersCountdown 
+          gameId={gameId!} 
+          onComplete={() => setShowNotEnoughPlayers(false)} 
+        />
+      )}
 
       <AlertDialog open={showEndSessionDialog} onOpenChange={setShowEndSessionDialog}>
         <AlertDialogContent>
