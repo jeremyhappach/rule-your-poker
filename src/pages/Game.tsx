@@ -1287,6 +1287,7 @@ const Game = () => {
   }, [game?.status, navigate]);
 
   // Check if all ante decisions are in - with polling fallback
+  // CRITICAL: Also enforce deadline for disconnected players
   useEffect(() => {
     if (game?.status !== 'ante_decision') {
       // Reset the ref when we exit ante_decision status
@@ -1301,15 +1302,57 @@ const Game = () => {
         return;
       }
       
-      // CRITICAL: Fetch fresh player data directly from database to avoid stale state issues
-      const { data: freshPlayers, error } = await supabase
-        .from('players')
-        .select('*')
-        .eq('game_id', gameId);
+      // CRITICAL: Fetch fresh player AND game data directly from database
+      const [playersResult, gameResult] = await Promise.all([
+        supabase.from('players').select('*').eq('game_id', gameId),
+        supabase.from('games').select('ante_decision_deadline').eq('id', gameId).single()
+      ]);
       
-      if (error || !freshPlayers) {
-        console.log('[ANTE CHECK] Error fetching players:', error);
+      if (playersResult.error || !playersResult.data) {
+        console.log('[ANTE CHECK] Error fetching players:', playersResult.error);
         return;
+      }
+      
+      const freshPlayers = playersResult.data;
+      const deadline = gameResult.data?.ante_decision_deadline;
+      
+      // Check if deadline has passed - if so, auto-sit-out undecided players
+      if (deadline) {
+        const deadlineTime = new Date(deadline).getTime();
+        const now = Date.now();
+        if (now > deadlineTime) {
+          const undecidedPlayers = freshPlayers.filter(p => !p.ante_decision);
+          if (undecidedPlayers.length > 0) {
+            console.log('[ANTE CHECK] Deadline expired! Auto-sitting-out disconnected players:', undecidedPlayers.map(p => p.position));
+            
+            // Batch update all undecided players to sit_out
+            const undecidedIds = undecidedPlayers.map(p => p.id);
+            await supabase
+              .from('players')
+              .update({
+                ante_decision: 'sit_out',
+                sitting_out: true,
+                waiting: false,
+              })
+              .in('id', undecidedIds);
+            
+            // Re-fetch to get updated state
+            const { data: updatedPlayers } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', gameId);
+            
+            if (updatedPlayers) {
+              const allNowDecided = updatedPlayers.every(p => p.ante_decision);
+              if (allNowDecided && updatedPlayers.length > 0) {
+                console.log('[ANTE CHECK] All players now decided after deadline enforcement, proceeding');
+                anteProcessingRef.current = true;
+                handleAllAnteDecisionsIn();
+              }
+            }
+            return;
+          }
+        }
       }
       
       const decidedCount = freshPlayers.filter(p => p.ante_decision).length;
@@ -1326,7 +1369,7 @@ const Game = () => {
     // Check immediately
     checkAnteDecisions();
 
-    // Poll every 1 second as fallback for faster ante detection
+    // Poll every 1 second as fallback for faster ante detection AND deadline enforcement
     const pollInterval = setInterval(() => {
       console.log('[ANTE POLL] Polling for ante decisions...');
       checkAnteDecisions();
