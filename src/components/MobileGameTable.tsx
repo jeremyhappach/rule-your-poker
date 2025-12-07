@@ -285,6 +285,24 @@ export const MobileGameTable = ({
     return { ...result, hasHighlights: true };
   }, [isShowingAnnouncement, currentPlayerCards, communityCards, currentPlayer?.current_decision]);
 
+  // Determine winner from lastRoundResult for dimming logic
+  const winnerPlayerId = useMemo(() => {
+    if (!isShowingAnnouncement || !lastRoundResult) return null;
+    // Parse winner from announcement - format usually includes player username
+    // Look for patterns like "PlayerName beat" or "PlayerName won" or "PlayerName earns"
+    const result = lastRoundResult.toLowerCase();
+    for (const player of players) {
+      const username = player.profiles?.username?.toLowerCase() || '';
+      if (username && (result.includes(`${username} beat`) || result.includes(`${username} won`) || result.includes(`${username} earns`))) {
+        return player.id;
+      }
+    }
+    return null;
+  }, [isShowingAnnouncement, lastRoundResult, players]);
+
+  // Check if current player is the winner (for dimming logic)
+  const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
+
   // Detect Chucky chopped animation
   useEffect(() => {
     if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
@@ -448,8 +466,10 @@ export const MobileGameTable = ({
     );
     
     // Show actual cards during showdown (BIGGER when chip is hidden), otherwise show mini card backs
+    // Dim cards for losing players during announcement
+    const isLosingPlayer = isShowingAnnouncement && winnerPlayerId && player.id !== winnerPlayerId && playerDecision === 'stay';
     const cardsElement = isShowdown ? (
-      <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top`}>
+      <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
         <PlayerHand cards={cards} isHidden={false} />
       </div>
     ) : (
@@ -898,14 +918,15 @@ export const MobileGameTable = ({
               </div>}
             
             {/* Cards display - moved up, less padding */}
+            {/* Dim current player's cards if they lost (winner exists and it's not them) */}
             <div className="flex items-start justify-center">
-              {currentPlayerCards.length > 0 ? <div className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''}`}>
+              {currentPlayerCards.length > 0 ? <div className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}>
                   <PlayerHand 
                     cards={currentPlayerCards} 
                     isHidden={false} 
-                    highlightedIndices={winningCardHighlights.playerIndices}
-                    kickerIndices={winningCardHighlights.kickerPlayerIndices}
-                    hasHighlights={winningCardHighlights.hasHighlights}
+                    highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                    kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                    hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                   />
                 </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
             </div>
