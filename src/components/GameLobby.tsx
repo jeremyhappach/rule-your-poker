@@ -381,7 +381,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   return (
     <div className="space-y-6">
       {/* Header with Peoria Skyline Backdrop */}
-      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 min-h-[140px] sm:min-h-[200px] md:min-h-[240px]">
+      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 h-[160px] sm:min-h-[200px] md:min-h-[240px]">
         {/* Skyline Background - Desktop */}
         <img 
           src={peoriaSkyline} 
@@ -398,7 +398,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
         
         {/* Content - title at top, buttons at bottom */}
-        <div className="relative z-10 h-full flex flex-col justify-between p-3 sm:p-4 md:p-6">
+        <div className="absolute inset-0 z-10 flex flex-col justify-between p-3 sm:p-4 md:p-6">
           {/* Title section */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
