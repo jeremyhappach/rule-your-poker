@@ -327,8 +327,6 @@ export const MobileGameTable = ({
     
     const chipElement = (
       <div className="relative">
-        {/* Buck indicator for Holm games */}
-        <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
         {/* Leg indicator for 3-5-7 games */}
         <LegIndicator 
           legs={gameType !== 'holm-game' ? player.legs : 0} 
