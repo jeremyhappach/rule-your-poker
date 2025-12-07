@@ -20,6 +20,10 @@ interface PlayerOptionsMenuProps {
   onStandUpNow: () => void;
   onLeaveGameNow: () => void;
   variant?: 'mobile' | 'desktop';
+  // Host pause/resume props
+  isHost?: boolean;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
 }
 
 export const PlayerOptionsMenu = ({
@@ -33,6 +37,9 @@ export const PlayerOptionsMenu = ({
   onStandUpNow,
   onLeaveGameNow,
   variant = 'desktop',
+  isHost = false,
+  isPaused = false,
+  onTogglePause,
 }: PlayerOptionsMenuProps) => {
   return (
     <DropdownMenu>
@@ -41,7 +48,7 @@ export const PlayerOptionsMenu = ({
           variant="ghost" 
           size="icon"
           className={variant === 'mobile' 
-            ? "h-8 w-8 text-white/70 hover:text-white hover:bg-white/10" 
+            ? "h-8 w-8 text-slate-900 hover:text-slate-700 hover:bg-slate-200/50" 
             : "h-9 w-9 text-muted-foreground hover:text-foreground"
           }
         >
@@ -52,6 +59,16 @@ export const PlayerOptionsMenu = ({
         align="start" 
         className="w-56 bg-popover border border-border z-50"
       >
+        {/* Host pause/resume option */}
+        {isHost && onTogglePause && (
+          <>
+            <DropdownMenuItem onClick={onTogglePause}>
+              {isPaused ? '▶️ Resume Game' : '⏸️ Pause Game'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        
         <DropdownMenuCheckboxItem
           checked={autoAnte}
           onCheckedChange={onAutoAnteChange}

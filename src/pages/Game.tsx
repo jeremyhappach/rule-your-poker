@@ -233,6 +233,75 @@ const Game = () => {
     }
   };
   
+  // Handle pause/resume toggle for host
+  const handleTogglePause = useCallback(async () => {
+    if (!game || !gameId) return;
+    
+    const newPausedState = !game.is_paused;
+    
+    // Get current round for deadline updates - use latest round for Holm games
+    const currentRoundData = game.game_type === 'holm-game'
+      ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
+      : game.rounds?.find(r => r.round_number === game.current_round);
+    
+    if (newPausedState) {
+      // PAUSING: Save current remaining time
+      const remainingTime = timeLeft ?? 0;
+      console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
+      
+      // Optimistic UI update
+      setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
+      
+      const { error } = await supabase
+        .from('games')
+        .update({ 
+          is_paused: true, 
+          paused_time_remaining: remainingTime 
+        })
+        .eq('id', gameId);
+      
+      if (error) {
+        console.error('[PAUSE] Error pausing:', error);
+        setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+        toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
+      }
+    } else {
+      // RESUMING: Set new deadline = now + paused_time_remaining
+      const savedTime = game.paused_time_remaining ?? decisionTimerRef.current;
+      const newDeadline = new Date(Date.now() + savedTime * 1000).toISOString();
+      console.log('[PAUSE] Resuming game, setting new deadline:', newDeadline, 'with', savedTime, 'seconds');
+      
+      // Optimistic UI update
+      setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+      setDecisionDeadline(newDeadline);
+      
+      // Update game and current round deadline
+      const { error: gameError } = await supabase
+        .from('games')
+        .update({ 
+          is_paused: false, 
+          paused_time_remaining: null 
+        })
+        .eq('id', gameId);
+      
+      if (currentRoundData?.id) {
+        const { error: roundError } = await supabase
+          .from('rounds')
+          .update({ decision_deadline: newDeadline })
+          .eq('id', currentRoundData.id);
+        
+        if (roundError) {
+          console.error('[PAUSE] Error updating round deadline:', roundError);
+        }
+      }
+      
+      if (gameError) {
+        console.error('[PAUSE] Error resuming:', gameError);
+        setGame(prev => prev ? { ...prev, is_paused: true } : prev);
+        toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
+      }
+    }
+  }, [game, gameId, timeLeft, toast]);
 
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -2734,6 +2803,9 @@ const Game = () => {
                   onStandUpNow={handleStandUpNow}
                   onLeaveGameNow={handleLeaveGameNow}
                   variant="desktop"
+                  isHost={isCreator}
+                  isPaused={game.is_paused}
+                  onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
                 />
               )}
               <div>
@@ -2749,72 +2821,7 @@ const Game = () => {
                   {isCreator && (
                     <Button 
                       variant={game.is_paused ? "default" : "outline"} 
-                      onClick={async () => {
-                        const newPausedState = !game.is_paused;
-                        
-                        // Get current round for deadline updates - use latest round for Holm games
-                        const currentRoundData = game.game_type === 'holm-game'
-                          ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
-                          : game.rounds?.find(r => r.round_number === game.current_round);
-                        
-                        if (newPausedState) {
-                          // PAUSING: Save current remaining time
-                          const remainingTime = timeLeft ?? 0;
-                          console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
-                          
-                          // Optimistic UI update
-                          setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
-                          
-                          const { error } = await supabase
-                            .from('games')
-                            .update({ 
-                              is_paused: true, 
-                              paused_time_remaining: remainingTime 
-                            })
-                            .eq('id', gameId);
-                          
-                          if (error) {
-                            console.error('[PAUSE] Error pausing:', error);
-                            setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-                            toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
-                          }
-                        } else {
-                          // RESUMING: Set new deadline = now + paused_time_remaining
-                          const savedTime = game.paused_time_remaining ?? decisionTimerRef.current;
-                          const newDeadline = new Date(Date.now() + savedTime * 1000).toISOString();
-                          console.log('[PAUSE] Resuming game, setting new deadline:', newDeadline, 'with', savedTime, 'seconds');
-                          
-                          // Optimistic UI update
-                          setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-                          setDecisionDeadline(newDeadline);
-                          
-                          // Update game and current round deadline
-                          const { error: gameError } = await supabase
-                            .from('games')
-                            .update({ 
-                              is_paused: false, 
-                              paused_time_remaining: null 
-                            })
-                            .eq('id', gameId);
-                          
-                          if (currentRoundData?.id) {
-                            const { error: roundError } = await supabase
-                              .from('rounds')
-                              .update({ decision_deadline: newDeadline })
-                              .eq('id', currentRoundData.id);
-                            
-                            if (roundError) {
-                              console.error('[PAUSE] Error updating round deadline:', roundError);
-                            }
-                          }
-                          
-                          if (gameError) {
-                            console.error('[PAUSE] Error resuming:', gameError);
-                            setGame(prev => prev ? { ...prev, is_paused: true } : prev);
-                            toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
-                          }
-                        }
-                      }}
+                      onClick={handleTogglePause}
                     >
                       {game.is_paused ? '▶️ Resume' : '⏸️ Pause'}
                     </Button>
@@ -2865,6 +2872,9 @@ const Game = () => {
                   onStandUpNow={handleStandUpNow}
                   onLeaveGameNow={handleLeaveGameNow}
                   variant="mobile"
+                  isHost={isCreator}
+                  isPaused={game.is_paused}
+                  onTogglePause={game.status === 'in_progress' ? handleTogglePause : undefined}
                 />
               )}
             </div>
