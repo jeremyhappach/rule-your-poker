@@ -307,14 +307,26 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Chucky's Hand - below center */}
-        {gameType === 'holm-game' && chuckyActive && chuckyCards && (
-          <div className="absolute top-[75%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-150">
-            <ChuckyHand 
-              cards={chuckyCards}
-              show={true}
-              revealed={chuckyCardsRevealed}
-            />
+        {/* Chucky's Hand - directly below community cards, no container */}
+        {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && (
+          <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1">
+            <span className="text-red-400 text-xs mr-1">👿</span>
+            {chuckyCards.map((card, index) => {
+              const isRevealed = index < (chuckyCardsRevealed || 0);
+              return (
+                <div key={index} className="w-8 h-11 sm:w-9 sm:h-12">
+                  <div className={`w-full h-full rounded border ${isRevealed ? 'bg-white border-red-500' : 'bg-gradient-to-br from-red-800 to-red-950 border-red-600'} flex items-center justify-center shadow-md`}>
+                    {isRevealed ? (
+                      <span className={`text-sm font-bold ${card.suit === '♥' || card.suit === '♦' ? 'text-red-600' : 'text-slate-900'}`}>
+                        {card.rank}{card.suit}
+                      </span>
+                    ) : (
+                      <span className="text-red-300 text-lg">?</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
         
