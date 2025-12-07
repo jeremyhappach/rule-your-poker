@@ -24,6 +24,8 @@ interface PlayingCardProps {
   className?: string;
   style?: React.CSSProperties;
   borderColor?: string;
+  isHighlighted?: boolean;  // Card is part of winning hand
+  isKicker?: boolean;       // Card is a kicker
 }
 
 const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
@@ -58,6 +60,8 @@ export const PlayingCard = ({
   className = '',
   style = {},
   borderColor = 'border-gray-300',
+  isHighlighted = false,
+  isKicker = false,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
@@ -167,10 +171,21 @@ export const PlayingCard = ({
   const textColorStyle = !isFourColor 
     ? { color: card && (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
     : {};
+  
+  // Highlight styles for winning hand cards
+  const getHighlightClasses = () => {
+    if (isHighlighted) {
+      return 'ring-2 ring-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.8)]';
+    }
+    if (isKicker) {
+      return 'ring-1 ring-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]';
+    }
+    return '';
+  };
     
   return (
     <Card
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${className}`}
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${getHighlightClasses()} ${className}`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...style }}
     >
       <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
