@@ -19,6 +19,7 @@ interface Player {
   is_bot: boolean;
   sitting_out: boolean;
   waiting?: boolean;
+  created_at?: string;
   profiles?: {
     username: string;
   };
@@ -49,9 +50,17 @@ export const WaitingForPlayersTable = ({
   // Check if current user is seated
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const isSeated = !!currentPlayer;
-  const isHost = currentPlayer?.position === 1;
   
-  // Count seated players (in waiting status)
+  // Host is the first human player who joined (earliest created_at)
+  const humanPlayers = players.filter(p => !p.is_bot);
+  const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
+    if (!a.created_at || !b.created_at) return 0;
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+  const hostPlayer = sortedByJoinTime[0];
+  const isHost = currentPlayer && hostPlayer?.user_id === currentUserId;
+  
+  // Count seated players (active or waiting to play)
   const seatedPlayerCount = players.filter(p => p.waiting === true || !p.sitting_out).length;
   const hasEnoughPlayers = seatedPlayerCount >= 2;
   const hasOpenSeats = players.length < 7;

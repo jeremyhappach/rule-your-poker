@@ -58,6 +58,7 @@ interface Player {
   stand_up_next_hand: boolean;
   waiting: boolean;
   deck_color_mode?: string | null;
+  created_at?: string;
   profiles?: {
     username: string;
   };

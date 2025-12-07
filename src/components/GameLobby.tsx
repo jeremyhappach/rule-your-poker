@@ -210,7 +210,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const createGame = async () => {
-    // Create game with waiting status - no auto-seating, players select seats
+    // Create game with waiting status
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
@@ -230,7 +230,40 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    // Navigate to game - creator will choose their seat there
+    // Auto-seat host in a random position (1-7)
+    const randomPosition = Math.floor(Math.random() * 7) + 1;
+    
+    // Fetch user's profile to get their deck_color_mode preference
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('deck_color_mode')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    const { error: playerError } = await supabase
+      .from('players')
+      .insert({
+        game_id: game.id,
+        user_id: userId,
+        chips: 0,
+        position: randomPosition,
+        sitting_out: false,
+        waiting: true, // Ready to play when game starts
+        deck_color_mode: userProfile?.deck_color_mode || null
+      });
+
+    if (playerError) {
+      console.error('Error seating host:', playerError);
+      // Clean up the game if we couldn't seat the host
+      await supabase.from('games').delete().eq('id', game.id);
+      toast({
+        title: "Error",
+        description: "Failed to create game",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setShowCreateDialog(false);
     navigate(`/game/${game.id}`);
   };
