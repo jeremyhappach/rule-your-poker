@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 interface Player {
   id: string;
@@ -21,6 +21,22 @@ export const DealerButtonAnimation = ({ players, onComplete }: DealerButtonAnima
   const hasCompletedRef = useRef(false);
   const animationStartRef = useRef<number>(Date.now());
 
+  // Calculate the position coordinates for each seat (matching GameTable layout)
+  const getSeatPosition = (seatPosition: number) => {
+    const totalSeats = 7;
+    const radius = 42; // Match GameTable radius
+    // Position 1 at top, increasing positions go CLOCKWISE (negative angle direction)
+    const angle = -((seatPosition - 1) / totalSeats) * 2 * Math.PI - Math.PI / 2;
+    const x = 50 + radius * Math.cos(angle);
+    const y = 50 + radius * Math.sin(angle);
+    return { x, y };
+  };
+
+  // Get sorted player positions for animation sequence
+  const sortedPositions = useMemo(() => {
+    return players.map(p => p.position).sort((a, b) => a - b);
+  }, [players]);
+
   useEffect(() => {
     // Filter to only human players for selection
     const humanPlayers = players.filter(p => !p.is_bot);
@@ -37,14 +53,12 @@ export const DealerButtonAnimation = ({ players, onComplete }: DealerButtonAnima
     setFinalPosition(selectedPosition);
     animationStartRef.current = Date.now();
 
-    // All player positions sorted
-    const positions = players.map(p => p.position).sort((a, b) => a - b);
     let currentIdx = 0;
     
-    // Start with fast spins, slow down over 5 seconds
-    const TOTAL_DURATION = 5000; // 5 seconds
+    // Start with fast spins, slow down over 4 seconds
+    const TOTAL_DURATION = 4000; // 4 seconds
     const MIN_INTERVAL = 80; // Fastest speed
-    const MAX_INTERVAL = 500; // Slowest speed before stop
+    const MAX_INTERVAL = 400; // Slowest speed before stop
     
     const animate = () => {
       if (hasCompletedRef.current) return;
@@ -70,8 +84,8 @@ export const DealerButtonAnimation = ({ players, onComplete }: DealerButtonAnima
       const interval = MIN_INTERVAL + (MAX_INTERVAL - MIN_INTERVAL) * easedProgress;
       
       // Move to next position
-      currentIdx = (currentIdx + 1) % positions.length;
-      setCurrentPosition(positions[currentIdx]);
+      currentIdx = (currentIdx + 1) % sortedPositions.length;
+      setCurrentPosition(sortedPositions[currentIdx]);
       
       // Schedule next frame
       setTimeout(animate, interval);
@@ -83,50 +97,57 @@ export const DealerButtonAnimation = ({ players, onComplete }: DealerButtonAnima
     return () => {
       hasCompletedRef.current = true;
     };
-  }, [players, onComplete]);
+  }, [players, onComplete, sortedPositions]);
 
-  // Get current player name
+  // Get current button position
+  const buttonPos = getSeatPosition(currentPosition);
   const currentPlayer = players.find(p => p.position === currentPosition);
   const currentPlayerName = currentPlayer?.profiles?.username || `Player ${currentPosition}`;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl p-6 sm:p-8 border-2 border-amber-600/60 shadow-2xl animate-scale-in max-w-[90vw]">
-        <div className="text-center space-y-6">
-          {/* Title */}
-          <h2 className="text-xl sm:text-2xl font-bold text-amber-400">
-            {isSpinning ? "Selecting Dealer..." : "✨ Dealer Selected! ✨"}
-          </h2>
-          
-          {/* Animated dealer button */}
-          <div className="relative mx-auto w-fit">
-            <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center border-4 border-amber-800 shadow-2xl ${isSpinning ? 'animate-pulse' : ''}`}>
-              <span className="text-black font-black text-5xl sm:text-6xl">D</span>
-            </div>
-            {/* Spinning glow effect */}
-            {isSpinning && (
-              <div className="absolute inset-0 rounded-full border-4 border-amber-400/50 animate-ping" />
-            )}
+    <>
+      {/* Semi-transparent overlay */}
+      <div className="absolute inset-0 bg-black/40 rounded-[50%] z-30 pointer-events-none" />
+      
+      {/* Animated dealer button on the table */}
+      <div 
+        className="absolute z-40 transition-all duration-75 ease-linear"
+        style={{
+          left: `${buttonPos.x}%`,
+          top: `${buttonPos.y}%`,
+          transform: 'translate(-50%, -50%)'
+        }}
+      >
+        <div className={`relative ${isSpinning ? '' : 'animate-bounce'}`}>
+          {/* Dealer button */}
+          <div className={`w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center border-4 border-amber-800 shadow-2xl ${isSpinning ? 'animate-pulse' : ''}`}>
+            <span className="text-black font-black text-2xl sm:text-4xl">D</span>
           </div>
           
-          {/* Current player being pointed to */}
-          <div className="bg-amber-900/40 backdrop-blur-sm rounded-lg p-4 border border-amber-600/40 min-w-[200px]">
-            <p className="text-amber-100 text-lg sm:text-xl font-bold truncate">
-              {currentPlayerName}
-              {currentPlayer?.is_bot && ' 🤖'}
-            </p>
-          </div>
+          {/* Glow effect when spinning */}
+          {isSpinning && (
+            <div className="absolute inset-0 rounded-full border-4 border-amber-400/50 animate-ping" />
+          )}
           
-          {/* Final announcement */}
-          {!isSpinning && finalPosition && (
-            <div className="animate-fade-in">
-              <p className="text-amber-300 font-semibold">
-                {currentPlayerName} will deal first!
-              </p>
-            </div>
+          {/* Trail effect when spinning */}
+          {isSpinning && (
+            <div className="absolute inset-0 rounded-full bg-amber-400/20 blur-lg scale-150" />
           )}
         </div>
       </div>
-    </div>
+      
+      {/* Announcement banner at top of table */}
+      <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40">
+        <div className="bg-slate-900/90 backdrop-blur-sm rounded-lg px-4 py-2 sm:px-6 sm:py-3 border-2 border-amber-600/60 shadow-2xl">
+          <h2 className="text-lg sm:text-xl font-bold text-amber-400 text-center whitespace-nowrap">
+            {isSpinning ? "Selecting Dealer..." : "✨ Dealer Selected! ✨"}
+          </h2>
+          <p className="text-amber-100 text-sm sm:text-base font-semibold text-center mt-1">
+            {currentPlayerName}
+            {currentPlayer?.is_bot && ' 🤖'}
+          </p>
+        </div>
+      </div>
+    </>
   );
 };
