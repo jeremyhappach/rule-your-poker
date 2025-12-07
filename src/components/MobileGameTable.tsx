@@ -562,7 +562,7 @@ export const MobileGameTable = ({
         
         {/* Expanded view - show cards large */}
         {isCardSectionExpanded && currentPlayer && (
-          <div className="px-2 pb-2 flex flex-col h-full">
+          <div className="px-2 flex flex-col">
             {/* Action buttons - ABOVE cards */}
             {canDecide && (
               <div className="flex gap-2 justify-center mb-1">
