@@ -7,6 +7,7 @@ interface PlayerHandProps {
   expectedCardCount?: number;
   highlightedIndices?: number[];  // Indices of cards that are part of winning hand
   kickerIndices?: number[];       // Indices of kicker cards
+  hasHighlights?: boolean;        // Whether highlights are active (to dim non-highlighted cards)
 }
 
 export const PlayerHand = ({ 
@@ -14,7 +15,8 @@ export const PlayerHand = ({
   isHidden = false, 
   expectedCardCount,
   highlightedIndices = [],
-  kickerIndices = []
+  kickerIndices = [],
+  hasHighlights = false
 }: PlayerHandProps) => {
   // Sort cards from lowest to highest
   const RANK_ORDER: Record<string, number> = {
@@ -67,6 +69,7 @@ export const PlayerHand = ({
       {sortedCardsWithIndices.map(({ card, originalIndex }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
+        const isDimmed = hasHighlights && !isHighlighted && !isKicker;
         
         return (
           <PlayingCard
@@ -75,6 +78,7 @@ export const PlayerHand = ({
             size={cardSize}
             isHighlighted={isHighlighted}
             isKicker={isKicker}
+            isDimmed={isDimmed}
             className={`${overlapClass} transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
             style={{ 
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,

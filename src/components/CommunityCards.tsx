@@ -7,9 +7,10 @@ interface CommunityCardsProps {
   revealed: number;
   highlightedIndices?: number[];  // Indices of cards that are part of winning hand
   kickerIndices?: number[];       // Indices of kicker cards
+  hasHighlights?: boolean;        // Whether highlights are active (to dim non-highlighted cards)
 }
 
-export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [] }: CommunityCardsProps) => {
+export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false }: CommunityCardsProps) => {
   const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
   const [animatedHandId, setAnimatedHandId] = useState<string>('');
@@ -132,6 +133,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
                   borderColor="border-poker-gold"
                   isHighlighted={highlightedIndices.includes(index)}
                   isKicker={kickerIndices.includes(index)}
+                  isDimmed={hasHighlights && !highlightedIndices.includes(index) && !kickerIndices.includes(index)}
                   className="absolute inset-0"
                   style={{
                     backfaceVisibility: 'hidden',

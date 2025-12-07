@@ -429,12 +429,8 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
     }
     case 'three-of-a-kind': {
       const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0] || sortedCards[0]?.rank;
-      // Get kickers for three of a kind (up to 2 kickers matter)
-      const kickerCards = sortedCards.filter(c => c.rank !== tripRank).slice(0, 2);
-      const kickerStr = formatKickers(kickerCards);
-      result = kickerStr
-        ? `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} (${kickerStr})`
-        : `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
+      // Don't show kickers by default - only relevant for tie-breaking comparison
+      result = `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
       break;
     }
     case 'two-pair': {
@@ -446,12 +442,8 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
         truePairs.sort((a, b) => RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
         const highPair = rankNamePlural(RANK_VALUES[truePairs[0][0] as Rank]);
         const lowPair = rankNamePlural(RANK_VALUES[truePairs[1][0] as Rank]);
-        // Get kicker for two pair (only 1 kicker matters)
-        const kickerCards = sortedCards.filter(c => c.rank !== truePairs[0][0] && c.rank !== truePairs[1][0]).slice(0, 1);
-        const kickerStr = formatKickers(kickerCards);
-        result = kickerStr
-          ? `Two Pair, ${highPair} and ${lowPair} (${kickerStr})`
-          : `Two Pair, ${highPair} and ${lowPair}`;
+        // Don't show kickers by default - only relevant for tie-breaking comparison
+        result = `Two Pair, ${highPair} and ${lowPair}`;
       } else {
         result = 'Two Pair';
       }
@@ -459,12 +451,8 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
     }
     case 'pair': {
       const pairRank = rankGroups.find(([_, count]) => count >= 2)?.[0] || sortedCards[0]?.rank;
-      // Get kickers for pair (up to 3 kickers matter)
-      const kickerCards = sortedCards.filter(c => c.rank !== pairRank).slice(0, 3);
-      const kickerStr = formatKickers(kickerCards);
-      result = kickerStr 
-        ? `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])} (${kickerStr})`
-        : `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      // Don't show kickers by default - only relevant for tie-breaking comparison
+      result = `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
       break;
     }
     case 'high-card':
