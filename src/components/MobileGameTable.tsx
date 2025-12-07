@@ -10,6 +10,7 @@ import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
+import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
@@ -314,6 +315,9 @@ export const MobileGameTable = ({
     
     const chipElement = (
       <div className="relative">
+        {/* Buck indicator for Holm games */}
+        <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
+        {/* Leg indicator for 3-5-7 games */}
         <LegIndicator 
           legs={gameType !== 'holm-game' ? player.legs : 0} 
           maxLegs={legsToWin} 
@@ -500,15 +504,15 @@ export const MobileGameTable = ({
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
         </div>
         
-        {/* Dealer button on felt - with slide animation */}
+        {/* Dealer button on felt - with slide animation, positioned at edge of table */}
         {dealerPosition !== null && dealerPosition !== undefined && (() => {
           // Find dealer player in otherPlayers
           const dealerPlayerIndex = otherPlayers.findIndex(p => p.position === dealerPosition);
           const isCurrentPlayerDealer = currentPlayer?.position === dealerPosition;
           
-          // Calculate pixel positions for smooth transition
+          // Calculate pixel positions - closer to the edge of the felt
           let positionStyle: React.CSSProperties = {
-            bottom: '64px',
+            bottom: '8px',
             left: '50%',
             transform: 'translateX(-50%)',
             transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -516,19 +520,17 @@ export const MobileGameTable = ({
           
           if (!isCurrentPlayerDealer && dealerPlayerIndex >= 0) {
             if (dealerPlayerIndex === 0) {
-              positionStyle = { top: '96px', left: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '8px', left: '40px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 1) {
-              positionStyle = { top: '96px', left: '50%', transform: 'translateX(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '8px', right: '40px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 2) {
-              positionStyle = { top: '96px', right: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '50%', left: '8px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 3) {
-              positionStyle = { top: '50%', left: '64px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { top: '50%', right: '8px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 4) {
-              positionStyle = { top: '50%', right: '64px', transform: 'translateY(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { bottom: '8px', left: '40px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             } else if (dealerPlayerIndex === 5) {
-              positionStyle = { bottom: '64px', left: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-            } else if (dealerPlayerIndex === 6) {
-              positionStyle = { bottom: '64px', right: '32px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+              positionStyle = { bottom: '8px', right: '40px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
             }
           }
           
