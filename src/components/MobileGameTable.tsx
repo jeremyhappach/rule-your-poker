@@ -7,6 +7,7 @@ import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
+import { LegIndicator } from "./LegIndicator";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
@@ -266,17 +267,23 @@ export const MobileGameTable = ({
     const isBotClickable = isHost && player.is_bot && onBotClick;
     
     const chipElement = (
-      <div className={`
-        w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
-        ${chipBgColor}
-        ${playerDecision === 'fold' ? 'opacity-50' : ''}
-        ${playerDecision === 'stay' ? 'ring-2 ring-green-600' : ''}
-        ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
-        ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
-      `}>
-        <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-          ${Math.round(player.chips)}
-        </span>
+      <div className="relative">
+        <LegIndicator 
+          legs={gameType !== 'holm-game' ? player.legs : 0} 
+          maxLegs={legsToWin} 
+        />
+        <div className={`
+          w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
+          ${chipBgColor}
+          ${playerDecision === 'fold' ? 'opacity-50' : ''}
+          ${playerDecision === 'stay' ? 'ring-2 ring-green-600' : ''}
+          ${isTheirTurn ? 'ring-3 ring-yellow-400 animate-pulse' : ''}
+          ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
+        `}>
+          <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+            ${Math.round(player.chips)}
+          </span>
+        </div>
       </div>
     );
     
@@ -298,14 +305,6 @@ export const MobileGameTable = ({
           <span className={`text-[11px] text-white truncate max-w-[60px] leading-none font-semibold drop-shadow-md ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}>
             {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
           </span>
-          {/* Legs indicator for 3-5-7 games */}
-          {gameType !== 'holm-game' && player.legs > 0 && (
-            <div className="flex gap-0.5">
-              {Array.from({ length: Math.min(player.legs, legsToWin) }, (_, i) => (
-                <div key={i} className="w-2 h-2 rounded-full bg-poker-gold" />
-              ))}
-            </div>
-          )}
         </div>
         {/* Mini cards indicator - show for active players with expected card count */}
         {showCardBacks && cardCountToShow > 0 && (
@@ -638,18 +637,18 @@ export const MobileGameTable = ({
                       
                       {/* Right: Chips and Legs */}
                       <div className="flex items-center gap-3">
-                        {/* Legs for 3-5-7 */}
-                        {gameType !== 'holm-game' && (
-                          <div className="flex items-center gap-1">
-                            {player.legs > 0 ? (
-                              <div className="flex gap-0.5">
-                                {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
-                                  <div key={i} className="w-3 h-3 rounded-full bg-poker-gold" />
-                                ))}
+                        {/* Leg indicator for 3-5-7 - use overlapping L circles */}
+                        {gameType !== 'holm-game' && player.legs > 0 && (
+                          <div className="flex">
+                            {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
+                              <div 
+                                key={i} 
+                                className="w-5 h-5 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm"
+                                style={{ marginLeft: i > 0 ? '-6px' : '0', zIndex: Math.min(player.legs, legsToWin) - i }}
+                              >
+                                <span className="text-slate-800 font-bold text-[10px]">L</span>
                               </div>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground">{player.legs}/{legsToWin}</span>
-                            )}
+                            ))}
                           </div>
                         )}
                         
@@ -774,11 +773,17 @@ export const MobileGameTable = ({
                   </Badge>
                 )}
                 
-                {/* Legs indicator for 3-5-7 */}
+                {/* Legs indicator for 3-5-7 - overlapping L circles */}
                 {gameType !== 'holm-game' && currentPlayer.legs > 0 && (
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: currentPlayer.legs }).map((_, i) => (
-                      <ChipStack key={i} amount={legValue} size="sm" variant="leg" />
+                  <div className="flex">
+                    {Array.from({ length: Math.min(currentPlayer.legs, legsToWin) }).map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="w-6 h-6 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm"
+                        style={{ marginLeft: i > 0 ? '-8px' : '0', zIndex: Math.min(currentPlayer.legs, legsToWin) - i }}
+                      >
+                        <span className="text-slate-800 font-bold text-xs">L</span>
+                      </div>
                     ))}
                   </div>
                 )}

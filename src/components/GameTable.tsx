@@ -7,6 +7,7 @@ import { ChipStack } from "./ChipStack";
 import { ChipChangeIndicator } from "./ChipChangeIndicator";
 import { CommunityCards } from "./CommunityCards";
 import { BuckIndicator } from "./BuckIndicator";
+import { LegIndicator } from "./LegIndicator";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
@@ -878,7 +879,10 @@ export const GameTable = ({
               >
                 <div className="relative">
                   <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
-                  
+                  <LegIndicator 
+                    legs={gameType !== 'holm-game' ? player.legs : 0} 
+                    maxLegs={legsToWin} 
+                  />
                   
                   <Card className={`
                     ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
@@ -945,20 +949,6 @@ export const GameTable = ({
                         )}
                       </div>
                       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-2">
-                        {/* Legs indicator - only show for non-Holm games */}
-                        {gameType && gameType !== 'holm-game' && (
-                          <div className="flex items-center gap-0.5 bg-amber-900/30 px-0.5 sm:px-1 md:px-1.5 py-0.5 rounded border border-amber-700">
-                            {player.legs === 0 ? (
-                              <span className="text-amber-500/50 text-[7px] sm:text-[8px] md:text-[10px]">No legs</span>
-                            ) : (
-                              Array.from({ length: player.legs }).map((_, i) => (
-                                <div key={i} className={player.legs === legsToWin - 1 ? "animate-pulse" : ""}>
-                                  <ChipStack amount={legValue} size="sm" variant="leg" />
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        )}
                         
                         {/* Hand evaluation hint - only for non-Holm games, hide during Chucky showdown */}
                         {/* For 3-5-7: use wildcards based on round (3s in R1, 5s in R2, 7s in R3) */}
