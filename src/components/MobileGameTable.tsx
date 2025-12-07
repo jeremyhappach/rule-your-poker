@@ -613,8 +613,8 @@ export const MobileGameTable = ({
               )}
             </div>
             
-            {/* Chipstack and player info - closer to cards */}
-            <div className="flex items-center justify-center gap-4 pt-1 mt-auto">
+            {/* Chipstack and player info - directly below cards */}
+            <div className="flex items-center justify-center gap-4 -mt-6">
               <MobilePlayerTimer
                 timeLeft={timeLeft}
                 maxTime={maxTime}
