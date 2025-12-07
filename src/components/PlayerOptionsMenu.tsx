@@ -14,11 +14,9 @@ interface PlayerOptionsMenuProps {
   autoAnte: boolean;
   sitOutNextHand: boolean;
   standUpNextHand: boolean;
-  mobileView: boolean;
   onAutoAnteChange: (value: boolean) => void;
   onSitOutNextHandChange: (value: boolean) => void;
   onStandUpNextHandChange: (value: boolean) => void;
-  onMobileViewChange: (value: boolean) => void;
   onStandUpNow: () => void;
   onLeaveGameNow: () => void;
   variant?: 'mobile' | 'desktop';
@@ -29,11 +27,9 @@ export const PlayerOptionsMenu = ({
   autoAnte,
   sitOutNextHand,
   standUpNextHand,
-  mobileView,
   onAutoAnteChange,
   onSitOutNextHandChange,
   onStandUpNextHandChange,
-  onMobileViewChange,
   onStandUpNow,
   onLeaveGameNow,
   variant = 'desktop',
@@ -49,7 +45,7 @@ export const PlayerOptionsMenu = ({
             : "h-9 w-9 text-muted-foreground hover:text-foreground"
           }
         >
-          <Settings className="h-5 w-5" />
+          <Settings className={variant === 'mobile' ? "h-5 w-5" : "h-5 w-5"} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
@@ -75,15 +71,6 @@ export const PlayerOptionsMenu = ({
           onCheckedChange={onStandUpNextHandChange}
         >
           Stand Up Next Hand
-        </DropdownMenuCheckboxItem>
-        
-        <DropdownMenuSeparator />
-        
-        <DropdownMenuCheckboxItem
-          checked={mobileView}
-          onCheckedChange={onMobileViewChange}
-        >
-          Mobile View
         </DropdownMenuCheckboxItem>
         
         {isSittingOut && (

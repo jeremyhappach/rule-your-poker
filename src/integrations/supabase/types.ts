@@ -269,7 +269,6 @@ export type Database = {
           id: string
           is_bot: boolean
           legs: number
-          mobile_view: boolean | null
           position: number
           sit_out_next_hand: boolean
           sitting_out: boolean
@@ -289,7 +288,6 @@ export type Database = {
           id?: string
           is_bot?: boolean
           legs?: number
-          mobile_view?: boolean | null
           position: number
           sit_out_next_hand?: boolean
           sitting_out?: boolean
@@ -309,7 +307,6 @@ export type Database = {
           id?: string
           is_bot?: boolean
           legs?: number
-          mobile_view?: boolean | null
           position?: number
           sit_out_next_hand?: boolean
           sitting_out?: boolean
