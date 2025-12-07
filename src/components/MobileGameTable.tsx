@@ -231,15 +231,15 @@ export const MobileGameTable = ({
   
   const expectedCardCount = getExpectedCardCount(currentRound);
 
-  // Get player status for display
+  // Get player status for display - lime green for active like reference image
   const getPlayerStatusStyle = (player: Player) => {
     if (player.sitting_out && !player.waiting) {
       return ''; // transparent/no coloring for sitting out
     }
     if (player.waiting) {
-      return 'bg-yellow-400/30'; // pale yellow for waiting
+      return 'bg-yellow-300/40'; // pale yellow for waiting
     }
-    return 'bg-green-500/30'; // pale green for active
+    return 'bg-lime-400/50'; // light lime green for active (matches reference image)
   };
 
   // Render player chip - chipstack in center, name below
@@ -405,17 +405,27 @@ export const MobileGameTable = ({
         )}
         
         {/* Players arranged around table edges - 6 positions for other players */}
-        {/* Left side: 3 players stacked vertically */}
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+        {/* Top row: 2 players at top corners */}
+        <div className="absolute top-2 left-4 z-10">
           {otherPlayers[0] && renderPlayerChip(otherPlayers[0])}
+        </div>
+        <div className="absolute top-2 right-4 z-10">
           {otherPlayers[1] && renderPlayerChip(otherPlayers[1])}
-          {otherPlayers[2] && renderPlayerChip(otherPlayers[2])}
         </div>
         
-        {/* Right side: 3 players stacked vertically */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+        {/* Middle row: 2 players on sides */}
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 z-10">
+          {otherPlayers[2] && renderPlayerChip(otherPlayers[2])}
+        </div>
+        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-10">
           {otherPlayers[3] && renderPlayerChip(otherPlayers[3])}
+        </div>
+        
+        {/* Bottom row: 2 players at bottom corners */}
+        <div className="absolute bottom-2 left-4 z-10">
           {otherPlayers[4] && renderPlayerChip(otherPlayers[4])}
+        </div>
+        <div className="absolute bottom-2 right-4 z-10">
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5])}
         </div>
         
