@@ -204,7 +204,7 @@ const Index = () => {
     setShowProfileDialog(false);
   };
 
-  if (!user) return null;
+  if (!user) return null; // Force rebuild
 
   return (
     <div className="min-h-screen p-4 bg-background">
