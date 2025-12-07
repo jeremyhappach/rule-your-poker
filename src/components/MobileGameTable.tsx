@@ -622,7 +622,7 @@ export const MobileGameTable = ({
         {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards */}
         <div className={`absolute left-0 z-10 transition-all duration-300 ${
           otherPlayers[1] && isPlayerCardsExposed(otherPlayers[1].id) 
-            ? 'top-[20%] -translate-y-1/2' 
+            ? 'top-[32%] -translate-y-1/2' 
             : 'top-1/2 -translate-y-1/2'
         }`}>
           {otherPlayers[1] && renderPlayerChip(otherPlayers[1], 1)}
@@ -638,7 +638,7 @@ export const MobileGameTable = ({
         {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards */}
         <div className={`absolute right-0 z-10 transition-all duration-300 ${
           otherPlayers[4] && isPlayerCardsExposed(otherPlayers[4].id) 
-            ? 'top-[20%] -translate-y-1/2' 
+            ? 'top-[32%] -translate-y-1/2' 
             : 'top-1/2 -translate-y-1/2'
         }`}>
           {otherPlayers[4] && renderPlayerChip(otherPlayers[4], 4)}
