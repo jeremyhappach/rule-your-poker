@@ -2956,7 +2956,7 @@ const Game = () => {
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}
-                  canAddBot={players.length < 7 && game.status === 'in_progress'}
+                  canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting')}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
@@ -3059,7 +3059,7 @@ const Game = () => {
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}
-                  canAddBot={players.length < 7 && game.status === 'in_progress'}
+                  canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting')}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
