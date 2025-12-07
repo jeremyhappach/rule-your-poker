@@ -147,12 +147,13 @@ export const MobileGameTable = ({
 }: MobileGameTableProps) => {
   const {
     getTableColors,
-    deckColorMode,
     getFourColorSuit,
-    getCardBackColors
+    getCardBackColors,
+    getEffectiveDeckColorMode
   } = useVisualPreferences();
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
+  const deckColorMode = getEffectiveDeckColorMode();
 
   // Collapsible card section state
   const [isCardSectionExpanded, setIsCardSectionExpanded] = useState(true);
