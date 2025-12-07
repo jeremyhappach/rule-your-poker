@@ -15,29 +15,38 @@ interface DealerSelectionProps {
 }
 
 export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) => {
-  const [currentPosition, setCurrentPosition] = useState(1);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isSpinning, setIsSpinning] = useState(true);
   const [finalPosition, setFinalPosition] = useState<number | null>(null);
   const hasStoppedRef = useRef(false);
 
+  // Sort players by position for consistent cycling
+  const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
+  const currentPlayer = sortedPlayers[currentIndex];
+
   useEffect(() => {
     // Filter to only human players
-    const humanPlayers = players.filter(p => !p.is_bot);
+    const humanPlayers = sortedPlayers.filter(p => !p.is_bot);
     
     if (humanPlayers.length === 0) {
       // Fallback: if all are bots, just pick the first one
-      onComplete(1);
+      onComplete(sortedPlayers[0]?.position || 1);
       return;
     }
     
-    // Randomly select final dealer position from human players only
+    // Randomly select final dealer from human players only
     const randomIndex = Math.floor(Math.random() * humanPlayers.length);
-    const selectedPosition = humanPlayers[randomIndex].position;
+    const selectedPlayer = humanPlayers[randomIndex];
+    const selectedPosition = selectedPlayer.position;
     setFinalPosition(selectedPosition);
     hasStoppedRef.current = false;
 
+    // Find the index of the selected player in the sorted array
+    const targetIndex = sortedPlayers.findIndex(p => p.position === selectedPosition);
+
     let spins = 0;
-    const maxSpins = 15 + selectedPosition; // Spin around at least once then land on selected
+    const minSpins = 15; // Minimum cycles before stopping
+    let canStop = false;
 
     const spinInterval = setInterval(() => {
       // Check if we've already stopped - prevent any further updates
@@ -47,10 +56,15 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
 
       spins++;
       
-      setCurrentPosition(prev => {
-        const nextPosition = prev >= players.length ? 1 : prev + 1;
+      // After minimum spins, allow stopping on target
+      if (spins >= minSpins) {
+        canStop = true;
+      }
+      
+      setCurrentIndex(prev => {
+        const nextIndex = (prev + 1) % sortedPlayers.length;
         
-        if (spins >= maxSpins && nextPosition === selectedPosition) {
+        if (canStop && nextIndex === targetIndex) {
           // Stop immediately
           hasStoppedRef.current = true;
           setIsSpinning(false);
@@ -61,12 +75,12 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
             onComplete(selectedPosition);
           }, 2000);
           
-          return selectedPosition;
+          return targetIndex;
         }
         
-        return nextPosition;
+        return nextIndex;
       });
-    }, 100); // Constant speed for now
+    }, 150); // Slightly slower for readability
 
     return () => {
       clearInterval(spinInterval);
@@ -89,9 +103,8 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
             <h2 className="text-xl sm:text-3xl font-bold text-poker-gold">Selecting Dealer...</h2>
             <div className="bg-poker-gold/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 border-2 border-poker-gold/40">
               <p className="text-lg sm:text-2xl font-bold text-white truncate max-w-[200px] sm:max-w-none mx-auto">
-                {players.find(p => p.position === currentPosition)?.profiles?.username || 
-                 `Player ${currentPosition}`}
-                {players.find(p => p.position === currentPosition)?.is_bot && ' 🤖'}
+                {currentPlayer?.profiles?.username || `Seat ${currentPlayer?.position}`}
+                {currentPlayer?.is_bot && ' 🤖'}
               </p>
             </div>
           </div>
