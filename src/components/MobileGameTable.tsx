@@ -183,12 +183,21 @@ export const MobileGameTable = ({
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
   
   // Compute showdown state synchronously during render
-  const isShowdownActive = gameType === 'holm-game' && 
+  // Only consider it showdown if we're NOT in an early betting phase
+  const isInEarlyPhase = roundStatus === 'betting' || roundStatus === 'pending' || roundStatus === 'ante';
+  const isShowdownActive = gameType === 'holm-game' && !isInEarlyPhase &&
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
   
-  // Clear showdown cache ONLY when a new round number is detected (new hand started)
-  // This is the safest trigger - round number only changes when a completely new hand begins
+  // Clear showdown cache when:
+  // 1. A new round number is detected
+  // 2. We're back in an early betting phase (new hand started)
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+  }
+  
+  // Also clear if we're in betting phase and not showing announcement
+  if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
