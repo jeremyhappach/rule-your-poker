@@ -171,6 +171,7 @@ export const MobileGameTable = ({
   // Buck's on you animation state
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
+  const bucksOnYouShownRef = useRef(false); // Prevent re-triggering
   
   // Leg earned animation state
   const [showLegEarned, setShowLegEarned] = useState(false);
@@ -237,10 +238,18 @@ export const MobileGameTable = ({
       currentPlayer &&
       buckPosition === currentPlayer.position &&
       lastBuckPositionRef.current !== buckPosition &&
-      lastBuckPositionRef.current !== null // Don't show on initial load
+      lastBuckPositionRef.current !== null && // Don't show on initial load
+      !bucksOnYouShownRef.current // Don't re-trigger if already shown for this position
     ) {
+      bucksOnYouShownRef.current = true;
       setShowBucksOnYou(true);
     }
+    
+    // Reset the shown flag when buck moves away from current player
+    if (buckPosition !== currentPlayer?.position) {
+      bucksOnYouShownRef.current = false;
+    }
+    
     lastBuckPositionRef.current = buckPosition ?? null;
   }, [buckPosition, currentPlayer, gameType]);
 
