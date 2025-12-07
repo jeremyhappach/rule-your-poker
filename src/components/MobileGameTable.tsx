@@ -271,20 +271,6 @@ export const MobileGameTable = ({
   const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && awaitingNextRound;
   const isAnyPlayerInShowdown = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
 
-  // Calculate winning card highlights ONLY during announcement phase (all cards exposed)
-  const winningCardHighlights = useMemo(() => {
-    // Only highlight during announcement phase, not during card reveal
-    if (!isShowingAnnouncement || !currentPlayerCards.length || !communityCards?.length) {
-      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
-    }
-    // Only highlight if current player stayed (not folded)
-    if (currentPlayer?.current_decision !== 'stay') {
-      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
-    }
-    const result = getWinningCardIndices(currentPlayerCards, communityCards, false);
-    return { ...result, hasHighlights: true };
-  }, [isShowingAnnouncement, currentPlayerCards, communityCards, currentPlayer?.current_decision]);
-
   // Determine winner from lastRoundResult for dimming logic
   const winnerPlayerId = useMemo(() => {
     if (!isShowingAnnouncement || !lastRoundResult) return null;
@@ -307,6 +293,27 @@ export const MobileGameTable = ({
 
   // Check if current player is the winner (for dimming logic)
   const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
+
+  // Get winner's cards for highlighting (winner may be current player or another player)
+  const winnerCards = useMemo(() => {
+    if (!winnerPlayerId || !isShowingAnnouncement) return [];
+    if (winnerPlayerId === currentPlayer?.id) {
+      return currentPlayerCards;
+    }
+    // Find winner's cards from playerCards
+    const winnerCardData = playerCards.find(pc => pc.player_id === winnerPlayerId);
+    return winnerCardData?.cards || [];
+  }, [winnerPlayerId, isShowingAnnouncement, currentPlayer?.id, currentPlayerCards, playerCards]);
+
+  // Calculate winning card highlights based on WINNER's hand (not current player)
+  const winningCardHighlights = useMemo(() => {
+    // Only highlight during announcement phase with winner determined
+    if (!isShowingAnnouncement || !winnerCards.length || !communityCards?.length || !winnerPlayerId) {
+      return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
+    }
+    const result = getWinningCardIndices(winnerCards, communityCards, false);
+    return { ...result, hasHighlights: true };
+  }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId]);
 
   // Detect Chucky chopped animation
   useEffect(() => {
@@ -471,11 +478,18 @@ export const MobileGameTable = ({
     );
     
     // Show actual cards during showdown (BIGGER when chip is hidden), otherwise show mini card backs
-    // Dim cards for losing players during announcement
+    // Dim cards for losing players during announcement, highlight winner's cards
     const isLosingPlayer = isShowingAnnouncement && winnerPlayerId && player.id !== winnerPlayerId && playerDecision === 'stay';
+    const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
     const cardsElement = isShowdown ? (
       <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
-        <PlayerHand cards={cards} isHidden={false} />
+        <PlayerHand 
+          cards={cards} 
+          isHidden={false}
+          highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
+          kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
+          hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
+        />
       </div>
     ) : (
       isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
