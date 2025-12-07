@@ -561,8 +561,8 @@ export const MobileGameTable = ({
           {otherPlayers[5] && renderPlayerChip(otherPlayers[5], 5)}
         </div>
         
-        {/* Dealer button on felt - with slide animation, positioned at edge of table */}
-        {dealerPosition !== null && dealerPosition !== undefined && (() => {
+        {/* Dealer button on felt - with slide animation, positioned at edge of table, hide during showdown */}
+        {dealerPosition !== null && dealerPosition !== undefined && !isAnyPlayerInShowdown && (() => {
         // Find dealer player in otherPlayers
         const dealerPlayerIndex = otherPlayers.findIndex(p => p.position === dealerPosition);
         const isCurrentPlayerDealer = currentPlayer?.position === dealerPosition;
