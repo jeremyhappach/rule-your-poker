@@ -3172,6 +3172,10 @@ const Game = () => {
                     isGameOver={!game.game_over_at}
                     isDealer={isDealer || dealerPlayer?.is_bot || false}
                     onNextGame={handleDealerConfirmGameOver}
+                    chatBubbles={chatBubbles}
+                    onSendChat={sendChatMessage}
+                    isChatSending={isChatSending}
+                    getPositionForUserId={getPositionForUserId}
                   />
                 ) : (
                   <>
@@ -3256,6 +3260,10 @@ const Game = () => {
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
+                    chatBubbles={chatBubbles}
+                    onSendChat={sendChatMessage}
+                    isChatSending={isChatSending}
+                    getPositionForUserId={getPositionForUserId}
                   />
                 ) : (
                   <GameTable
@@ -3326,6 +3334,10 @@ const Game = () => {
                 onFold={() => {}}
                 onSelectSeat={handleSelectSeat}
                 gameType={game.game_type}
+                chatBubbles={chatBubbles}
+                onSendChat={sendChatMessage}
+                isChatSending={isChatSending}
+                getPositionForUserId={getPositionForUserId}
               />
             ) : (
               <GameTable
