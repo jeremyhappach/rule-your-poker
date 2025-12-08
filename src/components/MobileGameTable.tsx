@@ -388,12 +388,12 @@ export const MobileGameTable = ({
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
-  // Slot 0: Bottom-right (1 seat clockwise)
-  // Slot 1: Right-middle (2 seats clockwise)  
-  // Slot 2: Top-right (3 seats clockwise)
-  // Slot 3: Top-left (4 seats clockwise)
-  // Slot 4: Left-middle (5 seats clockwise)
-  // Slot 5: Bottom-left (6 seats clockwise)
+  // Slot 0: 1 seat clockwise (bottom-left in visual layout)
+  // Slot 1: 2 seats clockwise (middle-left)  
+  // Slot 2: 3 seats clockwise (top-left)
+  // Slot 3: 4 seats clockwise (top-right)
+  // Slot 4: 5 seats clockwise (middle-right)
+  // Slot 5: 6 seats clockwise (bottom-right)
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
   
@@ -404,8 +404,12 @@ export const MobileGameTable = ({
     return distance;
   };
   
-  // Sort by clockwise distance to place in correct visual slots
-  const otherPlayers = otherPlayersRaw.sort((a, b) => getClockwiseDistance(a.position) - getClockwiseDistance(b.position));
+  // Map clockwise distance to visual slot (distance 1 = slot 0, distance 2 = slot 1, etc.)
+  // This ensures players appear at their actual relative position, not sequentially
+  const getPlayerAtSlot = (slotIndex: number): Player | undefined => {
+    const targetDistance = slotIndex + 1; // slot 0 = 1 seat away, slot 1 = 2 seats away, etc.
+    return otherPlayersRaw.find(p => getClockwiseDistance(p.position) === targetDistance);
+  };
 
   // Get occupied positions for open seats
   const occupiedPositions = new Set(players.map(p => p.position));
@@ -649,46 +653,45 @@ export const MobileGameTable = ({
           </div>}
         
         {/* Players arranged clockwise around table from current player's perspective */}
-        {/* otherPlayers are sorted by clockwise distance from current player */}
-        {/* Clockwise from player's view means LEFT first, then up-left, top-left, top-right, right, bottom-right */}
+        {/* getPlayerAtSlot(n) returns the player who is n+1 seats clockwise from current player */}
         {/* Slot 0 (1 seat clockwise): Bottom-left */}
         <div className="absolute bottom-2 left-10 z-10">
-          {otherPlayers[0] && renderPlayerChip(otherPlayers[0], 0)}
+          {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
         </div>
         {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards */}
         <div className={`absolute left-0 z-10 transition-all duration-300 ${
-          otherPlayers[1] && isPlayerCardsExposed(otherPlayers[1].id) 
+          getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) 
             ? 'top-[32%] -translate-y-1/2' 
             : 'top-1/2 -translate-y-1/2'
         }`}>
-          {otherPlayers[1] && renderPlayerChip(otherPlayers[1], 1)}
+          {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, 1)}
         </div>
         {/* Slot 2 (3 seats clockwise): Top-left */}
         <div className="absolute top-2 left-10 z-10">
-          {otherPlayers[2] && renderPlayerChip(otherPlayers[2], 2)}
+          {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, 2)}
         </div>
         {/* Slot 3 (4 seats clockwise): Top-right */}
         <div className="absolute top-2 right-10 z-10">
-          {otherPlayers[3] && renderPlayerChip(otherPlayers[3], 3)}
+          {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
         </div>
         {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards */}
         <div className={`absolute right-0 z-10 transition-all duration-300 ${
-          otherPlayers[4] && isPlayerCardsExposed(otherPlayers[4].id) 
+          getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) 
             ? 'top-[32%] -translate-y-1/2' 
             : 'top-1/2 -translate-y-1/2'
         }`}>
-          {otherPlayers[4] && renderPlayerChip(otherPlayers[4], 4)}
+          {getPlayerAtSlot(4) && renderPlayerChip(getPlayerAtSlot(4)!, 4)}
         </div>
         {/* Slot 5 (6 seats clockwise): Bottom-right */}
         <div className="absolute bottom-2 right-10 z-10">
-          {otherPlayers[5] && renderPlayerChip(otherPlayers[5], 5)}
+          {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, 5)}
         </div>
         
         {/* Dealer button on felt - with slide animation, positioned at edge of table, hide during showdown */}
         {dealerPosition !== null && dealerPosition !== undefined && !isAnyPlayerInShowdown && (() => {
-        // Find dealer player in otherPlayers
-        const dealerPlayerIndex = otherPlayers.findIndex(p => p.position === dealerPosition);
+        // Calculate dealer's slot from clockwise distance
         const isCurrentPlayerDealer = currentPlayer?.position === dealerPosition;
+        const dealerSlot = isCurrentPlayerDealer ? -1 : getClockwiseDistance(dealerPosition) - 1;
 
         // Calculate pixel positions - closer to the edge of the felt
         let positionStyle: React.CSSProperties = {
@@ -697,43 +700,43 @@ export const MobileGameTable = ({
           transform: 'translateX(-50%)',
           transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
         };
-        if (!isCurrentPlayerDealer && dealerPlayerIndex >= 0) {
+        if (!isCurrentPlayerDealer && dealerSlot >= 0) {
           // Slot positions match clockwise layout:
           // 0: Bottom-left, 1: Middle-left, 2: Top-left
           // 3: Top-right, 4: Middle-right, 5: Bottom-right
-          if (dealerPlayerIndex === 0) {
+          if (dealerSlot === 0) {
             positionStyle = {
               bottom: '8px',
               left: '40px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (dealerPlayerIndex === 1) {
+          } else if (dealerSlot === 1) {
             positionStyle = {
               top: '50%',
               left: '8px',
               transform: 'translateY(-50%)',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (dealerPlayerIndex === 2) {
+          } else if (dealerSlot === 2) {
             positionStyle = {
               top: '8px',
               left: '40px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (dealerPlayerIndex === 3) {
+          } else if (dealerSlot === 3) {
             positionStyle = {
               top: '8px',
               right: '40px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (dealerPlayerIndex === 4) {
+          } else if (dealerSlot === 4) {
             positionStyle = {
               top: '50%',
               right: '8px',
               transform: 'translateY(-50%)',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (dealerPlayerIndex === 5) {
+          } else if (dealerSlot === 5) {
             positionStyle = {
               bottom: '8px',
               right: '40px',
@@ -750,9 +753,9 @@ export const MobileGameTable = ({
         
         {/* Buck indicator on felt - Holm games only, hide during showdown */}
         {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdown && (() => {
-        // Find buck player in otherPlayers
-        const buckPlayerIndex = otherPlayers.findIndex(p => p.position === buckPosition);
+        // Calculate buck's slot from clockwise distance
         const isCurrentPlayerBuck = currentPlayer?.position === buckPosition;
+        const buckSlot = isCurrentPlayerBuck ? -1 : getClockwiseDistance(buckPosition) - 1;
 
         // Calculate pixel positions - offset from dealer button
         let positionStyle: React.CSSProperties = {
@@ -761,41 +764,41 @@ export const MobileGameTable = ({
           transform: 'translateX(-50%)',
           transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
         };
-        if (!isCurrentPlayerBuck && buckPlayerIndex >= 0) {
+        if (!isCurrentPlayerBuck && buckSlot >= 0) {
           // Slot positions match clockwise layout:
           // 0: Bottom-left, 1: Middle-left, 2: Top-left
           // 3: Top-right, 4: Middle-right, 5: Bottom-right
-          if (buckPlayerIndex === 0) {
+          if (buckSlot === 0) {
             positionStyle = {
               bottom: '46px',
               left: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (buckPlayerIndex === 1) {
+          } else if (buckSlot === 1) {
             positionStyle = {
               top: '40%',
               left: '42px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (buckPlayerIndex === 2) {
+          } else if (buckSlot === 2) {
             positionStyle = {
               top: '38px',
               left: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (buckPlayerIndex === 3) {
+          } else if (buckSlot === 3) {
             positionStyle = {
               top: '38px',
               right: '72px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (buckPlayerIndex === 4) {
+          } else if (buckSlot === 4) {
             positionStyle = {
               top: '40%',
               right: '42px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
-          } else if (buckPlayerIndex === 5) {
+          } else if (buckSlot === 5) {
             positionStyle = {
               bottom: '46px',
               right: '72px',
