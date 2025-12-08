@@ -559,10 +559,10 @@ export const MobileGameTable = ({
         {cardsElement}
       </div>;
   };
-  return <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background">
+  return <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background relative">
       {/* Chat input - top right */}
       {onSendChat && (
-        <div className="absolute top-2 right-2 z-50">
+        <div className="absolute top-16 right-2 z-50">
           <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
         </div>
       )}
