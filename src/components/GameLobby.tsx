@@ -173,15 +173,21 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             legs,
             is_bot,
             sitting_out,
+            created_at,
             profiles(username)
           `)
           .eq('game_id', game.id)
           .order('position');
 
-        const hostPlayer = playersData?.find(p => p.position === 1);
+        // Host is the first human player who joined (earliest created_at)
+        const humanPlayers = playersData?.filter(p => !p.is_bot) || [];
+        const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        });
+        const hostPlayer = sortedByJoinTime[0];
         const host_username = hostPlayer?.profiles?.username || 'Unknown';
         
-        const isCreator = playersData?.some(p => p.user_id === userId && p.position === 1) || false;
+        const isCreator = hostPlayer?.user_id === userId;
         const isPlayer = playersData?.some(p => p.user_id === userId) || false;
         
         // Calculate duration
