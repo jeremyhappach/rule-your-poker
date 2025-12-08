@@ -304,10 +304,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
     // Everyone except the host joins as observer and selects their seat
     // The host is already seated when they create the game
-    toast({
-      title: "Joined as Observer",
-      description: "Select an open seat to join the game!",
-    });
     navigate(`/game/${gameId}`);
   };
 
