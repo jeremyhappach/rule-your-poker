@@ -890,7 +890,7 @@ export const MobileGameTable = ({
       </div>
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
-      <div className="flex-1 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-auto" {...swipeHandlers}>
+      <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
         {/* Status badges */}
         {(pendingSessionEnd || isPaused) && <div className="px-4 py-1.5">
             <div className="flex items-center justify-center gap-2">
