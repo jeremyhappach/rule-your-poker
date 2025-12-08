@@ -122,6 +122,7 @@ interface MobileGameTableProps {
   onBotClick?: (botPlayer: Player) => void;
   // Chat props
   chatBubbles?: ChatBubbleData[];
+  allMessages?: { id: string; user_id: string; message: string; username?: string }[];
   onSendChat?: (message: string) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
@@ -165,6 +166,7 @@ export const MobileGameTable = ({
   isHost,
   onBotClick,
   chatBubbles = [],
+  allMessages = [],
   onSendChat,
   isChatSending = false,
   getPositionForUserId,
@@ -960,7 +962,7 @@ export const MobileGameTable = ({
             {isChatOpen && onSendChat && (
               <div className="mb-3">
                 <MobileChatPanel
-                  messages={chatBubbles}
+                  messages={allMessages}
                   onSend={onSendChat}
                   isSending={isChatSending}
                   onClose={() => setIsChatOpen(false)}
@@ -1144,7 +1146,7 @@ export const MobileGameTable = ({
               {isChatOpen && onSendChat && (
                 <div className="w-full mt-2">
                   <MobileChatPanel
-                    messages={chatBubbles}
+                    messages={allMessages}
                     onSend={onSendChat}
                     isSending={isChatSending}
                     onClose={() => setIsChatOpen(false)}
@@ -1194,7 +1196,7 @@ export const MobileGameTable = ({
             {/* Chat panel for observers */}
             {isChatOpen && onSendChat && (
               <MobileChatPanel
-                messages={chatBubbles}
+                messages={allMessages}
                 onSend={onSendChat}
                 isSending={isChatSending}
                 onClose={() => setIsChatOpen(false)}
