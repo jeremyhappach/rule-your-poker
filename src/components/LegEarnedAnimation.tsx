@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface LegEarnedAnimationProps {
   show: boolean;
@@ -9,9 +9,15 @@ interface LegEarnedAnimationProps {
 export const LegEarnedAnimation = ({ show, playerName, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const [animationPhase, setAnimationPhase] = useState<'flying' | 'landed'>('flying');
+  const onCompleteRef = useRef(onComplete);
+  const hasShownRef = useRef(false);
+  
+  // Keep ref updated
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
-    if (show) {
+    if (show && !hasShownRef.current) {
+      hasShownRef.current = true;
       setVisible(true);
       setAnimationPhase('flying');
       
@@ -23,15 +29,18 @@ export const LegEarnedAnimation = ({ show, playerName, onComplete }: LegEarnedAn
       // Then hide after another 0.5s
       const hideTimer = setTimeout(() => {
         setVisible(false);
-        onComplete?.();
+        onCompleteRef.current?.();
       }, 2000);
       
       return () => {
         clearTimeout(landTimer);
         clearTimeout(hideTimer);
       };
+    } else if (!show) {
+      // Reset when show becomes false
+      hasShownRef.current = false;
     }
-  }, [show, onComplete]);
+  }, [show]);
 
   if (!visible) return null;
 
