@@ -781,69 +781,7 @@ export const MobileGameTable = ({
           {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, 5)}
         </div>
         
-        {/* Dealer button on felt - with slide animation, positioned at edge of table, hide during showdown */}
-        {dealerPosition !== null && dealerPosition !== undefined && !isAnyPlayerInShowdown && (() => {
-        // Calculate dealer's slot from clockwise distance
-        const isCurrentPlayerDealer = currentPlayer?.position === dealerPosition;
-        const dealerSlot = isCurrentPlayerDealer ? -1 : getClockwiseDistance(dealerPosition) - 1;
-
-        // Calculate pixel positions - closer to the edge of the felt
-        let positionStyle: React.CSSProperties = {
-          bottom: '8px',
-          left: '45%',
-          transform: 'translateX(-50%)',
-          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-        };
-        if (!isCurrentPlayerDealer && dealerSlot >= 0) {
-          // Slot positions match clockwise layout:
-          // 0: Bottom-left, 1: Middle-left, 2: Top-left
-          // 3: Top-right, 4: Middle-right, 5: Bottom-right
-          if (dealerSlot === 0) {
-            positionStyle = {
-              bottom: '8px',
-              left: '40px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerSlot === 1) {
-            positionStyle = {
-              top: '50%',
-              left: '8px',
-              transform: 'translateY(-50%)',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerSlot === 2) {
-            positionStyle = {
-              top: '8px',
-              left: '40px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerSlot === 3) {
-            positionStyle = {
-              top: '8px',
-              right: '40px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerSlot === 4) {
-            positionStyle = {
-              top: '50%',
-              right: '8px',
-              transform: 'translateY(-50%)',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          } else if (dealerSlot === 5) {
-            positionStyle = {
-              bottom: '8px',
-              right: '40px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
-          }
-        }
-        return <div className="absolute z-20" style={positionStyle}>
-              <div className="w-7 h-7 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
-                <span className="text-black font-bold text-xs">D</span>
-              </div>
-            </div>;
-      })()}
+        {/* Dealer button is now shown on player chip stacks (OUTSIDE position), no separate felt button needed */}
         
         {/* Buck indicator on felt - Holm games only, hide during showdown */}
         {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdown && (() => {
