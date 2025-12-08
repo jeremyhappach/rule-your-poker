@@ -229,7 +229,12 @@ const Game = () => {
   
   const handleLeaveGameNow = async () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
-    if (!currentPlayer) return;
+    
+    // If user is an observer (not a player), just navigate back to lobby
+    if (!currentPlayer) {
+      navigate('/');
+      return;
+    }
     
     // Delete the player record entirely
     const { error } = await supabase
@@ -3177,6 +3182,7 @@ const Game = () => {
                     onSendChat={sendChatMessage}
                     isChatSending={isChatSending}
                     getPositionForUserId={getPositionForUserId}
+                    onLeaveGameNow={handleLeaveGameNow}
                   />
                 ) : (
                   <>
@@ -3265,6 +3271,7 @@ const Game = () => {
                     onSendChat={sendChatMessage}
                     isChatSending={isChatSending}
                     getPositionForUserId={getPositionForUserId}
+                    onLeaveGameNow={handleLeaveGameNow}
                   />
                 ) : (
                   <GameTable
@@ -3339,6 +3346,7 @@ const Game = () => {
                 onSendChat={sendChatMessage}
                 isChatSending={isChatSending}
                 getPositionForUserId={getPositionForUserId}
+                onLeaveGameNow={handleLeaveGameNow}
               />
             ) : (
               <GameTable
@@ -3471,6 +3479,7 @@ const Game = () => {
               onSendChat={sendChatMessage}
               isChatSending={isChatSending}
               getPositionForUserId={getPositionForUserId}
+              onLeaveGameNow={handleLeaveGameNow}
             />
           ) : (
             <GameTable

@@ -8,6 +8,7 @@ import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
+import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -123,6 +124,8 @@ interface MobileGameTableProps {
   onSendChat?: (message: string) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
+  // Observer leave game prop
+  onLeaveGameNow?: () => void;
 }
 export const MobileGameTable = ({
   players,
@@ -164,6 +167,7 @@ export const MobileGameTable = ({
   onSendChat,
   isChatSending = false,
   getPositionForUserId,
+  onLeaveGameNow,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -1156,12 +1160,32 @@ export const MobileGameTable = ({
               </div>
             )}
             
-            {/* Chat input for observers */}
-            {onSendChat && (
-              <div className="flex justify-end mb-3">
+            {/* Header with gear and chat for observers */}
+            <div className="flex items-center justify-between mb-3">
+              {onLeaveGameNow && (
+                <PlayerOptionsMenu
+                  isSittingOut={false}
+                  isObserver={true}
+                  waiting={false}
+                  autoAnte={false}
+                  sitOutNextHand={false}
+                  standUpNextHand={false}
+                  onAutoAnteChange={() => {}}
+                  onSitOutNextHandChange={() => {}}
+                  onStandUpNextHandChange={() => {}}
+                  onStandUpNow={() => {}}
+                  onLeaveGameNow={onLeaveGameNow}
+                  variant="mobile"
+                />
+              )}
+              {onSendChat && (
                 <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
-              </div>
-            )}
+              )}
+            </div>
+            
+            <p className="text-muted-foreground text-sm text-center">
+              You are observing this game
+            </p>
           </div>}
       </div>
     </div>;
