@@ -25,6 +25,14 @@ interface Player {
   };
 }
 
+interface ChatBubble {
+  id: string;
+  user_id: string;
+  message: string;
+  username?: string;
+  expiresAt: number;
+}
+
 interface WaitingForPlayersTableProps {
   gameId: string;
   players: Player[];
@@ -32,6 +40,10 @@ interface WaitingForPlayersTableProps {
   onSelectSeat: (position: number) => void;
   onGameStart: () => void;
   isMobile: boolean;
+  chatBubbles?: ChatBubble[];
+  onSendChat?: (message: string) => void;
+  isChatSending?: boolean;
+  getPositionForUserId?: (userId: string) => number | undefined;
 }
 
 export const WaitingForPlayersTable = ({
@@ -40,7 +52,11 @@ export const WaitingForPlayersTable = ({
   currentUserId,
   onSelectSeat,
   onGameStart,
-  isMobile
+  isMobile,
+  chatBubbles = [],
+  onSendChat,
+  isChatSending = false,
+  getPositionForUserId
 }: WaitingForPlayersTableProps) => {
   const { toast } = useToast();
   const gameStartTriggeredRef = useRef(false);
@@ -269,6 +285,10 @@ export const WaitingForPlayersTable = ({
       {isMobile ? (
         <MobileGameTable
           {...emptyTableProps}
+          chatBubbles={chatBubbles}
+          onSendChat={onSendChat}
+          isChatSending={isChatSending}
+          getPositionForUserId={getPositionForUserId}
         />
       ) : (
         <GameTable

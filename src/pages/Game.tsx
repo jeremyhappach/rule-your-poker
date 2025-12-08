@@ -3129,6 +3129,10 @@ const Game = () => {
             onSelectSeat={handleSelectSeat}
             onGameStart={startGameFromWaiting}
             isMobile={isMobile}
+            chatBubbles={chatBubbles}
+            onSendChat={sendChatMessage}
+            isChatSending={isChatSending}
+            getPositionForUserId={getPositionForUserId}
           />
         )}
 
