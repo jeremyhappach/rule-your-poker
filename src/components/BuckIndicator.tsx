@@ -8,7 +8,7 @@ export const BuckIndicator = ({ show }: BuckIndicatorProps) => {
   if (!show) return null;
 
   return (
-    <div className="absolute -top-3 -right-3 z-30">
+    <div className="absolute -top-2 -right-4 z-30">
       <div className="relative">
         {/* Pulsing glow effect */}
         <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
