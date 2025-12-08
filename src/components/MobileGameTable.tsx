@@ -545,8 +545,8 @@ export const MobileGameTable = ({
               : { left: '-2px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
             )
           }}>
-            <div className="w-5 h-5 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
-              <span className="text-black font-bold text-[10px]">D</span>
+            <div className="w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-[10px]">D</span>
             </div>
           </div>
         )}
