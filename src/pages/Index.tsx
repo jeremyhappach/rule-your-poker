@@ -136,7 +136,13 @@ const Index = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    // Always navigate to auth page, even if signOut fails
+    navigate("/auth");
   };
 
   const handleUpdateUsername = async () => {
