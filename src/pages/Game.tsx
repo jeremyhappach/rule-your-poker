@@ -215,13 +215,10 @@ const Game = () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
     
-    // Stand up = set sitting_out to false and remove from seat
+    // Stand up = delete player record to become an observer
     const { error } = await supabase
       .from('players')
-      .update({ 
-        sitting_out: false,
-        status: 'standing'
-      })
+      .delete()
       .eq('id', currentPlayer.id);
     
     if (error) {
