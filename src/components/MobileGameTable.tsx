@@ -693,10 +693,18 @@ export const MobileGameTable = ({
           onComplete={() => setShowLegEarned(false)} 
         />
         
-        {/* Pot display - above community cards, vertically centered */}
-        <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-full z-20">
-          <div className="bg-black/70 backdrop-blur-sm rounded-full px-5 py-1.5 border border-poker-gold/60">
-            <span className="text-poker-gold font-bold text-xl">${Math.round(pot)}</span>
+        {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
+        <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
+          gameType === 'holm-game' 
+            ? 'top-[35%] -translate-y-full' 
+            : 'top-1/2 -translate-y-1/2'
+        }`}>
+          <div className={`bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
+            gameType === 'holm-game' ? 'px-5 py-1.5' : 'px-8 py-3'
+          }`}>
+            <span className={`text-poker-gold font-bold ${
+              gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
+            }`}>${Math.round(pot)}</span>
           </div>
         </div>
         
@@ -1132,9 +1140,9 @@ export const MobileGameTable = ({
                 <span className={`text-lg font-bold ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
                   ${currentPlayer.chips.toLocaleString()}
                 </span>
-                {/* Hand evaluation for 3-5-7 */}
-                {currentPlayerCards.length > 0 && gameType !== 'holm-game' && !chuckyActive && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
-                    {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
+                {/* Hand evaluation for Holm only when Chucky is active */}
+                {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
+                    {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
                   </Badge>}
               </div>
               
