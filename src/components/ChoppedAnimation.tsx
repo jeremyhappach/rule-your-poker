@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface ChoppedAnimationProps {
   show: boolean;
@@ -7,17 +7,26 @@ interface ChoppedAnimationProps {
 
 export const ChoppedAnimation = ({ show, onComplete }: ChoppedAnimationProps) => {
   const [visible, setVisible] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  const hasShownRef = useRef(false);
+  
+  // Keep ref updated
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
-    if (show) {
+    if (show && !hasShownRef.current) {
+      hasShownRef.current = true;
       setVisible(true);
       const timer = setTimeout(() => {
         setVisible(false);
-        onComplete?.();
+        onCompleteRef.current?.();
       }, 1000);
       return () => clearTimeout(timer);
+    } else if (!show) {
+      // Reset when show becomes false
+      hasShownRef.current = false;
     }
-  }, [show, onComplete]);
+  }, [show]);
 
   if (!visible) return null;
 
