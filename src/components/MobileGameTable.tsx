@@ -484,7 +484,40 @@ export const MobileGameTable = ({
     const isDealer = dealerPosition === player.position;
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
     
+    // Determine if legs should be on the left (inside for right-side slots 3,4,5)
+    const isRightSideSlot = slotIndex !== undefined && slotIndex >= 3;
+    
+    // Leg indicator element - overlapping circles positioned inside toward table center
+    const legIndicator = playerLegs > 0 && (
+      <div className="absolute z-30" style={{
+        // Position inside the chipstack edge, toward table center
+        ...(isRightSideSlot 
+          ? { left: '-2px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
+          : { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
+        )
+      }}>
+        <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
+          {Array.from({ length: Math.min(playerLegs, legsToWin) }).map((_, i) => (
+            <div 
+              key={i} 
+              className="w-5 h-5 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
+              style={{
+                marginLeft: !isRightSideSlot && i > 0 ? '-8px' : '0',
+                marginRight: isRightSideSlot && i > 0 ? '-8px' : '0',
+                zIndex: Math.min(playerLegs, legsToWin) - i
+              }}
+            >
+              <span className="text-slate-800 font-bold text-[10px]">L</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+    
     const chipElement = <div className="relative flex items-center gap-1">
+        {/* Leg indicators - positioned inside toward table center */}
+        {legIndicator}
+        
         {/* Chat bubbles above player */}
         {getPositionForUserId && chatBubbles.length > 0 && (
           <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1">
@@ -530,20 +563,6 @@ export const MobileGameTable = ({
             </span>
           </div>
         </div>
-        
-        {/* Leg indicators on RIGHT - horizontal row */}
-        {playerLegs > 0 && (
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {Array.from({ length: Math.min(playerLegs, legsToWin) }).map((_, i) => (
-              <div 
-                key={i} 
-                className="w-5 h-5 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
-              >
-                <span className="text-slate-800 font-bold text-[10px]">L</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>;
     
     const nameElement = (
