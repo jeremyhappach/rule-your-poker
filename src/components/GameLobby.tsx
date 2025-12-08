@@ -216,13 +216,22 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const createGame = async () => {
+    // Fetch last 50 game names to avoid duplicates
+    const { data: recentGames } = await supabase
+      .from('games')
+      .select('name')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    const recentNames = recentGames?.map(g => g.name).filter(Boolean) as string[] || [];
+    
     // Create game with waiting status
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
         buy_in: 100,
         status: 'waiting',
-        name: generateGameName()
+        name: generateGameName(recentNames)
       })
       .select()
       .single();
