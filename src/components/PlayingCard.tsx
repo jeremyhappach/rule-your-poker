@@ -27,6 +27,7 @@ interface PlayingCardProps {
   isHighlighted?: boolean;  // Card is part of winning hand
   isKicker?: boolean;       // Card is a kicker
   isDimmed?: boolean;       // Card is not part of winning hand (dim it)
+  isWild?: boolean;         // Card is a wild card (3-5-7 games)
 }
 
 const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
@@ -64,6 +65,7 @@ export const PlayingCard = ({
   isHighlighted = false,
   isKicker = false,
   isDimmed = false,
+  isWild = false,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
@@ -184,11 +186,17 @@ export const PlayingCard = ({
   
   // Combine transforms - lift goes first, then any transform from style prop
   const combinedTransform = [liftTransform, style?.transform].filter(Boolean).join(' ') || undefined;
+  
+  // Wild card styling - golden border and subtle glow that works in both 2-color and 4-color modes
+  const wildCardStyles = isWild ? {
+    border: '3px solid #fbbf24',
+    boxShadow: '0 0 8px 2px rgba(251, 191, 36, 0.6), inset 0 0 4px rgba(251, 191, 36, 0.3)',
+  } : {};
     
   return (
     <Card
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${borderColor} ${className} transition-transform duration-200`}
-      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...style, transform: combinedTransform }}
+      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${isWild ? '' : borderColor} ${className} transition-transform duration-200`}
+      style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
       <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
         {card.rank}

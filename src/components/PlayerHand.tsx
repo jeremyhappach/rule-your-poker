@@ -8,7 +8,19 @@ interface PlayerHandProps {
   highlightedIndices?: number[];  // Indices of cards that are part of winning hand
   kickerIndices?: number[];       // Indices of kicker cards
   hasHighlights?: boolean;        // Whether highlights are active (to dim non-highlighted cards)
+  gameType?: string | null;       // Game type for wild card determination
+  currentRound?: number;          // Current round for wild card determination
 }
+
+// Get wild rank based on round (3-5-7 game only)
+const getWildRank = (round: number): string | null => {
+  switch (round) {
+    case 1: return '3';
+    case 2: return '5';
+    case 3: return '7';
+    default: return null;
+  }
+};
 
 export const PlayerHand = ({ 
   cards, 
@@ -16,19 +28,34 @@ export const PlayerHand = ({
   expectedCardCount,
   highlightedIndices = [],
   kickerIndices = [],
-  hasHighlights = false
+  hasHighlights = false,
+  gameType,
+  currentRound = 0
 }: PlayerHandProps) => {
-  // Sort cards from lowest to highest
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
     '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
   };
   
+  // Determine wild rank for 3-5-7 games
+  const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game';
+  const wildRank = is357Game ? getWildRank(currentRound) : null;
+  
   // Create sorted cards with original indices for highlighting
-  const cardsWithIndices = cards.map((card, index) => ({ card, originalIndex: index }));
-  const sortedCardsWithIndices = [...cardsWithIndices].sort((a, b) => 
-    RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank]
-  );
+  const cardsWithIndices = cards.map((card, index) => ({ 
+    card, 
+    originalIndex: index,
+    isWild: wildRank !== null && card.rank === wildRank
+  }));
+  
+  // Sort cards: wild cards first (descending by count), then by rank ascending
+  const sortedCardsWithIndices = [...cardsWithIndices].sort((a, b) => {
+    // Wild cards come first
+    if (a.isWild && !b.isWild) return -1;
+    if (!a.isWild && b.isWild) return 1;
+    // Within same wild status, sort by rank ascending
+    return RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank];
+  });
   
   const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
   const cardSize = getCardSize(displayCardCount);
@@ -66,7 +93,7 @@ export const PlayerHand = ({
 
   return (
     <div className="flex">
-      {sortedCardsWithIndices.map(({ card, originalIndex }, displayIndex) => {
+      {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
         const isDimmed = hasHighlights && !isHighlighted && !isKicker;
@@ -79,6 +106,7 @@ export const PlayerHand = ({
             isHighlighted={isHighlighted}
             isKicker={isKicker}
             isDimmed={isDimmed}
+            isWild={isWild}
             className={`${overlapClass} transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
             style={{ 
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
