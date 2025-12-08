@@ -33,10 +33,10 @@ export const MobileChatPanel = ({
     }
   }, []);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to top when new messages arrive (newest first)
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0;
     }
   }, [messages]);
 
