@@ -481,7 +481,10 @@ export const MobileGameTable = ({
     // During showdown/announcement, hide chip stack to make room for bigger cards
     const hideChipForShowdown = isShowdown;
     
-    const chipElement = <div className="relative">
+    const isDealer = dealerPosition === player.position;
+    const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
+    
+    const chipElement = <div className="relative flex items-center gap-1">
         {/* Chat bubbles above player */}
         {getPositionForUserId && chatBubbles.length > 0 && (
           <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1">
@@ -497,27 +500,50 @@ export const MobileGameTable = ({
               ))}
           </div>
         )}
-        {/* Leg indicator for 3-5-7 games */}
-        <LegIndicator legs={gameType !== 'holm-game' ? player.legs : 0} maxLegs={legsToWin} />
-        {/* Pulsing green ring for stayed players - separate element so inner circle doesn't pulse */}
-        {playerDecision === 'stay' && (
-          <div className="absolute inset-0 rounded-full ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse" />
+        
+        {/* Dealer button on LEFT */}
+        {isDealer && (
+          <div className="w-5 h-5 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg flex-shrink-0">
+            <span className="text-black font-bold text-[10px]">D</span>
+          </div>
         )}
-        {/* Yellow ring for current turn (no pulse on ring, pulse on circle) */}
-        {isTheirTurn && playerDecision !== 'stay' && (
-          <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
-        )}
-        <div className={`
-          relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
-          ${chipBgColor}
-          ${playerDecision === 'fold' ? 'opacity-50' : ''}
-          ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
-          ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
-        `}>
-          <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-            ${Math.round(player.chips)}
-          </span>
+        
+        {/* Main chip stack */}
+        <div className="relative">
+          {/* Pulsing green ring for stayed players - separate element so inner circle doesn't pulse */}
+          {playerDecision === 'stay' && (
+            <div className="absolute inset-0 rounded-full ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse" />
+          )}
+          {/* Yellow ring for current turn (no pulse on ring, pulse on circle) */}
+          {isTheirTurn && playerDecision !== 'stay' && (
+            <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
+          )}
+          <div className={`
+            relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
+            ${chipBgColor}
+            ${playerDecision === 'fold' ? 'opacity-50' : ''}
+            ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
+            ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
+          `}>
+            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+              ${Math.round(player.chips)}
+            </span>
+          </div>
         </div>
+        
+        {/* Leg indicators on RIGHT - horizontal row */}
+        {playerLegs > 0 && (
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            {Array.from({ length: Math.min(playerLegs, legsToWin) }).map((_, i) => (
+              <div 
+                key={i} 
+                className="w-5 h-5 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
+              >
+                <span className="text-slate-800 font-bold text-[10px]">L</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>;
     
     const nameElement = (
