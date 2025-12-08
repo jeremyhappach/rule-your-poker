@@ -180,17 +180,10 @@ export const WaitingForPlayersTable = ({
     }, 1500);
   };
 
-  // Show notification when new player joins
+  // Track player count (without toast notification)
   useEffect(() => {
-    if (players.length > previousPlayerCountRef.current && previousPlayerCountRef.current > 0) {
-      const newPlayer = players.find(p => !previousPlayerCountRef.current);
-      toast({
-        title: "Player Joined!",
-        description: `${players.length} player${players.length > 1 ? 's' : ''} at the table`,
-      });
-    }
     previousPlayerCountRef.current = players.length;
-  }, [players.length, toast]);
+  }, [players.length]);
 
   const handleInvite = () => {
     const gameUrl = window.location.href;
@@ -302,6 +295,9 @@ export const WaitingForPlayersTable = ({
       ) : (
         <GameTable
           {...emptyTableProps}
+          chatBubbles={chatBubbles}
+          onSendChat={onSendChat}
+          isChatSending={isChatSending}
         />
       )}
       {renderFeltMessage()}
