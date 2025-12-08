@@ -302,77 +302,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .eq('id', gameId)
       .single();
 
-    // Users join as observers for any session that's already started (not in waiting)
-    const shouldJoinAsObserver = gameData?.status && gameData.status !== 'waiting';
-
-    // For active sessions, join as observer
-    if (shouldJoinAsObserver) {
-      toast({
-        title: "Joined as Observer",
-        description: "Select an open seat to join the game!",
-      });
-      navigate(`/game/${gameId}`);
-      return;
-    }
-
-    // For waiting games, check if there's room and add player
-    const { data: players, error: playersError } = await supabase
-      .from('players')
-      .select('position')
-      .eq('game_id', gameId);
-
-    if (playersError) {
-      toast({
-        title: "Error",
-        description: "Failed to check game",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (players.length >= 7) {
-      toast({
-        title: "Game Full",
-        description: "This game already has 7 players",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const nextPosition = players.length + 1;
-
-    // Fetch user's profile to get their deck_color_mode preference
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('deck_color_mode')
-      .eq('id', userId)
-      .maybeSingle();
-
-    const { error } = await supabase
-      .from('players')
-      .insert({
-        game_id: gameId,
-        user_id: userId,
-        chips: 0,
-        position: nextPosition,
-        sitting_out: false,
-        deck_color_mode: userProfile?.deck_color_mode || null
-      });
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to join game",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Everyone except the host joins as observer and selects their seat
+    // The host is already seated when they create the game
     toast({
-      title: "Success",
-      description: "Joined game!",
+      title: "Joined as Observer",
+      description: "Select an open seat to join the game!",
     });
-
     navigate(`/game/${gameId}`);
   };
 
