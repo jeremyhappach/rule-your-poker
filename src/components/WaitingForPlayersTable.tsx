@@ -201,12 +201,15 @@ export const WaitingForPlayersTable = ({
     });
   };
 
-  // Overlay message for the felt
+  // Check if user is an observer (not seated)
+  const isObserver = !currentPlayer;
+
+  // Felt message - positioned in center of table (where community cards go)
   const renderFeltMessage = () => (
     <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
       <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-amber-600/50 max-w-xs text-center">
         <Users className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-        {!isSeated ? (
+        {isObserver ? (
           <>
             <p className="text-amber-300 font-bold text-lg mb-1">Choose a Seat!</p>
             <p className="text-amber-300/70 text-sm">
@@ -215,12 +218,17 @@ export const WaitingForPlayersTable = ({
           </>
         ) : (
           <>
-            <p className="text-amber-300 font-bold text-lg mb-1">Waiting for Players</p>
-            <p className="text-amber-300/70 text-sm">
-              {seatedPlayerCount}/2+ players seated
+            <p className="text-amber-300 font-bold text-lg mb-1">
+              {hasEnoughPlayers ? 'Ready to Start!' : 'Waiting for Players'}
             </p>
-            <div className="flex flex-col gap-2 mt-3 pointer-events-auto">
-              <div className="flex gap-2">
+            <p className="text-amber-300/70 text-sm mb-3">
+              {hasEnoughPlayers 
+                ? (isHost ? 'Click Start Game to begin' : 'Waiting for host to start game')
+                : `${seatedPlayerCount}/2+ players seated`
+              }
+            </p>
+            <div className="flex flex-col gap-2 pointer-events-auto">
+              <div className="flex gap-2 justify-center">
                 <Button
                   variant="outline"
                   size="sm"
@@ -259,6 +267,7 @@ export const WaitingForPlayersTable = ({
   );
 
   // Empty props for the table (no cards, no game state)
+  // Only allow seat selection for observers
   const emptyTableProps = {
     players,
     currentUserId,
@@ -277,7 +286,7 @@ export const WaitingForPlayersTable = ({
     awaitingNextRound: false,
     onStay: () => {},
     onFold: () => {},
-    onSelectSeat,
+    onSelectSeat: isObserver ? onSelectSeat : undefined, // Only observers can select seats
   };
 
   return (

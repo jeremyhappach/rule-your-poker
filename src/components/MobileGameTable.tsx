@@ -1152,7 +1152,7 @@ export const MobileGameTable = ({
             </div>
           </div>}
         
-        {/* No player state */}
+        {/* No player state - only for observers */}
         {isCardSectionExpanded && !currentPlayer && <div className="px-4 pb-4">
             {/* Chat bubbles display */}
             {chatBubbles.length > 0 && (
@@ -1174,8 +1174,6 @@ export const MobileGameTable = ({
                 <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
               </div>
             )}
-            
-            <p className="text-sm text-muted-foreground text-center">Select a seat to join the game</p>
           </div>}
       </div>
     </div>;
