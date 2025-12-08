@@ -204,9 +204,9 @@ export const WaitingForPlayersTable = ({
   // Check if user is an observer (not seated)
   const isObserver = !currentPlayer;
 
-  // Felt message - positioned in center of table (where community cards go)
+  // Felt message - positioned in center of felt area (top portion on mobile)
   const renderFeltMessage = () => (
-    <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+    <div className={`absolute left-0 right-0 flex justify-center z-10 pointer-events-none ${isMobile ? 'top-[25%]' : 'top-1/2 -translate-y-1/2'}`}>
       <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-amber-600/50 max-w-xs text-center">
         <Users className="w-8 h-8 text-amber-400 mx-auto mb-2" />
         {isObserver ? (
