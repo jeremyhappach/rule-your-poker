@@ -2961,7 +2961,11 @@ const Game = () => {
   }) : '';
   const handsPlayed = game.total_hands || 0;
 
-  const isCreator = players[0]?.user_id === user?.id;
+  // Find the host by earliest created_at (first player to join), excluding bots
+  const hostPlayer = [...players].filter(p => !p.is_bot).sort((a, b) => 
+    new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+  )[0];
+  const isCreator = hostPlayer?.user_id === user?.id;
   const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
   const dealerPlayer = players.find(p => p.position === game.dealer_position);
   const isDealer = dealerPlayer?.user_id === user?.id;
