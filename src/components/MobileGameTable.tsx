@@ -487,13 +487,13 @@ export const MobileGameTable = ({
     // Determine if legs should be on the left (inside for right-side slots 3,4,5)
     const isRightSideSlot = slotIndex !== undefined && slotIndex >= 3;
     
-    // Leg indicator element - overlapping circles positioned inside toward table center
+    // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
     const legIndicator = playerLegs > 0 && (
       <div className="absolute z-30" style={{
-        // Position inside the chipstack edge, toward table center
+        // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
         ...(isRightSideSlot 
-          ? { left: '-2px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
-          : { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
+          ? { left: '6px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
+          : { right: '6px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
         )
       }}>
         <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
