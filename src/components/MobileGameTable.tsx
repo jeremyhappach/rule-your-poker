@@ -570,7 +570,7 @@ export const MobileGameTable = ({
         {cardsElement}
       </div>;
   };
-  return <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background relative">
+  return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
