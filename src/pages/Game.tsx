@@ -236,6 +236,20 @@ const Game = () => {
       return;
     }
     
+    // Check if host is leaving during waiting phase - delete the entire game
+    if (game?.status === 'waiting' && isCreator) {
+      // Delete all players first (including bots)
+      await supabase.from('players').delete().eq('game_id', gameId);
+      // Delete the game
+      const { error } = await supabase.from('games').delete().eq('id', gameId);
+      if (error) {
+        console.error('[PLAYER OPTIONS] Failed to delete game:', error);
+        toast({ title: "Error", description: "Failed to delete game", variant: "destructive" });
+      }
+      navigate('/');
+      return;
+    }
+    
     // Delete the player record entirely
     const { error } = await supabase
       .from('players')
@@ -2903,12 +2917,13 @@ const Game = () => {
             return;
           }
           
-          toast({
-            title: gameInProgress ? "Seat Reserved" : "Seat Selected",
-            description: gameInProgress 
-              ? `You'll join the game at seat #${position} when the next round starts.`
-              : `Welcome to seat #${position}!`,
-          });
+          // Only show toast for seat reservation during active game, not during waiting phase
+          if (gameInProgress) {
+            toast({
+              title: "Seat Reserved",
+              description: `You'll join the game at seat #${position} when the next round starts.`,
+            });
+          }
         }
       } else {
         // Existing player changing seats
