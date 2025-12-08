@@ -534,10 +534,17 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Dealer button on LEFT */}
+        {/* Dealer button - positioned OUTSIDE (away from table center) */}
         {isDealer && (
-          <div className="w-5 h-5 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg flex-shrink-0">
-            <span className="text-black font-bold text-[10px]">D</span>
+          <div className="absolute z-30" style={{
+            ...(isRightSideSlot 
+              ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
+              : { left: '-2px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
+            )
+          }}>
+            <div className="w-5 h-5 rounded-full bg-white border-2 border-amber-800 flex items-center justify-center shadow-lg">
+              <span className="text-black font-bold text-[10px]">D</span>
+            </div>
           </div>
         )}
         
