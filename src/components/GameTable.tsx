@@ -1048,8 +1048,8 @@ export const GameTable = ({
                           </p>
                         )}
                         {player.position === dealerPosition && (
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full bg-poker-gold flex items-center justify-center border border-black shadow-lg">
-                            <span className="text-black font-black text-[7px] sm:text-[8px] md:text-[10px]">D</span>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full bg-red-600 flex items-center justify-center border-2 border-white shadow-lg">
+                            <span className="text-white font-black text-[7px] sm:text-[8px] md:text-[10px]">D</span>
                           </div>
                         )}
                         {isCurrentUser && !player.is_bot && (

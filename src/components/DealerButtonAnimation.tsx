@@ -120,8 +120,8 @@ export const DealerButtonAnimation = ({ players, onComplete }: DealerButtonAnima
       >
         <div className={`relative ${isSpinning ? '' : 'animate-bounce'}`}>
           {/* Dealer button */}
-          <div className={`w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center border-4 border-amber-800 shadow-2xl ${isSpinning ? 'animate-pulse' : ''}`}>
-            <span className="text-black font-black text-2xl sm:text-4xl">D</span>
+          <div className={`w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-red-600 flex items-center justify-center border-4 border-white shadow-2xl ${isSpinning ? 'animate-pulse' : ''}`}>
+            <span className="text-white font-black text-2xl sm:text-4xl">D</span>
           </div>
           
           {/* Glow effect when spinning */}
