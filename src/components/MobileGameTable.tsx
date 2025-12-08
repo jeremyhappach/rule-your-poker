@@ -20,7 +20,7 @@ import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices }
 import cubsLogo from "@/assets/cubs-logo.png";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
-import { ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 // Custom hook for swipe detection
 const useSwipeGesture = (onSwipeUp: () => void, onSwipeDown: () => void) => {
@@ -185,8 +185,6 @@ export const MobileGameTable = ({
   // Collapsible card section state
   const [isCardSectionExpanded, setIsCardSectionExpanded] = useState(true);
   
-  // Chat panel state
-  const [isChatOpen, setIsChatOpen] = useState(false);
   // Swipe gesture handlers
   const swipeHandlers = useSwipeGesture(() => setIsCardSectionExpanded(true),
   // Swipe up = expand
@@ -934,21 +932,10 @@ export const MobileGameTable = ({
         
         {/* Collapsed view - Game Lobby with all players */}
         {!isCardSectionExpanded && <div className="px-3 pb-4 flex-1 overflow-auto">
-            {/* Header with chat toggle */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
               <div className="flex items-center gap-2">
-                {onSendChat && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setIsChatOpen(!isChatOpen)}
-                    className={`h-7 w-7 bg-black/60 border-white/30 text-white hover:bg-black/80 hover:text-white ${isChatOpen ? 'ring-2 ring-amber-400' : ''}`}
-                    title={isChatOpen ? "Close chat" : "Open chat"}
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" />
-                  </Button>
-                )}
                 <Badge variant="outline" className="text-xs">
                   {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
                 </Badge>
@@ -958,14 +945,13 @@ export const MobileGameTable = ({
               </div>
             </div>
             
-            {/* Chat panel in collapsed view */}
-            {isChatOpen && onSendChat && (
+            {/* Chat panel in collapsed view - always visible */}
+            {onSendChat && (
               <div className="mb-3">
                 <MobileChatPanel
                   messages={allMessages}
                   onSend={onSendChat}
                   isSending={isChatSending}
-                  onClose={() => setIsChatOpen(false)}
                 />
               </div>
             )}
@@ -1109,47 +1095,30 @@ export const MobileGameTable = ({
                 </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
             </div>
             
-            {/* Chipstack and player info - below cards */}
-            <div className="flex flex-col items-center gap-2 mt-16">
-              <div className="flex items-center justify-center gap-4">
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-foreground leading-tight">
-                    {currentPlayer.profiles?.username || 'You'}
-                    {/* Status indicator */}
-                    {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
-                  </p>
-                  <p className={`text-xl font-bold leading-tight ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                    ${currentPlayer.chips.toLocaleString()}
-                  </p>
-                </div>
-              
+            {/* Player info and chat - below cards */}
+            <div className="flex flex-col gap-2 mt-16">
+              {/* Name, chips, and hand eval in a row */}
+              <div className="flex items-center justify-center gap-3">
+                <p className="text-sm font-semibold text-foreground">
+                  {currentPlayer.profiles?.username || 'You'}
+                  {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
+                </p>
+                <span className={`text-lg font-bold ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                  ${currentPlayer.chips.toLocaleString()}
+                </span>
                 {/* Hand evaluation for 3-5-7 */}
                 {currentPlayerCards.length > 0 && gameType !== 'holm-game' && !chuckyActive && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
                     {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
                   </Badge>}
-                
-                {/* Chat toggle button */}
-                {onSendChat && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setIsChatOpen(!isChatOpen)}
-                    className={`h-8 w-8 bg-black/60 border-white/30 text-white hover:bg-black/80 hover:text-white ${isChatOpen ? 'ring-2 ring-amber-400' : ''}`}
-                    title={isChatOpen ? "Close chat" : "Open chat"}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                  </Button>
-                )}
               </div>
               
-              {/* Chat panel - below player info */}
-              {isChatOpen && onSendChat && (
-                <div className="w-full mt-2">
+              {/* Chat panel - always visible */}
+              {onSendChat && (
+                <div className="w-full">
                   <MobileChatPanel
                     messages={allMessages}
                     onSend={onSendChat}
                     isSending={isChatSending}
-                    onClose={() => setIsChatOpen(false)}
                   />
                 </div>
               )}
@@ -1158,7 +1127,7 @@ export const MobileGameTable = ({
         
         {/* No player state - only for observers */}
         {isCardSectionExpanded && !currentPlayer && <div className="px-4 pb-4">
-            {/* Header with gear and chat toggle for observers */}
+            {/* Header with gear for observers */}
             <div className="flex items-center justify-between mb-3">
               {onLeaveGameNow && (
                 <PlayerOptionsMenu
@@ -1176,30 +1145,18 @@ export const MobileGameTable = ({
                   variant="mobile"
                 />
               )}
-              {onSendChat && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setIsChatOpen(!isChatOpen)}
-                  className={`h-8 w-8 bg-black/60 border-white/30 text-white hover:bg-black/80 hover:text-white ${isChatOpen ? 'ring-2 ring-amber-400' : ''}`}
-                  title={isChatOpen ? "Close chat" : "Open chat"}
-                >
-                  <MessageCircle className="h-4 w-4" />
-                </Button>
-              )}
             </div>
             
             <p className="text-muted-foreground text-sm text-center mb-3">
               You are observing this game
             </p>
             
-            {/* Chat panel for observers */}
-            {isChatOpen && onSendChat && (
+            {/* Chat panel for observers - always visible */}
+            {onSendChat && (
               <MobileChatPanel
                 messages={allMessages}
                 onSend={onSendChat}
                 isSending={isChatSending}
-                onClose={() => setIsChatOpen(false)}
               />
             )}
           </div>}
