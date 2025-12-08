@@ -9,7 +9,6 @@ interface LegEarnedAnimationProps {
 
 export const LegEarnedAnimation = ({ show, playerName, targetPosition, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
-  const [animationPhase, setAnimationPhase] = useState<'flying' | 'landed'>('flying');
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
   
@@ -23,21 +22,14 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, onComplet
     if (show && !hasShownRef.current) {
       hasShownRef.current = true;
       setVisible(true);
-      setAnimationPhase('flying');
       
-      // After fly-in completes (1.5s), show landed state briefly
-      const landTimer = setTimeout(() => {
-        setAnimationPhase('landed');
-      }, 1500);
-      
-      // Then hide after another 0.5s
+      // Hide after fly-in completes (1.5s) - no landed phase, just disappear
       const hideTimer = setTimeout(() => {
         setVisible(false);
         onCompleteRef.current?.();
-      }, 2000);
+      }, 1500);
       
       return () => {
-        clearTimeout(landTimer);
         clearTimeout(hideTimer);
       };
     } else if (!show) {
@@ -52,13 +44,7 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, onComplet
     <>
       {/* Flying L chip - positioned to land at player's leg indicator position */}
       <div 
-        className={`
-          absolute z-50 pointer-events-none
-          ${animationPhase === 'flying' 
-            ? 'animate-[flyToTarget_1.5s_ease-out_forwards]' 
-            : 'animate-[pulse_0.3s_ease-in-out_2]'
-          }
-        `}
+        className="absolute z-50 pointer-events-none animate-[flyToTarget_1.5s_ease-out_forwards]"
         style={{
           // Start position - will animate to target
           top: '40%',
@@ -67,7 +53,7 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, onComplet
         }}
       >
         {/* Glow effect during flight */}
-        <div className={`absolute inset-0 bg-amber-400 rounded-full blur-lg opacity-60 scale-150 ${animationPhase === 'flying' ? 'animate-pulse' : ''}`} />
+        <div className="absolute inset-0 bg-amber-400 rounded-full blur-lg opacity-60 scale-150 animate-pulse" />
         
         {/* L chip */}
         <div className="relative w-10 h-10 rounded-full bg-white border-3 border-amber-500 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.8)]">
@@ -75,9 +61,7 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, onComplet
         </div>
         
         {/* Sparkle during flight */}
-        {animationPhase === 'flying' && (
-          <div className="absolute -top-1 -right-1 text-sm animate-ping">✨</div>
-        )}
+        <div className="absolute -top-1 -right-1 text-sm animate-ping">✨</div>
       </div>
       
       {/* Custom keyframes - fly from center to target position */}
