@@ -77,11 +77,6 @@ export const AnteUpDialog = ({
       return;
     }
 
-    toast({
-      title: "Ante Up!",
-      description: `You paid $${anteAmount} to join the game`,
-    });
-
     onDecisionMade();
   };
 
