@@ -2,14 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ChatMessage {
   id: string;
   user_id: string;
   message: string;
   username?: string;
-  expiresAt: number;
 }
 
 interface MobileChatPanelProps {

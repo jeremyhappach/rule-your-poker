@@ -16,6 +16,7 @@ interface ChatBubble extends ChatMessage {
 
 export const useGameChat = (gameId: string | undefined, players: any[]) => {
   const [chatBubbles, setChatBubbles] = useState<ChatBubble[]>([]);
+  const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
 
   // Get username for a user_id from players list
@@ -70,6 +71,14 @@ export const useGameChat = (gameId: string | undefined, players: any[]) => {
       const updated = [...prev, bubble];
       return updated.slice(-10);
     });
+
+    // Also add to allMessages
+    setAllMessages(prev => {
+      const msgWithUsername = { ...msg, username: getUsernameForUserId(msg.user_id) };
+      // Avoid duplicates
+      if (prev.some(m => m.id === msg.id)) return prev;
+      return [...prev, msgWithUsername];
+    });
   }, [getUsernameForUserId]);
 
   // Clean up expired bubbles
@@ -80,6 +89,29 @@ export const useGameChat = (gameId: string | undefined, players: any[]) => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Fetch all messages for this session on mount
+  useEffect(() => {
+    if (!gameId) return;
+
+    const fetchMessages = async () => {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('created_at', { ascending: true });
+
+      if (!error && data) {
+        const messagesWithUsernames = data.map(msg => ({
+          ...msg,
+          username: getUsernameForUserId(msg.user_id)
+        }));
+        setAllMessages(messagesWithUsernames);
+      }
+    };
+
+    fetchMessages();
+  }, [gameId, getUsernameForUserId]);
 
   // Subscribe to realtime chat messages
   useEffect(() => {
@@ -109,6 +141,7 @@ export const useGameChat = (gameId: string | undefined, players: any[]) => {
 
   return {
     chatBubbles,
+    allMessages,
     sendMessage,
     isSending,
     getPositionForUserId

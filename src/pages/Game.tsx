@@ -175,7 +175,7 @@ const Game = () => {
   const [showBotOptions, setShowBotOptions] = useState(false);
   
   // Chat functionality
-  const { chatBubbles, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
+  const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
@@ -3179,6 +3179,7 @@ const Game = () => {
                     isDealer={isDealer || dealerPlayer?.is_bot || false}
                     onNextGame={handleDealerConfirmGameOver}
                     chatBubbles={chatBubbles}
+                    allMessages={allMessages}
                     onSendChat={sendChatMessage}
                     isChatSending={isChatSending}
                     getPositionForUserId={getPositionForUserId}
@@ -3268,6 +3269,7 @@ const Game = () => {
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
                     chatBubbles={chatBubbles}
+                    allMessages={allMessages}
                     onSendChat={sendChatMessage}
                     isChatSending={isChatSending}
                     getPositionForUserId={getPositionForUserId}
@@ -3343,6 +3345,7 @@ const Game = () => {
                 onSelectSeat={handleSelectSeat}
                 gameType={game.game_type}
                 chatBubbles={chatBubbles}
+                allMessages={allMessages}
                 onSendChat={sendChatMessage}
                 isChatSending={isChatSending}
                 getPositionForUserId={getPositionForUserId}
@@ -3476,6 +3479,7 @@ const Game = () => {
               isHost={isCreator}
               onBotClick={(bot) => { setSelectedBot(bot as Player); setShowBotOptions(true); }}
               chatBubbles={chatBubbles}
+              allMessages={allMessages}
               onSendChat={sendChatMessage}
               isChatSending={isChatSending}
               getPositionForUserId={getPositionForUserId}
