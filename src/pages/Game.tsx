@@ -187,7 +187,12 @@ const Game = () => {
   // Player options - synced with database
   const handlePlayerOptionChange = async (option: 'auto_ante' | 'sit_out_next_hand' | 'stand_up_next_hand', value: boolean) => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
-    if (!currentPlayer) return;
+    if (!currentPlayer) {
+      console.error('[PLAYER OPTIONS] No current player found');
+      return;
+    }
+    
+    console.log('[PLAYER OPTIONS] Setting', option, 'to', value, 'for player', currentPlayer.id);
     
     // Optimistic update
     setPlayerOptions(prev => ({
@@ -196,10 +201,11 @@ const Game = () => {
     }));
     
     // Persist to database
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from('players')
       .update({ [option]: value })
-      .eq('id', currentPlayer.id);
+      .eq('id', currentPlayer.id)
+      .select();
     
     if (error) {
       console.error('[PLAYER OPTIONS] Failed to save:', error);
@@ -208,6 +214,8 @@ const Game = () => {
         ...prev,
         [option === 'auto_ante' ? 'autoAnte' : option === 'sit_out_next_hand' ? 'sitOutNextHand' : 'standUpNextHand']: !value
       }));
+    } else {
+      console.log('[PLAYER OPTIONS] ✅ Successfully saved:', option, '=', value, 'Result:', data);
     }
   };
   
