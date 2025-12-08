@@ -560,12 +560,6 @@ export const MobileGameTable = ({
       </div>;
   };
   return <div className="flex flex-col h-[calc(100vh-60px)] overflow-hidden bg-background relative">
-      {/* Chat input - top right */}
-      {onSendChat && (
-        <div className="absolute top-16 right-2 z-50">
-          <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
-        </div>
-      )}
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
@@ -943,10 +937,27 @@ export const MobileGameTable = ({
         
         {/* Collapsed view - Game Lobby with all players */}
         {!isCardSectionExpanded && <div className="px-3 pb-4 flex-1 overflow-auto">
-            {/* Header */}
+            {/* Chat bubbles display */}
+            {chatBubbles.length > 0 && (
+              <div className="flex flex-col gap-1 mb-3">
+                {chatBubbles.map((bubble) => (
+                  <ChatBubble
+                    key={bubble.id}
+                    username={bubble.username || 'Unknown'}
+                    message={bubble.message}
+                    expiresAt={bubble.expiresAt}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* Header with chat */}
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
               <div className="flex items-center gap-2">
+                {onSendChat && (
+                  <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
+                )}
                 <Badge variant="outline" className="text-xs">
                   {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
                 </Badge>
@@ -1046,6 +1057,27 @@ export const MobileGameTable = ({
         
         {/* Expanded view - show cards large */}
         {isCardSectionExpanded && currentPlayer && <div className="px-2 flex flex-col">
+            {/* All chat bubbles */}
+            {chatBubbles.length > 0 && (
+              <div className="flex flex-col gap-1 mb-2">
+                {chatBubbles.map((bubble) => (
+                  <ChatBubble
+                    key={bubble.id}
+                    username={bubble.username || 'Unknown'}
+                    message={bubble.message}
+                    expiresAt={bubble.expiresAt}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* Chat input */}
+            {onSendChat && (
+              <div className="flex justify-end mb-2">
+                <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
+              </div>
+            )}
+            
             {/* Progress bar timer - shows when it's player's turn */}
             {isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && maxTime && (
               <div className="mb-2 px-2">
@@ -1121,8 +1153,29 @@ export const MobileGameTable = ({
           </div>}
         
         {/* No player state */}
-        {isCardSectionExpanded && !currentPlayer && <div className="px-4 pb-4 text-center">
-            <p className="text-sm text-muted-foreground">Select a seat to join the game</p>
+        {isCardSectionExpanded && !currentPlayer && <div className="px-4 pb-4">
+            {/* Chat bubbles display */}
+            {chatBubbles.length > 0 && (
+              <div className="flex flex-col gap-1 mb-3">
+                {chatBubbles.map((bubble) => (
+                  <ChatBubble
+                    key={bubble.id}
+                    username={bubble.username || 'Unknown'}
+                    message={bubble.message}
+                    expiresAt={bubble.expiresAt}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* Chat input for observers */}
+            {onSendChat && (
+              <div className="flex justify-end mb-3">
+                <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
+              </div>
+            )}
+            
+            <p className="text-sm text-muted-foreground text-center">Select a seat to join the game</p>
           </div>}
       </div>
     </div>;
