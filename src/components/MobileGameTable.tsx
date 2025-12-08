@@ -8,6 +8,7 @@ import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
+import { MobileChatPanel } from "./MobileChatPanel";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
@@ -19,7 +20,7 @@ import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices }
 import cubsLogo from "@/assets/cubs-logo.png";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
 
 // Custom hook for swipe detection
 const useSwipeGesture = (onSwipeUp: () => void, onSwipeDown: () => void) => {
@@ -181,7 +182,9 @@ export const MobileGameTable = ({
 
   // Collapsible card section state
   const [isCardSectionExpanded, setIsCardSectionExpanded] = useState(true);
-
+  
+  // Chat panel state
+  const [isChatOpen, setIsChatOpen] = useState(false);
   // Swipe gesture handlers
   const swipeHandlers = useSwipeGesture(() => setIsCardSectionExpanded(true),
   // Swipe up = expand
@@ -929,26 +932,20 @@ export const MobileGameTable = ({
         
         {/* Collapsed view - Game Lobby with all players */}
         {!isCardSectionExpanded && <div className="px-3 pb-4 flex-1 overflow-auto">
-            {/* Chat bubbles display */}
-            {chatBubbles.length > 0 && (
-              <div className="flex flex-col gap-1 mb-3">
-                {chatBubbles.map((bubble) => (
-                  <ChatBubble
-                    key={bubble.id}
-                    username={bubble.username || 'Unknown'}
-                    message={bubble.message}
-                    expiresAt={bubble.expiresAt}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {/* Header with chat */}
+            {/* Header with chat toggle */}
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
               <div className="flex items-center gap-2">
                 {onSendChat && (
-                  <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    className={`h-7 w-7 bg-black/60 border-white/30 text-white hover:bg-black/80 hover:text-white ${isChatOpen ? 'ring-2 ring-amber-400' : ''}`}
+                    title={isChatOpen ? "Close chat" : "Open chat"}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </Button>
                 )}
                 <Badge variant="outline" className="text-xs">
                   {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
@@ -958,6 +955,18 @@ export const MobileGameTable = ({
                 </span>
               </div>
             </div>
+            
+            {/* Chat panel in collapsed view */}
+            {isChatOpen && onSendChat && (
+              <div className="mb-3">
+                <MobileChatPanel
+                  messages={chatBubbles}
+                  onSend={onSendChat}
+                  isSending={isChatSending}
+                  onClose={() => setIsChatOpen(false)}
+                />
+              </div>
+            )}
             
             {/* All players list */}
             <div className="space-y-2">
@@ -1049,27 +1058,6 @@ export const MobileGameTable = ({
         
         {/* Expanded view - show cards large */}
         {isCardSectionExpanded && currentPlayer && <div className="px-2 flex flex-col">
-            {/* All chat bubbles */}
-            {chatBubbles.length > 0 && (
-              <div className="flex flex-col gap-1 mb-2">
-                {chatBubbles.map((bubble) => (
-                  <ChatBubble
-                    key={bubble.id}
-                    username={bubble.username || 'Unknown'}
-                    message={bubble.message}
-                    expiresAt={bubble.expiresAt}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {/* Chat input */}
-            {onSendChat && (
-              <div className="flex justify-end mb-2">
-                <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
-              </div>
-            )}
-            
             {/* Progress bar timer - shows when it's player's turn */}
             {isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && maxTime && (
               <div className="mb-2 px-2">
@@ -1138,29 +1126,37 @@ export const MobileGameTable = ({
                     {formatHandRank(evaluateHand(currentPlayerCards, true).rank)}
                   </Badge>}
                 
-                {/* Legs indicator moved to felt - no longer shown here */}
+                {/* Chat toggle button */}
+                {onSendChat && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    className={`h-8 w-8 bg-black/60 border-white/30 text-white hover:bg-black/80 hover:text-white ${isChatOpen ? 'ring-2 ring-amber-400' : ''}`}
+                    title={isChatOpen ? "Close chat" : "Open chat"}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               
+              {/* Chat panel - below player info */}
+              {isChatOpen && onSendChat && (
+                <div className="w-full mt-2">
+                  <MobileChatPanel
+                    messages={chatBubbles}
+                    onSend={onSendChat}
+                    isSending={isChatSending}
+                    onClose={() => setIsChatOpen(false)}
+                  />
+                </div>
+              )}
             </div>
           </div>}
         
         {/* No player state - only for observers */}
         {isCardSectionExpanded && !currentPlayer && <div className="px-4 pb-4">
-            {/* Chat bubbles display */}
-            {chatBubbles.length > 0 && (
-              <div className="flex flex-col gap-1 mb-3">
-                {chatBubbles.map((bubble) => (
-                  <ChatBubble
-                    key={bubble.id}
-                    username={bubble.username || 'Unknown'}
-                    message={bubble.message}
-                    expiresAt={bubble.expiresAt}
-                  />
-                ))}
-              </div>
-            )}
-            
-            {/* Header with gear and chat for observers */}
+            {/* Header with gear and chat toggle for observers */}
             <div className="flex items-center justify-between mb-3">
               {onLeaveGameNow && (
                 <PlayerOptionsMenu
@@ -1179,13 +1175,31 @@ export const MobileGameTable = ({
                 />
               )}
               {onSendChat && (
-                <ChatInput onSend={onSendChat} isSending={isChatSending} isMobile />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsChatOpen(!isChatOpen)}
+                  className={`h-8 w-8 bg-black/60 border-white/30 text-white hover:bg-black/80 hover:text-white ${isChatOpen ? 'ring-2 ring-amber-400' : ''}`}
+                  title={isChatOpen ? "Close chat" : "Open chat"}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                </Button>
               )}
             </div>
             
-            <p className="text-muted-foreground text-sm text-center">
+            <p className="text-muted-foreground text-sm text-center mb-3">
               You are observing this game
             </p>
+            
+            {/* Chat panel for observers */}
+            {isChatOpen && onSendChat && (
+              <MobileChatPanel
+                messages={chatBubbles}
+                onSend={onSendChat}
+                isSending={isChatSending}
+                onClose={() => setIsChatOpen(false)}
+              />
+            )}
           </div>}
       </div>
     </div>;
