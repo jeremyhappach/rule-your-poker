@@ -98,7 +98,7 @@ export const MobileChatPanel = ({
         {messages.length === 0 ? (
           <p className="text-white/40 text-sm text-center py-2">No messages yet</p>
         ) : (
-          messages.map((msg) => (
+          [...messages].reverse().map((msg) => (
             <div key={msg.id} className="text-sm">
               <span className="text-amber-400 font-medium">{msg.username || 'Unknown'}:</span>{' '}
               <span className="text-white">{msg.message}</span>
