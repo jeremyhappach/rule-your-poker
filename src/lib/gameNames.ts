@@ -116,19 +116,26 @@ const CHICAGO_ATHLETES = [
 
 /**
  * Generates a creative game name combining the current date with either
- * a Grateful Dead song or a Chicago athlete name
+ * a Grateful Dead song or a Chicago athlete name.
+ * Optionally excludes names that have been recently used.
  */
-export function generateGameName(): string {
+export function generateGameName(excludeNames: string[] = []): string {
   const dateStr = format(new Date(), "MMM d");
+  const excludeSet = new Set(excludeNames);
   
-  // Randomly choose between Grateful Dead songs and Chicago athletes
-  const useDeadSong = Math.random() < 0.5;
+  // Build list of all possible names
+  const allPossibleNames = [
+    ...GRATEFUL_DEAD_SONGS.map(song => `${dateStr} - ${song}`),
+    ...CHICAGO_ATHLETES.map(athlete => `${dateStr} - ${athlete}`)
+  ];
   
-  if (useDeadSong) {
-    const song = GRATEFUL_DEAD_SONGS[Math.floor(Math.random() * GRATEFUL_DEAD_SONGS.length)];
-    return `${dateStr} - ${song}`;
-  } else {
-    const athlete = CHICAGO_ATHLETES[Math.floor(Math.random() * CHICAGO_ATHLETES.length)];
-    return `${dateStr} - ${athlete}`;
+  // Filter out excluded names
+  const availableNames = allPossibleNames.filter(name => !excludeSet.has(name));
+  
+  // If all names are taken (unlikely), fall back to any random name
+  if (availableNames.length === 0) {
+    return allPossibleNames[Math.floor(Math.random() * allPossibleNames.length)];
   }
+  
+  return availableNames[Math.floor(Math.random() * availableNames.length)];
 }
