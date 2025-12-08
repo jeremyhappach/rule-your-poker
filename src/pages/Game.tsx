@@ -3151,6 +3151,7 @@ const Game = () => {
             onGameStart={startGameFromWaiting}
             isMobile={isMobile}
             chatBubbles={chatBubbles}
+            allMessages={allMessages}
             onSendChat={sendChatMessage}
             isChatSending={isChatSending}
             getPositionForUserId={getPositionForUserId}

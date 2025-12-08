@@ -33,6 +33,13 @@ interface ChatBubble {
   expiresAt: number;
 }
 
+interface ChatMessage {
+  id: string;
+  user_id: string;
+  message: string;
+  username?: string;
+}
+
 interface WaitingForPlayersTableProps {
   gameId: string;
   players: Player[];
@@ -41,6 +48,7 @@ interface WaitingForPlayersTableProps {
   onGameStart: () => void;
   isMobile: boolean;
   chatBubbles?: ChatBubble[];
+  allMessages?: ChatMessage[];
   onSendChat?: (message: string) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
@@ -54,6 +62,7 @@ export const WaitingForPlayersTable = ({
   onGameStart,
   isMobile,
   chatBubbles = [],
+  allMessages = [],
   onSendChat,
   isChatSending = false,
   getPositionForUserId
@@ -288,6 +297,7 @@ export const WaitingForPlayersTable = ({
         <MobileGameTable
           {...emptyTableProps}
           chatBubbles={chatBubbles}
+          allMessages={allMessages}
           onSendChat={onSendChat}
           isChatSending={isChatSending}
           getPositionForUserId={getPositionForUserId}
