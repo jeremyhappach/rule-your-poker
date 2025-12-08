@@ -10,7 +10,7 @@ export const LegIndicator = ({ legs, maxLegs = 3 }: LegIndicatorProps) => {
   const displayLegs = Math.min(legs, maxLegs);
 
   return (
-    <div className="absolute -top-2 -right-4 z-30">
+    <div className="absolute -top-2 -left-4 z-30">
       <div className="relative flex">
         {Array.from({ length: displayLegs }).map((_, i) => (
           <div 
