@@ -203,6 +203,7 @@ export const MobileGameTable = ({
   // Leg earned animation state
   const [showLegEarned, setShowLegEarned] = useState(false);
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
+  const [legEarnedPlayerPosition, setLegEarnedPlayerPosition] = useState<number | null>(null);
   const playerLegsRef = useRef<Record<string, number>>({});
   
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
@@ -387,6 +388,7 @@ export const MobileGameTable = ({
       if (currentLegs > prevLegs && prevLegs >= 0) {
         const playerName = player.profiles?.username || `Player ${player.position}`;
         setLegEarnedPlayerName(playerName);
+        setLegEarnedPlayerPosition(player.position);
         setShowLegEarned(true);
       }
       playerLegsRef.current[player.id] = currentLegs;
@@ -656,7 +658,37 @@ export const MobileGameTable = ({
         <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
         
         {/* Leg Earned Animation (3-5-7 only) */}
-        <LegEarnedAnimation show={showLegEarned} playerName={legEarnedPlayerName} onComplete={() => setShowLegEarned(false)} />
+        <LegEarnedAnimation 
+          show={showLegEarned} 
+          playerName={legEarnedPlayerName} 
+          targetPosition={(() => {
+            // Calculate target based on leg-earning player's position
+            if (!legEarnedPlayerPosition) return undefined;
+            
+            // If current player earned the leg, animate to bottom center
+            if (currentPlayer?.position === legEarnedPlayerPosition) {
+              return { top: '92%', left: '50%' };
+            }
+            
+            // Otherwise, calculate slot position for other player
+            const currentPos = currentPlayer?.position ?? 1;
+            let distance = legEarnedPlayerPosition - currentPos;
+            if (distance <= 0) distance += 7;
+            const slotIndex = distance - 1;
+            
+            // Map slot to approximate screen coordinates (matching slotPositions layout)
+            const slotCoords: Record<number, { top: string; left: string }> = {
+              0: { top: '85%', left: '15%' },  // Bottom-left
+              1: { top: '50%', left: '5%' },   // Left
+              2: { top: '15%', left: '15%' },  // Top-left
+              3: { top: '15%', left: '85%' },  // Top-right
+              4: { top: '50%', left: '95%' },  // Right
+              5: { top: '85%', left: '85%' },  // Bottom-right
+            };
+            return slotCoords[slotIndex] || { top: '85%', left: '65%' };
+          })()}
+          onComplete={() => setShowLegEarned(false)} 
+        />
         
         {/* Pot display - above community cards, vertically centered */}
         <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-full z-20">

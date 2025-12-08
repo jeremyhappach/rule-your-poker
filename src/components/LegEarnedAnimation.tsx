@@ -3,10 +3,11 @@ import { useEffect, useState, useRef } from "react";
 interface LegEarnedAnimationProps {
   show: boolean;
   playerName: string;
+  targetPosition?: { top: string; left: string }; // Target coordinates for the leg indicator
   onComplete?: () => void;
 }
 
-export const LegEarnedAnimation = ({ show, playerName, onComplete }: LegEarnedAnimationProps) => {
+export const LegEarnedAnimation = ({ show, playerName, targetPosition, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const [animationPhase, setAnimationPhase] = useState<'flying' | 'landed'>('flying');
   const onCompleteRef = useRef(onComplete);
@@ -14,6 +15,9 @@ export const LegEarnedAnimation = ({ show, playerName, onComplete }: LegEarnedAn
   
   // Keep ref updated
   onCompleteRef.current = onComplete;
+
+  // Default target if not provided
+  const finalTarget = targetPosition || { top: '85%', left: '65%' };
 
   useEffect(() => {
     if (show && !hasShownRef.current) {
@@ -46,17 +50,17 @@ export const LegEarnedAnimation = ({ show, playerName, onComplete }: LegEarnedAn
 
   return (
     <>
-      {/* Flying L chip - positioned to land near bottom-right of felt (near dealer button) */}
+      {/* Flying L chip - positioned to land at player's leg indicator position */}
       <div 
         className={`
           absolute z-50 pointer-events-none
           ${animationPhase === 'flying' 
-            ? 'animate-[flyToDealer_1.5s_ease-out_forwards]' 
+            ? 'animate-[flyToTarget_1.5s_ease-out_forwards]' 
             : 'animate-[pulse_0.3s_ease-in-out_2]'
           }
         `}
         style={{
-          // Start position - will animate to bottom-right near dealer button
+          // Start position - will animate to target
           top: '40%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
@@ -76,9 +80,9 @@ export const LegEarnedAnimation = ({ show, playerName, onComplete }: LegEarnedAn
         )}
       </div>
       
-      {/* Custom keyframes - fly from center to bottom-right near dealer button position */}
+      {/* Custom keyframes - fly from center to target position */}
       <style>{`
-        @keyframes flyToDealer {
+        @keyframes flyToTarget {
           0% {
             top: 40%;
             left: 50%;
@@ -89,8 +93,8 @@ export const LegEarnedAnimation = ({ show, playerName, onComplete }: LegEarnedAn
             opacity: 1;
           }
           100% {
-            top: 85%;
-            left: 65%;
+            top: ${finalTarget.top};
+            left: ${finalTarget.left};
             transform: translate(-50%, -50%) scale(1) rotate(0deg);
             opacity: 1;
           }
