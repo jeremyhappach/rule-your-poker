@@ -541,8 +541,8 @@ export const MobileGameTable = ({
         {isDealer && (
           <div className="absolute z-30" style={{
             ...(isRightSideSlot 
-              ? { right: '2px', top: '50%', transform: 'translateY(-50%) translateX(50%)' }
-              : { left: '2px', top: '50%', transform: 'translateY(-50%) translateX(-50%)' }
+              ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(75%)' }
+              : { left: '-2px', top: '50%', transform: 'translateY(-50%) translateX(-75%)' }
             )
           }}>
             <div className="w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
