@@ -3245,7 +3245,7 @@ const Game = () => {
                     {game.game_over_at ? (
                       <GameOverCountdown
                         winnerMessage={game.last_round_result}
-                        nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
+                        nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
                         onComplete={handleGameOverComplete}
                         gameOverAt={game.game_over_at}
                         isSessionEnded={game.status === 'session_ended'}
@@ -3266,7 +3266,7 @@ const Game = () => {
                 {isMobile && game.game_over_at && (
                   <GameOverCountdown
                     winnerMessage={game.last_round_result}
-                    nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Player ${game.dealer_position || 1}` } }}
+                    nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
                     onComplete={handleGameOverComplete}
                     gameOverAt={game.game_over_at}
                     isSessionEnded={game.status === 'session_ended'}
@@ -3328,7 +3328,7 @@ const Game = () => {
                 {(isDealer || dealerPlayer?.is_bot) ? (
                   <DealerGameSetup
                     gameId={gameId!}
-                    dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                    dealerUsername={dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`}
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
@@ -3340,7 +3340,7 @@ const Game = () => {
                   // Non-dealer waiting message
                   players.some(p => p.user_id === user?.id) && (
                     <DealerSettingUpGame 
-                      dealerUsername={dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`}
+                      dealerUsername={dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`}
                     />
                   )
                 )}
