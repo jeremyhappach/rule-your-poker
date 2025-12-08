@@ -845,25 +845,10 @@ export const MobileGameTable = ({
         
         {/* Open seats for seat selection - show in actual positions around the table */}
         {canSelectSeat && openSeats.length > 0 && (() => {
-          // Calculate positions for open seats based on clockwise distance from current player
-          // If current player is not seated, show in absolute positions
+          // Use same clockwise distance calculation as occupied player positions
+          // This ensures open seats appear in their correct relative positions
           const getOpenSeatSlotIndex = (seatPosition: number): number => {
-            if (!currentPlayer) {
-              // Not seated - use position directly (seat 1-7 maps to slots)
-              // Slot 0 = bottom-left, 1 = left, 2 = top-left, 3 = top-right, 4 = right, 5 = bottom-right
-              // Map seat positions 1-7 around the table
-              const positionToSlot: Record<number, number> = {
-                1: 2, // Seat 1 -> top-left
-                2: 3, // Seat 2 -> top-right  
-                3: 4, // Seat 3 -> right
-                4: 5, // Seat 4 -> bottom-right
-                5: 0, // Seat 5 -> bottom-left
-                6: 1, // Seat 6 -> left
-                7: 2, // Seat 7 -> top-left (overlap with 1)
-              };
-              return positionToSlot[seatPosition] ?? 0;
-            }
-            // Current player is seated - calculate clockwise distance
+            // Use same calculation as getClockwiseDistance for consistency with occupied players
             let distance = seatPosition - currentPos;
             if (distance <= 0) distance += 7;
             return distance - 1; // Convert 1-6 distance to 0-5 slot index
