@@ -102,7 +102,7 @@ export const DealerButtonAnimation = ({ players, onComplete }: DealerButtonAnima
   // Get current button position
   const buttonPos = getSeatPosition(currentPosition);
   const currentPlayer = players.find(p => p.position === currentPosition);
-  const currentPlayerName = currentPlayer?.profiles?.username || `Player ${currentPosition}`;
+  const currentPlayerName = currentPlayer?.profiles?.username || `Seat ${currentPosition}`;
 
   return (
     <>

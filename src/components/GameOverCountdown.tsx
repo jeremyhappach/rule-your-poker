@@ -73,7 +73,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
     };
   }, []); // Empty deps - only run once on mount
 
-  const nextDealerName = nextDealer.profiles?.username || `Player ${nextDealer.position}`;
+  const nextDealerName = nextDealer.profiles?.username || `Seat ${nextDealer.position}`;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
