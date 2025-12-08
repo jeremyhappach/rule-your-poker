@@ -17,6 +17,7 @@ interface DealerGameSetupProps {
   isBot: boolean;
   dealerPlayerId: string;
   dealerPosition: number;
+  previousGameType?: string; // The last game type played
   onConfigComplete: () => void;
   onSessionEnd: () => void;
 }
@@ -38,11 +39,13 @@ export const DealerGameSetup = ({
   isBot,
   dealerPlayerId,
   dealerPosition,
+  previousGameType,
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
   const { toast } = useToast();
-  const [selectedGameType, setSelectedGameType] = useState<string>("holm-game");
+  // Default to previous game type if provided, otherwise holm-game
+  const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
   const [timeLeft, setTimeLeft] = useState(30);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasSubmittedRef = useRef(false);
@@ -77,16 +80,23 @@ export const DealerGameSetup = ({
         setThreeFiveSevenDefaults(threeFiveSevenResult.data);
       }
       
-      // Apply holm defaults initially (since holm-game is default selected)
-      if (!holmResult.error && holmResult.data) {
-        applyDefaults(holmResult.data);
+      // Apply defaults based on previousGameType or default to holm
+      const initialGameType = previousGameType || 'holm-game';
+      if (initialGameType === '3-5-7-game' || initialGameType === '3-5-7') {
+        if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
+          applyDefaults(threeFiveSevenResult.data);
+        }
+      } else {
+        if (!holmResult.error && holmResult.data) {
+          applyDefaults(holmResult.data);
+        }
       }
       
       setLoadingDefaults(false);
     };
 
     fetchAllDefaults();
-  }, []);
+  }, [previousGameType]);
 
   // Apply defaults when game type changes
   const applyDefaults = (defaults: GameDefaults) => {

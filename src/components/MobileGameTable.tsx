@@ -10,6 +10,7 @@ import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
+import { RejoinNextHandButton } from "./RejoinNextHandButton";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -598,11 +599,13 @@ export const MobileGameTable = ({
       </div>
     ) : (
       isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
-        <div className={`flex gap-0.5 ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
+        <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
           {Array.from({
             length: Math.min(cardCountToShow, 7)
           }, (_, i) => <div key={i} className="w-2 h-3 rounded-[1px] border border-amber-600/50" style={{
             background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+            marginLeft: i > 0 ? '-3px' : '0', // Overlap card backs
+            zIndex: cardCountToShow - i,
             animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
           }} />)}
         </div>
@@ -1151,6 +1154,13 @@ export const MobileGameTable = ({
                   Stay
                 </Button>
               </div>}
+            
+            {/* Rejoin Next Hand button for sitting out players */}
+            {currentPlayer.sitting_out && !currentPlayer.waiting && (
+              <div className="flex justify-center mb-2 px-4">
+                <RejoinNextHandButton playerId={currentPlayer.id} />
+              </div>
+            )}
             
             {/* Decision feedback - above cards */}
             {hasDecided && <div className="flex justify-center mb-1">
