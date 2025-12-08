@@ -920,10 +920,6 @@ export const MobileGameTable = ({
             </div>
           </div>}
         
-        {/* Swipe indicator bar */}
-        <div className="flex justify-center py-1">
-          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
-        </div>
         
         {/* Collapse toggle */}
         <button onClick={() => setIsCardSectionExpanded(!isCardSectionExpanded)} className="w-full flex items-center justify-center py-0.5 text-muted-foreground hover:text-foreground transition-colors">
