@@ -575,17 +575,11 @@ async function handleGameOver(
     })
     .eq('game_id', gameId);
   
-  // Calculate next dealer (clockwise from current dealer) - skip bots
-  let nextDealerPosition = currentDealerPosition;
-  for (let i = 0; i < allPlayers.length; i++) {
-    nextDealerPosition = nextDealerPosition >= allPlayers.length ? 1 : nextDealerPosition + 1;
-    const nextPlayer = allPlayers.find(p => p.position === nextDealerPosition);
-    if (nextPlayer && !nextPlayer.is_bot) {
-      break;
-    }
-  }
+  // NOTE: Dealer rotation is NOT done here anymore - it's done in handleGameOverComplete
+  // after evaluating player states (sit_out_next_hand, stand_up_next_hand, etc.)
+  // This prevents double-rotation and ensures player state is considered before selecting next dealer
   
-  console.log('[HANDLE GAME OVER] Next dealer position:', nextDealerPosition);
+  console.log('[HANDLE GAME OVER] Keeping current dealer position:', currentDealerPosition, '(rotation happens in handleGameOverComplete)');
   
   // Check if session should end AFTER awarding prizes
   const { data: sessionData } = await supabase
@@ -616,11 +610,12 @@ async function handleGameOver(
   console.log('[HANDLE GAME OVER] Setting game_over status');
   
   // Update game to game_over status - SINGLE atomic update with ALL required fields
+  // NOTE: dealer_position stays the same here - rotation happens in handleGameOverComplete
   const { data: gameOverUpdate, error: gameOverError } = await supabase
     .from('games')
     .update({ 
       status: 'game_over',
-      dealer_position: nextDealerPosition,
+      // dealer_position is NOT updated here - rotation happens after player state evaluation
       current_round: null,
       awaiting_next_round: false,
       all_decisions_in: false,

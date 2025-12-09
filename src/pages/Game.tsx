@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -3006,6 +3006,46 @@ const Game = () => {
   const dealerPlayer = players.find(p => p.position === game.dealer_position);
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
+  
+  // Calculate the NEXT dealer position (for game_over countdown display)
+  // This needs to match the logic in rotateDealerPosition which considers:
+  // - Only non-sitting-out players (after player state evaluation)
+  // - Only non-bot players
+  // - Rotates clockwise from current dealer position
+  const nextDealerPlayer = useMemo(() => {
+    if (game.status !== 'game_over') return dealerPlayer;
+    
+    // Get eligible dealers (non-sitting-out, non-bot humans)
+    // Note: During game_over, player states haven't been evaluated yet by handleGameOverComplete
+    // So we need to predict who will be eligible AFTER evaluation
+    const eligiblePlayers = players.filter(p => {
+      // If they have sit_out_next_hand or stand_up_next_hand, they won't be eligible
+      if (p.sit_out_next_hand || p.stand_up_next_hand) return false;
+      // If they're sitting out and not waiting to rejoin, they won't be eligible
+      if (p.sitting_out && !p.waiting) return false;
+      // Bots can't be dealers
+      if (p.is_bot) return false;
+      return true;
+    }).sort((a, b) => a.position - b.position);
+    
+    if (eligiblePlayers.length === 0) return dealerPlayer;
+    
+    const currentDealerPosition = game.dealer_position || 1;
+    const eligiblePositions = eligiblePlayers.map(p => p.position);
+    const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);
+    
+    let nextPosition: number;
+    if (currentDealerIndex === -1) {
+      // Current dealer not eligible, pick first eligible
+      nextPosition = eligiblePositions[0];
+    } else {
+      // Rotate to next position (clockwise)
+      const nextIndex = (currentDealerIndex + 1) % eligiblePositions.length;
+      nextPosition = eligiblePositions[nextIndex];
+    }
+    
+    return players.find(p => p.position === nextPosition) || dealerPlayer;
+  }, [game.status, game.dealer_position, players, dealerPlayer]);
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
@@ -3259,7 +3299,7 @@ const Game = () => {
                     {game.game_over_at ? (
                       <GameOverCountdown
                         winnerMessage={game.last_round_result}
-                        nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
+                        nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
                         onComplete={handleGameOverComplete}
                         gameOverAt={game.game_over_at}
                         isSessionEnded={game.status === 'session_ended'}
@@ -3280,7 +3320,7 @@ const Game = () => {
                 {isMobile && game.game_over_at && (
                   <GameOverCountdown
                     winnerMessage={game.last_round_result}
-                    nextDealer={dealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
+                    nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
                     onComplete={handleGameOverComplete}
                     gameOverAt={game.game_over_at}
                     isSessionEnded={game.status === 'session_ended'}
