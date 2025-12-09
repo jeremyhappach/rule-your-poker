@@ -201,7 +201,23 @@ export const DealerGameSetup = ({
     onConfigComplete();
   };
 
-  // Countdown timer
+  // Set config_deadline in database when component mounts (for server-side enforcement)
+  useEffect(() => {
+    if (isBot || loadingDefaults) return;
+    
+    const setConfigDeadline = async () => {
+      const deadline = new Date(Date.now() + 30000).toISOString(); // 30 seconds from now
+      await supabase
+        .from('games')
+        .update({ config_deadline: deadline })
+        .eq('id', gameId);
+      console.log('[DEALER SETUP] Set config_deadline to', deadline);
+    };
+    
+    setConfigDeadline();
+  }, [gameId, isBot, loadingDefaults]);
+
+  // Countdown timer - now synced with server deadline
   useEffect(() => {
     if (isBot || loadingDefaults) return;
     
