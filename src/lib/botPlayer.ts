@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
 import { checkHolmRoundComplete } from "./holmGameLogic";
+import { getBotFoldProbability } from "./botHandStrength";
+import { Card } from "./cardUtils";
 
 export async function addBotPlayer(gameId: string) {
   console.log('[BOT CREATION] Starting bot creation for game:', gameId);
@@ -189,17 +191,17 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   // Get current round and game type
   const { data: gameData } = await supabase
     .from('games')
-    .select('game_type')
+    .select('game_type, current_round')
     .eq('id', gameId)
     .single();
   
   const isHolmGame = gameData?.game_type === 'holm-game' || gameData?.game_type === 'holm';
+  const roundNumber = gameData?.current_round || 1;
   
-  // Get bot players who haven't decided yet for this game
-  // For Holm games, only get the bot whose turn it is
+  // Get current round data
   const { data: currentRound } = await supabase
     .from('rounds')
-    .select('id, current_turn_position')
+    .select('id, current_turn_position, community_cards')
     .eq('game_id', gameId)
     .order('round_number', { ascending: false })
     .limit(1)
@@ -236,16 +238,20 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 
   console.log('[BOT DECISIONS] Bots to decide:', botsToDecide.map(b => ({ id: b.id, pos: b.position })));
 
-  // Get game defaults for bot behavior
+  // Get game defaults for bot behavior (for decision delay)
   const gameTypeKey = isHolmGame ? 'holm' : '3-5-7';
   const { data: gameDefaults } = await supabase
     .from('game_defaults')
-    .select('bot_fold_probability, bot_decision_delay_seconds')
+    .select('bot_decision_delay_seconds')
     .eq('game_type', gameTypeKey)
     .single();
   
-  const foldProbability = gameDefaults?.bot_fold_probability ?? 30;
   const decisionDelay = gameDefaults?.bot_decision_delay_seconds ?? 2.0;
+  
+  // Parse community cards for Holm games
+  const communityCards: Card[] = isHolmGame && currentRound.community_cards
+    ? (currentRound.community_cards as unknown as Card[])
+    : [];
 
   // For Holm games, process only the current turn's bot (should be just 1)
   if (isHolmGame) {
@@ -254,10 +260,24 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     
     console.log('[BOT DECISIONS] Holm: Processing bot decision for position:', bot.position);
     
+    // Get this bot's cards
+    const { data: playerCards } = await supabase
+      .from('player_cards')
+      .select('cards')
+      .eq('player_id', bot.id)
+      .eq('round_id', currentRound.id)
+      .single();
+    
+    const botCards: Card[] = playerCards?.cards ? (playerCards.cards as unknown as Card[]) : [];
+    
+    // Calculate fold probability based on hand strength
+    const foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1);
+    console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength');
+    
     // Add delay before bot makes decision
     await new Promise(resolve => setTimeout(resolve, decisionDelay * 1000));
     
-    // Randomly decide to stay or fold based on probability
+    // Decide to stay or fold based on calculated probability
     const shouldFold = Math.random() * 100 < foldProbability;
     const decision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
     
@@ -275,11 +295,25 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   
   // For 3-5-7 games, process all bots with staggered delays (simultaneous decisions)
   for (const bot of botsToDecide) {
+    // Get this bot's cards
+    const { data: playerCards } = await supabase
+      .from('player_cards')
+      .select('cards')
+      .eq('player_id', bot.id)
+      .eq('round_id', currentRound.id)
+      .single();
+    
+    const botCards: Card[] = playerCards?.cards ? (playerCards.cards as unknown as Card[]) : [];
+    
+    // Calculate fold probability based on hand strength and round
+    const foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber);
+    console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'fold probability:', foldProbability, '% (round', roundNumber, ')');
+    
     // Stagger bot decisions slightly to feel more natural
     const randomDelay = (decisionDelay * 1000) + Math.random() * 1500;
     
     setTimeout(async () => {
-      // Randomly decide to stay or fold based on probability
+      // Decide to stay or fold based on calculated probability
       const shouldFold = Math.random() * 100 < foldProbability;
       const decision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
       
