@@ -128,6 +128,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
   // CRITICAL: Check if any round already exists for this game to prevent double-charging in race conditions
+  let skipPotUpdate = false;
   if (roundNumber === 1) {
     const { data: anyExistingRounds } = await supabase
       .from('rounds')
@@ -136,14 +137,9 @@ export async function startRound(gameId: string, roundNumber: number) {
       .limit(1);
     
     if (anyExistingRounds && anyExistingRounds.length > 0) {
-      console.log('[START_ROUND] ⚠️ Round already exists for this game, skipping ante charge to prevent double-charge');
-      // Don't charge antes again, just use existing pot from game
-      const { data: gameData } = await supabase
-        .from('games')
-        .select('pot')
-        .eq('id', gameId)
-        .single();
-      initialPot = gameData?.pot || 0;
+      console.log('[START_ROUND] ⚠️ Round already exists for this game, skipping ante charge AND pot update to prevent double-charge');
+      // Don't charge antes again, and DON'T update pot - it's already correct
+      skipPotUpdate = true;
     } else {
       console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
       
@@ -206,26 +202,44 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // CRITICAL: Update game state BEFORE creating round to prevent race conditions
   // This ensures current_round and all_decisions_in are correct before any realtime updates fire
-  const { data: currentGameForPot } = await supabase
-    .from('games')
-    .select('pot')
-    .eq('id', gameId)
-    .single();
-  
-  const currentPot = currentGameForPot?.pot || 0;
-  
-  const { error: gameUpdateError } = await supabase
-    .from('games')
-    .update({
-      current_round: roundNumber,
-      all_decisions_in: false,
-      pot: currentPot + initialPot  // Add antes to existing pot
-    })
-    .eq('id', gameId);
-  
-  if (gameUpdateError) {
-    console.error('[START_ROUND] Failed to update game state:', gameUpdateError);
-    throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
+  // But SKIP pot update if we already detected a race condition (existing rounds)
+  if (skipPotUpdate) {
+    console.log('[START_ROUND] Skipping pot update due to race condition guard');
+    const { error: gameUpdateError } = await supabase
+      .from('games')
+      .update({
+        current_round: roundNumber,
+        all_decisions_in: false
+        // DON'T update pot - it's already correct from the first call
+      })
+      .eq('id', gameId);
+    
+    if (gameUpdateError) {
+      console.error('[START_ROUND] Failed to update game state:', gameUpdateError);
+      throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
+    }
+  } else {
+    const { data: currentGameForPot } = await supabase
+      .from('games')
+      .select('pot')
+      .eq('id', gameId)
+      .single();
+    
+    const currentPot = currentGameForPot?.pot || 0;
+    
+    const { error: gameUpdateError } = await supabase
+      .from('games')
+      .update({
+        current_round: roundNumber,
+        all_decisions_in: false,
+        pot: currentPot + initialPot  // Add antes to existing pot
+      })
+      .eq('id', gameId);
+    
+    if (gameUpdateError) {
+      console.error('[START_ROUND] Failed to update game state:', gameUpdateError);
+      throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
+    }
   }
   
   console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false');
