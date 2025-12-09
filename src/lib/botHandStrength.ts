@@ -1,0 +1,269 @@
+import { Card, evaluateHand, RANK_VALUES, HandRank, Rank } from './cardUtils';
+
+/**
+ * Bot fold probability based on hand strength
+ * Returns a number 0-100 representing the probability the bot should fold
+ */
+export function getBotFoldProbability(
+  cards: Card[],
+  communityCards: Card[],
+  gameType: 'holm' | '357',
+  roundNumber: number
+): number {
+  // Combine player cards with community cards for evaluation
+  const allCards = [...cards, ...communityCards];
+  
+  // For Holm, we don't use wild cards. For 3-5-7, use wild based on round
+  const useWildCards = gameType === '357';
+  const evaluation = evaluateHand(allCards, useWildCards);
+  
+  console.log('[BOT STRENGTH] Evaluating hand:', {
+    gameType,
+    roundNumber,
+    cardCount: allCards.length,
+    rank: evaluation.rank,
+    value: evaluation.value
+  });
+  
+  if (gameType === 'holm') {
+    return getHolmFoldProbability(evaluation.rank, allCards);
+  } else {
+    return get357FoldProbability(evaluation.rank, allCards, roundNumber);
+  }
+}
+
+/**
+ * Holm game fold probabilities (all rounds):
+ * - Flush or better: 0%
+ * - 3 of a kind or straight: 20%
+ * - 4 of a flush or 2 pair: 50%
+ * - Pair or worse: 90%
+ */
+function getHolmFoldProbability(rank: HandRank, cards: Card[]): number {
+  // Flush or better (flush, full-house, four-of-a-kind, straight-flush, five-of-a-kind)
+  if (['flush', 'full-house', 'four-of-a-kind', 'straight-flush', 'five-of-a-kind'].includes(rank)) {
+    return 0;
+  }
+  
+  // 3 of a kind or straight
+  if (rank === 'three-of-a-kind' || rank === 'straight') {
+    return 20;
+  }
+  
+  // Check for 4 cards to a flush (4-flush)
+  if (rank === 'two-pair' || hasFourToFlush(cards)) {
+    return 50;
+  }
+  
+  // Pair or worse (pair, high-card)
+  return 90;
+}
+
+/**
+ * Check if hand has 4 cards of the same suit (4-flush draw)
+ */
+function hasFourToFlush(cards: Card[]): boolean {
+  const suitCounts: Record<string, number> = {};
+  cards.forEach(c => {
+    suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1;
+  });
+  return Object.values(suitCounts).some(count => count >= 4);
+}
+
+/**
+ * 3-5-7 game fold probabilities by round
+ */
+function get357FoldProbability(rank: HandRank, cards: Card[], roundNumber: number): number {
+  // Get the best rank value for pair comparisons
+  const pairRankValue = getPairRankValue(cards, roundNumber);
+  const threeOfAKindRankValue = getThreeOfAKindRankValue(cards, roundNumber);
+  
+  if (roundNumber === 1) {
+    return getRound1FoldProbability(rank, pairRankValue);
+  } else if (roundNumber === 2) {
+    return getRound2FoldProbability(rank, threeOfAKindRankValue);
+  } else {
+    return getRound3FoldProbability(rank, threeOfAKindRankValue);
+  }
+}
+
+/**
+ * Get the rank value of the pair (if any), excluding wild cards
+ */
+function getPairRankValue(cards: Card[], roundNumber: number): number {
+  const wildRank: Rank = roundNumber === 1 ? '3' : roundNumber === 2 ? '5' : '7';
+  
+  // Count non-wild card ranks
+  const rankCounts: Record<string, number> = {};
+  cards.forEach(c => {
+    if (c.rank !== wildRank) {
+      rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1;
+    }
+  });
+  
+  // Find pair (including with wild card help)
+  const wildcardCount = cards.filter(c => c.rank === wildRank).length;
+  
+  // Sort ranks by count (descending) then value (descending)
+  const sortedRanks = Object.entries(rankCounts)
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank];
+    });
+  
+  // The pair rank is the highest count rank (with wild card contribution)
+  if (sortedRanks.length > 0) {
+    const [bestRank, count] = sortedRanks[0];
+    if (count + wildcardCount >= 2) {
+      return RANK_VALUES[bestRank as Rank];
+    }
+  }
+  
+  // No pair found, return 0
+  return 0;
+}
+
+/**
+ * Get the rank value of the three of a kind (if any), excluding wild cards
+ */
+function getThreeOfAKindRankValue(cards: Card[], roundNumber: number): number {
+  const wildRank: Rank = roundNumber === 1 ? '3' : roundNumber === 2 ? '5' : '7';
+  
+  // Count non-wild card ranks
+  const rankCounts: Record<string, number> = {};
+  cards.forEach(c => {
+    if (c.rank !== wildRank) {
+      rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1;
+    }
+  });
+  
+  const wildcardCount = cards.filter(c => c.rank === wildRank).length;
+  
+  // Sort ranks by count (descending) then value (descending)
+  const sortedRanks = Object.entries(rankCounts)
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank];
+    });
+  
+  if (sortedRanks.length > 0) {
+    const [bestRank, count] = sortedRanks[0];
+    if (count + wildcardCount >= 3) {
+      return RANK_VALUES[bestRank as Rank];
+    }
+  }
+  
+  return 0;
+}
+
+/**
+ * Round 1 (3 cards, 3s wild):
+ * - Pair of Queens or better: 0%
+ * - Pair of 8s through Js: 20%
+ * - Pair of 2s through 7s: 50%
+ * - High card Ace: 70%
+ * - Any other high card: 90%
+ */
+function getRound1FoldProbability(rank: HandRank, pairRankValue: number): number {
+  // Three of a kind is always 0% (even stronger than pair of queens)
+  if (rank === 'three-of-a-kind') {
+    return 0;
+  }
+  
+  if (rank === 'pair') {
+    // Queens (12) or better (K=13, A=14)
+    if (pairRankValue >= 12) {
+      return 0;
+    }
+    // 8s through Js (8, 9, 10, 11)
+    if (pairRankValue >= 8 && pairRankValue <= 11) {
+      return 20;
+    }
+    // 2s through 7s (2-7)
+    return 50;
+  }
+  
+  // High card
+  if (rank === 'high-card') {
+    // Check if highest card is Ace (but not a pair)
+    if (pairRankValue === 0) {
+      // No pair - check high card
+      // Since we don't have exact high card here, assume worst case
+      return 90;
+    }
+  }
+  
+  // Default high card
+  return 90;
+}
+
+/**
+ * Round 2 (5 cards, 5s wild):
+ * - Flush or better: 0%
+ * - 3 of a kind Queens through Straight: 20%
+ * - 3 of a kind 3s through Jacks: 50%
+ * - Two pair: 70%
+ * - Pair or worse: 90%
+ */
+function getRound2FoldProbability(rank: HandRank, threeOfAKindRankValue: number): number {
+  // Flush or better
+  if (['flush', 'full-house', 'four-of-a-kind', 'straight-flush', 'five-of-a-kind'].includes(rank)) {
+    return 0;
+  }
+  
+  // Straight
+  if (rank === 'straight') {
+    return 20;
+  }
+  
+  // Three of a kind - check rank
+  if (rank === 'three-of-a-kind') {
+    // Queens (12) or better
+    if (threeOfAKindRankValue >= 12) {
+      return 20;
+    }
+    // 3s through Jacks (3-11) - but 5 is wild in round 2, so effectively 3, 4, 6-11
+    return 50;
+  }
+  
+  // Two pair
+  if (rank === 'two-pair') {
+    return 70;
+  }
+  
+  // Pair or worse
+  return 90;
+}
+
+/**
+ * Round 3 (7 cards, 7s wild):
+ * - Full house or better: 0%
+ * - Straight or flush: 20%
+ * - 3 of a kind Queens or better: 50%
+ * - 3 of a kind 2s through Jacks: 70%
+ * - Two pair or worse: 90%
+ */
+function getRound3FoldProbability(rank: HandRank, threeOfAKindRankValue: number): number {
+  // Full house or better
+  if (['full-house', 'four-of-a-kind', 'straight-flush', 'five-of-a-kind'].includes(rank)) {
+    return 0;
+  }
+  
+  // Straight or flush
+  if (rank === 'straight' || rank === 'flush') {
+    return 20;
+  }
+  
+  // Three of a kind - check rank
+  if (rank === 'three-of-a-kind') {
+    // Queens (12) or better
+    if (threeOfAKindRankValue >= 12) {
+      return 50;
+    }
+    // 2s through Jacks
+    return 70;
+  }
+  
+  // Two pair or worse (including pair and high-card)
+  return 90;
+}
