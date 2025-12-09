@@ -2229,6 +2229,8 @@ const Game = () => {
   const selectDealer = async (dealerPosition: number) => {
     if (!gameId) return;
 
+    console.log('[DEALER SELECT] Selected dealer at position:', dealerPosition);
+
     const { error } = await supabase
       .from('games')
       .update({ 
@@ -2242,9 +2244,13 @@ const Game = () => {
       return;
     }
 
-    // Manual refetch to ensure UI updates immediately
-    // Bot dealers will be handled by DealerGameSetup component
-    setTimeout(() => fetchGameData(), 500);
+    console.log('[DEALER SELECT] Successfully updated game status to game_selection');
+
+    // Immediate refetch to ensure UI updates immediately
+    await fetchGameData();
+    
+    // Secondary refetch after short delay for any race conditions
+    setTimeout(() => fetchGameData(), 300);
   };
 
   const handleConfigComplete = async () => {
@@ -3337,12 +3343,10 @@ const Game = () => {
                     onSessionEnd={() => fetchGameData()}
                   />
                 ) : (
-                  // Non-dealer waiting message
-                  players.some(p => p.user_id === user?.id) && (
-                    <DealerSettingUpGame 
-                      dealerUsername={dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`}
-                    />
-                  )
+                  // Non-dealer waiting message - show for all non-dealers
+                  <DealerSettingUpGame 
+                    dealerUsername={dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`}
+                  />
                 )}
               </div>
             ) : null}
