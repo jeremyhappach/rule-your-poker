@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,13 @@ interface NotEnoughPlayersCountdownProps {
 export const NotEnoughPlayersCountdown = ({ gameId, onComplete, onResume }: NotEnoughPlayersCountdownProps) => {
   const [countdown, setCountdown] = useState(30);
   const navigate = useNavigate();
+  const onCompleteRef = useRef(onComplete);
+  const hasEndedRef = useRef(false);
+
+  // Keep ref updated
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   // Monitor for players rejoining (waiting = true)
   useEffect(() => {
@@ -60,9 +67,26 @@ export const NotEnoughPlayersCountdown = ({ gameId, onComplete, onResume }: NotE
     };
   }, [gameId, onResume]);
 
+  // Countdown timer using interval for reliable ticking
   useEffect(() => {
-    if (countdown <= 0) {
-      // End session
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle session end when countdown reaches 0
+  useEffect(() => {
+    if (countdown <= 0 && !hasEndedRef.current) {
+      hasEndedRef.current = true;
+      
       const endSession = async () => {
         await supabase
           .from('games')
@@ -72,20 +96,13 @@ export const NotEnoughPlayersCountdown = ({ gameId, onComplete, onResume }: NotE
           })
           .eq('id', gameId);
         
-        onComplete();
+        onCompleteRef.current();
         navigate('/');
       };
       
       endSession();
-      return;
     }
-
-    const timer = setTimeout(() => {
-      setCountdown(prev => prev - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdown, gameId, navigate, onComplete]);
+  }, [countdown, gameId, navigate]);
 
   return (
     <Card className="fixed inset-0 m-auto w-80 h-56 z-50 bg-destructive/90 border-destructive">
