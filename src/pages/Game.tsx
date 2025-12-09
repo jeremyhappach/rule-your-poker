@@ -3579,6 +3579,9 @@ const Game = () => {
             // Re-run the end-of-game evaluation which will now find enough players
             handleGameOverComplete();
           }}
+          currentPlayerId={currentPlayer?.id}
+          isCurrentPlayerSittingOut={currentPlayer?.sitting_out}
+          isCurrentPlayerWaiting={currentPlayer?.waiting}
         />
       )}
 
