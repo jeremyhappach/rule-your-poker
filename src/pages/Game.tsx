@@ -3169,6 +3169,7 @@ const Game = () => {
             onSendChat={sendChatMessage}
             isChatSending={isChatSending}
             getPositionForUserId={getPositionForUserId}
+            onLeaveGameNow={handleLeaveGameNow}
           />
         )}
 

@@ -12,6 +12,7 @@ import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
+import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { useState, useMemo, useLayoutEffect, useEffect, useRef, useCallback } from "react";
@@ -91,6 +92,7 @@ interface GameTableProps {
   onRequestRefetch?: () => void; // NEW: callback to request parent to refetch
   onDebugProceed?: () => void; // DEBUG: manual proceed to next round
   onBotClick?: (botPlayer: Player) => void; // Host clicks bot to control it
+  onLeaveGameNow?: () => void; // Observer leave game
 }
 
 export const GameTable = ({
@@ -134,6 +136,7 @@ export const GameTable = ({
   onRequestRefetch,
   onDebugProceed,
   onBotClick,
+  onLeaveGameNow,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -718,6 +721,25 @@ export const GameTable = ({
 
   return (
     <div className="relative p-0.5 sm:p-1 md:p-2 lg:p-4 xl:p-8">
+      {/* Observer settings menu - top left */}
+      {isObserver && onLeaveGameNow && (
+        <div className="absolute top-2 left-2 z-50">
+          <PlayerOptionsMenu
+            isSittingOut={false}
+            isObserver={true}
+            waiting={false}
+            autoAnte={false}
+            sitOutNextHand={false}
+            standUpNextHand={false}
+            onAutoAnteChange={() => {}}
+            onSitOutNextHandChange={() => {}}
+            onStandUpNextHandChange={() => {}}
+            onStandUpNow={() => {}}
+            onLeaveGameNow={onLeaveGameNow}
+            variant="desktop"
+          />
+        </div>
+      )}
       {/* Chat input - bottom right of table */}
       {onSendChat && (
         <div className="absolute bottom-2 right-2 z-50">
