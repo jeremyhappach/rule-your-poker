@@ -132,8 +132,8 @@ export const NotEnoughPlayersCountdown = ({
           })
           .eq('id', gameId);
         
-        onCompleteRef.current();
-        navigate('/');
+      onCompleteRef.current();
+      // Don't navigate here - let the parent component handle navigation after session ends
       };
       
       endSession();

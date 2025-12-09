@@ -6,10 +6,22 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, Timer } from "lucide-react";
+import { Lock, Timer, Plus, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
+
+interface PreviousGameConfig {
+  game_type: string | null;
+  ante_amount: number;
+  leg_value: number;
+  legs_to_win: number;
+  pussy_tax_enabled: boolean;
+  pussy_tax_value: number;
+  pot_max_enabled: boolean;
+  pot_max_value: number;
+  chucky_cards: number;
+}
 
 interface DealerGameSetupProps {
   gameId: string;
@@ -18,6 +30,7 @@ interface DealerGameSetupProps {
   dealerPlayerId: string;
   dealerPosition: number;
   previousGameType?: string; // The last game type played
+  previousGameConfig?: PreviousGameConfig | null; // The previous game's actual config
   onConfigComplete: () => void;
   onSessionEnd: () => void;
 }
@@ -40,6 +53,7 @@ export const DealerGameSetup = ({
   dealerPlayerId,
   dealerPosition,
   previousGameType,
+  previousGameConfig,
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
@@ -50,15 +64,15 @@ export const DealerGameSetup = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasSubmittedRef = useRef(false);
   
-  // Config state
-  const [anteAmount, setAnteAmount] = useState(2);
-  const [legValue, setLegValue] = useState(1);
+  // Config state - use strings for free text input with validation on save
+  const [anteAmount, setAnteAmount] = useState("2");
+  const [legValue, setLegValue] = useState("1");
   const [pussyTaxEnabled, setPussyTaxEnabled] = useState(true);
-  const [pussyTaxValue, setPussyTaxValue] = useState(1);
-  const [legsToWin, setLegsToWin] = useState(3);
+  const [pussyTaxValue, setPussyTaxValue] = useState("1");
+  const [legsToWin, setLegsToWin] = useState("3");
   const [potMaxEnabled, setPotMaxEnabled] = useState(true);
-  const [potMaxValue, setPotMaxValue] = useState(10);
-  const [chuckyCards, setChuckyCards] = useState(4);
+  const [potMaxValue, setPotMaxValue] = useState("10");
+  const [chuckyCards, setChuckyCards] = useState("4");
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   
   // Cache defaults for both game types
@@ -80,7 +94,22 @@ export const DealerGameSetup = ({
         setThreeFiveSevenDefaults(threeFiveSevenResult.data);
       }
       
-      // Apply defaults based on previousGameType or default to holm
+      // PRIORITY 1: Use previous game config if available (for config persistence between games)
+      if (previousGameConfig) {
+        console.log('[DEALER SETUP] Using previous game config:', previousGameConfig);
+        setAnteAmount(String(previousGameConfig.ante_amount));
+        setLegValue(String(previousGameConfig.leg_value));
+        setLegsToWin(String(previousGameConfig.legs_to_win));
+        setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
+        setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
+        setPotMaxEnabled(previousGameConfig.pot_max_enabled);
+        setPotMaxValue(String(previousGameConfig.pot_max_value));
+        setChuckyCards(String(previousGameConfig.chucky_cards));
+        setLoadingDefaults(false);
+        return;
+      }
+      
+      // PRIORITY 2: Apply defaults based on previousGameType or default to holm
       const initialGameType = previousGameType || 'holm-game';
       if (initialGameType === '3-5-7-game' || initialGameType === '3-5-7') {
         if (!threeFiveSevenResult.error && threeFiveSevenResult.data) {
@@ -96,18 +125,18 @@ export const DealerGameSetup = ({
     };
 
     fetchAllDefaults();
-  }, [previousGameType]);
+  }, [previousGameType, previousGameConfig]);
 
   // Apply defaults when game type changes
   const applyDefaults = (defaults: GameDefaults) => {
-    setAnteAmount(defaults.ante_amount);
-    setLegValue(defaults.leg_value);
-    setLegsToWin(defaults.legs_to_win);
+    setAnteAmount(String(defaults.ante_amount));
+    setLegValue(String(defaults.leg_value));
+    setLegsToWin(String(defaults.legs_to_win));
     setPussyTaxEnabled(defaults.pussy_tax_enabled);
-    setPussyTaxValue(defaults.pussy_tax_value);
+    setPussyTaxValue(String(defaults.pussy_tax_value));
     setPotMaxEnabled(defaults.pot_max_enabled);
-    setPotMaxValue(defaults.pot_max_value);
-    setChuckyCards(defaults.chucky_cards);
+    setPotMaxValue(String(defaults.pot_max_value));
+    setChuckyCards(String(defaults.chucky_cards));
   };
 
   // Update config when tab changes
@@ -203,31 +232,66 @@ export const DealerGameSetup = ({
 
   const handleSubmit = async () => {
     if (isSubmitting || hasSubmittedRef.current) return;
+    
+    // Validate all numeric fields
+    const parsedAnte = parseInt(anteAmount) || 0;
+    const parsedLegValue = parseInt(legValue) || 0;
+    const parsedLegsToWin = parseInt(legsToWin) || 0;
+    const parsedPussyTax = parseInt(pussyTaxValue) || 0;
+    const parsedPotMax = parseInt(potMaxValue) || 0;
+    const parsedChucky = parseInt(chuckyCards) || 0;
+    
+    // Validation
+    if (parsedAnte < 1) {
+      toast({ title: "Invalid Ante", description: "Ante must be at least $1", variant: "destructive" });
+      return;
+    }
+    if (parsedLegValue < 1) {
+      toast({ title: "Invalid Leg Value", description: "Leg value must be at least $1", variant: "destructive" });
+      return;
+    }
+    if (parsedLegsToWin < 1) {
+      toast({ title: "Invalid Legs to Win", description: "Legs to win must be at least 1", variant: "destructive" });
+      return;
+    }
+    if (pussyTaxEnabled && parsedPussyTax < 1) {
+      toast({ title: "Invalid Pussy Tax", description: "Pussy tax must be at least $1", variant: "destructive" });
+      return;
+    }
+    if (potMaxEnabled && parsedPotMax < 1) {
+      toast({ title: "Invalid Pot Max", description: "Pot max must be at least $1", variant: "destructive" });
+      return;
+    }
+    if (selectedGameType === 'holm-game' && (parsedChucky < 2 || parsedChucky > 7)) {
+      toast({ title: "Invalid Chucky Cards", description: "Chucky cards must be between 2-7", variant: "destructive" });
+      return;
+    }
+    
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
 
-    console.log('[DEALER SETUP] Submitting game config:', { selectedGameType, anteAmount, legValue, chuckyCards });
+    console.log('[DEALER SETUP] Submitting game config:', { selectedGameType, parsedAnte, parsedLegValue, parsedChucky });
 
     const isHolmGame = selectedGameType === 'holm-game';
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
     
     const updateData: any = {
       game_type: selectedGameType,
-      ante_amount: anteAmount,
-      leg_value: legValue,
+      ante_amount: parsedAnte,
+      leg_value: parsedLegValue,
       pussy_tax_enabled: pussyTaxEnabled,
-      pussy_tax_value: pussyTaxValue,
-      pussy_tax: pussyTaxValue,
-      legs_to_win: legsToWin,
+      pussy_tax_value: parsedPussyTax,
+      pussy_tax: parsedPussyTax,
+      legs_to_win: parsedLegsToWin,
       pot_max_enabled: potMaxEnabled,
-      pot_max_value: potMaxValue,
+      pot_max_value: parsedPotMax,
       config_complete: true,
       status: 'ante_decision',
       ante_decision_deadline: anteDeadline,
     };
 
     if (isHolmGame) {
-      updateData.chucky_cards = chuckyCards;
+      updateData.chucky_cards = parsedChucky;
     }
 
     const { error } = await supabase
@@ -341,24 +405,43 @@ export const DealerGameSetup = ({
                   <Label htmlFor="ante-holm" className="text-amber-100 text-sm">Ante ($)</Label>
                   <Input
                     id="ante-holm"
-                    type="number"
-                    min="1"
+                    type="text"
+                    inputMode="numeric"
                     value={anteAmount}
-                    onChange={(e) => setAnteAmount(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setAnteAmount(e.target.value)}
                     className="bg-amber-900/30 border-poker-gold/50 text-white"
                   />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="chucky" className="text-amber-100 text-sm">Chucky Cards</Label>
-                  <Input
-                    id="chucky"
-                    type="number"
-                    min="2"
-                    max="7"
-                    value={chuckyCards}
-                    onChange={(e) => setChuckyCards(parseInt(e.target.value) || 4)}
-                    className="bg-amber-900/30 border-poker-gold/50 text-white"
-                  />
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
+                      onClick={() => setChuckyCards(String(Math.max(2, (parseInt(chuckyCards) || 4) - 1)))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      id="chucky"
+                      type="text"
+                      inputMode="numeric"
+                      value={chuckyCards}
+                      onChange={(e) => setChuckyCards(e.target.value)}
+                      className="bg-amber-900/30 border-poker-gold/50 text-white text-center flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
+                      onClick={() => setChuckyCards(String(Math.min(7, (parseInt(chuckyCards) || 4) + 1)))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -370,10 +453,10 @@ export const DealerGameSetup = ({
                   </div>
                   {pussyTaxEnabled && (
                     <Input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
                       value={pussyTaxValue}
-                      onChange={(e) => setPussyTaxValue(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setPussyTaxValue(e.target.value)}
                       className="bg-amber-900/30 border-poker-gold/50 text-white"
                     />
                   )}
@@ -385,10 +468,10 @@ export const DealerGameSetup = ({
                   </div>
                   {potMaxEnabled && (
                     <Input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
                       value={potMaxValue}
-                      onChange={(e) => setPotMaxValue(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setPotMaxValue(e.target.value)}
                       className="bg-amber-900/30 border-poker-gold/50 text-white"
                     />
                   )}
@@ -405,10 +488,10 @@ export const DealerGameSetup = ({
                   <Label htmlFor="ante-357" className="text-amber-100 text-sm">Ante ($)</Label>
                   <Input
                     id="ante-357"
-                    type="number"
-                    min="1"
+                    type="text"
+                    inputMode="numeric"
                     value={anteAmount}
-                    onChange={(e) => setAnteAmount(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setAnteAmount(e.target.value)}
                     className="bg-amber-900/30 border-poker-gold/50 text-white"
                   />
                 </div>
@@ -416,10 +499,10 @@ export const DealerGameSetup = ({
                   <Label htmlFor="leg-value" className="text-amber-100 text-sm">Leg Value ($)</Label>
                   <Input
                     id="leg-value"
-                    type="number"
-                    min="1"
+                    type="text"
+                    inputMode="numeric"
                     value={legValue}
-                    onChange={(e) => setLegValue(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setLegValue(e.target.value)}
                     className="bg-amber-900/30 border-poker-gold/50 text-white"
                   />
                 </div>
@@ -427,14 +510,34 @@ export const DealerGameSetup = ({
 
               <div className="space-y-1">
                 <Label htmlFor="legs-to-win" className="text-amber-100 text-sm">Legs to Win</Label>
-                <Input
-                  id="legs-to-win"
-                  type="number"
-                  min="1"
-                  value={legsToWin}
-                  onChange={(e) => setLegsToWin(parseInt(e.target.value) || 1)}
-                  className="bg-amber-900/30 border-poker-gold/50 text-white"
-                />
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
+                    onClick={() => setLegsToWin(String(Math.max(1, (parseInt(legsToWin) || 3) - 1)))}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    id="legs-to-win"
+                    type="text"
+                    inputMode="numeric"
+                    value={legsToWin}
+                    onChange={(e) => setLegsToWin(e.target.value)}
+                    className="bg-amber-900/30 border-poker-gold/50 text-white text-center flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
+                    onClick={() => setLegsToWin(String((parseInt(legsToWin) || 3) + 1))}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -445,10 +548,10 @@ export const DealerGameSetup = ({
                   </div>
                   {pussyTaxEnabled && (
                     <Input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
                       value={pussyTaxValue}
-                      onChange={(e) => setPussyTaxValue(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setPussyTaxValue(e.target.value)}
                       className="bg-amber-900/30 border-poker-gold/50 text-white"
                     />
                   )}
@@ -460,10 +563,10 @@ export const DealerGameSetup = ({
                   </div>
                   {potMaxEnabled && (
                     <Input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="numeric"
                       value={potMaxValue}
-                      onChange={(e) => setPotMaxValue(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setPotMaxValue(e.target.value)}
                       className="bg-amber-900/30 border-poker-gold/50 text-white"
                     />
                   )}
