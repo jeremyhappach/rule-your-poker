@@ -126,6 +126,7 @@ export type Database = {
           buy_in: number
           chucky_cards: number | null
           config_complete: boolean
+          config_deadline: string | null
           created_at: string
           current_round: number | null
           dealer_position: number | null
@@ -160,6 +161,7 @@ export type Database = {
           buy_in?: number
           chucky_cards?: number | null
           config_complete?: boolean
+          config_deadline?: string | null
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null
@@ -194,6 +196,7 @@ export type Database = {
           buy_in?: number
           chucky_cards?: number | null
           config_complete?: boolean
+          config_deadline?: string | null
           created_at?: string
           current_round?: number | null
           dealer_position?: number | null

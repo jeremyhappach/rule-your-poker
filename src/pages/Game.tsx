@@ -19,6 +19,7 @@ import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
 import { DealerSelection } from "@/components/DealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
+import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
@@ -176,6 +177,9 @@ const Game = () => {
   
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
+  
+  // Server-side deadline enforcement - any active client triggers this for ALL players
+  useDeadlineEnforcer(gameId, game?.status);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
