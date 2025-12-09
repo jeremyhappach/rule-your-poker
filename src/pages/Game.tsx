@@ -2989,35 +2989,15 @@ const Game = () => {
     }
   };
 
-  if (loading || !game) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
-  const sessionStartTime = game.created_at ? new Date(game.created_at).toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit',
-    hour12: true 
-  }) : '';
-  const handsPlayed = game.total_hands || 0;
-
-  // Find the host by earliest created_at (first player to join), excluding bots
-  const hostPlayer = [...players].filter(p => !p.is_bot).sort((a, b) => 
-    new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
-  )[0];
-  const isCreator = hostPlayer?.user_id === user?.id;
-  const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
-  const dealerPlayer = players.find(p => p.position === game.dealer_position);
-  const isDealer = dealerPlayer?.user_id === user?.id;
-  const currentPlayer = players.find(p => p.user_id === user?.id);
-  
   // Calculate the NEXT dealer position (for game_over countdown display)
+  // This needs to be BEFORE the loading return to maintain consistent hook order
   // This needs to match the logic in rotateDealerPosition which considers:
   // - Only non-sitting-out players (after player state evaluation)
   // - Only non-bot players
   // - Rotates clockwise from current dealer position
+  const dealerPlayer = players.find(p => p.position === game?.dealer_position);
   const nextDealerPlayer = useMemo(() => {
-    if (game.status !== 'game_over') return dealerPlayer;
+    if (!game || game.status !== 'game_over') return dealerPlayer;
     
     // Get eligible dealers (non-sitting-out, non-bot humans)
     // Note: During game_over, player states haven't been evaluated yet by handleGameOverComplete
@@ -3049,7 +3029,28 @@ const Game = () => {
     }
     
     return players.find(p => p.position === nextPosition) || dealerPlayer;
-  }, [game.status, game.dealer_position, players, dealerPlayer]);
+  }, [game?.status, game?.dealer_position, players, dealerPlayer]);
+
+  if (loading || !game) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
+  const sessionStartTime = game.created_at ? new Date(game.created_at).toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  }) : '';
+  const handsPlayed = game.total_hands || 0;
+
+  // Find the host by earliest created_at (first player to join), excluding bots
+  const hostPlayer = [...players].filter(p => !p.is_bot).sort((a, b) => 
+    new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+  )[0];
+  const isCreator = hostPlayer?.user_id === user?.id;
+  const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
+  const isDealer = dealerPlayer?.user_id === user?.id;
+  const currentPlayer = players.find(p => p.user_id === user?.id);
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
