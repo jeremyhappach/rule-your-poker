@@ -11,11 +11,17 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   const lastCallRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!gameId) return;
+    console.log('[DEADLINE ENFORCER] Hook called with gameId:', gameId, 'status:', gameStatus);
+    
+    if (!gameId) {
+      console.log('[DEADLINE ENFORCER] No gameId, skipping');
+      return;
+    }
 
     // Only run enforcer during active game states that have deadlines
     const activeStates = ['config', 'ante_decision', 'in_progress', 'betting', 'game_over'];
     if (!gameStatus || !activeStates.includes(gameStatus)) {
+      console.log('[DEADLINE ENFORCER] Status not active, skipping. Status:', gameStatus);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
