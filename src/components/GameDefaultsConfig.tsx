@@ -60,7 +60,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     setLoading(false);
   };
 
-  const updateDefault = (gameType: string, field: keyof GameDefaults, value: number | boolean) => {
+  const updateDefault = (gameType: string, field: keyof GameDefaults, value: number | boolean | string) => {
     setDefaults(prev => 
       prev.map(d => 
         d.game_type === gameType ? { ...d, [field]: value } : d
@@ -68,10 +68,101 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     );
   };
 
-  const saveDefaults = async () => {
+  const validateAndSave = async () => {
+    // Validate all numeric fields before saving
+    const validationErrors: string[] = [];
+    
+    for (const defaultConfig of defaults) {
+      const gameType = defaultConfig.game_type;
+      
+      // Decision timer: 5-60 seconds
+      const timer = Number(defaultConfig.decision_timer_seconds);
+      if (isNaN(timer) || timer < 5 || timer > 60) {
+        validationErrors.push(`${gameType}: Decision timer must be 5-60 seconds`);
+      }
+      
+      // Ante: 1-100
+      const ante = Number(defaultConfig.ante_amount);
+      if (isNaN(ante) || ante < 1 || ante > 100) {
+        validationErrors.push(`${gameType}: Ante must be $1-$100`);
+      }
+      
+      // Pot max: 1-1000
+      if (defaultConfig.pot_max_enabled) {
+        const potMax = Number(defaultConfig.pot_max_value);
+        if (isNaN(potMax) || potMax < 1 || potMax > 1000) {
+          validationErrors.push(`${gameType}: Pot max must be $1-$1000`);
+        }
+      }
+      
+      // Pussy tax: 1-100
+      if (defaultConfig.pussy_tax_enabled) {
+        const pussyTax = Number(defaultConfig.pussy_tax_value);
+        if (isNaN(pussyTax) || pussyTax < 1 || pussyTax > 100) {
+          validationErrors.push(`${gameType}: Pussy tax must be $1-$100`);
+        }
+      }
+      
+      // Bot delay: 0.5-10
+      const botDelay = Number(defaultConfig.bot_decision_delay_seconds);
+      if (isNaN(botDelay) || botDelay < 0.5 || botDelay > 10) {
+        validationErrors.push(`${gameType}: Bot delay must be 0.5-10 seconds`);
+      }
+      
+      // Game-specific validations
+      if (gameType === 'holm') {
+        const chucky2nd = Number(defaultConfig.chucky_second_to_last_delay_seconds);
+        if (isNaN(chucky2nd) || chucky2nd < 0.5 || chucky2nd > 10) {
+          validationErrors.push(`Holm: Chucky 2nd-to-last delay must be 0.5-10 seconds`);
+        }
+        
+        const chuckyLast = Number(defaultConfig.chucky_last_card_delay_seconds);
+        if (isNaN(chuckyLast) || chuckyLast < 0.5 || chuckyLast > 10) {
+          validationErrors.push(`Holm: Chucky last card delay must be 0.5-10 seconds`);
+        }
+        
+        const chuckyCards = Number(defaultConfig.chucky_cards);
+        if (isNaN(chuckyCards) || chuckyCards < 1 || chuckyCards > 7) {
+          validationErrors.push(`Holm: Chucky cards must be 1-7`);
+        }
+      }
+      
+      if (gameType === '3-5-7') {
+        const legValue = Number(defaultConfig.leg_value);
+        if (isNaN(legValue) || legValue < 1 || legValue > 100) {
+          validationErrors.push(`3-5-7: Leg value must be $1-$100`);
+        }
+        
+        const legsToWin = Number(defaultConfig.legs_to_win);
+        if (isNaN(legsToWin) || legsToWin < 1 || legsToWin > 10) {
+          validationErrors.push(`3-5-7: Legs to win must be 1-10`);
+        }
+      }
+    }
+    
+    if (validationErrors.length > 0) {
+      toast.error(validationErrors[0]);
+      return;
+    }
+    
+    // Convert string values to numbers before saving
+    const normalizedDefaults = defaults.map(d => ({
+      ...d,
+      decision_timer_seconds: Number(d.decision_timer_seconds),
+      ante_amount: Number(d.ante_amount),
+      pot_max_value: Number(d.pot_max_value),
+      pussy_tax_value: Number(d.pussy_tax_value),
+      bot_decision_delay_seconds: Number(d.bot_decision_delay_seconds),
+      chucky_second_to_last_delay_seconds: Number(d.chucky_second_to_last_delay_seconds),
+      chucky_last_card_delay_seconds: Number(d.chucky_last_card_delay_seconds),
+      chucky_cards: Number(d.chucky_cards),
+      leg_value: Number(d.leg_value),
+      legs_to_win: Number(d.legs_to_win),
+    }));
+    
     setSaving(true);
     try {
-      for (const defaultConfig of defaults) {
+      for (const defaultConfig of normalizedDefaults) {
         const { error } = await supabase
           .from('game_defaults')
           .update({
@@ -102,6 +193,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     setSaving(false);
   };
 
+  // Old saveDefaults removed - using validateAndSave instead
+
   const getDefaultByType = (gameType: string) => 
     defaults.find(d => d.game_type === gameType);
 
@@ -121,11 +214,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             <Label htmlFor={`${gameType}-ante`}>Ante Amount ($)</Label>
             <Input
               id={`${gameType}-ante`}
-              type="number"
-              min={1}
-              max={100}
+              type="text"
+              inputMode="numeric"
               value={gameDefaults.ante_amount}
-              onChange={(e) => updateDefault(gameType, 'ante_amount', parseInt(e.target.value) || 2)}
+              onChange={(e) => updateDefault(gameType, 'ante_amount', e.target.value)}
             />
           </div>
 
@@ -145,11 +237,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               <Label htmlFor={`${gameType}-pot-max`}>Pot Max Value ($)</Label>
               <Input
                 id={`${gameType}-pot-max`}
-                type="number"
-                min={1}
-                max={1000}
+                type="text"
+                inputMode="numeric"
                 value={gameDefaults.pot_max_value}
-                onChange={(e) => updateDefault(gameType, 'pot_max_value', parseInt(e.target.value) || 10)}
+                onChange={(e) => updateDefault(gameType, 'pot_max_value', e.target.value)}
               />
             </div>
           )}
@@ -170,11 +261,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
               <Label htmlFor={`${gameType}-pussy-tax`}>Pussy Tax Value ($)</Label>
               <Input
                 id={`${gameType}-pussy-tax`}
-                type="number"
-                min={1}
-                max={100}
+                type="text"
+                inputMode="numeric"
                 value={gameDefaults.pussy_tax_value}
-                onChange={(e) => updateDefault(gameType, 'pussy_tax_value', parseInt(e.target.value) || 1)}
+                onChange={(e) => updateDefault(gameType, 'pussy_tax_value', e.target.value)}
               />
             </div>
           )}
@@ -215,12 +305,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             <Label htmlFor={`${gameType}-bot-delay`}>Bot Decision Delay (seconds)</Label>
             <Input
               id={`${gameType}-bot-delay`}
-              type="number"
-              min={0.5}
-              max={10}
-              step={0.5}
+              type="text"
+              inputMode="decimal"
               value={gameDefaults.bot_decision_delay_seconds}
-              onChange={(e) => updateDefault(gameType, 'bot_decision_delay_seconds', parseFloat(e.target.value) || 2.0)}
+              onChange={(e) => updateDefault(gameType, 'bot_decision_delay_seconds', e.target.value)}
             />
             <p className="text-xs text-muted-foreground">How long bots wait before making their decision</p>
           </div>
@@ -263,11 +351,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                       <Label htmlFor="holm-timer">Decision Timer (seconds)</Label>
                       <Input
                         id="holm-timer"
-                        type="number"
-                        min={5}
-                        max={60}
+                        type="text"
+                        inputMode="numeric"
                         value={holmDefaults.decision_timer_seconds}
-                        onChange={(e) => updateDefault('holm', 'decision_timer_seconds', parseInt(e.target.value) || 10)}
+                        onChange={(e) => updateDefault('holm', 'decision_timer_seconds', e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground">Time each player has to make a stay/fold decision</p>
                     </div>
@@ -276,12 +363,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                       <Label htmlFor="holm-second-last">Chucky 2nd-to-Last Card Delay (seconds)</Label>
                       <Input
                         id="holm-second-last"
-                        type="number"
-                        min={0.5}
-                        max={10}
-                        step={0.5}
+                        type="text"
+                        inputMode="decimal"
                         value={holmDefaults.chucky_second_to_last_delay_seconds}
-                        onChange={(e) => updateDefault('holm', 'chucky_second_to_last_delay_seconds', parseFloat(e.target.value) || 1.5)}
+                        onChange={(e) => updateDefault('holm', 'chucky_second_to_last_delay_seconds', e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground">Delay before revealing Chucky's 2nd-to-last card</p>
                     </div>
@@ -290,12 +375,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                       <Label htmlFor="holm-last">Chucky Last Card Delay (seconds)</Label>
                       <Input
                         id="holm-last"
-                        type="number"
-                        min={0.5}
-                        max={10}
-                        step={0.5}
+                        type="text"
+                        inputMode="decimal"
                         value={holmDefaults.chucky_last_card_delay_seconds}
-                        onChange={(e) => updateDefault('holm', 'chucky_last_card_delay_seconds', parseFloat(e.target.value) || 3.0)}
+                        onChange={(e) => updateDefault('holm', 'chucky_last_card_delay_seconds', e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground">Delay before revealing Chucky's final card</p>
                     </div>
@@ -308,11 +391,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                         <Label htmlFor="holm-chucky-cards">Chucky Cards</Label>
                         <Input
                           id="holm-chucky-cards"
-                          type="number"
-                          min={1}
-                          max={7}
+                          type="text"
+                          inputMode="numeric"
                           value={holmDefaults.chucky_cards}
-                          onChange={(e) => updateDefault('holm', 'chucky_cards', parseInt(e.target.value) || 4)}
+                          onChange={(e) => updateDefault('holm', 'chucky_cards', e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">Number of cards Chucky receives</p>
                       </div>
@@ -340,11 +422,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                       <Label htmlFor="357-timer">Decision Timer (seconds)</Label>
                       <Input
                         id="357-timer"
-                        type="number"
-                        min={5}
-                        max={60}
+                        type="text"
+                        inputMode="numeric"
                         value={defaults357.decision_timer_seconds}
-                        onChange={(e) => updateDefault('3-5-7', 'decision_timer_seconds', parseInt(e.target.value) || 10)}
+                        onChange={(e) => updateDefault('3-5-7', 'decision_timer_seconds', e.target.value)}
                       />
                       <p className="text-xs text-muted-foreground">Time players have to make stay/drop decisions</p>
                     </div>
@@ -357,11 +438,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                         <Label htmlFor="357-leg-value">Leg Value ($)</Label>
                         <Input
                           id="357-leg-value"
-                          type="number"
-                          min={1}
-                          max={100}
+                          type="text"
+                          inputMode="numeric"
                           value={defaults357.leg_value}
-                          onChange={(e) => updateDefault('3-5-7', 'leg_value', parseInt(e.target.value) || 1)}
+                          onChange={(e) => updateDefault('3-5-7', 'leg_value', e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">Dollar value per leg</p>
                       </div>
@@ -369,11 +449,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                         <Label htmlFor="357-legs-to-win">Legs to Win</Label>
                         <Input
                           id="357-legs-to-win"
-                          type="number"
-                          min={1}
-                          max={10}
+                          type="text"
+                          inputMode="numeric"
                           value={defaults357.legs_to_win}
-                          onChange={(e) => updateDefault('3-5-7', 'legs_to_win', parseInt(e.target.value) || 3)}
+                          onChange={(e) => updateDefault('3-5-7', 'legs_to_win', e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">Number of legs required to win</p>
                       </div>
@@ -392,7 +471,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={saveDefaults} disabled={saving || loading}>
+          <Button onClick={validateAndSave} disabled={saving || loading}>
             {saving ? 'Saving...' : 'Save Defaults'}
           </Button>
         </div>
