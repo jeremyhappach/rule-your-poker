@@ -1025,6 +1025,12 @@ const Game = () => {
       game?.status === 'waiting' && 
       isCreator;
     
+    // CRITICAL: Observers in waiting status should poll to see other players joining (including bots)
+    // Observers aren't players yet so they don't trigger the other polling conditions
+    const observerWaitingForPlayers = 
+      game?.status === 'waiting' && 
+      !currentPlayer;
+    
     // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
     // and no one can make a decision. This can happen due to race conditions.
     const latestRound = game?.game_type === 'holm-game'
@@ -1045,7 +1051,7 @@ const Game = () => {
       !game?.current_round &&
       currentPlayer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || stuckHolmState || holmNoRound;
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || stuckHolmState || holmNoRound;
     
     if (!shouldPoll) return;
     
@@ -1059,6 +1065,7 @@ const Game = () => {
       waitingForConfig,
       waitingForGameStart,
       hostWaitingForPlayers,
+      observerWaitingForPlayers,
       stuckHolmState,
       holmNoRound,
       showAnteDialog,
@@ -1067,8 +1074,8 @@ const Game = () => {
     });
     
     // Poll more frequently (250ms) for critical transitions, 500ms otherwise
-    // Host waiting for players polls every 1 second (less aggressive)
-    const pollInterval = hostWaitingForPlayers ? 1000 : 
+    // Host/observer waiting for players polls every 1 second (less aggressive)
+    const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 1000 : 
       (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState || holmNoRound) ? 250 : 500;
     
     const intervalId = setInterval(async () => {

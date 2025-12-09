@@ -444,13 +444,16 @@ export const MobileGameTable = ({
 
   // Get player status chip background color based on status
   const getPlayerChipBgColor = (player: Player) => {
-    if (player.sitting_out && !player.waiting) {
-      return 'bg-white'; // white for sitting out
+    // Yellow for waiting (regardless of sitting_out)
+    if (player.waiting) {
+      return 'bg-yellow-300';
     }
-    if (player.sitting_out && player.waiting) {
-      return 'bg-yellow-300'; // yellow for waiting
+    // White for sitting out (and not waiting)
+    if (player.sitting_out) {
+      return 'bg-white';
     }
-    return 'bg-green-400'; // green for active
+    // Green for active
+    return 'bg-green-400';
   };
 
   // Render player chip - chipstack in center, name below (or above for bottom positions)

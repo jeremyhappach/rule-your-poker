@@ -243,9 +243,12 @@ export const WaitingForPlayersTable = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleAddBot}
+                    onClick={(e) => {
+                      e.currentTarget.blur(); // Prevent focus styling issues
+                      handleAddBot();
+                    }}
                     disabled={addingBot}
-                    className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
+                    className="border-amber-600 text-amber-300 hover:bg-amber-600/20 focus:bg-transparent focus:text-amber-300"
                   >
                     <Bot className="w-4 h-4 mr-2" />
                     {addingBot ? 'Adding...' : 'Add Bot'}
@@ -301,6 +304,7 @@ export const WaitingForPlayersTable = ({
           isChatSending={isChatSending}
           getPositionForUserId={getPositionForUserId}
           onLeaveGameNow={onLeaveGameNow}
+          isHost={isHost}
         />
       ) : (
         <GameTable
@@ -308,6 +312,7 @@ export const WaitingForPlayersTable = ({
           chatBubbles={chatBubbles}
           onSendChat={onSendChat}
           isChatSending={isChatSending}
+          onLeaveGameNow={onLeaveGameNow}
         />
       )}
       {renderFeltMessage()}
