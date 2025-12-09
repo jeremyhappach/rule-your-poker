@@ -3339,6 +3339,7 @@ const Game = () => {
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
                     previousGameType={game.game_type || undefined}
+                    previousGameConfig={previousGameConfig}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />

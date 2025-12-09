@@ -428,7 +428,9 @@ export const MobileGameTable = ({
     length: maxSeats
   }, (_, i) => i + 1);
   const openSeats = allPositions.filter(pos => !occupiedPositions.has(pos));
-  const canSelectSeat = onSelectSeat && (!currentPlayer || currentPlayer.sitting_out);
+  // CRITICAL: Only OBSERVERS (users not in the players list at all) can select seats
+  // Seated players (including sitting_out) cannot change seats
+  const canSelectSeat = onSelectSeat && !currentPlayer;
 
   // Calculate expected card count for 3-5-7 games
   const getExpectedCardCount = (round: number): number => {
