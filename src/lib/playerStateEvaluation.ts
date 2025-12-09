@@ -142,6 +142,19 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
   console.log('[DEALER ROTATE] ========== Starting dealer rotation ==========');
   console.log('[DEALER ROTATE] Current dealer position:', currentDealerPosition);
   
+  // Get ALL players for debugging
+  const { data: allPlayers } = await supabase
+    .from('players')
+    .select('position, is_bot, sitting_out, user_id')
+    .eq('game_id', gameId)
+    .order('position', { ascending: true });
+  
+  console.log('[DEALER ROTATE] All players:', allPlayers?.map(p => ({
+    pos: p.position,
+    is_bot: p.is_bot,
+    sitting_out: p.sitting_out
+  })));
+  
   // Get eligible dealers (non-sitting-out, non-bot humans)
   const { data: eligiblePlayers, error } = await supabase
     .from('players')
@@ -151,7 +164,7 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
     .eq('is_bot', false)
     .order('position', { ascending: true });
   
-  console.log('[DEALER ROTATE] Eligible players query result:', eligiblePlayers, 'error:', error);
+  console.log('[DEALER ROTATE] Eligible players:', eligiblePlayers?.map(p => p.position), 'error:', error);
   
   if (error || !eligiblePlayers || eligiblePlayers.length === 0) {
     console.log('[DEALER ROTATE] No eligible human players, keeping current position');
@@ -167,13 +180,14 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
   let nextDealerPosition: number;
   if (currentDealerIndex === -1) {
     // Current dealer not in eligible list, pick first eligible
-    console.log('[DEALER ROTATE] Current dealer NOT in eligible list, picking first eligible');
+    console.log('[DEALER ROTATE] Current dealer NOT in eligible list, picking first eligible:', eligiblePositions[0]);
     nextDealerPosition = eligiblePositions[0];
   } else {
-    // Rotate to next position (wrapping around)
+    // Rotate to next position (wrapping around) - go to the NEXT player clockwise
     const nextIndex = (currentDealerIndex + 1) % eligiblePositions.length;
     console.log('[DEALER ROTATE] Next index calculation: (', currentDealerIndex, '+ 1) %', eligiblePositions.length, '=', nextIndex);
     nextDealerPosition = eligiblePositions[nextIndex];
+    console.log('[DEALER ROTATE] Rotating from position', currentDealerPosition, 'to position', nextDealerPosition);
   }
   
   console.log('[DEALER ROTATE] ========== New dealer position:', nextDealerPosition, '==========');
