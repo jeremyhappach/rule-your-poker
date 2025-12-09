@@ -154,10 +154,7 @@ export const WaitingForPlayersTable = ({
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
 
-      toast({
-        title: "Bot Added",
-        description: `${botName} joined at seat #${nextPosition}`,
-      });
+      // Bot added successfully - no toast needed
     } catch (error: any) {
       console.error('Error adding bot:', error);
       toast({
