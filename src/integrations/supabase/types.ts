@@ -58,6 +58,7 @@ export type Database = {
           ante_amount: number
           bot_decision_delay_seconds: number
           bot_fold_probability: number
+          bot_use_hand_strength: boolean
           chucky_cards: number
           chucky_last_card_delay_seconds: number
           chucky_second_to_last_delay_seconds: number
@@ -77,6 +78,7 @@ export type Database = {
           ante_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
+          bot_use_hand_strength?: boolean
           chucky_cards?: number
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
@@ -96,6 +98,7 @@ export type Database = {
           ante_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
+          bot_use_hand_strength?: boolean
           chucky_cards?: number
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
