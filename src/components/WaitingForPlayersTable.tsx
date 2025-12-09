@@ -52,6 +52,7 @@ interface WaitingForPlayersTableProps {
   onSendChat?: (message: string) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
+  onLeaveGameNow?: () => void;
 }
 
 export const WaitingForPlayersTable = ({
@@ -65,7 +66,8 @@ export const WaitingForPlayersTable = ({
   allMessages = [],
   onSendChat,
   isChatSending = false,
-  getPositionForUserId
+  getPositionForUserId,
+  onLeaveGameNow
 }: WaitingForPlayersTableProps) => {
   const { toast } = useToast();
   const gameStartTriggeredRef = useRef(false);
@@ -298,6 +300,7 @@ export const WaitingForPlayersTable = ({
           onSendChat={onSendChat}
           isChatSending={isChatSending}
           getPositionForUserId={getPositionForUserId}
+          onLeaveGameNow={onLeaveGameNow}
         />
       ) : (
         <GameTable
