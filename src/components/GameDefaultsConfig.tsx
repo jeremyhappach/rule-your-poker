@@ -18,6 +18,7 @@ interface GameDefaults {
   chucky_last_card_delay_seconds: number;
   bot_fold_probability: number;
   bot_decision_delay_seconds: number;
+  bot_use_hand_strength: boolean;
   ante_amount: number;
   pot_max_enabled: boolean;
   pot_max_value: number;
@@ -171,6 +172,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
             bot_fold_probability: defaultConfig.bot_fold_probability,
             bot_decision_delay_seconds: defaultConfig.bot_decision_delay_seconds,
+            bot_use_hand_strength: defaultConfig.bot_use_hand_strength,
             ante_amount: defaultConfig.ante_amount,
             pot_max_enabled: defaultConfig.pot_max_enabled,
             pot_max_value: defaultConfig.pot_max_value,
@@ -285,21 +287,34 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         </div>
         
         <div className="space-y-3">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor={`${gameType}-fold-prob`}>Fold Probability</Label>
-              <span className="text-sm font-mono">{gameDefaults.bot_fold_probability}%</span>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Use Hand Strength Logic</Label>
+              <p className="text-xs text-muted-foreground">Bots decide based on hand quality</p>
             </div>
-            <Slider
-              id={`${gameType}-fold-prob`}
-              min={0}
-              max={100}
-              step={5}
-              value={[gameDefaults.bot_fold_probability]}
-              onValueChange={([value]) => updateDefault(gameType, 'bot_fold_probability', value)}
+            <Switch
+              checked={gameDefaults.bot_use_hand_strength}
+              onCheckedChange={(checked) => updateDefault(gameType, 'bot_use_hand_strength', checked)}
             />
-            <p className="text-xs text-muted-foreground">Chance that a bot will fold (0% = always stay, 100% = always fold)</p>
           </div>
+
+          {!gameDefaults.bot_use_hand_strength && (
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor={`${gameType}-fold-prob`}>Fold Probability</Label>
+                <span className="text-sm font-mono">{gameDefaults.bot_fold_probability}%</span>
+              </div>
+              <Slider
+                id={`${gameType}-fold-prob`}
+                min={0}
+                max={100}
+                step={5}
+                value={[gameDefaults.bot_fold_probability]}
+                onValueChange={([value]) => updateDefault(gameType, 'bot_fold_probability', value)}
+              />
+              <p className="text-xs text-muted-foreground">Universal fold chance (0% = always stay, 100% = always fold)</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor={`${gameType}-bot-delay`}>Bot Decision Delay (seconds)</Label>

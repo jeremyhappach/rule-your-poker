@@ -238,15 +238,17 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 
   console.log('[BOT DECISIONS] Bots to decide:', botsToDecide.map(b => ({ id: b.id, pos: b.position })));
 
-  // Get game defaults for bot behavior (for decision delay)
+  // Get game defaults for bot behavior (for decision delay and hand strength toggle)
   const gameTypeKey = isHolmGame ? 'holm' : '3-5-7';
   const { data: gameDefaults } = await supabase
     .from('game_defaults')
-    .select('bot_decision_delay_seconds')
+    .select('bot_decision_delay_seconds, bot_fold_probability, bot_use_hand_strength')
     .eq('game_type', gameTypeKey)
     .single();
   
   const decisionDelay = gameDefaults?.bot_decision_delay_seconds ?? 2.0;
+  const useHandStrength = gameDefaults?.bot_use_hand_strength ?? true;
+  const universalFoldProbability = gameDefaults?.bot_fold_probability ?? 30;
   
   // Parse community cards for Holm games
   const communityCards: Card[] = isHolmGame && currentRound.community_cards
@@ -270,9 +272,15 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     
     const botCards: Card[] = playerCards?.cards ? (playerCards.cards as unknown as Card[]) : [];
     
-    // Calculate fold probability based on hand strength
-    const foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1);
-    console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength');
+    // Calculate fold probability - use hand strength or universal setting
+    let foldProbability: number;
+    if (useHandStrength) {
+      foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1);
+      console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength');
+    } else {
+      foldProbability = universalFoldProbability;
+      console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '%');
+    }
     
     // Add delay before bot makes decision
     await new Promise(resolve => setTimeout(resolve, decisionDelay * 1000));
@@ -305,9 +313,15 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     
     const botCards: Card[] = playerCards?.cards ? (playerCards.cards as unknown as Card[]) : [];
     
-    // Calculate fold probability based on hand strength and round
-    const foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber);
-    console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'fold probability:', foldProbability, '% (round', roundNumber, ')');
+    // Calculate fold probability - use hand strength or universal setting
+    let foldProbability: number;
+    if (useHandStrength) {
+      foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber);
+      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'fold probability:', foldProbability, '% (round', roundNumber, ', hand strength)');
+    } else {
+      foldProbability = universalFoldProbability;
+      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'using universal fold probability:', foldProbability, '%');
+    }
     
     // Stagger bot decisions slightly to feel more natural
     const randomDelay = (decisionDelay * 1000) + Math.random() * 1500;
