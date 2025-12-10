@@ -78,8 +78,8 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             const isFlipped = flippedCards.has(index);
             const isRevealed = index < revealed;
             
-            // Tight overlap - cards touching with minimal gap
-            const overlapStyle = index > 0 ? { marginLeft: '-20px' } : {};
+            // Tight overlap - cards significantly overlapping
+            const overlapStyle = index > 0 ? { marginLeft: '-28px' } : {};
             
             return (
               <div
