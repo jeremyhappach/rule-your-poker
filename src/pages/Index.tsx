@@ -28,6 +28,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, Trash2, ShieldAlert } from "lucide-react";
 import { VisualPreferences } from "@/components/VisualPreferences";
+import { PlayerManagement } from "@/components/PlayerManagement";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -332,6 +333,9 @@ const Index = () => {
 
               {/* Visual Preferences Section */}
               {user && <VisualPreferences userId={user.id} />}
+
+              {/* Player Management Section (Superusers Only) */}
+              {isSuperuser && user && <PlayerManagement currentUserId={user.id} />}
 
               {/* Superuser Admin Section */}
               {isSuperuser && (
