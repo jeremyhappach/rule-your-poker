@@ -183,6 +183,7 @@ const Game = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showPlayerOptions, setShowPlayerOptions] = useState(false);
   const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | null>(null); // Immediate trigger for ante animation
+  const [anteAnimationExpectedPot, setAnteAnimationExpectedPot] = useState<number | null>(null); // Expected pot after antes for re-ante scenarios
   
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
@@ -1911,6 +1912,11 @@ const Game = () => {
           } else {
             // Trigger ante animation when proceeding to round 1 (new antes collected)
             if (game?.next_round_number === 1) {
+              // Calculate expected pot: current pot + incoming antes
+              const activePlayers = players.filter(p => !p.sitting_out);
+              const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
+              const expectedPot = (game?.pot || 0) + anteTotal;
+              setAnteAnimationExpectedPot(expectedPot);
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
             }
             await proceedToNextRound(gameId);
@@ -2702,12 +2708,20 @@ const Game = () => {
       const isHolmGame = game?.game_type === 'holm-game';
       if (isHolmGame) {
         // IMMEDIATELY trigger ante animation BEFORE any DB operations start
+        // For first ante, pot starts at 0
+        const activePlayers = players.filter(p => !p.sitting_out);
+        const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
+        setAnteAnimationExpectedPot(anteTotal);
         setAnteAnimationTriggerId(`ante-${Date.now()}`);
         
         // For Holm game, let startHolmRound handle everything including status
         await startHolmRound(gameId, true); // First hand - collect antes
       } else {
         // IMMEDIATELY trigger ante animation BEFORE any DB operations start
+        // For first ante, pot starts at 0
+        const activePlayers = players.filter(p => !p.sitting_out);
+        const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
+        setAnteAnimationExpectedPot(anteTotal);
         setAnteAnimationTriggerId(`ante-${Date.now()}`);
         
         // For 3-5-7, update status first then start round
@@ -3468,7 +3482,8 @@ const Game = () => {
                 anteAmount={game.ante_amount}
                 gameStatus={game.status}
                 anteAnimationTriggerId={anteAnimationTriggerId}
-                onAnteAnimationStarted={() => setAnteAnimationTriggerId(null)}
+                anteAnimationExpectedPot={anteAnimationExpectedPot}
+                onAnteAnimationStarted={() => { setAnteAnimationTriggerId(null); setAnteAnimationExpectedPot(null); }}
                 chatBubbles={chatBubbles}
                 allMessages={allMessages}
                 onSendChat={sendChatMessage}
@@ -3601,7 +3616,8 @@ const Game = () => {
               anteAmount={game.ante_amount}
               gameStatus={game.status}
               anteAnimationTriggerId={anteAnimationTriggerId}
-              onAnteAnimationStarted={() => setAnteAnimationTriggerId(null)}
+              anteAnimationExpectedPot={anteAnimationExpectedPot}
+              onAnteAnimationStarted={() => { setAnteAnimationTriggerId(null); setAnteAnimationExpectedPot(null); }}
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}
