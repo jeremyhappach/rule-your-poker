@@ -3463,6 +3463,7 @@ const Game = () => {
                 gameType={game.game_type}
                 gameStatus={game.status}
                 anteAnimationTriggerId={anteAnimationTriggerId}
+                onAnteAnimationStarted={() => setAnteAnimationTriggerId(null)}
                 chatBubbles={chatBubbles}
                 allMessages={allMessages}
                 onSendChat={sendChatMessage}
@@ -3595,6 +3596,7 @@ const Game = () => {
               anteAmount={game.ante_amount}
               gameStatus={game.status}
               anteAnimationTriggerId={anteAnimationTriggerId}
+              onAnteAnimationStarted={() => setAnteAnimationTriggerId(null)}
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}

@@ -116,6 +116,7 @@ interface MobileGameTableProps {
   anteAmount?: number;
   gameStatus?: string; // For ante animation trigger
   anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
+  onAnteAnimationStarted?: () => void; // Callback to clear trigger after animation starts
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -168,6 +169,7 @@ export const MobileGameTable = ({
   anteAmount = 1,
   gameStatus,
   anteAnimationTriggerId,
+  onAnteAnimationStarted,
   isGameOver,
   isDealer,
   onNextGame,
@@ -751,6 +753,8 @@ export const MobileGameTable = ({
           gameStatus={gameStatus}
           triggerId={anteAnimationTriggerId}
           onAnimationStart={() => {
+            // Clear the trigger so it doesn't fire again on status change
+            onAnteAnimationStarted?.();
             // Freeze displayed pot at PRE-ANTE value when animation starts
             // The actual pot has already been updated, so subtract the ante total
             const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
