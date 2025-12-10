@@ -217,6 +217,9 @@ export const MobileGameTable = ({
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
+  // Manual trigger for value flash when ante arrives at pot
+  const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
+  
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<number | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
@@ -684,6 +687,13 @@ export const MobileGameTable = ({
           getClockwiseDistance={getClockwiseDistance}
           isWaitingPhase={isWaitingPhase}
           containerRef={tableContainerRef}
+          gameType={gameType}
+          currentRound={currentRound}
+          onChipsArrived={() => {
+            // Trigger +$X flash when chips arrive at pot
+            const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
+            setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: anteTotal });
+          }}
         />
         
         {/* Buck's On You Animation (Holm only) */}
@@ -746,6 +756,7 @@ export const MobileGameTable = ({
                 value={pot} 
                 position="top-right" 
                 disabled={isWaitingPhase}
+                manualTrigger={anteFlashTrigger}
               />
             </div>
           </div>

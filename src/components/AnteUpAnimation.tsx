@@ -16,6 +16,9 @@ interface AnteUpAnimationProps {
   getClockwiseDistance: (position: number) => number;
   isWaitingPhase?: boolean;
   containerRef: React.RefObject<HTMLDivElement>;
+  gameType?: string | null;
+  currentRound?: number;
+  onChipsArrived?: () => void;
 }
 
 export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
@@ -26,11 +29,14 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   getClockwiseDistance,
   isWaitingPhase = false,
   containerRef,
+  gameType,
+  currentRound,
+  onChipsArrived,
 }) => {
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
-  const prevPotRef = useRef<number>(0); // Start at 0 to detect initial pot
+  const prevRoundRef = useRef<number | null>(null);
   const animIdRef = useRef(0);
-  const hasTriggeredRef = useRef(false);
+  const hasTriggeredForRoundRef = useRef<number | null>(null);
 
   // Slot positions as percentages of container
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -49,27 +55,29 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // Reset when game goes back to waiting phase
   useEffect(() => {
     if (isWaitingPhase) {
-      prevPotRef.current = 0;
-      hasTriggeredRef.current = false;
+      prevRoundRef.current = null;
+      hasTriggeredForRoundRef.current = null;
     }
   }, [isWaitingPhase]);
 
   useEffect(() => {
-    if (isWaitingPhase || !containerRef.current) {
+    if (isWaitingPhase || !containerRef.current || !currentRound) {
       return;
     }
 
-    const potIncrease = pot - prevPotRef.current;
-    const expectedIncrease = anteAmount * activePlayers.length;
+    // Only trigger once per round - use round number as the trigger
+    const isNewRound = currentRound !== prevRoundRef.current && currentRound > 0;
+    const alreadyTriggeredThisRound = hasTriggeredForRoundRef.current === currentRound;
 
-    // Trigger animation if pot increased by expected ante amount (within tolerance)
-    if (potIncrease > 0 && potIncrease >= expectedIncrease * 0.8 && activePlayers.length > 0 && !hasTriggeredRef.current) {
-      hasTriggeredRef.current = true;
+    if (isNewRound && !alreadyTriggeredThisRound && activePlayers.length > 0) {
+      hasTriggeredForRoundRef.current = currentRound;
+      prevRoundRef.current = currentRound;
       
       const rect = containerRef.current.getBoundingClientRect();
       const centerX = rect.width / 2;
-      // Target the top edge of pot box area instead of center
-      const centerY = rect.height * 0.32;
+      // Target pot position differs by game type
+      // Holm: pot at top-[35%], 3-5-7: pot at top-1/2 (50%)
+      const centerY = gameType === 'holm-game' ? rect.height * 0.32 : rect.height * 0.47;
 
       const newAnims: ChipAnimation[] = activePlayers.map(player => {
         const isCurrentPlayer = currentPlayerPosition === player.position;
@@ -86,14 +94,19 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       });
 
       setAnimations(newAnims);
+      
+      // Trigger callback when chips arrive at pot (at 80% of 2s = 1.6s)
+      if (onChipsArrived) {
+        setTimeout(() => {
+          onChipsArrived();
+        }, 1600);
+      }
+      
       setTimeout(() => {
         setAnimations([]);
-        hasTriggeredRef.current = false; // Allow next ante animation
       }, 2200);
     }
-
-    prevPotRef.current = pot;
-  }, [pot, anteAmount, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef]);
+  }, [currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, onChipsArrived]);
 
   if (animations.length === 0) return null;
 
