@@ -18,6 +18,7 @@ interface AnteUpAnimationProps {
   containerRef: React.RefObject<HTMLDivElement>;
   gameType?: string | null;
   currentRound?: number;
+  onAnimationStart?: () => void;
   onChipsArrived?: () => void;
 }
 
@@ -31,6 +32,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   containerRef,
   gameType,
   currentRound,
+  onAnimationStart,
   onChipsArrived,
 }) => {
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
@@ -75,9 +77,10 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       
       const rect = containerRef.current.getBoundingClientRect();
       const centerX = rect.width / 2;
-      // Target pot position differs by game type
-      // Holm: pot at top-[35%], 3-5-7: pot at top-1/2 (50%)
-      const centerY = gameType === 'holm-game' ? rect.height * 0.32 : rect.height * 0.47;
+      // Target pot box TOP EDGE position differs by game type
+      // Holm: pot at top-[35%] with -translate-y-full, so top edge is at ~30%
+      // 3-5-7: pot at top-1/2 with -translate-y-1/2, so top edge is at ~42%
+      const centerY = gameType === 'holm-game' ? rect.height * 0.28 : rect.height * 0.40;
 
       const newAnims: ChipAnimation[] = activePlayers.map(player => {
         const isCurrentPlayer = currentPlayerPosition === player.position;
@@ -95,6 +98,11 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
 
       setAnimations(newAnims);
       
+      // Trigger animation start callback immediately
+      if (onAnimationStart) {
+        onAnimationStart();
+      }
+      
       // Trigger callback when chips arrive at pot (at 80% of 2s = 1.6s)
       if (onChipsArrived) {
         setTimeout(() => {
@@ -106,7 +114,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
         setAnimations([]);
       }, 2200);
     }
-  }, [currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, onChipsArrived]);
+  }, [currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, onAnimationStart, onChipsArrived]);
 
   if (animations.length === 0) return null;
 

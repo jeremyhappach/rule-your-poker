@@ -91,8 +91,8 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
   }, [value, disabled, manualTrigger]);
 
   const positionClasses: Record<string, string> = {
-    'top-right': 'top-0 right-1',
-    'top-left': 'top-0 left-1',
+    'top-right': '-top-2 right-0',
+    'top-left': '-top-2 left-1',
     'bottom-right': 'bottom-0 right-1',
     'bottom-left': 'bottom-0 left-1',
     'center': 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
@@ -108,7 +108,7 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
           className={`absolute ${positionClasses[position]} pointer-events-none z-50 ${className}`}
         >
           <span
-            className="text-poker-gold font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
+            className="text-poker-gold font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
             style={{
               animation: 'valueChangeFlash 2s ease-out forwards',
             }}
@@ -121,19 +121,15 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
         @keyframes valueChangeFlash {
           0% {
             opacity: 0;
-            transform: translateY(0) scale(0.8);
+            transform: translateY(0) scale(0.9);
           }
           15% {
             opacity: 1;
             transform: translateY(0) scale(1);
           }
-          50% {
-            opacity: 1;
-            transform: translateY(-10px);
-          }
           100% {
             opacity: 0;
-            transform: translateY(-24px);
+            transform: translateY(-40px);
           }
         }
       `}</style>

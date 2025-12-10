@@ -217,6 +217,10 @@ export const MobileGameTable = ({
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
+  // Delayed pot display - only update when chips arrive at pot box
+  const [displayedPot, setDisplayedPot] = useState(pot);
+  const isAnteAnimatingRef = useRef(false);
+  
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
@@ -689,8 +693,14 @@ export const MobileGameTable = ({
           containerRef={tableContainerRef}
           gameType={gameType}
           currentRound={currentRound}
+          onAnimationStart={() => {
+            // Freeze displayed pot at current value when animation starts
+            isAnteAnimatingRef.current = true;
+          }}
           onChipsArrived={() => {
-            // Trigger +$X flash when chips arrive at pot
+            // Update displayed pot and trigger flash simultaneously
+            setDisplayedPot(pot);
+            isAnteAnimatingRef.current = false;
             const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: anteTotal });
           }}
@@ -751,7 +761,7 @@ export const MobileGameTable = ({
             }`}>
               <span className={`text-poker-gold font-bold ${
                 gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
-              }`}>${Math.round(pot)}</span>
+              }`}>${Math.round(isAnteAnimatingRef.current ? displayedPot : pot)}</span>
               <ValueChangeFlash 
                 value={pot} 
                 position="top-right" 
