@@ -334,9 +334,6 @@ const Index = () => {
               {/* Visual Preferences Section */}
               {user && <VisualPreferences userId={user.id} />}
 
-              {/* Player Management Section (Superusers Only) */}
-              {isSuperuser && user && <PlayerManagement currentUserId={user.id} />}
-
               {/* Superuser Admin Section */}
               {isSuperuser && (
                 <div className="space-y-3">
@@ -344,6 +341,9 @@ const Index = () => {
                     <ShieldAlert className="h-4 w-4 text-destructive" />
                     <h3 className="font-semibold text-destructive">Admin Controls</h3>
                   </div>
+                  
+                  {/* Player Management */}
+                  {user && <PlayerManagement currentUserId={user.id} />}
                   <p className="text-sm text-muted-foreground">
                     Danger zone: These actions cannot be undone.
                   </p>
