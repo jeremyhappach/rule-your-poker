@@ -227,6 +227,9 @@ export const MobileGameTable = ({
   const [displayedPot, setDisplayedPot] = useState(pot);
   const isAnteAnimatingRef = useRef(false);
   
+  // Delayed chip display - decrement immediately on animation start, sync after
+  const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
+  
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
@@ -662,8 +665,8 @@ export const MobileGameTable = ({
             ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
             ${isClickable ? 'active:scale-95' : ''}
           `}>
-            <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-              ${Math.round(player.chips)}
+            <span className={`text-sm font-bold leading-none ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+              ${Math.round(displayedChips[player.id] ?? player.chips)}
             </span>
           </div>
         </div>
@@ -771,11 +774,19 @@ export const MobileGameTable = ({
             // The actual pot has already been updated, so subtract the ante total
             const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
             setDisplayedPot(Math.max(0, pot - anteTotal));
+            // IMMEDIATELY decrement displayed chips for all active players
+            const newDisplayedChips: Record<string, number> = {};
+            players.filter(p => !p.sitting_out).forEach(p => {
+              newDisplayedChips[p.id] = p.chips - anteAmount;
+            });
+            setDisplayedChips(newDisplayedChips);
             isAnteAnimatingRef.current = true;
           }}
           onChipsArrived={() => {
             // Update displayed pot to actual value and trigger flash simultaneously
             setDisplayedPot(pot);
+            // Clear displayed chips override - let real values show
+            setDisplayedChips({});
             isAnteAnimatingRef.current = false;
             const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: anteTotal });
@@ -1176,8 +1187,8 @@ export const MobileGameTable = ({
                       )}
                       
                       {/* Chip stack */}
-                      <div className={`text-right min-w-[45px] font-bold text-sm ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                        ${Math.round(player.chips)}
+                      <div className={`text-right min-w-[45px] font-bold text-sm ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                        ${Math.round(displayedChips[player.id] ?? player.chips)}
                       </div>
                     </div>
                   </div>
@@ -1263,8 +1274,8 @@ export const MobileGameTable = ({
                   {currentPlayer.profiles?.username || 'You'}
                   {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
-                <span className={`text-lg font-bold ${currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                  ${currentPlayer.chips.toLocaleString()}
+                <span className={`text-lg font-bold ${(displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                  ${Math.round(displayedChips[currentPlayer.id] ?? currentPlayer.chips).toLocaleString()}
                 </span>
                 {/* Hand evaluation for Holm only when Chucky is active */}
                 {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
