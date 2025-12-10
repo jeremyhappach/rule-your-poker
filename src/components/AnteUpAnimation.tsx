@@ -43,8 +43,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   const animIdRef = useRef(0);
   // Track what we've animated for to prevent re-triggers
   const lastAnimatedPotRef = useRef<number | null>(null);
-  const lastAnimatedRoundRef = useRef<number | null>(null);
   const lastTriggerIdRef = useRef<string | null>(null);
+  const hasAnimatedThisSessionRef = useRef(false);
 
   // Slot positions as percentages of container (where chips START from) - CENTER of chipstacks
   // These match the actual chip stack positions in MobileGameTable
@@ -107,8 +107,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   useEffect(() => {
     if (isWaitingPhase) {
       lastAnimatedPotRef.current = null;
-      lastAnimatedRoundRef.current = null;
       lastTriggerIdRef.current = null;
+      hasAnimatedThisSessionRef.current = false;
     }
   }, [isWaitingPhase]);
 
@@ -117,30 +117,16 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       return;
     }
 
-    const isHolm = gameType === 'holm-game';
-    
-    let shouldAnimate = false;
-    
-    // PRIMARY: Use triggerId for immediate triggering (set by Game.tsx right before ante collection)
-    if (triggerId && triggerId !== lastTriggerIdRef.current) {
-      shouldAnimate = true;
-      lastTriggerIdRef.current = triggerId;
-      // Also set round tracking to prevent fallback from double-firing
-      lastAnimatedRoundRef.current = currentRound;
-    } else if (!triggerId) {
-      // FALLBACK: Status-based detection for 3-5-7 games without triggerId
-      const isNowInProgress = gameStatus === 'in_progress';
-      if (!isHolm && currentRound === 1 && lastAnimatedRoundRef.current !== 1 && isNowInProgress) {
-        shouldAnimate = true;
-        lastAnimatedRoundRef.current = 1;
-      }
-      // Reset tracking when not in round 1 (allows re-animation when round cycles back)
-      if (currentRound !== 1) {
-        lastAnimatedRoundRef.current = currentRound;
-      }
+    // Only animate once per session via triggerId - no fallback logic
+    // This prevents double-firing entirely
+    if (!triggerId || triggerId === lastTriggerIdRef.current || hasAnimatedThisSessionRef.current) {
+      return;
     }
-
-    if (!shouldAnimate) return;
+    
+    lastTriggerIdRef.current = triggerId;
+    hasAnimatedThisSessionRef.current = true;
+    
+    const isHolm = gameType === 'holm-game';
 
     // Start animation immediately
     if (onAnimationStart) {
