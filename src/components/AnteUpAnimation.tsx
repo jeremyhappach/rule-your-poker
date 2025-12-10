@@ -82,7 +82,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     
     // Target the closest edge based on VISUAL slot position (relative to current player)
     // Add a small offset (5px) so chips stop just before the pot border
-    const edgeBuffer = 5;
+    const edgeBuffer = -3; // Negative = travel INTO pot area slightly
     switch (slotIndex) {
       case -1: // Current player (bottom) - target bottom edge
         return { x: centerX, y: potBottomY + edgeBuffer };
