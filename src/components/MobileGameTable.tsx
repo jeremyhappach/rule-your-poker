@@ -229,6 +229,7 @@ export const MobileGameTable = ({
   // Delay community cards rendering by 3 seconds after player cards appear (Holm only)
   // Initialize as false for Holm to prevent initial flicker
   const [showCommunityCards, setShowCommunityCards] = useState(gameType !== 'holm-game');
+  const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active 3s delay
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastRoundForCommunityDelayRef = useRef<number | null>(null);
   const hasShownCommunityThisRoundRef = useRef(false);
@@ -414,6 +415,7 @@ export const MobileGameTable = ({
     if (awaitingNextRound) {
       hasShownCommunityThisRoundRef.current = false;
       setShowCommunityCards(false);
+      setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
         communityCardsDelayRef.current = null;
@@ -424,6 +426,7 @@ export const MobileGameTable = ({
     // New round detected - start delay timer
     if (currentRound && currentRound !== lastRoundForCommunityDelayRef.current && !hasShownCommunityThisRoundRef.current) {
       lastRoundForCommunityDelayRef.current = currentRound;
+      setIsDelayingCommunityCards(true); // Mark that we're actively delaying
       
       // Clear any existing timeout
       if (communityCardsDelayRef.current) {
@@ -433,6 +436,7 @@ export const MobileGameTable = ({
       // Show community cards after 3 seconds
       communityCardsDelayRef.current = setTimeout(() => {
         setShowCommunityCards(true);
+        setIsDelayingCommunityCards(false); // Delay complete
         hasShownCommunityThisRoundRef.current = true;
       }, 3000);
     }
@@ -837,12 +841,12 @@ export const MobileGameTable = ({
                 hasHighlights={winningCardHighlights.hasHighlights}
               />
             </div>
-          ) : (
-            // "Dealing Board..." placeholder during 3-second delay
+          ) : isDelayingCommunityCards ? (
+            // "Dealing Board..." placeholder ONLY during active 3-second delay
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
               <span className="text-white/60 text-sm italic">Dealing Board...</span>
             </div>
-          )
+          ) : null
         )}
         
         {/* Chucky's Hand - directly below community cards, no container */}

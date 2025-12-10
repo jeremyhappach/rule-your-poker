@@ -60,34 +60,42 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   };
 
   // Get target position on pot box edge based on VISUAL slot position (closest edge to player)
-  // IMPORTANT: For Holm, pot CSS is "top-[35%] -translate-y-full" meaning BOTTOM is at 35%
-  // For 3-5-7, pot CSS is "top-1/2 -translate-y-1/2" meaning CENTER is at 50%
+  // Pot box position: Holm = bottom at 35%, 3-5-7 = center at 50%
+  // We calculate center and then offset to the nearest edge based on where the player chip starts
   const getPotBoxTarget = (slotIndex: number, rect: DOMRect, isHolm: boolean): { x: number; y: number } => {
     const centerX = rect.width / 2;
-    // Pot box approximate dimensions
-    const potHalfWidth = isHolm ? 45 : 65;
-    const potHalfHeight = isHolm ? 18 : 28;
+    
+    // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm, px-8 py-3 for 3-5-7)
+    // Holm: ~90px wide, ~32px tall
+    // 3-5-7: ~130px wide, ~56px tall
+    const potHalfWidth = isHolm ? 50 : 70; // Add buffer to stop at visible border
+    const potHalfHeight = isHolm ? 20 : 32;
     
     // Calculate pot center Y based on CSS positioning
-    // Holm: bottom at 35%, so center is at 35% - halfHeight
-    // 3-5-7: center at 50%
-    const potCenterY = isHolm 
-      ? rect.height * 0.35 - potHalfHeight 
-      : rect.height * 0.50;
+    // Holm: "top-[35%] -translate-y-full" means bottom edge at 35%, so center = 35% - halfHeight
+    // 3-5-7: "top-1/2 -translate-y-1/2" means center at 50%
+    const potBottomY = isHolm ? rect.height * 0.35 : rect.height * 0.50 + potHalfHeight;
+    const potTopY = potBottomY - potHalfHeight * 2;
+    const potCenterY = (potTopY + potBottomY) / 2;
     
-    // Target the closest edge based on VISUAL slot position
+    // Target the closest edge based on VISUAL slot position (relative to current player)
+    // Add a small offset (5px) so chips stop just before the pot border
+    const edgeBuffer = 5;
     switch (slotIndex) {
       case -1: // Current player (bottom) - target bottom edge
-      case 0:  // Bottom-left - target bottom edge
-      case 5:  // Bottom-right - target bottom edge
-        return { x: centerX, y: potCenterY + potHalfHeight };
-      case 2:  // Top-left - target top edge
-      case 3:  // Top-right - target top edge
-        return { x: centerX, y: potCenterY - potHalfHeight };
+        return { x: centerX, y: potBottomY + edgeBuffer };
+      case 0:  // Bottom-left - target bottom-left corner area
+        return { x: centerX - potHalfWidth * 0.5, y: potBottomY + edgeBuffer };
+      case 5:  // Bottom-right - target bottom-right corner area
+        return { x: centerX + potHalfWidth * 0.5, y: potBottomY + edgeBuffer };
+      case 2:  // Top-left - target top-left corner area
+        return { x: centerX - potHalfWidth * 0.5, y: potTopY - edgeBuffer };
+      case 3:  // Top-right - target top-right corner area
+        return { x: centerX + potHalfWidth * 0.5, y: potTopY - edgeBuffer };
       case 1:  // Middle-left - target left edge
-        return { x: centerX - potHalfWidth, y: potCenterY };
+        return { x: centerX - potHalfWidth - edgeBuffer, y: potCenterY };
       case 4:  // Middle-right - target right edge
-        return { x: centerX + potHalfWidth, y: potCenterY };
+        return { x: centerX + potHalfWidth + edgeBuffer, y: potCenterY };
       default:
         return { x: centerX, y: potCenterY };
     }
@@ -104,28 +112,26 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   }, [isWaitingPhase]);
 
   useEffect(() => {
-    if (isWaitingPhase || !containerRef.current || !currentRound || activePlayers.length === 0) {
+    if (isWaitingPhase || !containerRef.current || activePlayers.length === 0) {
       return;
     }
 
     const isHolm = gameType === 'holm-game';
     const wasAnteDecision = lastStatusRef.current === 'ante_decision';
     const isNowInProgress = gameStatus === 'in_progress';
+    const wasWaiting = lastStatusRef.current === 'waiting_for_players';
     
-    // Update status ref
+    // Update status ref AFTER checking
+    const previousStatus = lastStatusRef.current;
     lastStatusRef.current = gameStatus || null;
     
     let shouldAnimate = false;
     
     if (isHolm) {
-      // Holm: trigger on hand 1 ONLY when status changes to in_progress
-      // Also trigger if we missed the transition (component mounted after status changed)
-      if (currentRound === 1 && !hasAnimatedThisSessionRef.current) {
-        if (wasAnteDecision && isNowInProgress) {
-          shouldAnimate = true;
-          hasAnimatedThisSessionRef.current = true;
-        } else if (isNowInProgress && lastStatusRef.current === null) {
-          // First render and already in_progress on round 1 - we missed the transition
+      // Holm: trigger ONCE per session when game transitions to in_progress
+      // Can happen from ante_decision->in_progress OR waiting->in_progress (if dealer auto-config)
+      if (!hasAnimatedThisSessionRef.current && isNowInProgress) {
+        if (wasAnteDecision || (wasWaiting && previousStatus !== null)) {
           shouldAnimate = true;
           hasAnimatedThisSessionRef.current = true;
         }
