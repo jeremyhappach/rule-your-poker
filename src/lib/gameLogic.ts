@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank } from "./cardUtils";
+import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, has357Hand } from "./cardUtils";
 
 export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
@@ -745,6 +745,74 @@ export async function endRound(gameId: string) {
   });
   
   let resultMessage = '';
+
+  // ============ 357 SWEEP CHECK (Round 1 only) ============
+  // If any player who stayed has 3, 5, 7 in round 1, they sweep the pot and win all legs instantly
+  if (currentRound === 1) {
+    const { data: playerCardsFor357 } = await supabase
+      .from('player_cards')
+      .select('*')
+      .eq('round_id', round.id);
+    
+    if (playerCardsFor357 && playerCardsFor357.length > 0) {
+      for (const pc of playerCardsFor357) {
+        const player = playersWhoStayed.find(p => p.id === pc.player_id);
+        if (player) {
+          const cards = pc.cards as unknown as Card[];
+          if (has357Hand(cards)) {
+            const username = player.profiles?.username || `Player ${player.position}`;
+            console.log('[endRound] 🎉 357 SWEEP DETECTED!', { playerId: player.id, username, cards });
+            
+            // Award all legs needed to win
+            const currentPot = game.pot || 0;
+            
+            // Give winner all the legs
+            await supabase
+              .from('players')
+              .update({ legs: legsToWin })
+              .eq('id', player.id);
+            
+            // Set the special result message for 357 sweep
+            const sweepMessage = `357_SWEEP:${username}`;
+            
+            // Set awaiting_next_round with special sweep message
+            await supabase
+              .from('games')
+              .update({ 
+                last_round_result: sweepMessage,
+                awaiting_next_round: true,
+                next_round_number: 1
+              })
+              .eq('id', gameId);
+            
+            // After 5 seconds (animation duration), trigger game over
+            setTimeout(async () => {
+              // Fetch fresh player data
+              const { data: freshPlayers } = await supabase
+                .from('players')
+                .select('*, profiles(username)')
+                .eq('game_id', gameId);
+              
+              await handleGameOver(
+                gameId,
+                player.id,
+                username,
+                legsToWin,
+                freshPlayers || allPlayers,
+                currentPot,
+                legValue,
+                legsToWin,
+                game.dealer_position || 1
+              );
+            }, 5000);
+            
+            return; // Exit - 357 sweep handled
+          }
+        }
+      }
+    }
+  }
+  // ============ END 357 SWEEP CHECK ============
 
   // Award leg only if exactly one player stayed
   if (playersWhoStayed.length === 1) {
