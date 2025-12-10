@@ -11,15 +11,22 @@ interface ChuckyHandProps {
 }
 
 export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: ChuckyHandProps) => {
-  const [flippingCards, setFlippingCards] = useState<Set<number>>(new Set());
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const prevRevealedRef = useRef(revealed);
   const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const cardsKeyRef = useRef(0);
   
+  // Reset when cards change (new hand)
   useEffect(() => {
     flipTimeoutsRef.current.forEach(t => clearTimeout(t));
     flipTimeoutsRef.current = [];
-    
+    setFlippedCards(new Set());
+    prevRevealedRef.current = 0;
+    cardsKeyRef.current += 1;
+  }, [cards.length]);
+  
+  // Handle reveal progression
+  useEffect(() => {
     if (revealed > prevRevealedRef.current) {
       const newlyRevealed: number[] = [];
       for (let i = prevRevealedRef.current; i < revealed; i++) {
@@ -30,38 +37,19 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
         const isLastCard = i === newlyRevealed.length - 1 && newlyRevealed.length > 1;
         const delay = isLastCard ? 1500 : i * 200;
         
-        const startTimeout = setTimeout(() => {
-          setFlippingCards(prev => new Set([...prev, cardIndex]));
-          
-          const endTimeout = setTimeout(() => {
-            setFlippedCards(prev => new Set([...prev, cardIndex]));
-            setFlippingCards(prev => {
-              const next = new Set(prev);
-              next.delete(cardIndex);
-              return next;
-            });
-          }, 1200);
-          
-          flipTimeoutsRef.current.push(endTimeout);
+        const timeout = setTimeout(() => {
+          setFlippedCards(prev => new Set([...prev, cardIndex]));
         }, delay);
         
-        flipTimeoutsRef.current.push(startTimeout);
+        flipTimeoutsRef.current.push(timeout);
       });
+      
+      prevRevealedRef.current = revealed;
     } else if (revealed < prevRevealedRef.current) {
-      setFlippingCards(new Set());
       setFlippedCards(new Set());
+      prevRevealedRef.current = revealed;
     }
-    
-    prevRevealedRef.current = revealed;
   }, [revealed]);
-  
-  useEffect(() => {
-    flipTimeoutsRef.current.forEach(t => clearTimeout(t));
-    flipTimeoutsRef.current = [];
-    setFlippingCards(new Set());
-    setFlippedCards(new Set());
-    prevRevealedRef.current = revealed;
-  }, [cards.length]);
   
   useEffect(() => {
     return () => {
@@ -84,58 +72,28 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             Chucky {revealed < cards.length && `(${revealed}/${cards.length})`}
           </span>
         </div>
-        {/* Cards overlapping like player exposed cards */}
+        {/* Cards tightly overlapping */}
         <div className="flex" style={{ perspective: '1000px' }}>
           {cards.map((card, index) => {
+            const isFlipped = flippedCards.has(index);
             const isRevealed = index < revealed;
-            const isFlipping = flippingCards.has(index);
-            const hasFlipped = flippedCards.has(index);
-            // Show front if: has completed flip animation, OR is revealed and not currently flipping
-            const showFront = hasFlipped || (isRevealed && !isFlipping);
             
-            // Card overlap styling - tighter like exposed player cards
-            const overlapStyle = index > 0 ? { marginLeft: '-12px' } : {};
+            // Tight overlap - cards touching with minimal gap
+            const overlapStyle = index > 0 ? { marginLeft: '-20px' } : {};
             
-            // If card is fully revealed (not animating), render a simple PlayingCard without any transform styles
-            if (showFront && !isFlipping) {
-              return (
-                <div key={index} style={overlapStyle}>
-                  <PlayingCard
-                    card={card}
-                    size="lg"
-                    isHidden={false}
-                    borderColor="border-red-500"
-                  />
-                </div>
-              );
-            }
-            
-            // Card back (not yet revealed)
-            if (!isRevealed && !isFlipping) {
-              return (
-                <div key={index} style={overlapStyle}>
-                  <PlayingCard
-                    isHidden
-                    size="lg"
-                    borderColor="border-red-500"
-                  />
-                </div>
-              );
-            }
-            
-            // Flip animation rendering
             return (
               <div
-                key={index}
+                key={`${cardsKeyRef.current}-${index}`}
                 className="w-9 h-12 sm:w-10 sm:h-14 relative"
                 style={{ 
                   ...overlapStyle,
                   transformStyle: 'preserve-3d',
-                  transition: 'transform 1.2s ease-in-out',
-                  transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  transition: 'transform 1s ease-in-out',
+                  transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  zIndex: index,
                 }}
               >
-                {/* Card Front */}
+                {/* Card Back - visible when not flipped */}
                 <div
                   className="absolute inset-0"
                   style={{
@@ -144,13 +102,12 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
                   }}
                 >
                   <PlayingCard
-                    card={card}
+                    isHidden
                     size="lg"
-                    isHidden={false}
                     borderColor="border-red-500"
                   />
                 </div>
-                {/* Card Back */}
+                {/* Card Front - visible when flipped */}
                 <div
                   className="absolute inset-0"
                   style={{
@@ -159,8 +116,9 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
                   }}
                 >
                   <PlayingCard
-                    isHidden
+                    card={card}
                     size="lg"
+                    isHidden={false}
                     borderColor="border-red-500"
                   />
                 </div>
