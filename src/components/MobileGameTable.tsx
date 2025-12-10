@@ -903,6 +903,23 @@ export const MobileGameTable = ({
           </div>
         )}
         
+        {/* Dealer button on felt for current player */}
+        {currentPlayer && dealerPosition === currentPlayer.position && (
+          <div 
+            className="absolute z-20"
+            style={{
+              bottom: '8px',
+              left: '45%',
+              transform: 'translateX(-50%)',
+              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            <div className="w-7 h-7 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-xs">D</span>
+            </div>
+          </div>
+        )}
+        
         {/* Open seats for seat selection - show in actual positions around the table */}
         {canSelectSeat && openSeats.length > 0 && (() => {
           // Use same clockwise distance calculation as occupied player positions
@@ -1118,12 +1135,6 @@ export const MobileGameTable = ({
             <div className="flex flex-col gap-2 mt-16">
               {/* Name, chips, dealer badge, and hand eval in a row */}
               <div className="flex items-center justify-center gap-3">
-                {/* Dealer badge for current player */}
-                {dealerPosition === currentPlayer.position && (
-                  <div className="w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-[10px]">D</span>
-                  </div>
-                )}
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
                   {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
