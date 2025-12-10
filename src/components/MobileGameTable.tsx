@@ -826,15 +826,24 @@ export const MobileGameTable = ({
         )}
         
         {/* Community Cards - vertically centered, delayed 3 seconds after player cards */}
-        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
-            <CommunityCards 
-              cards={communityCards} 
-              revealed={communityCardsRevealed || 2} 
-              highlightedIndices={winningCardHighlights.communityIndices}
-              kickerIndices={winningCardHighlights.kickerCommunityIndices}
-              hasHighlights={winningCardHighlights.hasHighlights}
-            />
-          </div>}
+        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
+          showCommunityCards ? (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+              <CommunityCards 
+                cards={communityCards} 
+                revealed={communityCardsRevealed || 2} 
+                highlightedIndices={winningCardHighlights.communityIndices}
+                kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                hasHighlights={winningCardHighlights.hasHighlights}
+              />
+            </div>
+          ) : (
+            // "Dealing Board..." placeholder during 3-second delay
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+              <span className="text-white/60 text-sm italic">Dealing Board...</span>
+            </div>
+          )
+        )}
         
         {/* Chucky's Hand - directly below community cards, no container */}
         {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
