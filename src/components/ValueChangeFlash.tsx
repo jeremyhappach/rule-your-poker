@@ -78,7 +78,7 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
           className={`absolute ${positionClasses[position]} pointer-events-none z-50 ${className}`}
         >
           <span
-            className="text-green-400 font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+            className="text-poker-gold font-bold text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
             style={{
               animation: 'valueChangeFlash 2s ease-out forwards',
             }}

@@ -68,7 +68,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       
       const rect = containerRef.current.getBoundingClientRect();
       const centerX = rect.width / 2;
-      const centerY = rect.height * 0.45;
+      // Target the top edge of pot box area instead of center
+      const centerY = rect.height * 0.32;
 
       const newAnims: ChipAnimation[] = activePlayers.map(player => {
         const isCurrentPlayer = currentPlayerPosition === player.position;
@@ -88,7 +89,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       setTimeout(() => {
         setAnimations([]);
         hasTriggeredRef.current = false; // Allow next ante animation
-      }, 1300);
+      }, 2200);
     }
 
     prevPotRef.current = pot;
@@ -111,7 +112,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
           <div
             className="w-7 h-7 rounded-full bg-sky-400 border-2 border-white shadow-lg flex items-center justify-center"
             style={{
-              animation: `anteChipMove${i} 1.2s ease-in-out forwards`,
+              animation: `anteChipMove${i} 2s ease-in-out forwards`,
             }}
           >
             <span className="text-black text-[10px] font-bold">${anteAmount}</span>
@@ -122,7 +123,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
                 transform: translate(0, 0) scale(1);
                 opacity: 1;
               }
-              70% {
+              80% {
                 transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(0.9);
                 opacity: 1;
               }
