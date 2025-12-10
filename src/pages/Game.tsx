@@ -3461,6 +3461,7 @@ const Game = () => {
                 onFold={() => {}}
                 onSelectSeat={handleSelectSeat}
                 gameType={game.game_type}
+                anteAmount={game.ante_amount}
                 gameStatus={game.status}
                 anteAnimationTriggerId={anteAnimationTriggerId}
                 onAnteAnimationStarted={() => setAnteAnimationTriggerId(null)}
