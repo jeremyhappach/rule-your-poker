@@ -44,7 +44,6 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // Track what we've animated for to prevent re-triggers
   const lastAnimatedPotRef = useRef<number | null>(null);
   const lastTriggerIdRef = useRef<string | null>(null);
-  const hasAnimatedThisSessionRef = useRef(false);
 
   // Slot positions as percentages of container (where chips START from) - CENTER of chipstacks
   // These match the actual chip stack positions in MobileGameTable
@@ -108,7 +107,6 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     if (isWaitingPhase) {
       lastAnimatedPotRef.current = null;
       lastTriggerIdRef.current = null;
-      hasAnimatedThisSessionRef.current = false;
     }
   }, [isWaitingPhase]);
 
@@ -117,14 +115,13 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       return;
     }
 
-    // Only animate once per session via triggerId - no fallback logic
-    // This prevents double-firing entirely
-    if (!triggerId || triggerId === lastTriggerIdRef.current || hasAnimatedThisSessionRef.current) {
+    // Only animate via triggerId - lastTriggerIdRef prevents duplicate animations from same trigger
+    // Removed hasAnimatedThisSessionRef to allow re-antes in 3-5-7 (round 1 after round 3)
+    if (!triggerId || triggerId === lastTriggerIdRef.current) {
       return;
     }
     
     lastTriggerIdRef.current = triggerId;
-    hasAnimatedThisSessionRef.current = true;
     
     const isHolm = gameType === 'holm-game';
 
