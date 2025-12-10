@@ -170,6 +170,14 @@ const Game = () => {
     chucky_cards: number;
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
+  
+  // Track session-specific configs per game type (for remembering settings when switching back)
+  interface SessionGameConfigs {
+    'holm-game'?: PreviousGameConfig;
+    '3-5-7'?: PreviousGameConfig;
+  }
+  const [sessionGameConfigs, setSessionGameConfigs] = useState<SessionGameConfigs>({});
+  
   const [isRunningItBack, setIsRunningItBack] = useState(false);
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
   const [selectedBot, setSelectedBot] = useState<Player | null>(null);
@@ -2404,10 +2412,9 @@ const Game = () => {
 
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
     
-    // CAPTURE previous game config for "Running it Back" detection
+    // CAPTURE previous game config for "Running it Back" detection AND session-specific configs
     if (game) {
-      console.log('[GAME OVER] Capturing previous game config for running-it-back detection');
-      setPreviousGameConfig({
+      const gameConfig = {
         game_type: game.game_type || null,
         ante_amount: game.ante_amount || 2,
         leg_value: game.leg_value || 1,
@@ -2417,7 +2424,18 @@ const Game = () => {
         pot_max_enabled: game.pot_max_enabled ?? true,
         pot_max_value: game.pot_max_value || 10,
         chucky_cards: game.chucky_cards || 4
-      });
+      };
+      
+      console.log('[GAME OVER] Capturing game config:', gameConfig);
+      setPreviousGameConfig(gameConfig);
+      
+      // Also save to session-specific configs by game type
+      const gameTypeKey = game.game_type === 'holm-game' || game.game_type === 'holm' ? 'holm-game' : '3-5-7';
+      setSessionGameConfigs(prev => ({
+        ...prev,
+        [gameTypeKey]: gameConfig
+      }));
+      console.log('[GAME OVER] Saved session config for game type:', gameTypeKey);
     }
 
     // CRITICAL: Delete all old rounds and player_cards from the previous game
@@ -3084,7 +3102,7 @@ const Game = () => {
                   gameStatus={game.status}
                   isHost={isCreator}
                   isPaused={game.is_paused}
-                  onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection') ? handleTogglePause : undefined}
+                  onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
                   onAddBot={async () => {
                     try {
                       await addBotPlayerSittingOut(gameId!);
@@ -3187,7 +3205,7 @@ const Game = () => {
                   gameStatus={game.status}
                   isHost={isCreator}
                   isPaused={game.is_paused}
-                  onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection') ? handleTogglePause : undefined}
+                  onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
                   onAddBot={async () => {
                     try {
                       await addBotPlayerSittingOut(gameId!);
@@ -3394,6 +3412,7 @@ const Game = () => {
                     dealerPosition={game.dealer_position || 1}
                     previousGameType={game.game_type || undefined}
                     previousGameConfig={previousGameConfig}
+                    sessionGameConfigs={sessionGameConfigs}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />
