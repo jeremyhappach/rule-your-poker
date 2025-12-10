@@ -182,6 +182,7 @@ const Game = () => {
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showPlayerOptions, setShowPlayerOptions] = useState(false);
+  const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | null>(null); // Immediate trigger for ante animation
   
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
@@ -2696,9 +2697,15 @@ const Game = () => {
     try {
       const isHolmGame = game?.game_type === 'holm-game';
       if (isHolmGame) {
+        // IMMEDIATELY trigger ante animation BEFORE any DB operations start
+        setAnteAnimationTriggerId(`ante-${Date.now()}`);
+        
         // For Holm game, let startHolmRound handle everything including status
         await startHolmRound(gameId, true); // First hand - collect antes
       } else {
+        // IMMEDIATELY trigger ante animation BEFORE any DB operations start
+        setAnteAnimationTriggerId(`ante-${Date.now()}`);
+        
         // For 3-5-7, update status first then start round
         await supabase
           .from('games')
@@ -3455,6 +3462,7 @@ const Game = () => {
                 onSelectSeat={handleSelectSeat}
                 gameType={game.game_type}
                 gameStatus={game.status}
+                anteAnimationTriggerId={anteAnimationTriggerId}
                 chatBubbles={chatBubbles}
                 allMessages={allMessages}
                 onSendChat={sendChatMessage}
@@ -3586,6 +3594,7 @@ const Game = () => {
               isPaused={game.is_paused || false}
               anteAmount={game.ante_amount}
               gameStatus={game.status}
+              anteAnimationTriggerId={anteAnimationTriggerId}
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}

@@ -19,6 +19,7 @@ interface AnteUpAnimationProps {
   gameType?: string | null;
   currentRound?: number;
   gameStatus?: string; // Game status to detect ante collection moment
+  triggerId?: string | null; // Direct trigger from Game.tsx - fires immediately when set
   onAnimationStart?: () => void;
   onChipsArrived?: () => void;
 }
@@ -34,6 +35,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   gameType,
   currentRound,
   gameStatus,
+  triggerId,
   onAnimationStart,
   onChipsArrived,
 }) => {
@@ -42,7 +44,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // Track what we've animated for to prevent re-triggers
   const lastAnimatedPotRef = useRef<number | null>(null);
   const lastAnimatedRoundRef = useRef<number | null>(null);
-  const hasAnimatedThisSessionRef = useRef(false);
+  const lastTriggerIdRef = useRef<string | null>(null);
 
   // Slot positions as percentages of container (where chips START from) - RELATIVE to current player
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -105,7 +107,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     if (isWaitingPhase) {
       lastAnimatedPotRef.current = null;
       lastAnimatedRoundRef.current = null;
-      hasAnimatedThisSessionRef.current = false;
+      lastTriggerIdRef.current = null;
     }
   }, [isWaitingPhase]);
 
@@ -115,20 +117,17 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     }
 
     const isHolm = gameType === 'holm-game';
-    const isNowInProgress = gameStatus === 'in_progress';
     
     let shouldAnimate = false;
     
-    if (isHolm) {
-      // Holm: trigger ONCE per session when game is in_progress and we haven't animated
-      // This catches: ante_decision->in_progress transition OR first render when already in_progress
-      if (!hasAnimatedThisSessionRef.current && isNowInProgress) {
-        shouldAnimate = true;
-        hasAnimatedThisSessionRef.current = true;
-      }
-    } else {
-      // 3-5-7: animate when round 1 starts and we haven't animated this round yet
-      if (currentRound === 1 && lastAnimatedRoundRef.current !== 1 && isNowInProgress) {
+    // PRIMARY: Use triggerId for immediate triggering (set by Game.tsx right before ante collection)
+    if (triggerId && triggerId !== lastTriggerIdRef.current) {
+      shouldAnimate = true;
+      lastTriggerIdRef.current = triggerId;
+    } else if (!triggerId) {
+      // FALLBACK: Status-based detection for 3-5-7 games without triggerId
+      const isNowInProgress = gameStatus === 'in_progress';
+      if (!isHolm && currentRound === 1 && lastAnimatedRoundRef.current !== 1 && isNowInProgress) {
         shouldAnimate = true;
         lastAnimatedRoundRef.current = 1;
       }
@@ -175,7 +174,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     setTimeout(() => {
       setAnimations([]);
     }, 2200);
-  }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, gameStatus, anteAmount, onAnimationStart, onChipsArrived]);
+  }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, gameStatus, triggerId, anteAmount, onAnimationStart, onChipsArrived]);
 
   if (animations.length === 0) return null;
 
