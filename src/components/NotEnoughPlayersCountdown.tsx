@@ -109,39 +109,41 @@ export const NotEnoughPlayersCountdown = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Handle session end when countdown reaches 0
+  // Handle revert to waiting_for_players when countdown reaches 0
   useEffect(() => {
     if (countdown <= 0 && !hasEndedRef.current) {
       hasEndedRef.current = true;
       
-      const endSession = async () => {
+      const revertToWaiting = async () => {
+        // Revert to waiting_for_players status - preserve all chip stacks
         await supabase
           .from('games')
           .update({
-            status: 'session_ended',
-            session_ended_at: new Date().toISOString()
+            status: 'waiting_for_players',
+            config_complete: false,
+            game_over_at: null,
+            last_round_result: null
           })
           .eq('id', gameId);
         
-      onCompleteRef.current();
-      // Don't navigate here - let the parent component handle navigation after session ends
+        onCompleteRef.current();
       };
       
-      endSession();
+      revertToWaiting();
     }
-  }, [countdown, gameId, navigate]);
+  }, [countdown, gameId]);
 
   // Show rejoin button if player is sitting out and not already waiting
   const showRejoinButton = currentPlayerId && isCurrentPlayerSittingOut && !isCurrentPlayerWaiting;
 
   return (
-    <Card className="fixed inset-0 m-auto w-80 h-auto max-h-72 z-50 bg-destructive/90 border-destructive">
+    <Card className="fixed inset-0 m-auto w-80 h-auto max-h-72 z-50 bg-amber-900/95 border-amber-600">
       <CardHeader className="text-center pb-2">
         <CardTitle className="text-white text-xl">Not Enough Active Players</CardTitle>
       </CardHeader>
       <CardContent className="text-center space-y-3">
-        <p className="text-white/90">Session will end in</p>
-        <Badge variant="outline" className="text-4xl px-6 py-3 bg-white text-destructive font-bold">
+        <p className="text-white/90">Returning to lobby in</p>
+        <Badge variant="outline" className="text-4xl px-6 py-3 bg-white text-amber-900 font-bold">
           {countdown}
         </Badge>
         
@@ -152,7 +154,7 @@ export const NotEnoughPlayersCountdown = ({
             size="lg"
             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 text-lg animate-pulse"
           >
-            {isRejoining ? "Rejoining..." : "🎮 REJOIN GAME"}
+            {isRejoining ? "Rejoining..." : "REJOIN GAME"}
           </Button>
         ) : isCurrentPlayerWaiting ? (
           <p className="text-green-300 font-semibold">✓ You're queued to rejoin!</p>
