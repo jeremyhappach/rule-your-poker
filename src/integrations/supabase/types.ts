@@ -395,6 +395,7 @@ export type Database = {
           created_at: string
           deck_color_mode: string
           id: string
+          is_active: boolean
           is_superuser: boolean
           table_layout: string
           username: string
@@ -404,6 +405,7 @@ export type Database = {
           created_at?: string
           deck_color_mode?: string
           id: string
+          is_active?: boolean
           is_superuser?: boolean
           table_layout?: string
           username: string
@@ -413,6 +415,7 @@ export type Database = {
           created_at?: string
           deck_color_mode?: string
           id?: string
+          is_active?: boolean
           is_superuser?: boolean
           table_layout?: string
           username?: string

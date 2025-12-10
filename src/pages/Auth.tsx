@@ -84,12 +84,32 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+      
+      // Check if user is active
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('id', data.user.id)
+          .maybeSingle();
+        
+        if (profile && !profile.is_active) {
+          // Sign out the inactive user
+          await supabase.auth.signOut();
+          toast({
+            title: "Account Inactive",
+            description: "Your account has been deactivated. Please contact an administrator.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
       
       // Login successful - navigate will happen via auth state change listener
     } catch (error: any) {
