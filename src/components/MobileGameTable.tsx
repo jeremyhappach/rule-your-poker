@@ -980,9 +980,9 @@ export const MobileGameTable = ({
         </button>
         
         {/* Collapsed view - Game Lobby with all players */}
-        {!isCardSectionExpanded && <div className="px-3 pb-4 flex-1 overflow-auto">
+        {!isCardSectionExpanded && <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2 flex-shrink-0">
               <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
@@ -994,9 +994,59 @@ export const MobileGameTable = ({
               </div>
             </div>
             
-            {/* Chat panel in collapsed view - always visible */}
+            {/* Scrollable player list - sorted by chips descending */}
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
+              {[...players].sort((a, b) => b.chips - a.chips).map(player => {
+                const isCurrentUser = player.user_id === currentUserId;
+                const isDealing = player.position === dealerPosition;
+                const hasBuck = player.position === buckPosition;
+                return (
+                  <div key={player.id} className={`
+                    flex items-center justify-between py-1.5 px-2 rounded-md
+                    ${isCurrentUser ? 'bg-primary/10' : 'bg-transparent'}
+                    ${player.sitting_out ? 'opacity-50' : ''}
+                  `}>
+                    {/* Left: Name with badges inline */}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
+                        {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
+                      </span>
+                      {isDealing && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
+                      {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
+                      {player.is_bot && <span className="text-[9px] text-muted-foreground">(Bot)</span>}
+                      {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
+                    </div>
+                    
+                    {/* Right: Chips and Legs */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Leg indicator for 3-5-7 */}
+                      {gameType !== 'holm-game' && player.legs > 0 && (
+                        <div className="flex">
+                          {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
+                            <div 
+                              key={i} 
+                              className="w-4 h-4 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm" 
+                              style={{ marginLeft: i > 0 ? '-4px' : '0', zIndex: Math.min(player.legs, legsToWin) - i }}
+                            >
+                              <span className="text-slate-800 font-bold text-[8px]">L</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Chip stack */}
+                      <div className={`text-right min-w-[45px] font-bold text-sm ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                        ${Math.round(player.chips)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Chat panel - fixed at bottom */}
             {onSendChat && (
-              <div className="mb-3">
+              <div className="flex-shrink-0 mt-2 pt-2 border-t border-border">
                 <MobileChatPanel
                   messages={allMessages}
                   onSend={onSendChat}
@@ -1004,93 +1054,6 @@ export const MobileGameTable = ({
                 />
               </div>
             )}
-            
-            {/* All players list */}
-            <div className="space-y-2">
-              {players.sort((a, b) => a.position - b.position).map(player => {
-            const isCurrentUser = player.user_id === currentUserId;
-            const isDealing = player.position === dealerPosition;
-            const hasBuck = player.position === buckPosition;
-            return <div key={player.id} className={`
-                        flex items-center justify-between p-2.5 rounded-lg border
-                        ${isCurrentUser ? 'bg-primary/10 border-primary/30' : 'bg-card border-border'}
-                        ${player.sitting_out ? 'opacity-50' : ''}
-                      `}>
-                      {/* Left: Position, Name, Badges */}
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className={`
-                          w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
-                          ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}
-                        `}>
-                          {player.position}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`text-sm font-semibold truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
-                              {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `Player ${player.position}`)}
-                            </span>
-                            {isDealing && <Badge className="text-[9px] px-1 py-0 bg-poker-gold text-black h-4">D</Badge>}
-                            {hasBuck && gameType === 'holm-game' && <Badge className="text-[9px] px-1 py-0 bg-amber-600 text-white h-4">Buck</Badge>}
-                            {player.is_bot && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Bot</Badge>}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {player.sitting_out && <span className="text-[10px] text-muted-foreground">Sitting out</span>}
-                            {player.current_decision && <span className={`text-[10px] font-medium ${player.current_decision === 'stay' ? 'text-green-500' : 'text-red-400'}`}>
-                                {player.current_decision === 'stay' ? '✓ Stayed' : '✗ Folded'}
-                              </span>}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Right: Chips and Legs */}
-                      <div className="flex items-center gap-3">
-                        {/* Leg indicator for 3-5-7 - use overlapping L circles */}
-                        {gameType !== 'holm-game' && player.legs > 0 && <div className="flex">
-                            {Array.from({
-                    length: Math.min(player.legs, legsToWin)
-                  }).map((_, i) => <div key={i} className="w-5 h-5 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm" style={{
-                    marginLeft: i > 0 ? '-6px' : '0',
-                    zIndex: Math.min(player.legs, legsToWin) - i
-                  }}>
-                                <span className="text-slate-800 font-bold text-[10px]">L</span>
-                              </div>)}
-                          </div>}
-                        
-                        {/* Chip stack */}
-                        <div className={`
-                          text-right min-w-[50px] font-bold text-sm
-                          ${player.chips < 0 ? 'text-destructive' : 'text-poker-gold'}
-                        `}>
-                          ${Math.round(player.chips)}
-                        </div>
-                      </div>
-                    </div>;
-          })}
-            </div>
-            
-            {/* Game info footer */}
-            <div className="mt-4 pt-3 border-t border-border">
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                {gameType !== 'holm-game' && <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Legs to Win:</span>
-                      <span className="font-medium text-foreground">{legsToWin}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Leg Value:</span>
-                      <span className="font-medium text-foreground">${legValue}</span>
-                    </div>
-                  </>}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pot Max:</span>
-                  <span className="font-medium text-foreground">{potMaxEnabled ? `$${potMaxValue}` : 'Off'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Round:</span>
-                  <span className="font-medium text-foreground">{currentRound}</span>
-                </div>
-              </div>
-            </div>
           </div>}
         
         {/* Expanded view - show cards large */}

@@ -84,7 +84,8 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             Chucky {revealed < cards.length && `(${revealed}/${cards.length})`}
           </span>
         </div>
-        <div className="flex gap-0.5 sm:gap-1" style={{ perspective: '1000px' }}>
+        {/* Cards overlapping like player exposed cards */}
+        <div className="flex" style={{ perspective: '1000px' }}>
           {cards.map((card, index) => {
             const isRevealed = index < revealed;
             const isFlipping = flippingCards.has(index);
@@ -92,28 +93,33 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             // Show front if: has completed flip animation, OR is revealed and not currently flipping
             const showFront = hasFlipped || (isRevealed && !isFlipping);
             
+            // Card overlap styling - tighter like exposed player cards
+            const overlapStyle = index > 0 ? { marginLeft: '-12px' } : {};
+            
             // If card is fully revealed (not animating), render a simple PlayingCard without any transform styles
             if (showFront && !isFlipping) {
               return (
-                <PlayingCard
-                  key={index}
-                  card={card}
-                  size="lg"
-                  isHidden={false}
-                  borderColor="border-red-500"
-                />
+                <div key={index} style={overlapStyle}>
+                  <PlayingCard
+                    card={card}
+                    size="lg"
+                    isHidden={false}
+                    borderColor="border-red-500"
+                  />
+                </div>
               );
             }
             
             // Card back (not yet revealed)
             if (!isRevealed && !isFlipping) {
               return (
-                <PlayingCard
-                  key={index}
-                  isHidden
-                  size="lg"
-                  borderColor="border-red-500"
-                />
+                <div key={index} style={overlapStyle}>
+                  <PlayingCard
+                    isHidden
+                    size="lg"
+                    borderColor="border-red-500"
+                  />
+                </div>
               );
             }
             
@@ -123,6 +129,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
                 key={index}
                 className="w-9 h-12 sm:w-10 sm:h-14 relative"
                 style={{ 
+                  ...overlapStyle,
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1.2s ease-in-out',
                   transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',

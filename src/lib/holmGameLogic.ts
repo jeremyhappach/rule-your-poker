@@ -1101,15 +1101,35 @@ async function handleChuckyShowdown(
       .from('games')
       .update({
         last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}`,
-        awaiting_next_round: true,
         pot: newPot
       })
       .eq('id', gameId);
     
     console.log('[HOLM SHOWDOWN] Games pot update:', gameUpdateError ? `ERROR: ${gameUpdateError.message}` : 'SUCCESS - pot set to ' + newPot);
+    
+    // Mark round complete and hide Chucky
+    await supabase
+      .from('rounds')
+      .update({ 
+        status: 'completed',
+        chucky_active: false
+      })
+      .eq('id', roundId);
+    
+    // 3-second delay for players to see the result
+    console.log('[HOLM SHOWDOWN] Pausing 3 seconds for players to see result...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // CRITICAL: Directly proceed to next round instead of relying on frontend timer
+    // This prevents the game from getting stuck
+    console.log('[HOLM SHOWDOWN] Chucky won - proceeding to next hand...');
+    await proceedToNextHolmRound(gameId);
+    
+    console.log('[HOLM SHOWDOWN] Showdown complete - next hand started');
+    return;
   }
 
-  // Mark round complete but KEEP Chucky visible for result display
+  // Mark round complete but KEEP Chucky visible for result display (player win case - handled above)
   await supabase
     .from('rounds')
     .update({ 
