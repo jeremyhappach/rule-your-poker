@@ -36,9 +36,11 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   onChipsArrived,
 }) => {
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
-  const prevRoundRef = useRef<number | null>(null);
   const animIdRef = useRef(0);
-  const hasTriggeredForRoundRef = useRef<number | null>(null);
+  // Track what we've animated for to prevent re-triggers
+  const lastAnimatedPotRef = useRef<number | null>(null);
+  const lastAnimatedRoundRef = useRef<number | null>(null);
+  const hasAnimatedThisSessionRef = useRef(false);
 
   // Slot positions as percentages of container
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -54,67 +56,91 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     return slots[slotIndex] || { top: 50, left: 50 };
   };
 
-  // Reset when game goes back to waiting phase
+  // Reset when game goes back to waiting phase (new game session)
   useEffect(() => {
     if (isWaitingPhase) {
-      prevRoundRef.current = null;
-      hasTriggeredForRoundRef.current = null;
+      lastAnimatedPotRef.current = null;
+      lastAnimatedRoundRef.current = null;
+      hasAnimatedThisSessionRef.current = false;
     }
   }, [isWaitingPhase]);
 
   useEffect(() => {
-    if (isWaitingPhase || !containerRef.current || !currentRound) {
+    if (isWaitingPhase || !containerRef.current || !currentRound || activePlayers.length === 0) {
       return;
     }
 
-    // Only trigger once per round - use round number as the trigger
-    const isNewRound = currentRound !== prevRoundRef.current && currentRound > 0;
-    const alreadyTriggeredThisRound = hasTriggeredForRoundRef.current === currentRound;
-
-    if (isNewRound && !alreadyTriggeredThisRound && activePlayers.length > 0) {
-      hasTriggeredForRoundRef.current = currentRound;
-      prevRoundRef.current = currentRound;
-      
-      const rect = containerRef.current.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      // Target pot box TOP EDGE position differs by game type
-      // Holm: pot at top-[35%] with -translate-y-full, so top edge is at ~30%
-      // 3-5-7: pot at top-1/2 with -translate-y-1/2, so top edge is at ~42%
-      const centerY = gameType === 'holm-game' ? rect.height * 0.28 : rect.height * 0.40;
-
-      const newAnims: ChipAnimation[] = activePlayers.map(player => {
-        const isCurrentPlayer = currentPlayerPosition === player.position;
-        const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
-        const slot = getSlotPercent(slotIndex);
-        
-        return {
-          id: `chip-${animIdRef.current++}`,
-          fromX: (slot.left / 100) * rect.width,
-          fromY: (slot.top / 100) * rect.height,
-          toX: centerX,
-          toY: centerY,
-        };
-      });
-
-      setAnimations(newAnims);
-      
-      // Trigger animation start callback immediately
-      if (onAnimationStart) {
-        onAnimationStart();
+    // Calculate expected ante total
+    const expectedAnteTotal = anteAmount * activePlayers.length;
+    
+    // For Holm games: only animate on first hand (antes collected once per game)
+    // For 3-5-7: animate when round 1 starts (antes collected each time round resets to 1)
+    const isHolm = gameType === 'holm-game';
+    
+    let shouldAnimate = false;
+    
+    if (isHolm) {
+      // Holm: only animate once per game session when pot first gets antes
+      // Trigger when pot equals expected ante total and we haven't animated yet
+      if (pot === expectedAnteTotal && !hasAnimatedThisSessionRef.current) {
+        shouldAnimate = true;
+        hasAnimatedThisSessionRef.current = true;
       }
-      
-      // Trigger callback when chips arrive at pot (at 80% of 2s = 1.6s)
-      if (onChipsArrived) {
-        setTimeout(() => {
-          onChipsArrived();
-        }, 1600);
+    } else {
+      // 3-5-7: animate when round 1 starts and pot increased to ante total
+      // Track by round number to handle round resets
+      if (currentRound === 1 && lastAnimatedRoundRef.current !== 1 && pot === expectedAnteTotal) {
+        shouldAnimate = true;
+        lastAnimatedRoundRef.current = 1;
       }
-      
-      setTimeout(() => {
-        setAnimations([]);
-      }, 2200);
+      // Reset tracking when not in round 1 (allows re-animation when round cycles back)
+      if (currentRound !== 1) {
+        lastAnimatedRoundRef.current = currentRound;
+      }
     }
-  }, [currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, onAnimationStart, onChipsArrived]);
+
+    if (!shouldAnimate) return;
+    
+    // Start animation immediately
+    if (onAnimationStart) {
+      onAnimationStart();
+    }
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    // Target pot box TOP EDGE - chips disappear when they reach the border
+    // Holm: pot at top-[35%], so top edge ~22%
+    // 3-5-7: pot at top-1/2, so top edge ~35%
+    const centerY = isHolm ? rect.height * 0.22 : rect.height * 0.35;
+
+    const newAnims: ChipAnimation[] = activePlayers.map(player => {
+      const isCurrentPlayer = currentPlayerPosition === player.position;
+      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
+      const slot = getSlotPercent(slotIndex);
+      
+      return {
+        id: `chip-${animIdRef.current++}`,
+        fromX: (slot.left / 100) * rect.width,
+        fromY: (slot.top / 100) * rect.height,
+        toX: centerX,
+        toY: centerY,
+      };
+    });
+
+    setAnimations(newAnims);
+    lastAnimatedPotRef.current = pot;
+    
+    // Trigger callback when chips arrive at pot (at 80% of 2s = 1.6s)
+    if (onChipsArrived) {
+      setTimeout(() => {
+        onChipsArrived();
+      }, 1600);
+    }
+    
+    setTimeout(() => {
+      setAnimations([]);
+    }, 2200);
+  }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, anteAmount, onAnimationStart, onChipsArrived]);
 
   if (animations.length === 0) return null;
 
