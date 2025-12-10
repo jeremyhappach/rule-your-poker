@@ -73,7 +73,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
           </span>
         </div>
         {/* Cards tightly overlapping - force overlap by constraining wrapper width */}
-        <div style={{ display: 'flex', perspective: '1000px' }}>
+        <div style={{ display: 'flex', perspective: '1000px', overflow: 'visible' }}>
           {cards.map((card, index) => {
             const isFlipped = flippedCards.has(index);
             // Each wrapper is only 16px wide, but card inside is full size (~40px)
@@ -86,6 +86,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
                 style={{ 
                   width: isLast ? 'auto' : '16px', // Last card shows full, others clipped
                   flexShrink: 0,
+                  overflow: 'visible',
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
