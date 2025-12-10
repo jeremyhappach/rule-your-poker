@@ -10,6 +10,7 @@ import { BuckIndicator } from "./BuckIndicator";
 import { LegIndicator } from "./LegIndicator";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
+import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
@@ -645,6 +646,11 @@ export const GameTable = ({
   const [showChopped, setShowChopped] = useState(false);
   const lastChoppedResultRef = useRef<string | null>(null);
   
+  // 357 Sweeps pot animation state
+  const [showSweepsPot, setShowSweepsPot] = useState(false);
+  const [sweepsPlayerName, setSweepsPlayerName] = useState('');
+  const lastSweepsResultRef = useRef<string | null>(null);
+  
   useLayoutEffect(() => {
     const updateWidth = () => setWindowWidth(window.innerWidth);
     updateWidth(); // Set initial value
@@ -690,6 +696,21 @@ export const GameTable = ({
       }
     }
   }, [lastRoundResult, gameType, players, currentUserId]);
+  
+  // Detect 357 sweep animation (3-5-7 games only)
+  useEffect(() => {
+    if (
+      gameType !== 'holm-game' && 
+      lastRoundResult && 
+      lastRoundResult.startsWith('357_SWEEP:') &&
+      lastRoundResult !== lastSweepsResultRef.current
+    ) {
+      const playerName = lastRoundResult.replace('357_SWEEP:', '');
+      lastSweepsResultRef.current = lastRoundResult;
+      setSweepsPlayerName(playerName);
+      setShowSweepsPot(true);
+    }
+  }, [lastRoundResult, gameType]);
   
   const radius = useMemo(() => {
     if (windowWidth < 480) return 32;
@@ -762,6 +783,13 @@ export const GameTable = ({
         <div className="relative h-full">
           {/* Chopped Animation - when Chucky beats you */}
           <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
+          
+          {/* 357 Sweeps Pot Animation */}
+          <SweepsPotAnimation 
+            show={showSweepsPot} 
+            playerName={sweepsPlayerName} 
+            onComplete={() => setShowSweepsPot(false)} 
+          />
           
           {/* Result Message moved outside table - see below */}
           
@@ -1298,8 +1326,8 @@ export const GameTable = ({
         </div>
       </div>
       
-      {/* Result Message - displayed below the felt */}
-      {lastRoundResult && (
+      {/* Result Message - displayed below the felt (hide for 357 sweep - animation handles it) */}
+      {lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && (
         awaitingNextRound || 
         roundStatus === 'completed' || 
         roundStatus === 'showdown' || 

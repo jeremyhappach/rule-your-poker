@@ -16,6 +16,7 @@ import { ValueChangeFlash } from "./ValueChangeFlash";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
+import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
@@ -220,6 +221,11 @@ export const MobileGameTable = ({
   const [legEarnedPlayerPosition, setLegEarnedPlayerPosition] = useState<number | null>(null);
   const playerLegsRef = useRef<Record<string, number>>({});
   
+  // 357 Sweeps pot animation state
+  const [showSweepsPot, setShowSweepsPot] = useState(false);
+  const [sweepsPlayerName, setSweepsPlayerName] = useState('');
+  const lastSweepsResultRef = useRef<string | null>(null);
+  
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
@@ -396,6 +402,21 @@ export const MobileGameTable = ({
       }
     }
   }, [lastRoundResult, gameType, currentPlayer, currentUserId]);
+
+  // Detect 357 sweep animation (3-5-7 games only)
+  useEffect(() => {
+    if (
+      gameType !== 'holm-game' && 
+      lastRoundResult && 
+      lastRoundResult.startsWith('357_SWEEP:') &&
+      lastRoundResult !== lastSweepsResultRef.current
+    ) {
+      const playerName = lastRoundResult.replace('357_SWEEP:', '');
+      lastSweepsResultRef.current = lastRoundResult;
+      setSweepsPlayerName(playerName);
+      setShowSweepsPot(true);
+    }
+  }, [lastRoundResult, gameType]);
 
   // Detect buck passed to current player (Holm games only)
   // Also clear showdown state when buck moves - new hand is starting
@@ -761,6 +782,13 @@ export const MobileGameTable = ({
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
+        {/* 357 Sweeps Pot Animation */}
+        <SweepsPotAnimation 
+          show={showSweepsPot} 
+          playerName={sweepsPlayerName} 
+          onComplete={() => setShowSweepsPot(false)} 
+        />
+        
         {/* Ante Up Animation */}
         <AnteUpAnimation
           pot={pot}
@@ -1123,8 +1151,8 @@ export const MobileGameTable = ({
             </div>
           </div>}
         
-        {/* Result message - in bottom section (non-game-over) */}
-        {!isGameOver && lastRoundResult && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && <div className="px-4 py-2">
+        {/* Result message - in bottom section (non-game-over, hide for 357 sweep) */}
+        {!isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && <div className="px-4 py-2">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center">
                 {lastRoundResult.split('|||DEBUG:')[0]}

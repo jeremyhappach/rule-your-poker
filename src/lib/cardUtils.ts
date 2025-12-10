@@ -663,3 +663,11 @@ export function getWinningCardIndices(
   
   return { playerIndices, communityIndices, kickerPlayerIndices, kickerCommunityIndices };
 }
+
+// Check if a hand contains 3, 5, and 7 (the magical 357 hand in round 1)
+export function has357Hand(cards: Card[]): boolean {
+  if (!cards || cards.length !== 3) return false;
+  
+  const ranks = cards.map(c => c.rank);
+  return ranks.includes('3') && ranks.includes('5') && ranks.includes('7');
+}
