@@ -314,36 +314,10 @@ export async function startRound(gameId: string, roundNumber: number) {
     // Get existing cards from previous round (if any)
     const existingCards = previousRoundCards.get(player.id) || [];
     
-    // TEMPORARY TEST: Force deal 3-5-7 to Happach in round 1
-    let playerCards: Card[];
-    if (roundNumber === 1) {
-      // Check if this player is Happach
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', player.user_id)
-        .single();
-      
-      if (profile?.username?.toLowerCase() === 'happach') {
-        // Force deal 3-5-7 (different suits for visibility)
-        playerCards = [
-          { rank: '3', suit: '♥' },
-          { rank: '5', suit: '♠' },
-          { rank: '7', suit: '♦' }
-        ];
-        console.log('[TEST] Forcing 3-5-7 hand for Happach!');
-      } else {
-        // Normal dealing for other players
-        const newCards = deck.slice(cardIndex, cardIndex + newCardsToDeal);
-        cardIndex += newCardsToDeal;
-        playerCards = [...existingCards, ...newCards];
-      }
-    } else {
-      // Normal dealing for rounds 2 and 3
-      const newCards = deck.slice(cardIndex, cardIndex + newCardsToDeal);
-      cardIndex += newCardsToDeal;
-      playerCards = [...existingCards, ...newCards];
-    }
+    // Deal new cards from deck
+    const newCards = deck.slice(cardIndex, cardIndex + newCardsToDeal);
+    cardIndex += newCardsToDeal;
+    const playerCards = [...existingCards, ...newCards];
 
     await supabase
       .from('player_cards')
