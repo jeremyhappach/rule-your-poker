@@ -1909,6 +1909,10 @@ const Game = () => {
           if (isHolmGame) {
             await proceedToNextHolmRound(gameId);
           } else {
+            // Trigger ante animation when proceeding to round 1 (new antes collected)
+            if (game?.next_round_number === 1) {
+              setAnteAnimationTriggerId(`ante-${Date.now()}`);
+            }
             await proceedToNextRound(gameId);
           }
           
