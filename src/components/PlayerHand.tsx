@@ -125,7 +125,7 @@ export const PlayerHand = ({
             isKicker={isKicker}
             isDimmed={isDimmed}
             isWild={isWild}
-            className={`${overlapClass} transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10`}
+            className={overlapClass}
             style={{ 
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
             }}

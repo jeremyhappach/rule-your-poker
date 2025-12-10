@@ -830,38 +830,38 @@ export const MobileGameTable = ({
           // 3: Top-right, 4: Middle-right, 5: Bottom-right
           if (buckSlot === 0) {
             positionStyle = {
-              bottom: '46px',
-              left: '72px',
+              bottom: '52px',
+              left: '80px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckSlot === 1) {
             positionStyle = {
-              top: '40%',
-              left: '42px',
+              top: '38%',
+              left: '52px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckSlot === 2) {
             positionStyle = {
-              top: '38px',
-              left: '72px',
+              top: '44px',
+              left: '80px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckSlot === 3) {
             positionStyle = {
-              top: '38px',
-              right: '72px',
+              top: '44px',
+              right: '80px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckSlot === 4) {
             positionStyle = {
-              top: '40%',
-              right: '42px',
+              top: '38%',
+              right: '52px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           } else if (buckSlot === 5) {
             positionStyle = {
-              bottom: '46px',
-              right: '72px',
+              bottom: '52px',
+              right: '80px',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
             };
           }
