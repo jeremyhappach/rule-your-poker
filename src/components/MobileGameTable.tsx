@@ -230,10 +230,11 @@ export const MobileGameTable = ({
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
-  // Delay community cards rendering by 3 seconds after player cards appear (Holm only)
+  // Delay community cards rendering by 1 second after player cards appear (Holm only)
   // Initialize as false for Holm to prevent initial flicker
   const [showCommunityCards, setShowCommunityCards] = useState(gameType !== 'holm-game');
-  const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active 3s delay
+  const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
+  const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastRoundForCommunityDelayRef = useRef<number | null>(null);
   const hasShownCommunityThisRoundRef = useRef(false);
@@ -419,6 +420,7 @@ export const MobileGameTable = ({
     if (awaitingNextRound) {
       hasShownCommunityThisRoundRef.current = false;
       setShowCommunityCards(false);
+      setStaggeredCardCount(0);
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
@@ -427,22 +429,32 @@ export const MobileGameTable = ({
       return;
     }
     
-    // New round detected - start delay timer
+    // New round detected - start staggered card dealing
     if (currentRound && currentRound !== lastRoundForCommunityDelayRef.current && !hasShownCommunityThisRoundRef.current) {
       lastRoundForCommunityDelayRef.current = currentRound;
-      setIsDelayingCommunityCards(true); // Mark that we're actively delaying
+      setIsDelayingCommunityCards(true);
+      setStaggeredCardCount(0);
       
       // Clear any existing timeout
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
       }
       
-      // Show community cards after 3 seconds
+      // Initial delay of 1 second, then reveal cards one at a time
+      const cardCount = communityCardsRevealed || 2;
       communityCardsDelayRef.current = setTimeout(() => {
         setShowCommunityCards(true);
-        setIsDelayingCommunityCards(false); // Delay complete
-        hasShownCommunityThisRoundRef.current = true;
-      }, 3000);
+        // Stagger each card with 150ms delay
+        for (let i = 1; i <= cardCount; i++) {
+          setTimeout(() => {
+            setStaggeredCardCount(i);
+            if (i === cardCount) {
+              setIsDelayingCommunityCards(false);
+              hasShownCommunityThisRoundRef.current = true;
+            }
+          }, (i - 1) * 150);
+        }
+      }, 1000);
     }
     
     return () => {
@@ -450,7 +462,7 @@ export const MobileGameTable = ({
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   useEffect(() => {
@@ -842,16 +854,11 @@ export const MobileGameTable = ({
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
               <CommunityCards 
                 cards={communityCards} 
-                revealed={communityCardsRevealed || 2} 
+                revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
                 highlightedIndices={winningCardHighlights.communityIndices}
                 kickerIndices={winningCardHighlights.kickerCommunityIndices}
                 hasHighlights={winningCardHighlights.hasHighlights}
               />
-            </div>
-          ) : isDelayingCommunityCards ? (
-            // "Dealing Board..." placeholder ONLY during active 3-second delay
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <span className="text-white/60 text-sm italic">Dealing Board...</span>
             </div>
           ) : null
         )}

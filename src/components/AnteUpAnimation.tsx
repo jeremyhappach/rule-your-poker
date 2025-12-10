@@ -46,16 +46,17 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   const lastAnimatedRoundRef = useRef<number | null>(null);
   const lastTriggerIdRef = useRef<string | null>(null);
 
-  // Slot positions as percentages of container (where chips START from) - RELATIVE to current player
+  // Slot positions as percentages of container (where chips START from) - CENTER of chipstacks
+  // These match the actual chip stack positions in MobileGameTable
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
     if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 85, left: 12 },   // Bottom-left
-      1: { top: 50, left: 3 },    // Middle-left
-      2: { top: 8, left: 12 },    // Top-left
-      3: { top: 8, left: 88 },    // Top-right
-      4: { top: 50, left: 97 },   // Middle-right
-      5: { top: 85, left: 88 },   // Bottom-right
+      0: { top: 82, left: 18 },   // Bottom-left - center of chip at bottom-2 left-10
+      1: { top: 50, left: 8 },    // Middle-left - center of chip at left-0 (chip is 48px wide)
+      2: { top: 12, left: 18 },   // Top-left - center of chip at top-2 left-10
+      3: { top: 12, left: 82 },   // Top-right - center of chip at top-2 right-10
+      4: { top: 50, left: 92 },   // Middle-right - center of chip at right-0
+      5: { top: 82, left: 82 },   // Bottom-right - center of chip at bottom-2 right-10
     };
     return slots[slotIndex] || { top: 50, left: 50 };
   };
