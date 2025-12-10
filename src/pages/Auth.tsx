@@ -90,11 +90,8 @@ const Auth = () => {
       });
 
       if (error) throw error;
-
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully logged in.",
-      });
+      
+      // Login successful - navigate will happen via auth state change listener
     } catch (error: any) {
       toast({
         title: "Error",

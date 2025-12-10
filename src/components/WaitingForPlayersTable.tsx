@@ -253,10 +253,11 @@ export const WaitingForPlayersTable = ({
 
   // Empty props for the table (no cards, no game state)
   // Only allow seat selection for observers
+  // Hide pot during waiting phase
   const emptyTableProps = {
     players,
     currentUserId,
-    pot: 0,
+    pot: 0, // Will be hidden via isWaitingPhase prop
     currentRound: 0,
     allDecisionsIn: false,
     playerCards: [] as { player_id: string; cards: any[] }[],
@@ -272,6 +273,7 @@ export const WaitingForPlayersTable = ({
     onStay: () => {},
     onFold: () => {},
     onSelectSeat: isObserver ? onSelectSeat : undefined, // Only observers can select seats
+    isWaitingPhase: true, // Signal to hide pot
   };
 
   return (

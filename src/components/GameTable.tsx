@@ -93,6 +93,7 @@ interface GameTableProps {
   onDebugProceed?: () => void; // DEBUG: manual proceed to next round
   onPlayerClick?: (player: Player) => void; // Host clicks player to control them
   onLeaveGameNow?: () => void; // Observer leave game
+  isWaitingPhase?: boolean; // Hide pot display during waiting phase
 }
 
 export const GameTable = ({
@@ -137,6 +138,7 @@ export const GameTable = ({
   onDebugProceed,
   onPlayerClick,
   onLeaveGameNow,
+  isWaitingPhase = false,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -779,19 +781,21 @@ export const GameTable = ({
                     </div>
                   )}
                   
-                  {/* Pot */}
-                  <div className="relative">
-                    <div className="bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
-                      <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-[10px] sm:text-xs md:text-sm text-poker-gold/80 font-semibold">POT:</span>
-                        <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</span>
+                  {/* Pot - hide during waiting phase */}
+                  {!isWaitingPhase && (
+                    <div className="relative">
+                      <div className="bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="text-[10px] sm:text-xs md:text-sm text-poker-gold/80 font-semibold">POT:</span>
+                          <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</span>
+                        </div>
+                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Lose: ${loseAmount}</p>
+                        {gameType && gameType !== 'holm-game' && (
+                          <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">{legsToWin} legs to win</p>
+                        )}
                       </div>
-                      <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Lose: ${loseAmount}</p>
-                      {gameType && gameType !== 'holm-game' && (
-                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">{legsToWin} legs to win</p>
-                      )}
                     </div>
-                  </div>
+                  )}
                   
                   {/* Timer - hide during transitions, results, showdowns, and when all decisions in */}
                   {/* For Holm games, show timer when round is betting and it's someone's turn */}

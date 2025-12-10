@@ -118,18 +118,16 @@ export const PlayerHand = ({
         
         return (
           <PlayingCard
-            key={displayIndex}
+            key={`${card.rank}-${card.suit}-${originalIndex}`}
             card={card}
             size={cardSize}
             isHighlighted={isHighlighted}
             isKicker={isKicker}
             isDimmed={isDimmed}
             isWild={isWild}
-            className={`${overlapClass} transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10 animate-fade-in`}
+            className={`${overlapClass} transform transition-transform hover:scale-110 hover:-translate-y-2 hover:z-10`}
             style={{ 
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
-              animationDelay: `${displayIndex * 150}ms`,
-              animationFillMode: 'backwards'
             }}
           />
         );
