@@ -344,7 +344,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   return (
     <div className="space-y-6">
       {/* Header with Peoria Skyline Backdrop */}
-      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 h-[160px] sm:min-h-[200px] md:min-h-[240px]">
+      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 h-[200px] sm:min-h-[240px] md:min-h-[280px]">
         {/* Skyline Background - Desktop */}
         <img 
           src={peoriaSkyline} 

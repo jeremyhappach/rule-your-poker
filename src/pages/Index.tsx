@@ -243,21 +243,18 @@ const Index = () => {
   return (
     <div className="min-h-screen p-4 bg-background">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowProfileDialog(true)}
-              className="w-full sm:w-auto"
-            >
-              <UserCircle className="w-4 h-4 mr-2" />
-              Profile
-            </Button>
-            <Button variant="ghost" onClick={handleLogout} className="w-full sm:w-auto">
-              Logout
-            </Button>
-          </div>
+        <div className="flex justify-end gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowProfileDialog(true)}
+            className="w-auto"
+          >
+            <UserCircle className="w-4 h-4 mr-2" />
+            Profile
+          </Button>
+          <Button variant="ghost" onClick={handleLogout} className="w-auto">
+            Logout
+          </Button>
         </div>
         <GameLobby userId={user.id} />
       </div>
