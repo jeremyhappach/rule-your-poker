@@ -11,6 +11,7 @@ interface ChipAnimation {
 interface AnteUpAnimationProps {
   pot: number;
   anteAmount: number;
+  chipAmount?: number; // Display amount on chip (defaults to anteAmount, use pussyTaxValue for pussy tax)
   activePlayers: { position: number }[];
   currentPlayerPosition: number | null;
   getClockwiseDistance: (position: number) => number;
@@ -27,6 +28,7 @@ interface AnteUpAnimationProps {
 export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   pot,
   anteAmount,
+  chipAmount,
   activePlayers,
   currentPlayerPosition,
   getClockwiseDistance,
@@ -39,6 +41,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   onAnimationStart,
   onChipsArrived,
 }) => {
+  // Use chipAmount if provided, otherwise fall back to anteAmount
+  const displayAmount = chipAmount ?? anteAmount;
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
   const animIdRef = useRef(0);
   // Track what we've animated for to prevent re-triggers
@@ -182,7 +186,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
               animation: `anteChipMove${i} 2s ease-in-out forwards`,
             }}
           >
-            <span className="text-black text-[10px] font-bold">${anteAmount}</span>
+            <span className="text-black text-[10px] font-bold">${displayAmount}</span>
           </div>
           <style>{`
             @keyframes anteChipMove${i} {

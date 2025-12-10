@@ -802,6 +802,7 @@ export const MobileGameTable = ({
         <AnteUpAnimation
           pot={pot}
           anteAmount={anteAmount}
+          chipAmount={anteAnimationTriggerId?.startsWith('pussy-tax-') ? pussyTaxValue : anteAmount}
           activePlayers={players.filter(p => !p.sitting_out)}
           currentPlayerPosition={currentPlayer?.position ?? null}
           getClockwiseDistance={getClockwiseDistance}
