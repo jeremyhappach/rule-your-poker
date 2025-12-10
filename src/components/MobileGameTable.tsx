@@ -615,7 +615,9 @@ export const MobileGameTable = ({
     const isRightSideSlot = slotIndex !== undefined && slotIndex >= 3;
     
     // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
-    const legIndicator = playerLegs > 0 && (
+    // HIDE leg indicator for the specific player while their leg earned animation is playing
+    const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
+    const legIndicator = playerLegs > 0 && !isLegAnimatingForThisPlayer && (
       <div className="absolute z-30" style={{
         // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
         ...(isRightSideSlot 
@@ -1058,7 +1060,8 @@ export const MobileGameTable = ({
       })()}
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
-        {gameType !== 'holm-game' && currentPlayer && currentPlayer.legs > 0 && (
+        {/* HIDE during leg animation for current player */}
+        {gameType !== 'holm-game' && currentPlayer && currentPlayer.legs > 0 && !(showLegEarned && legEarnedPlayerPosition === currentPlayer.position) && (
           <div 
             className="absolute z-20"
             style={{
