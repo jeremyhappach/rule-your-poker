@@ -677,10 +677,10 @@ export const MobileGameTable = ({
             // Target should be where the NEXT leg indicator will appear (inside toward table center)
             if (!legEarnedPlayerPosition) return undefined;
             
-            // If current player earned the leg, animate to bottom center (inside edge of card area)
+            // If current player earned the leg, animate to bottom center-right (where their leg indicator actually renders)
             if (currentPlayer?.position === legEarnedPlayerPosition) {
-              // Legs appear on the left side of the current player's chip stack (toward center)
-              return { top: '88%', left: '40%' };
+              // Legs appear at left: 55%, bottom: 8px on the felt (see line ~879)
+              return { top: '92%', left: '55%' };
             }
             
             // Otherwise, calculate slot position for other player
