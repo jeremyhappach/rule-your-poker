@@ -23,6 +23,11 @@ interface PreviousGameConfig {
   chucky_cards: number;
 }
 
+interface SessionGameConfigs {
+  'holm-game'?: PreviousGameConfig;
+  '3-5-7'?: PreviousGameConfig;
+}
+
 interface DealerGameSetupProps {
   gameId: string;
   dealerUsername: string;
@@ -31,6 +36,7 @@ interface DealerGameSetupProps {
   dealerPosition: number;
   previousGameType?: string; // The last game type played
   previousGameConfig?: PreviousGameConfig | null; // The previous game's actual config
+  sessionGameConfigs?: SessionGameConfigs; // Session-specific configs per game type
   onConfigComplete: () => void;
   onSessionEnd: () => void;
 }
@@ -54,6 +60,7 @@ export const DealerGameSetup = ({
   dealerPosition,
   previousGameType,
   previousGameConfig,
+  sessionGameConfigs,
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
@@ -139,11 +146,32 @@ export const DealerGameSetup = ({
     setChuckyCards(String(defaults.chucky_cards));
   };
 
-  // Update config when tab changes
+  // Update config when tab changes - PRIORITY: session config > global defaults
   const handleGameTypeChange = (gameType: string) => {
     setSelectedGameType(gameType);
+    
+    // Normalize game type key for session configs lookup
+    const sessionKey = gameType === 'holm-game' ? 'holm-game' : '3-5-7';
+    const sessionConfig = sessionGameConfigs?.[sessionKey];
+    
+    // PRIORITY 1: Use session-specific config if available (remembers settings from earlier in session)
+    if (sessionConfig) {
+      console.log('[DEALER SETUP] Using session config for', gameType, ':', sessionConfig);
+      setAnteAmount(String(sessionConfig.ante_amount));
+      setLegValue(String(sessionConfig.leg_value));
+      setLegsToWin(String(sessionConfig.legs_to_win));
+      setPussyTaxEnabled(sessionConfig.pussy_tax_enabled);
+      setPussyTaxValue(String(sessionConfig.pussy_tax_value));
+      setPotMaxEnabled(sessionConfig.pot_max_enabled);
+      setPotMaxValue(String(sessionConfig.pot_max_value));
+      setChuckyCards(String(sessionConfig.chucky_cards));
+      return;
+    }
+    
+    // PRIORITY 2: Fall back to global defaults
     const defaults = gameType === 'holm-game' ? holmDefaults : threeFiveSevenDefaults;
     if (defaults) {
+      console.log('[DEALER SETUP] Using global defaults for', gameType);
       applyDefaults(defaults);
     }
   };

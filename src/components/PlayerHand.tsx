@@ -72,21 +72,39 @@ export const PlayerHand = ({
   // Render card backs for hidden cards
   if (isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
     const count = isHidden ? displayCardCount : expectedCardCount!;
+    
+    // For 3-5-7 games with multiple cards, use fanned arc layout
+    const useFannedArc = is357Game && count >= 3;
+    
+    // Calculate arc parameters for fanned layout
+    const arcSpread = count >= 7 ? 45 : count >= 5 ? 35 : 25; // Total arc angle in degrees
+    const startAngle = -arcSpread / 2;
+    const angleStep = count > 1 ? arcSpread / (count - 1) : 0;
+    
     return (
-      <div className="flex">
-        {Array.from({ length: count }, (_, index) => (
-          <PlayingCard
-            key={index}
-            isHidden
-            size={cardSize}
-            className={`${overlapClass} animate-fade-in`}
-            style={{ 
-              transform: `rotate(${index * 2 - 2}deg)`,
-              animationDelay: `${index * 150}ms`,
-              animationFillMode: 'backwards'
-            }}
-          />
-        ))}
+      <div className="flex justify-center relative" style={{ minHeight: '60px' }}>
+        {Array.from({ length: count }, (_, index) => {
+          // Calculate rotation and vertical offset for arc effect
+          const rotation = useFannedArc ? startAngle + (index * angleStep) : (index * 2 - 2);
+          const verticalOffset = useFannedArc 
+            ? Math.abs(index - (count - 1) / 2) * 3 // Cards at edges are slightly higher
+            : 0;
+          
+          return (
+            <PlayingCard
+              key={index}
+              isHidden
+              size={cardSize}
+              className={`${useFannedArc ? '-ml-4 first:ml-0' : overlapClass} animate-fade-in`}
+              style={{ 
+                transform: `rotate(${rotation}deg) translateY(${verticalOffset}px)`,
+                animationDelay: `${index * 150}ms`,
+                animationFillMode: 'backwards',
+                transformOrigin: 'bottom center'
+              }}
+            />
+          );
+        })}
       </div>
     );
   }
