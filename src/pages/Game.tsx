@@ -3581,6 +3581,7 @@ const Game = () => {
               roundStatus={currentRound?.status}
               pendingDecision={pendingDecision}
               isPaused={game.is_paused || false}
+              anteAmount={game.ante_amount}
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}

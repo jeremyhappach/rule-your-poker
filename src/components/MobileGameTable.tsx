@@ -11,6 +11,7 @@ import { ChatInput } from "./ChatInput";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 import { RejoinNextHandButton } from "./RejoinNextHandButton";
+import { AnteUpAnimation } from "./AnteUpAnimation";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -111,6 +112,7 @@ interface MobileGameTableProps {
   roundStatus?: string;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
+  anteAmount?: number;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -160,6 +162,7 @@ export const MobileGameTable = ({
   roundStatus,
   pendingDecision,
   isPaused,
+  anteAmount = 1,
   isGameOver,
   isDealer,
   onNextGame,
@@ -209,6 +212,9 @@ export const MobileGameTable = ({
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
   const [legEarnedPlayerPosition, setLegEarnedPlayerPosition] = useState<number | null>(null);
   const playerLegsRef = useRef<Record<string, number>>({});
+  
+  // Table container ref for ante animation
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<number | null>(null);
@@ -642,7 +648,7 @@ export const MobileGameTable = ({
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
-      <div className="flex-1 relative overflow-hidden min-h-0" style={{
+      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{
       maxHeight: '55vh'
     }}>
         {/* Table felt background - wide horizontal ellipse */}
@@ -667,6 +673,17 @@ export const MobileGameTable = ({
         
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
+        
+        {/* Ante Up Animation */}
+        <AnteUpAnimation
+          pot={pot}
+          anteAmount={anteAmount}
+          activePlayers={players.filter(p => !p.sitting_out)}
+          currentPlayerPosition={currentPlayer?.position ?? null}
+          getClockwiseDistance={getClockwiseDistance}
+          isWaitingPhase={isWaitingPhase}
+          containerRef={tableContainerRef}
+        />
         
         {/* Buck's On You Animation (Holm only) */}
         <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
