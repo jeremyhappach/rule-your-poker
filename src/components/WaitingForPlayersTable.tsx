@@ -4,7 +4,6 @@ import { MobileGameTable } from "./MobileGameTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Player {
@@ -69,7 +68,6 @@ export const WaitingForPlayersTable = ({
   getPositionForUserId,
   onLeaveGameNow
 }: WaitingForPlayersTableProps) => {
-  const { toast } = useToast();
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
   const [addingBot, setAddingBot] = useState(false);
@@ -104,11 +102,7 @@ export const WaitingForPlayersTable = ({
       const openPositions = allPositions.filter(pos => !occupiedPositions.has(pos));
       
       if (openPositions.length === 0) {
-        toast({
-          title: "Table Full",
-          description: "No open seats available",
-          variant: "destructive",
-        });
+        console.log('Table full - no open seats');
         return;
       }
       
@@ -159,11 +153,6 @@ export const WaitingForPlayersTable = ({
       // Bot added successfully - no toast needed
     } catch (error: any) {
       console.error('Error adding bot:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add bot",
-        variant: "destructive",
-      });
     } finally {
       setAddingBot(false);
     }
@@ -175,17 +164,12 @@ export const WaitingForPlayersTable = ({
     
     gameStartTriggeredRef.current = true;
     
-    // Show announcement toast
-    toast({
-      title: "🃏 SHUFFLE UP AND DEAL! 🃏",
-      description: "The game is starting...",
-      duration: 3000,
-    });
+    console.log('🃏 SHUFFLE UP AND DEAL! 🃏');
     
     // Small delay to let players see the announcement
     setTimeout(() => {
       onGameStart();
-    }, 1500);
+    }, 500);
   };
 
   // Track player count (without toast notification)
@@ -196,10 +180,7 @@ export const WaitingForPlayersTable = ({
   const handleInvite = () => {
     const gameUrl = window.location.href;
     navigator.clipboard.writeText(gameUrl);
-    toast({
-      title: "Link Copied!",
-      description: "Share this link to invite players",
-    });
+    console.log('Game link copied to clipboard');
   };
 
   // Check if user is an observer (not seated)

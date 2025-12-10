@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { handlePlayerRejoin } from "@/lib/playerStateEvaluation";
-import { useToast } from "@/hooks/use-toast";
 
 interface NotEnoughPlayersCountdownProps {
   gameId: string;
@@ -27,7 +26,6 @@ export const NotEnoughPlayersCountdown = ({
   const [countdown, setCountdown] = useState(30);
   const [isRejoining, setIsRejoining] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
   const onCompleteRef = useRef(onComplete);
   const hasEndedRef = useRef(false);
 
@@ -43,16 +41,9 @@ export const NotEnoughPlayersCountdown = ({
     const success = await handlePlayerRejoin(currentPlayerId);
     
     if (success) {
-      toast({
-        title: "Rejoining!",
-        description: "You'll be dealt in when the game resumes",
-      });
+      console.log('Rejoin requested - will be dealt in when game resumes');
     } else {
-      toast({
-        title: "Error",
-        description: "Failed to rejoin",
-        variant: "destructive",
-      });
+      console.error('Failed to rejoin');
     }
     setIsRejoining(false);
   };
