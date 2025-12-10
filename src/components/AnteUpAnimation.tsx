@@ -42,26 +42,11 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // Track what we've animated for to prevent re-triggers
   const lastAnimatedPotRef = useRef<number | null>(null);
   const lastAnimatedRoundRef = useRef<number | null>(null);
-  const hasAnimatedThisRoundRef = useRef<number | null>(null); // Track by round number, not boolean
+  const hasAnimatedThisSessionRef = useRef(false);
   const lastStatusRef = useRef<string | null>(null);
 
-  // ABSOLUTE slot positions (for observers with no seat position) based on seat number 1-7
-  // Maps seat position directly to visual slot
-  const getAbsoluteSlotPercent = (seatPosition: number): { top: number; left: number } => {
-    const slots: Record<number, { top: number; left: number }> = {
-      1: { top: 92, left: 50 },   // Bottom center (seat 1)
-      2: { top: 85, left: 12 },   // Bottom-left (seat 2)
-      3: { top: 50, left: 3 },    // Middle-left (seat 3)
-      4: { top: 8, left: 12 },    // Top-left (seat 4)
-      5: { top: 8, left: 88 },    // Top-right (seat 5)
-      6: { top: 50, left: 97 },   // Middle-right (seat 6)
-      7: { top: 85, left: 88 },   // Bottom-right (seat 7)
-    };
-    return slots[seatPosition] || { top: 50, left: 50 };
-  };
-
-  // RELATIVE slot positions (for seated players) based on clockwise distance
-  const getRelativeSlotPercent = (slotIndex: number): { top: number; left: number } => {
+  // Slot positions as percentages of container (where chips START from) - RELATIVE to current player
+  const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
     if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
       0: { top: 85, left: 12 },   // Bottom-left
@@ -74,20 +59,27 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     return slots[slotIndex] || { top: 50, left: 50 };
   };
 
-  // Get target position on pot box edge based on slot (closest edge to player)
+  // Get target position on pot box edge based on VISUAL slot position (closest edge to player)
+  // IMPORTANT: For Holm, pot CSS is "top-[35%] -translate-y-full" meaning BOTTOM is at 35%
+  // For 3-5-7, pot CSS is "top-1/2 -translate-y-1/2" meaning CENTER is at 50%
   const getPotBoxTarget = (slotIndex: number, rect: DOMRect, isHolm: boolean): { x: number; y: number } => {
     const centerX = rect.width / 2;
-    // Pot box center Y position
-    const potCenterY = isHolm ? rect.height * 0.35 : rect.height * 0.50;
-    // Pot box approximate dimensions (half-widths/heights from center to edge)
+    // Pot box approximate dimensions
     const potHalfWidth = isHolm ? 45 : 65;
     const potHalfHeight = isHolm ? 18 : 28;
     
-    // Target the closest edge based on slot position
+    // Calculate pot center Y based on CSS positioning
+    // Holm: bottom at 35%, so center is at 35% - halfHeight
+    // 3-5-7: center at 50%
+    const potCenterY = isHolm 
+      ? rect.height * 0.35 - potHalfHeight 
+      : rect.height * 0.50;
+    
+    // Target the closest edge based on VISUAL slot position
     switch (slotIndex) {
       case -1: // Current player (bottom) - target bottom edge
-      case 0:  // Bottom-left - target bottom-left edge
-      case 5:  // Bottom-right - target bottom-right edge
+      case 0:  // Bottom-left - target bottom edge
+      case 5:  // Bottom-right - target bottom edge
         return { x: centerX, y: potCenterY + potHalfHeight };
       case 2:  // Top-left - target top edge
       case 3:  // Top-right - target top edge
@@ -106,7 +98,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     if (isWaitingPhase) {
       lastAnimatedPotRef.current = null;
       lastAnimatedRoundRef.current = null;
-      hasAnimatedThisRoundRef.current = null;
+      hasAnimatedThisSessionRef.current = false;
       lastStatusRef.current = null;
     }
   }, [isWaitingPhase]);
@@ -126,11 +118,17 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     let shouldAnimate = false;
     
     if (isHolm) {
-      // Holm: trigger when status changes from ante_decision to in_progress
-      // Track by round number to allow animation for each new hand
-      if (wasAnteDecision && isNowInProgress && hasAnimatedThisRoundRef.current !== currentRound) {
-        shouldAnimate = true;
-        hasAnimatedThisRoundRef.current = currentRound;
+      // Holm: trigger on hand 1 ONLY when status changes to in_progress
+      // Also trigger if we missed the transition (component mounted after status changed)
+      if (currentRound === 1 && !hasAnimatedThisSessionRef.current) {
+        if (wasAnteDecision && isNowInProgress) {
+          shouldAnimate = true;
+          hasAnimatedThisSessionRef.current = true;
+        } else if (isNowInProgress && lastStatusRef.current === null) {
+          // First render and already in_progress on round 1 - we missed the transition
+          shouldAnimate = true;
+          hasAnimatedThisSessionRef.current = true;
+        }
       }
     } else {
       // 3-5-7: animate when round 1 starts and status just changed to in_progress
@@ -152,25 +150,12 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     }
     
     const rect = containerRef.current.getBoundingClientRect();
-    const isObserver = currentPlayerPosition === null;
 
     const newAnims: ChipAnimation[] = activePlayers.map(player => {
-      let slot: { top: number; left: number };
-      let slotIndexForTarget: number;
-      
-      if (isObserver) {
-        // Observer: use ABSOLUTE positions based on actual seat number
-        slot = getAbsoluteSlotPercent(player.position);
-        // Map seat position to slot index for pot target calculation
-        slotIndexForTarget = player.position === 1 ? -1 : player.position - 2;
-      } else {
-        // Seated player: use RELATIVE positions based on clockwise distance
-        const isCurrentPlayer = currentPlayerPosition === player.position;
-        slotIndexForTarget = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
-        slot = getRelativeSlotPercent(slotIndexForTarget);
-      }
-      
-      const target = getPotBoxTarget(slotIndexForTarget, rect, isHolm);
+      const isCurrentPlayer = currentPlayerPosition === player.position;
+      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
+      const slot = getSlotPercent(slotIndex);
+      const target = getPotBoxTarget(slotIndex, rect, isHolm);
       
       return {
         id: `chip-${animIdRef.current++}`,
