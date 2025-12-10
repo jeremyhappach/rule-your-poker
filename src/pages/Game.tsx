@@ -30,7 +30,7 @@ import { Share2, Bot, Settings } from "lucide-react";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
-import { BotOptionsDialog } from "@/components/BotOptionsDialog";
+import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import {
   AlertDialog,
@@ -180,8 +180,8 @@ const Game = () => {
   
   const [isRunningItBack, setIsRunningItBack] = useState(false);
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
-  const [selectedBot, setSelectedBot] = useState<Player | null>(null);
-  const [showBotOptions, setShowBotOptions] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [showPlayerOptions, setShowPlayerOptions] = useState(false);
   
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
@@ -3062,11 +3062,12 @@ const Game = () => {
   }) : '';
   const handsPlayed = game.total_hands || 0;
 
-  // Find the host by earliest created_at (first player to join), excluding bots
+  // Find the host - use current_host if set, otherwise fallback to earliest player
   const hostPlayer = [...players].filter(p => !p.is_bot).sort((a, b) => 
     new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
   )[0];
-  const isCreator = hostPlayer?.user_id === user?.id;
+  const currentHost = (game as any).current_host;
+  const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
   const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
@@ -3584,7 +3585,7 @@ const Game = () => {
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}
               isHost={isCreator}
-              onBotClick={(bot) => { setSelectedBot(bot as Player); setShowBotOptions(true); }}
+              onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
               chatBubbles={chatBubbles}
               allMessages={allMessages}
               onSendChat={sendChatMessage}
@@ -3629,7 +3630,7 @@ const Game = () => {
               onRequestRefetch={fetchGameData}
               onDebugProceed={handleDebugProceed}
               isHost={isCreator}
-              onBotClick={(bot) => { setSelectedBot(bot as Player); setShowBotOptions(true); }}
+              onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
               chatBubbles={chatBubbles}
               onSendChat={sendChatMessage}
               isChatSending={isChatSending}
@@ -3639,11 +3640,14 @@ const Game = () => {
         )}
       </div>
 
-      {/* Bot options dialog for host */}
-      <BotOptionsDialog
-        open={showBotOptions}
-        onOpenChange={setShowBotOptions}
-        bot={selectedBot}
+      {/* Player click dialog for host */}
+      <PlayerClickDialog
+        open={showPlayerOptions}
+        onOpenChange={setShowPlayerOptions}
+        player={selectedPlayer}
+        gameId={gameId!}
+        isHost={isCreator}
+        currentUserId={user?.id}
         onUpdate={fetchGameData}
       />
 
