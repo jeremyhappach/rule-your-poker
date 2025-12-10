@@ -179,17 +179,28 @@ serve(async (req) => {
             const currentTurnPlayer = players?.find(p => p.position === currentRound.current_turn_position);
             
             if (currentTurnPlayer && !currentTurnPlayer.current_decision) {
-              // Auto-fold the player
-              await supabase
-                .from('players')
-                .update({ current_decision: 'fold', decision_locked: true })
-                .eq('id', currentTurnPlayer.id);
-              
-              actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`);
+              // CRITICAL: If it's a bot, make a decision for them instead of auto-folding
+              if (currentTurnPlayer.is_bot) {
+                // Bot decision - 50% stay, 50% fold (simple logic for server-side)
+                const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
+                await supabase
+                  .from('players')
+                  .update({ current_decision: botDecision, decision_locked: true })
+                  .eq('id', currentTurnPlayer.id);
+                
+                actionsTaken.push(`Bot timeout: Made decision '${botDecision}' for bot at position ${currentTurnPlayer.position}`);
+              } else {
+                // Human player - auto-fold
+                await supabase
+                  .from('players')
+                  .update({ current_decision: 'fold', decision_locked: true })
+                  .eq('id', currentTurnPlayer.id);
+                
+                actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`);
+              }
             }
             
-            // CRITICAL: After auto-fold or if player already decided, advance turn to next player
-            // This prevents the game from getting stuck when a player's decision is recorded but turn isn't advanced
+            // CRITICAL: After decision, advance turn to next player
             const activePlayers = players?.filter(p => p.status === 'active' && !p.sitting_out) || [];
             const positions = activePlayers.map(p => p.position).sort((a, b) => a - b);
             const currentPos = currentRound.current_turn_position;
@@ -200,7 +211,7 @@ serve(async (req) => {
               ? Math.min(...higherPositions) 
               : Math.min(...positions);
             
-            // Re-fetch players to get updated decisions after potential auto-fold
+            // Re-fetch players to get updated decisions
             const { data: freshPlayers } = await supabase
               .from('players')
               .select('*')
@@ -224,7 +235,6 @@ serve(async (req) => {
               actionsTaken.push('All players decided - round marked complete');
             } else if (nextPosition !== currentPos) {
               // Advance turn to next undecided player
-              // Fetch game_defaults for timer
               const { data: gameDefaults } = await supabase
                 .from('game_defaults')
                 .select('decision_timer_seconds')

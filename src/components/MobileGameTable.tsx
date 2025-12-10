@@ -224,6 +224,10 @@ export const MobileGameTable = ({
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
+  // Delay community cards rendering by 3 seconds after player cards appear (Holm only)
+  const [showCommunityCards, setShowCommunityCards] = useState(false);
+  const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRoundForCommunityDelayRef = useRef<number | null>(null);
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<number | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
@@ -394,6 +398,41 @@ export const MobileGameTable = ({
     }
     lastBuckPositionRef.current = buckPosition ?? null;
   }, [buckPosition, currentPlayer, gameType]);
+
+  // Delay community cards by 3 seconds after player cards appear (Holm games only)
+  useEffect(() => {
+    if (gameType !== 'holm-game') {
+      setShowCommunityCards(true);
+      return;
+    }
+    
+    // New round detected - delay community cards
+    if (currentRound && currentRound !== lastRoundForCommunityDelayRef.current && !awaitingNextRound) {
+      lastRoundForCommunityDelayRef.current = currentRound;
+      setShowCommunityCards(false);
+      
+      // Clear any existing timeout
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+      }
+      
+      // Show community cards after 3 seconds
+      communityCardsDelayRef.current = setTimeout(() => {
+        setShowCommunityCards(true);
+      }, 3000);
+    }
+    
+    // If awaiting next round (between hands), reset for next delay
+    if (awaitingNextRound) {
+      lastRoundForCommunityDelayRef.current = null;
+    }
+    
+    return () => {
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+      }
+    };
+  }, [gameType, currentRound, awaitingNextRound]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   useEffect(() => {
@@ -775,8 +814,8 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Community Cards - vertically centered */}
-        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+        {/* Community Cards - vertically centered, delayed 3 seconds after player cards */}
+        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
