@@ -187,6 +187,63 @@ serve(async (req) => {
               
               actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`);
             }
+            
+            // CRITICAL: After auto-fold or if player already decided, advance turn to next player
+            // This prevents the game from getting stuck when a player's decision is recorded but turn isn't advanced
+            const activePlayers = players?.filter(p => p.status === 'active' && !p.sitting_out) || [];
+            const positions = activePlayers.map(p => p.position).sort((a, b) => a - b);
+            const currentPos = currentRound.current_turn_position;
+            
+            // Find next position clockwise
+            const higherPositions = positions.filter(p => p > currentPos);
+            const nextPosition = higherPositions.length > 0 
+              ? Math.min(...higherPositions) 
+              : Math.min(...positions);
+            
+            // Re-fetch players to get updated decisions after potential auto-fold
+            const { data: freshPlayers } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', gameId);
+            
+            const freshActivePlayers = freshPlayers?.filter(p => p.status === 'active' && !p.sitting_out) || [];
+            const undecidedActivePlayers = freshActivePlayers.filter(p => !p.current_decision);
+            
+            if (undecidedActivePlayers.length === 0) {
+              // All players decided - mark round complete
+              await supabase
+                .from('rounds')
+                .update({ status: 'completed', decision_deadline: null })
+                .eq('id', currentRound.id);
+              
+              await supabase
+                .from('games')
+                .update({ all_decisions_in: true })
+                .eq('id', gameId);
+              
+              actionsTaken.push('All players decided - round marked complete');
+            } else if (nextPosition !== currentPos) {
+              // Advance turn to next undecided player
+              // Fetch game_defaults for timer
+              const { data: gameDefaults } = await supabase
+                .from('game_defaults')
+                .select('decision_timer_seconds')
+                .eq('game_type', 'holm')
+                .maybeSingle();
+              
+              const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
+              const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+              
+              await supabase
+                .from('rounds')
+                .update({ 
+                  current_turn_position: nextPosition,
+                  decision_deadline: newDeadline
+                })
+                .eq('id', currentRound.id);
+              
+              actionsTaken.push(`Advanced turn from position ${currentPos} to ${nextPosition}`);
+            }
           } else if (game.game_type === '3-5-7-game' || game.game_type === '3-5-7') {
             // 3-5-7: Auto-fold all undecided players
             const { data: players } = await supabase
