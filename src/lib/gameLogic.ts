@@ -373,27 +373,14 @@ export async function startRound(gameId: string, roundNumber: number) {
           const username = player?.profiles?.username || `Player ${player?.position}`;
           console.log('[START_ROUND] 🎉 IMMEDIATE 357 DETECTED!', { playerId: player?.id, username, cards });
           
-          // Fetch game config for legs_to_win
-          const { data: gameData } = await supabase
-            .from('games')
-            .select('legs_to_win, pot, leg_value, dealer_position')
-            .eq('id', gameId)
-            .single();
+          // NOTE: 3-5-7 sweep is an INSTANT WIN - do NOT award legs!
+          // The player wins the game immediately without needing leg accumulation
           
-          const legsToWin = gameData?.legs_to_win || 3;
-          const currentPot = gameData?.pot || 0;
-          const legValue = gameData?.leg_value || 1;
-          
-          // Award all legs needed to win immediately
-          await supabase
-            .from('players')
-            .update({ legs: legsToWin })
-            .eq('id', player.id);
-          
-          // Set the special result message for 357 sweep
+          // Set the special result message for 357 sweep (triggers celebration animation)
           const sweepMessage = `357_SWEEP:${username}`;
           
-          // Mark round as completed and set special sweep message
+          // Mark round as completed and set sweep message
+          // DO NOT set status: 'game_over' yet - let animation play first
           await supabase
             .from('rounds')
             .update({ status: 'completed' })
@@ -403,31 +390,47 @@ export async function startRound(gameId: string, roundNumber: number) {
             .from('games')
             .update({ 
               last_round_result: sweepMessage,
-              awaiting_next_round: true,
-              next_round_number: 1,
-              status: 'game_over'
+              awaiting_next_round: true  // Block further game logic during animation
             })
             .eq('id', gameId);
           
-          // Fetch all players for game over handling
-          const { data: allPlayersData } = await supabase
-            .from('players')
-            .select('*, profiles(username)')
-            .eq('game_id', gameId);
-          
-          // After 5 seconds (animation duration), trigger game over handling
+          // After 5 seconds (animation duration), set game_over state directly
+          // Don't use handleGameOver - it would overwrite the sweep message
           setTimeout(async () => {
-            await handleGameOver(
-              gameId,
-              player.id,
-              username,
-              legsToWin,
-              allPlayersData || [],
-              currentPot,
-              legValue,
-              legsToWin,
-              gameData?.dealer_position || 1
-            );
+            console.log('[357 SWEEP] Animation complete, transitioning to game_over');
+            
+            // Reset all players' legs to 0 for next game
+            await supabase
+              .from('players')
+              .update({ 
+                legs: 0,
+                current_decision: null,
+                decision_locked: false,
+                ante_decision: null
+              })
+              .eq('game_id', gameId);
+            
+            // Fetch current total_hands
+            const { data: currentGame } = await supabase
+              .from('games')
+              .select('total_hands, dealer_position')
+              .eq('id', gameId)
+              .single();
+            
+            // Set game_over state - NOW the countdown will appear
+            await supabase
+              .from('games')
+              .update({ 
+                status: 'game_over',
+                game_over_at: new Date().toISOString(),
+                current_round: null,
+                awaiting_next_round: false,
+                all_decisions_in: false,
+                pot: 0,
+                total_hands: (currentGame?.total_hands || 0) + 1
+                // NOTE: Keep last_round_result as the sweep message
+              })
+              .eq('id', gameId);
           }, 5000);
           
           return round; // Exit early - 357 sweep handled
