@@ -73,20 +73,16 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
           </span>
         </div>
         {/* Cards tightly overlapping */}
-        <div className="flex" style={{ perspective: '1000px' }}>
+        <div className="flex items-center" style={{ perspective: '1000px' }}>
           {cards.map((card, index) => {
             const isFlipped = flippedCards.has(index);
-            const isRevealed = index < revealed;
-            
-            // Tight overlap - cards significantly overlapping
-            const overlapStyle = index > 0 ? { marginLeft: '-28px' } : {};
             
             return (
               <div
                 key={`${cardsKeyRef.current}-${index}`}
-                className="w-9 h-12 sm:w-10 sm:h-14 relative"
+                className="relative flex-shrink-0"
                 style={{ 
-                  ...overlapStyle,
+                  marginLeft: index > 0 ? '-24px' : '0px',
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -95,10 +91,12 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
               >
                 {/* Card Back - visible when not flipped */}
                 <div
-                  className="absolute inset-0"
                   style={{
                     backfaceVisibility: 'hidden',
                     transform: 'rotateY(0deg)',
+                    position: isFlipped ? 'absolute' : 'relative',
+                    top: 0,
+                    left: 0,
                   }}
                 >
                   <PlayingCard
@@ -109,10 +107,12 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
                 </div>
                 {/* Card Front - visible when flipped */}
                 <div
-                  className="absolute inset-0"
                   style={{
                     backfaceVisibility: 'hidden',
                     transform: 'rotateY(180deg)',
+                    position: isFlipped ? 'relative' : 'absolute',
+                    top: 0,
+                    left: 0,
                   }}
                 >
                   <PlayingCard
