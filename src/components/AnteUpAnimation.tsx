@@ -88,7 +88,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       setTimeout(() => {
         setAnimations([]);
         hasTriggeredRef.current = false; // Allow next ante animation
-      }, 600);
+      }, 900);
     }
 
     prevPotRef.current = pot;
@@ -109,19 +109,21 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
           }}
         >
           <div
-            className="w-5 h-5 rounded-full bg-gradient-to-b from-green-400 to-green-600 border-2 border-green-300 shadow-lg"
+            className="w-7 h-7 rounded-full bg-sky-400 border-2 border-white shadow-lg flex items-center justify-center"
             style={{
-              animation: `anteChipMove${i} 0.5s ease-in forwards`,
+              animation: `anteChipMove${i} 0.8s ease-in-out forwards`,
             }}
-          />
+          >
+            <span className="text-black text-[10px] font-bold">${anteAmount}</span>
+          </div>
           <style>{`
             @keyframes anteChipMove${i} {
               0% {
                 transform: translate(0, 0) scale(1);
                 opacity: 1;
               }
-              80% {
-                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(0.8);
+              70% {
+                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(0.9);
                 opacity: 1;
               }
               100% {
