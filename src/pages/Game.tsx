@@ -1263,8 +1263,9 @@ const Game = () => {
       }
       
       // Don't show ante dialog for dealer (they auto ante up)
-      // Show dialog if player exists and hasn't made ante decision and isn't dealer
-      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer) {
+      // Don't show ante dialog for players who are sitting_out
+      // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
+      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && !currentPlayer.sitting_out) {
         console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', currentPlayer.id);
         setShowAnteDialog(true);
         
