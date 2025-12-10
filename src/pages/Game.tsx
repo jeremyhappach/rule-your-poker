@@ -1910,14 +1910,28 @@ const Game = () => {
           if (isHolmGame) {
             await proceedToNextHolmRound(gameId);
           } else {
+            // CRITICAL: Fetch FRESH game state to check for 357 sweep
+            // The closure's `game` variable is stale from when useEffect was created
+            const { data: freshGame } = await supabase
+              .from('games')
+              .select('last_round_result, next_round_number, pot, ante_amount, status')
+              .eq('id', gameId)
+              .single();
+            
+            // Skip if game is already over (357 sweep sets game_over after 5s)
+            if (freshGame?.status === 'game_over') {
+              console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
+              return;
+            }
+            
             // Trigger ante animation when proceeding to round 1 (new antes collected)
             // BUT skip if this is a 357 sweep (game is over, no new antes)
-            const is357Sweep = game?.last_round_result?.startsWith('357_SWEEP');
-            if (game?.next_round_number === 1 && !is357Sweep) {
+            const is357Sweep = freshGame?.last_round_result?.startsWith('357_SWEEP');
+            if (freshGame?.next_round_number === 1 && !is357Sweep) {
               // Calculate expected pot: current pot + incoming antes
               const activePlayers = players.filter(p => !p.sitting_out);
-              const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
-              const expectedPot = (game?.pot || 0) + anteTotal;
+              const anteTotal = (freshGame?.ante_amount || 2) * activePlayers.length;
+              const expectedPot = (freshGame?.pot || 0) + anteTotal;
               setAnteAnimationExpectedPot(expectedPot);
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
             }
