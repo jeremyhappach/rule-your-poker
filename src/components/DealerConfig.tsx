@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 interface DealerConfigProps {
   gameId: string;
@@ -40,7 +39,6 @@ export const DealerConfig = ({
   currentChuckyCards,
   onConfigComplete 
 }: DealerConfigProps) => {
-  const { toast } = useToast();
   const [anteAmount, setAnteAmount] = useState(currentAnteAmount || 2);
   const [legValue, setLegValue] = useState(currentLegValue || 1);
   const [pussyTaxEnabled, setPussyTaxEnabled] = useState(currentPussyTaxEnabled ?? true);
@@ -146,29 +144,17 @@ export const DealerConfig = ({
     
     // Validation
     if (anteAmount < 1 || legValue < 1 || legsToWin < 1) {
-      toast({
-        title: "Invalid values",
-        description: "All amounts must be at least 1",
-        variant: "destructive",
-      });
+      console.error('Invalid values: All amounts must be at least 1');
       return;
     }
 
     if (pussyTaxEnabled && pussyTaxValue < 1) {
-      toast({
-        title: "Invalid pussy tax",
-        description: "Pussy tax value must be at least 1",
-        variant: "destructive",
-      });
+      console.error('Invalid pussy tax: must be at least 1');
       return;
     }
 
     if (potMaxEnabled && potMaxValue < 1) {
-      toast({
-        title: "Invalid pot max",
-        description: "Pot max value must be at least 1",
-        variant: "destructive",
-      });
+      console.error('Invalid pot max: must be at least 1');
       return;
     }
 
@@ -205,11 +191,6 @@ export const DealerConfig = ({
 
     if (error) {
       console.error('[DEALER CONFIG] Game update error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save configuration",
-        variant: "destructive",
-      });
       return;
     }
 

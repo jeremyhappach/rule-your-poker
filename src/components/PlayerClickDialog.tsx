@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 interface ClickedPlayer {
   id: string;
@@ -42,7 +41,6 @@ export const PlayerClickDialog = ({
   onUpdate,
 }: PlayerClickDialogProps) => {
   const [updating, setUpdating] = useState(false);
-  const { toast } = useToast();
   
   if (!player) return null;
   
@@ -61,20 +59,11 @@ export const PlayerClickDialog = ({
       
       if (error) throw error;
       
-      toast({
-        title: "Host Changed",
-        description: `${playerName} is now the host`,
-      });
-      
+      console.log(`Host changed to ${playerName}`);
       onUpdate();
       onOpenChange(false);
     } catch (error) {
       console.error('Error making host:', error);
-      toast({
-        title: "Error",
-        description: "Failed to change host",
-        variant: "destructive",
-      });
     } finally {
       setUpdating(false);
     }

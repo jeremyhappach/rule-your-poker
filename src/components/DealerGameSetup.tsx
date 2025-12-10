@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Timer, Plus, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 
 interface PreviousGameConfig {
@@ -64,7 +63,6 @@ export const DealerGameSetup = ({
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
-  const { toast } = useToast();
   // Default to previous game type if provided, otherwise holm-game
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
   const [timeLeft, setTimeLeft] = useState(30);
@@ -287,27 +285,27 @@ export const DealerGameSetup = ({
     
     // Validation
     if (parsedAnte < 1) {
-      toast({ title: "Invalid Ante", description: "Ante must be at least $1", variant: "destructive" });
+      console.error('Invalid Ante: must be at least $1');
       return;
     }
     if (parsedLegValue < 1) {
-      toast({ title: "Invalid Leg Value", description: "Leg value must be at least $1", variant: "destructive" });
+      console.error('Invalid Leg Value: must be at least $1');
       return;
     }
     if (parsedLegsToWin < 1) {
-      toast({ title: "Invalid Legs to Win", description: "Legs to win must be at least 1", variant: "destructive" });
+      console.error('Invalid Legs to Win: must be at least 1');
       return;
     }
     if (pussyTaxEnabled && parsedPussyTax < 1) {
-      toast({ title: "Invalid Pussy Tax", description: "Pussy tax must be at least $1", variant: "destructive" });
+      console.error('Invalid Pussy Tax: must be at least $1');
       return;
     }
     if (potMaxEnabled && parsedPotMax < 1) {
-      toast({ title: "Invalid Pot Max", description: "Pot max must be at least $1", variant: "destructive" });
+      console.error('Invalid Pot Max: must be at least $1');
       return;
     }
     if (selectedGameType === 'holm-game' && (parsedChucky < 2 || parsedChucky > 7)) {
-      toast({ title: "Invalid Chucky Cards", description: "Chucky cards must be between 2-7", variant: "destructive" });
+      console.error('Invalid Chucky Cards: must be between 2-7');
       return;
     }
     
@@ -345,11 +343,6 @@ export const DealerGameSetup = ({
 
     if (error) {
       console.error('[DEALER SETUP] Error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save configuration",
-        variant: "destructive",
-      });
       hasSubmittedRef.current = false;
       setIsSubmitting(false);
       return;

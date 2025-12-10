@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { handlePlayerRejoin } from "@/lib/playerStateEvaluation";
-import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
 interface RejoinNextHandButtonProps {
@@ -9,7 +8,6 @@ interface RejoinNextHandButtonProps {
 }
 
 export const RejoinNextHandButton = ({ playerId, onRejoinRequested }: RejoinNextHandButtonProps) => {
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleClick = async () => {
@@ -18,17 +16,10 @@ export const RejoinNextHandButton = ({ playerId, onRejoinRequested }: RejoinNext
     const success = await handlePlayerRejoin(playerId);
     
     if (success) {
-      toast({
-        title: "Rejoining",
-        description: "You'll be dealt in at the next hand",
-      });
+      console.log('Rejoin requested successfully');
       onRejoinRequested?.();
     } else {
-      toast({
-        title: "Error",
-        description: "Failed to request rejoin",
-        variant: "destructive",
-      });
+      console.error('Failed to request rejoin');
     }
     
     setIsLoading(false);

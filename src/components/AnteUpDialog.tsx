@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 interface AnteUpDialogProps {
   gameId: string;
@@ -38,7 +37,6 @@ export const AnteUpDialog = ({
 }: AnteUpDialogProps) => {
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
   const gameDisplayName = isHolmGame ? 'Holm Game' : '3-5-7';
-  const { toast } = useToast();
   const [timeLeft, setTimeLeft] = useState(10);
   const [hasDecided, setHasDecided] = useState(false);
 
@@ -69,11 +67,7 @@ export const AnteUpDialog = ({
       .eq('id', playerId);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to ante up",
-        variant: "destructive",
-      });
+      console.error('Failed to ante up:', error);
       return;
     }
 
@@ -93,19 +87,11 @@ export const AnteUpDialog = ({
       .eq('id', playerId);
 
     if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sit out",
-        variant: "destructive",
-      });
+      console.error('Failed to sit out:', error);
       return;
     }
 
-    toast({
-      title: "Sitting Out",
-      description: "You'll observe this game",
-    });
-
+    console.log('Sitting out this game');
     onDecisionMade();
   };
 
