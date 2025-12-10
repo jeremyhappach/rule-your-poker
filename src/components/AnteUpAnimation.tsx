@@ -42,18 +42,45 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   const lastAnimatedRoundRef = useRef<number | null>(null);
   const hasAnimatedThisSessionRef = useRef(false);
 
-  // Slot positions as percentages of container
+  // Slot positions as percentages of container (where chips START from)
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player
+    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 85, left: 12 },
-      1: { top: 50, left: 3 },
-      2: { top: 8, left: 12 },
-      3: { top: 8, left: 88 },
-      4: { top: 50, left: 97 },
-      5: { top: 85, left: 88 },
+      0: { top: 85, left: 12 },   // Bottom-left
+      1: { top: 50, left: 3 },    // Middle-left
+      2: { top: 8, left: 12 },    // Top-left
+      3: { top: 8, left: 88 },    // Top-right
+      4: { top: 50, left: 97 },   // Middle-right
+      5: { top: 85, left: 88 },   // Bottom-right
     };
     return slots[slotIndex] || { top: 50, left: 50 };
+  };
+
+  // Get target position on pot box edge based on slot (closest edge to player)
+  const getPotBoxTarget = (slotIndex: number, rect: DOMRect, isHolm: boolean): { x: number; y: number } => {
+    const centerX = rect.width / 2;
+    // Pot box center Y position
+    const potCenterY = isHolm ? rect.height * 0.35 : rect.height * 0.50;
+    // Pot box approximate dimensions (half-widths/heights from center to edge)
+    const potHalfWidth = isHolm ? 45 : 65;
+    const potHalfHeight = isHolm ? 18 : 28;
+    
+    // Target the closest edge based on slot position
+    switch (slotIndex) {
+      case -1: // Current player (bottom) - target bottom edge
+      case 0:  // Bottom-left - target bottom-left edge
+      case 5:  // Bottom-right - target bottom-right edge
+        return { x: centerX, y: potCenterY + potHalfHeight };
+      case 2:  // Top-left - target top edge
+      case 3:  // Top-right - target top edge
+        return { x: centerX, y: potCenterY - potHalfHeight };
+      case 1:  // Middle-left - target left edge
+        return { x: centerX - potHalfWidth, y: potCenterY };
+      case 4:  // Middle-right - target right edge
+        return { x: centerX + potHalfWidth, y: potCenterY };
+      default:
+        return { x: centerX, y: potCenterY };
+    }
   };
 
   // Reset when game goes back to waiting phase (new game session)
@@ -100,30 +127,26 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     }
 
     if (!shouldAnimate) return;
-    
+
     // Start animation immediately
     if (onAnimationStart) {
       onAnimationStart();
     }
     
     const rect = containerRef.current.getBoundingClientRect();
-    const centerX = rect.width / 2;
-    // Target pot box TOP EDGE - chips disappear when they reach the border
-    // Holm: pot at top-[35%], so top edge ~22%
-    // 3-5-7: pot at top-1/2, so top edge ~35%
-    const centerY = isHolm ? rect.height * 0.22 : rect.height * 0.35;
 
     const newAnims: ChipAnimation[] = activePlayers.map(player => {
       const isCurrentPlayer = currentPlayerPosition === player.position;
       const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
       const slot = getSlotPercent(slotIndex);
+      const target = getPotBoxTarget(slotIndex, rect, isHolm);
       
       return {
         id: `chip-${animIdRef.current++}`,
         fromX: (slot.left / 100) * rect.width,
         fromY: (slot.top / 100) * rect.height,
-        toX: centerX,
-        toY: centerY,
+        toX: target.x,
+        toY: target.y,
       };
     });
 

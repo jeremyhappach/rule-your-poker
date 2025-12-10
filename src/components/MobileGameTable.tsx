@@ -694,11 +694,14 @@ export const MobileGameTable = ({
           gameType={gameType}
           currentRound={currentRound}
           onAnimationStart={() => {
-            // Freeze displayed pot at current value when animation starts
+            // Freeze displayed pot at PRE-ANTE value when animation starts
+            // The actual pot has already been updated, so subtract the ante total
+            const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
+            setDisplayedPot(Math.max(0, pot - anteTotal));
             isAnteAnimatingRef.current = true;
           }}
           onChipsArrived={() => {
-            // Update displayed pot and trigger flash simultaneously
+            // Update displayed pot to actual value and trigger flash simultaneously
             setDisplayedPot(pot);
             isAnteAnimatingRef.current = false;
             const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
