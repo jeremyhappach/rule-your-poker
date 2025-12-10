@@ -230,6 +230,13 @@ export const MobileGameTable = ({
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
   
+  // Sync displayedPot to actual pot when NOT animating (handles DB updates)
+  useEffect(() => {
+    if (!isAnteAnimatingRef.current) {
+      setDisplayedPot(pot);
+    }
+  }, [pot]);
+  
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
@@ -783,12 +790,12 @@ export const MobileGameTable = ({
             isAnteAnimatingRef.current = true;
           }}
           onChipsArrived={() => {
-            // Update displayed pot to actual value and trigger flash simultaneously
-            setDisplayedPot(pot);
+            // Calculate expected pot (pre-ante value + ante total) rather than relying on DB prop
+            const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
+            setDisplayedPot(prev => prev + anteTotal);
             // Clear displayed chips override - let real values show
             setDisplayedChips({});
             isAnteAnimatingRef.current = false;
-            const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: anteTotal });
           }}
         />
@@ -848,9 +855,9 @@ export const MobileGameTable = ({
             }`}>
               <span className={`text-poker-gold font-bold ${
                 gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
-              }`}>${Math.round(isAnteAnimatingRef.current ? displayedPot : pot)}</span>
+              }`}>${Math.round(displayedPot)}</span>
               <ValueChangeFlash 
-                value={pot} 
+                value={pot}
                 position="top-right" 
                 disabled={isWaitingPhase}
                 manualTrigger={anteFlashTrigger}
