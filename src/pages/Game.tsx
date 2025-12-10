@@ -1911,7 +1911,9 @@ const Game = () => {
             await proceedToNextHolmRound(gameId);
           } else {
             // Trigger ante animation when proceeding to round 1 (new antes collected)
-            if (game?.next_round_number === 1) {
+            // BUT skip if this is a 357 sweep (game is over, no new antes)
+            const is357Sweep = game?.last_round_result?.startsWith('357_SWEEP');
+            if (game?.next_round_number === 1 && !is357Sweep) {
               // Calculate expected pot: current pot + incoming antes
               const activePlayers = players.filter(p => !p.sitting_out);
               const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
