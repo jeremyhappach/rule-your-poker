@@ -72,17 +72,20 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             Chucky {revealed < cards.length && `(${revealed}/${cards.length})`}
           </span>
         </div>
-        {/* Cards tightly overlapping - use inline styles to override Tailwind fixed widths */}
-        <div style={{ display: 'flex', alignItems: 'center', perspective: '1000px' }}>
+        {/* Cards tightly overlapping - force overlap by constraining wrapper width */}
+        <div style={{ display: 'flex', perspective: '1000px' }}>
           {cards.map((card, index) => {
             const isFlipped = flippedCards.has(index);
+            // Each wrapper is only 16px wide, but card inside is full size (~40px)
+            // This forces cards to overlap visually
+            const isLast = index === cards.length - 1;
             
             return (
               <div
                 key={`${cardsKeyRef.current}-${index}`}
                 style={{ 
-                  position: 'relative',
-                  marginLeft: index > 0 ? '-28px' : '0',
+                  width: isLast ? 'auto' : '16px', // Last card shows full, others clipped
+                  flexShrink: 0,
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
