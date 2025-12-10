@@ -129,6 +129,8 @@ interface MobileGameTableProps {
   getPositionForUserId?: (userId: string) => number | undefined;
   // Observer leave game prop
   onLeaveGameNow?: () => void;
+  // Waiting phase - hide pot display
+  isWaitingPhase?: boolean;
 }
 export const MobileGameTable = ({
   players,
@@ -172,6 +174,7 @@ export const MobileGameTable = ({
   isChatSending = false,
   getPositionForUserId,
   onLeaveGameNow,
+  isWaitingPhase = false,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -708,19 +711,22 @@ export const MobileGameTable = ({
         />
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
-        <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
-          gameType === 'holm-game' 
-            ? 'top-[35%] -translate-y-full' 
-            : 'top-1/2 -translate-y-1/2'
-        }`}>
-          <div className={`bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
-            gameType === 'holm-game' ? 'px-5 py-1.5' : 'px-8 py-3'
+        {/* Hide during waiting phase */}
+        {!isWaitingPhase && (
+          <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
+            gameType === 'holm-game' 
+              ? 'top-[35%] -translate-y-full' 
+              : 'top-1/2 -translate-y-1/2'
           }`}>
-            <span className={`text-poker-gold font-bold ${
-              gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
-            }`}>${Math.round(pot)}</span>
+            <div className={`bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
+              gameType === 'holm-game' ? 'px-5 py-1.5' : 'px-8 py-3'
+            }`}>
+              <span className={`text-poker-gold font-bold ${
+                gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
+              }`}>${Math.round(pot)}</span>
+            </div>
           </div>
-        </div>
+        )}
         
         {/* Community Cards - vertically centered */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
@@ -1147,8 +1153,14 @@ export const MobileGameTable = ({
             
             {/* Player info and chat - below cards */}
             <div className="flex flex-col gap-2 mt-16">
-              {/* Name, chips, and hand eval in a row */}
+              {/* Name, chips, dealer badge, and hand eval in a row */}
               <div className="flex items-center justify-center gap-3">
+                {/* Dealer badge for current player */}
+                {dealerPosition === currentPlayer.position && (
+                  <div className="w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
+                    <span className="text-white font-bold text-[10px]">D</span>
+                  </div>
+                )}
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
                   {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
