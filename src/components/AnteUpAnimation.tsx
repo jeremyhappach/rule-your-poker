@@ -43,7 +43,6 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   const lastAnimatedPotRef = useRef<number | null>(null);
   const lastAnimatedRoundRef = useRef<number | null>(null);
   const hasAnimatedThisSessionRef = useRef(false);
-  const lastStatusRef = useRef<string | null>(null);
 
   // Slot positions as percentages of container (where chips START from) - RELATIVE to current player
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -107,7 +106,6 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       lastAnimatedPotRef.current = null;
       lastAnimatedRoundRef.current = null;
       hasAnimatedThisSessionRef.current = false;
-      lastStatusRef.current = null;
     }
   }, [isWaitingPhase]);
 
@@ -117,28 +115,20 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     }
 
     const isHolm = gameType === 'holm-game';
-    const wasAnteDecision = lastStatusRef.current === 'ante_decision';
     const isNowInProgress = gameStatus === 'in_progress';
-    const wasWaiting = lastStatusRef.current === 'waiting_for_players';
-    
-    // Update status ref AFTER checking
-    const previousStatus = lastStatusRef.current;
-    lastStatusRef.current = gameStatus || null;
     
     let shouldAnimate = false;
     
     if (isHolm) {
-      // Holm: trigger ONCE per session when game transitions to in_progress
-      // Can happen from ante_decision->in_progress OR waiting->in_progress (if dealer auto-config)
+      // Holm: trigger ONCE per session when game is in_progress and we haven't animated
+      // This catches: ante_decision->in_progress transition OR first render when already in_progress
       if (!hasAnimatedThisSessionRef.current && isNowInProgress) {
-        if (wasAnteDecision || (wasWaiting && previousStatus !== null)) {
-          shouldAnimate = true;
-          hasAnimatedThisSessionRef.current = true;
-        }
+        shouldAnimate = true;
+        hasAnimatedThisSessionRef.current = true;
       }
     } else {
-      // 3-5-7: animate when round 1 starts and status just changed to in_progress
-      if (currentRound === 1 && lastAnimatedRoundRef.current !== 1 && wasAnteDecision && isNowInProgress) {
+      // 3-5-7: animate when round 1 starts and we haven't animated this round yet
+      if (currentRound === 1 && lastAnimatedRoundRef.current !== 1 && isNowInProgress) {
         shouldAnimate = true;
         lastAnimatedRoundRef.current = 1;
       }
