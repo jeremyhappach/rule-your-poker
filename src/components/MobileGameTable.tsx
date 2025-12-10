@@ -12,6 +12,7 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
+import { ValueChangeFlash } from "./ValueChangeFlash";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -735,12 +736,17 @@ export const MobileGameTable = ({
               ? 'top-[35%] -translate-y-full' 
               : 'top-1/2 -translate-y-1/2'
           }`}>
-            <div className={`bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
+            <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
               gameType === 'holm-game' ? 'px-5 py-1.5' : 'px-8 py-3'
             }`}>
               <span className={`text-poker-gold font-bold ${
                 gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
               }`}>${Math.round(pot)}</span>
+              <ValueChangeFlash 
+                value={pot} 
+                position="top-right" 
+                disabled={isWaitingPhase}
+              />
             </div>
           </div>
         )}
