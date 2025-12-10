@@ -221,6 +221,7 @@ export const MobileGameTable = ({
   const [showLegEarned, setShowLegEarned] = useState(false);
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
   const [legEarnedPlayerPosition, setLegEarnedPlayerPosition] = useState<number | null>(null);
+  const [isWinningLegAnimation, setIsWinningLegAnimation] = useState(false);
   const playerLegsRef = useRef<Record<string, number>>({});
   
   // 357 Sweeps pot animation state
@@ -509,6 +510,7 @@ export const MobileGameTable = ({
         const playerName = player.profiles?.username || `Player ${player.position}`;
         setLegEarnedPlayerName(playerName);
         setLegEarnedPlayerPosition(player.position);
+        setIsWinningLegAnimation(currentLegs >= legsToWin); // Check if this is the winning leg
         setShowLegEarned(true);
       }
       playerLegsRef.current[player.id] = currentLegs;
@@ -615,9 +617,10 @@ export const MobileGameTable = ({
     const isRightSideSlot = slotIndex !== undefined && slotIndex >= 3;
     
     // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
-    // HIDE leg indicator for the specific player while their leg earned animation is playing
+    // During leg animation, show (legs - 1) so only the NEW leg is hidden
     const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
-    const legIndicator = playerLegs > 0 && !isLegAnimatingForThisPlayer && (
+    const displayLegs = isLegAnimatingForThisPlayer ? playerLegs - 1 : playerLegs;
+    const legIndicator = displayLegs > 0 && (
       <div className="absolute z-30" style={{
         // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
         ...(isRightSideSlot 
@@ -626,14 +629,14 @@ export const MobileGameTable = ({
         )
       }}>
         <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
-          {Array.from({ length: Math.min(playerLegs, legsToWin) }).map((_, i) => (
+          {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => (
             <div 
               key={i} 
               className="w-5 h-5 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
               style={{
                 marginLeft: !isRightSideSlot && i > 0 ? '-8px' : '0',
                 marginRight: isRightSideSlot && i > 0 ? '-8px' : '0',
-                zIndex: Math.min(playerLegs, legsToWin) - i
+                zIndex: Math.min(displayLegs, legsToWin) - i
               }}
             >
               <span className="text-slate-800 font-bold text-[10px]">L</span>
@@ -880,6 +883,7 @@ export const MobileGameTable = ({
             };
             return slotCoords[slotIndex] || { top: '85%', left: '40%' };
           })()}
+          isWinningLeg={isWinningLegAnimation}
           onComplete={() => setShowLegEarned(false)} 
         />
         
@@ -1060,8 +1064,12 @@ export const MobileGameTable = ({
       })()}
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
-        {/* HIDE during leg animation for current player */}
-        {gameType !== 'holm-game' && currentPlayer && currentPlayer.legs > 0 && !(showLegEarned && legEarnedPlayerPosition === currentPlayer.position) && (
+        {/* During leg animation, show (legs - 1) so only the NEW leg is hidden */}
+        {gameType !== 'holm-game' && currentPlayer && (() => {
+          const isAnimatingCurrentPlayer = showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
+          const displayLegs = isAnimatingCurrentPlayer ? currentPlayer.legs - 1 : currentPlayer.legs;
+          return displayLegs > 0;
+        })() && (
           <div 
             className="absolute z-20"
             style={{
@@ -1071,18 +1079,28 @@ export const MobileGameTable = ({
             }}
           >
             <div className="flex">
-              {Array.from({ length: Math.min(currentPlayer.legs, legsToWin) }).map((_, i) => (
+              {Array.from({ length: Math.min(
+                (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
+                  ? currentPlayer.legs - 1 
+                  : currentPlayer.legs, 
+                legsToWin
+              ) }).map((_, i) => {
+                const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
+                  ? currentPlayer.legs - 1 
+                  : currentPlayer.legs;
+                return (
                 <div 
                   key={i} 
                   className="w-7 h-7 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
                   style={{
                     marginLeft: i > 0 ? '-10px' : '0',
-                    zIndex: Math.min(currentPlayer.legs, legsToWin) - i
+                    zIndex: Math.min(displayCount, legsToWin) - i
                   }}
                 >
                   <span className="text-slate-800 font-bold text-xs">L</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
