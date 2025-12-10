@@ -104,16 +104,18 @@ serve(async (req) => {
             
             actionsTaken.push(`Config timeout: Dealer ${dealerPlayer.position} sat out, rotated to ${nextDealer.position}`);
           } else {
-            // Not enough dealers - end session
+            // Not enough eligible dealers - return to waiting_for_players status
+            // This preserves chip stacks and allows players to rejoin
             await supabase
               .from('games')
               .update({
-                status: 'session_ended',
-                session_ended_at: nowIso,
+                status: 'waiting_for_players',
+                config_deadline: null,
+                config_complete: false,
               })
               .eq('id', gameId);
             
-            actionsTaken.push('Config timeout: No eligible dealers, session ended');
+            actionsTaken.push('Config timeout: No eligible dealers, returning to waiting_for_players');
           }
         }
       }
