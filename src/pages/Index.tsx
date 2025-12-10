@@ -26,9 +26,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, History } from "lucide-react";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
+import { MyGameHistory } from "@/components/MyGameHistory";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ const Index = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -246,6 +248,14 @@ const Index = () => {
         <div className="flex justify-end gap-2">
           <Button 
             variant="outline" 
+            onClick={() => setShowHistoryDialog(true)}
+            className="w-auto"
+          >
+            <History className="w-4 h-4 mr-2" />
+            My History
+          </Button>
+          <Button 
+            variant="outline" 
             onClick={() => setShowProfileDialog(true)}
             className="w-auto"
           >
@@ -380,6 +390,14 @@ const Index = () => {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {user && (
+        <MyGameHistory 
+          userId={user.id} 
+          open={showHistoryDialog} 
+          onOpenChange={setShowHistoryDialog} 
+        />
+      )}
     </div>
   );
 };
