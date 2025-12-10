@@ -80,9 +80,10 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             return (
               <div
                 key={`${cardsKeyRef.current}-${index}`}
-                className="relative flex-shrink-0"
+                className="relative"
                 style={{ 
-                  marginLeft: index > 0 ? '-24px' : '0px',
+                  marginLeft: index > 0 ? '-32px' : '0',
+                  width: '40px',
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
