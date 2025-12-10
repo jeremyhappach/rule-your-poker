@@ -411,7 +411,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             value="historical"
             className="text-xs sm:text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
           >
-            History ({historicalGames.length})
+            Completed ({historicalGames.length})
           </TabsTrigger>
         </TabsList>
         
