@@ -90,19 +90,14 @@ export const PlayerClickDialog = ({
   const handleStandUpNextHand = async () => {
     setUpdating(true);
     try {
-      // For bots, standing up means removing them entirely
+      // Set flag to remove bot after current hand ends
       await supabase
         .from('players')
-        .delete()
+        .update({ 
+          stand_up_next_hand: true,
+          sit_out_next_hand: false,
+        })
         .eq('id', player.id);
-      
-      // Also delete bot's profile if it's a bot
-      if (player.is_bot) {
-        await supabase
-          .from('profiles')
-          .delete()
-          .eq('id', player.id);
-      }
       
       onUpdate();
       onOpenChange(false);
