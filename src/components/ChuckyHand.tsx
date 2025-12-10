@@ -63,6 +63,11 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
     ? { left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }
     : { top: '2%', left: '50%', transform: 'translateX(-50%)' };
 
+  // Calculate container width: first card full width + (remaining cards * overlap amount)
+  const cardWidth = 40; // approximate card width in px
+  const overlapOffset = 18; // how much of each subsequent card shows
+  const totalWidth = cardWidth + (cards.length - 1) * overlapOffset;
+
   return (
     <div className="absolute z-30 animate-scale-in" style={positionStyle}>
       <div className="bg-gradient-to-br from-red-900/90 to-red-950/90 rounded-lg p-1.5 sm:p-2 backdrop-blur-sm border border-red-500 shadow-xl">
@@ -72,21 +77,18 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             Chucky {revealed < cards.length && `(${revealed}/${cards.length})`}
           </span>
         </div>
-        {/* Cards tightly overlapping - force overlap by constraining wrapper width */}
-        <div style={{ display: 'flex', perspective: '1000px', overflow: 'visible' }}>
+        {/* Cards using absolute positioning for guaranteed overlap */}
+        <div style={{ position: 'relative', width: totalWidth, height: 56, perspective: '1000px' }}>
           {cards.map((card, index) => {
             const isFlipped = flippedCards.has(index);
-            // Each wrapper is only 16px wide, but card inside is full size (~40px)
-            // This forces cards to overlap visually
-            const isLast = index === cards.length - 1;
             
             return (
               <div
                 key={`${cardsKeyRef.current}-${index}`}
                 style={{ 
-                  width: isLast ? 'auto' : '16px', // Last card shows full, others clipped
-                  flexShrink: 0,
-                  overflow: 'visible',
+                  position: 'absolute',
+                  left: index * overlapOffset,
+                  top: 0,
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
