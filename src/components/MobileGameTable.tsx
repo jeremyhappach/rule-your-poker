@@ -803,6 +803,8 @@ export const MobileGameTable = ({
           gameStatus={gameStatus}
           triggerId={anteAnimationTriggerId}
           onAnimationStart={() => {
+            // CRITICAL: Set animating flag FIRST to prevent sync useEffect from resetting
+            isAnteAnimatingRef.current = true;
             // Clear the trigger so it doesn't fire again on status change
             onAnteAnimationStarted?.();
             // Freeze displayed pot at PRE-ANTE value when animation starts
@@ -815,7 +817,6 @@ export const MobileGameTable = ({
               newDisplayedChips[p.id] = p.chips - anteAmount;
             });
             setDisplayedChips(newDisplayedChips);
-            isAnteAnimatingRef.current = true;
           }}
           onChipsArrived={() => {
             // Calculate expected pot (pre-ante value + ante total) rather than relying on DB prop
@@ -1176,7 +1177,7 @@ export const MobileGameTable = ({
                   {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  Pot: <span className="text-poker-gold font-bold">${Math.round(pot)}</span>
+                  Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>
                 </span>
               </div>
             </div>
