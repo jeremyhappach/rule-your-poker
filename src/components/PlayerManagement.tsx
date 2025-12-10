@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Users, ShieldCheck, ShieldX, UserCheck, UserX } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -29,6 +27,7 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, username, is_active, is_superuser')
+      .not('username', 'ilike', 'Bot %')
       .order('username');
 
     if (error) {
@@ -41,7 +40,7 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
   };
 
   const toggleActive = async (profileId: string, currentValue: boolean) => {
-    if (profileId === currentUserId) return; // Can't deactivate yourself
+    if (profileId === currentUserId) return;
     
     setUpdating(profileId);
     
@@ -62,7 +61,7 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
   };
 
   const toggleSuperuser = async (profileId: string, currentValue: boolean) => {
-    if (profileId === currentUserId) return; // Can't remove your own superuser status
+    if (profileId === currentUserId) return;
     
     setUpdating(profileId);
     
@@ -83,21 +82,17 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
   };
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading players...</div>;
+    return <div className="text-xs text-muted-foreground">Loading players...</div>;
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 pb-2 border-b">
-        <Users className="h-4 w-4 text-amber-500" />
-        <h3 className="font-semibold">Player Management</h3>
+    <div className="space-y-2">
+      <div className="pb-1 border-b">
+        <h3 className="font-semibold text-sm">Players</h3>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Manage player access and admin privileges
-      </p>
       
-      <ScrollArea className="h-[200px] rounded-md border p-3">
-        <div className="space-y-3">
+      <ScrollArea className="h-[180px] rounded-md border p-2">
+        <div className="space-y-1">
           {profiles.map((profile) => {
             const isCurrentUser = profile.id === currentUserId;
             const isUpdatingThis = updating === profile.id;
@@ -105,61 +100,33 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
             return (
               <div 
                 key={profile.id} 
-                className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-                  isCurrentUser ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-muted/30'
+                className={`flex items-center justify-between py-1.5 px-2 rounded ${
+                  isCurrentUser ? 'bg-amber-500/10' : 'bg-muted/20'
                 }`}
               >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="text-sm font-medium truncate">
-                    {profile.username}
-                  </span>
-                  {isCurrentUser && (
-                    <span className="text-xs text-amber-500">(you)</span>
-                  )}
-                </div>
+                <span className="text-xs truncate max-w-[100px]">
+                  {profile.username}
+                  {isCurrentUser && <span className="text-amber-500 ml-1">•</span>}
+                </span>
                 
-                <div className="flex items-center gap-4">
-                  {/* Active Toggle */}
-                  <div className="flex items-center gap-2">
-                    <Label 
-                      htmlFor={`active-${profile.id}`} 
-                      className="text-xs text-muted-foreground flex items-center gap-1"
-                    >
-                      {profile.is_active ? (
-                        <UserCheck className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <UserX className="h-3 w-3 text-red-500" />
-                      )}
-                      Active
-                    </Label>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">Active</span>
                     <Switch
-                      id={`active-${profile.id}`}
                       checked={profile.is_active}
                       onCheckedChange={() => toggleActive(profile.id, profile.is_active)}
                       disabled={isCurrentUser || isUpdatingThis}
-                      className="data-[state=checked]:bg-green-600"
+                      className="scale-75 data-[state=checked]:bg-green-600"
                     />
                   </div>
                   
-                  {/* Superuser Toggle */}
-                  <div className="flex items-center gap-2">
-                    <Label 
-                      htmlFor={`superuser-${profile.id}`} 
-                      className="text-xs text-muted-foreground flex items-center gap-1"
-                    >
-                      {profile.is_superuser ? (
-                        <ShieldCheck className="h-3 w-3 text-amber-500" />
-                      ) : (
-                        <ShieldX className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      Admin
-                    </Label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-muted-foreground">Admin</span>
                     <Switch
-                      id={`superuser-${profile.id}`}
                       checked={profile.is_superuser}
                       onCheckedChange={() => toggleSuperuser(profile.id, profile.is_superuser)}
                       disabled={isCurrentUser || isUpdatingThis}
-                      className="data-[state=checked]:bg-amber-600"
+                      className="scale-75 data-[state=checked]:bg-amber-600"
                     />
                   </div>
                 </div>
