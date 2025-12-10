@@ -1053,12 +1053,12 @@ async function handleChuckyShowdown(
       nextDealer: nextDealerPosition
     });
     
-    // Set game_over status with game_over_at to trigger countdown timer (like 3-5-7)
+    // Set game_over status with game_over_at to trigger countdown timer (same as 3-5-7)
     const { error: gameOverError } = await supabase
       .from('games')
       .update({
         status: 'game_over',
-        game_over_at: new Date(Date.now() + 5000).toISOString(), // 5 second countdown
+        game_over_at: new Date().toISOString(), // Immediate - same as 3-5-7
         pot: 0,
         awaiting_next_round: false,
         dealer_position: nextDealerPosition,

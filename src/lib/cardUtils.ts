@@ -393,7 +393,12 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
     case 'straight-flush': {
       // For straight flush, find actual straight high card, not just highest card
       const straightHigh = findStraightHighCard(cards, useWildCards);
-      result = `Straight Flush, ${valueToRankName(straightHigh)} high`;
+      // Ace-high straight flush is a "Royale with Cheese"
+      if (straightHigh === 14) {
+        result = 'Royale with Cheese';
+      } else {
+        result = `Straight Flush, ${valueToRankName(straightHigh)} high`;
+      }
       break;
     }
     case 'four-of-a-kind': {
