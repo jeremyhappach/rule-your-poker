@@ -1936,18 +1936,25 @@ const Game = () => {
               return;
             }
             
-            // Trigger ante animation when proceeding to round 1 (new antes collected)
+            // First, clear the result and proceed to next round
+            await proceedToNextRound(gameId);
+            
+            // THEN trigger ante animation when proceeding to round 1 (new antes collected)
+            // This happens AFTER the result has been cleared
             // BUT skip if this is a 357 sweep (game is over, no new antes)
             const is357Sweep = freshGame?.last_round_result?.startsWith('357_SWEEP');
             if (freshGame?.next_round_number === 1 && !is357Sweep) {
-              // Calculate expected pot: current pot + incoming antes
-              const activePlayers = players.filter(p => !p.sitting_out);
-              const anteTotal = (freshGame?.ante_amount || 2) * activePlayers.length;
-              const expectedPot = (freshGame?.pot || 0) + anteTotal;
-              setAnteAnimationExpectedPot(expectedPot);
+              // Small delay to ensure UI has updated from proceedToNextRound
+              await new Promise(resolve => setTimeout(resolve, 200));
+              // Calculate expected pot: the pot has already been updated with antes by startRound
+              const { data: updatedGame } = await supabase
+                .from('games')
+                .select('pot')
+                .eq('id', gameId)
+                .single();
+              setAnteAnimationExpectedPot(updatedGame?.pot || 0);
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
             }
-            await proceedToNextRound(gameId);
           }
           
           console.log('[AWAITING_NEXT_ROUND] Proceed function completed successfully');

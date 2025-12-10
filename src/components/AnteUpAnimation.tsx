@@ -44,6 +44,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // Use chipAmount if provided, otherwise fall back to anteAmount
   const displayAmount = chipAmount ?? anteAmount;
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
+  // Store the amount when animation starts so it doesn't change when trigger is cleared
+  const lockedDisplayAmountRef = useRef<number>(anteAmount);
   const animIdRef = useRef(0);
   // Track what we've animated for to prevent re-triggers
   const lastAnimatedPotRef = useRef<number | null>(null);
@@ -127,6 +129,9 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     
     lastTriggerIdRef.current = triggerId;
     
+    // Lock the display amount BEFORE calling onAnimationStart (which clears the trigger)
+    lockedDisplayAmountRef.current = displayAmount;
+    
     const isHolm = gameType === 'holm-game';
 
     // Start animation immediately
@@ -186,7 +191,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
               animation: `anteChipMove${i} 2s ease-in-out forwards`,
             }}
           >
-            <span className="text-black text-[10px] font-bold">${displayAmount}</span>
+            <span className="text-black text-[10px] font-bold">${lockedDisplayAmountRef.current}</span>
           </div>
           <style>{`
             @keyframes anteChipMove${i} {
