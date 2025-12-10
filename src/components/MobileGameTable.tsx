@@ -671,11 +671,13 @@ export const MobileGameTable = ({
           playerName={legEarnedPlayerName} 
           targetPosition={(() => {
             // Calculate target based on leg-earning player's position
+            // Target should be where the NEXT leg indicator will appear (inside toward table center)
             if (!legEarnedPlayerPosition) return undefined;
             
-            // If current player earned the leg, animate to bottom center
+            // If current player earned the leg, animate to bottom center (inside edge of card area)
             if (currentPlayer?.position === legEarnedPlayerPosition) {
-              return { top: '92%', left: '50%' };
+              // Legs appear on the left side of the current player's chip stack (toward center)
+              return { top: '88%', left: '40%' };
             }
             
             // Otherwise, calculate slot position for other player
@@ -684,16 +686,20 @@ export const MobileGameTable = ({
             if (distance <= 0) distance += 7;
             const slotIndex = distance - 1;
             
+            // Determine if right side slot (legs appear on left of chip)
+            const isRightSideSlot = slotIndex >= 3;
+            
             // Map slot to approximate screen coordinates (matching slotPositions layout)
+            // With offset toward table center where legs actually render
             const slotCoords: Record<number, { top: string; left: string }> = {
-              0: { top: '85%', left: '15%' },  // Bottom-left
-              1: { top: '50%', left: '5%' },   // Left
-              2: { top: '15%', left: '15%' },  // Top-left
-              3: { top: '15%', left: '85%' },  // Top-right
-              4: { top: '50%', left: '95%' },  // Right
-              5: { top: '85%', left: '85%' },  // Bottom-right
+              0: { top: '85%', left: '22%' },  // Bottom-left - legs on right side (toward center)
+              1: { top: '50%', left: '12%' },  // Left - legs on right side (toward center)
+              2: { top: '15%', left: '22%' },  // Top-left - legs on right side (toward center)
+              3: { top: '15%', left: '78%' },  // Top-right - legs on left side (toward center)
+              4: { top: '50%', left: '88%' },  // Right - legs on left side (toward center)
+              5: { top: '85%', left: '78%' },  // Bottom-right - legs on left side (toward center)
             };
-            return slotCoords[slotIndex] || { top: '85%', left: '65%' };
+            return slotCoords[slotIndex] || { top: '85%', left: '40%' };
           })()}
           onComplete={() => setShowLegEarned(false)} 
         />
