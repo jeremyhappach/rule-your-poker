@@ -3281,6 +3281,7 @@ const Game = () => {
                     chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
                     chuckyActive={currentRound?.chucky_active}
                     gameType={game.game_type}
+                    gameStatus={game.status}
                     roundStatus={currentRound?.status}
                     isGameOver={!game.game_over_at}
                     isDealer={isDealer || dealerPlayer?.is_bot || false}
@@ -3375,6 +3376,7 @@ const Game = () => {
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
+                    gameStatus={game.status}
                     chatBubbles={chatBubbles}
                     allMessages={allMessages}
                     onSendChat={sendChatMessage}
@@ -3452,6 +3454,7 @@ const Game = () => {
                 onFold={() => {}}
                 onSelectSeat={handleSelectSeat}
                 gameType={game.game_type}
+                gameStatus={game.status}
                 chatBubbles={chatBubbles}
                 allMessages={allMessages}
                 onSendChat={sendChatMessage}
@@ -3582,6 +3585,7 @@ const Game = () => {
               pendingDecision={pendingDecision}
               isPaused={game.is_paused || false}
               anteAmount={game.ante_amount}
+              gameStatus={game.status}
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}
