@@ -117,6 +117,7 @@ interface MobileGameTableProps {
   anteAmount?: number;
   gameStatus?: string; // For ante animation trigger
   anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
+  anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
   onAnteAnimationStarted?: () => void; // Callback to clear trigger after animation starts
   // Game over props
   isGameOver?: boolean;
@@ -170,6 +171,7 @@ export const MobileGameTable = ({
   anteAmount = 1,
   gameStatus,
   anteAnimationTriggerId,
+  anteAnimationExpectedPot,
   onAnteAnimationStarted,
   isGameOver,
   isDealer,
@@ -808,9 +810,13 @@ export const MobileGameTable = ({
             // Clear the trigger so it doesn't fire again on status change
             onAnteAnimationStarted?.();
             // Freeze displayed pot at PRE-ANTE value when animation starts
-            // The actual pot has already been updated, so subtract the ante total
             const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
-            setDisplayedPot(Math.max(0, pot - anteTotal));
+            // If expectedPot is provided (re-ante scenario), calculate pre-ante from it
+            // Otherwise, the pot has already been updated so subtract anteTotal
+            const preAntePot = anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined
+              ? anteAnimationExpectedPot - anteTotal
+              : pot - anteTotal;
+            setDisplayedPot(Math.max(0, preAntePot));
             // IMMEDIATELY decrement displayed chips for all active players
             const newDisplayedChips: Record<string, number> = {};
             players.filter(p => !p.sitting_out).forEach(p => {
@@ -819,9 +825,13 @@ export const MobileGameTable = ({
             setDisplayedChips(newDisplayedChips);
           }}
           onChipsArrived={() => {
-            // Calculate expected pot (pre-ante value + ante total) rather than relying on DB prop
+            // Calculate expected pot - use provided expectedPot if available
             const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
-            setDisplayedPot(prev => prev + anteTotal);
+            if (anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined) {
+              setDisplayedPot(anteAnimationExpectedPot);
+            } else {
+              setDisplayedPot(prev => prev + anteTotal);
+            }
             // Clear displayed chips override - let real values show
             setDisplayedChips({});
             isAnteAnimatingRef.current = false;
