@@ -28,8 +28,9 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   containerRef,
 }) => {
   const [animations, setAnimations] = useState<ChipAnimation[]>([]);
-  const prevPotRef = useRef<number>(pot);
+  const prevPotRef = useRef<number>(0); // Start at 0 to detect initial pot
   const animIdRef = useRef(0);
+  const hasTriggeredRef = useRef(false);
 
   // Slot positions as percentages of container
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -45,16 +46,26 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     return slots[slotIndex] || { top: 50, left: 50 };
   };
 
+  // Reset when game goes back to waiting phase
+  useEffect(() => {
+    if (isWaitingPhase) {
+      prevPotRef.current = 0;
+      hasTriggeredRef.current = false;
+    }
+  }, [isWaitingPhase]);
+
   useEffect(() => {
     if (isWaitingPhase || !containerRef.current) {
-      prevPotRef.current = pot;
       return;
     }
 
     const potIncrease = pot - prevPotRef.current;
     const expectedIncrease = anteAmount * activePlayers.length;
 
-    if (potIncrease > 0 && potIncrease >= expectedIncrease * 0.8 && activePlayers.length > 0) {
+    // Trigger animation if pot increased by expected ante amount (within tolerance)
+    if (potIncrease > 0 && potIncrease >= expectedIncrease * 0.8 && activePlayers.length > 0 && !hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+      
       const rect = containerRef.current.getBoundingClientRect();
       const centerX = rect.width / 2;
       const centerY = rect.height * 0.45;
@@ -74,7 +85,10 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       });
 
       setAnimations(newAnims);
-      setTimeout(() => setAnimations([]), 600);
+      setTimeout(() => {
+        setAnimations([]);
+        hasTriggeredRef.current = false; // Allow next ante animation
+      }, 600);
     }
 
     prevPotRef.current = pot;
