@@ -114,6 +114,7 @@ interface MobileGameTableProps {
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
+  gameStatus?: string; // For ante animation trigger
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -164,6 +165,7 @@ export const MobileGameTable = ({
   pendingDecision,
   isPaused,
   anteAmount = 1,
+  gameStatus,
   isGameOver,
   isDealer,
   onNextGame,
@@ -225,9 +227,11 @@ export const MobileGameTable = ({
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
   // Delay community cards rendering by 3 seconds after player cards appear (Holm only)
-  const [showCommunityCards, setShowCommunityCards] = useState(false);
+  // Initialize as false for Holm to prevent initial flicker
+  const [showCommunityCards, setShowCommunityCards] = useState(gameType !== 'holm-game');
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastRoundForCommunityDelayRef = useRef<number | null>(null);
+  const hasShownCommunityThisRoundRef = useRef(false);
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<number | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
@@ -406,10 +410,20 @@ export const MobileGameTable = ({
       return;
     }
     
-    // New round detected - delay community cards
-    if (currentRound && currentRound !== lastRoundForCommunityDelayRef.current && !awaitingNextRound) {
-      lastRoundForCommunityDelayRef.current = currentRound;
+    // If awaiting next round (between hands), prepare for next delay
+    if (awaitingNextRound) {
+      hasShownCommunityThisRoundRef.current = false;
       setShowCommunityCards(false);
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
+      }
+      return;
+    }
+    
+    // New round detected - start delay timer
+    if (currentRound && currentRound !== lastRoundForCommunityDelayRef.current && !hasShownCommunityThisRoundRef.current) {
+      lastRoundForCommunityDelayRef.current = currentRound;
       
       // Clear any existing timeout
       if (communityCardsDelayRef.current) {
@@ -419,12 +433,8 @@ export const MobileGameTable = ({
       // Show community cards after 3 seconds
       communityCardsDelayRef.current = setTimeout(() => {
         setShowCommunityCards(true);
+        hasShownCommunityThisRoundRef.current = true;
       }, 3000);
-    }
-    
-    // If awaiting next round (between hands), reset for next delay
-    if (awaitingNextRound) {
-      lastRoundForCommunityDelayRef.current = null;
     }
     
     return () => {
@@ -732,6 +742,7 @@ export const MobileGameTable = ({
           containerRef={tableContainerRef}
           gameType={gameType}
           currentRound={currentRound}
+          gameStatus={gameStatus}
           onAnimationStart={() => {
             // Freeze displayed pot at PRE-ANTE value when animation starts
             // The actual pot has already been updated, so subtract the ante total

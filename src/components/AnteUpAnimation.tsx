@@ -18,6 +18,7 @@ interface AnteUpAnimationProps {
   containerRef: React.RefObject<HTMLDivElement>;
   gameType?: string | null;
   currentRound?: number;
+  gameStatus?: string; // Game status to detect ante collection moment
   onAnimationStart?: () => void;
   onChipsArrived?: () => void;
 }
@@ -32,6 +33,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   containerRef,
   gameType,
   currentRound,
+  gameStatus,
   onAnimationStart,
   onChipsArrived,
 }) => {
@@ -41,6 +43,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   const lastAnimatedPotRef = useRef<number | null>(null);
   const lastAnimatedRoundRef = useRef<number | null>(null);
   const hasAnimatedThisSessionRef = useRef(false);
+  const lastStatusRef = useRef<string | null>(null);
 
   // Slot positions as percentages of container (where chips START from)
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -89,6 +92,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       lastAnimatedPotRef.current = null;
       lastAnimatedRoundRef.current = null;
       hasAnimatedThisSessionRef.current = false;
+      lastStatusRef.current = null;
     }
   }, [isWaitingPhase]);
 
@@ -97,26 +101,25 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       return;
     }
 
-    // Calculate expected ante total
-    const expectedAnteTotal = anteAmount * activePlayers.length;
-    
-    // For Holm games: only animate on first hand (antes collected once per game)
-    // For 3-5-7: animate when round 1 starts (antes collected each time round resets to 1)
     const isHolm = gameType === 'holm-game';
+    const wasAnteDecision = lastStatusRef.current === 'ante_decision';
+    const isNowInProgress = gameStatus === 'in_progress';
+    
+    // Update status ref
+    lastStatusRef.current = gameStatus || null;
     
     let shouldAnimate = false;
     
     if (isHolm) {
-      // Holm: only animate once per game session when pot first gets antes
-      // Trigger when pot equals expected ante total and we haven't animated yet
-      if (pot === expectedAnteTotal && !hasAnimatedThisSessionRef.current) {
+      // Holm: trigger IMMEDIATELY when status changes from ante_decision to in_progress
+      // This happens the instant chips are deducted
+      if (wasAnteDecision && isNowInProgress && !hasAnimatedThisSessionRef.current) {
         shouldAnimate = true;
         hasAnimatedThisSessionRef.current = true;
       }
     } else {
-      // 3-5-7: animate when round 1 starts and pot increased to ante total
-      // Track by round number to handle round resets
-      if (currentRound === 1 && lastAnimatedRoundRef.current !== 1 && pot === expectedAnteTotal) {
+      // 3-5-7: animate when round 1 starts and status just changed to in_progress
+      if (currentRound === 1 && lastAnimatedRoundRef.current !== 1 && wasAnteDecision && isNowInProgress) {
         shouldAnimate = true;
         lastAnimatedRoundRef.current = 1;
       }
@@ -163,7 +166,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     setTimeout(() => {
       setAnimations([]);
     }, 2200);
-  }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, anteAmount, onAnimationStart, onChipsArrived]);
+  }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, gameStatus, anteAmount, onAnimationStart, onChipsArrived]);
 
   if (animations.length === 0) return null;
 
