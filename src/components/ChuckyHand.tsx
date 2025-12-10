@@ -72,18 +72,17 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             Chucky {revealed < cards.length && `(${revealed}/${cards.length})`}
           </span>
         </div>
-        {/* Cards tightly overlapping */}
-        <div className="flex items-center" style={{ perspective: '1000px' }}>
+        {/* Cards tightly overlapping - use inline styles to override Tailwind fixed widths */}
+        <div style={{ display: 'flex', alignItems: 'center', perspective: '1000px' }}>
           {cards.map((card, index) => {
             const isFlipped = flippedCards.has(index);
             
             return (
               <div
                 key={`${cardsKeyRef.current}-${index}`}
-                className="relative"
                 style={{ 
-                  marginLeft: index > 0 ? '-32px' : '0',
-                  width: '40px',
+                  position: 'relative',
+                  marginLeft: index > 0 ? '-28px' : '0',
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
