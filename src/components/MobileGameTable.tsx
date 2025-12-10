@@ -118,9 +118,9 @@ interface MobileGameTableProps {
   onStay: () => void;
   onFold: () => void;
   onSelectSeat?: (position: number) => void;
-  // Host bot control
+  // Host player control
   isHost?: boolean;
-  onBotClick?: (botPlayer: Player) => void;
+  onPlayerClick?: (player: Player) => void;
   // Chat props
   chatBubbles?: ChatBubbleData[];
   allMessages?: { id: string; user_id: string; message: string; username?: string }[];
@@ -165,7 +165,7 @@ export const MobileGameTable = ({
   onFold,
   onSelectSeat,
   isHost,
-  onBotClick,
+  onPlayerClick,
   chatBubbles = [],
   allMessages = [],
   onSendChat,
@@ -474,8 +474,8 @@ export const MobileGameTable = ({
     // Status chip background color
     const chipBgColor = getPlayerChipBgColor(player);
 
-    // Check if this bot is clickable by host
-    const isBotClickable = isHost && player.is_bot && onBotClick;
+    // Check if this player's chip stack is clickable by host (any player except self)
+    const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
     
     // Bottom positions (slot 0 = bottom-left, slot 5 = bottom-right) need name above chip
     const isBottomPosition = slotIndex === 0 || slotIndex === 5;
@@ -556,8 +556,11 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Main chip stack */}
-        <div className="relative">
+        {/* Main chip stack - clickable for host to control players */}
+        <div 
+          className={`relative ${isClickable ? 'cursor-pointer' : ''}`}
+          onClick={isClickable ? () => onPlayerClick(player) : undefined}
+        >
           {/* Pulsing green ring for stayed players - separate element so inner circle doesn't pulse */}
           {playerDecision === 'stay' && (
             <div className="absolute inset-0 rounded-full ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse" />
@@ -571,7 +574,7 @@ export const MobileGameTable = ({
             ${chipBgColor}
             ${playerDecision === 'fold' ? 'opacity-50' : ''}
             ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
-            ${isBotClickable ? 'cursor-pointer active:scale-95' : ''}
+            ${isClickable ? 'active:scale-95' : ''}
           `}>
             <span className={`text-sm font-bold leading-none ${player.chips < 0 ? 'text-red-600' : 'text-slate-800'}`}>
               ${Math.round(player.chips)}
@@ -582,7 +585,7 @@ export const MobileGameTable = ({
     
     const nameElement = (
       <div className="flex items-center gap-1">
-        <span className={`text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md ${isBotClickable ? 'underline underline-offset-2 decoration-dotted' : ''}`}>
+        <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
           {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
         </span>
       </div>
@@ -617,7 +620,7 @@ export const MobileGameTable = ({
       )
     );
     
-    return <div key={player.id} className="flex flex-col items-center gap-0.5" onClick={isBotClickable ? () => onBotClick(player) : undefined}>
+    return <div key={player.id} className="flex flex-col items-center gap-0.5">
         {/* Name above for bottom positions */}
         {isBottomPosition && nameElement}
         {/* Hide chip stack during showdown to make room for bigger cards */}

@@ -128,6 +128,7 @@ export type Database = {
           config_complete: boolean
           config_deadline: string | null
           created_at: string
+          current_host: string | null
           current_round: number | null
           dealer_position: number | null
           game_over_at: string | null
@@ -163,6 +164,7 @@ export type Database = {
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
+          current_host?: string | null
           current_round?: number | null
           dealer_position?: number | null
           game_over_at?: string | null
@@ -198,6 +200,7 @@ export type Database = {
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
+          current_host?: string | null
           current_round?: number | null
           dealer_position?: number | null
           game_over_at?: string | null
