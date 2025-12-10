@@ -77,8 +77,8 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
             Chucky {revealed < cards.length && `(${revealed}/${cards.length})`}
           </span>
         </div>
-        {/* Cards using absolute positioning for guaranteed overlap */}
-        <div style={{ position: 'relative', width: totalWidth, height: 56, perspective: '1000px' }}>
+        {/* Cards with tight overlap using negative margin on each card */}
+        <div style={{ display: 'flex', perspective: '1000px' }}>
           {cards.map((card, index) => {
             const isFlipped = flippedCards.has(index);
             
@@ -86,9 +86,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
               <div
                 key={`${cardsKeyRef.current}-${index}`}
                 style={{ 
-                  position: 'absolute',
-                  left: index * overlapOffset,
-                  top: 0,
+                  marginLeft: index === 0 ? 0 : -22,
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
