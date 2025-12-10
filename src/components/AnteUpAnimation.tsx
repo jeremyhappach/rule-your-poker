@@ -125,6 +125,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     if (triggerId && triggerId !== lastTriggerIdRef.current) {
       shouldAnimate = true;
       lastTriggerIdRef.current = triggerId;
+      // Also set round tracking to prevent fallback from double-firing
+      lastAnimatedRoundRef.current = currentRound;
     } else if (!triggerId) {
       // FALLBACK: Status-based detection for 3-5-7 games without triggerId
       const isNowInProgress = gameStatus === 'in_progress';
