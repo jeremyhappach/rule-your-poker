@@ -115,6 +115,7 @@ interface MobileGameTableProps {
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
+  pussyTaxValue?: number;
   gameStatus?: string; // For ante animation trigger
   anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
@@ -169,6 +170,7 @@ export const MobileGameTable = ({
   pendingDecision,
   isPaused,
   anteAmount = 1,
+  pussyTaxValue = 1,
   gameStatus,
   anteAnimationTriggerId,
   anteAnimationExpectedPot,
@@ -814,33 +816,39 @@ export const MobileGameTable = ({
             isAnteAnimatingRef.current = true;
             // Clear the trigger so it doesn't fire again on status change
             onAnteAnimationStarted?.();
+            // Determine amount based on trigger type (pussy tax vs ante)
+            const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
+            const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
             // Freeze displayed pot at PRE-ANTE value when animation starts
-            const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
+            const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
             // If expectedPot is provided (re-ante scenario), calculate pre-ante from it
-            // Otherwise, the pot has already been updated so subtract anteTotal
+            // Otherwise, the pot has already been updated so subtract totalAmount
             const preAntePot = anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined
-              ? anteAnimationExpectedPot - anteTotal
-              : pot - anteTotal;
+              ? anteAnimationExpectedPot - totalAmount
+              : pot - totalAmount;
             setDisplayedPot(Math.max(0, preAntePot));
             // IMMEDIATELY decrement displayed chips for all active players
             const newDisplayedChips: Record<string, number> = {};
             players.filter(p => !p.sitting_out).forEach(p => {
-              newDisplayedChips[p.id] = p.chips - anteAmount;
+              newDisplayedChips[p.id] = p.chips - perPlayerAmount;
             });
             setDisplayedChips(newDisplayedChips);
           }}
           onChipsArrived={() => {
+            // Determine amount based on trigger type (pussy tax vs ante)
+            const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
+            const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
             // Calculate expected pot - use provided expectedPot if available
-            const anteTotal = anteAmount * players.filter(p => !p.sitting_out).length;
+            const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
             if (anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined) {
               setDisplayedPot(anteAnimationExpectedPot);
             } else {
-              setDisplayedPot(prev => prev + anteTotal);
+              setDisplayedPot(prev => prev + totalAmount);
             }
             // Clear displayed chips override - let real values show
             setDisplayedChips({});
             isAnteAnimatingRef.current = false;
-            setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: anteTotal });
+            setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: totalAmount });
           }}
         />
         

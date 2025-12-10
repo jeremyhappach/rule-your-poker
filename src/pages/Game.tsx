@@ -1896,6 +1896,18 @@ const Game = () => {
         last_result: game?.last_round_result
       });
       
+      // Check if this is a pussy tax scenario and trigger animation
+      const lastResult = game?.last_round_result || '';
+      const isPussyTax = lastResult.toLowerCase().includes('pussy tax');
+      if (isPussyTax) {
+        // Trigger ante animation for pussy tax using pussy_tax_value
+        const activePlayers = players.filter(p => !p.sitting_out);
+        const pussyTaxTotal = (game?.pussy_tax_value || 1) * activePlayers.length;
+        console.log('[PUSSY_TAX_ANIMATION] Triggering animation', { pussyTaxTotal, activePlayers: activePlayers.length });
+        setAnteAnimationExpectedPot((game?.pot || 0)); // Pot already includes the tax
+        setAnteAnimationTriggerId(`pussy-tax-${Date.now()}`);
+      }
+      
       // Wait 4 seconds to show the result, then start next round
       awaitingTimerRef.current = setTimeout(async () => {
         console.log('[AWAITING_NEXT_ROUND] Timer fired after 4 seconds');
@@ -3496,6 +3508,7 @@ const Game = () => {
                 onSelectSeat={handleSelectSeat}
                 gameType={game.game_type}
                 anteAmount={game.ante_amount}
+                pussyTaxValue={game.pussy_tax_value || 1}
                 gameStatus={game.status}
                 anteAnimationTriggerId={anteAnimationTriggerId}
                 anteAnimationExpectedPot={anteAnimationExpectedPot}
@@ -3630,6 +3643,7 @@ const Game = () => {
               pendingDecision={pendingDecision}
               isPaused={game.is_paused || false}
               anteAmount={game.ante_amount}
+              pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
               anteAnimationTriggerId={anteAnimationTriggerId}
               anteAnimationExpectedPot={anteAnimationExpectedPot}
