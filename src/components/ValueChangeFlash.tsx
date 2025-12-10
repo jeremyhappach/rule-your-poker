@@ -106,30 +106,34 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
         <div
           key={flash.id}
           className={`absolute ${positionClasses[position]} pointer-events-none z-50 ${className}`}
+          style={{
+            animation: 'valueFlashDrift 2s ease-out forwards',
+          }}
         >
           <span
-            className="text-poker-gold font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
-            style={{
-              animation: 'valueChangeFlash 2s ease-out forwards',
-            }}
+            className="text-poker-gold font-bold text-[11px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
           >
             {prefix}{flash.amount}
           </span>
         </div>
       ))}
       <style>{`
-        @keyframes valueChangeFlash {
+        @keyframes valueFlashDrift {
           0% {
             opacity: 0;
-            transform: translateY(0) scale(0.9);
+            transform: translateY(0);
           }
-          15% {
+          10% {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: translateY(-5px);
+          }
+          50% {
+            opacity: 1;
+            transform: translateY(-30px);
           }
           100% {
             opacity: 0;
-            transform: translateY(-40px);
+            transform: translateY(-60px);
           }
         }
       `}</style>
