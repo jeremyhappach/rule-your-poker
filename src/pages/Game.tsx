@@ -1520,27 +1520,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Cache round data when transitioning to game_over, during showdown, or when Chucky is active
   // This ensures community cards and Chucky cards remain visible after game ends
   useEffect(() => {
-    // CRITICAL: Detect new Holm hand by checking if community cards changed AND status is 'betting'
-    // This indicates startHolmRound reset the round for a new hand
+    // CRITICAL: Only clear cache when starting a new game type selection
+    // NEVER clear cache during round transitions - liveRound will naturally replace it
+    // The previous "new Holm hand detection" was clearing cache BEFORE new data arrived, causing cards to disappear
+    
+    if (game?.status === 'game_selection' || game?.status === 'configuring') {
+      console.log('[CACHE] Clearing cache for new game selection/config');
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      prevRoundStateRef.current = { communityCardsHash: '', status: undefined };
+      return;
+    }
+    
+    // Update tracking ref for debugging
     const currentCommunityHash = JSON.stringify(liveRound?.community_cards || []);
     const prevHash = prevRoundStateRef.current.communityCardsHash;
-    const prevStatus = prevRoundStateRef.current.status;
     
+    // Detect new hand for resetting maxRevealed (but DON'T clear cache)
     const isNewHolmHand = 
       game?.game_type === 'holm-game' &&
       liveRound?.status === 'betting' &&
-      prevHash !== '' && // Not first load
-      currentCommunityHash !== prevHash; // Cards actually changed
+      prevHash !== '' && 
+      currentCommunityHash !== prevHash &&
+      liveRound?.community_cards?.length > 0; // CRITICAL: Only count as new if we have cards
     
     if (isNewHolmHand) {
-      console.log('[CACHE] 🔄 NEW HOLM HAND DETECTED - clearing cache', {
+      console.log('[CACHE] 🔄 NEW HOLM HAND DETECTED - resetting maxRevealed (cache preserved until liveRound takes over)', {
         prevHash: prevHash.slice(0, 50),
         newHash: currentCommunityHash.slice(0, 50),
-        prevStatus,
-        newStatus: liveRound?.status
+        liveRoundId: liveRound?.id,
+        hasLiveCards: !!liveRound?.community_cards?.length
       });
-      setCachedRoundData(null);
-      cachedRoundRef.current = null;
+      // Reset max revealed for the new hand, but DON'T clear cache
+      // The cache will be naturally superseded by liveRound in the currentRound calculation
       maxRevealedRef.current = liveRound?.community_cards_revealed ?? 0;
     }
     
@@ -1550,6 +1562,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       status: liveRound?.status 
     };
     
+    // Cache round data during game_over/showdown/completed to preserve visibility
     if (liveRound && (
       game?.status === 'game_over' || 
       game?.all_decisions_in || 
@@ -1564,11 +1577,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setCachedRoundData(liveRound);
         cachedRoundRef.current = liveRound;
       }
-    }
-    // Clear cache when starting new game
-    if (game?.status === 'game_selection' || game?.status === 'configuring') {
-      setCachedRoundData(null);
-      cachedRoundRef.current = null;
     }
   }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type]);
   
