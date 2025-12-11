@@ -398,7 +398,15 @@ export const MobileGameTable = ({
   const roundIsReady = currentTurnPosition !== null && currentTurnPosition !== undefined;
   const roundIsActive = roundStatus === 'betting' || roundStatus === 'active';
   const isPlayerTurn = gameType === 'holm-game' ? buckIsAssigned && roundIsReady && roundIsActive && currentTurnPosition === currentPlayer?.position && !awaitingNextRound : true;
-  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && !allDecisionsIn && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
+  
+  // For Holm: If it's player's turn, they should see buttons even if allDecisionsIn is stuck
+  // This handles edge case where allDecisionsIn=true but round is still betting
+  const holmPlayerCanDecide = gameType === 'holm-game' && 
+    isPlayerTurn && 
+    roundStatus === 'betting' && 
+    !hasDecided;
+  
+  const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
 
   // Check if we should be in showdown display mode (hide chipstacks, buck, show larger cards)
   // This is true when: 
