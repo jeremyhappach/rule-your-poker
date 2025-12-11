@@ -1834,7 +1834,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
             console.log('[TIMER EXPIRED HOLM] Auto-folding player at position', currentTurnPlayer.position);
             await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
-            await checkHolmRoundComplete(gameId!);
+            // NOTE: makeDecision already calls checkHolmRoundComplete internally
             console.log('[TIMER EXPIRED HOLM] *** Realtime will trigger refetch after auto-fold ***');
           } else {
             console.log('[TIMER EXPIRED HOLM] Player already decided or not found');

@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
-import { checkHolmRoundComplete } from "./holmGameLogic";
 import { getBotFoldProbability } from "./botHandStrength";
 import { Card } from "./cardUtils";
 
@@ -292,10 +291,8 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     console.log('[BOT DECISIONS] Bot at position', bot.position, 'deciding:', decision);
     
     await makeDecision(gameId, bot.id, decision);
-    
-    // CRITICAL: After bot decision, check if round is complete and advance turn
-    console.log('[BOT DECISIONS] Calling checkHolmRoundComplete to advance turn');
-    await checkHolmRoundComplete(gameId);
+    // NOTE: makeDecision already calls checkHolmRoundComplete internally for Holm games
+    // DO NOT call it again here - that causes double turn advancement!
     
     // Return true to indicate a decision was made (caller may need to refetch)
     return true;
