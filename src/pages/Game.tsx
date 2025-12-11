@@ -2973,14 +2973,13 @@ const Game = () => {
     try {
       await makeDecision(gameId, currentPlayer.id, 'stay');
       
-      console.log('[PLAYER DECISION] Stay decision made, checking if round complete');
+      console.log('[PLAYER DECISION] Stay decision made - makeDecision handles turn advancement');
       
-      // Check if round is complete after decision
+      // For Holm games, explicitly fetch to get updated turn position - don't rely on realtime alone
+      // Note: checkHolmRoundComplete is called inside makeDecision, no need to call again
       if (game?.game_type === 'holm-game') {
-        await checkHolmRoundComplete(gameId);
         console.log('[PLAYER DECISION] *** Explicitly fetching after turn advance ***');
-        // Explicitly fetch to get updated turn position - don't rely on realtime alone
-        setTimeout(() => fetchGameData(), 100);
+        setTimeout(() => fetchGameData(), 150);
       }
     } catch (error: any) {
       console.error('Error making stay decision:', error);
@@ -3001,12 +3000,13 @@ const Game = () => {
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
       
-      // Check if round is complete after decision
+      console.log('[PLAYER DECISION] Fold decision made - makeDecision handles turn advancement');
+      
+      // For Holm games, explicitly fetch to get updated turn position - don't rely on realtime alone
+      // Note: checkHolmRoundComplete is called inside makeDecision, no need to call again
       if (game?.game_type === 'holm-game') {
-        await checkHolmRoundComplete(gameId);
         console.log('[PLAYER DECISION] *** Explicitly fetching after turn advance (fold) ***');
-        // Explicitly fetch to get updated turn position - don't rely on realtime alone
-        setTimeout(() => fetchGameData(), 100);
+        setTimeout(() => fetchGameData(), 150);
       }
     } catch (error: any) {
       console.error('Error making fold decision:', error);
