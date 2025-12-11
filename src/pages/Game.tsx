@@ -1160,14 +1160,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('awaiting_next_round', false);
       }
       
-      // If Holm game started but no round created, try to create it
-      if (holmNoRound && isCreator) {
-        console.log('[CRITICAL POLL] Detected Holm game with no round - attempting to start round');
-        try {
-          await startHolmRound(gameId!, true);
-        } catch (e) {
-          console.error('[CRITICAL POLL] Failed to start Holm round:', e);
-        }
+      // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
+      // The proper flow is: ante collection (line 2959) -> startHolmRound -> round created.
+      // Polling should only fetch data, not create rounds.
+      if (holmNoRound) {
+        console.log('[CRITICAL POLL] Holm game with no round detected - waiting for proper round creation');
       }
       
       fetchGameData();
