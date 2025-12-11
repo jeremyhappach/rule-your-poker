@@ -12,7 +12,7 @@ interface AnteUpAnimationProps {
   pot: number;
   anteAmount: number;
   chipAmount?: number; // Display amount on chip (defaults to anteAmount, use pussyTaxValue for pussy tax)
-  activePlayers: { position: number }[];
+  activePlayers: { position: number; id?: string }[];
   currentPlayerPosition: number | null;
   getClockwiseDistance: (position: number) => number;
   isWaitingPhase?: boolean;
@@ -21,6 +21,7 @@ interface AnteUpAnimationProps {
   currentRound?: number;
   gameStatus?: string; // Game status to detect ante collection moment
   triggerId?: string | null; // Direct trigger from Game.tsx - fires immediately when set
+  specificPlayerIds?: string[]; // If set, only animate from these players (for Chucky loss, etc.)
   onAnimationStart?: () => void;
   onChipsArrived?: () => void;
 }
@@ -38,6 +39,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   currentRound,
   gameStatus,
   triggerId,
+  specificPlayerIds,
   onAnimationStart,
   onChipsArrived,
 }) => {
@@ -141,7 +143,12 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     
     const rect = containerRef.current.getBoundingClientRect();
 
-    const newAnims: ChipAnimation[] = activePlayers.map(player => {
+    // Filter to specific players if provided, otherwise all active players
+    const playersToAnimate = specificPlayerIds 
+      ? activePlayers.filter(p => p.id && specificPlayerIds.includes(p.id))
+      : activePlayers;
+
+    const newAnims: ChipAnimation[] = playersToAnimate.map(player => {
       const isCurrentPlayer = currentPlayerPosition === player.position;
       const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
       const slot = getSlotPercent(slotIndex);

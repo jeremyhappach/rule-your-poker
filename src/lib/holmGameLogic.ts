@@ -1100,7 +1100,7 @@ async function handleChuckyShowdown(
     const { error: gameUpdateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}`,
+        last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`,
         pot: newPot
       })
       .eq('id', gameId);
