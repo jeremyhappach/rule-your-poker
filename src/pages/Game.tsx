@@ -596,7 +596,7 @@ const Game = () => {
           if (newData && 'status' in newData) {
             const newStatus = newData.status;
             // CRITICAL: Immediately fetch for any status change that affects UI flow
-            if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting') {
+            if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
               
               // CRITICAL FIX: Clear ALL card state when a new game is being set up
