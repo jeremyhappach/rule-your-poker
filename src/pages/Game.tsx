@@ -1485,6 +1485,27 @@ const Game = () => {
     ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
     : game?.rounds?.find(r => r.round_number === game.current_round);
   
+  // DEBUG: Log when rounds are unexpectedly empty during active game
+  // Also trigger a refetch as safeguard
+  const roundsRefetchRef = useRef<NodeJS.Timeout | null>(null);
+  if (game?.status === 'in_progress' && game?.game_type === 'holm-game' && !liveRound && !roundsRefetchRef.current) {
+    console.error('[CRITICAL] 🚨 liveRound is null/undefined during active Holm game - triggering refetch!', {
+      gameStatus: game?.status,
+      roundsLength: game?.rounds?.length,
+      roundsData: game?.rounds?.map(r => ({ round_number: r.round_number, id: r.id }))
+    });
+    // Trigger refetch after short delay to recover from stale state
+    roundsRefetchRef.current = setTimeout(() => {
+      console.log('[CRITICAL] 🔄 Refetching game data to recover missing rounds...');
+      fetchGameData();
+      roundsRefetchRef.current = null;
+    }, 500);
+  } else if (liveRound && roundsRefetchRef.current) {
+    // Clear pending refetch if we now have valid data
+    clearTimeout(roundsRefetchRef.current);
+    roundsRefetchRef.current = null;
+  }
+  
   // Immediately cache round data in ref when we have valid data with community cards
   // This ensures we capture it before game_over clears current_round
   // Only update cache if revealed count is >= current cached count (never decrease)
