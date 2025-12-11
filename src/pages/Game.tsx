@@ -645,14 +645,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             if (newData.awaiting_next_round === true) {
               console.log('[REALTIME] ⚡⚡⚡ AWAITING DETECTED - IMMEDIATE FETCH! ⚡⚡⚡');
             } else {
-              console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (new hand starting) - CLEARING CACHE & FETCH! ⚡⚡⚡');
-              // CRITICAL: Clear cache when new Holm hand starts (awaiting becomes false)
-              // This ensures stale Chucky cards and old community cards are cleared
-              setCardStateContext(null);
-              setCachedRoundData(null);
-              cachedRoundRef.current = null;
-              maxRevealedRef.current = 0;
-              // Don't call setPlayerCards([]) - let fetchGameData atomically replace them
+              console.log('[REALTIME] ⚡⚡⚡ AWAITING CLEARED (new hand starting) - FETCH ONLY, DON\'T CLEAR CACHE YET! ⚡⚡⚡');
+              // CRITICAL FIX: Do NOT clear cache here - clearing before fetch completes causes card disappearance
+              // The cache will be cleared naturally when new round data arrives and is validated as different
+              // setCardStateContext, setCachedRoundData, maxRevealedRef are updated elsewhere when new cards arrive
             }
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -838,10 +834,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             lastKnownRoundRef.current = newRoundNumber;
           }
           
-          // CRITICAL: Do NOT clear cards here - let fetchGameData atomically replace them
-          // Clearing cards causes brief "Wait..." flash while fetch is in progress
-          setCardStateContext(null);
-          // Don't call setPlayerCards([]) - just fetch and replace
+          // CRITICAL FIX: Do NOT clear any state here - clearing before fetch causes community cards disappearance
+          // Let the new round data replace old data atomically through fetchGameData
+          // Cache clearing is handled by isNewHolmHand detection AFTER new data arrives
           
           // Immediate fetch
           fetchGameData();
@@ -1488,17 +1483,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
     : game?.rounds?.find(r => r.round_number === game.current_round);
   
-  // DEBUG: Log round state to help diagnose community card issues
-  console.log('[LIVE ROUND] Calculation:', {
-    gameType: game?.game_type,
-    gameStatus: game?.status,
-    roundsCount: game?.rounds?.length,
-    roundNumbers: game?.rounds?.map(r => r.round_number),
-    liveRoundId: liveRound?.id,
-    liveRoundNumber: liveRound?.round_number,
-    communityCardsCount: liveRound?.community_cards?.length,
-    communityCardsRevealed: liveRound?.community_cards_revealed
-  });
+  // Only log when there's a potential issue (no liveRound during in_progress Holm game)
+  if (game?.game_type === 'holm-game' && game?.status === 'in_progress' && !liveRound) {
+    console.warn('[LIVE ROUND] ⚠️ No liveRound found during in_progress Holm game:', {
+      roundsCount: game?.rounds?.length,
+      roundNumbers: game?.rounds?.map(r => r.round_number)
+    });
+  }
   
   // DEBUG: Log when rounds are unexpectedly empty during active game
   // Also trigger a refetch as safeguard
@@ -1610,18 +1601,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? maxRevealedRef.current
     : (currentRound?.community_cards_revealed ?? 0);
     
-  // DETAILED LOGGING for debugging community cards issue
-  console.log('[GAME.TSX COMMUNITY_CARDS] ===== CALC =====', {
-    shouldUseMax,
-    maxRevealedRef: maxRevealedRef.current,
-    roundRevealed: currentRound?.community_cards_revealed,
-    effectiveRevealed: effectiveCommunityCardsRevealed,
-    gameStatus: game?.status,
-    allDecisionsIn: game?.all_decisions_in,
-    roundStatus: currentRound?.status,
-    awaitingNextRound: game?.awaiting_next_round,
-    lastRoundResult: game?.last_round_result?.substring(0, 30)
-  });
+  // Only log when community cards might have an issue (no cards during in_progress)
+  if (game?.game_type === 'holm-game' && game?.status === 'in_progress' && (!communityCards || communityCards.length === 0)) {
+    console.warn('[GAME.TSX COMMUNITY_CARDS] ⚠️ No community cards during in_progress:', {
+      currentRoundId: currentRound?.id,
+      liveRoundId: liveRound?.id,
+      cachedRoundId: cachedRoundData?.id,
+      hasCachedRef: !!cachedRoundRef.current
+    });
+  }
 
   // CRITICAL: Healing poll for missing round/community cards/player cards in Holm games
   // When we're in_progress with a Holm game but have no community cards OR player cards, poll until we get them
