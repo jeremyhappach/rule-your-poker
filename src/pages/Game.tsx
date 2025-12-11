@@ -862,6 +862,42 @@ const Game = () => {
     };
   }, [gameId, game?.id]);
 
+  // SAFETY-NET POLL: Check for game_over status when stuck in awaiting_next_round
+  // This catches cases where realtime subscription misses the status update
+  useEffect(() => {
+    if (!gameId || !game) return;
+    
+    // Only poll when we think we're in_progress with awaiting_next_round
+    // but might actually be game_over
+    if (game.status !== 'in_progress' || !game.awaiting_next_round) {
+      return;
+    }
+    
+    console.log('[SAFETY POLL] Game in awaiting_next_round state, setting up safety poll');
+    
+    const safetyPoll = setInterval(async () => {
+      console.log('[SAFETY POLL] Checking if game status changed to game_over...');
+      const { data: freshGame, error } = await supabase
+        .from('games')
+        .select('status')
+        .eq('id', gameId)
+        .single();
+      
+      if (!error && freshGame) {
+        if (freshGame.status === 'game_over' || freshGame.status === 'session_ended') {
+          console.log('[SAFETY POLL] 🚨 DETECTED STATUS CHANGE TO:', freshGame.status, '- FETCHING!');
+          fetchGameData();
+          // Clear interval since we caught it
+          clearInterval(safetyPoll);
+        }
+      }
+    }, 2000); // Check every 2 seconds
+    
+    return () => {
+      clearInterval(safetyPoll);
+    };
+  }, [gameId, game?.status, game?.awaiting_next_round]);
+
   // Update pause ref and clear timer when paused
   
   // Update pause ref and clear timer when paused
