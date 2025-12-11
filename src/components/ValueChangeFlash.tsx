@@ -111,9 +111,9 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
           }}
         >
           <span
-            className="text-poker-gold font-bold text-[11px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
+            className={`font-bold text-[11px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${flash.amount < 0 ? 'text-red-400' : 'text-poker-gold'}`}
           >
-            {prefix}{flash.amount}
+            {flash.amount < 0 ? `-$${Math.abs(flash.amount)}` : `${prefix}${flash.amount}`}
           </span>
         </div>
       ))}
