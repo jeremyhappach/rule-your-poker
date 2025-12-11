@@ -420,10 +420,10 @@ export async function startRound(gameId: string, roundNumber: number) {
 export async function makeDecision(gameId: string, playerId: string, decision: 'stay' | 'fold') {
   console.log('[MAKE DECISION] Starting:', { gameId, playerId, decision });
   
-  // Get current game and round
+  // Get current game
   const { data: game } = await supabase
     .from('games')
-    .select('*, rounds(*)')
+    .select('*')
     .eq('id', gameId)
     .single();
 
@@ -434,7 +434,31 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   console.log('[MAKE DECISION] Game status:', game.status, 'Type:', game.game_type);
 
-  const currentRound = (game.rounds as any[]).find((r: any) => r.round_number === game.current_round);
+  // CRITICAL: For Holm games, fetch the LATEST round by round_number DESC
+  // game.current_round is NOT updated for Holm (to avoid check constraint violation)
+  const isHolmGame = game.game_type === 'holm-game';
+  
+  let currentRound;
+  if (isHolmGame) {
+    const { data: latestRound } = await supabase
+      .from('rounds')
+      .select('*')
+      .eq('game_id', gameId)
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .single();
+    currentRound = latestRound;
+    console.log('[MAKE DECISION] Holm game - using latest round by round_number:', latestRound?.round_number);
+  } else {
+    const { data: rounds } = await supabase
+      .from('rounds')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('round_number', game.current_round)
+      .single();
+    currentRound = rounds;
+  }
+  
   if (!currentRound) {
     console.log('[MAKE DECISION] Round not found');
     throw new Error('Round not found');
@@ -460,7 +484,7 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   }
 
   // Lock in decision - no chips deducted yet
-  const isHolmGame = game.game_type === 'holm-game';
+  // isHolmGame already defined above
   
   if (decision === 'stay') {
     await supabase
