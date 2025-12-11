@@ -196,6 +196,14 @@ const Game = () => {
   const [chuckyLossAmount, setChuckyLossAmount] = useState<number>(0);
   const [chuckyLossPlayerIds, setChuckyLossPlayerIds] = useState<string[]>([]);
   
+  // Holm multi-player showdown animation state (pot-to-winner, then losers-to-pot)
+  const [holmShowdownTriggerId, setHolmShowdownTriggerId] = useState<string | null>(null);
+  const [holmShowdownPotAmount, setHolmShowdownPotAmount] = useState<number>(0); // Amount winner takes from pot
+  const [holmShowdownMatchAmount, setHolmShowdownMatchAmount] = useState<number>(0); // Amount each loser pays
+  const [holmShowdownWinnerId, setHolmShowdownWinnerId] = useState<string | null>(null);
+  const [holmShowdownLoserIds, setHolmShowdownLoserIds] = useState<string[]>([]);
+  const [holmShowdownPhase, setHolmShowdownPhase] = useState<'idle' | 'pot-to-winner' | 'losers-to-pot'>('idle');
+  
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
@@ -2026,6 +2034,31 @@ const Game = () => {
             setChuckyLossTriggerId(`chucky-loss-${Date.now()}`);
           }
         }
+        
+        // Check for Holm multi-player showdown (winner takes pot, losers match)
+        // Format: "...|||WINNER:{id}|||LOSERS:{id,id}|||POT:{amount}|||MATCH:{amount}|||DEBUG:..."
+        const holmShowdownMatch = lastResult.match(/\|\|\|WINNER:([^|]+)\|\|\|LOSERS:([^|]+)\|\|\|POT:(\d+)\|\|\|MATCH:(\d+)/);
+        if (holmShowdownMatch && game?.game_type === 'holm-game') {
+          const winnerId = holmShowdownMatch[1];
+          const loserIds = holmShowdownMatch[2].split(',').filter(Boolean);
+          const potAmount = parseInt(holmShowdownMatch[3], 10);
+          const matchAmount = parseInt(holmShowdownMatch[4], 10);
+          
+          console.log('[HOLM_SHOWDOWN_ANIMATION] Detected multi-player showdown', {
+            winnerId,
+            loserIds,
+            potAmount,
+            matchAmount
+          });
+          
+          // Trigger phase 1: pot-to-winner
+          setHolmShowdownPotAmount(potAmount);
+          setHolmShowdownMatchAmount(matchAmount);
+          setHolmShowdownWinnerId(winnerId);
+          setHolmShowdownLoserIds(loserIds);
+          setHolmShowdownPhase('pot-to-winner');
+          setHolmShowdownTriggerId(`holm-showdown-${Date.now()}`);
+        }
       }
       
       // Wait 4 seconds to show the result, then start next round
@@ -3792,6 +3825,28 @@ const Game = () => {
               onChuckyLossEnded={() => {
                 setChuckyLossPlayerIds([]);
                 setChuckyLossAmount(0);
+              }}
+              holmShowdownTriggerId={holmShowdownTriggerId}
+              holmShowdownPotAmount={holmShowdownPotAmount}
+              holmShowdownMatchAmount={holmShowdownMatchAmount}
+              holmShowdownWinnerId={holmShowdownWinnerId}
+              holmShowdownLoserIds={holmShowdownLoserIds}
+              holmShowdownPhase={holmShowdownPhase}
+              onHolmShowdownPotToWinnerStarted={() => {
+                setHolmShowdownTriggerId(null);
+              }}
+              onHolmShowdownPotToWinnerEnded={() => {
+                // Phase 1 done, trigger phase 2: losers-to-pot
+                setHolmShowdownPhase('losers-to-pot');
+              }}
+              onHolmShowdownLosersStarted={() => {}}
+              onHolmShowdownLosersEnded={() => {
+                // Reset all showdown state
+                setHolmShowdownPhase('idle');
+                setHolmShowdownPotAmount(0);
+                setHolmShowdownMatchAmount(0);
+                setHolmShowdownWinnerId(null);
+                setHolmShowdownLoserIds([]);
               }}
               onStay={handleStay}
               onFold={handleFold}

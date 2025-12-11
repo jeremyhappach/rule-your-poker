@@ -13,6 +13,7 @@ import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
+import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
@@ -134,6 +135,17 @@ interface MobileGameTableProps {
   chuckyLossPlayerIds?: string[];
   onChuckyLossStarted?: () => void;
   onChuckyLossEnded?: () => void;
+  // Holm multi-player showdown animation props (pot-to-winner, then losers-to-pot)
+  holmShowdownTriggerId?: string | null;
+  holmShowdownPotAmount?: number;
+  holmShowdownMatchAmount?: number;
+  holmShowdownWinnerId?: string | null;
+  holmShowdownLoserIds?: string[];
+  holmShowdownPhase?: 'idle' | 'pot-to-winner' | 'losers-to-pot';
+  onHolmShowdownPotToWinnerStarted?: () => void;
+  onHolmShowdownPotToWinnerEnded?: () => void;
+  onHolmShowdownLosersStarted?: () => void;
+  onHolmShowdownLosersEnded?: () => void;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -200,6 +212,16 @@ export const MobileGameTable = ({
   chuckyLossPlayerIds = [],
   onChuckyLossStarted,
   onChuckyLossEnded,
+  holmShowdownTriggerId,
+  holmShowdownPotAmount = 0,
+  holmShowdownMatchAmount = 0,
+  holmShowdownWinnerId,
+  holmShowdownLoserIds = [],
+  holmShowdownPhase = 'idle',
+  onHolmShowdownPotToWinnerStarted,
+  onHolmShowdownPotToWinnerEnded,
+  onHolmShowdownLosersStarted,
+  onHolmShowdownLosersEnded,
   isGameOver,
   isDealer,
   onNextGame,
@@ -243,6 +265,18 @@ export const MobileGameTable = ({
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
   const bucksOnYouShownRef = useRef(false); // Prevent re-triggering
+  
+  // Holm showdown phase 2 trigger ref
+  const [phase2TriggerId, setPhase2TriggerId] = useState<string | null>(null);
+  const lastPhaseRef = useRef<string>('idle');
+  
+  // Generate phase 2 trigger when phase changes to losers-to-pot
+  useEffect(() => {
+    if (holmShowdownPhase === 'losers-to-pot' && lastPhaseRef.current !== 'losers-to-pot') {
+      setPhase2TriggerId(`holm-losers-${Date.now()}`);
+    }
+    lastPhaseRef.current = holmShowdownPhase;
+  }, [holmShowdownPhase]);
 
   // Leg earned animation state
   const [showLegEarned, setShowLegEarned] = useState(false);
@@ -948,7 +982,63 @@ export const MobileGameTable = ({
           }}
         />
         
-        {/* Buck's On You Animation (Holm only) */}
+        {/* Holm Multi-Player Showdown Phase 1: Pot to Winner */}
+        {holmShowdownPhase === 'pot-to-winner' && holmShowdownWinnerId && (
+          <PotToPlayerAnimation
+            triggerId={holmShowdownTriggerId}
+            amount={holmShowdownPotAmount}
+            winnerPosition={players.find(p => p.id === holmShowdownWinnerId)?.position ?? 1}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            onAnimationStart={() => {
+              // Pot goes to 0 visually, show -$X flash
+              setAnteFlashTrigger({ id: `showdown-pot-out-${Date.now()}`, amount: -holmShowdownPotAmount });
+              onHolmShowdownPotToWinnerStarted?.();
+            }}
+            onAnimationEnd={() => {
+              // Winner's chips have been updated by backend, just move to phase 2
+              onHolmShowdownPotToWinnerEnded?.();
+            }}
+          />
+        )}
+        
+        {/* Holm Multi-Player Showdown Phase 2: Losers to Pot */}
+        {holmShowdownPhase === 'losers-to-pot' && holmShowdownLoserIds.length > 0 && (
+          <AnteUpAnimation
+            pot={pot}
+            anteAmount={holmShowdownMatchAmount}
+            chipAmount={holmShowdownMatchAmount}
+            activePlayers={players.filter(p => !p.sitting_out).map(p => ({ position: p.position, id: p.id }))}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            gameType={gameType}
+            triggerId={phase2TriggerId}
+            specificPlayerIds={holmShowdownLoserIds}
+            onAnimationStart={() => {
+              // Backend ALREADY deducted chips. Show pre-loss values.
+              const newDisplayedChips: Record<string, number> = {};
+              holmShowdownLoserIds.forEach(loserId => {
+                const loser = players.find(p => p.id === loserId);
+                if (loser) {
+                  newDisplayedChips[loserId] = loser.chips + holmShowdownMatchAmount;
+                }
+              });
+              setDisplayedChips(newDisplayedChips);
+              onHolmShowdownLosersStarted?.();
+            }}
+            onChipsArrived={() => {
+              setDisplayedChips({});
+              // Trigger pot flash with NET change (losers paid - winner took)
+              // Since winner already took pot, new pot = losers' match total
+              const totalLoserPay = holmShowdownMatchAmount * holmShowdownLoserIds.length;
+              setAnteFlashTrigger({ id: `showdown-losers-in-${Date.now()}`, amount: totalLoserPay });
+              onHolmShowdownLosersEnded?.();
+            }}
+          />
+        )}
+        
         <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
         
         {/* Leg Earned Animation (3-5-7 only) */}

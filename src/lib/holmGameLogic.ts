@@ -1373,7 +1373,9 @@ async function handleMultiPlayerShowdown(
     };
     
     // Embed debug JSON after the result message with a delimiter
-    const resultWithDebug = `${winnerUsername} wins with ${winnerHandDesc} and takes $${roundPot}!|||DEBUG:${JSON.stringify(debugData)}`;
+    // Include both pot (winner takes) and matchAmount (losers pay) for animation coordination
+    const loserIds = losers.map(l => l.player.id).join(',');
+    const resultWithDebug = `${winnerUsername} wins with ${winnerHandDesc} and takes $${roundPot}! Losers pay $${potMatchAmount}.|||WINNER:${winner.player.id}|||LOSERS:${loserIds}|||POT:${roundPot}|||MATCH:${potMatchAmount}|||DEBUG:${JSON.stringify(debugData)}`;
     
     const { error: updateError } = await supabase
       .from('games')
