@@ -917,10 +917,20 @@ anteAnimationTriggerId,
             } else {
               setDisplayedPot(prev => prev + totalAmount);
             }
-            // Clear displayed chips override - let real values show
-            setDisplayedChips({});
+            // CRITICAL FIX: Instead of clearing displayedChips (which can cause flicker if backend
+            // hasn't updated yet), set final expected values to ensure stable display
+            const finalDisplayedChips: Record<string, number> = {};
+            players.filter(p => !p.sitting_out).forEach(p => {
+              const chipsBefore = preAnteChips?.[p.id] ?? (p.chips + perPlayerAmount);
+              finalDisplayedChips[p.id] = chipsBefore - perPlayerAmount;
+            });
+            setDisplayedChips(finalDisplayedChips);
             isAnteAnimatingRef.current = false;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: totalAmount });
+            // Clear override after a delay once backend has definitely updated
+            setTimeout(() => {
+              setDisplayedChips({});
+            }, 500);
           }}
         />
         
