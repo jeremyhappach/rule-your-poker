@@ -128,6 +128,12 @@ interface MobileGameTableProps {
   chipTransferLoserIds?: string[];
   onChipTransferStarted?: () => void;
   onChipTransferEnded?: () => void;
+  // Holm Chucky loss animation props (player pays into pot)
+  chuckyLossTriggerId?: string | null;
+  chuckyLossAmount?: number;
+  chuckyLossPlayerIds?: string[];
+  onChuckyLossStarted?: () => void;
+  onChuckyLossEnded?: () => void;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -189,6 +195,11 @@ export const MobileGameTable = ({
   chipTransferLoserIds = [],
   onChipTransferStarted,
   onChipTransferEnded,
+  chuckyLossTriggerId,
+  chuckyLossAmount = 0,
+  chuckyLossPlayerIds = [],
+  onChuckyLossStarted,
+  onChuckyLossEnded,
   isGameOver,
   isDealer,
   onNextGame,
@@ -899,6 +910,41 @@ export const MobileGameTable = ({
             // Clear winner's freeze - actual DB value (with winnings) now shows
             setDisplayedChips({});
             onChipTransferEnded?.();
+          }}
+        />
+        
+        {/* Holm Chucky Loss Animation (loser pays into pot) */}
+        <AnteUpAnimation
+          pot={pot}
+          anteAmount={chuckyLossAmount}
+          chipAmount={chuckyLossAmount}
+          activePlayers={players.filter(p => !p.sitting_out).map(p => ({ position: p.position, id: p.id }))}
+          currentPlayerPosition={currentPlayer?.position ?? null}
+          getClockwiseDistance={getClockwiseDistance}
+          containerRef={tableContainerRef}
+          gameType={gameType}
+          triggerId={chuckyLossTriggerId}
+          specificPlayerIds={chuckyLossPlayerIds}
+          onAnimationStart={() => {
+            // Backend ALREADY deducted chips. Show pre-loss values, then let actual values appear.
+            const newDisplayedChips: Record<string, number> = {};
+            chuckyLossPlayerIds.forEach(loserId => {
+              const loser = players.find(p => p.id === loserId);
+              if (loser) {
+                // Show pre-loss value (add back what they lost)
+                newDisplayedChips[loserId] = loser.chips + chuckyLossAmount;
+              }
+            });
+            setDisplayedChips(newDisplayedChips);
+            onChuckyLossStarted?.();
+          }}
+          onChipsArrived={() => {
+            // Chips arrived at pot - clear override so actual (post-loss) values show
+            setDisplayedChips({});
+            // Trigger pot flash
+            const totalLoss = chuckyLossAmount * chuckyLossPlayerIds.length;
+            setAnteFlashTrigger({ id: `chucky-loss-${Date.now()}`, amount: totalLoss });
+            onChuckyLossEnded?.();
           }}
         />
         

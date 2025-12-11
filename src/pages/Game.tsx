@@ -191,6 +191,11 @@ const Game = () => {
   const [chipTransferWinnerId, setChipTransferWinnerId] = useState<string | null>(null);
   const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
   
+  // Holm Chucky loss animation state (player pays into pot)
+  const [chuckyLossTriggerId, setChuckyLossTriggerId] = useState<string | null>(null);
+  const [chuckyLossAmount, setChuckyLossAmount] = useState<number>(0);
+  const [chuckyLossPlayerIds, setChuckyLossPlayerIds] = useState<string[]>([]);
+  
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
@@ -1983,6 +1988,46 @@ const Game = () => {
         }
       }
       
+      // Check if this is a Holm Chucky loss and trigger animation (player pays into pot)
+      // Single player format: "Chucky beat {username} with {hand}. -${amount}"
+      // Multi player format: "Tie broken by Chucky! {names} lose to Chucky's {hand}. ${total} added to pot."
+      if (game?.game_type === 'holm-game') {
+        // Single player Chucky loss
+        const singleLossMatch = lastResult.match(/Chucky beat (.+) with .+\. -\$(\d+)/);
+        if (singleLossMatch) {
+          const loserUsername = singleLossMatch[1];
+          const amount = parseInt(singleLossMatch[2], 10);
+          const loserPlayer = players.find(p => p.profiles?.username === loserUsername);
+          
+          if (loserPlayer && amount > 0) {
+            console.log('[CHUCKY_LOSS_ANIMATION] Single player loss', { loser: loserUsername, amount });
+            setChuckyLossAmount(amount);
+            setChuckyLossPlayerIds([loserPlayer.id]);
+            setChuckyLossTriggerId(`chucky-loss-${Date.now()}`);
+          }
+        }
+        
+        // Multiple players tied and lost to Chucky
+        const tieBreakMatch = lastResult.match(/Tie broken by Chucky! (.+) lose to Chucky's .+\. \$(\d+) added to pot/);
+        if (tieBreakMatch) {
+          const losersStr = tieBreakMatch[1];
+          const totalAmount = parseInt(tieBreakMatch[2], 10);
+          // Parse "X and Y" or "X, Y and Z" format
+          const loserNames = losersStr.split(/ and |, /).map(n => n.trim());
+          const loserPlayers = loserNames
+            .map(name => players.find(p => p.profiles?.username === name))
+            .filter(Boolean);
+          
+          if (loserPlayers.length > 0 && totalAmount > 0) {
+            const perPlayerAmount = Math.floor(totalAmount / loserPlayers.length);
+            console.log('[CHUCKY_LOSS_ANIMATION] Multi player loss', { losers: loserNames, perPlayerAmount, total: totalAmount });
+            setChuckyLossAmount(perPlayerAmount);
+            setChuckyLossPlayerIds(loserPlayers.map(p => p!.id));
+            setChuckyLossTriggerId(`chucky-loss-${Date.now()}`);
+          }
+        }
+      }
+      
       // Wait 4 seconds to show the result, then start next round
       awaitingTimerRef.current = setTimeout(async () => {
         console.log('[AWAITING_NEXT_ROUND] Timer fired after 4 seconds');
@@ -3739,6 +3784,14 @@ const Game = () => {
                 setChipTransferWinnerId(null);
                 setChipTransferLoserIds([]);
                 setChipTransferAmount(0);
+              }}
+              chuckyLossTriggerId={chuckyLossTriggerId}
+              chuckyLossAmount={chuckyLossAmount}
+              chuckyLossPlayerIds={chuckyLossPlayerIds}
+              onChuckyLossStarted={() => setChuckyLossTriggerId(null)}
+              onChuckyLossEnded={() => {
+                setChuckyLossPlayerIds([]);
+                setChuckyLossAmount(0);
               }}
               onStay={handleStay}
               onFold={handleFold}
