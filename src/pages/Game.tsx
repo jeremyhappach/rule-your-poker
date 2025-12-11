@@ -1487,22 +1487,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
     : game?.rounds?.find(r => r.round_number === game.current_round);
   
+  // DEBUG: Log round state to help diagnose community card issues
+  console.log('[LIVE ROUND] Calculation:', {
+    gameType: game?.game_type,
+    gameStatus: game?.status,
+    roundsCount: game?.rounds?.length,
+    roundNumbers: game?.rounds?.map(r => r.round_number),
+    liveRoundId: liveRound?.id,
+    liveRoundNumber: liveRound?.round_number,
+    communityCardsCount: liveRound?.community_cards?.length,
+    communityCardsRevealed: liveRound?.community_cards_revealed
+  });
+  
   // DEBUG: Log when rounds are unexpectedly empty during active game
   // Also trigger a refetch as safeguard
   const roundsRefetchRef = useRef<NodeJS.Timeout | null>(null);
-  if (game?.status === 'in_progress' && game?.game_type === 'holm-game' && !liveRound && !roundsRefetchRef.current) {
-    console.error('[CRITICAL] 🚨 liveRound is null/undefined during active Holm game - triggering refetch!', {
+  
+  // CRITICAL: Trigger refetch if:
+  // 1. Holm game is in_progress but liveRound is null, OR
+  // 2. Holm game is in_progress but rounds array is empty/missing
+  const needsRoundsRecovery = game?.status === 'in_progress' && 
+    game?.game_type === 'holm-game' && 
+    (!liveRound || !game?.rounds || game?.rounds?.length === 0);
+    
+  if (needsRoundsRecovery && !roundsRefetchRef.current) {
+    console.error('[CRITICAL] 🚨 liveRound is null/undefined OR rounds missing during active Holm game - triggering refetch!', {
       gameStatus: game?.status,
       roundsLength: game?.rounds?.length,
-      roundsData: game?.rounds?.map(r => ({ round_number: r.round_number, id: r.id }))
+      roundsData: game?.rounds?.map(r => ({ round_number: r.round_number, id: r.id })),
+      liveRound: !!liveRound
     });
     // Trigger refetch after short delay to recover from stale state
     roundsRefetchRef.current = setTimeout(() => {
       console.log('[CRITICAL] 🔄 Refetching game data to recover missing rounds...');
       fetchGameData();
       roundsRefetchRef.current = null;
-    }, 500);
-  } else if (liveRound && roundsRefetchRef.current) {
+    }, 200); // Faster refetch (200ms instead of 500ms)
+  } else if (liveRound && game?.rounds && game?.rounds?.length > 0 && roundsRefetchRef.current) {
     // Clear pending refetch if we now have valid data
     clearTimeout(roundsRefetchRef.current);
     roundsRefetchRef.current = null;
