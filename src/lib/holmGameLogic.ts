@@ -844,11 +844,22 @@ export async function endHolmRound(gameId: string) {
       await handleChuckyShowdown(gameId, capturedRoundId, player, communityCards, game, chuckyCards, roundPot);
     } catch (error) {
       console.error('[HOLM END] ERROR in handleChuckyShowdown:', error);
-      // Attempt to at least mark round as completed to prevent stuck state
+      // CRITICAL: On error, mark round as completed AND set awaiting_next_round to allow progression
       await supabase
         .from('rounds')
         .update({ status: 'completed', chucky_active: false })
         .eq('id', capturedRoundId);
+      
+      // Also update game to allow progression - this was missing and caused stuck games
+      await supabase
+        .from('games')
+        .update({ 
+          awaiting_next_round: true,
+          last_round_result: 'Error occurred - advancing to next hand'
+        })
+        .eq('id', gameId);
+      
+      console.log('[HOLM END] Error recovery complete - set awaiting_next_round: true');
     }
     return;
   }
