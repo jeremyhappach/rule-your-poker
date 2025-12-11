@@ -239,6 +239,20 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
   console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
   
+  // CRITICAL GUARD: Check if a betting round already exists to prevent duplicate round creation
+  // This guards against race conditions from polling or multiple simultaneous calls
+  const { data: existingBettingRound } = await supabase
+    .from('rounds')
+    .select('id, round_number')
+    .eq('game_id', gameId)
+    .eq('status', 'betting')
+    .maybeSingle();
+  
+  if (existingBettingRound) {
+    console.log('[HOLM] ⚠️ GUARD: Betting round already exists, skipping creation:', existingBettingRound);
+    return; // Don't create duplicate round
+  }
+  
   // Fetch game configuration
   const { data: gameConfig } = await supabase
     .from('games')
