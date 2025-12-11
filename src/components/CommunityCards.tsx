@@ -29,14 +29,25 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
   const isFirstMount = Date.now() - mountTimeRef.current < 500;
   
   useEffect(() => {
-    if (cards.length === 0) return;
-    if (handId === animatedHandId) return;
+    console.log('[COMMUNITY_CARDS] useEffect - handId:', handId, 'animatedHandId:', animatedHandId, 'cardsLength:', cards.length, 'dealtCardsSize:', dealtCards.size);
     
+    if (cards.length === 0) {
+      console.log('[COMMUNITY_CARDS] Early return: no cards');
+      return;
+    }
+    if (handId === animatedHandId) {
+      console.log('[COMMUNITY_CARDS] Early return: handId matches animatedHandId, dealtCards size:', dealtCards.size);
+      return;
+    }
+    
+    console.log('[COMMUNITY_CARDS] Processing NEW hand - handId changed from', animatedHandId, 'to', handId);
     clearTimeouts();
     
     // For first mount OR subsequent hands (not first game load), show cards immediately
     // Only animate dealing on the very first hand of a session
     const shouldSkipAnimation = isFirstMount || animatedHandId !== '';
+    
+    console.log('[COMMUNITY_CARDS] shouldSkipAnimation:', shouldSkipAnimation, 'isFirstMount:', isFirstMount);
     
     if (shouldSkipAnimation) {
       const allDealt = new Set<number>();
@@ -45,6 +56,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
       const preFlipped = new Set<number>();
       for (let i = 2; i < revealed; i++) preFlipped.add(i);
       
+      console.log('[COMMUNITY_CARDS] Setting dealtCards to all', cards.length, 'cards, flipped up to', revealed);
       setDealtCards(allDealt);
       setFlippedCards(preFlipped);
       setAnimatedHandId(handId);
