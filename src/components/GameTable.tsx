@@ -144,6 +144,16 @@ export const GameTable = ({
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
   
+  // DEBUG: Log community cards prop to diagnose rendering issues
+  if (gameType === 'holm-game') {
+    console.log('[GAME_TABLE] Community cards prop received:', {
+      hasCommunityCards: !!communityCards,
+      communityCardsLength: communityCards?.length,
+      communityCardsRevealed,
+      roundStatus
+    });
+  }
+  
   // REALTIME ROUND SYNC: Subscribe directly to round changes - THIS IS THE SOURCE OF TRUTH
   const [realtimeRound, setRealtimeRound] = useState<{
     id: string;

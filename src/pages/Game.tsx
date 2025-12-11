@@ -1483,11 +1483,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
     : game?.rounds?.find(r => r.round_number === game.current_round);
   
-  // Only log when there's a potential issue (no liveRound during in_progress Holm game)
-  if (game?.game_type === 'holm-game' && game?.status === 'in_progress' && !liveRound) {
-    console.warn('[LIVE ROUND] ⚠️ No liveRound found during in_progress Holm game:', {
+  // DEBUG: Always log liveRound details during in_progress Holm games
+  if (game?.game_type === 'holm-game' && game?.status === 'in_progress') {
+    console.log('[LIVE ROUND] Holm game state:', {
       roundsCount: game?.rounds?.length,
-      roundNumbers: game?.rounds?.map(r => r.round_number)
+      roundNumbers: game?.rounds?.map(r => r.round_number),
+      liveRoundNumber: liveRound?.round_number,
+      liveRoundId: liveRound?.id,
+      hasCommunityCards: !!liveRound?.community_cards,
+      communityCardsLength: liveRound?.community_cards?.length,
+      communityCardsRevealed: liveRound?.community_cards_revealed
     });
   }
   
@@ -2225,7 +2230,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       prev_game_type: prevGameType,
       awaiting_next_round: gameData?.awaiting_next_round,
       rounds_count: gameData?.rounds?.length,
-      round_numbers: gameData?.rounds?.map((r: any) => r.round_number)
+      round_numbers: gameData?.rounds?.map((r: any) => r.round_number),
+      // CRITICAL DEBUG: Check if community_cards are actually in the rounds data
+      rounds_with_community_cards: gameData?.rounds?.map((r: any) => ({
+        round_number: r.round_number,
+        has_community_cards: !!r.community_cards,
+        community_cards_length: r.community_cards?.length
+      }))
     });
     
     // CRITICAL: If game type changed since last fetch (including from null), clear all card state
@@ -3837,8 +3848,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </Card>
         )}
 
-        {game.status === 'in_progress' && (
-          isMobile ? (
+        {game.status === 'in_progress' && (() => {
+          console.log('[RENDER] in_progress - communityCards being passed:', {
+            currentRoundId: currentRound?.id,
+            currentRoundNumber: currentRound?.round_number,
+            communityCardsLength: currentRound?.community_cards?.length,
+            communityCardsData: currentRound?.community_cards?.map(c => `${c.rank}${c.suit}`),
+            effectiveCommunityCardsRevealed,
+            liveRoundNumber: liveRound?.round_number,
+            cachedRoundNumber: cachedRoundData?.round_number
+          });
+          return isMobile ? (
             <MobileGameTable
               players={players}
               currentUserId={user?.id}
@@ -3970,8 +3990,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isChatSending={isChatSending}
               getPositionForUserId={getPositionForUserId}
             />
-          )
-        )}
+          );
+        })()}
       </div>
 
       {/* Player click dialog for host */}
