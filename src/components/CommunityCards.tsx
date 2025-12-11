@@ -34,7 +34,11 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     
     clearTimeouts();
     
-    if (isFirstMount) {
+    // For first mount OR subsequent hands (not first game load), show cards immediately
+    // Only animate dealing on the very first hand of a session
+    const shouldSkipAnimation = isFirstMount || animatedHandId !== '';
+    
+    if (shouldSkipAnimation) {
       const allDealt = new Set<number>();
       for (let i = 0; i < cards.length; i++) allDealt.add(i);
       
@@ -48,6 +52,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
       return;
     }
     
+    // First hand animation (rare - only when component mounts with no prior handId)
     setDealtCards(new Set());
     setFlippedCards(new Set());
     lastRevealedRef.current = revealed;
