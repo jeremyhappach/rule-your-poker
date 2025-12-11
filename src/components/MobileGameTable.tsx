@@ -316,16 +316,30 @@ anteAnimationTriggerId,
     }
   }, [pot]);
   
-  // CRITICAL: Sync displayedChips when players update, but ONLY if not animating
-  // and no locked values exist
+  // CRITICAL: Clear locked chips ONLY when backend values match expected values
+  // This ensures we never flash wrong values during the sync period
   useEffect(() => {
-    if (!isAnteAnimatingRef.current && !lockedChipsRef.current) {
-      // Not animating and no lock - clear any stale overrides
-      if (Object.keys(displayedChips).length > 0) {
+    if (lockedChipsRef.current) {
+      // Check if ALL locked values now match actual player chips
+      const allMatch = Object.entries(lockedChipsRef.current).every(([playerId, expectedChips]) => {
+        const player = players.find(p => p.id === playerId);
+        return player && player.chips === expectedChips;
+      });
+      
+      if (allMatch) {
+        // Backend has synced - safe to clear the lock
+        lockedChipsRef.current = null;
         setDisplayedChips({});
       }
     }
   }, [players]);
+  
+  // Cleanup stale displayedChips when not animating and no lock
+  useEffect(() => {
+    if (!isAnteAnimatingRef.current && !lockedChipsRef.current && Object.keys(displayedChips).length > 0) {
+      setDisplayedChips({});
+    }
+  }, [players, displayedChips]);
   
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
@@ -945,15 +959,11 @@ anteAnimationTriggerId,
               setDisplayedPot(prev => prev + totalAmount);
             }
             
-            // Keep locked values active - don't clear yet!
+            // Keep locked values active - the useEffect watching players will clear
+            // them automatically when backend values match expected values
             isAnteAnimatingRef.current = false;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: totalAmount });
-            
-            // Clear lock after backend has definitely synced
-            setTimeout(() => {
-              lockedChipsRef.current = null;
-              setDisplayedChips({});
-            }, 800);
+            // NOTE: lockedChipsRef is NOT cleared here - it's cleared by useEffect when backend syncs
           }}
         />
         
