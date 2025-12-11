@@ -1335,13 +1335,8 @@ export const GameTable = ({
         chuckyActive ||
         (gameType === 'holm-game' && lastRoundResult.includes(' has '))
       ) && (() => {
-        // Parse debug data from result message (strip it for display)
-        let displayMessage = lastRoundResult;
-        
-        if (lastRoundResult.includes('|||DEBUG:')) {
-          const parts = lastRoundResult.split('|||DEBUG:');
-          displayMessage = parts[0];
-        }
+        // Parse debug data from result message (strip everything from first ||| for display)
+        const displayMessage = lastRoundResult.split('|||')[0];
         
         return (
           <div className="mt-4 flex justify-center">
