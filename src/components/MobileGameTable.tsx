@@ -12,6 +12,7 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
+import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
@@ -120,6 +121,13 @@ interface MobileGameTableProps {
   anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
   onAnteAnimationStarted?: () => void; // Callback to clear trigger after animation starts
+  // Chip transfer animation props (3-5-7 showdowns)
+  chipTransferTriggerId?: string | null;
+  chipTransferAmount?: number;
+  chipTransferWinnerId?: string | null;
+  chipTransferLoserIds?: string[];
+  onChipTransferStarted?: () => void;
+  onChipTransferEnded?: () => void;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -175,6 +183,12 @@ export const MobileGameTable = ({
   anteAnimationTriggerId,
   anteAnimationExpectedPot,
   onAnteAnimationStarted,
+  chipTransferTriggerId,
+  chipTransferAmount = 0,
+  chipTransferWinnerId,
+  chipTransferLoserIds = [],
+  onChipTransferStarted,
+  onChipTransferEnded,
   isGameOver,
   isDealer,
   onNextGame,
@@ -850,6 +864,41 @@ export const MobileGameTable = ({
             setDisplayedChips({});
             isAnteAnimatingRef.current = false;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: totalAmount });
+          }}
+        />
+        
+        {/* Chip Transfer Animation (3-5-7 showdowns - loser to winner) */}
+        <ChipTransferAnimation
+          triggerId={chipTransferTriggerId || null}
+          amount={chipTransferAmount}
+          winnerPosition={players.find(p => p.id === chipTransferWinnerId)?.position || 1}
+          loserPositions={chipTransferLoserIds.map(id => players.find(p => p.id === id)?.position || 1)}
+          loserPlayerIds={chipTransferLoserIds}
+          currentPlayerPosition={currentPlayer?.position ?? null}
+          getClockwiseDistance={getClockwiseDistance}
+          containerRef={tableContainerRef}
+          onAnimationStart={(loserIds) => {
+            // Backend ALREADY updated all chips. We want visual effect:
+            // - Losers decrement NOW (show actual post-loss values)
+            // - Winner shows pre-win value until animation ends
+            const totalWinnings = chipTransferAmount * loserIds.length;
+            const newDisplayedChips: Record<string, number> = {};
+            
+            // Winner: freeze at pre-win value (actual - totalWinnings)
+            const winner = players.find(p => p.id === chipTransferWinnerId);
+            if (winner) {
+              newDisplayedChips[chipTransferWinnerId!] = winner.chips - totalWinnings;
+            }
+            
+            // Losers: no override needed - actual (post-loss) values show the decrement
+            
+            setDisplayedChips(newDisplayedChips);
+            onChipTransferStarted?.();
+          }}
+          onAnimationEnd={() => {
+            // Clear winner's freeze - actual DB value (with winnings) now shows
+            setDisplayedChips({});
+            onChipTransferEnded?.();
           }}
         />
         
