@@ -487,7 +487,13 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   console.log('[MAKE DECISION] Is Holm game?', isHolmGame);
   
-  if (!isHolmGame) {
+  if (isHolmGame) {
+    // For Holm games, check if round is complete and advance turn
+    // Import dynamically to avoid circular dependency
+    const { checkHolmRoundComplete } = await import('./holmGameLogic');
+    console.log('[MAKE DECISION] Holm game - calling checkHolmRoundComplete');
+    await checkHolmRoundComplete(gameId);
+  } else {
     // Check if all players have decided (only for non-Holm games)
     await checkAllDecisionsIn(gameId);
   }
