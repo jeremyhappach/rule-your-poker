@@ -122,6 +122,7 @@ interface MobileGameTableProps {
 anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
   preAnteChips?: Record<string, number> | null; // Captured chip values BEFORE ante deduction to prevent race conditions
+  expectedPostAnteChips?: Record<string, number> | null; // Expected chip values AFTER ante deduction - use this directly for display
   onAnteAnimationStarted?: () => void; // Callback to clear trigger after animation starts
   // Chip transfer animation props (3-5-7 showdowns)
   chipTransferTriggerId?: string | null;
@@ -202,6 +203,7 @@ export const MobileGameTable = ({
 anteAnimationTriggerId,
   anteAnimationExpectedPot,
   preAnteChips,
+  expectedPostAnteChips,
   onAnteAnimationStarted,
   chipTransferTriggerId,
   chipTransferAmount = 0,
@@ -306,9 +308,6 @@ anteAnimationTriggerId,
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
   
-  // CRITICAL: Store captured pre-ante chips locally so it persists through entire animation
-  // (the prop gets cleared after onAnimationStart, but we need it for onChipsArrived)
-  const capturedPreAnteChipsRef = useRef<Record<string, number> | null>(null);
   
   // Sync displayedPot to actual pot when NOT animating (handles DB updates)
   useEffect(() => {
@@ -904,40 +903,42 @@ anteAnimationTriggerId,
             // CRITICAL: Set animating flag FIRST to prevent sync useEffect from resetting
             isAnteAnimatingRef.current = true;
             
-            // CRITICAL: Capture preAnteChips into ref so it persists until onChipsArrived
-            // (the prop gets cleared by onAnteAnimationStarted, but we need it later)
-            capturedPreAnteChipsRef.current = preAnteChips ? { ...preAnteChips } : null;
+            // CRITICAL: Use expectedPostAnteChips directly if available - this is computed in Game.tsx
+            // BEFORE any backend updates, so it's guaranteed to be correct
+            if (expectedPostAnteChips) {
+              lockedChipsRef.current = { ...expectedPostAnteChips };
+              setDisplayedChips({ ...expectedPostAnteChips });
+            } else {
+              // Fallback: compute from preAnteChips or current chips
+              const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
+              const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
+              const newLockedChips: Record<string, number> = {};
+              players.filter(p => !p.sitting_out).forEach(p => {
+                const chipsBefore = preAnteChips?.[p.id] ?? p.chips;
+                newLockedChips[p.id] = chipsBefore - perPlayerAmount;
+              });
+              lockedChipsRef.current = newLockedChips;
+              setDisplayedChips(newLockedChips);
+            }
             
             // Clear the trigger so it doesn't fire again on status change
             onAnteAnimationStarted?.();
-            // Determine amount based on trigger type (pussy tax vs ante)
+            
+            // Freeze displayed pot at PRE-ANTE value when animation starts
             const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
             const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
-            // Freeze displayed pot at PRE-ANTE value when animation starts
             const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
-            // If expectedPot is provided (re-ante scenario), calculate pre-ante from it
-            // Otherwise, the pot has already been updated so subtract totalAmount
             const preAntePot = anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined
               ? anteAnimationExpectedPot - totalAmount
               : pot - totalAmount;
             setDisplayedPot(Math.max(0, preAntePot));
-            
-            // CRITICAL: Calculate and LOCK chip values using ref (synchronous, can't be overwritten)
-            const newLockedChips: Record<string, number> = {};
-            const capturedChips = capturedPreAnteChipsRef.current;
-            players.filter(p => !p.sitting_out).forEach(p => {
-              const chipsBefore = capturedChips?.[p.id] ?? p.chips;
-              newLockedChips[p.id] = chipsBefore - perPlayerAmount;
-            });
-            lockedChipsRef.current = newLockedChips;
-            setDisplayedChips(newLockedChips);
           }}
           onChipsArrived={() => {
             // Determine amount based on trigger type (pussy tax vs ante)
             const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
             const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
-            // Calculate expected pot - use provided expectedPot if available
             const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
+            
             if (anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined) {
               setDisplayedPot(anteAnimationExpectedPot);
             } else {
@@ -945,9 +946,7 @@ anteAnimationTriggerId,
             }
             
             // Keep locked values active - don't clear yet!
-            // The lockedChipsRef ensures stable display even during React re-renders
             isAnteAnimatingRef.current = false;
-            capturedPreAnteChipsRef.current = null;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: totalAmount });
             
             // Clear lock after backend has definitely synced
