@@ -185,6 +185,12 @@ const Game = () => {
   const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | null>(null); // Immediate trigger for ante animation
   const [anteAnimationExpectedPot, setAnteAnimationExpectedPot] = useState<number | null>(null); // Expected pot after antes for re-ante scenarios
   
+  // Chip transfer animation state (for 3-5-7 showdowns)
+  const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
+  const [chipTransferAmount, setChipTransferAmount] = useState<number>(0);
+  const [chipTransferWinnerId, setChipTransferWinnerId] = useState<string | null>(null);
+  const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
+  
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
@@ -1906,6 +1912,39 @@ const Game = () => {
         console.log('[PUSSY_TAX_ANIMATION] Triggering animation', { pussyTaxTotal, activePlayers: activePlayers.length });
         setAnteAnimationExpectedPot((game?.pot || 0)); // Pot already includes the tax
         setAnteAnimationTriggerId(`pussy-tax-${Date.now()}`);
+      }
+      
+      // Check if this is a 3-5-7 showdown and trigger chip transfer animation
+      // Format: "${winnerUsername} won $${amount} with ${handName}"
+      const showdownMatch = lastResult.match(/^(.+) won \$(\d+) with (.+)$/);
+      if (showdownMatch && game?.game_type === '3-5-7') {
+        const winnerUsername = showdownMatch[1];
+        const amount = parseInt(showdownMatch[2], 10);
+        
+        // Find the winner player by username
+        const winnerPlayer = players.find(p => p.profiles?.username === winnerUsername);
+        
+        // Find losers: players who stayed (have current_decision = 'stay' or just played) but aren't the winner
+        // In 3-5-7 showdown, losers are players who had status 'active' and weren't the winner
+        const loserPlayers = players.filter(p => 
+          p.id !== winnerPlayer?.id && 
+          !p.sitting_out && 
+          p.status !== 'folded'
+        );
+        
+        if (winnerPlayer && loserPlayers.length > 0 && amount > 0) {
+          console.log('[CHIP_TRANSFER_ANIMATION] Triggering showdown animation', {
+            winner: winnerUsername,
+            winnerId: winnerPlayer.id,
+            losers: loserPlayers.map(p => p.profiles?.username),
+            loserIds: loserPlayers.map(p => p.id),
+            amount
+          });
+          setChipTransferAmount(amount / loserPlayers.length); // Per-loser amount
+          setChipTransferWinnerId(winnerPlayer.id);
+          setChipTransferLoserIds(loserPlayers.map(p => p.id));
+          setChipTransferTriggerId(`showdown-${Date.now()}`);
+        }
       }
       
       // Wait 4 seconds to show the result, then start next round
@@ -3655,6 +3694,16 @@ const Game = () => {
               anteAnimationTriggerId={anteAnimationTriggerId}
               anteAnimationExpectedPot={anteAnimationExpectedPot}
               onAnteAnimationStarted={() => { setAnteAnimationTriggerId(null); setAnteAnimationExpectedPot(null); }}
+              chipTransferTriggerId={chipTransferTriggerId}
+              chipTransferAmount={chipTransferAmount}
+              chipTransferWinnerId={chipTransferWinnerId}
+              chipTransferLoserIds={chipTransferLoserIds}
+              onChipTransferStarted={() => setChipTransferTriggerId(null)}
+              onChipTransferEnded={() => {
+                setChipTransferWinnerId(null);
+                setChipTransferLoserIds([]);
+                setChipTransferAmount(0);
+              }}
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}
