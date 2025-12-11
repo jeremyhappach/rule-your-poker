@@ -1101,7 +1101,8 @@ async function handleChuckyShowdown(
       .from('games')
       .update({
         last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`,
-        pot: newPot
+        pot: newPot,
+        awaiting_next_round: true  // Let frontend detect and animate
       })
       .eq('id', gameId);
     
@@ -1116,16 +1117,8 @@ async function handleChuckyShowdown(
       })
       .eq('id', roundId);
     
-    // 3-second delay for players to see the result
-    console.log('[HOLM SHOWDOWN] Pausing 3 seconds for players to see result...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // CRITICAL: Directly proceed to next round instead of relying on frontend timer
-    // This prevents the game from getting stuck
-    console.log('[HOLM SHOWDOWN] Chucky won - proceeding to next hand...');
-    await proceedToNextHolmRound(gameId);
-    
-    console.log('[HOLM SHOWDOWN] Showdown complete - next hand started');
+    // Frontend will handle the animation and transition via awaiting_next_round
+    console.log('[HOLM SHOWDOWN] Chucky won - awaiting_next_round set, frontend will handle transition');
     return;
   }
 
