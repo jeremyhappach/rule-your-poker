@@ -299,6 +299,10 @@ anteAnimationTriggerId,
   const [displayedPot, setDisplayedPot] = useState(pot);
   const isAnteAnimatingRef = useRef(false);
   
+  // CRITICAL: Use a REF for locked chip values during animation
+  // State updates can be batched/delayed by React, but refs update synchronously
+  const lockedChipsRef = useRef<Record<string, number> | null>(null);
+  
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
   
@@ -312,6 +316,17 @@ anteAnimationTriggerId,
       setDisplayedPot(pot);
     }
   }, [pot]);
+  
+  // CRITICAL: Sync displayedChips when players update, but ONLY if not animating
+  // and no locked values exist
+  useEffect(() => {
+    if (!isAnteAnimatingRef.current && !lockedChipsRef.current) {
+      // Not animating and no lock - clear any stale overrides
+      if (Object.keys(displayedChips).length > 0) {
+        setDisplayedChips({});
+      }
+    }
+  }, [players]);
   
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
@@ -906,15 +921,16 @@ anteAnimationTriggerId,
               ? anteAnimationExpectedPot - totalAmount
               : pot - totalAmount;
             setDisplayedPot(Math.max(0, preAntePot));
-            // IMMEDIATELY decrement displayed chips for all active players
-            // Use captured preAnteChips (BEFORE backend deduction)
-            const newDisplayedChips: Record<string, number> = {};
+            
+            // CRITICAL: Calculate and LOCK chip values using ref (synchronous, can't be overwritten)
+            const newLockedChips: Record<string, number> = {};
             const capturedChips = capturedPreAnteChipsRef.current;
             players.filter(p => !p.sitting_out).forEach(p => {
               const chipsBefore = capturedChips?.[p.id] ?? p.chips;
-              newDisplayedChips[p.id] = chipsBefore - perPlayerAmount;
+              newLockedChips[p.id] = chipsBefore - perPlayerAmount;
             });
-            setDisplayedChips(newDisplayedChips);
+            lockedChipsRef.current = newLockedChips;
+            setDisplayedChips(newLockedChips);
           }}
           onChipsArrived={() => {
             // Determine amount based on trigger type (pussy tax vs ante)
@@ -927,22 +943,18 @@ anteAnimationTriggerId,
             } else {
               setDisplayedPot(prev => prev + totalAmount);
             }
-            // CRITICAL: Use captured preAnteChips from ref (persisted from onAnimationStart)
-            // This ensures stable final display regardless of when backend updates
-            const finalDisplayedChips: Record<string, number> = {};
-            const capturedChips = capturedPreAnteChipsRef.current;
-            players.filter(p => !p.sitting_out).forEach(p => {
-              const chipsBefore = capturedChips?.[p.id] ?? (p.chips + perPlayerAmount);
-              finalDisplayedChips[p.id] = chipsBefore - perPlayerAmount;
-            });
-            setDisplayedChips(finalDisplayedChips);
+            
+            // Keep locked values active - don't clear yet!
+            // The lockedChipsRef ensures stable display even during React re-renders
             isAnteAnimatingRef.current = false;
-            capturedPreAnteChipsRef.current = null; // Clear captured chips
+            capturedPreAnteChipsRef.current = null;
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: totalAmount });
-            // Clear override after a delay once backend has definitely updated
+            
+            // Clear lock after backend has definitely synced
             setTimeout(() => {
+              lockedChipsRef.current = null;
               setDisplayedChips({});
-            }, 500);
+            }, 800);
           }}
         />
         
@@ -1481,9 +1493,9 @@ anteAnimationTriggerId,
                         </div>
                       )}
                       
-                      {/* Chip stack */}
-                      <div className={`text-right min-w-[45px] font-bold text-sm ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                        ${Math.round(displayedChips[player.id] ?? player.chips)}
+                      {/* Chip stack - prioritize locked ref > displayedChips state > actual chips */}
+                      <div className={`text-right min-w-[45px] font-bold text-sm ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                        ${Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips)}
                       </div>
                     </div>
                   </div>
@@ -1569,8 +1581,9 @@ anteAnimationTriggerId,
                   {currentPlayer.profiles?.username || 'You'}
                   {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
-                <span className={`text-lg font-bold ${(displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                  ${Math.round(displayedChips[currentPlayer.id] ?? currentPlayer.chips).toLocaleString()}
+                {/* Chip stack - prioritize locked ref > displayedChips state > actual chips */}
+                <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                  ${Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips).toLocaleString()}
                 </span>
                 {/* Hand evaluation for Holm only when Chucky is active */}
                 {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
