@@ -1116,10 +1116,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       currentPlayer;
     
     // Also detect when Holm game started but no round was created
+    // CRITICAL: Check rounds array, NOT game.current_round (which we no longer update for Holm)
     const holmNoRound = 
       game?.game_type === 'holm-game' &&
       game?.status === 'in_progress' &&
-      !game?.current_round &&
+      (!game?.rounds || game?.rounds?.length === 0) &&
       currentPlayer;
     
     const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || stuckHolmState || holmNoRound;
@@ -1503,31 +1504,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Also trigger a refetch as safeguard
   const roundsRefetchRef = useRef<NodeJS.Timeout | null>(null);
   
-  // CRITICAL: Trigger refetch if:
-  // 1. Holm game is in_progress but liveRound is null, OR
-  // 2. Holm game is in_progress but rounds array is empty/missing
-  const needsRoundsRecovery = game?.status === 'in_progress' && 
-    game?.game_type === 'holm-game' && 
-    (!liveRound || !game?.rounds || game?.rounds?.length === 0);
-    
-  if (needsRoundsRecovery && !roundsRefetchRef.current) {
-    console.error('[CRITICAL] 🚨 liveRound is null/undefined OR rounds missing during active Holm game - triggering refetch!', {
-      gameStatus: game?.status,
-      roundsLength: game?.rounds?.length,
-      roundsData: game?.rounds?.map(r => ({ round_number: r.round_number, id: r.id })),
-      liveRound: !!liveRound
-    });
-    // Trigger refetch after short delay to recover from stale state
-    roundsRefetchRef.current = setTimeout(() => {
-      console.log('[CRITICAL] 🔄 Refetching game data to recover missing rounds...');
-      fetchGameData();
-      roundsRefetchRef.current = null;
-    }, 200); // Faster refetch (200ms instead of 500ms)
-  } else if (liveRound && game?.rounds && game?.rounds?.length > 0 && roundsRefetchRef.current) {
-    // Clear pending refetch if we now have valid data
-    clearTimeout(roundsRefetchRef.current);
-    roundsRefetchRef.current = null;
-  }
+  // REMOVED: The aggressive recovery refetch was causing race conditions
+  // The rounds data comes from realtime subscriptions - trust them instead of triggering refetches
   
   // Immediately cache round data in ref when we have valid data with community cards
   // This ensures we capture it before game_over clears current_round
