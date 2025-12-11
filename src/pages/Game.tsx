@@ -185,6 +185,7 @@ const Game = () => {
 const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | null>(null); // Immediate trigger for ante animation
   const [anteAnimationExpectedPot, setAnteAnimationExpectedPot] = useState<number | null>(null); // Expected pot after antes for re-ante scenarios
   const [preAnteChips, setPreAnteChips] = useState<Record<string, number> | null>(null); // Capture chips BEFORE ante deduction to prevent race conditions
+  const [expectedPostAnteChips, setExpectedPostAnteChips] = useState<Record<string, number> | null>(null); // Expected chip values AFTER ante deduction
   
   // Chip transfer animation state (for 3-5-7 showdowns)
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -1981,10 +1982,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const activePlayers = players.filter(p => !p.sitting_out);
         const pussyTaxTotal = (game?.pussy_tax_value || 1) * activePlayers.length;
         console.log('[PUSSY_TAX_ANIMATION] Triggering animation', { pussyTaxTotal, activePlayers: activePlayers.length });
-        // Capture chips BEFORE animation starts to prevent race conditions with backend updates
+        // Capture chips and compute expected post-ante values
         const chipSnapshot: Record<string, number> = {};
-        activePlayers.forEach(p => { chipSnapshot[p.id] = p.chips; });
+        const expectedChips: Record<string, number> = {};
+        const perPlayerAmount = game?.pussy_tax_value || 1;
+        activePlayers.forEach(p => { 
+          chipSnapshot[p.id] = p.chips;
+          expectedChips[p.id] = p.chips - perPlayerAmount;
+        });
         setPreAnteChips(chipSnapshot);
+        setExpectedPostAnteChips(expectedChips);
         setAnteAnimationExpectedPot((game?.pot || 0)); // Pot already includes the tax
         setAnteAnimationTriggerId(`pussy-tax-${Date.now()}`);
       }
@@ -2131,11 +2138,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 .select('pot')
                 .eq('id', gameId)
                 .single();
-              // Capture chips BEFORE animation starts to prevent race conditions with backend updates
+              // Capture chips and compute expected post-ante values
               const activePlayers = players.filter(p => !p.sitting_out);
               const chipSnapshot: Record<string, number> = {};
-              activePlayers.forEach(p => { chipSnapshot[p.id] = p.chips; });
+              const expectedChips: Record<string, number> = {};
+              const perPlayerAmount = game?.ante_amount || 2;
+              activePlayers.forEach(p => { 
+                chipSnapshot[p.id] = p.chips;
+                expectedChips[p.id] = p.chips - perPlayerAmount;
+              });
               setPreAnteChips(chipSnapshot);
+              setExpectedPostAnteChips(expectedChips);
               setAnteAnimationExpectedPot(updatedGame?.pot || 0);
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
             }
@@ -2930,10 +2943,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // For first ante, pot starts at 0
         const activePlayers = players.filter(p => !p.sitting_out);
         const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
-        // Capture chips BEFORE animation starts to prevent race conditions with backend updates
+        // Capture chips and compute expected post-ante values
         const chipSnapshot: Record<string, number> = {};
-        activePlayers.forEach(p => { chipSnapshot[p.id] = p.chips; });
+        const expectedChips: Record<string, number> = {};
+        const perPlayerAmount = game?.ante_amount || 2;
+        activePlayers.forEach(p => { 
+          chipSnapshot[p.id] = p.chips;
+          expectedChips[p.id] = p.chips - perPlayerAmount;
+        });
         setPreAnteChips(chipSnapshot);
+        setExpectedPostAnteChips(expectedChips);
         setAnteAnimationExpectedPot(anteTotal);
         setAnteAnimationTriggerId(`ante-${Date.now()}`);
         
@@ -2944,10 +2963,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // For first ante, pot starts at 0
         const activePlayers = players.filter(p => !p.sitting_out);
         const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
-        // Capture chips BEFORE animation starts to prevent race conditions with backend updates
+        // Capture chips and compute expected post-ante values
         const chipSnapshot: Record<string, number> = {};
-        activePlayers.forEach(p => { chipSnapshot[p.id] = p.chips; });
+        const expectedChips: Record<string, number> = {};
+        const perPlayerAmount = game?.ante_amount || 2;
+        activePlayers.forEach(p => { 
+          chipSnapshot[p.id] = p.chips;
+          expectedChips[p.id] = p.chips - perPlayerAmount;
+        });
         setPreAnteChips(chipSnapshot);
+        setExpectedPostAnteChips(expectedChips);
         setAnteAnimationExpectedPot(anteTotal);
         setAnteAnimationTriggerId(`ante-${Date.now()}`);
         
@@ -3847,7 +3872,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               anteAnimationTriggerId={anteAnimationTriggerId}
               anteAnimationExpectedPot={anteAnimationExpectedPot}
               preAnteChips={preAnteChips}
-              onAnteAnimationStarted={() => { setAnteAnimationTriggerId(null); setAnteAnimationExpectedPot(null); setPreAnteChips(null); }}
+              expectedPostAnteChips={expectedPostAnteChips}
+              onAnteAnimationStarted={() => { setAnteAnimationTriggerId(null); setAnteAnimationExpectedPot(null); setPreAnteChips(null); setExpectedPostAnteChips(null); }}
               chipTransferTriggerId={chipTransferTriggerId}
               chipTransferAmount={chipTransferAmount}
               chipTransferWinnerId={chipTransferWinnerId}
