@@ -20,10 +20,12 @@ interface GameOverCountdownProps {
 
 export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt, isSessionEnded = false, pendingSessionEnd = false }: GameOverCountdownProps) => {
   const COUNTDOWN_DURATION = 8; // seconds
+  const MIN_DISPLAY_TIME = 4; // minimum seconds to show countdown even if server time elapsed
   const hasCompletedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   const gameOverAtRef = useRef(gameOverAt); // Capture initial gameOverAt to prevent restarts
   const isMountedRef = useRef(true);
+  const mountTimeRef = useRef(Date.now()); // Track when component mounted
   
   // Keep onComplete ref updated without triggering re-renders
   useEffect(() => {
@@ -34,8 +36,10 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
     // Calculate initial time left based on timestamp
     const endTime = new Date(gameOverAtRef.current).getTime() + (COUNTDOWN_DURATION * 1000);
     const now = Date.now();
-    const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
-    console.log('[GAME OVER COUNTDOWN] Initial calculation:', { gameOverAt: gameOverAtRef.current, endTime, now, remaining });
+    const serverRemaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+    // Ensure at least MIN_DISPLAY_TIME seconds are shown even if server time elapsed
+    const remaining = Math.max(serverRemaining, MIN_DISPLAY_TIME);
+    console.log('[GAME OVER COUNTDOWN] Initial calculation:', { gameOverAt: gameOverAtRef.current, serverRemaining, displayRemaining: remaining });
     return remaining;
   });
 
@@ -51,9 +55,17 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
         return;
       }
       
+      // Calculate server-based remaining time
       const endTime = new Date(gameOverAtRef.current).getTime() + (COUNTDOWN_DURATION * 1000);
       const now = Date.now();
-      const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+      const serverRemaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+      
+      // Also calculate minimum display time based on mount time
+      const elapsedSinceMount = (now - mountTimeRef.current) / 1000;
+      const minDisplayRemaining = Math.max(0, Math.ceil(MIN_DISPLAY_TIME - elapsedSinceMount));
+      
+      // Use whichever gives more time (ensures minimum visibility)
+      const remaining = Math.max(serverRemaining, minDisplayRemaining);
       
       console.log('[GAME OVER COUNTDOWN] Tick:', remaining);
       setTimeLeft(remaining);
