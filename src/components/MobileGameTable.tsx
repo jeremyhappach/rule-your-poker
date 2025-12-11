@@ -119,8 +119,9 @@ interface MobileGameTableProps {
   anteAmount?: number;
   pussyTaxValue?: number;
   gameStatus?: string; // For ante animation trigger
-  anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
+anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
+  preAnteChips?: Record<string, number> | null; // Captured chip values BEFORE ante deduction to prevent race conditions
   onAnteAnimationStarted?: () => void; // Callback to clear trigger after animation starts
   // Chip transfer animation props (3-5-7 showdowns)
   chipTransferTriggerId?: string | null;
@@ -198,8 +199,9 @@ export const MobileGameTable = ({
   anteAmount = 1,
   pussyTaxValue = 1,
   gameStatus,
-  anteAnimationTriggerId,
+anteAnimationTriggerId,
   anteAnimationExpectedPot,
+  preAnteChips,
   onAnteAnimationStarted,
   chipTransferTriggerId,
   chipTransferAmount = 0,
@@ -896,9 +898,11 @@ export const MobileGameTable = ({
               : pot - totalAmount;
             setDisplayedPot(Math.max(0, preAntePot));
             // IMMEDIATELY decrement displayed chips for all active players
+            // Use preAnteChips if provided (captured BEFORE backend deduction), otherwise fall back to p.chips
             const newDisplayedChips: Record<string, number> = {};
             players.filter(p => !p.sitting_out).forEach(p => {
-              newDisplayedChips[p.id] = p.chips - perPlayerAmount;
+              const chipsBefore = preAnteChips?.[p.id] ?? p.chips;
+              newDisplayedChips[p.id] = chipsBefore - perPlayerAmount;
             });
             setDisplayedChips(newDisplayedChips);
           }}
