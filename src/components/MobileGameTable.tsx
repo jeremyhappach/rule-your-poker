@@ -302,6 +302,10 @@ anteAnimationTriggerId,
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
   
+  // CRITICAL: Store captured pre-ante chips locally so it persists through entire animation
+  // (the prop gets cleared after onAnimationStart, but we need it for onChipsArrived)
+  const capturedPreAnteChipsRef = useRef<Record<string, number> | null>(null);
+  
   // Sync displayedPot to actual pot when NOT animating (handles DB updates)
   useEffect(() => {
     if (!isAnteAnimatingRef.current) {
@@ -884,6 +888,11 @@ anteAnimationTriggerId,
           onAnimationStart={() => {
             // CRITICAL: Set animating flag FIRST to prevent sync useEffect from resetting
             isAnteAnimatingRef.current = true;
+            
+            // CRITICAL: Capture preAnteChips into ref so it persists until onChipsArrived
+            // (the prop gets cleared by onAnteAnimationStarted, but we need it later)
+            capturedPreAnteChipsRef.current = preAnteChips ? { ...preAnteChips } : null;
+            
             // Clear the trigger so it doesn't fire again on status change
             onAnteAnimationStarted?.();
             // Determine amount based on trigger type (pussy tax vs ante)
@@ -898,10 +907,11 @@ anteAnimationTriggerId,
               : pot - totalAmount;
             setDisplayedPot(Math.max(0, preAntePot));
             // IMMEDIATELY decrement displayed chips for all active players
-            // Use preAnteChips if provided (captured BEFORE backend deduction), otherwise fall back to p.chips
+            // Use captured preAnteChips (BEFORE backend deduction)
             const newDisplayedChips: Record<string, number> = {};
+            const capturedChips = capturedPreAnteChipsRef.current;
             players.filter(p => !p.sitting_out).forEach(p => {
-              const chipsBefore = preAnteChips?.[p.id] ?? p.chips;
+              const chipsBefore = capturedChips?.[p.id] ?? p.chips;
               newDisplayedChips[p.id] = chipsBefore - perPlayerAmount;
             });
             setDisplayedChips(newDisplayedChips);
@@ -917,15 +927,17 @@ anteAnimationTriggerId,
             } else {
               setDisplayedPot(prev => prev + totalAmount);
             }
-            // CRITICAL FIX: Instead of clearing displayedChips (which can cause flicker if backend
-            // hasn't updated yet), set final expected values to ensure stable display
+            // CRITICAL: Use captured preAnteChips from ref (persisted from onAnimationStart)
+            // This ensures stable final display regardless of when backend updates
             const finalDisplayedChips: Record<string, number> = {};
+            const capturedChips = capturedPreAnteChipsRef.current;
             players.filter(p => !p.sitting_out).forEach(p => {
-              const chipsBefore = preAnteChips?.[p.id] ?? (p.chips + perPlayerAmount);
+              const chipsBefore = capturedChips?.[p.id] ?? (p.chips + perPlayerAmount);
               finalDisplayedChips[p.id] = chipsBefore - perPlayerAmount;
             });
             setDisplayedChips(finalDisplayedChips);
             isAnteAnimatingRef.current = false;
+            capturedPreAnteChipsRef.current = null; // Clear captured chips
             setAnteFlashTrigger({ id: `ante-${Date.now()}`, amount: totalAmount });
             // Clear override after a delay once backend has definitely updated
             setTimeout(() => {
