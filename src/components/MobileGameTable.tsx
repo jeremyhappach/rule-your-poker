@@ -1369,7 +1369,7 @@ export const MobileGameTable = ({
         {isGameOver && lastRoundResult && <div className="px-4 py-3">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-base text-center mb-3">
-                {lastRoundResult.split('|||DEBUG:')[0]}
+                {lastRoundResult.split('|||')[0]}
               </p>
               {isDealer && onNextGame ? <Button onClick={onNextGame} className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold">
                   Next Game
@@ -1381,7 +1381,7 @@ export const MobileGameTable = ({
         {!isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && <div className="px-4 py-2">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center">
-                {lastRoundResult.split('|||DEBUG:')[0]}
+                {lastRoundResult.split('|||')[0]}
               </p>
             </div>
           </div>}

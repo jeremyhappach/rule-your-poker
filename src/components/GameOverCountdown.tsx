@@ -94,7 +94,7 @@ export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameO
           <div className="text-center space-y-3 sm:space-y-4">
             <div className="bg-poker-gold/30 p-3 sm:p-6 rounded-xl border-2 border-poker-gold">
               <p className="text-poker-gold font-black text-lg sm:text-3xl">
-                {winnerMessage}
+                {winnerMessage.split('|||')[0]}
               </p>
             </div>
             

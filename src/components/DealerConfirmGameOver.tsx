@@ -33,13 +33,12 @@ export const DealerConfirmGameOver = ({
   const [copied, setCopied] = useState(false);
   
   // Parse result message to extract debug data
-  let displayMessage = resultMessage || '';
+  let displayMessage = resultMessage ? resultMessage.split('|||')[0] : '';
   let debugData: DebugData | null = null;
   let rawDebugJson = '';
   
   if (resultMessage && resultMessage.includes('|||DEBUG:')) {
     const parts = resultMessage.split('|||DEBUG:');
-    displayMessage = parts[0];
     rawDebugJson = parts[1] || '';
     try {
       debugData = JSON.parse(rawDebugJson);
