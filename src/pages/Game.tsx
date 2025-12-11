@@ -1678,18 +1678,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.game_type, game?.status, communityCards, currentRound, game?.awaiting_next_round, playerCards]);
 
   // Auto-trigger bot decisions when appropriate
+  // Use a ref to track if we're already processing a bot decision to avoid duplicates
+  const botProcessingRef = useRef(false);
   useEffect(() => {
+    const isHolmGame = game?.game_type === 'holm-game';
+    
     console.log('[BOT TRIGGER EFFECT] Running', {
       status: game?.status,
       all_decisions_in: game?.all_decisions_in,
       game_type: game?.game_type,
       current_turn: currentRound?.current_turn_position,
-      round: game?.current_round
+      round_id: currentRound?.id,
+      isProcessing: botProcessingRef.current
     });
     
+    // Skip if already processing
+    if (botProcessingRef.current) {
+      console.log('[BOT TRIGGER] Already processing a bot decision, skipping');
+      return;
+    }
+    
     if (game?.status === 'in_progress' && !game.all_decisions_in) {
-      const isHolmGame = game?.game_type === 'holm-game';
-      
       // For Holm games, only trigger if there's a valid turn position
       // For other games, trigger on any undecided bot
       if (isHolmGame && !currentRound?.current_turn_position) {
@@ -1699,37 +1708,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       console.log('[BOT TRIGGER] Triggering bot decisions', {
         game_type: game?.game_type,
-        current_turn: currentRound?.current_turn_position,
-        round: game?.current_round
+        current_turn: currentRound?.current_turn_position
       });
       
       // Capture the turn position now to pass to the bot logic (avoids stale DB reads)
       const capturedTurnPosition = currentRound?.current_turn_position;
       
-      const botDecisionTimer = setTimeout(async () => {
-        console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
-        const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
-        
-        // If bot made a decision, explicitly fetch to get updated turn position
-        if (botMadeDecision) {
-          console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
-          setTimeout(() => fetchGameData(), 100);
-        }
-      }, 500);
+      // Set processing flag
+      botProcessingRef.current = true;
       
-      return () => {
-        console.log('[BOT TRIGGER] *** CLEANUP - clearing timeout ***');
-        clearTimeout(botDecisionTimer);
+      // Call immediately - no delay needed, makeBotDecisions has its own delay
+      const triggerBot = async () => {
+        try {
+          console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
+          const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+          
+          // If bot made a decision, explicitly fetch to get updated turn position
+          if (botMadeDecision) {
+            console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
+            await fetchGameData();
+          }
+        } finally {
+          botProcessingRef.current = false;
+        }
       };
+      
+      triggerBot();
     } else {
       console.log('[BOT TRIGGER] Conditions not met for bot trigger');
     }
   }, [
-    game?.current_round, 
     game?.status, 
     game?.all_decisions_in, 
-    // Only watch turn position for Holm games (turn-based), not 3-5-7 (simultaneous)
-    game?.game_type === 'holm-game' ? currentRound?.current_turn_position : null,
+    // Watch turn position for Holm games (turn-based)
+    // Watch round id to catch new rounds (since current_round isn't updated for Holm)
+    currentRound?.current_turn_position,
+    currentRound?.id,
     game?.game_type,
     gameId
   ]);
