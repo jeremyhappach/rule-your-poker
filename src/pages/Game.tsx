@@ -2701,31 +2701,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[GAME OVER] Saved session config for game type:', gameTypeKey);
     }
 
-    // CRITICAL: Delete all old rounds and player_cards from the previous game
-    // This prevents stale round_number accumulation across game types
-    console.log('[GAME OVER] Deleting old rounds and cards from previous game');
-    
-    // First delete player_cards (they reference rounds)
-    const { data: oldRounds } = await supabase
-      .from('rounds')
-      .select('id')
-      .eq('game_id', gameId);
-    
-    if (oldRounds && oldRounds.length > 0) {
-      const oldRoundIds = oldRounds.map(r => r.id);
-      await supabase
-        .from('player_cards')
-        .delete()
-        .in('round_id', oldRoundIds);
-      
-      // Then delete the rounds themselves
-      await supabase
-        .from('rounds')
-        .delete()
-        .eq('game_id', gameId);
-      
-      console.log('[GAME OVER] Deleted', oldRounds.length, 'old rounds and their cards');
-    }
+    // NOTE: Do NOT delete rounds here - startHolmRound handles cleanup when next game starts
+    // Deleting rounds in handleGameOverComplete causes community cards to disappear during results
+    // The round cleanup is already implemented in startHolmRound (lines 352-374) and startGame
+    console.log('[GAME OVER] Preserving rounds for UI display - cleanup happens at next game start');
 
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
