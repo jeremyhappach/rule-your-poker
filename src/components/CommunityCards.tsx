@@ -103,9 +103,8 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
   
   if (cards.length === 0) return null;
   
-  if (handId !== animatedHandId && !isFirstMount) {
-    return null;
-  }
+  // Don't return null during hand transitions - just render with current dealt cards state
+  // The previous null return caused cards to disappear during state sync
 
   return (
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
