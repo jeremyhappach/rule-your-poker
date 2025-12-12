@@ -26,10 +26,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert, History } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, History, BookOpen } from "lucide-react";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
 import { MyGameHistory } from "@/components/MyGameHistory";
+import { GameRules } from "@/components/GameRules";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ const Index = () => {
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showRulesDialog, setShowRulesDialog] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -248,6 +250,14 @@ const Index = () => {
         <div className="flex justify-end gap-2">
           <Button 
             variant="outline" 
+            onClick={() => setShowRulesDialog(true)}
+            className="w-auto"
+          >
+            <BookOpen className="w-4 h-4 mr-2" />
+            Rules
+          </Button>
+          <Button 
+            variant="outline" 
             onClick={() => setShowHistoryDialog(true)}
             className="w-auto"
           >
@@ -398,6 +408,11 @@ const Index = () => {
           onOpenChange={setShowHistoryDialog} 
         />
       )}
+
+      <GameRules 
+        open={showRulesDialog} 
+        onOpenChange={setShowRulesDialog} 
+      />
     </div>
   );
 };
