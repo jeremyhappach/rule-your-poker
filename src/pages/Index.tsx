@@ -247,30 +247,30 @@ const Index = () => {
   return (
     <div className="min-h-screen p-4 bg-background">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => setShowRulesDialog(true)}
-            className="w-auto"
           >
-            <BookOpen className="w-4 h-4 mr-2" />
-            Rules
+            <BookOpen className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Rules</span>
           </Button>
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => setShowHistoryDialog(true)}
-            className="w-auto"
           >
-            <History className="w-4 h-4 mr-2" />
-            My History
+            <History className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">History</span>
           </Button>
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => setShowProfileDialog(true)}
-            className="w-auto"
           >
-            <UserCircle className="w-4 h-4 mr-2" />
-            Profile
+            <UserCircle className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Profile</span>
           </Button>
           <Button variant="ghost" onClick={handleLogout} className="w-auto">
             Logout
