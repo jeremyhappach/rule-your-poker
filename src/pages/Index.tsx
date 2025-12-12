@@ -248,18 +248,7 @@ const Index = () => {
     <div className="min-h-screen p-4 bg-background">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between gap-2">
-          {/* Left-aligned history button */}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setShowHistoryDialog(true)}
-            className="h-8 w-8 p-0 flex-shrink-0"
-            title="My History"
-          >
-            <History className="w-4 h-4" />
-          </Button>
-          
-          {/* Center profile button with username */}
+          {/* Left-aligned profile button with username */}
           <Button 
             variant="outline" 
             size="sm"
@@ -280,10 +269,21 @@ const Index = () => {
             <UserCircle className="w-4 h-4 flex-shrink-0 ml-2" />
           </Button>
           
-          {/* Right-aligned logout */}
-          <Button variant="ghost" onClick={handleLogout} size="sm" className="flex-shrink-0">
-            Logout
-          </Button>
+          {/* Right side buttons */}
+          <div className="flex gap-1.5 flex-shrink-0">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowHistoryDialog(true)}
+              className="h-8 w-8 p-0"
+              title="My History"
+            >
+              <History className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" onClick={handleLogout} size="sm">
+              Logout
+            </Button>
+          </div>
         </div>
         <GameLobby userId={user.id} />
       </div>
