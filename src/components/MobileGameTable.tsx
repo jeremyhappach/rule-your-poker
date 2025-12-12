@@ -842,10 +842,11 @@ anteAnimationTriggerId,
       </div>;
     
     const nameElement = (
-      <div className="flex items-center gap-1">
+      <div className="flex flex-col items-start gap-0.5">
         <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
           {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
         </span>
+        <span className="text-[9px] text-cyan-400 font-mono">DB: ${player.chips}</span>
       </div>
     );
     
