@@ -2717,10 +2717,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[GAME OVER] Saved session config for game type:', gameTypeKey);
     }
 
-    // NOTE: Do NOT delete rounds here - startHolmRound handles cleanup when next game starts
-    // Deleting rounds in handleGameOverComplete causes community cards to disappear during results
-    // The round cleanup is already implemented in startHolmRound (lines 352-374) and startGame
-    console.log('[GAME OVER] Preserving rounds for UI display - cleanup happens at next game start');
+    // CRITICAL: Mark ALL rounds as 'completed' before transitioning to new game
+    // This prevents stale 'betting' rounds from blocking new round creation via the guard in startHolmRound
+    // We preserve the round data (don't delete) for UI display, but status must be set to completed
+    console.log('[GAME OVER] Marking all rounds as completed to prevent stale betting round issues');
+    await supabase
+      .from('rounds')
+      .update({ status: 'completed' })
+      .eq('game_id', gameId)
+      .neq('status', 'completed');
 
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
