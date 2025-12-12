@@ -704,21 +704,30 @@ export async function endHolmRound(gameId: string) {
 
   // Case 1: Everyone folded - pussy tax
   if (stayedPlayers.length === 0) {
-    console.log('[HOLM END] Case 1: Everyone folded, applying pussy tax');
+    console.log('[HOLM END] ⚠️⚠️⚠️ Case 1: Everyone folded, applying pussy tax ⚠️⚠️⚠️');
+    console.log('[HOLM END] PUSSY TAX DEBUG - Round ID:', capturedRoundId, 'Round Number:', capturedRoundNumber);
     const pussyTaxEnabled = game.pussy_tax_enabled ?? true;
     const pussyTaxAmount = pussyTaxEnabled ? (game.pussy_tax_value || 1) : 0;
+    
+    console.log('[HOLM END] PUSSY TAX DEBUG - Enabled:', pussyTaxEnabled, 'Amount:', pussyTaxAmount);
+    console.log('[HOLM END] PUSSY TAX DEBUG - Active players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips: p.chips })));
     
     let totalTaxCollected = 0;
     if (pussyTaxAmount > 0) {
       // Use atomic relative decrement to prevent race conditions / double charges
       const playerIds = activePlayers.map(p => p.id);
+      console.log('[HOLM END] PUSSY TAX DEBUG - About to call RPC decrement_player_chips with playerIds:', playerIds, 'amount:', pussyTaxAmount);
+      
       const { error: taxError } = await supabase.rpc('decrement_player_chips', {
         player_ids: playerIds,
         amount: pussyTaxAmount
       });
       
+      console.log('[HOLM END] PUSSY TAX DEBUG - RPC result error:', taxError);
+      
       if (taxError) {
         console.error('[HOLM END] Pussy tax decrement error:', taxError);
+        console.log('[HOLM END] PUSSY TAX DEBUG - Running FALLBACK individual updates');
         // Fallback to individual updates if RPC doesn't exist
         for (const player of activePlayers) {
           await supabase
@@ -726,6 +735,8 @@ export async function endHolmRound(gameId: string) {
             .update({ chips: player.chips - pussyTaxAmount })
             .eq('id', player.id);
         }
+      } else {
+        console.log('[HOLM END] PUSSY TAX DEBUG - RPC SUCCESS, NO fallback');
       }
       totalTaxCollected = pussyTaxAmount * activePlayers.length;
     }
