@@ -467,16 +467,15 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       });
   }
 
-  // Update game status - DO NOT update current_round for Holm games!
-  // Holm uses round_number as a hand counter that increments each hand (can exceed 3)
-  // The frontend finds the latest round dynamically by round_number DESC
-  // The games.current_round field has a check constraint limiting it to 1-3 (for 3-5-7)
-  console.log('[HOLM] Updating game status (NOT current_round) for gameId:', gameId);
+  // Update game status AND current_round for Holm games
+  // CRITICAL: current_round MUST be updated so MobileGameTable can detect new rounds
+  // There is no check constraint on current_round - it can be any integer
+  console.log('[HOLM] Updating game status with current_round:', nextRoundNumber);
   const { error: gameUpdateError } = await supabase
     .from('games')
     .update({
       status: 'in_progress',
-      // current_round: DO NOT UPDATE - check constraint violation for values > 3
+      current_round: nextRoundNumber, // RESTORED: Must update for round detection
       buck_position: buckPosition,
       all_decisions_in: false,
       last_round_result: null
