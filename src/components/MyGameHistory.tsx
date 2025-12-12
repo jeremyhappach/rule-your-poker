@@ -10,6 +10,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
+// Format number with thousands separators
+const formatWithCommas = (num: number): string => {
+  return Math.abs(num).toLocaleString();
+};
+
 interface GameSession {
   id: string;
   name: string | null;
@@ -136,7 +141,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
                       {session.name || `Game #${session.id.slice(0, 8)}`}
                     </div>
                     <div className={`text-sm font-bold whitespace-nowrap ${session.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {session.chips >= 0 ? '+' : ''}${Math.abs(session.chips)}
+                      {session.chips >= 0 ? '+' : '-'}${formatWithCommas(session.chips)}
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
