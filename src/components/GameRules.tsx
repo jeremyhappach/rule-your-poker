@@ -88,7 +88,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
               <div className="space-y-2">
                 <h4 className="font-semibold">Special: 3-5-7 Hand</h4>
                 <p className="text-sm text-muted-foreground">
-                  If you're dealt 3 of a kind, 5 of a kind, AND 7 of a kind in Round 1, you instantly win the entire game and sweep the pot!
+                  If you're dealt a <span className="text-primary font-medium">3, 5, and 7</span> in Round 1, you instantly win the entire game and sweep the pot!
                 </p>
               </div>
             </TabsContent>
