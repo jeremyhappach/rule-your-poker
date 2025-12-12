@@ -2666,15 +2666,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // STEP 3: Rotate dealer to next eligible position
     // CRITICAL: For Holm games, endHolmRound already set the new dealer_position when transitioning to game_over
-    // So we use the EXISTING dealer_position from DB (already rotated) instead of rotating again
+    // So we do a FRESH fetch to get the already-rotated position from DB
     // For 3-5-7 games, we need to rotate here since gameLogic.ts doesn't rotate
     const isHolmGame = game?.game_type === 'holm-game';
     let newDealerPosition: number;
     
     if (isHolmGame) {
-      // Holm: endHolmRound already rotated the dealer, use the already-rotated position from DB
-      newDealerPosition = gameData?.dealer_position || 1;
-      console.log('[GAME OVER] Holm game - using already-rotated dealer position:', newDealerPosition);
+      // Holm: endHolmRound already rotated the dealer - do a FRESH fetch to get the latest value
+      // The earlier gameData fetch might be stale if there was a race condition
+      const { data: freshGameData } = await supabase
+        .from('games')
+        .select('dealer_position')
+        .eq('id', gameId)
+        .single();
+      
+      newDealerPosition = freshGameData?.dealer_position || 1;
+      console.log('[GAME OVER] Holm game - fresh fetch of already-rotated dealer position:', newDealerPosition);
     } else {
       // 3-5-7: Rotate dealer here
       const currentDealerPosition = gameData?.dealer_position || 1;
