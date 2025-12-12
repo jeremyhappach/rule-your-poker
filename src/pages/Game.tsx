@@ -2665,10 +2665,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     // STEP 3: Rotate dealer to next eligible position
-    const currentDealerPosition = gameData?.dealer_position || 1;
-    const newDealerPosition = await rotateDealerPosition(gameId, currentDealerPosition);
+    // CRITICAL: For Holm games, endHolmRound already set the new dealer_position when transitioning to game_over
+    // So we use the EXISTING dealer_position from DB (already rotated) instead of rotating again
+    // For 3-5-7 games, we need to rotate here since gameLogic.ts doesn't rotate
+    const isHolmGame = game?.game_type === 'holm-game';
+    let newDealerPosition: number;
     
-    console.log('[GAME OVER] Dealer rotation:', currentDealerPosition, '->', newDealerPosition);
+    if (isHolmGame) {
+      // Holm: endHolmRound already rotated the dealer, use the already-rotated position from DB
+      newDealerPosition = gameData?.dealer_position || 1;
+      console.log('[GAME OVER] Holm game - using already-rotated dealer position:', newDealerPosition);
+    } else {
+      // 3-5-7: Rotate dealer here
+      const currentDealerPosition = gameData?.dealer_position || 1;
+      newDealerPosition = await rotateDealerPosition(gameId, currentDealerPosition);
+      console.log('[GAME OVER] 3-5-7 game - dealer rotation:', currentDealerPosition, '->', newDealerPosition);
+    }
 
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
     
@@ -2979,6 +2991,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('id', gameId);
         await startRound(gameId, 1);
       }
+      // CRITICAL: Reset processing ref AFTER successful round start
+      // Without this, future ante processing in the same session would be blocked!
+      anteProcessingRef.current = false;
+      
       // Multiple fetches with increasing delays to catch all card data
       setTimeout(() => fetchGameData(), 500);
       setTimeout(() => fetchGameData(), 1500);
