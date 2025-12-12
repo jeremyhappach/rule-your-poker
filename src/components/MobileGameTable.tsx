@@ -349,9 +349,9 @@ anteAnimationTriggerId,
   const [showCommunityCards, setShowCommunityCards] = useState(gameType !== 'holm-game');
   const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
   const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
-  const [lastProcessedRound, setLastProcessedRound] = useState<number | null>(null); // Track which round we've processed (state for re-renders)
+  const [approvedRoundForDisplay, setApprovedRoundForDisplay] = useState<number | null>(null); // Round we're allowed to show cards for
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
-  const hasShownCommunityThisRoundRef = useRef(false);
+  const lastDetectedRoundRef = useRef<number | null>(null); // Track which round we've detected (to prevent re-triggering)
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<number | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
@@ -557,8 +557,8 @@ anteAnimationTriggerId,
       currentRound, 
       awaitingNextRound, 
       showCommunityCards,
-      hasShownThisRound: hasShownCommunityThisRoundRef.current,
-      lastProcessedRound
+      approvedRoundForDisplay,
+      lastDetectedRound: lastDetectedRoundRef.current
     });
     
     if (gameType !== 'holm-game') {
@@ -566,14 +566,10 @@ anteAnimationTriggerId,
       return;
     }
     
-    // If awaiting next round (between hands), prepare refs for next delay
+    // If awaiting next round (between hands), prepare for next delay
     // BUT DO NOT HIDE CARDS - they should remain visible during announcement
-    // Cards will be hidden when the NEW round actually arrives (isNewRound triggers)
     if (awaitingNextRound) {
       console.log('[MOBILE_COMMUNITY] Awaiting next round - preparing for next hand (cards stay visible)');
-      hasShownCommunityThisRoundRef.current = false;
-      // DON'T hide cards here - let them stay visible during announcement
-      // setShowCommunityCards(false); // REMOVED - caused cards to disappear during announcement
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
@@ -583,24 +579,25 @@ anteAnimationTriggerId,
     }
     
     // New round detected - start staggered card dealing
-    // Compare round numbers directly - use STATE for proper re-renders
-    const isNewRound = currentRound && currentRound !== lastProcessedRound;
+    // Use REF for detection (to prevent re-triggering) but STATE for render gating
+    const isNewRound = currentRound && currentRound !== lastDetectedRoundRef.current;
     
     console.log('[MOBILE_COMMUNITY] Checking new round:', { 
       isNewRound, 
       currentRound, 
-      lastProcessedRound,
-      hasShownThisRound: hasShownCommunityThisRoundRef.current 
+      lastDetectedRound: lastDetectedRoundRef.current,
+      approvedRoundForDisplay
     });
     
-    if (isNewRound && !hasShownCommunityThisRoundRef.current) {
-      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - hiding old cards and starting reveal delay');
-      setLastProcessedRound(currentRound); // Update state immediately to prevent flash
+    if (isNewRound) {
+      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting reveal delay (cards hidden until approved)');
+      lastDetectedRoundRef.current = currentRound; // Mark as detected to prevent re-trigger
       
-      // NOW hide the old cards and prepare for new ones
+      // Hide cards and reset state
       setShowCommunityCards(false);
       setStaggeredCardCount(0);
       setIsDelayingCommunityCards(true);
+      // DON'T update approvedRoundForDisplay yet - that happens after delay
       
       // Clear any existing timeout
       if (communityCardsDelayRef.current) {
@@ -610,7 +607,8 @@ anteAnimationTriggerId,
       // Initial delay of 1 second, then reveal cards one at a time
       const cardCount = communityCardsRevealed || 2;
       communityCardsDelayRef.current = setTimeout(() => {
-        console.log('[MOBILE_COMMUNITY] Setting showCommunityCards = true');
+        console.log('[MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
+        setApprovedRoundForDisplay(currentRound); // NOW we approve this round for display
         setShowCommunityCards(true);
         // Stagger each card with 150ms delay
         for (let i = 1; i <= cardCount; i++) {
@@ -618,7 +616,6 @@ anteAnimationTriggerId,
             setStaggeredCardCount(i);
             if (i === cardCount) {
               setIsDelayingCommunityCards(false);
-              hasShownCommunityThisRoundRef.current = true;
             }
           }, (i - 1) * 150);
         }
@@ -630,7 +627,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, lastProcessedRound]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   useEffect(() => {
@@ -1192,10 +1189,10 @@ anteAnimationTriggerId,
         )}
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
-        {/* Only show when: showCommunityCards is true AND round matches what we've processed */}
-        {/* Using state (lastProcessedRound) instead of ref for proper React re-renders */}
+        {/* Only show when: showCommunityCards is true AND currentRound matches approvedRoundForDisplay */}
+        {/* This prevents premature flash: cards won't render until delay completes and approves the round */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && 
-         (currentRound === lastProcessedRound) && (
+         (currentRound === approvedRoundForDisplay) && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={communityCards} 
