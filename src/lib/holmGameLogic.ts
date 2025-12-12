@@ -672,13 +672,24 @@ export async function endHolmRound(gameId: string) {
     
     let totalTaxCollected = 0;
     if (pussyTaxAmount > 0) {
-      for (const player of activePlayers) {
-        await supabase
-          .from('players')
-          .update({ chips: player.chips - pussyTaxAmount })
-          .eq('id', player.id);
-        totalTaxCollected += pussyTaxAmount;
+      // Use atomic relative decrement to prevent race conditions / double charges
+      const playerIds = activePlayers.map(p => p.id);
+      const { error: taxError } = await supabase.rpc('decrement_player_chips', {
+        player_ids: playerIds,
+        amount: pussyTaxAmount
+      });
+      
+      if (taxError) {
+        console.error('[HOLM END] Pussy tax decrement error:', taxError);
+        // Fallback to individual updates if RPC doesn't exist
+        for (const player of activePlayers) {
+          await supabase
+            .from('players')
+            .update({ chips: player.chips - pussyTaxAmount })
+            .eq('id', player.id);
+        }
       }
+      totalTaxCollected = pussyTaxAmount * activePlayers.length;
     }
 
     const newPot = game.pot + totalTaxCollected;
