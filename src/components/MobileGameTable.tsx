@@ -546,8 +546,19 @@ anteAnimationTriggerId,
     lastBuckPositionRef.current = buckPosition ?? null;
   }, [buckPosition, currentPlayer, gameType]);
 
-  // Delay community cards by 3 seconds after player cards appear (Holm games only)
+  // Delay community cards by 1 second after player cards appear (Holm games only)
+  // currentRound is already a number (round_number), use it directly
+  
   useEffect(() => {
+    console.log('[MOBILE_COMMUNITY] useEffect triggered:', { 
+      gameType, 
+      currentRound, 
+      awaitingNextRound, 
+      showCommunityCards,
+      hasShownThisRound: hasShownCommunityThisRoundRef.current,
+      lastRoundNumber: lastRoundForCommunityDelayRef.current
+    });
+    
     if (gameType !== 'holm-game') {
       setShowCommunityCards(true);
       return;
@@ -555,6 +566,7 @@ anteAnimationTriggerId,
     
     // If awaiting next round (between hands), prepare for next delay
     if (awaitingNextRound) {
+      console.log('[MOBILE_COMMUNITY] Awaiting next round - hiding cards');
       hasShownCommunityThisRoundRef.current = false;
       setShowCommunityCards(false);
       setStaggeredCardCount(0);
@@ -567,7 +579,18 @@ anteAnimationTriggerId,
     }
     
     // New round detected - start staggered card dealing
-    if (currentRound && currentRound !== lastRoundForCommunityDelayRef.current && !hasShownCommunityThisRoundRef.current) {
+    // Compare round numbers directly
+    const isNewRound = currentRound && currentRound !== lastRoundForCommunityDelayRef.current;
+    
+    console.log('[MOBILE_COMMUNITY] Checking new round:', { 
+      isNewRound, 
+      currentRound, 
+      lastRoundNumber: lastRoundForCommunityDelayRef.current,
+      hasShownThisRound: hasShownCommunityThisRoundRef.current 
+    });
+    
+    if (isNewRound && !hasShownCommunityThisRoundRef.current) {
+      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting card reveal delay');
       lastRoundForCommunityDelayRef.current = currentRound;
       setIsDelayingCommunityCards(true);
       setStaggeredCardCount(0);
@@ -580,6 +603,7 @@ anteAnimationTriggerId,
       // Initial delay of 1 second, then reveal cards one at a time
       const cardCount = communityCardsRevealed || 2;
       communityCardsDelayRef.current = setTimeout(() => {
+        console.log('[MOBILE_COMMUNITY] Setting showCommunityCards = true');
         setShowCommunityCards(true);
         // Stagger each card with 150ms delay
         for (let i = 1; i <= cardCount; i++) {
