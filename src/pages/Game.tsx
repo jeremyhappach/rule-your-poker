@@ -26,6 +26,7 @@ import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundCom
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
+import { formatChipValue } from "@/lib/utils";
 import { Share2, Bot, Settings } from "lucide-react";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
@@ -3225,7 +3226,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           toast({
             title: "Welcome Back!",
-            description: `Returned to seat #${position} with $${existingPlayer.chips} chips.`,
+            description: `Returned to seat #${position} with $${formatChipValue(existingPlayer.chips)} chips.`,
           });
         } else {
           // User is a new observer - insert them as a new player

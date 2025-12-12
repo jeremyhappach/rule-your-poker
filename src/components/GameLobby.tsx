@@ -10,6 +10,7 @@ import { SessionResults } from "@/components/SessionResults";
 import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
+import { formatChipValue } from "@/lib/utils";
 import { Settings } from "lucide-react";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
@@ -561,7 +562,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                       <tr key={idx} className="border-t border-amber-700/20">
                                         <td className="p-1.5 sm:p-2 text-amber-100 truncate max-w-[100px] sm:max-w-none">{player.username}</td>
                                         <td className={`p-1.5 sm:p-2 text-right font-mono ${player.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                          ${player.chips}
+                                          ${formatChipValue(player.chips)}
                                         </td>
                                       </tr>
                                     ))}

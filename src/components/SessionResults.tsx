@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { formatChipValue } from "@/lib/utils";
 
 interface SessionResultsProps {
   open: boolean;
@@ -80,7 +81,7 @@ export const SessionResults = ({ open, onOpenChange, session }: SessionResultsPr
                         {player.legs} {player.legs === 1 ? 'leg' : 'legs'}
                       </Badge>
                       <Badge variant={player.chips >= 0 ? 'default' : 'destructive'}>
-                        ${player.chips}
+                        ${formatChipValue(player.chips)}
                       </Badge>
                     </div>
                   </div>

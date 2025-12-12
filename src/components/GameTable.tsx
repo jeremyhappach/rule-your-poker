@@ -1257,7 +1257,7 @@ export const GameTable = ({
                                   player.sitting_out ? '' : player.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
                                 }`}>
                                   <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
-                                    ${player.chips.toLocaleString()}
+                                    ${formatChipValue(player.chips)}
                                   </p>
                                 </div>
                                 
@@ -1305,7 +1305,7 @@ export const GameTable = ({
                                     onClick={isClickable ? () => onPlayerClick(player) : undefined}
                                   >
                                     <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player?.chips && player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
-                                      ${player?.chips?.toLocaleString() || 0}
+                                      ${formatChipValue(player?.chips || 0)}
                                     </p>
                                   </div>
                                 );
