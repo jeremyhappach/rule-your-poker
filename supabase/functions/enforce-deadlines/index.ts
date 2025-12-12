@@ -218,21 +218,21 @@ serve(async (req) => {
               .eq('game_id', gameId);
             
             const freshActivePlayers = freshPlayers?.filter(p => p.status === 'active' && !p.sitting_out) || [];
-            const undecidedActivePlayers = freshActivePlayers.filter(p => !p.current_decision);
+            
+            // CRITICAL FIX: In Holm games, check if ALL active players have LOCKED their decision
+            // Not just whether they have a current_decision, because players whose turn hasn't come
+            // will have null current_decision but should NOT be considered "decided"
+            const undecidedActivePlayers = freshActivePlayers.filter(p => !p.decision_locked);
             
             if (undecidedActivePlayers.length === 0) {
-              // All players decided - mark round complete
-              await supabase
-                .from('rounds')
-                .update({ status: 'completed', decision_deadline: null })
-                .eq('id', currentRound.id);
-              
+              // All players decided - mark round complete BUT don't set status to 'completed'
+              // Let checkHolmRoundComplete/endHolmRound handle the proper flow
               await supabase
                 .from('games')
                 .update({ all_decisions_in: true })
                 .eq('id', gameId);
               
-              actionsTaken.push('All players decided - round marked complete');
+              actionsTaken.push('All players decided - all_decisions_in set to true');
             } else if (nextPosition !== currentPos) {
               // Advance turn to next undecided player
               const { data: gameDefaults } = await supabase
