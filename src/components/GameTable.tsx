@@ -16,6 +16,7 @@ import { ChatInput } from "./ChatInput";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
+import { formatChipValue } from "@/lib/utils";
 import { useState, useMemo, useLayoutEffect, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { supabase } from "@/integrations/supabase/client";
@@ -825,9 +826,9 @@ export const GameTable = ({
                       <div className="bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
                         <div className="flex items-baseline justify-center gap-1">
                           <span className="text-[10px] sm:text-xs md:text-sm text-poker-gold/80 font-semibold">POT:</span>
-                          <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${pot}</span>
+                          <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${formatChipValue(pot)}</span>
                         </div>
-                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Lose: ${loseAmount}</p>
+                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Lose: ${formatChipValue(loseAmount)}</p>
                         {gameType && gameType !== 'holm-game' && (
                           <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">{legsToWin} legs to win</p>
                         )}
