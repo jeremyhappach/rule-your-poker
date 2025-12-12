@@ -178,8 +178,9 @@ serve(async (req) => {
             
             const currentTurnPlayer = players?.find(p => p.position === currentRound.current_turn_position);
             
-            if (currentTurnPlayer && !currentTurnPlayer.current_decision) {
-              // CRITICAL: If it's a bot, make a decision for them instead of auto-folding
+            if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
+              // CRITICAL: Check decision_locked, not current_decision
+              // Only process if the player hasn't already locked their decision
               if (currentTurnPlayer.is_bot) {
                 // Bot decision - 50% stay, 50% fold (simple logic for server-side)
                 const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
@@ -225,14 +226,20 @@ serve(async (req) => {
             const undecidedActivePlayers = freshActivePlayers.filter(p => !p.decision_locked);
             
             if (undecidedActivePlayers.length === 0) {
-              // All players decided - mark round complete BUT don't set status to 'completed'
-              // Let checkHolmRoundComplete/endHolmRound handle the proper flow
-              await supabase
+              // All players decided - use ATOMIC guard to prevent race conditions
+              // Only proceed if we successfully claim the lock (all_decisions_in was false)
+              const { data: lockResult, error: lockError } = await supabase
                 .from('games')
                 .update({ all_decisions_in: true })
-                .eq('id', gameId);
+                .eq('id', gameId)
+                .eq('all_decisions_in', false) // Atomic guard - only update if not already set
+                .select();
               
-              actionsTaken.push('All players decided - all_decisions_in set to true');
+              if (lockError || !lockResult || lockResult.length === 0) {
+                actionsTaken.push('All players decided - but another process already claimed the lock, skipping');
+              } else {
+                actionsTaken.push('All players decided - all_decisions_in set to true (atomic lock acquired)');
+              }
             } else if (nextPosition !== currentPos) {
               // Advance turn to next undecided player
               const { data: gameDefaults } = await supabase
