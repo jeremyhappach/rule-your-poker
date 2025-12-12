@@ -349,8 +349,8 @@ anteAnimationTriggerId,
   const [showCommunityCards, setShowCommunityCards] = useState(gameType !== 'holm-game');
   const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
   const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
+  const [lastProcessedRound, setLastProcessedRound] = useState<number | null>(null); // Track which round we've processed (state for re-renders)
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
-  const lastRoundForCommunityDelayRef = useRef<number | null>(null);
   const hasShownCommunityThisRoundRef = useRef(false);
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<number | null>(null);
@@ -558,7 +558,7 @@ anteAnimationTriggerId,
       awaitingNextRound, 
       showCommunityCards,
       hasShownThisRound: hasShownCommunityThisRoundRef.current,
-      lastRoundNumber: lastRoundForCommunityDelayRef.current
+      lastProcessedRound
     });
     
     if (gameType !== 'holm-game') {
@@ -583,19 +583,19 @@ anteAnimationTriggerId,
     }
     
     // New round detected - start staggered card dealing
-    // Compare round numbers directly
-    const isNewRound = currentRound && currentRound !== lastRoundForCommunityDelayRef.current;
+    // Compare round numbers directly - use STATE for proper re-renders
+    const isNewRound = currentRound && currentRound !== lastProcessedRound;
     
     console.log('[MOBILE_COMMUNITY] Checking new round:', { 
       isNewRound, 
       currentRound, 
-      lastRoundNumber: lastRoundForCommunityDelayRef.current,
+      lastProcessedRound,
       hasShownThisRound: hasShownCommunityThisRoundRef.current 
     });
     
     if (isNewRound && !hasShownCommunityThisRoundRef.current) {
       console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - hiding old cards and starting reveal delay');
-      lastRoundForCommunityDelayRef.current = currentRound;
+      setLastProcessedRound(currentRound); // Update state immediately to prevent flash
       
       // NOW hide the old cards and prepare for new ones
       setShowCommunityCards(false);
@@ -630,7 +630,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, lastProcessedRound]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   useEffect(() => {
@@ -1193,9 +1193,9 @@ anteAnimationTriggerId,
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
         {/* Only show when: showCommunityCards is true AND round matches what we've processed */}
-        {/* This prevents premature showing when new round arrives before useEffect runs */}
+        {/* Using state (lastProcessedRound) instead of ref for proper React re-renders */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && 
-         (currentRound === lastRoundForCommunityDelayRef.current || hasShownCommunityThisRoundRef.current) && (
+         (currentRound === lastProcessedRound) && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={communityCards} 
