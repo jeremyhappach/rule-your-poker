@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 
-// More obscure Grateful Dead deep cuts
+// Grateful Dead deep cuts
 const GRATEFUL_DEAD_SONGS = [
   "Wharf Rat",
   "Stella Blue",
@@ -44,6 +44,55 @@ const GRATEFUL_DEAD_SONGS = [
   "China > Rider",
 ];
 
+// Phish songs
+const PHISH_SONGS = [
+  "You Enjoy Myself",
+  "Divided Sky",
+  "Fluffhead",
+  "Reba",
+  "Stash",
+  "Tweezer",
+  "Harry Hood",
+  "Mike's Song",
+  "Weekapaug Groove",
+  "Ghost",
+  "Bathtub Gin",
+  "Chalk Dust Torture",
+  "Down with Disease",
+  "Antelope",
+  "Hood",
+  "Limb by Limb",
+  "Sand",
+  "Carini",
+  "Simple",
+  "Free",
+  "Piper",
+  "Maze",
+  "Waste",
+  "Bouncing",
+  "Moma Dance",
+  "Birds of a Feather",
+  "Back on the Train",
+  "46 Days",
+  "Undermind",
+  "Scents and Subtle Sounds",
+  "Mercury",
+  "Everything's Right",
+  "Ruby Waves",
+  "Soul Planet",
+  "Thread",
+  "Beneath a Sea of Stars",
+  "Set Your Soul Free",
+  "Lonely Trip",
+  "Steam",
+  "Lawn Boy",
+  "Possum",
+  "Wilson",
+  "Rift",
+  "Split Open and Melt",
+  "The Curtain With",
+];
+
 // Chicago athletes - NO WHITE SOX, Cubs players post-2010 only
 const CHICAGO_ATHLETES = [
   // Bears
@@ -85,7 +134,7 @@ const CHICAGO_ATHLETES = [
   "Artemi Panarin",
   "Alex DeBrincat",
   "Connor Bedard",
-  // Cubs (post-2010 only)
+  // Cubs (2008+)
   "Anthony Rizzo",
   "Kris Bryant",
   "Javier Baez",
@@ -112,6 +161,60 @@ const CHICAGO_ATHLETES = [
   "Jameson Taillon",
   "Matt Mervis",
   "Miguel Amaya",
+  // More obscure Cubs 2008+
+  "Kosuke Fukudome",
+  "Ryan Theriot",
+  "Reed Johnson",
+  "Geovany Soto",
+  "Aramis Ramirez",
+  "Carlos Zambrano",
+  "Ted Lilly",
+  "Ryan Dempster",
+  "Carlos Marmol",
+  "Marlon Byrd",
+  "Darwin Barney",
+  "Starlin Castro",
+  "Jeff Samardzija",
+  "Travis Wood",
+  "Chris Coghlan",
+  "Tommy La Stella",
+  "Hector Rondon",
+  "Jorge Soler",
+  "Tommy Hottovy",
+  "Junior Lake",
+  "David DeJesus",
+  "Wellington Castillo",
+  "Mike Olt",
+  "Nate Schierholtz",
+  "Luis Valbuena",
+  "John Lackey",
+  "Jason Heyward",
+  "Wade Davis",
+  "Brandon Morrow",
+  "Steve Cishek",
+  "Victor Caratini",
+  "David Bote",
+  "Mark Zagunis",
+  "Taylor Davis",
+  "Alec Mills",
+  "Rowan Wick",
+  "Jason Kipnis",
+  "Cameron Maybin",
+  "Jose Quintana",
+  "Yu Darvish",
+  "Craig Kimbrel",
+  "Rafael Ortega",
+  "Frank Schwindel",
+  "Patrick Wisdom",
+  "Yan Gomes",
+  "Drew Smyly",
+  "Adbert Alzolay",
+  "Keegan Thompson",
+  "Hayden Wesneski",
+  "Michael Busch",
+  "Pete Crow-Armstrong",
+  "Brennen Davis",
+  "Cade Horton",
 ];
 
 /**
@@ -126,6 +229,7 @@ export function generateGameName(excludeNames: string[] = []): string {
   // Build list of all possible names
   const allPossibleNames = [
     ...GRATEFUL_DEAD_SONGS.map(song => `${dateStr} - ${song}`),
+    ...PHISH_SONGS.map(song => `${dateStr} - ${song}`),
     ...CHICAGO_ATHLETES.map(athlete => `${dateStr} - ${athlete}`)
   ];
   
