@@ -851,28 +851,43 @@ export async function endHolmRound(gameId: string) {
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
     
     // Reveal Chucky's cards one at a time with suspenseful delays
-    for (let i = 1; i <= chuckyCardCount; i++) {
-      // Determine delay based on card position
-      let delay: number;
-      if (i === chuckyCardCount) {
-        // Final card - 3 second delay for maximum suspense
-        delay = 3000;
-        console.log('[HOLM END] Building suspense for FINAL card...');
-      } else if (i === chuckyCardCount - 1) {
-        // Next-to-last card - 1.5 second delay
-        delay = 1500;
-        console.log('[HOLM END] Building suspense for next-to-last card...');
-      } else {
-        // Earlier cards - quick 300ms reveal
-        delay = 300;
+    // Wrapped in try-catch to ensure all cards get revealed even if individual updates fail
+    try {
+      for (let i = 1; i <= chuckyCardCount; i++) {
+        // Determine delay based on card position
+        let delay: number;
+        if (i === chuckyCardCount) {
+          // Final card - 3 second delay for maximum suspense
+          delay = 3000;
+          console.log('[HOLM END] Building suspense for FINAL card...');
+        } else if (i === chuckyCardCount - 1) {
+          // Next-to-last card - 1.5 second delay
+          delay = 1500;
+          console.log('[HOLM END] Building suspense for next-to-last card...');
+        } else {
+          // Earlier cards - quick 300ms reveal
+          delay = 300;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        const { error: revealError } = await supabase
+          .from('rounds')
+          .update({ chucky_cards_revealed: i })
+          .eq('id', capturedRoundId);
+        
+        if (revealError) {
+          console.error('[HOLM END] Error revealing card', i, ':', revealError);
+        }
+        console.log('[HOLM END] Revealed Chucky card', i, 'of', chuckyCardCount);
       }
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
+    } catch (revealLoopError) {
+      console.error('[HOLM END] Chucky reveal loop failed:', revealLoopError);
+      // Force reveal all cards to prevent stuck state
       await supabase
         .from('rounds')
-        .update({ chucky_cards_revealed: i })
+        .update({ chucky_cards_revealed: chuckyCardCount })
         .eq('id', capturedRoundId);
-      console.log('[HOLM END] Revealed Chucky card', i, 'of', chuckyCardCount);
+      console.log('[HOLM END] Force-revealed all', chuckyCardCount, 'Chucky cards after error');
     }
     
     console.log('[HOLM END] All Chucky cards revealed');
