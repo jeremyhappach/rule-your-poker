@@ -35,9 +35,10 @@ export function getBotFoldProbability(
 /**
  * Holm game fold probabilities (all rounds):
  * - Flush or better: 0%
- * - 3 of a kind or straight: 20%
- * - 4 of a flush or 2 pair: 50%
- * - Pair or worse: 90%
+ * - 3 of a kind or straight: 5%
+ * - 4 of a flush or 2 pair: 15%
+ * - Pair (any): 35%
+ * - High card: 60%
  */
 function getHolmFoldProbability(rank: HandRank, cards: Card[]): number {
   // Flush or better (flush, full-house, four-of-a-kind, straight-flush, five-of-a-kind)
@@ -45,18 +46,23 @@ function getHolmFoldProbability(rank: HandRank, cards: Card[]): number {
     return 0;
   }
   
-  // 3 of a kind or straight
+  // 3 of a kind or straight - very strong, rarely fold
   if (rank === 'three-of-a-kind' || rank === 'straight') {
-    return 20;
+    return 5;
   }
   
-  // Check for 4 cards to a flush (4-flush)
+  // Check for 4 cards to a flush (4-flush) or two pair - good drawing hands
   if (rank === 'two-pair' || hasFourToFlush(cards)) {
-    return 50;
+    return 15;
   }
   
-  // Pair or worse (pair, high-card)
-  return 90;
+  // Any pair - decent hand, stay more often
+  if (rank === 'pair') {
+    return 35;
+  }
+  
+  // High card only - more likely to fold but not always
+  return 60;
 }
 
 /**
