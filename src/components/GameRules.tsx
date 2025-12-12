@@ -51,6 +51,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                   <li><span className="text-primary font-medium">3s are wild</span></li>
                   <li>Decide to Stay or Fold (timer enforced)</li>
                   <li>Best 3-card hand wins</li>
+                  <li><span className="text-amber-400">Only high card, one pair, and three of a kind count — straights and flushes do not</span></li>
                 </ul>
               </div>
 
@@ -61,6 +62,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                   <li><span className="text-primary font-medium">5s are wild</span></li>
                   <li>Same Stay/Fold decision</li>
                   <li>Best 5-card hand wins</li>
+                  <li><span className="text-amber-400">Five of a kind beats a straight flush</span></li>
                 </ul>
               </div>
 
@@ -71,6 +73,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                   <li><span className="text-primary font-medium">7s are wild</span></li>
                   <li>Cards are revealed at showdown</li>
                   <li>Best 5-card hand (from 7 cards) wins</li>
+                  <li><span className="text-amber-400">Five of a kind beats a straight flush</span></li>
                 </ul>
               </div>
 
