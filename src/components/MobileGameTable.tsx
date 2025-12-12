@@ -1184,6 +1184,18 @@ anteAnimationTriggerId,
           </div>
         )}
         
+        {/* DEBUG: Show round tracking info */}
+        {gameType === 'holm-game' && (
+          <div className="absolute top-2 left-2 z-50 bg-black/80 text-white text-xs p-2 rounded">
+            <div>Round: {currentRound}</div>
+            <div>LastRef: {lastRoundForCommunityDelayRef.current}</div>
+            <div>ShowCards: {showCommunityCards ? 'YES' : 'NO'}</div>
+            <div>HasShown: {hasShownCommunityThisRoundRef.current ? 'YES' : 'NO'}</div>
+            <div>Awaiting: {awaitingNextRound ? 'YES' : 'NO'}</div>
+            <div>Cards: {communityCards?.length || 0}</div>
+          </div>
+        )}
+        
         {/* Community Cards - vertically centered, delayed 3 seconds after player cards */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
           showCommunityCards ? (
