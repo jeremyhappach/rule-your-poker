@@ -153,7 +153,7 @@ const PEORIA_CUSTOM = [
   "War Drive",
   "Farm Rd",
   "Duck's Place",
-  "Avanti's",
+  "Gondola Deluxe",
 ];
 
 // Chicago athletes - NO WHITE SOX, Cubs players post-2010 only
