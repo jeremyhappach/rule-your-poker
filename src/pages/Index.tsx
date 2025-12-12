@@ -268,30 +268,28 @@ const Index = () => {
             >
               <History className="w-4 h-4" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowProfileDialog(true)}
-              className="h-8 w-8 p-0"
-              title="Profile"
-            >
-              <UserCircle className="w-4 h-4" />
-            </Button>
           </div>
           
-          {/* Center username - dynamic text size */}
-          <div className="flex-1 min-w-0 text-center px-2">
+          {/* Center profile button with username */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowProfileDialog(true)}
+            className="flex-1 min-w-0 h-8 px-3 justify-between"
+            title="Profile"
+          >
             <span 
-              className="font-medium text-muted-foreground truncate block"
+              className="truncate"
               style={{
                 fontSize: currentUsername.length > 20 ? '0.7rem' : 
                          currentUsername.length > 15 ? '0.8rem' : 
-                         currentUsername.length > 10 ? '0.875rem' : '1rem'
+                         currentUsername.length > 10 ? '0.875rem' : '0.875rem'
               }}
             >
               {currentUsername}
             </span>
-          </div>
+            <UserCircle className="w-4 h-4 flex-shrink-0 ml-2" />
+          </Button>
           
           {/* Right-aligned logout */}
           <Button variant="ghost" onClick={handleLogout} size="sm" className="flex-shrink-0">
