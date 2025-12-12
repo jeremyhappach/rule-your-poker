@@ -3523,6 +3523,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     }
                   }}
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting')}
+                  onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);

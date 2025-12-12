@@ -30,6 +30,7 @@ interface PlayerOptionsMenuProps {
   onTogglePause?: () => void;
   onAddBot?: () => void;
   canAddBot?: boolean;
+  onEndSession?: () => void;
   // Deck color mode props
   deckColorMode?: 'two_color' | 'four_color';
   onDeckColorModeChange?: (mode: 'two_color' | 'four_color') => void;
@@ -54,6 +55,7 @@ export const PlayerOptionsMenu = ({
   onTogglePause,
   onAddBot,
   canAddBot = false,
+  onEndSession,
   deckColorMode,
   onDeckColorModeChange,
 }: PlayerOptionsMenuProps) => {
@@ -169,8 +171,8 @@ export const PlayerOptionsMenu = ({
         align="start" 
         className="w-56 bg-popover border border-border z-50"
       >
-        {/* Host pause/resume and add bot options */}
-        {isHost && (onTogglePause || (onAddBot && canAddBot)) && (
+        {/* Host pause/resume, add bot, and end session options */}
+        {isHost && (onTogglePause || (onAddBot && canAddBot) || onEndSession) && (
           <>
             {onTogglePause && (
               <DropdownMenuItem onClick={onTogglePause}>
@@ -180,6 +182,14 @@ export const PlayerOptionsMenu = ({
             {onAddBot && canAddBot && (
               <DropdownMenuItem onClick={onAddBot}>
                 🤖 Add Bot
+              </DropdownMenuItem>
+            )}
+            {onEndSession && (
+              <DropdownMenuItem 
+                onClick={onEndSession}
+                className="text-destructive focus:text-destructive"
+              >
+                🛑 End Session
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
