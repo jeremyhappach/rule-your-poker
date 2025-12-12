@@ -601,16 +601,25 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
-  // CRITICAL: Immediately mark round as 'processing' to prevent concurrent calls
-  // This closes the race window between guard check and actual processing
+  // CRITICAL ATOMIC GUARD: Atomically mark round as 'processing' to prevent concurrent calls
+  // This is the PRIMARY guard against double-charging - only the first call to successfully
+  // transition from 'betting' to 'processing' will proceed
   const capturedRoundId = round.id;
   const capturedRoundNumber = round.round_number;
-  console.log('[HOLM END] Capturing round for processing:', capturedRoundId, 'round_number:', capturedRoundNumber);
+  console.log('[HOLM END] Attempting atomic lock on round:', capturedRoundId, 'round_number:', capturedRoundNumber);
   
-  await supabase
+  const { data: lockResult, error: lockError } = await supabase
     .from('rounds')
     .update({ status: 'processing' })
-    .eq('id', capturedRoundId);
+    .eq('id', capturedRoundId)
+    .eq('status', 'betting') // ATOMIC GUARD: Only succeeds if still in 'betting' status
+    .select();
+    
+  if (lockError || !lockResult || lockResult.length === 0) {
+    console.log('[HOLM END] ⚠️ ATOMIC GUARD: Another client already acquired lock on this round, skipping');
+    return;
+  }
+  console.log('[HOLM END] ✅ Successfully acquired atomic lock on round (status -> processing)');
 
   console.log('[HOLM END] Round data:', {
     id: capturedRoundId,
