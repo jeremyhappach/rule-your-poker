@@ -319,6 +319,9 @@ anteAnimationTriggerId,
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
   // This ensures we never flash wrong values during the sync period
+  // Track when lock was set to allow forced clear after timeout
+  const lockSetTimeRef = useRef<number | null>(null);
+  
   useEffect(() => {
     if (lockedChipsRef.current) {
       // Check if ALL locked values now match actual player chips
@@ -330,7 +333,22 @@ anteAnimationTriggerId,
       if (allMatch) {
         // Backend has synced - safe to clear the lock
         lockedChipsRef.current = null;
+        lockSetTimeRef.current = null;
         setDisplayedChips({});
+      } else if (!isAnteAnimatingRef.current) {
+        // Animation is done but values don't match - force sync to DB values after brief delay
+        // This handles race conditions where expected values were slightly off
+        const timeSinceLock = lockSetTimeRef.current ? Date.now() - lockSetTimeRef.current : 0;
+        if (timeSinceLock > 3000) {
+          // Lock has been held for 3+ seconds and animation is done - force clear
+          console.log('[CHIP SYNC] Forcing sync to DB values after timeout', {
+            locked: lockedChipsRef.current,
+            actual: Object.fromEntries(players.map(p => [p.id, p.chips]))
+          });
+          lockedChipsRef.current = null;
+          lockSetTimeRef.current = null;
+          setDisplayedChips({});
+        }
       }
     }
   }, [players]);
@@ -948,6 +966,7 @@ anteAnimationTriggerId,
           onAnimationStart={() => {
             // CRITICAL: Set animating flag FIRST to prevent sync useEffect from resetting
             isAnteAnimatingRef.current = true;
+            lockSetTimeRef.current = Date.now(); // Track when lock was set for timeout
             
             // CRITICAL: Use expectedPostAnteChips directly if available - this is computed in Game.tsx
             // BEFORE any backend updates, so it's guaranteed to be correct
