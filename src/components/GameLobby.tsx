@@ -11,7 +11,8 @@ import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
 import { formatChipValue } from "@/lib/utils";
-import { Settings } from "lucide-react";
+import { Settings, Info } from "lucide-react";
+import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import {
@@ -79,6 +80,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [selectedSession, setSelectedSession] = useState<Game | null>(null);
   const [showSessionResults, setShowSessionResults] = useState(false);
   const [showDefaultsConfig, setShowDefaultsConfig] = useState(false);
+  const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -364,16 +366,27 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         {/* Content - title at top, buttons at bottom */}
         <div className="absolute inset-0 z-10 flex flex-col justify-between p-3 sm:p-4 md:p-6">
           {/* Title section */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
-              <span className="text-black text-xl sm:text-3xl">♠</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
+                <span className="text-black text-xl sm:text-3xl">♠</span>
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
+                  Peoria Poker League
+                </h1>
+                <p className="text-amber-200/80 text-xs sm:text-sm mt-0.5">Game Lobby</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
-                Peoria Poker League
-              </h1>
-              <p className="text-amber-200/80 text-xs sm:text-sm mt-0.5">Game Lobby</p>
-            </div>
+            <Button 
+              onClick={() => setShowRulesDialog(true)} 
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-amber-300 hover:text-amber-100 hover:bg-amber-600/20"
+              title="Game Rules"
+            >
+              <Info className="h-5 w-5" />
+            </Button>
           </div>
           
           {/* Buttons section - at bottom */}
@@ -701,6 +714,11 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       <GameDefaultsConfig 
         open={showDefaultsConfig} 
         onOpenChange={setShowDefaultsConfig} 
+      />
+
+      <GameRules 
+        open={showRulesDialog} 
+        onOpenChange={setShowRulesDialog} 
       />
     </div>
   );
