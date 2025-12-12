@@ -16,6 +16,7 @@ interface GameSession {
   status: string;
   created_at: string;
   chips: number;
+  handsPlayed: number;
 }
 
 interface MyGameHistoryProps {
@@ -41,6 +42,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
     const { data: playerData, error } = await supabase
       .from('players')
       .select(`
+        id,
         chips,
         game_id,
         games (
@@ -59,7 +61,20 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
       return;
     }
 
-    // Transform and dedupe by game_id, sort by game id descending
+    // Get player action counts for hands played
+    const playerIds = playerData?.map(p => p.id) || [];
+    const { data: actionCounts } = await supabase
+      .from('player_actions')
+      .select('player_id')
+      .in('player_id', playerIds);
+
+    // Count actions per player
+    const actionCountMap = new Map<string, number>();
+    actionCounts?.forEach((action: any) => {
+      actionCountMap.set(action.player_id, (actionCountMap.get(action.player_id) || 0) + 1);
+    });
+
+    // Transform and dedupe by game_id, sort by date descending
     const sessionsMap = new Map<string, GameSession>();
     
     playerData?.forEach((p: any) => {
@@ -70,6 +85,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
           status: p.games.status,
           created_at: p.games.created_at,
           chips: p.chips,
+          handsPlayed: actionCountMap.get(p.id) || 0,
         });
       }
     });
@@ -86,19 +102,19 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
     return (
       <Badge 
         variant={isActive ? 'default' : 'secondary'}
-        className={`text-xs ${isActive 
+        className={`text-[10px] px-1.5 py-0 ${isActive 
           ? 'bg-green-600/80 text-white' 
           : 'bg-slate-600/50 text-slate-300'
         }`}
       >
-        {status === 'session_ended' ? 'Ended' : status === 'waiting' ? 'Waiting' : 'Active'}
+        {status === 'session_ended' ? 'End' : status === 'waiting' ? 'Wait' : 'Live'}
       </Badge>
     );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>My Game History</DialogTitle>
         </DialogHeader>
@@ -108,29 +124,31 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
         ) : sessions.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">No games played yet</div>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-2">
+          <ScrollArea className="h-[400px] pr-2">
+            <div className="space-y-1.5">
               {sessions.map((session) => (
                 <div 
                   key={session.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50"
+                  className="p-2 rounded-lg bg-muted/30 border border-border/50"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium truncate flex-1">
                       {session.name || `Game #${session.id.slice(0, 8)}`}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(session.created_at), 'MMM d, yyyy h:mm a')}
+                    <div className={`text-sm font-bold whitespace-nowrap ${session.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {session.chips >= 0 ? '+' : ''}{session.chips}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-3">
-                    {getStatusBadge(session.status)}
-                    <div className="text-right">
-                      <div className={`text-sm font-bold ${session.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {session.chips >= 0 ? '+' : ''}{session.chips}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">chips</div>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(session.created_at), 'MMM d h:mma')}
+                      </span>
+                      {getStatusBadge(session.status)}
                     </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {session.handsPlayed} hand{session.handsPlayed !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </div>
               ))}
