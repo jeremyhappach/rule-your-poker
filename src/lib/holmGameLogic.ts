@@ -79,11 +79,23 @@ export async function checkHolmRoundComplete(gameId: string) {
       return;
     }
     
-    console.log('[HOLM CHECK] All players decided, setting all_decisions_in flag and calling endHolmRound');
-    await supabase
+    console.log('[HOLM CHECK] All players decided, attempting atomic all_decisions_in flag set');
+    
+    // CRITICAL: Use atomic guard to prevent race conditions / duplicate endHolmRound calls
+    const { data: updateResult, error: updateError } = await supabase
       .from('games')
       .update({ all_decisions_in: true })
-      .eq('id', gameId);
+      .eq('id', gameId)
+      .eq('all_decisions_in', false) // Only update if not already set - atomic guard
+      .select();
+    
+    // Only the first call that successfully sets the flag should proceed
+    if (updateError || !updateResult || updateResult.length === 0) {
+      console.log('[HOLM CHECK] Another client already set all_decisions_in - skipping duplicate endHolmRound');
+      return;
+    }
+    
+    console.log('[HOLM CHECK] Successfully acquired lock, proceeding with endHolmRound');
     
     // Clear the timer and turn position since all decisions are in
     await supabase
