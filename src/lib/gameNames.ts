@@ -93,6 +93,69 @@ const PHISH_SONGS = [
   "The Curtain With",
 ];
 
+// Peoria streets
+const PEORIA_STREETS = [
+  "Grandview Drive",
+  "Knoxville Avenue",
+  "Adams Street",
+  "University Street",
+  "War Memorial Drive",
+  "Pioneer Parkway",
+  "Prospect Road",
+  "Main Street",
+  "Sterling Avenue",
+  "Glen Avenue",
+  "Sheridan Road",
+  "Western Avenue",
+  "Farmington Road",
+  "Allen Road",
+  "Lake Avenue",
+  "Wisconsin Avenue",
+  "Jefferson Avenue",
+  "Monroe Street",
+  "Hamilton Boulevard",
+  "Nebraska Avenue",
+];
+
+// Peoria high schools
+const PEORIA_HIGH_SCHOOLS = [
+  "Peoria High",
+  "Richwoods",
+  "Manual",
+  "Woodruff",
+  "Limestone",
+  "Dunlap",
+  "Notre Dame",
+  "Peoria Christian",
+  "Quest",
+  "Washington",
+  "Morton",
+  "East Peoria",
+  "Metamora",
+  "Illinois Valley Central",
+  "Pekin",
+];
+
+// Custom Peoria additions
+const PEORIA_CUSTOM = [
+  "Half Loin w/ PJ Chz",
+  "Pork Chop Sammy",
+  "Ched Nugs",
+  "Mini Tacos",
+  "Cheese FF",
+  "Sampler",
+  "Potato Skins",
+  "Egg Roll",
+  "Ribeye Sammy",
+  "SW Ranch",
+  "Peoria Stadium",
+  "Par-a-Dice",
+  "War Drive",
+  "Farm Rd",
+  "Duck's Place",
+  "Avanti's",
+];
+
 // Chicago athletes - NO WHITE SOX, Cubs players post-2010 only
 const CHICAGO_ATHLETES = [
   // Bears
@@ -230,6 +293,9 @@ export function generateGameName(excludeNames: string[] = []): string {
   const allPossibleNames = [
     ...GRATEFUL_DEAD_SONGS.map(song => `${dateStr} - ${song}`),
     ...PHISH_SONGS.map(song => `${dateStr} - ${song}`),
+    ...PEORIA_STREETS.map(street => `${dateStr} - ${street}`),
+    ...PEORIA_HIGH_SCHOOLS.map(school => `${dateStr} - ${school}`),
+    ...PEORIA_CUSTOM.map(item => `${dateStr} - ${item}`),
     ...CHICAGO_ATHLETES.map(athlete => `${dateStr} - ${athlete}`)
   ];
   
