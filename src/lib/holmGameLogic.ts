@@ -249,14 +249,36 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     .maybeSingle();
   
   if (existingBettingRound) {
-    console.log('[HOLM] ⚠️ GUARD: Betting round already exists, ensuring current_round is synced:', existingBettingRound);
-    // Even though we skip creation, make sure games.current_round is updated
-    // This handles cases where the round was created but current_round wasn't updated
-    await supabase
+    // CRITICAL FIX: Only update current_round if it would INCREASE, never decrease
+    // This prevents race conditions where a stale betting round causes current_round to go backwards
+    const { data: currentGameData } = await supabase
       .from('games')
-      .update({ current_round: existingBettingRound.round_number })
-      .eq('id', gameId);
-    return; // Don't create duplicate round
+      .select('current_round')
+      .eq('id', gameId)
+      .single();
+    
+    const existingCurrentRound = currentGameData?.current_round ?? 0;
+    
+    if (existingBettingRound.round_number > existingCurrentRound) {
+      console.log('[HOLM] ⚠️ GUARD: Betting round exists and is newer, syncing current_round:', existingBettingRound.round_number);
+      await supabase
+        .from('games')
+        .update({ current_round: existingBettingRound.round_number })
+        .eq('id', gameId);
+    } else {
+      console.log('[HOLM] ⚠️ GUARD: Betting round exists but is STALE (round:', existingBettingRound.round_number, 'vs current:', existingCurrentRound, '), marking it completed');
+      // Mark the stale betting round as completed so it doesn't block future rounds
+      await supabase
+        .from('rounds')
+        .update({ status: 'completed' })
+        .eq('id', existingBettingRound.id);
+      // Continue to create a new round instead of returning
+    }
+    
+    // Only return if the existing round is actually valid (not stale)
+    if (existingBettingRound.round_number >= existingCurrentRound) {
+      return; // Don't create duplicate round
+    }
   }
   
   // Fetch game configuration
@@ -1672,6 +1694,15 @@ export async function proceedToNextHolmRound(gameId: string) {
   }
 
   console.log('[HOLM NEXT] Current game state - pot:', game.pot, 'awaiting:', game.awaiting_next_round, 'total_hands:', game.total_hands);
+
+  // CRITICAL FIX: Mark ALL existing rounds as 'completed' before starting new hand
+  // This prevents stale betting rounds from blocking new round creation or causing current_round to decrease
+  console.log('[HOLM NEXT] Marking all existing rounds as completed');
+  await supabase
+    .from('rounds')
+    .update({ status: 'completed' })
+    .eq('game_id', gameId)
+    .neq('status', 'completed');
 
   // Increment total_hands counter (this prevents re-anting on subsequent hands)
   const newTotalHands = (game.total_hands || 0) + 1;
