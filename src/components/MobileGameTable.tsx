@@ -564,12 +564,14 @@ anteAnimationTriggerId,
       return;
     }
     
-    // If awaiting next round (between hands), prepare for next delay
+    // If awaiting next round (between hands), prepare refs for next delay
+    // BUT DO NOT HIDE CARDS - they should remain visible during announcement
+    // Cards will be hidden when the NEW round actually arrives (isNewRound triggers)
     if (awaitingNextRound) {
-      console.log('[MOBILE_COMMUNITY] Awaiting next round - hiding cards');
+      console.log('[MOBILE_COMMUNITY] Awaiting next round - preparing for next hand (cards stay visible)');
       hasShownCommunityThisRoundRef.current = false;
-      setShowCommunityCards(false);
-      setStaggeredCardCount(0);
+      // DON'T hide cards here - let them stay visible during announcement
+      // setShowCommunityCards(false); // REMOVED - caused cards to disappear during announcement
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
@@ -590,10 +592,13 @@ anteAnimationTriggerId,
     });
     
     if (isNewRound && !hasShownCommunityThisRoundRef.current) {
-      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting card reveal delay');
+      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - hiding old cards and starting reveal delay');
       lastRoundForCommunityDelayRef.current = currentRound;
-      setIsDelayingCommunityCards(true);
+      
+      // NOW hide the old cards and prepare for new ones
+      setShowCommunityCards(false);
       setStaggeredCardCount(0);
+      setIsDelayingCommunityCards(true);
       
       // Clear any existing timeout
       if (communityCardsDelayRef.current) {
@@ -1184,19 +1189,7 @@ anteAnimationTriggerId,
           </div>
         )}
         
-        {/* DEBUG: Show round tracking info */}
-        {gameType === 'holm-game' && (
-          <div className="absolute top-2 left-2 z-50 bg-black/80 text-white text-xs p-2 rounded">
-            <div>Round: {currentRound}</div>
-            <div>LastRef: {lastRoundForCommunityDelayRef.current}</div>
-            <div>ShowCards: {showCommunityCards ? 'YES' : 'NO'}</div>
-            <div>HasShown: {hasShownCommunityThisRoundRef.current ? 'YES' : 'NO'}</div>
-            <div>Awaiting: {awaitingNextRound ? 'YES' : 'NO'}</div>
-            <div>Cards: {communityCards?.length || 0}</div>
-          </div>
-        )}
-        
-        {/* Community Cards - vertically centered, delayed 3 seconds after player cards */}
+        {/* Community Cards - vertically centered, delayed 1 second after player cards */}
         {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
           showCommunityCards ? (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
