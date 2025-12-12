@@ -249,7 +249,13 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     .maybeSingle();
   
   if (existingBettingRound) {
-    console.log('[HOLM] ⚠️ GUARD: Betting round already exists, skipping creation:', existingBettingRound);
+    console.log('[HOLM] ⚠️ GUARD: Betting round already exists, ensuring current_round is synced:', existingBettingRound);
+    // Even though we skip creation, make sure games.current_round is updated
+    // This handles cases where the round was created but current_round wasn't updated
+    await supabase
+      .from('games')
+      .update({ current_round: existingBettingRound.round_number })
+      .eq('id', gameId);
     return; // Don't create duplicate round
   }
   
