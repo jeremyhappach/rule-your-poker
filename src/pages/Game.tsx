@@ -1993,14 +1993,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Trigger ante animation for pussy tax using pussy_tax_value
         const activePlayers = players.filter(p => !p.sitting_out);
         const pussyTaxTotal = (game?.pussy_tax_value || 1) * activePlayers.length;
-        console.log('[PUSSY_TAX_ANIMATION] Triggering animation', { pussyTaxTotal, activePlayers: activePlayers.length });
-        // Capture chips and compute expected post-ante values
+        const perPlayerAmount = game?.pussy_tax_value || 1;
+        console.log('[PUSSY_TAX_ANIMATION] Triggering animation', { pussyTaxTotal, perPlayerAmount, activePlayers: activePlayers.length });
+        
+        // CRITICAL FIX: Backend has ALREADY deducted pussy tax by the time we receive awaiting_next_round=true
+        // So p.chips is already the POST-deduction value. We need to show the BEFORE value as pre-ante
+        // and the CURRENT value as expected (since backend already applied it)
         const chipSnapshot: Record<string, number> = {};
         const expectedChips: Record<string, number> = {};
-        const perPlayerAmount = game?.pussy_tax_value || 1;
         activePlayers.forEach(p => { 
-          chipSnapshot[p.id] = p.chips;
-          expectedChips[p.id] = p.chips - perPlayerAmount;
+          // p.chips is ALREADY post-deduction - add back to get pre-ante value for animation start
+          chipSnapshot[p.id] = p.chips + perPlayerAmount;
+          // Expected is what DB already has (current chips)
+          expectedChips[p.id] = p.chips;
         });
         setPreAnteChips(chipSnapshot);
         setExpectedPostAnteChips(expectedChips);
