@@ -136,7 +136,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
                       {session.name || `Game #${session.id.slice(0, 8)}`}
                     </div>
                     <div className={`text-sm font-bold whitespace-nowrap ${session.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {session.chips >= 0 ? '+' : ''}{session.chips}
+                      {session.chips >= 0 ? '+' : ''}${Math.abs(session.chips)}
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
