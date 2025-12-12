@@ -1192,8 +1192,10 @@ anteAnimationTriggerId,
         )}
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
-        {/* Only show when showCommunityCards is true AND we're not in initial delay phase */}
-        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && (
+        {/* Only show when: showCommunityCards is true AND round matches what we've processed */}
+        {/* This prevents premature showing when new round arrives before useEffect runs */}
+        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && 
+         (currentRound === lastRoundForCommunityDelayRef.current || hasShownCommunityThisRoundRef.current) && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={communityCards} 
