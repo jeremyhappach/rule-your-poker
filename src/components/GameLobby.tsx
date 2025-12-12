@@ -382,10 +382,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
               onClick={() => setShowRulesDialog(true)} 
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 text-amber-300 hover:text-amber-100 hover:bg-amber-600/20"
+              className="h-10 w-10 p-0 text-amber-300 hover:text-amber-100 hover:bg-amber-600/20 -mt-2"
               title="Game Rules"
             >
-              <Info className="h-5 w-5" />
+              <Info className="h-6 w-6" />
             </Button>
           </div>
           
