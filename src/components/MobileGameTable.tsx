@@ -23,6 +23,7 @@ import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
+import { formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
@@ -1179,7 +1180,7 @@ anteAnimationTriggerId,
             }`}>
               <span className={`text-poker-gold font-bold ${
                 gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
-              }`}>${Math.round(displayedPot)}</span>
+              }`}>${formatChipValue(Math.round(displayedPot))}</span>
               <ValueChangeFlash 
                 value={pot}
                 position="top-right" 

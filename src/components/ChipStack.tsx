@@ -1,3 +1,5 @@
+import { formatChipValue } from '@/lib/utils';
+
 interface ChipStackProps {
   amount: number;
   size?: 'sm' | 'md' | 'lg';
@@ -40,7 +42,7 @@ export const ChipStack = ({ amount, size = 'md', variant = 'default', playerStat
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-2/3 h-2/3 border-2 border-white/40 rounded-full" />
         </div>
-        <span className="relative z-10 drop-shadow-lg">{amount}</span>
+        <span className="relative z-10 drop-shadow-lg">{formatChipValue(amount)}</span>
       </div>
     </div>
   );
