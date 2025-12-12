@@ -350,6 +350,7 @@ anteAnimationTriggerId,
   const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
   const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
   const [approvedRoundForDisplay, setApprovedRoundForDisplay] = useState<number | null>(null); // Round we're allowed to show cards for
+  const [approvedCommunityCards, setApprovedCommunityCards] = useState<CardType[] | null>(null); // Cached cards for approved round
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastDetectedRoundRef = useRef<number | null>(null); // Track which round we've detected (to prevent re-triggering)
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
@@ -609,6 +610,7 @@ anteAnimationTriggerId,
       communityCardsDelayRef.current = setTimeout(() => {
         console.log('[MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
         setApprovedRoundForDisplay(currentRound); // NOW we approve this round for display
+        setApprovedCommunityCards(communityCards ? [...communityCards] : null); // Cache the cards at approval time
         setShowCommunityCards(true);
         // Stagger each card with 150ms delay
         for (let i = 1; i <= cardCount; i++) {
@@ -1189,13 +1191,12 @@ anteAnimationTriggerId,
         )}
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
-        {/* Only show when: showCommunityCards is true AND currentRound matches approvedRoundForDisplay */}
-        {/* This prevents premature flash: cards won't render until delay completes and approves the round */}
-        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && 
+        {/* Use approvedCommunityCards (cached at approval time) to prevent showing new round cards during announcement */}
+        {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
          (currentRound === approvedRoundForDisplay) && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
-              cards={communityCards} 
+              cards={approvedCommunityCards} 
               revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
               highlightedIndices={winningCardHighlights.communityIndices}
               kickerIndices={winningCardHighlights.kickerCommunityIndices}
