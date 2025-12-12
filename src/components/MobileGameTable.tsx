@@ -486,14 +486,16 @@ anteAnimationTriggerId,
   }, [winnerPlayerId, isShowingAnnouncement, currentPlayer?.id, currentPlayerCards, playerCards]);
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
+  // CRITICAL: Don't show highlights during card delay phase (new round starting)
   const winningCardHighlights = useMemo(() => {
     // Only highlight during announcement phase with winner determined
-    if (!isShowingAnnouncement || !winnerCards.length || !communityCards?.length || !winnerPlayerId) {
+    // AND not during the delay phase when new cards are being dealt
+    if (!isShowingAnnouncement || !winnerCards.length || !communityCards?.length || !winnerPlayerId || isDelayingCommunityCards) {
       return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
     }
     const result = getWinningCardIndices(winnerCards, communityCards, false);
     return { ...result, hasHighlights: true };
-  }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId]);
+  }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId, isDelayingCommunityCards]);
 
   // Detect Chucky chopped animation
   useEffect(() => {
@@ -1190,18 +1192,17 @@ anteAnimationTriggerId,
         )}
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
-        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && (
-          showCommunityCards ? (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
-              <CommunityCards 
-                cards={communityCards} 
-                revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
-                highlightedIndices={winningCardHighlights.communityIndices}
-                kickerIndices={winningCardHighlights.kickerCommunityIndices}
-                hasHighlights={winningCardHighlights.hasHighlights}
-              />
-            </div>
-          ) : null
+        {/* Only show when showCommunityCards is true AND we're not in initial delay phase */}
+        {gameType === 'holm-game' && communityCards && communityCards.length > 0 && showCommunityCards && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+            <CommunityCards 
+              cards={communityCards} 
+              revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
+              highlightedIndices={winningCardHighlights.communityIndices}
+              kickerIndices={winningCardHighlights.kickerCommunityIndices}
+              hasHighlights={winningCardHighlights.hasHighlights}
+            />
+          </div>
         )}
         
         {/* Chucky's Hand - directly below community cards, no container */}
