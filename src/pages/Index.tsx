@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert, History, Info } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, History } from "lucide-react";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
 import { MyGameHistory } from "@/components/MyGameHistory";
@@ -248,27 +248,16 @@ const Index = () => {
     <div className="min-h-screen p-4 bg-background">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between gap-2">
-          {/* Left-aligned buttons */}
-          <div className="flex gap-1.5 flex-shrink-0">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowRulesDialog(true)}
-              className="h-8 w-8 p-0"
-              title="Game Rules"
-            >
-              <Info className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowHistoryDialog(true)}
-              className="h-8 w-8 p-0"
-              title="My History"
-            >
-              <History className="w-4 h-4" />
-            </Button>
-          </div>
+          {/* Left-aligned history button */}
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowHistoryDialog(true)}
+            className="h-8 w-8 p-0 flex-shrink-0"
+            title="My History"
+          >
+            <History className="w-4 h-4" />
+          </Button>
           
           {/* Center profile button with username */}
           <Button 
