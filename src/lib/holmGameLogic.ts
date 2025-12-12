@@ -251,6 +251,23 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
   console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
   
+  // CRITICAL ATOMIC GUARD: For first hand, atomically transition from ante_decision to in_progress
+  // This prevents multiple clients from all executing startHolmRound simultaneously
+  if (isFirstHand) {
+    const { data: lockResult, error: lockError } = await supabase
+      .from('games')
+      .update({ status: 'in_progress' })
+      .eq('id', gameId)
+      .eq('status', 'ante_decision') // Only update if still in ante_decision - atomic guard
+      .select();
+    
+    if (lockError || !lockResult || lockResult.length === 0) {
+      console.log('[HOLM] ⚠️ ATOMIC GUARD: Another client already started the first hand, skipping');
+      return; // Another client beat us - don't double-process
+    }
+    console.log('[HOLM] ✅ Successfully acquired first-hand lock (status -> in_progress)');
+  }
+  
   // CRITICAL GUARD: Check if a betting round already exists to prevent duplicate round creation
   // This guards against race conditions from polling or multiple simultaneous calls
   const { data: existingBettingRound } = await supabase
