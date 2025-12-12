@@ -1,7 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { formatChipValue } from "@/lib/utils";
+
+// Format number with thousands separators
+const formatWithCommas = (num: number): string => {
+  return Math.abs(num).toLocaleString();
+};
 
 interface SessionResultsProps {
   open: boolean;
@@ -65,7 +69,7 @@ export const SessionResults = ({ open, onOpenChange, session }: SessionResultsPr
                       </span>
                     </div>
                     <Badge variant={player.chips >= 0 ? 'default' : 'destructive'} className="text-xs">
-                      ${formatChipValue(player.chips)}
+                      {player.chips >= 0 ? '+' : '-'}${formatWithCommas(player.chips)}
                     </Badge>
                   </div>
                 ))}
