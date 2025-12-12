@@ -83,7 +83,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                   <li><strong>Showdown:</strong> Multiple stayers → cards stay hidden, app determines winner secretly, loser(s) pay winner directly (capped at pot max)</li>
                   <li><strong>Solo Stay:</strong> If only one player stays, they earn a leg</li>
                   <li><strong>Pussy Tax:</strong> If everyone folds, all players pay into the pot</li>
-                  <li><strong>Win Condition:</strong> First player to reach required legs wins the game</li>
+                  <li><strong>Win Condition:</strong> First player to reach required legs wins the pot and all player legs</li>
                   <li><strong>Ties:</strong> No money changes hands</li>
                 </ul>
               </div>
@@ -91,7 +91,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
               <div className="space-y-2">
                 <h4 className="font-semibold">Special: 3-5-7 Hand</h4>
                 <p className="text-sm text-muted-foreground">
-                  If you're dealt a <span className="text-primary font-medium">3, 5, and 7</span> in Round 1, you instantly win the entire game and sweep the pot!
+                  If you're dealt a <span className="text-primary font-medium">3, 5, and 7</span> in Round 1, you instantly win the entire game and sweep the pot and all legs!
                 </p>
               </div>
             </TabsContent>
