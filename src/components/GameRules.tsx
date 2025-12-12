@@ -80,7 +80,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
               <div className="space-y-2">
                 <h4 className="font-semibold">Winning & Scoring</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li><strong>Showdown:</strong> Multiple stayers → best hand wins, loser pays winner (capped at pot max)</li>
+                  <li><strong>Showdown:</strong> Multiple stayers → <span className="text-amber-400">cards stay hidden, app determines winner secretly</span>, loser pays winner directly (capped at pot max)</li>
                   <li><strong>Solo Stay:</strong> If only one player stays, they earn a leg</li>
                   <li><strong>Pussy Tax:</strong> If everyone folds, all players pay into the pot</li>
                   <li><strong>Win Condition:</strong> First player to reach required legs wins the game</li>
