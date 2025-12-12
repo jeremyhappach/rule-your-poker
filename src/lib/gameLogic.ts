@@ -1165,20 +1165,24 @@ export async function endRound(gameId: string) {
         })
         .eq('game_id', gameId);
       
-      let taxCollected = 0;
+      // Use atomic relative decrement to prevent race conditions / double charges
+      const playerIds = allPlayers.map(p => p.id);
+      const { error: taxError } = await supabase.rpc('decrement_player_chips', {
+        player_ids: playerIds,
+        amount: pussyTaxValue
+      });
       
-      // Charge each player the pussy tax
-      for (const player of allPlayers) {
-        const taxAmount = pussyTaxValue;
-        taxCollected += taxAmount;
-        
-        await supabase
-          .from('players')
-          .update({ 
-            chips: player.chips - taxAmount
-          })
-          .eq('id', player.id);
+      if (taxError) {
+        console.error('[357 END] Pussy tax decrement error:', taxError);
+        // Fallback to individual updates if RPC doesn't exist
+        for (const player of allPlayers) {
+          await supabase
+            .from('players')
+            .update({ chips: player.chips - pussyTaxValue })
+            .eq('id', player.id);
+        }
       }
+      const taxCollected = pussyTaxValue * allPlayers.length;
       
       // Add pussy tax to pot
       await supabase

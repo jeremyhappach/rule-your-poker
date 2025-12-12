@@ -489,6 +489,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement_player_chips: {
+        Args: { amount: number; player_ids: string[] }
+        Returns: undefined
+      }
       user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }
     }
