@@ -54,6 +54,7 @@ interface Game {
   pot_max_value?: number;
   game_type?: string;
   chucky_cards?: number;
+  real_money?: boolean;
   player_count?: number;
   is_creator?: boolean;
   is_player?: boolean;
@@ -534,6 +535,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                               <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                                 <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 font-medium">
                                   {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
+                                  {game.real_money && <span className="text-green-400 ml-1">$</span>}
                                 </span>
                                 <span className="text-amber-400/50">•</span>
                                 <span>${game.ante_amount} Ante</span>
