@@ -410,71 +410,6 @@ anteAnimationTriggerId,
     }
   }, [players, displayedChips]);
   
-  // ========== DETAILED DEBUG POLLING ==========
-  const debugPollRef = useRef<NodeJS.Timeout | null>(null);
-  const debugLogCount = useRef(0);
-  
-  useEffect(() => {
-    // Clear existing poll
-    if (debugPollRef.current) {
-      clearInterval(debugPollRef.current);
-    }
-    
-    // Poll every 500ms for 60 seconds max (120 logs)
-    debugPollRef.current = setInterval(() => {
-      debugLogCount.current++;
-      if (debugLogCount.current > 120) {
-        clearInterval(debugPollRef.current!);
-        return;
-      }
-      
-      const currentPlayerData = players.find(p => p.user_id === currentUserId);
-      
-      console.log(`[DEBUG POLL #${debugLogCount.current}]`, {
-        // POT VALUES
-        pot_db: pot,
-        pot_displayed: displayedPot,
-        pot_357cached: threeFiveSevenWinPotAmount,
-        
-        // POT VISIBILITY CONDITIONS
-        isWaitingPhase,
-        holmWinPotTriggerId: holmWinPotTriggerId ? holmWinPotTriggerId.slice(-8) : null,
-        holmWinPotHiddenUntilReset, // NEW: shows if pot should stay hidden after animation
-        threeFiveSevenWinPhase,
-        potShouldBeVisible: !isWaitingPhase && !holmWinPotTriggerId && !holmWinPotHiddenUntilReset &&
-          !(threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay'),
-        
-        // LEGS VALUES  
-        currentPlayer_legs_db: currentPlayerData?.legs,
-        cachedCurrentPlayerLegs, // NEW: cached value for game_over
-        showLegEarned,
-        legEarnedPlayerPosition,
-        isWinningLegAnimation,
-        isInGameOverStatus: gameStatus === 'game_over',
-        
-        // ANIMATION STATES
-        isAnteAnimating: isAnteAnimatingRef.current,
-        hasPending357WinForPot,
-        
-        // GAME STATE
-        gameStatus,
-        roundStatus,
-        gameType,
-      });
-    }, 500);
-    
-    return () => {
-      if (debugPollRef.current) {
-        clearInterval(debugPollRef.current);
-      }
-    };
-  }, [
-    pot, displayedPot, threeFiveSevenWinPotAmount, isWaitingPhase, holmWinPotTriggerId,
-    holmWinPotHiddenUntilReset, threeFiveSevenWinPhase, players, currentUserId, showLegEarned, 
-    legEarnedPlayerPosition, isWinningLegAnimation, hasPending357WinForPot, gameStatus, roundStatus, gameType, cachedCurrentPlayerLegs
-  ]);
-  // ========== END DEBUG POLLING ==========
-  
   // FIX: Reset animation completion states when game transitions from game_over
   const prevGameStatusRef = useRef(gameStatus);
   useEffect(() => {
@@ -1150,18 +1085,6 @@ anteAnimationTriggerId,
     const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
     const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
     
-    // Debug: Log leg display calculation for winner
-    if (isIn357WinAnimation && player.id === threeFiveSevenWinnerId) {
-      console.log('[357 LEG DISPLAY]', player.profiles?.username, {
-        phase: threeFiveSevenWinPhase,
-        playerLegs,
-        cachedLegsForThisPlayer,
-        effectivePlayerLegs,
-        isLegAnimatingForThisPlayer,
-        hideLegsForWinAnimation,
-        cachedPositionsLength: threeFiveSevenCachedLegPositions.length
-      });
-    }
     
     const displayLegs = hideLegsForWinAnimation ? 0 : (isLegAnimatingForThisPlayer ? effectivePlayerLegs - 1 : effectivePlayerLegs);
     const legIndicator = displayLegs > 0 && (
@@ -1315,10 +1238,6 @@ anteAnimationTriggerId,
             {chipElement}
           </MobilePlayerTimer>
         )}
-        {/* DEBUG: Show real-time database legs BELOW chip */}
-        <div className="bg-red-600 rounded px-1 py-0.5 text-[8px] font-mono text-white whitespace-nowrap">
-          L:{player.legs}
-        </div>
         {/* Name below for other positions */}
         {!isBottomPosition && nameElement}
         {/* Cards - show actual cards during showdown (bigger when chip hidden), or mini card backs otherwise */}
@@ -1337,11 +1256,6 @@ anteAnimationTriggerId,
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }} />
-        
-        {/* DEBUG: Large pot value overlay */}
-        <div className="absolute top-1 right-1 z-[100] bg-blue-600 rounded px-2 py-1 text-sm font-mono text-white border-2 border-white">
-          DB POT: ${pot}
-        </div>
         
         {/* Game name on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
@@ -1964,7 +1878,6 @@ anteAnimationTriggerId,
           // During legs-to-player phase, hide ALL leg indicators since they're animating to winner
           const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'legs-to-player';
           if (hideLegsForWinAnimation) {
-            console.log('[LEGS RENDER] Hiding current player legs - legs-to-player phase');
             return false;
           }
           
@@ -1977,15 +1890,6 @@ anteAnimationTriggerId,
           const effectiveLegs = isInGameOverStatus && cachedLegData && cachedLegData.legCount > 0 
             ? cachedLegData.legCount 
             : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
-          
-          console.log('[LEGS RENDER] Current player legs:', {
-            dbLegs: currentPlayer.legs,
-            cachedLegData,
-            cachedCurrentPlayerLegs,
-            effectiveLegs,
-            isInGameOverStatus,
-            threeFiveSevenWinPhase
-          });
           
           const isAnimatingCurrentPlayer = showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
           const displayLegs = isAnimatingCurrentPlayer ? effectiveLegs - 1 : effectiveLegs;
