@@ -1413,8 +1413,9 @@ anteAnimationTriggerId,
           {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
         </div>
         {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards */}
+        {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
         <div className={`absolute left-0 z-10 transition-all duration-300 ${
-          getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) 
+          getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) && !holmWinPotTriggerId
             ? 'top-[32%] -translate-y-1/2' 
             : 'top-1/2 -translate-y-1/2'
         }`}>
@@ -1429,8 +1430,9 @@ anteAnimationTriggerId,
           {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
         </div>
         {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards */}
+        {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
         <div className={`absolute right-0 z-10 transition-all duration-300 ${
-          getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) 
+          getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) && !holmWinPotTriggerId
             ? 'top-[32%] -translate-y-1/2' 
             : 'top-1/2 -translate-y-1/2'
         }`}>
