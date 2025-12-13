@@ -217,6 +217,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
   
+  // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
+  const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
+  const showdownRoundNumberRef = useRef<number | null>(null);
+  
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
@@ -2640,6 +2644,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     cachedRoundRef.current = null;
     maxRevealedRef.current = 0;
     cardIdentityRef.current = '';
+    // Clear the external showdown cache as well
+    showdownCardsCacheRef.current = new Map();
+    showdownRoundNumberRef.current = null;
 
     // Check if session should end
     const { data: gameData, error: fetchError } = await supabase
@@ -3682,6 +3689,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     holmWinPotAmount={holmWinPotAmount}
                     holmWinWinnerPosition={holmWinWinnerPosition}
                     onHolmWinPotAnimationComplete={handleHolmWinPotAnimationComplete}
+                    externalShowdownCardsCache={showdownCardsCacheRef}
+                    externalShowdownRoundNumber={showdownRoundNumberRef}
                   />
                 ) : (
                   <>
@@ -4044,6 +4053,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               getPositionForUserId={getPositionForUserId}
               onLeaveGameNow={handleLeaveGameNow}
               realMoney={game.real_money || false}
+              externalShowdownCardsCache={showdownCardsCacheRef}
+              externalShowdownRoundNumber={showdownRoundNumberRef}
             />
           ) : (
             <GameTable

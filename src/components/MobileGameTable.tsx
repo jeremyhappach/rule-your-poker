@@ -177,6 +177,9 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   isWaitingPhase?: boolean;
   // Real money indicator
   realMoney?: boolean;
+  // External showdown card cache (lifted to Game.tsx to persist across remounts)
+  externalShowdownCardsCache?: React.MutableRefObject<Map<string, CardType[]>>;
+  externalShowdownRoundNumber?: React.MutableRefObject<number | null>;
 }
 export const MobileGameTable = ({
   players,
@@ -255,6 +258,8 @@ anteAnimationTriggerId,
   onLeaveGameNow,
   isWaitingPhase = false,
   realMoney = false,
+  externalShowdownCardsCache,
+  externalShowdownRoundNumber,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -369,8 +374,13 @@ anteAnimationTriggerId,
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastDetectedRoundRef = useRef<number | null>(null); // Track which round we've detected (to prevent re-triggering)
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
-  const showdownRoundRef = useRef<number | null>(null);
-  const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
+  // Use EXTERNAL refs when provided (from Game.tsx) to persist across component remounts
+  const internalShowdownRoundRef = useRef<number | null>(null);
+  const internalShowdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
+  
+  // Use external cache if provided, otherwise use internal
+  const showdownRoundRef = externalShowdownRoundNumber || internalShowdownRoundRef;
+  const showdownCardsCache = externalShowdownCardsCache || internalShowdownCardsCache;
   
   // Cache Chucky cards to persist through announcement phase
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
