@@ -64,6 +64,13 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 
     lastTriggerIdRef.current = triggerId;
 
+    // If no legs to animate, immediately complete
+    if (legPositions.length === 0) {
+      console.log('[LEGS TO PLAYER] No legs to sweep, skipping animation');
+      onAnimationComplete?.();
+      return;
+    }
+
     const rect = containerRef.current.getBoundingClientRect();
     const winnerCoords = getPositionCoords(winnerPosition, rect);
 
@@ -89,6 +96,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     });
 
     setAnimations(newAnimations);
+    console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
     // Animation duration: 1.2s per chip + stagger delays + buffer
     const totalDuration = 1500 + (newAnimations.length * 100);
