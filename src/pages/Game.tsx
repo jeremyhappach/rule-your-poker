@@ -2947,11 +2947,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setThreeFiveSevenWinTriggerId(`357-win-${Date.now()}`);
   }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, players, playerCards]);
   
-  // Reset 3-5-7 win state when starting a new game
+  // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
   useEffect(() => {
+    // Reset on new game start (round 1)
     if (game?.status === 'in_progress' && game?.current_round === 1) {
+      console.log('[357 WIN RESET] Resetting win state for new game');
       threeFiveSevenWinProcessedRef.current = null;
       setThreeFiveSevenWinTriggerId(null);
+      setThreeFiveSevenWinnerId(null);
+      setThreeFiveSevenWinPotAmount(0);
+      setThreeFiveSevenWinnerCards([]);
+      cachedPotFor357WinRef.current = 0;
+    }
+    // Also reset when transitioning from game_over to dealer_selection (next game starting)
+    if (game?.status === 'dealer_selection' || game?.status === 'configuring') {
+      console.log('[357 WIN RESET] Resetting win state for dealer selection/configuring');
+      threeFiveSevenWinProcessedRef.current = null;
+      setThreeFiveSevenWinTriggerId(null);
+      setThreeFiveSevenWinnerId(null);
+      setThreeFiveSevenWinPotAmount(0);
+      setThreeFiveSevenWinnerCards([]);
       cachedPotFor357WinRef.current = 0;
     }
   }, [game?.status, game?.current_round]);
