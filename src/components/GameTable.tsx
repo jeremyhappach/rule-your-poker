@@ -1135,12 +1135,6 @@ export const GameTable = ({
                     maxLegs={legsToWin} 
                   />
                   
-                  {/* DEBUG: Show real-time database values */}
-                  <div className="absolute -top-6 -right-6 z-50 bg-black/90 rounded px-1.5 py-0.5 text-[9px] font-mono border border-yellow-500">
-                    <div className="text-yellow-400">DB Legs: {player.legs}</div>
-                    <div className="text-green-400">Pot: ${pot}</div>
-                  </div>
-                  
                   <Card className={`
                     ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
                     ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
