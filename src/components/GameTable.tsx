@@ -180,8 +180,13 @@ export const GameTable = ({
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
   
   // Compute showdown state synchronously during render
-  const isShowdownActive = gameType === 'holm-game' && 
-    (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
+  // Count players who stayed for multi-player showdown detection
+  const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
+  const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
+  
+  const isShowdownActive = (gameType === 'holm-game' && 
+    (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) ||
+    is357Round3MultiPlayerShowdown;
   
   // Get current round ID for tracking
   const currentRoundId = realtimeRound?.id || null;
@@ -1184,10 +1189,12 @@ export const GameTable = ({
                               // Show cards if: 
                               // 1. It's the current user, OR
                               // 2. In Holm game, this player's cards have been exposed (tracked by ID), OR
-                              // 3. In 3-5-7 game, this player won the final leg (cards stay visible during animation)
+                              // 3. In 3-5-7 game, this player won the final leg (cards stay visible during animation), OR
+                              // 4. In 3-5-7 round 3 multi-player showdown, all stayed players' cards are exposed
                               !isCurrentUser && !(
                                 (gameType === 'holm-game' && isPlayerCardsExposed(player.id)) ||
-                                (gameType !== 'holm-game' && winningLegPlayerId === player.id)
+                                (gameType !== 'holm-game' && winningLegPlayerId === player.id) ||
+                                (is357Round3MultiPlayerShowdown && isPlayerCardsExposed(player.id))
                               )
                             }
                           />

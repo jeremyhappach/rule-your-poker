@@ -365,8 +365,13 @@ anteAnimationTriggerId,
   // Compute showdown state synchronously during render
   // This should trigger when we need to show exposed cards
   const isInEarlyPhase = roundStatus === 'betting' || roundStatus === 'pending' || roundStatus === 'ante';
-  const isShowdownActive = gameType === 'holm-game' && 
-    (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn);
+  // Count players who stayed for multi-player showdown detection
+  const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
+  const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
+  
+  const isShowdownActive = (gameType === 'holm-game' && 
+    (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) ||
+    is357Round3MultiPlayerShowdown;
   
   // Clear showdown cache when:
   // 1. A new round number is detected
@@ -763,7 +768,8 @@ anteAnimationTriggerId,
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
     const isInAnnouncementShowdown = isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
     const is357WinningLegPlayer = gameType !== 'holm-game' && winningLegPlayerId === player.id && cards.length > 0;
-    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer;
+    const is357Round3Showdown = is357Round3MultiPlayerShowdown && hasExposedCards;
+    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer || is357Round3Showdown;
     
     // During showdown/announcement, hide chip stack to make room for bigger cards
     const hideChipForShowdown = isShowdown;
