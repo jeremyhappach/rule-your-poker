@@ -903,17 +903,19 @@ export const GameTable = ({
             </>
           )}
 
-          {/* Community Cards for Holm Game - hide immediately when awaitingNextRound */}
-          {gameType === 'holm-game' && communityCards && communityCards.length > 0 && !awaitingNextRound && (
+          {/* Community Cards for Holm Game - persist through announcement, hide when buck passes */}
+          {/* Cards hide when awaitingNextRound AND lastRoundResult is cleared (buck just passed) */}
+          {gameType === 'holm-game' && communityCards && communityCards.length > 0 && 
+           !(awaitingNextRound && !lastRoundResult) && (
             <CommunityCards 
               cards={communityCards} 
               revealed={communityCardsRevealed || 2} 
             />
           )}
 
-          {/* Chucky's Hand for Holm Game - positioned below community cards, offset left */}
-          {/* Hide when awaitingNextRound to disappear before buck passes */}
-          {gameType === 'holm-game' && chuckyActive && chuckyCards && !awaitingNextRound && (
+          {/* Chucky's Hand for Holm Game - persist through announcement, hide when buck passes */}
+          {gameType === 'holm-game' && chuckyActive && chuckyCards && 
+           !(awaitingNextRound && !lastRoundResult) && (
             <ChuckyHand 
               cards={chuckyCards}
               show={true}
