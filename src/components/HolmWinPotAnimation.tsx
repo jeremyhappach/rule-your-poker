@@ -156,31 +156,35 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
             opacity: 1;
           }
           5% {
-            transform: translate(0, -20px) scale(1.3);
+            transform: translate(0, -15px) scale(1.05);
             opacity: 1;
           }
           10% {
-            transform: translate(0, -30px) scale(1.5);
+            transform: translate(0, -25px) scale(1.1);
             opacity: 1;
           }
           20% {
-            transform: translate(0, -40px) scale(1.4);
+            transform: translate(0, -30px) scale(1.1);
             opacity: 1;
           }
           30% {
-            transform: translate(${deltaX * 0.1}px, ${-40 + deltaY * 0.1}px) scale(1.3);
+            transform: translate(${deltaX * 0.1}px, ${-30 + deltaY * 0.1}px) scale(1.05);
             opacity: 1;
           }
-          70% {
-            transform: translate(${deltaX * 0.7}px, ${deltaY * 0.5}px) scale(1.2);
+          60% {
+            transform: translate(${deltaX * 0.5}px, ${deltaY * 0.3}px) scale(1);
+            opacity: 1;
+          }
+          75% {
+            transform: translate(${deltaX * 0.75}px, ${deltaY * 0.6}px) scale(1.15);
             opacity: 1;
           }
           90% {
-            transform: translate(${deltaX}px, ${deltaY}px) scale(1.1);
+            transform: translate(${deltaX}px, ${deltaY}px) scale(1.3);
             opacity: 1;
           }
           95% {
-            transform: translate(${deltaX}px, ${deltaY}px) scale(1.3);
+            transform: translate(${deltaX}px, ${deltaY}px) scale(1.5);
             opacity: 1;
           }
           100% {
