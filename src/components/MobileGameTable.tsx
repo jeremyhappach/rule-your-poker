@@ -808,6 +808,11 @@ anteAnimationTriggerId,
     lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
     console.log('[357 WIN] Starting win animation sequence');
     
+    // Reset phase to idle first to clear any lingering state, then start sequence
+    setThreeFiveSevenWinPhase('idle');
+    setLegsToPlayerTriggerId(null);
+    setPotToPlayerTriggerId357(null);
+    
     // Wait for leg earned animation to complete (it runs for 2.5s for winning leg)
     // Then start legs-to-player animation
     setTimeout(() => {
@@ -819,13 +824,23 @@ anteAnimationTriggerId,
 
   // Handle legs-to-player animation complete -> start pot-to-player
   const handleLegsToPlayerComplete = useCallback(() => {
+    // Only proceed if we're actually in legs-to-player phase
+    if (threeFiveSevenWinPhase !== 'legs-to-player') {
+      console.log('[357 WIN] handleLegsToPlayerComplete called but not in legs-to-player phase, ignoring');
+      return;
+    }
     console.log('[357 WIN] Phase 2: pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
-  }, []);
+  }, [threeFiveSevenWinPhase]);
 
   // Handle pot-to-player animation complete -> 3 second delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
+    // Only proceed if we're actually in pot-to-player phase
+    if (threeFiveSevenWinPhase !== 'pot-to-player') {
+      console.log('[357 WIN] handlePotToPlayerComplete357 called but not in pot-to-player phase, ignoring');
+      return;
+    }
     console.log('[357 WIN] Phase 3: delay before next game');
     setThreeFiveSevenWinPhase('delay');
     
@@ -837,7 +852,7 @@ anteAnimationTriggerId,
       setPotToPlayerTriggerId357(null);
       onThreeFiveSevenWinAnimationComplete?.();
     }, 3000);
-  }, [onThreeFiveSevenWinAnimationComplete]);
+  }, [threeFiveSevenWinPhase, onThreeFiveSevenWinAnimationComplete]);
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
@@ -945,8 +960,10 @@ anteAnimationTriggerId,
     
     // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
     // During leg animation, show (legs - 1) so only the NEW leg is hidden
+    // During legs-to-player phase (final win), hide ALL leg indicators since they're animating to winner
     const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
-    const displayLegs = isLegAnimatingForThisPlayer ? playerLegs - 1 : playerLegs;
+    const hideLegsForWinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player';
+    const displayLegs = hideLegsForWinAnimation ? 0 : (isLegAnimatingForThisPlayer ? playerLegs - 1 : playerLegs);
     const legIndicator = displayLegs > 0 && (
       <div className="absolute z-30" style={{
         // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
