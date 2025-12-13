@@ -5,10 +5,11 @@ interface LegEarnedAnimationProps {
   playerName: string;
   targetPosition?: { top: string; left: string }; // Target coordinates for the leg indicator
   isWinningLeg?: boolean; // Is this the final leg that wins the game?
+  suppressWinnerOverlay?: boolean; // Don't show "WINNER!" text (used for 3-5-7 games with separate win animation)
   onComplete?: () => void;
 }
 
-export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinningLeg = false, onComplete }: LegEarnedAnimationProps) => {
+export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
@@ -91,8 +92,8 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinning
         )}
       </div>
       
-      {/* Winner text overlay for winning leg */}
-      {isWinningLeg && (
+      {/* Winner text overlay for winning leg (suppress for 3-5-7 which has its own win animation) */}
+      {isWinningLeg && !suppressWinnerOverlay && (
         <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none animate-[fadeInScale_0.5s_ease-out_0.5s_forwards] opacity-0">
           <div className="bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-500 text-white font-black text-2xl px-6 py-3 rounded-xl shadow-2xl animate-pulse">
             🏆 WINNER! 🏆

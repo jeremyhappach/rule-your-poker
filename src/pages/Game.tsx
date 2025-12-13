@@ -217,6 +217,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
   
+  // 3-5-7 win animation state (when player wins final leg)
+  const [threeFiveSevenWinTriggerId, setThreeFiveSevenWinTriggerId] = useState<string | null>(null);
+  const [threeFiveSevenWinPotAmount, setThreeFiveSevenWinPotAmount] = useState<number>(0);
+  const [threeFiveSevenWinnerId, setThreeFiveSevenWinnerId] = useState<string | null>(null);
+  const [threeFiveSevenWinnerCards, setThreeFiveSevenWinnerCards] = useState<CardType[]>([]);
+  const threeFiveSevenWinProcessedRef = useRef<string | null>(null);
+  
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
@@ -2882,6 +2889,51 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
+  // Detect 3-5-7 final leg win and trigger win animation
+  useEffect(() => {
+    if (game?.status === 'game_over' && game?.game_type !== 'holm-game' && game?.last_round_result) {
+      const resultMessage = game.last_round_result;
+      
+      // Check if this is a final leg win (player "won a leg" AND game is over means it was the winning leg)
+      if (resultMessage.includes('won a leg')) {
+        // Prevent duplicate processing
+        if (threeFiveSevenWinProcessedRef.current === resultMessage) {
+          return;
+        }
+        threeFiveSevenWinProcessedRef.current = resultMessage;
+        
+        // Parse winner from message
+        const displayPart = resultMessage.split('|||')[0];
+        const winnerMatch = displayPart.match(/^(.+?) won a leg/);
+        const winnerName = winnerMatch ? winnerMatch[1] : '';
+        
+        // Find winner player
+        const winnerPlayer = players.find(p => p.profiles?.username === winnerName);
+        if (!winnerPlayer) {
+          console.log('[357 WIN] Could not find winner player:', winnerName);
+          return;
+        }
+        
+        // Get winner's cards
+        const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
+        const winnerCards = winnerCardsData?.cards || [];
+        
+        console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', game.pot);
+        
+        setThreeFiveSevenWinPotAmount(game.pot || 0);
+        setThreeFiveSevenWinnerId(winnerPlayer.id);
+        setThreeFiveSevenWinnerCards(winnerCards);
+        setThreeFiveSevenWinTriggerId(`357-win-${Date.now()}`);
+      }
+    }
+    
+    // Reset when game status changes away from game_over
+    if (game?.status !== 'game_over') {
+      threeFiveSevenWinProcessedRef.current = null;
+      setThreeFiveSevenWinTriggerId(null);
+    }
+  }, [game?.status, game?.game_type, game?.last_round_result, game?.pot, players, playerCards]);
+
   // Handle Holm win pot animation complete - delay 2 seconds then proceed to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
     // Guard: Only proceed if we're actually in game_over with a valid Holm win
@@ -2903,6 +2955,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
+
+  // Handle 3-5-7 win animation complete - proceed to next game
+  const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
+    if (game?.status !== 'game_over' || game?.game_type === 'holm-game') {
+      return;
+    }
+    console.log('[357 WIN] Animation complete, proceeding to next game');
+    await handleGameOverComplete();
+  }, [game?.status, game?.game_type, handleGameOverComplete]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
@@ -3694,6 +3755,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     holmWinPotAmount={holmWinPotAmount}
                     holmWinWinnerPosition={holmWinWinnerPosition}
                     onHolmWinPotAnimationComplete={handleHolmWinPotAnimationComplete}
+                    threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
+                    threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
+                    threeFiveSevenWinnerId={threeFiveSevenWinnerId}
+                    threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
+                    onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
                     externalCommunityCardsCache={communityCardsCacheRef}

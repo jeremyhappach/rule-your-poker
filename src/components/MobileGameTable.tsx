@@ -19,6 +19,7 @@ import { ValueChangeFlash } from "./ValueChangeFlash";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
+import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
@@ -155,6 +156,12 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   holmWinPotAmount?: number;
   holmWinWinnerPosition?: number;
   onHolmWinPotAnimationComplete?: () => void;
+  // 3-5-7 win animation props (player wins final leg)
+  threeFiveSevenWinTriggerId?: string | null;
+  threeFiveSevenWinPotAmount?: number;
+  threeFiveSevenWinnerId?: string | null;
+  threeFiveSevenWinnerCards?: CardType[];
+  onThreeFiveSevenWinAnimationComplete?: () => void;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -244,6 +251,11 @@ anteAnimationTriggerId,
   holmWinPotAmount = 0,
   holmWinWinnerPosition = 1,
   onHolmWinPotAnimationComplete,
+  threeFiveSevenWinTriggerId,
+  threeFiveSevenWinPotAmount = 0,
+  threeFiveSevenWinnerId,
+  threeFiveSevenWinnerCards = [],
+  onThreeFiveSevenWinAnimationComplete,
   isGameOver,
   isDealer,
   onNextGame,
@@ -316,6 +328,12 @@ anteAnimationTriggerId,
   const [showSweepsPot, setShowSweepsPot] = useState(false);
   const [sweepsPlayerName, setSweepsPlayerName] = useState('');
   const lastSweepsResultRef = useRef<string | null>(null);
+  
+  // 3-5-7 win animation state (phases: leg -> legs-to-player -> pot-to-player)
+  const [threeFiveSevenWinPhase, setThreeFiveSevenWinPhase] = useState<'idle' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle');
+  const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
+  const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
+  const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
   
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -780,6 +798,46 @@ anteAnimationTriggerId,
       }
     }
   }, [roundStatus, allDecisionsIn, winningLegPlayerId]);
+
+  // 3-5-7 win animation sequence: triggered by parent when player wins final leg
+  useEffect(() => {
+    if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
+      return;
+    }
+    
+    lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
+    console.log('[357 WIN] Starting win animation sequence');
+    
+    // Wait for leg earned animation to complete (it runs for 2.5s for winning leg)
+    // Then start legs-to-player animation
+    setTimeout(() => {
+      console.log('[357 WIN] Phase 1: legs-to-player');
+      setThreeFiveSevenWinPhase('legs-to-player');
+      setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+    }, 2600); // Slightly after leg earned animation completes
+  }, [threeFiveSevenWinTriggerId]);
+
+  // Handle legs-to-player animation complete -> start pot-to-player
+  const handleLegsToPlayerComplete = useCallback(() => {
+    console.log('[357 WIN] Phase 2: pot-to-player');
+    setThreeFiveSevenWinPhase('pot-to-player');
+    setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
+  }, []);
+
+  // Handle pot-to-player animation complete -> 3 second delay -> next game
+  const handlePotToPlayerComplete357 = useCallback(() => {
+    console.log('[357 WIN] Phase 3: delay before next game');
+    setThreeFiveSevenWinPhase('delay');
+    
+    // 3 second delay before proceeding to next game
+    setTimeout(() => {
+      console.log('[357 WIN] Animation sequence complete, proceeding to next game');
+      setThreeFiveSevenWinPhase('idle');
+      setLegsToPlayerTriggerId(null);
+      setPotToPlayerTriggerId357(null);
+      onThreeFiveSevenWinAnimationComplete?.();
+    }, 3000);
+  }, [onThreeFiveSevenWinAnimationComplete]);
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
@@ -1313,8 +1371,79 @@ anteAnimationTriggerId,
             return slotCoords[slotIndex] || { top: '85%', left: '40%' };
           })()}
           isWinningLeg={isWinningLegAnimation}
+          suppressWinnerOverlay={gameType !== 'holm-game'} // Suppress for 3-5-7 - has its own win animation
           onComplete={() => setShowLegEarned(false)} 
         />
+        
+        {/* 3-5-7 Legs To Player Animation (all legs fly to winner's chip stack) */}
+        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player' && threeFiveSevenWinnerId && (
+          <LegsToPlayerAnimation
+            triggerId={legsToPlayerTriggerId}
+            legPositions={players
+              .filter(p => p.legs > 0)
+              .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }))}
+            winnerPosition={players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            legsToWin={legsToWin}
+            onAnimationComplete={handleLegsToPlayerComplete}
+          />
+        )}
+        
+        {/* 3-5-7 Pot To Player Animation */}
+        {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'pot-to-player' && threeFiveSevenWinnerId && (
+          <PotToPlayerAnimation
+            triggerId={potToPlayerTriggerId357}
+            amount={threeFiveSevenWinPotAmount}
+            winnerPosition={players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            onAnimationStart={() => {
+              // Pot goes to 0 visually
+              setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
+            }}
+            onAnimationEnd={handlePotToPlayerComplete357}
+          />
+        )}
+        
+        {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation (not on winner's own client) */}
+        {gameType !== 'holm-game' && threeFiveSevenWinTriggerId && threeFiveSevenWinnerId && 
+         threeFiveSevenWinnerCards.length > 0 && threeFiveSevenWinnerId !== currentPlayer?.id && (
+          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
+            <div className="flex gap-1">
+              {threeFiveSevenWinnerCards.map((card, index) => {
+                const isFourColor = deckColorMode === 'four_color';
+                const fourColorConfig = getFourColorSuit(card.suit);
+                const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
+                const twoColorTextStyle = !isFourColor 
+                  ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
+                  : {};
+                
+                return (
+                  <div 
+                    key={index} 
+                    className="w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 border-green-500 flex flex-col items-center justify-center shadow-lg"
+                    style={{ 
+                      backgroundColor: cardBg, 
+                      ...twoColorTextStyle
+                    }}
+                  >
+                    <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                      {card.rank}
+                    </span>
+                    {!isFourColor && (
+                      <span className="text-2xl leading-none -mt-0.5">
+                        {card.suit}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
         {/* Hide during waiting phase and during Holm win animation */}
@@ -1652,22 +1781,29 @@ anteAnimationTriggerId,
           </div>}
         
         {/* Game Over state - result message (includes beat Chucky results now) */}
-        {isGameOver && lastRoundResult && <div className="px-4 py-3">
+        {/* Hide "won a leg" message during 3-5-7 win animation (they see the leg animation instead) */}
+        {isGameOver && lastRoundResult && !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) && (
+          <div className="px-4 py-3">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-base text-center">
                 {lastRoundResult.split('|||')[0]}
               </p>
             </div>
-          </div>}
+          </div>
+        )}
         
-        {/* Result message - in bottom section (non-game-over, hide for 357 sweep) */}
-        {!isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && <div className="px-4 py-2">
+        {/* Result message - in bottom section (non-game-over, hide for 357 sweep, hide "won a leg" for 3-5-7 final leg win) */}
+        {!isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && 
+         !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
+         (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
+          <div className="px-4 py-2">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center">
                 {lastRoundResult.split('|||')[0]}
               </p>
             </div>
-          </div>}
+          </div>
+        )}
         
         
         {/* Collapse toggle */}
