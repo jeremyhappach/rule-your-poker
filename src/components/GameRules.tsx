@@ -136,7 +136,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
               <div className="space-y-2">
                 <h4 className="font-semibold">Playing Chucky</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li>Chucky is dealt 4 random cards</li>
+                  <li>Chucky is dealt 4 random cards (could differ based on dealer game configuration)</li>
                   <li>Remaining community cards are revealed</li>
                   <li><strong>Beat Chucky:</strong> You win the pot, game ends</li>
                   <li><strong>Lose/Tie to Chucky:</strong> You match the pot (capped at pot max), buck passes, game continues</li>
