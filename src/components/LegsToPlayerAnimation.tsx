@@ -32,6 +32,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 }) => {
   const [animations, setAnimations] = useState<LegChipAnimation[]>([]);
   const lastTriggerIdRef = useRef<string | null>(null);
+  const completedRef = useRef(false); // Guard against double completion
 
   // Get position coordinates as percentage of container (chipstack center positions)
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -82,11 +83,15 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     }
 
     lastTriggerIdRef.current = triggerId;
+    completedRef.current = false; // Reset for new animation
 
     // If no legs to animate, immediately complete
     if (legPositions.length === 0) {
       console.log('[LEGS TO PLAYER] No legs to sweep, skipping animation');
-      onAnimationComplete?.();
+      if (!completedRef.current) {
+        completedRef.current = true;
+        onAnimationComplete?.();
+      }
       return;
     }
 
@@ -123,7 +128,10 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     
     setTimeout(() => {
       setAnimations([]);
-      onAnimationComplete?.();
+      if (!completedRef.current) {
+        completedRef.current = true;
+        onAnimationComplete?.();
+      }
     }, totalDuration);
   }, [triggerId, legPositions, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, legsToWin, onAnimationComplete]);
 
