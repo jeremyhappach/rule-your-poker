@@ -618,6 +618,22 @@ anteAnimationTriggerId,
       return;
     }
     
+    // CRITICAL: During game_over status, NEVER hide community cards
+    // They need to persist through the win animation and post-win delay
+    if (isInGameOverStatus) {
+      console.log('[MOBILE_COMMUNITY] In game_over status - keeping cards visible');
+      setIsDelayingCommunityCards(false);
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
+      }
+      // Ensure cards stay visible
+      if (!showCommunityCards && approvedCommunityCards) {
+        setShowCommunityCards(true);
+      }
+      return;
+    }
+    
     // If awaiting next round AND result is cleared (buck has passed), hide community cards
     // Cards should persist through announcement, only disappear when buck passes
     if (awaitingNextRound && !lastRoundResult) {
@@ -694,7 +710,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, isInGameOverStatus, showCommunityCards, approvedCommunityCards, lastRoundResult]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
@@ -1369,7 +1385,6 @@ anteAnimationTriggerId,
         {/* This displays during the pot-to-winner animation so cards are visible */}
         {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
-            <span className="text-green-400 text-xs font-bold drop-shadow-md">🏆 WINNER</span>
             <div className="flex gap-1">
               {winnerCards.map((card, index) => {
                 const isFourColor = deckColorMode === 'four_color';
@@ -1378,8 +1393,12 @@ anteAnimationTriggerId,
                 const twoColorTextStyle = !isFourColor 
                   ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
                   : {};
-                const isHighlighted = winningCardHighlights.playerIndices.includes(index);
-                const isKicker = winningCardHighlights.kickerPlayerIndices.includes(index);
+                // Calculate highlights directly for tabled cards (don't rely on isShowingAnnouncement timing)
+                const tabledHighlights = communityCards && winnerCards.length > 0 
+                  ? getWinningCardIndices(winnerCards, communityCards, false)
+                  : { playerIndices: [], kickerPlayerIndices: [] };
+                const isHighlighted = tabledHighlights.playerIndices.includes(index);
+                const isKicker = tabledHighlights.kickerPlayerIndices.includes(index);
                 
                 return (
                   <div 
