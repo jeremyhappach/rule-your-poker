@@ -1175,6 +1175,7 @@ anteAnimationTriggerId,
             amount={holmWinPotAmount}
             winnerPosition={holmWinWinnerPosition}
             currentPlayerPosition={currentPlayer?.position ?? null}
+            isCurrentPlayerWinner={currentPlayer?.position === holmWinWinnerPosition}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
             onAnimationComplete={onHolmWinPotAnimationComplete}
