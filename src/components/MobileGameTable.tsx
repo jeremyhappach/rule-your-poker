@@ -646,14 +646,24 @@ anteAnimationTriggerId,
     
     // New round detected - start staggered card dealing
     // Use REF for detection (to prevent re-triggering) but STATE for render gating
+    // CRITICAL: Skip this logic during game_over - we want cards to stay visible for win animation
     const isNewRound = currentRound && currentRound !== lastDetectedRoundRef.current;
+    const isInGameOverStatus = gameStatus === 'game_over' || isGameOver;
     
     console.log('[MOBILE_COMMUNITY] Checking new round:', { 
       isNewRound, 
       currentRound, 
       lastDetectedRound: lastDetectedRoundRef.current,
-      approvedRoundForDisplay
+      approvedRoundForDisplay,
+      isInGameOverStatus
     });
+    
+    // During game_over, just update the ref but don't hide cards
+    if (isNewRound && isInGameOverStatus) {
+      console.log('[MOBILE_COMMUNITY] New round during game_over - updating ref but keeping cards visible');
+      lastDetectedRoundRef.current = currentRound;
+      return;
+    }
     
     if (isNewRound) {
       console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting reveal delay (cards hidden until approved)');
@@ -694,7 +704,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, gameStatus, isGameOver]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
