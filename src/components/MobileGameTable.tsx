@@ -342,10 +342,12 @@ anteAnimationTriggerId,
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
   
   // FIX: Keep pot hidden after Holm win animation until game resets
-  const [holmWinPotAnimationCompleted, setHolmWinPotAnimationCompleted] = useState(false);
+  // NEW APPROACH: Use a "pot hidden until next game" flag that's set when Holm win starts
+  const [holmWinPotHiddenUntilReset, setHolmWinPotHiddenUntilReset] = useState(false);
   
-  // FIX: Cache current player's legs to prevent disappearing during animation
-  const cachedCurrentPlayerLegsRef = useRef<number>(0);
+  // FIX: Cache current player's legs EAGERLY - capture before any state transitions
+  // This must be updated BEFORE game_over status, not during render
+  const [cachedCurrentPlayerLegs, setCachedCurrentPlayerLegs] = useState<number>(0);
   
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -425,14 +427,14 @@ anteAnimationTriggerId,
         // POT VISIBILITY CONDITIONS
         isWaitingPhase,
         holmWinPotTriggerId: holmWinPotTriggerId ? holmWinPotTriggerId.slice(-8) : null,
-        holmWinPotAnimationCompleted, // NEW: shows if pot should stay hidden after animation
+        holmWinPotHiddenUntilReset, // NEW: shows if pot should stay hidden after animation
         threeFiveSevenWinPhase,
-        potShouldBeVisible: !isWaitingPhase && !holmWinPotTriggerId && !holmWinPotAnimationCompleted &&
+        potShouldBeVisible: !isWaitingPhase && !holmWinPotTriggerId && !holmWinPotHiddenUntilReset &&
           !(threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay'),
         
         // LEGS VALUES  
         currentPlayer_legs_db: currentPlayerData?.legs,
-        cachedCurrentPlayerLegs: cachedCurrentPlayerLegsRef.current, // NEW: cached value for game_over
+        cachedCurrentPlayerLegs, // NEW: cached value for game_over
         showLegEarned,
         legEarnedPlayerPosition,
         isWinningLegAnimation,
@@ -456,8 +458,8 @@ anteAnimationTriggerId,
     };
   }, [
     pot, displayedPot, threeFiveSevenWinPotAmount, isWaitingPhase, holmWinPotTriggerId,
-    holmWinPotAnimationCompleted, threeFiveSevenWinPhase, players, currentUserId, showLegEarned, 
-    legEarnedPlayerPosition, isWinningLegAnimation, hasPending357WinForPot, gameStatus, roundStatus, gameType
+    holmWinPotHiddenUntilReset, threeFiveSevenWinPhase, players, currentUserId, showLegEarned, 
+    legEarnedPlayerPosition, isWinningLegAnimation, hasPending357WinForPot, gameStatus, roundStatus, gameType, cachedCurrentPlayerLegs
   ]);
   // ========== END DEBUG POLLING ==========
   
@@ -466,12 +468,22 @@ anteAnimationTriggerId,
   useEffect(() => {
     if (prevGameStatusRef.current === 'game_over' && gameStatus !== 'game_over') {
       // Game is starting fresh - reset all animation completion flags
-      setHolmWinPotAnimationCompleted(false);
-      cachedCurrentPlayerLegsRef.current = 0;
-      console.log('[RESET] Cleared holmWinPotAnimationCompleted and cachedCurrentPlayerLegs');
+      setHolmWinPotHiddenUntilReset(false);
+      setCachedCurrentPlayerLegs(0);
+      console.log('[RESET] Cleared holmWinPotHiddenUntilReset and cachedCurrentPlayerLegs');
     }
     prevGameStatusRef.current = gameStatus;
   }, [gameStatus]);
+  
+  // EAGER CACHING: Capture current player's legs BEFORE game_over clears them
+  // This must run whenever legs change, capturing the value before backend resets it
+  useEffect(() => {
+    const currentPlayerData = players.find(p => p.user_id === currentUserId);
+    if (currentPlayerData && currentPlayerData.legs > 0) {
+      console.log('[LEGS CACHE] Capturing legs:', currentPlayerData.legs, 'for player at position', currentPlayerData.position);
+      setCachedCurrentPlayerLegs(currentPlayerData.legs);
+    }
+  }, [players, currentUserId]);
   
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
@@ -1473,7 +1485,8 @@ anteAnimationTriggerId,
             containerRef={tableContainerRef}
             onAnimationComplete={() => {
               // FIX: Mark animation as completed to keep pot hidden
-              setHolmWinPotAnimationCompleted(true);
+              console.log('[HOLM WIN] Animation complete - setting holmWinPotHiddenUntilReset=true');
+              setHolmWinPotHiddenUntilReset(true);
               onHolmWinPotAnimationComplete?.();
             }}
           />
@@ -1628,35 +1641,45 @@ anteAnimationTriggerId,
         )}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
-        {/* Hide during: waiting phase, Holm win animation (active OR completed), or once pot-to-player animation starts */}
-        {/* FIX: Also hide after holmWinPotAnimationCompleted to prevent -$X flash when pot goes to 0 */}
-        {!isWaitingPhase && !holmWinPotTriggerId && !holmWinPotAnimationCompleted &&
-         !(threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay') && (
-          <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
-            gameType === 'holm-game' 
-              ? 'top-[35%] -translate-y-full' 
-              : 'top-1/2 -translate-y-1/2'
-          }`}>
-            <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
-              gameType === 'holm-game' ? 'px-5 py-1.5' : 'px-8 py-3'
-            }`}>
-              <span className={`text-poker-gold font-bold ${
-                gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
-              }`}>${formatChipValue(Math.round(
-                // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
-                gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
-                  ? threeFiveSevenWinPotAmount 
-                  : displayedPot
-              ))}</span>
-              <ValueChangeFlash 
-                value={pot}
-                position="top-right" 
-                disabled={isWaitingPhase}
-                manualTrigger={anteFlashTrigger}
-              />
+        {/* FIX: Use visibility:hidden instead of conditional rendering to prevent ValueChangeFlash remount */}
+        {(() => {
+          const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerId || holmWinPotHiddenUntilReset ||
+            threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay');
+          
+          return (
+            <div 
+              className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
+                gameType === 'holm-game' 
+                  ? 'top-[35%] -translate-y-full' 
+                  : 'top-1/2 -translate-y-1/2'
+              }`}
+              style={{ 
+                visibility: shouldHidePot ? 'hidden' : 'visible',
+                opacity: shouldHidePot ? 0 : 1,
+                pointerEvents: shouldHidePot ? 'none' : 'auto'
+              }}
+            >
+              <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
+                gameType === 'holm-game' ? 'px-5 py-1.5' : 'px-8 py-3'
+              }`}>
+                <span className={`text-poker-gold font-bold ${
+                  gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
+                }`}>${formatChipValue(Math.round(
+                  // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
+                  gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
+                    ? threeFiveSevenWinPotAmount 
+                    : displayedPot
+                ))}</span>
+                <ValueChangeFlash 
+                  value={pot}
+                  position="top-right" 
+                  disabled={shouldHidePot}
+                  manualTrigger={anteFlashTrigger}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
         {/* Use approvedCommunityCards (cached at approval time) to prevent showing new round cards during announcement */}
@@ -1862,17 +1885,25 @@ anteAnimationTriggerId,
       })()}
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
-        {/* FIX: Use cached legs value during game_over to prevent disappearing */}
+        {/* FIX: Use threeFiveSevenCachedLegPositions prop during game_over - it's pre-cached before backend resets */}
         {gameType !== 'holm-game' && currentPlayer && (() => {
-          // Cache legs when they're > 0 (before backend resets them)
-          if (currentPlayer.legs > 0) {
-            cachedCurrentPlayerLegsRef.current = currentPlayer.legs;
-          }
+          // Get cached legs from the prop if available and in game_over
+          const cachedLegData = threeFiveSevenCachedLegPositions?.find(
+            p => p.playerId === currentPlayer.id
+          );
           
           // Use cached value during game_over, otherwise use live value
-          const effectiveLegs = isInGameOverStatus && cachedCurrentPlayerLegsRef.current > 0 
-            ? cachedCurrentPlayerLegsRef.current 
-            : currentPlayer.legs;
+          const effectiveLegs = isInGameOverStatus && cachedLegData && cachedLegData.legCount > 0 
+            ? cachedLegData.legCount 
+            : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
+          
+          console.log('[LEGS RENDER] Current player legs:', {
+            dbLegs: currentPlayer.legs,
+            cachedLegData,
+            cachedCurrentPlayerLegs,
+            effectiveLegs,
+            isInGameOverStatus
+          });
           
           const isAnimatingCurrentPlayer = showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
           const displayLegs = isAnimatingCurrentPlayer ? effectiveLegs - 1 : effectiveLegs;
@@ -1889,23 +1920,29 @@ anteAnimationTriggerId,
             <div className="flex">
               {Array.from({ length: (() => {
                 // Same caching logic for the array length
-                const effectiveLegs = isInGameOverStatus && cachedCurrentPlayerLegsRef.current > 0 
-                  ? cachedCurrentPlayerLegsRef.current 
-                  : currentPlayer.legs;
+                const cachedLegData = threeFiveSevenCachedLegPositions?.find(
+                  p => p.playerId === currentPlayer.id
+                );
+                const effectiveLegs = isInGameOverStatus && cachedLegData && cachedLegData.legCount > 0 
+                  ? cachedLegData.legCount 
+                  : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
                 const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
                   ? effectiveLegs - 1 
                   : effectiveLegs;
                 return Math.min(displayCount, legsToWin);
               })() }).map((_, i) => {
-                const effectiveLegs = isInGameOverStatus && cachedCurrentPlayerLegsRef.current > 0 
-                  ? cachedCurrentPlayerLegsRef.current 
-                  : currentPlayer.legs;
+                const cachedLegData = threeFiveSevenCachedLegPositions?.find(
+                  p => p.playerId === currentPlayer.id
+                );
+                const effectiveLegs = isInGameOverStatus && cachedLegData && cachedLegData.legCount > 0 
+                  ? cachedLegData.legCount 
+                  : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
                 const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
                   ? effectiveLegs - 1 
                   : effectiveLegs;
                 return (
                 <div 
-                  key={i} 
+                  key={i}
                   className="w-7 h-7 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
                   style={{
                     marginLeft: i > 0 ? '-10px' : '0',
