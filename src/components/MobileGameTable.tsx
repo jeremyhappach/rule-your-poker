@@ -811,8 +811,15 @@ anteAnimationTriggerId,
   }, [threeFiveSevenWinPhase]);
   
   // 3-5-7 win animation sequence: triggered by parent when player wins final leg
+  // CRITICAL: Only start animation when gameStatus === 'game_over' to ensure component doesn't unmount mid-animation
   useEffect(() => {
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
+      return;
+    }
+    
+    // Don't start animation until we're in game_over status (component won't unmount)
+    if (gameStatus !== 'game_over') {
+      console.log('[357 WIN] Trigger received but waiting for game_over status, current:', gameStatus);
       return;
     }
     
@@ -825,7 +832,7 @@ anteAnimationTriggerId,
     console.log('[357 WIN] Starting win animation sequence, animationId:', animationId);
     console.log('[357 WIN] Using leg positions from prop:', threeFiveSevenCachedLegPositions);
     
-    // IMMEDIATELY clear trigger in parent to prevent remount re-trigger
+    // Clear trigger in parent after starting
     onThreeFiveSevenWinAnimationStarted?.();
     
     // Reset phase to idle first to clear any lingering state, then start sequence
@@ -847,7 +854,7 @@ anteAnimationTriggerId,
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
     }, 2600); // Slightly after leg earned animation completes
-  }, [threeFiveSevenWinTriggerId, threeFiveSevenCachedLegPositions, onThreeFiveSevenWinAnimationStarted]);
+  }, [threeFiveSevenWinTriggerId, threeFiveSevenCachedLegPositions, onThreeFiveSevenWinAnimationStarted, gameStatus]);
 
   // Handle legs-to-player animation complete -> start pot-to-player
   const handleLegsToPlayerComplete = useCallback(() => {
