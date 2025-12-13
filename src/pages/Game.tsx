@@ -2909,14 +2909,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     const resultMessage = game.last_round_result;
     
-    // Prevent duplicate processing
-    if (threeFiveSevenWinProcessedRef.current === resultMessage) return;
-    
     // Check for two patterns: "won a leg" (before transition) or "won the game" (after transition)
     const isLegWinMessage = resultMessage.includes('won a leg');
     const isGameWinMessage = resultMessage.includes('won the game');
     
     if (!isLegWinMessage && !isGameWinMessage) return;
+    
+    // Prevent duplicate processing - check if we already triggered for THIS game win sequence
+    if (threeFiveSevenWinProcessedRef.current === '357_WIN_TRIGGERED') {
+      console.log('[357 WIN] Already triggered, skipping duplicate detection');
+      return;
+    }
+    
+    // Also prevent re-trigger if we still have an active trigger
+    if (threeFiveSevenWinTriggerId) {
+      console.log('[357 WIN] Already have trigger, skipping duplicate detection');
+      return;
+    }
     
     // Parse winner from message - handle both formats
     const displayPart = resultMessage.split('|||')[0];
@@ -2946,7 +2955,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    threeFiveSevenWinProcessedRef.current = resultMessage;
+    // Mark as processed - use a special marker to prevent re-triggering on message change
+    threeFiveSevenWinProcessedRef.current = '357_WIN_TRIGGERED';
     
     // CACHE LEG POSITIONS NOW before backend resets them
     // For game win message, player.legs may already be 0, so use legsToWin for winner
@@ -2966,15 +2976,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
     const winnerCards = winnerCardsData?.cards || [];
     
-    // Use cached pot value since current pot may already be reset
-    const potAmount = cachedPotFor357WinRef.current || game.pot || 0;
+    // Extract pot from message if available (format: "$X pot")
+    // Or use cached/live values as fallback
+    let potAmount = 0;
+    if (isGameWinMessage) {
+      // Parse pot from message: "🏆 Player won the game with X legs! (+$Y: $Z pot + $W legs)"
+      const potMatch = displayPart.match(/\$(\d+)\s*pot/);
+      if (potMatch) {
+        potAmount = parseInt(potMatch[1], 10);
+      }
+    }
+    // Fallback to cached or live pot
+    if (potAmount === 0) {
+      // Try round.pot first (usually persists longer), then cached, then game.pot
+      const liveRound = game?.rounds?.find((r: any) => r.round_number === game.current_round);
+      potAmount = liveRound?.pot || cachedPotFor357WinRef.current || game.pot || 0;
+    }
+    
     console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'messageType:', isGameWinMessage ? 'game_win' : 'leg_win');
     
     setThreeFiveSevenWinPotAmount(potAmount);
     setThreeFiveSevenWinnerId(winnerPlayer.id);
     setThreeFiveSevenWinnerCards(winnerCards);
     setThreeFiveSevenWinTriggerId(`357-win-${Date.now()}`);
-  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, players, playerCards]);
+  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, players, playerCards, threeFiveSevenWinTriggerId]);
   
   // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
   useEffect(() => {

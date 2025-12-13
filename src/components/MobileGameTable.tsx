@@ -1014,9 +1014,8 @@ anteAnimationTriggerId,
     const hideLegsForWinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player';
     
     // During win animation sequence, use cached leg count to display legs
-    // Use cached values when: trigger exists with cached data OR phase is active
-    const hasPending357Win = threeFiveSevenWinTriggerId && threeFiveSevenCachedLegPositions.length > 0;
-    const isIn357WinAnimation = gameType !== 'holm-game' && (threeFiveSevenWinPhase !== 'idle' || hasPending357Win);
+    // Use cached values when: any animation phase is active (waiting, legs-to-player, pot-to-player, delay)
+    const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenCachedLegPositions.length > 0;
     const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
     const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
     
@@ -1533,8 +1532,8 @@ anteAnimationTriggerId,
               <span className={`text-poker-gold font-bold ${
                 gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
               }`}>${formatChipValue(Math.round(
-                // Use cached pot during 3-5-7 win animation sequence
-                (threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0) || threeFiveSevenWinPhase !== 'idle'
+                // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
+                gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
                   ? threeFiveSevenWinPotAmount 
                   : displayedPot
               ))}</span>
