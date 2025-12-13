@@ -1157,7 +1157,11 @@ anteAnimationTriggerId,
       )
     );
     
-    return <div key={player.id} className="flex flex-col items-center gap-0.5">
+    return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
+        {/* DEBUG: Show real-time database values */}
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-[100] bg-red-600 rounded px-1 py-0.5 text-[8px] font-mono text-white whitespace-nowrap">
+          L:{player.legs} $:{pot}
+        </div>
         {/* Name above for bottom positions */}
         {isBottomPosition && nameElement}
         {/* Hide chip stack during showdown to make room for bigger cards */}
@@ -1184,6 +1188,11 @@ anteAnimationTriggerId,
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }} />
+        
+        {/* DEBUG: Large pot value overlay */}
+        <div className="absolute top-1 right-1 z-[100] bg-blue-600 rounded px-2 py-1 text-sm font-mono text-white border-2 border-white">
+          DB POT: ${pot}
+        </div>
         
         {/* Game name on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
