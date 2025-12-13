@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 
 // Format number with thousands separators
@@ -22,6 +24,7 @@ interface GameSession {
   created_at: string;
   chips: number;
   handsPlayed: number;
+  real_money: boolean;
 }
 
 interface MyGameHistoryProps {
@@ -33,6 +36,7 @@ interface MyGameHistoryProps {
 export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps) => {
   const [sessions, setSessions] = useState<GameSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [includeFake, setIncludeFake] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -54,7 +58,8 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
           id,
           name,
           status,
-          created_at
+          created_at,
+          real_money
         )
       `)
       .eq('user_id', userId)
@@ -91,6 +96,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
           created_at: p.games.created_at,
           chips: p.chips,
           handsPlayed: actionCountMap.get(p.id) || 0,
+          real_money: p.games.real_money ?? false,
         });
       }
     });
@@ -101,6 +107,10 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
     setSessions(sortedSessions);
     setLoading(false);
   };
+
+  const filteredSessions = includeFake 
+    ? sessions 
+    : sessions.filter(s => s.real_money);
 
   const getStatusBadge = (status: string) => {
     const isActive = ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over'].includes(status);
@@ -123,15 +133,28 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
         <DialogHeader>
           <DialogTitle>My Game History</DialogTitle>
         </DialogHeader>
+
+        <div className="flex items-center space-x-2 pb-2 border-b border-border/50">
+          <Checkbox 
+            id="include-fake" 
+            checked={includeFake} 
+            onCheckedChange={(checked) => setIncludeFake(checked === true)}
+          />
+          <Label htmlFor="include-fake" className="text-sm text-muted-foreground cursor-pointer">
+            Include fake money games
+          </Label>
+        </div>
         
         {loading ? (
           <div className="text-center py-8 text-muted-foreground">Loading...</div>
-        ) : sessions.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">No games played yet</div>
+        ) : filteredSessions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {sessions.length === 0 ? 'No games played yet' : 'No real money games played yet'}
+          </div>
         ) : (
           <ScrollArea className="h-[400px] pr-2">
             <div className="space-y-1.5">
-              {sessions.map((session) => (
+              {filteredSessions.map((session) => (
                 <div 
                   key={session.id}
                   className="p-2 rounded-lg bg-muted/30 border border-border/50"
@@ -139,8 +162,10 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-sm font-medium truncate flex-1">
                       {session.name || `Game #${session.id.slice(0, 8)}`}
+                      {session.real_money && <span className="text-green-400 ml-1">$</span>}
                     </div>
                     <div className={`text-sm font-bold whitespace-nowrap ${session.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {session.real_money && <span className="text-green-400 mr-0.5">$</span>}
                       {session.chips >= 0 ? '+' : '-'}${formatWithCommas(session.chips)}
                     </div>
                   </div>

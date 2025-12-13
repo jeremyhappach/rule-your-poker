@@ -12,10 +12,12 @@ interface SessionResultsProps {
   onOpenChange: (open: boolean) => void;
   session: {
     id: string;
+    name?: string;
     created_at: string;
     session_ended_at: string;
     total_hands: number;
     host_username: string;
+    real_money?: boolean;
     players: Array<{
       username: string;
       chips: number;
@@ -30,7 +32,10 @@ export const SessionResults = ({ open, onOpenChange, session }: SessionResultsPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl">Session Results</DialogTitle>
+          <DialogTitle className="text-xl">
+            Session Results
+            {session.real_money && <span className="text-green-400 ml-1">$</span>}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-3">
@@ -69,6 +74,7 @@ export const SessionResults = ({ open, onOpenChange, session }: SessionResultsPr
                       </span>
                     </div>
                     <Badge variant={player.chips >= 0 ? 'default' : 'destructive'} className="text-xs">
+                      {session.real_money && <span className="text-green-400 mr-0.5">$</span>}
                       {player.chips >= 0 ? '+' : '-'}${formatWithCommas(player.chips)}
                     </Badge>
                   </div>
