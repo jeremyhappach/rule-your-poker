@@ -664,6 +664,38 @@ export const GameTable = ({
   const [sweepsPlayerName, setSweepsPlayerName] = useState('');
   const lastSweepsResultRef = useRef<string | null>(null);
   
+  // Track winning leg player for 3-5-7 card exposure (keep their cards visible until next game popup)
+  const [winningLegPlayerId, setWinningLegPlayerId] = useState<string | null>(null);
+  const playerLegsRef = useRef<Record<string, number>>({});
+  
+  // Detect when a player wins the final leg in 3-5-7 games - expose their cards
+  useEffect(() => {
+    if (gameType === 'holm-game') return;
+    
+    players.forEach(player => {
+      const prevLegs = playerLegsRef.current[player.id] ?? 0;
+      const currentLegs = player.legs;
+      
+      // Player won the final leg
+      if (currentLegs >= legsToWin && prevLegs < legsToWin) {
+        console.log('[GAMETABLE] 🏆 FINAL LEG WON - exposing cards for:', player.id);
+        setWinningLegPlayerId(player.id);
+      }
+      playerLegsRef.current[player.id] = currentLegs;
+    });
+  }, [players, gameType, legsToWin]);
+  
+  // Clear winning leg player when game status changes to game_selection or configuring (next game starting)
+  useEffect(() => {
+    if (roundStatus === undefined || roundStatus === 'pending' || !allDecisionsIn) {
+      // Game is resetting - clear the winning leg exposure
+      if (winningLegPlayerId) {
+        console.log('[GAMETABLE] Game resetting - clearing winning leg player exposure');
+        setWinningLegPlayerId(null);
+      }
+    }
+  }, [roundStatus, allDecisionsIn, winningLegPlayerId]);
+
   useLayoutEffect(() => {
     const updateWidth = () => setWindowWidth(window.innerWidth);
     updateWidth(); // Set initial value
@@ -1151,10 +1183,11 @@ export const GameTable = ({
                             isHidden={
                               // Show cards if: 
                               // 1. It's the current user, OR
-                              // 2. In Holm game, this player's cards have been exposed (tracked by ID)
+                              // 2. In Holm game, this player's cards have been exposed (tracked by ID), OR
+                              // 3. In 3-5-7 game, this player won the final leg (cards stay visible during animation)
                               !isCurrentUser && !(
-                                gameType === 'holm-game' && 
-                                isPlayerCardsExposed(player.id)
+                                (gameType === 'holm-game' && isPlayerCardsExposed(player.id)) ||
+                                (gameType !== 'holm-game' && winningLegPlayerId === player.id)
                               )
                             }
                           />

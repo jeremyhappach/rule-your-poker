@@ -291,6 +291,7 @@ anteAnimationTriggerId,
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
   const [legEarnedPlayerPosition, setLegEarnedPlayerPosition] = useState<number | null>(null);
   const [isWinningLegAnimation, setIsWinningLegAnimation] = useState(false);
+  const [winningLegPlayerId, setWinningLegPlayerId] = useState<string | null>(null); // Track player who won final leg for card exposure
   const playerLegsRef = useRef<Record<string, number>>({});
   
   // 357 Sweeps pot animation state
@@ -647,12 +648,30 @@ anteAnimationTriggerId,
         const playerName = player.profiles?.username || `Player ${player.position}`;
         setLegEarnedPlayerName(playerName);
         setLegEarnedPlayerPosition(player.position);
-        setIsWinningLegAnimation(currentLegs >= legsToWin); // Check if this is the winning leg
+        const isWinningLeg = currentLegs >= legsToWin;
+        setIsWinningLegAnimation(isWinningLeg);
         setShowLegEarned(true);
+        
+        // Track the winning leg player for card exposure
+        if (isWinningLeg) {
+          console.log('[MOBILE] 🏆 FINAL LEG WON - exposing cards for:', player.id);
+          setWinningLegPlayerId(player.id);
+        }
       }
       playerLegsRef.current[player.id] = currentLegs;
     });
-  }, [players, gameType]);
+  }, [players, gameType, legsToWin]);
+  
+  // Clear winning leg player when game status changes (next game starting)
+  useEffect(() => {
+    if (roundStatus === undefined || roundStatus === 'pending' || !allDecisionsIn) {
+      // Game is resetting - clear the winning leg exposure
+      if (winningLegPlayerId) {
+        console.log('[MOBILE] Game resetting - clearing winning leg player exposure');
+        setWinningLegPlayerId(null);
+      }
+    }
+  }, [roundStatus, allDecisionsIn, winningLegPlayerId]);
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
@@ -740,9 +759,11 @@ anteAnimationTriggerId,
     
     // Determine if we should show this player's actual cards
     // Either: player has exposed cards in cache, OR we're showing announcement for a stayed player
+    // OR: in 3-5-7, this player won the final leg (keep their cards visible during animation)
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
     const isInAnnouncementShowdown = isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
-    const isShowdown = gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown);
+    const is357WinningLegPlayer = gameType !== 'holm-game' && winningLegPlayerId === player.id && cards.length > 0;
+    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer;
     
     // During showdown/announcement, hide chip stack to make room for bigger cards
     const hideChipForShowdown = isShowdown;
