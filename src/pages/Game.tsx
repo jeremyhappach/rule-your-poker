@@ -3429,7 +3429,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               )}
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
-                <p className="text-muted-foreground">{gameName}</p>
+                <p className="text-muted-foreground">
+                  {gameName} - {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
+                  <span className={game.real_money ? 'text-green-500 font-semibold' : 'text-muted-foreground'}> ({game.real_money ? 'real' : 'fake'})</span>
+                </p>
                 <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
                 <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
               </div>
@@ -3532,7 +3535,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 />
               )}
             </div>
-            <span className="text-xs text-muted-foreground">{gameName}</span>
+            <span className="text-xs text-muted-foreground">
+              {gameName} - {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
+              <span className={game.real_money ? 'text-green-500 font-semibold' : ''}> ({game.real_money ? 'real' : 'fake'})</span>
+            </span>
           </div>
         )}
 
