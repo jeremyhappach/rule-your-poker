@@ -537,16 +537,17 @@ anteAnimationTriggerId,
   }, [winnerPlayerId, isShowingAnnouncement, currentPlayer?.id, currentPlayerCards, playerCards]);
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
-  // CRITICAL: Don't show highlights during card delay phase (new round starting)
+  // Calculate winning card highlights for announcement phase
+  // NOTE: Do NOT check isDelayingCommunityCards here - that's for new round startup delay,
+  // we still want highlights to persist during the post-win delay before next hand
   const winningCardHighlights = useMemo(() => {
     // Only highlight during announcement phase with winner determined
-    // AND not during the delay phase when new cards are being dealt
-    if (!isShowingAnnouncement || !winnerCards.length || !communityCards?.length || !winnerPlayerId || isDelayingCommunityCards) {
+    if (!isShowingAnnouncement || !winnerCards.length || !communityCards?.length || !winnerPlayerId) {
       return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [], hasHighlights: false };
     }
     const result = getWinningCardIndices(winnerCards, communityCards, false);
     return { ...result, hasHighlights: true };
-  }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId, isDelayingCommunityCards]);
+  }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId]);
 
   // Detect Chucky chopped animation
   useEffect(() => {
