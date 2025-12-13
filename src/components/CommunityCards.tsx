@@ -118,6 +118,29 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     return () => clearTimeouts();
   }, []);
   
+  // Debug pulse every 100ms to track card state
+  useEffect(() => {
+    const debugInterval = setInterval(() => {
+      console.log('[COMMUNITY_CARDS_PULSE]', {
+        timestamp: Date.now(),
+        cardsLength: cards.length,
+        cardsData: cards.map(c => `${c.rank}${c.suit}`),
+        revealed,
+        handId,
+        animatedHandId,
+        dealtCardsSize: dealtCards.size,
+        dealtCardsArray: Array.from(dealtCards),
+        flippedCardsSize: flippedCards.size,
+        flippedCardsArray: Array.from(flippedCards),
+        hasHighlights,
+        highlightedIndices,
+        kickerIndices,
+      });
+    }, 100);
+    
+    return () => clearInterval(debugInterval);
+  }, [cards, revealed, handId, animatedHandId, dealtCards, flippedCards, hasHighlights, highlightedIndices, kickerIndices]);
+  
   if (cards.length === 0) return null;
   
   // Don't return null during hand transitions - just render with current dealt cards state
