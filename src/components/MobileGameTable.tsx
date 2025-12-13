@@ -1232,7 +1232,9 @@ anteAnimationTriggerId,
     const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
     // Hide cards from original position when winner's cards are "tabled" above pot
     // Applies to both Holm winners and 3-5-7 winners during win animation
-    const is357WinWinner = threeFiveSevenWinTriggerId && threeFiveSevenWinnerId === player.id;
+    // For 3-5-7: only table AFTER leg award animation completes (not during 'waiting' phase)
+    const is357WinWinner = threeFiveSevenWinnerId === player.id && 
+      threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting';
     const shouldHideForTabling = isHolmWinWinner || is357WinWinner;
     const cardsElement = isShowdown && !shouldHideForTabling ? (
       <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
@@ -1611,7 +1613,9 @@ anteAnimationTriggerId,
         )}
         
         {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation (not on winner's own client) */}
-        {gameType !== 'holm-game' && threeFiveSevenWinTriggerId && threeFiveSevenWinnerId && 
+        {/* Only show AFTER leg award animation completes (not during 'waiting' phase) */}
+        {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
+         threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting' &&
          threeFiveSevenWinnerCards.length > 0 && threeFiveSevenWinnerId !== currentPlayer?.id && (
           <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
             <div className="flex gap-1">
