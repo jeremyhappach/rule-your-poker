@@ -619,6 +619,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                   <div className="flex justify-between items-center">
                     <div className="flex flex-wrap gap-4 text-sm">
                       <div>
+                        <span className="text-amber-400/60">Name:</span>{' '}
+                        <span className="font-medium text-amber-100">
+                          {game.name || `Game #${game.id.slice(0, 8)}`}
+                          {game.real_money && <span className="text-green-400 ml-1">$</span>}
+                        </span>
+                      </div>
+                      <div>
                         <span className="text-amber-400/60">Host:</span>{' '}
                         <span className="font-medium text-amber-100">{game.host_username}</span>
                       </div>
