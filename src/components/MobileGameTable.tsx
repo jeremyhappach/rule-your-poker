@@ -334,6 +334,9 @@ anteAnimationTriggerId,
   const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
   const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
+  const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
+  const threeFiveSevenWinPhaseRef = useRef<'idle' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
+  const cachedLegPositionsRef = useRef<{ playerId: string; position: number; legCount: number }[]>([]); // Cache leg positions before backend resets them
   
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -799,6 +802,11 @@ anteAnimationTriggerId,
     }
   }, [roundStatus, allDecisionsIn, winningLegPlayerId]);
 
+  // Keep phase ref in sync
+  useEffect(() => {
+    threeFiveSevenWinPhaseRef.current = threeFiveSevenWinPhase;
+  }, [threeFiveSevenWinPhase]);
+  
   // 3-5-7 win animation sequence: triggered by parent when player wins final leg
   useEffect(() => {
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
@@ -806,53 +814,83 @@ anteAnimationTriggerId,
     }
     
     lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
-    console.log('[357 WIN] Starting win animation sequence');
+    
+    // Generate unique animation ID to track this specific sequence
+    const animationId = `anim-${Date.now()}`;
+    currentAnimationIdRef.current = animationId;
+    
+    console.log('[357 WIN] Starting win animation sequence, animationId:', animationId);
+    
+    // CACHE the current leg positions IMMEDIATELY before backend resets them
+    const legPositions = players
+      .filter(p => p.legs > 0)
+      .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }));
+    cachedLegPositionsRef.current = legPositions;
+    console.log('[357 WIN] Cached leg positions:', legPositions);
     
     // Reset phase to idle first to clear any lingering state, then start sequence
     setThreeFiveSevenWinPhase('idle');
+    threeFiveSevenWinPhaseRef.current = 'idle';
     setLegsToPlayerTriggerId(null);
     setPotToPlayerTriggerId357(null);
     
     // Wait for leg earned animation to complete (it runs for 2.5s for winning leg)
     // Then start legs-to-player animation
     setTimeout(() => {
-      console.log('[357 WIN] Phase 1: legs-to-player');
+      // Only proceed if this is still the current animation
+      if (currentAnimationIdRef.current !== animationId) {
+        console.log('[357 WIN] Stale animation, skipping Phase 1');
+        return;
+      }
+      console.log('[357 WIN] Phase 1: legs-to-player, using cached positions:', cachedLegPositionsRef.current);
       setThreeFiveSevenWinPhase('legs-to-player');
+      threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
     }, 2600); // Slightly after leg earned animation completes
-  }, [threeFiveSevenWinTriggerId]);
+  }, [threeFiveSevenWinTriggerId, players]);
 
   // Handle legs-to-player animation complete -> start pot-to-player
   const handleLegsToPlayerComplete = useCallback(() => {
-    // Only proceed if we're actually in legs-to-player phase
-    if (threeFiveSevenWinPhase !== 'legs-to-player') {
-      console.log('[357 WIN] handleLegsToPlayerComplete called but not in legs-to-player phase, ignoring');
+    // Use ref to get current phase (avoids stale closure)
+    if (threeFiveSevenWinPhaseRef.current !== 'legs-to-player') {
+      console.log('[357 WIN] handleLegsToPlayerComplete called but not in legs-to-player phase, ignoring. Current phase:', threeFiveSevenWinPhaseRef.current);
       return;
     }
     console.log('[357 WIN] Phase 2: pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
+    threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
-  }, [threeFiveSevenWinPhase]);
+  }, []);
 
   // Handle pot-to-player animation complete -> 3 second delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
-    // Only proceed if we're actually in pot-to-player phase
-    if (threeFiveSevenWinPhase !== 'pot-to-player') {
-      console.log('[357 WIN] handlePotToPlayerComplete357 called but not in pot-to-player phase, ignoring');
+    // Use ref to get current phase (avoids stale closure)
+    if (threeFiveSevenWinPhaseRef.current !== 'pot-to-player') {
+      console.log('[357 WIN] handlePotToPlayerComplete357 called but not in pot-to-player phase, ignoring. Current phase:', threeFiveSevenWinPhaseRef.current);
       return;
     }
     console.log('[357 WIN] Phase 3: delay before next game');
     setThreeFiveSevenWinPhase('delay');
+    threeFiveSevenWinPhaseRef.current = 'delay';
+    
+    // Capture current animation ID
+    const animationId = currentAnimationIdRef.current;
     
     // 3 second delay before proceeding to next game
     setTimeout(() => {
+      // Only complete if this is still the current animation
+      if (currentAnimationIdRef.current !== animationId) {
+        console.log('[357 WIN] Stale animation, skipping completion');
+        return;
+      }
       console.log('[357 WIN] Animation sequence complete, proceeding to next game');
       setThreeFiveSevenWinPhase('idle');
+      threeFiveSevenWinPhaseRef.current = 'idle';
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
       onThreeFiveSevenWinAnimationComplete?.();
     }, 3000);
-  }, [threeFiveSevenWinPhase, onThreeFiveSevenWinAnimationComplete]);
+  }, [onThreeFiveSevenWinAnimationComplete]);
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
@@ -961,9 +999,16 @@ anteAnimationTriggerId,
     // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
     // During leg animation, show (legs - 1) so only the NEW leg is hidden
     // During legs-to-player phase (final win), hide ALL leg indicators since they're animating to winner
+    // During 3-5-7 win animation (before legs-to-player), use CACHED leg count since backend may have reset them
     const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
     const hideLegsForWinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player';
-    const displayLegs = hideLegsForWinAnimation ? 0 : (isLegAnimatingForThisPlayer ? playerLegs - 1 : playerLegs);
+    
+    // During win animation phases (before legs-to-player), use cached leg count to display legs
+    const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
+    const cachedLegsForThisPlayer = cachedLegPositionsRef.current.find(p => p.playerId === player.id)?.legCount || 0;
+    const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
+    
+    const displayLegs = hideLegsForWinAnimation ? 0 : (isLegAnimatingForThisPlayer ? effectivePlayerLegs - 1 : effectivePlayerLegs);
     const legIndicator = displayLegs > 0 && (
       <div className="absolute z-30" style={{
         // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
@@ -1397,9 +1442,7 @@ anteAnimationTriggerId,
         {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player' && threeFiveSevenWinnerId && (
           <LegsToPlayerAnimation
             triggerId={legsToPlayerTriggerId}
-            legPositions={players
-              .filter(p => p.legs > 0)
-              .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }))}
+            legPositions={cachedLegPositionsRef.current} // Use cached positions, not live data
             winnerPosition={players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1}
             currentPlayerPosition={currentPlayer?.position ?? null}
             getClockwiseDistance={getClockwiseDistance}
