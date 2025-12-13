@@ -1155,10 +1155,7 @@ async function handleChuckyShowdown(
       })
       .eq('id', gameId);
     
-    // Reduced delay - celebration component will handle the dramatic pause
-    console.log('[HOLM SHOWDOWN] Pausing 2 seconds before triggering game_over...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    // No delay here - the pot-to-player animation provides time for players to see results
     // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
     // Dealer cannot pass to a bot or a sitting_out player
     const { data: eligibleDealers } = await supabase

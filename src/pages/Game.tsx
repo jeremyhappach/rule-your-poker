@@ -2871,17 +2871,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
-  // Handle Holm win pot animation complete - proceed to countdown
+  // Handle Holm win pot animation complete - proceed directly to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
-    console.log('[HOLM WIN POT] Animation complete, setting game_over_at and proceeding');
-    if (gameId) {
-      await supabase
-        .from('games')
-        .update({ game_over_at: new Date().toISOString() })
-        .eq('id', gameId);
-      // Countdown will now show and auto-proceed
-    }
-  }, [gameId]);
+    console.log('[HOLM WIN POT] Animation complete, proceeding directly to next game');
+    // Skip the countdown entirely - animation provided enough time to see results
+    await handleGameOverComplete();
+  }, [handleGameOverComplete]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
