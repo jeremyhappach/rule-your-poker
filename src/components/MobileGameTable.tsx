@@ -848,7 +848,9 @@ anteAnimationTriggerId,
     const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer || is357Round3Showdown;
     
     // During showdown/announcement, hide chip stack to make room for bigger cards
-    const hideChipForShowdown = isShowdown;
+    // EXCEPTION: During Holm win animation, keep winner's chipstack visible (cards are "tabled" below Chucky)
+    const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
+    const hideChipForShowdown = isShowdown && !isHolmWinWinner;
     
     const isDealer = dealerPosition === player.position;
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
@@ -1311,8 +1313,9 @@ anteAnimationTriggerId,
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
         {/* Use approvedCommunityCards (cached at approval time) to prevent showing new round cards during announcement */}
+        {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
         {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
-         (currentRound === approvedRoundForDisplay) && (
+         (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={approvedCommunityCards} 
@@ -1358,6 +1361,47 @@ anteAnimationTriggerId,
                 </div>;
         })}
           </div>}
+        
+        {/* Winner's Tabled Cards - shown below Chucky when player beats Chucky */}
+        {/* This displays during the pot-to-winner animation so cards are visible */}
+        {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && (
+          <div className="absolute top-[76%] left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center gap-1">
+            <span className="text-green-400 text-xs font-bold">🏆 WINNER</span>
+            <div className="flex gap-1">
+              {winnerCards.map((card, index) => {
+                const isFourColor = deckColorMode === 'four_color';
+                const fourColorConfig = getFourColorSuit(card.suit);
+                const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
+                const twoColorTextStyle = !isFourColor 
+                  ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
+                  : {};
+                const isHighlighted = winningCardHighlights.playerIndices.includes(index);
+                const isKicker = winningCardHighlights.kickerPlayerIndices.includes(index);
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 flex flex-col items-center justify-center shadow-lg ${
+                      isHighlighted ? 'border-yellow-400 ring-2 ring-yellow-400/50' : 
+                      isKicker ? 'border-blue-400 ring-1 ring-blue-400/30' : 
+                      'border-green-500'
+                    }`}
+                    style={{ backgroundColor: cardBg, ...twoColorTextStyle }}
+                  >
+                    <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                      {card.rank}
+                    </span>
+                    {!isFourColor && (
+                      <span className="text-2xl leading-none -mt-0.5">
+                        {card.suit}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {/* Players arranged clockwise around table from current player's perspective */}
         {/* getPlayerAtSlot(n) returns the player who is n+1 seats clockwise from current player */}
