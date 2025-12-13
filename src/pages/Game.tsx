@@ -97,6 +97,7 @@ interface GameData {
   chucky_cards?: number;
   is_paused?: boolean;
   paused_time_remaining?: number | null;
+  real_money?: boolean;
   rounds?: Round[];
 }
 
@@ -3965,6 +3966,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isChatSending={isChatSending}
               getPositionForUserId={getPositionForUserId}
               onLeaveGameNow={handleLeaveGameNow}
+              realMoney={game.real_money || false}
             />
           ) : (
             <GameTable
@@ -4008,6 +4010,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onSendChat={sendChatMessage}
               isChatSending={isChatSending}
               getPositionForUserId={getPositionForUserId}
+              realMoney={game.real_money || false}
             />
           );
         })()}
