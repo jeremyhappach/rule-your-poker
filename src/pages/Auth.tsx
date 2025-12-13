@@ -190,7 +190,7 @@ const Auth = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                      className="bg-slate-800/50 border-amber-700/30 text-white placeholder:text-slate-400 focus:border-amber-500 focus:ring-amber-500/20"
                     />
                   </div>
                   <div className="space-y-2">
@@ -202,7 +202,7 @@ const Auth = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                      className="bg-slate-800/50 border-amber-700/30 text-white placeholder:text-slate-400 focus:border-amber-500 focus:ring-amber-500/20"
                     />
                   </div>
                   <Button 
@@ -225,7 +225,7 @@ const Auth = () => {
                       placeholder="PokerPro123"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                      className="bg-slate-800/50 border-amber-700/30 text-white placeholder:text-slate-400 focus:border-amber-500 focus:ring-amber-500/20"
                     />
                   </div>
                   <div className="space-y-2">
@@ -237,7 +237,7 @@ const Auth = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                      className="bg-slate-800/50 border-amber-700/30 text-white placeholder:text-slate-400 focus:border-amber-500 focus:ring-amber-500/20"
                     />
                   </div>
                   <div className="space-y-2">
@@ -249,7 +249,7 @@ const Auth = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                      className="bg-slate-800/50 border-amber-700/30 text-white placeholder:text-slate-400 focus:border-amber-500 focus:ring-amber-500/20"
                     />
                   </div>
                   <Button 
