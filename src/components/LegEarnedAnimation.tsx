@@ -83,10 +83,9 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinning
         
         {/* Sparkles during flight - more for winning leg */}
         <div className="absolute -top-1 -right-1 text-sm animate-ping">✨</div>
-        {isWinningLeg && (
+        {isWinningLeg && !suppressWinnerOverlay && (
           <>
             <div className="absolute -top-2 -left-1 text-lg animate-ping" style={{ animationDelay: '0.1s' }}>⭐</div>
-            <div className="absolute -bottom-1 -right-2 text-lg animate-ping" style={{ animationDelay: '0.2s' }}>🏆</div>
             <div className="absolute top-0 left-0 text-sm animate-ping" style={{ animationDelay: '0.3s' }}>✨</div>
           </>
         )}
