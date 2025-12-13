@@ -901,6 +901,49 @@ anteAnimationTriggerId,
     }, 3000);
   }, [onThreeFiveSevenWinAnimationComplete]);
 
+  // DEBUG: 100ms visibility logger for all animation components
+  useEffect(() => {
+    const debugInterval = setInterval(() => {
+      console.log('[DEBUG 100ms] Component Visibility:', {
+        gameStatus,
+        gameType,
+        currentRound,
+        pot,
+        displayedPot,
+        // 3-5-7 Win animation states
+        threeFiveSevenWinTriggerId: threeFiveSevenWinTriggerId || null,
+        threeFiveSevenWinPhase,
+        threeFiveSevenWinPotAmount,
+        threeFiveSevenWinnerId: threeFiveSevenWinnerId || null,
+        threeFiveSevenCachedLegPositions: threeFiveSevenCachedLegPositions.length,
+        hasPending357WinForPot,
+        legsToPlayerTriggerId: legsToPlayerTriggerId || null,
+        potToPlayerTriggerId357: potToPlayerTriggerId357 || null,
+        // Other animations
+        showSweepsPot,
+        showLegEarned,
+        isWinningLegAnimation,
+        showChopped,
+        showBucksOnYou,
+        // Game states
+        isGameOver,
+        awaitingNextRound,
+        lastRoundResult: lastRoundResult?.substring(0, 30) || null,
+        // Pot box visibility logic
+        isPotBoxHidden: threeFiveSevenWinPhase !== 'idle',
+      });
+    }, 100);
+
+    return () => clearInterval(debugInterval);
+  }, [
+    gameStatus, gameType, currentRound, pot, displayedPot,
+    threeFiveSevenWinTriggerId, threeFiveSevenWinPhase, threeFiveSevenWinPotAmount,
+    threeFiveSevenWinnerId, threeFiveSevenCachedLegPositions, hasPending357WinForPot,
+    legsToPlayerTriggerId, potToPlayerTriggerId357,
+    showSweepsPot, showLegEarned, isWinningLegAnimation, showChopped, showBucksOnYou,
+    isGameOver, awaitingNextRound, lastRoundResult
+  ]);
+
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
   // Slot 0: 1 seat clockwise (bottom-left in visual layout)
