@@ -644,24 +644,6 @@ anteAnimationTriggerId,
       return;
     }
     
-    // CRITICAL: During game_over, ALWAYS keep community cards visible for win animation
-    // Force them visible and skip all hiding/delay logic
-    const isInGameOverStatus = gameStatus === 'game_over' || isGameOver;
-    if (isInGameOverStatus) {
-      console.log('[MOBILE_COMMUNITY] Game over status - forcing cards visible');
-      setShowCommunityCards(true);
-      setIsDelayingCommunityCards(false);
-      // Update ref to current round to prevent retriggering later
-      if (currentRound && lastDetectedRoundRef.current !== currentRound) {
-        lastDetectedRoundRef.current = currentRound;
-      }
-      if (communityCardsDelayRef.current) {
-        clearTimeout(communityCardsDelayRef.current);
-        communityCardsDelayRef.current = null;
-      }
-      return;
-    }
-    
     // New round detected - start staggered card dealing
     // Use REF for detection (to prevent re-triggering) but STATE for render gating
     const isNewRound = currentRound && currentRound !== lastDetectedRoundRef.current;
@@ -712,7 +694,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, gameStatus, isGameOver]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
