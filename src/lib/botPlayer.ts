@@ -340,10 +340,11 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 export async function makeBotAnteDecisions(gameId: string) {
   console.log('[BOT ANTE] Making ante decisions for bots in game:', gameId);
   
-  // Get bot players who haven't made ante decision yet
+  // Get bot players who haven't made ante decision yet AND are not sitting out
+  // CRITICAL: Respect sitting_out status - don't force bots back into the game if they're set to sit out
   const { data: botsToAnte } = await supabase
     .from('players')
-    .select('id')
+    .select('id, sitting_out')
     .eq('game_id', gameId)
     .eq('is_bot', true)
     .is('ante_decision', null);
@@ -353,18 +354,25 @@ export async function makeBotAnteDecisions(gameId: string) {
     return;
   }
 
-  console.log('[BOT ANTE] Bots to ante:', botsToAnte.length);
+  console.log('[BOT ANTE] Bots to evaluate:', botsToAnte.length);
 
-  // Bots always ante up
+  // Only bots that are NOT sitting out will ante up
+  // Bots that are sitting_out should stay sitting out (don't override with sitting_out: false)
   for (const bot of botsToAnte) {
-    await supabase
-      .from('players')
-      .update({
-        ante_decision: 'ante_up',
-        sitting_out: false
-      })
-      .eq('id', bot.id);
+    if (bot.sitting_out) {
+      console.log('[BOT ANTE] Bot', bot.id, 'is sitting out, skipping ante');
+      await supabase
+        .from('players')
+        .update({ ante_decision: 'sit_out' })
+        .eq('id', bot.id);
+    } else {
+      console.log('[BOT ANTE] Bot', bot.id, 'anting up');
+      await supabase
+        .from('players')
+        .update({ ante_decision: 'ante_up' })
+        .eq('id', bot.id);
+    }
   }
 
-  console.log('[BOT ANTE] All bots anted up');
+  console.log('[BOT ANTE] All bot ante decisions made');
 }
