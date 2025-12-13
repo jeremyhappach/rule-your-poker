@@ -98,6 +98,7 @@ interface GameData {
   is_paused?: boolean;
   paused_time_remaining?: number | null;
   real_money?: boolean;
+  rabbit_hunt?: boolean;
   rounds?: Round[];
 }
 
@@ -170,6 +171,7 @@ const Game = () => {
     pot_max_enabled: boolean;
     pot_max_value: number;
     chucky_cards: number;
+    rabbit_hunt: boolean;
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   
@@ -2709,7 +2711,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         pussy_tax_value: game.pussy_tax_value || 1,
         pot_max_enabled: game.pot_max_enabled ?? true,
         pot_max_value: game.pot_max_value || 10,
-        chucky_cards: game.chucky_cards || 4
+        chucky_cards: game.chucky_cards || 4,
+        rabbit_hunt: game.rabbit_hunt ?? false
       };
       
       console.log('[GAME OVER] Capturing game config:', gameConfig);

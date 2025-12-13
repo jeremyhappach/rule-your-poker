@@ -20,6 +20,7 @@ interface PreviousGameConfig {
   pot_max_enabled: boolean;
   pot_max_value: number;
   chucky_cards: number;
+  rabbit_hunt: boolean;
 }
 
 interface SessionGameConfigs {
@@ -49,6 +50,7 @@ interface GameDefaults {
   pot_max_enabled: boolean;
   pot_max_value: number;
   chucky_cards: number;
+  rabbit_hunt: boolean;
 }
 
 export const DealerGameSetup = ({
@@ -78,6 +80,7 @@ export const DealerGameSetup = ({
   const [potMaxEnabled, setPotMaxEnabled] = useState(true);
   const [potMaxValue, setPotMaxValue] = useState("10");
   const [chuckyCards, setChuckyCards] = useState("4");
+  const [rabbitHunt, setRabbitHunt] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   
   // Cache defaults for both game types
@@ -110,6 +113,7 @@ export const DealerGameSetup = ({
         setPotMaxEnabled(previousGameConfig.pot_max_enabled);
         setPotMaxValue(String(previousGameConfig.pot_max_value));
         setChuckyCards(String(previousGameConfig.chucky_cards));
+        setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
         setLoadingDefaults(false);
         return;
       }
@@ -142,6 +146,7 @@ export const DealerGameSetup = ({
     setPotMaxEnabled(defaults.pot_max_enabled);
     setPotMaxValue(String(defaults.pot_max_value));
     setChuckyCards(String(defaults.chucky_cards));
+    setRabbitHunt(defaults.rabbit_hunt ?? false);
   };
 
   // Update config when tab changes - PRIORITY: session config > global defaults
@@ -163,6 +168,7 @@ export const DealerGameSetup = ({
       setPotMaxEnabled(sessionConfig.pot_max_enabled);
       setPotMaxValue(String(sessionConfig.pot_max_value));
       setChuckyCards(String(sessionConfig.chucky_cards));
+      setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
       return;
     }
     
@@ -334,6 +340,7 @@ export const DealerGameSetup = ({
 
     if (isHolmGame) {
       updateData.chucky_cards = parsedChucky;
+      updateData.rabbit_hunt = rabbitHunt;
     }
 
     const { error } = await supabase
@@ -513,6 +520,14 @@ export const DealerGameSetup = ({
                     />
                   )}
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-poker-gold/20">
+                <div className="space-y-0.5">
+                  <Label className="text-amber-100 text-sm">Rabbit Hunt</Label>
+                  <p className="text-xs text-amber-200/60">Show hidden cards when everyone folds</p>
+                </div>
+                <Switch checked={rabbitHunt} onCheckedChange={setRabbitHunt} />
               </div>
             </TabsContent>
 
