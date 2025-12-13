@@ -7,6 +7,7 @@ interface PotToPlayerAnimationProps {
   currentPlayerPosition: number | null;
   getClockwiseDistance: (position: number) => number;
   containerRef: React.RefObject<HTMLDivElement>;
+  gameType?: string | null; // For position adjustment
   onAnimationStart?: () => void;
   onAnimationEnd?: () => void;
 }
@@ -18,6 +19,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   currentPlayerPosition,
   getClockwiseDistance,
   containerRef,
+  gameType,
   onAnimationStart,
   onAnimationEnd,
 }) => {
@@ -25,11 +27,13 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const lockedAmountRef = useRef<number>(amount);
   const lastTriggerIdRef = useRef<string | null>(null);
 
-  // Pot center position (matches AnteUpAnimation pot target)
+  // Pot center position - different for Holm vs 3-5-7
   const getPotCenter = (rect: DOMRect): { x: number; y: number } => {
+    // 3-5-7: pot is centered vertically (50%), Holm: pot is higher (38%)
+    const yPercent = gameType === 'holm-game' ? 0.38 : 0.5;
     return {
       x: rect.width * 0.5,
-      y: rect.height * 0.38, // Pot is around 38% from top
+      y: rect.height * yPercent,
     };
   };
 
