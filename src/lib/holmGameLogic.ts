@@ -634,14 +634,18 @@ export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] Community cards:', communityCards.map(c => `${c.rank}${c.suit}`).join(' '));
 
   // Get all players and their decisions
+  // CRITICAL: Only fetch players who are ACTIVE AND NOT SITTING OUT
+  // This ensures we don't count sitting-out bots or observers in our stayed/folded calculations
   const { data: players } = await supabase
     .from('players')
     .select('*, profiles(username)')
     .eq('game_id', gameId)
+    .eq('status', 'active')
+    .eq('sitting_out', false)
     .order('position');
 
-  if (!players) {
-    console.log('[HOLM END] ERROR: No players found');
+  if (!players || players.length === 0) {
+    console.log('[HOLM END] ERROR: No active, non-sitting-out players found');
     return;
   }
 
