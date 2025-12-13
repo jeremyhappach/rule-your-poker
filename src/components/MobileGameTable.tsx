@@ -348,6 +348,10 @@ anteAnimationTriggerId,
   // FIX: Same for 357 - keep pot hidden after pot-to-player animation until game resets
   const [threeFiveSevenPotHiddenUntilReset, setThreeFiveSevenPotHiddenUntilReset] = useState(false);
   
+  // Flash triggers for winner's chipstack when receiving legs/pot
+  const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
+  const [winnerPotFlashTrigger, setWinnerPotFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
+  
   // FIX: Cache current player's legs EAGERLY - capture before any state transitions
   // This must be updated BEFORE game_over status, not during render
   const [cachedCurrentPlayerLegs, setCachedCurrentPlayerLegs] = useState<number>(0);
@@ -964,13 +968,24 @@ anteAnimationTriggerId,
       console.log('[357 WIN] handleLegsToPlayerComplete called but not in legs-to-player phase, ignoring. Current phase:', threeFiveSevenWinPhaseRef.current);
       return;
     }
+    
+    // Trigger "+XL" flash on winner's chipstack
+    const totalLegs = threeFiveSevenCachedLegPositions.reduce((sum, p) => sum + p.legCount, 0);
+    if (threeFiveSevenWinnerId && totalLegs > 0) {
+      setWinnerLegsFlashTrigger({
+        id: `legs-flash-${Date.now()}`,
+        amount: totalLegs,
+        playerId: threeFiveSevenWinnerId
+      });
+    }
+    
     console.log('[357 WIN] Phase 2: pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
     setThreeFiveSevenPotHiddenUntilReset(true);
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
-  }, []);
+  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId]);
 
   // Handle pot-to-player animation complete -> 3 second delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
@@ -979,6 +994,16 @@ anteAnimationTriggerId,
       console.log('[357 WIN] handlePotToPlayerComplete357 called but not in pot-to-player phase, ignoring. Current phase:', threeFiveSevenWinPhaseRef.current);
       return;
     }
+    
+    // Trigger "+$X" flash on winner's chipstack
+    if (threeFiveSevenWinnerId && threeFiveSevenWinPotAmount > 0) {
+      setWinnerPotFlashTrigger({
+        id: `pot-flash-${Date.now()}`,
+        amount: threeFiveSevenWinPotAmount,
+        playerId: threeFiveSevenWinnerId
+      });
+    }
+    
     console.log('[357 WIN] Phase 3: delay before next game');
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
@@ -1000,7 +1025,7 @@ anteAnimationTriggerId,
       setPotToPlayerTriggerId357(null);
       onThreeFiveSevenWinAnimationComplete?.();
     }, 3000);
-  }, [onThreeFiveSevenWinAnimationComplete]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount]);
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
@@ -1216,6 +1241,20 @@ anteAnimationTriggerId,
             <span className={`text-sm font-bold leading-none ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
               ${Math.round(displayedChips[player.id] ?? player.chips)}
             </span>
+            {/* Flash for legs received */}
+            <ValueChangeFlash 
+              value={0}
+              prefix="+L"
+              position="top-right"
+              manualTrigger={winnerLegsFlashTrigger?.playerId === player.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+            />
+            {/* Flash for pot received */}
+            <ValueChangeFlash 
+              value={0}
+              prefix="+$"
+              position="top-left"
+              manualTrigger={winnerPotFlashTrigger?.playerId === player.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+            />
           </div>
         </div>
       </div>;
@@ -2224,9 +2263,25 @@ anteAnimationTriggerId,
                   {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
                 {/* Chip stack - prioritize locked ref > displayedChips state > actual chips */}
-                <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                  ${Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips).toLocaleString()}
-                </span>
+                <div className="relative">
+                  <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                    ${Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips).toLocaleString()}
+                  </span>
+                  {/* Flash for legs received */}
+                  <ValueChangeFlash 
+                    value={0}
+                    prefix="+L"
+                    position="top-right"
+                    manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+                  />
+                  {/* Flash for pot received */}
+                  <ValueChangeFlash 
+                    value={0}
+                    prefix="+$"
+                    position="top-left"
+                    manualTrigger={winnerPotFlashTrigger?.playerId === currentPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+                  />
+                </div>
                 {/* Hand evaluation for Holm only when Chucky is active */}
                 {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
                     {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
