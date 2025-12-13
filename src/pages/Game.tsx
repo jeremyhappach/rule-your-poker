@@ -3669,6 +3669,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isChatSending={isChatSending}
                     getPositionForUserId={getPositionForUserId}
                     onLeaveGameNow={handleLeaveGameNow}
+                    holmWinPotTriggerId={holmWinPotTriggerId}
+                    holmWinPotAmount={holmWinPotAmount}
+                    holmWinWinnerPosition={holmWinWinnerPosition}
+                    onHolmWinPotAnimationComplete={handleHolmWinPotAnimationComplete}
                   />
                 ) : (
                   <>
