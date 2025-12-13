@@ -96,6 +96,7 @@ interface GameTableProps {
   onPlayerClick?: (player: Player) => void; // Host clicks player to control them
   onLeaveGameNow?: () => void; // Observer leave game
   isWaitingPhase?: boolean; // Hide pot display during waiting phase
+  realMoney?: boolean; // Real money indicator
 }
 
 export const GameTable = ({
@@ -141,6 +142,7 @@ export const GameTable = ({
   onPlayerClick,
   onLeaveGameNow,
   isWaitingPhase = false,
+  realMoney = false,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -791,6 +793,14 @@ export const GameTable = ({
         <div className="absolute inset-0 rounded-[50%] shadow-inner" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }} />
+        
+        {/* Game name on felt */}
+        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
+          <span className="text-white/30 font-bold text-sm sm:text-base md:text-lg uppercase tracking-wider">
+            {gameType === 'holm-game' ? 'Holm' : '3-5-7'} {realMoney ? '(real)' : '(fake)'}
+          </span>
+        </div>
+        
         <div className="relative h-full">
           {/* Chopped Animation - when Chucky beats you */}
           <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />

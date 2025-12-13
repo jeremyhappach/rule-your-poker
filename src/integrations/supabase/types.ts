@@ -72,6 +72,7 @@ export type Database = {
           pot_max_value: number
           pussy_tax_enabled: boolean
           pussy_tax_value: number
+          real_money: boolean
           updated_at: string
         }
         Insert: {
@@ -92,6 +93,7 @@ export type Database = {
           pot_max_value?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          real_money?: boolean
           updated_at?: string
         }
         Update: {
@@ -112,6 +114,7 @@ export type Database = {
           pot_max_value?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          real_money?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -148,6 +151,7 @@ export type Database = {
           pussy_tax: number
           pussy_tax_enabled: boolean
           pussy_tax_value: number
+          real_money: boolean
           session_ended_at: string | null
           status: string
           total_hands: number | null
@@ -184,6 +188,7 @@ export type Database = {
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          real_money?: boolean
           session_ended_at?: string | null
           status?: string
           total_hands?: number | null
@@ -220,6 +225,7 @@ export type Database = {
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          real_money?: boolean
           session_ended_at?: string | null
           status?: string
           total_hands?: number | null
