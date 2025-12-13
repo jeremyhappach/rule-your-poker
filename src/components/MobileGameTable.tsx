@@ -390,6 +390,68 @@ anteAnimationTriggerId,
     }
   }, [players, displayedChips]);
   
+  // ========== DETAILED DEBUG POLLING ==========
+  const debugPollRef = useRef<NodeJS.Timeout | null>(null);
+  const debugLogCount = useRef(0);
+  
+  useEffect(() => {
+    // Clear existing poll
+    if (debugPollRef.current) {
+      clearInterval(debugPollRef.current);
+    }
+    
+    // Poll every 500ms for 60 seconds max (120 logs)
+    debugPollRef.current = setInterval(() => {
+      debugLogCount.current++;
+      if (debugLogCount.current > 120) {
+        clearInterval(debugPollRef.current!);
+        return;
+      }
+      
+      const currentPlayerData = players.find(p => p.user_id === currentUserId);
+      
+      console.log(`[DEBUG POLL #${debugLogCount.current}]`, {
+        // POT VALUES
+        pot_db: pot,
+        pot_displayed: displayedPot,
+        pot_357cached: threeFiveSevenWinPotAmount,
+        
+        // POT VISIBILITY CONDITIONS
+        isWaitingPhase,
+        holmWinPotTriggerId: holmWinPotTriggerId ? holmWinPotTriggerId.slice(-8) : null,
+        threeFiveSevenWinPhase,
+        potShouldBeVisible: !isWaitingPhase && !holmWinPotTriggerId && 
+          !(threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay'),
+        
+        // LEGS VALUES  
+        currentPlayer_legs_db: currentPlayerData?.legs,
+        showLegEarned,
+        legEarnedPlayerPosition,
+        isWinningLegAnimation,
+        
+        // ANIMATION STATES
+        isAnteAnimating: isAnteAnimatingRef.current,
+        hasPending357WinForPot,
+        
+        // GAME STATE
+        gameStatus,
+        roundStatus,
+        gameType,
+      });
+    }, 500);
+    
+    return () => {
+      if (debugPollRef.current) {
+        clearInterval(debugPollRef.current);
+      }
+    };
+  }, [
+    pot, displayedPot, threeFiveSevenWinPotAmount, isWaitingPhase, holmWinPotTriggerId,
+    threeFiveSevenWinPhase, players, currentUserId, showLegEarned, legEarnedPlayerPosition,
+    isWinningLegAnimation, hasPending357WinForPot, gameStatus, roundStatus, gameType
+  ]);
+  // ========== END DEBUG POLLING ==========
+  
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
