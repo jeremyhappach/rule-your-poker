@@ -131,24 +131,22 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       <div
         className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
-          animation: 'holmWinPotToPlayer 2.5s ease-out forwards',
+          animation: `holmWinPot-${triggerId} 2.5s ease-out forwards`,
         }}
       >
         <span className="text-black text-xs font-black drop-shadow-sm">${lockedAmountRef.current}</span>
       </div>
       
-      <style>{`
-        @keyframes holmWinPotToPlayer {
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes holmWinPot-${triggerId} {
           0% {
             transform: translate(0, 0) scale(1);
             opacity: 1;
           }
-          /* Linear movement to destination at constant speed */
           70% {
             transform: translate(${deltaX}px, ${deltaY}px) scale(1);
             opacity: 1;
           }
-          /* Arrive at destination, then enlarge and bounce */
           78% {
             transform: translate(${deltaX}px, ${deltaY - 8}px) scale(1.6);
             opacity: 1;
@@ -170,7 +168,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
             opacity: 0;
           }
         }
-      `}</style>
+      `}} />
     </div>
   );
 };
