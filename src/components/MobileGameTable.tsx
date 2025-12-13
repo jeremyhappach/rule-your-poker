@@ -191,6 +191,9 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   externalShowdownRoundNumber?: React.MutableRefObject<number | null>;
   // External community cards cache (lifted to Game.tsx to persist across remounts during win animation)
   externalCommunityCardsCache?: React.MutableRefObject<{ cards: CardType[] | null; round: number | null; show: boolean }>;
+  // 3-5-7 winner show cards - lifted to parent for realtime sync
+  winner357ShowCards?: boolean;
+  onWinner357ShowCards?: () => void;
 }
 export const MobileGameTable = ({
   players,
@@ -279,6 +282,8 @@ anteAnimationTriggerId,
   externalShowdownCardsCache,
   externalShowdownRoundNumber,
   externalCommunityCardsCache,
+  winner357ShowCards = false,
+  onWinner357ShowCards,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -478,6 +483,7 @@ anteAnimationTriggerId,
       setHolmWinPotHiddenUntilReset(false);
       setThreeFiveSevenPotHiddenUntilReset(false);
       setCachedCurrentPlayerLegs(0);
+      // Note: winner357ShowCards is reset in parent (Game.tsx) via prop
       console.log('[RESET] Cleared pot hidden flags and cachedCurrentPlayerLegs');
     }
     prevGameStatusRef.current = gameStatus;
@@ -1651,14 +1657,31 @@ anteAnimationTriggerId,
           />
         )}
         
-        {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation (not on winner's own client) */}
+        {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation for ALL players */}
+        {/* Cards are face-down unless winner chose to "Show Cards" */}
         {/* Only show AFTER leg award animation completes (not during 'waiting' phase) */}
         {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
          threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting' &&
-         threeFiveSevenWinnerCards.length > 0 && threeFiveSevenWinnerId !== currentPlayer?.id && (
+         threeFiveSevenWinnerCards.length > 0 && (
           <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
             <div className="flex gap-1">
               {threeFiveSevenWinnerCards.map((card, index) => {
+                // Show card backs (face-down) unless winner chose to show
+                if (!winner357ShowCards) {
+                  // Card back design
+                  return (
+                    <div 
+                      key={index} 
+                      className="w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 border-green-500 flex items-center justify-center shadow-lg bg-gradient-to-br from-blue-800 to-blue-900"
+                    >
+                      <div className="w-7 h-10 rounded-sm border border-blue-600 bg-blue-700/50 flex items-center justify-center">
+                        <span className="text-blue-300 text-xs font-bold">♠</span>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                // Face-up card (winner chose to show)
                 const isFourColor = deckColorMode === 'four_color';
                 const fourColorConfig = getFourColorSuit(card.suit);
                 const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
@@ -2240,19 +2263,49 @@ anteAnimationTriggerId,
             
             {/* Cards display - moved up, less padding */}
             {/* Dim current player's cards if they lost (winner exists and it's not them) */}
-            <div className="flex items-start justify-center">
-              {currentPlayerCards.length > 0 ? <div className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}>
-                  <PlayerHand 
-                    cards={currentPlayerCards} 
-                    isHidden={false} 
-                    highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                    kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                    hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                    gameType={gameType}
-                    currentRound={currentRound}
-                  />
-                </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
-            </div>
+            {/* Hide cards and show "Show Cards" button if current player is 357 winner during win animation */}
+            {(() => {
+              const isWinner357InAnimation = gameType !== 'holm-game' && 
+                threeFiveSevenWinnerId === currentPlayer?.id && 
+                threeFiveSevenWinPhase !== 'idle';
+              
+              if (isWinner357InAnimation) {
+                // Winner's cards are tabled - show "Show Cards" button unless already shown
+                return (
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    {!winner357ShowCards ? (
+                      <Button 
+                        variant="outline"
+                        size="lg"
+                        onClick={() => onWinner357ShowCards?.()}
+                        className="bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold px-6 py-3 text-base"
+                      >
+                        Show Cards
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-green-400 font-medium">Cards Shown</div>
+                    )}
+                  </div>
+                );
+              }
+              
+              // Normal card display
+              return (
+                <div className="flex items-start justify-center">
+                  {currentPlayerCards.length > 0 ? <div className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}>
+                    <PlayerHand 
+                      cards={currentPlayerCards} 
+                      isHidden={false} 
+                      highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                      kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                      hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                      gameType={gameType}
+                      currentRound={currentRound}
+                    />
+                  </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
+                </div>
+              );
+            })()}
             
             {/* Player info and chat - below cards */}
             <div className="flex flex-col gap-2 mt-16">

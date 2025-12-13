@@ -224,6 +224,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [threeFiveSevenWinnerCards, setThreeFiveSevenWinnerCards] = useState<CardType[]>([]);
   const threeFiveSevenWinProcessedRef = useRef<string | null>(null);
   
+  // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
+  const [winner357ShowCards, setWinner357ShowCards] = useState(false);
+  
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
@@ -899,6 +902,53 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       supabase.removeChannel(channel);
     };
   }, [gameId, game?.id]);
+
+  // Broadcast channel for ephemeral UI events (like "Show Cards" in 3-5-7)
+  const showCardsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  
+  useEffect(() => {
+    if (!gameId) return;
+    
+    console.log('[BROADCAST] Setting up show-cards channel');
+    const channel = supabase
+      .channel(`show-cards-${gameId}`)
+      .on('broadcast', { event: 'show-cards' }, (payload) => {
+        console.log('[BROADCAST] Received show-cards event:', payload);
+        setWinner357ShowCards(true);
+      })
+      .subscribe();
+    
+    showCardsChannelRef.current = channel;
+    
+    return () => {
+      console.log('[BROADCAST] Cleaning up show-cards channel');
+      supabase.removeChannel(channel);
+      showCardsChannelRef.current = null;
+    };
+  }, [gameId]);
+  
+  // Handler for winner to broadcast "show cards"
+  const handleWinner357ShowCards = useCallback(() => {
+    console.log('[BROADCAST] Sending show-cards event');
+    setWinner357ShowCards(true); // Update local state immediately
+    
+    // Broadcast to all other clients
+    showCardsChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'show-cards',
+      payload: { timestamp: Date.now() }
+    });
+  }, []);
+  
+  // Reset winner357ShowCards when game transitions away from game_over
+  useEffect(() => {
+    if (game?.status !== 'game_over' && game?.status !== 'in_progress') {
+      if (winner357ShowCards) {
+        console.log('[RESET] Clearing winner357ShowCards on game status change');
+        setWinner357ShowCards(false);
+      }
+    }
+  }, [game?.status, winner357ShowCards]);
 
   // SAFETY-NET POLL: Check for game_over status when stuck in awaiting_next_round
   // This catches cases where realtime subscription misses the status update
@@ -3934,6 +3984,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
                     externalCommunityCardsCache={communityCardsCacheRef}
+                    winner357ShowCards={winner357ShowCards}
+                    onWinner357ShowCards={handleWinner357ShowCards}
                   />
                 ) : (
                   <>
@@ -4306,6 +4358,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               externalShowdownCardsCache={showdownCardsCacheRef}
               externalShowdownRoundNumber={showdownRoundNumberRef}
               externalCommunityCardsCache={communityCardsCacheRef}
+              winner357ShowCards={winner357ShowCards}
+              onWinner357ShowCards={handleWinner357ShowCards}
             />
           ) : (
             <GameTable
