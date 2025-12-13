@@ -577,10 +577,13 @@ anteAnimationTriggerId,
       return;
     }
     
-    // If awaiting next round (between hands), prepare for next delay
-    // BUT DO NOT HIDE CARDS - they should remain visible during announcement
+    // If awaiting next round (between hands), IMMEDIATELY HIDE community cards
+    // Cards should disappear before the buck passes, not after
     if (awaitingNextRound) {
-      console.log('[MOBILE_COMMUNITY] Awaiting next round - preparing for next hand (cards stay visible)');
+      console.log('[MOBILE_COMMUNITY] Awaiting next round - hiding community cards immediately');
+      setShowCommunityCards(false);
+      setApprovedCommunityCards(null);
+      setApprovedRoundForDisplay(null);
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
@@ -1234,8 +1237,8 @@ anteAnimationTriggerId,
           </div>
         )}
         
-        {/* Chucky's Hand - directly below community cards, no container */}
-        {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
+        {/* Chucky's Hand - directly below community cards, hide when awaitingNextRound */}
+        {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && !awaitingNextRound && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
             <span className="text-red-400 text-sm mr-1">👿</span>
             {chuckyCards.map((card, index) => {
           const isRevealed = index < (chuckyCardsRevealed || 0);
