@@ -373,6 +373,42 @@ export async function startRound(gameId: string, roundNumber: number) {
           setTimeout(async () => {
             console.log('[357 SWEEP] Animation complete, transitioning to game_over');
             
+            // Fetch fresh game data to get current pot value
+            const { data: freshGameData } = await supabase
+              .from('games')
+              .select('pot, total_hands, dealer_position, leg_value')
+              .eq('id', gameId)
+              .single();
+            
+            const currentPot = freshGameData?.pot || 0;
+            const legValue = freshGameData?.leg_value || 1;
+            
+            // Fetch all players to calculate total leg value
+            const { data: allPlayers } = await supabase
+              .from('players')
+              .select('id, chips, legs')
+              .eq('game_id', gameId);
+            
+            // Calculate total leg value from all players
+            const totalLegValue = (allPlayers || []).reduce((sum, p) => sum + (p.legs * legValue), 0);
+            const totalPrize = currentPot + totalLegValue;
+            
+            console.log('[357 SWEEP] Awarding prize to winner:', { 
+              playerId: player?.id,
+              currentPot, 
+              totalLegValue, 
+              totalPrize 
+            });
+            
+            // Award pot + leg value to the winner
+            const winnerPlayer = (allPlayers || []).find(p => p.id === player?.id);
+            if (winnerPlayer) {
+              await supabase
+                .from('players')
+                .update({ chips: winnerPlayer.chips + totalPrize })
+                .eq('id', player?.id);
+            }
+            
             // Reset all players' legs to 0 for next game
             await supabase
               .from('players')
@@ -384,13 +420,6 @@ export async function startRound(gameId: string, roundNumber: number) {
               })
               .eq('game_id', gameId);
             
-            // Fetch current total_hands
-            const { data: currentGame } = await supabase
-              .from('games')
-              .select('total_hands, dealer_position')
-              .eq('id', gameId)
-              .single();
-            
             // Set game_over state - NOW the countdown will appear
             await supabase
               .from('games')
@@ -401,7 +430,7 @@ export async function startRound(gameId: string, roundNumber: number) {
                 awaiting_next_round: false,
                 all_decisions_in: false,
                 pot: 0,
-                total_hands: (currentGame?.total_hands || 0) + 1
+                total_hands: (freshGameData?.total_hands || 0) + 1
                 // NOTE: Keep last_round_result as the sweep message
               })
               .eq('id', gameId);
@@ -901,11 +930,21 @@ export async function endRound(gameId: string) {
             
             // After 5 seconds (animation duration), trigger game over
             setTimeout(async () => {
-              // Fetch fresh player data
+              // Fetch fresh player data and game data
               const { data: freshPlayers } = await supabase
                 .from('players')
                 .select('*, profiles(username)')
                 .eq('game_id', gameId);
+              
+              // Fetch fresh pot value
+              const { data: freshGameData } = await supabase
+                .from('games')
+                .select('pot, dealer_position')
+                .eq('id', gameId)
+                .single();
+              
+              const freshPot = freshGameData?.pot || 0;
+              console.log('[357 SWEEP] Fresh pot value for game over:', freshPot);
               
               await handleGameOver(
                 gameId,
@@ -913,10 +952,10 @@ export async function endRound(gameId: string) {
                 username,
                 legsToWin,
                 freshPlayers || allPlayers,
-                currentPot,
+                freshPot,
                 legValue,
                 legsToWin,
-                game.dealer_position || 1
+                freshGameData?.dealer_position || 1
               );
             }, 5000);
             
@@ -991,6 +1030,16 @@ export async function endRound(gameId: string) {
       
       // Wait 4 seconds to show "won a leg" message, then transition to game over
       setTimeout(async () => {
+        // Fetch fresh game data to get current pot value
+        const { data: freshGameData } = await supabase
+          .from('games')
+          .select('pot, dealer_position')
+          .eq('id', gameId)
+          .single();
+        
+        const currentPot = freshGameData?.pot || 0;
+        console.log('[SOLO WIN] Fresh pot value for game over:', currentPot);
+        
         // Use centralized game-over handler with fresh data
         await handleGameOver(
           gameId,
@@ -998,10 +1047,10 @@ export async function endRound(gameId: string) {
           username,
           newLegCount,
           freshPlayers || allPlayers,
-          game.pot || 0,
+          currentPot,
           legValue,
           legsToWin,
-          game.dealer_position || 1
+          freshGameData?.dealer_position || 1
         );
       }, 4000);
       
