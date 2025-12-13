@@ -1193,12 +1193,13 @@ async function handleChuckyShowdown(
       nextDealer: nextDealerPosition
     });
     
-    // Set game_over status with game_over_at to trigger countdown timer (same as 3-5-7)
+    // Set game_over status WITHOUT game_over_at - frontend will show celebration first
+    // Then set game_over_at after celebration completes to auto-proceed
     const { error: gameOverError } = await supabase
       .from('games')
       .update({
         status: 'game_over',
-        game_over_at: new Date().toISOString(), // Immediate - same as 3-5-7
+        game_over_at: null, // NULL - frontend celebration will set this after completing
         pot: 0,
         awaiting_next_round: false,
         dealer_position: nextDealerPosition,
@@ -1733,11 +1734,12 @@ async function handleMultiPlayerShowdown(
       }
       
       // Game ends - players beat Chucky
+      // Set game_over_at to null so frontend celebration shows first
       await supabase
         .from('games')
         .update({
           status: 'game_over',
-          game_over_at: new Date().toISOString(),
+          game_over_at: null, // NULL - frontend celebration will set this after completing
           dealer_position: nextDealerPosition,
           buck_position: null,
           total_hands: 0,

@@ -4096,10 +4096,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           winnerName={holmWinData.winnerName}
           handDescription={holmWinData.handDescription}
           potAmount={holmWinData.potAmount}
-          onComplete={() => {
+          onComplete={async () => {
             setShowHolmWinCelebration(false);
             setHolmWinData(null);
-            // After celebration, proceed to game over countdown
+            // After celebration, set game_over_at and immediately proceed to next hand
+            if (gameId) {
+              await supabase
+                .from('games')
+                .update({ game_over_at: new Date().toISOString() })
+                .eq('id', gameId);
+              // Auto-proceed to next hand (no countdown needed)
+              handleGameOverComplete();
+            }
           }}
         />
       )}
