@@ -797,7 +797,7 @@ export const GameTable = ({
         {/* Game name on felt */}
         <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
           <span className="text-white/30 font-bold text-sm sm:text-base md:text-lg uppercase tracking-wider">
-            {gameType === 'holm-game' ? 'Holm' : '3-5-7'} {realMoney ? '(real)' : '(fake)'}
+            {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
           </span>
         </div>
         
