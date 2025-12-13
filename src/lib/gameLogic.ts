@@ -754,6 +754,7 @@ async function handleGameOver(
   
   // Update game to game_over status - SINGLE atomic update with ALL required fields
   // NOTE: dealer_position stays the same here - rotation happens in handleGameOverComplete
+  // NOTE: game_over_at is NULL so frontend animation can complete before countdown starts
   const { data: gameOverUpdate, error: gameOverError } = await supabase
     .from('games')
     .update({ 
@@ -763,7 +764,7 @@ async function handleGameOver(
       awaiting_next_round: false,
       all_decisions_in: false,
       last_round_result: gameWinMessage,
-      game_over_at: new Date().toISOString(),
+      game_over_at: null,  // NULL - frontend animation will set this after completing
       pot: 0,  // Critical: always reset pot
       total_hands: newTotalHands
     })
