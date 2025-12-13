@@ -3118,19 +3118,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setThreeFiveSevenWinTriggerId(null);
   }, []);
 
-  // Handle 3-5-7 win animation complete - set game_over_at to start countdown
+  // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
     if (game?.status !== 'game_over' || game?.game_type === 'holm-game' || !gameId) {
       return;
     }
-    console.log('[357 WIN] Animation complete, setting game_over_at to start countdown');
+    console.log('[357 WIN] Animation complete, proceeding directly to next game');
     
-    // Set game_over_at to trigger the GameOverCountdown component
-    await supabase
-      .from('games')
-      .update({ game_over_at: new Date().toISOString() })
-      .eq('id', gameId);
-  }, [game?.status, game?.game_type, gameId]);
+    // Proceed directly to next game without countdown
+    await handleGameOverComplete();
+  }, [game?.status, game?.game_type, gameId, handleGameOverComplete]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
