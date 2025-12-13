@@ -376,19 +376,20 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   if (isFirstHand) {
     console.log('[HOLM] FIRST HAND - Collecting antes');
     
-    let antePot = 0;
-    for (const player of players) {
-      antePot += anteAmount;
-      const newChips = player.chips - anteAmount;
-      console.log('[HOLM] Ante from player', player.position, ':', anteAmount, '- chips:', player.chips, '->', newChips);
-      
-      await supabase
-        .from('players')
-        .update({ chips: newChips })
-        .eq('id', player.id);
+    // Use atomic decrement to prevent race conditions / double charges
+    const playerIds = players.map(p => p.id);
+    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
+      player_ids: playerIds,
+      amount: anteAmount
+    });
+    
+    if (anteError) {
+      console.error('[HOLM] ERROR collecting antes:', anteError);
+    } else {
+      console.log('[HOLM] Antes collected atomically from', playerIds.length, 'players, amount:', anteAmount);
     }
     
-    potForRound = antePot;
+    potForRound = players.length * anteAmount;
     console.log('[HOLM] Total antes collected:', potForRound);
     
     // Update game with ante pot
@@ -1224,12 +1225,17 @@ async function handleChuckyShowdown(
       potMatchAmount
     });
 
-    await supabase
-      .from('players')
-      .update({ chips: player.chips - potMatchAmount })
-      .eq('id', player.id);
+    // Use atomic decrement to prevent race conditions / stale chip values
+    const { error: chipError } = await supabase.rpc('decrement_player_chips', {
+      player_ids: [player.id],
+      amount: potMatchAmount
+    });
     
-    console.log('[HOLM SHOWDOWN] Player chips deducted by:', potMatchAmount);
+    if (chipError) {
+      console.error('[HOLM SHOWDOWN] ERROR deducting chips:', chipError);
+    } else {
+      console.log('[HOLM SHOWDOWN] Player chips deducted atomically by:', potMatchAmount);
+    }
 
     const newPot = roundPot + potMatchAmount;
 
@@ -1477,14 +1483,20 @@ async function handleMultiPlayerShowdown(
     
     console.log('[HOLM MULTI] Losers pay potMatchAmount:', potMatchAmount, '(becomes new pot)');
 
-    let newPot = 0;
-    for (const loser of losers) {
-      await supabase
-        .from('players')
-        .update({ chips: loser.player.chips - potMatchAmount })
-        .eq('id', loser.player.id);
-      newPot += potMatchAmount;
+    // Use atomic decrement to prevent race conditions / stale chip values
+    const loserPlayerIds = losers.map(l => l.player.id);
+    const { error: loserChipError } = await supabase.rpc('decrement_player_chips', {
+      player_ids: loserPlayerIds,
+      amount: potMatchAmount
+    });
+    
+    if (loserChipError) {
+      console.error('[HOLM MULTI] ERROR deducting loser chips:', loserChipError);
+    } else {
+      console.log('[HOLM MULTI] Loser chips deducted atomically, amount:', potMatchAmount);
     }
+    
+    let newPot = losers.length * potMatchAmount;
 
     // Set pot to losers' matched amount (no re-anting in Holm)
     console.log('[HOLM MULTI] New pot from losers match:', newPot);
@@ -1612,22 +1624,22 @@ async function handleMultiPlayerShowdown(
       
       console.log('[HOLM TIE] Each loser pays potMatchAmount:', potMatchAmount);
       
-      let totalMatched = 0;
-      let loserNames: string[] = [];
+      // Use atomic decrement to prevent race conditions / stale chip values
+      const loserIds = playersLoseToChucky.map(l => l.player.id);
+      const loserNames = playersLoseToChucky.map(l => l.player.profiles?.username || l.player.user_id);
       
-      for (const loser of playersLoseToChucky) {
-        const loserUsername = loser.player.profiles?.username || loser.player.user_id;
-        loserNames.push(loserUsername);
-        
-        console.log('[HOLM TIE] Deducting', potMatchAmount, 'from', loserUsername, 'current chips:', loser.player.chips);
-        
-        await supabase
-          .from('players')
-          .update({ chips: loser.player.chips - potMatchAmount })
-          .eq('id', loser.player.id);
-        
-        totalMatched += potMatchAmount;
+      const { error: tieLoserChipError } = await supabase.rpc('decrement_player_chips', {
+        player_ids: loserIds,
+        amount: potMatchAmount
+      });
+      
+      if (tieLoserChipError) {
+        console.error('[HOLM TIE] ERROR deducting loser chips:', tieLoserChipError);
+      } else {
+        console.log('[HOLM TIE] Loser chips deducted atomically, amount:', potMatchAmount);
       }
+      
+      let totalMatched = playersLoseToChucky.length * potMatchAmount;
       
       console.log('[HOLM TIE] Total matched from all losers:', totalMatched, '(', playersLoseToChucky.length, 'players)');
       
