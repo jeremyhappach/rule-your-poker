@@ -105,11 +105,11 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       frame();
     }
 
-    // Animation complete after 2.5 seconds (matching ante animation speed)
+    // Animation complete after 5.5 seconds (1.75s travel + 3.75s dramatic bounce)
     setTimeout(() => {
       setAnimation(null);
       onAnimationComplete?.();
-    }, 2500);
+    }, 5500);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerId]); // Only re-run when triggerId changes - other values are captured at trigger time
 
@@ -131,7 +131,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       <div
         className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
-          animation: `holmWinPot-${triggerId} 2.5s ease-out forwards`,
+          animation: `holmWinPot-${triggerId} 5.5s ease-out forwards`,
         }}
       >
         <span className="text-black text-xs font-black drop-shadow-sm">${lockedAmountRef.current}</span>
@@ -139,30 +139,47 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes holmWinPot-${triggerId} {
+          /* Travel phase: 0-32% (~1.75s) */
           0% {
             transform: translate(0, 0) scale(1);
             opacity: 1;
           }
-          70% {
+          32% {
             transform: translate(${deltaX}px, ${deltaY}px) scale(1);
             opacity: 1;
           }
-          78% {
-            transform: translate(${deltaX}px, ${deltaY - 8}px) scale(1.6);
+          /* Dramatic bounce phase: 32-100% (~3.75s) */
+          /* Big initial pop */
+          38% {
+            transform: translate(${deltaX}px, ${deltaY - 25}px) scale(2.2);
             opacity: 1;
           }
-          86% {
-            transform: translate(${deltaX}px, ${deltaY}px) scale(1.4);
+          /* Drop down */
+          48% {
+            transform: translate(${deltaX}px, ${deltaY}px) scale(1.8);
             opacity: 1;
           }
-          92% {
-            transform: translate(${deltaX}px, ${deltaY - 4}px) scale(1.5);
+          /* Second bounce */
+          58% {
+            transform: translate(${deltaX}px, ${deltaY - 15}px) scale(2.0);
             opacity: 1;
           }
-          96% {
-            transform: translate(${deltaX}px, ${deltaY}px) scale(1.3);
-            opacity: 0.8;
+          /* Settle */
+          70% {
+            transform: translate(${deltaX}px, ${deltaY}px) scale(1.6);
+            opacity: 1;
           }
+          /* Small bounce */
+          80% {
+            transform: translate(${deltaX}px, ${deltaY - 8}px) scale(1.8);
+            opacity: 1;
+          }
+          /* Final settle */
+          90% {
+            transform: translate(${deltaX}px, ${deltaY}px) scale(1.5);
+            opacity: 1;
+          }
+          /* Fade out */
           100% {
             transform: translate(${deltaX}px, ${deltaY}px) scale(0);
             opacity: 0;
