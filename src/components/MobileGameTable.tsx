@@ -1393,7 +1393,8 @@ anteAnimationTriggerId,
         
         {/* Winner's Tabled Cards - shown above pot (overlaying game name/pot max) when player beats Chucky */}
         {/* This displays during the pot-to-winner animation so cards are visible */}
-        {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && (
+        {/* Don't show tabled cards to the winner themselves - they can see their own cards in their player card area */}
+        {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
             <div className="flex gap-1">
               {winnerCards.map((card, index) => {
