@@ -110,7 +110,8 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       setAnimation(null);
       onAnimationComplete?.();
     }, 5000);
-  }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationComplete]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerId]); // Only re-run when triggerId changes - other values are captured at trigger time
 
   if (!animation) return null;
 

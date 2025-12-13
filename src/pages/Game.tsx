@@ -2873,10 +2873,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Handle Holm win pot animation complete - proceed directly to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
+    // Guard: Only proceed if we're actually in game_over with a valid Holm win
+    if (game?.status !== 'game_over' || game?.game_type !== 'holm-game') {
+      console.log('[HOLM WIN POT] Animation callback fired but game not in expected state, ignoring');
+      return;
+    }
+    
+    // Also verify there was actually a win (player beat Chucky)
+    if (!game?.last_round_result?.includes('beat Chucky') || game?.last_round_result?.includes('Chucky beat')) {
+      console.log('[HOLM WIN POT] Animation callback but no valid win result, ignoring');
+      return;
+    }
+    
     console.log('[HOLM WIN POT] Animation complete, proceeding directly to next game');
     // Skip the countdown entirely - animation provided enough time to see results
     await handleGameOverComplete();
-  }, [handleGameOverComplete]);
+  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
