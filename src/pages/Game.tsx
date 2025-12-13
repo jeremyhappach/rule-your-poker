@@ -2868,6 +2868,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Reset when game status changes away from game_over
     if (game?.status !== 'game_over') {
       holmWinProcessedRef.current = null;
+      // CRITICAL: Clear the trigger ID so animation doesn't re-fire in new game
+      setHolmWinPotTriggerId(null);
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
