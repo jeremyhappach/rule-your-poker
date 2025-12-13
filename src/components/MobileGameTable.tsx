@@ -644,26 +644,34 @@ anteAnimationTriggerId,
       return;
     }
     
+    // CRITICAL: During game_over, ALWAYS keep community cards visible for win animation
+    // Force them visible and skip all hiding/delay logic
+    const isInGameOverStatus = gameStatus === 'game_over' || isGameOver;
+    if (isInGameOverStatus) {
+      console.log('[MOBILE_COMMUNITY] Game over status - forcing cards visible');
+      setShowCommunityCards(true);
+      setIsDelayingCommunityCards(false);
+      // Update ref to current round to prevent retriggering later
+      if (currentRound && lastDetectedRoundRef.current !== currentRound) {
+        lastDetectedRoundRef.current = currentRound;
+      }
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
+      }
+      return;
+    }
+    
     // New round detected - start staggered card dealing
     // Use REF for detection (to prevent re-triggering) but STATE for render gating
-    // CRITICAL: Skip this logic during game_over - we want cards to stay visible for win animation
     const isNewRound = currentRound && currentRound !== lastDetectedRoundRef.current;
-    const isInGameOverStatus = gameStatus === 'game_over' || isGameOver;
     
     console.log('[MOBILE_COMMUNITY] Checking new round:', { 
       isNewRound, 
       currentRound, 
       lastDetectedRound: lastDetectedRoundRef.current,
-      approvedRoundForDisplay,
-      isInGameOverStatus
+      approvedRoundForDisplay
     });
-    
-    // During game_over, just update the ref but don't hide cards
-    if (isNewRound && isInGameOverStatus) {
-      console.log('[MOBILE_COMMUNITY] New round during game_over - updating ref but keeping cards visible');
-      lastDetectedRoundRef.current = currentRound;
-      return;
-    }
     
     if (isNewRound) {
       console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting reveal delay (cards hidden until approved)');
