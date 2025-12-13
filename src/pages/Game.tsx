@@ -2889,50 +2889,72 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
-  // Detect 3-5-7 final leg win and trigger win animation
+  // Cache pot value for 3-5-7 win animation (pot gets reset before game_over)
+  const cachedPotFor357WinRef = useRef<number>(0);
+  
+  // Cache pot whenever it's non-zero (before it gets reset)
   useEffect(() => {
-    if (game?.status === 'game_over' && game?.game_type !== 'holm-game' && game?.last_round_result) {
-      const resultMessage = game.last_round_result;
-      
-      // Check if this is a final leg win (player "won a leg" AND game is over means it was the winning leg)
-      if (resultMessage.includes('won a leg')) {
-        // Prevent duplicate processing
-        if (threeFiveSevenWinProcessedRef.current === resultMessage) {
-          return;
-        }
-        threeFiveSevenWinProcessedRef.current = resultMessage;
-        
-        // Parse winner from message
-        const displayPart = resultMessage.split('|||')[0];
-        const winnerMatch = displayPart.match(/^(.+?) won a leg/);
-        const winnerName = winnerMatch ? winnerMatch[1] : '';
-        
-        // Find winner player
-        const winnerPlayer = players.find(p => p.profiles?.username === winnerName);
-        if (!winnerPlayer) {
-          console.log('[357 WIN] Could not find winner player:', winnerName);
-          return;
-        }
-        
-        // Get winner's cards
-        const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
-        const winnerCards = winnerCardsData?.cards || [];
-        
-        console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', game.pot);
-        
-        setThreeFiveSevenWinPotAmount(game.pot || 0);
-        setThreeFiveSevenWinnerId(winnerPlayer.id);
-        setThreeFiveSevenWinnerCards(winnerCards);
-        setThreeFiveSevenWinTriggerId(`357-win-${Date.now()}`);
-      }
+    if (game?.pot && game.pot > 0 && game?.game_type !== 'holm-game') {
+      cachedPotFor357WinRef.current = game.pot;
+    }
+  }, [game?.pot, game?.game_type]);
+  
+  // Detect 3-5-7 final leg win and trigger win animation
+  // Trigger on "won a leg" message when a player has reached legsToWin (before game_over status)
+  useEffect(() => {
+    if (game?.game_type === 'holm-game' || !game?.last_round_result) return;
+    
+    const resultMessage = game.last_round_result;
+    
+    // Check if this is a leg win message
+    if (!resultMessage.includes('won a leg')) return;
+    
+    // Prevent duplicate processing
+    if (threeFiveSevenWinProcessedRef.current === resultMessage) return;
+    
+    // Parse winner from message
+    const displayPart = resultMessage.split('|||')[0];
+    const winnerMatch = displayPart.match(/^(.+?) won a leg/);
+    const winnerName = winnerMatch ? winnerMatch[1] : '';
+    
+    // Find winner player
+    const winnerPlayer = players.find(p => p.profiles?.username === winnerName);
+    if (!winnerPlayer) {
+      console.log('[357 WIN] Could not find winner player:', winnerName);
+      return;
     }
     
-    // Reset when game status changes away from game_over
-    if (game?.status !== 'game_over') {
+    // Check if this is the FINAL leg win (player has reached legsToWin)
+    const legsToWin = game?.legs_to_win || 3;
+    if (winnerPlayer.legs < legsToWin) {
+      console.log('[357 WIN] Not final leg, player has', winnerPlayer.legs, 'of', legsToWin);
+      return;
+    }
+    
+    threeFiveSevenWinProcessedRef.current = resultMessage;
+    
+    // Get winner's cards
+    const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
+    const winnerCards = winnerCardsData?.cards || [];
+    
+    // Use cached pot value since current pot may already be reset
+    const potAmount = cachedPotFor357WinRef.current || game.pot || 0;
+    console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'legs:', winnerPlayer.legs);
+    
+    setThreeFiveSevenWinPotAmount(potAmount);
+    setThreeFiveSevenWinnerId(winnerPlayer.id);
+    setThreeFiveSevenWinnerCards(winnerCards);
+    setThreeFiveSevenWinTriggerId(`357-win-${Date.now()}`);
+  }, [game?.game_type, game?.last_round_result, game?.pot, game?.legs_to_win, players, playerCards]);
+  
+  // Reset 3-5-7 win state when starting a new game
+  useEffect(() => {
+    if (game?.status === 'in_progress' && game?.current_round === 1) {
       threeFiveSevenWinProcessedRef.current = null;
       setThreeFiveSevenWinTriggerId(null);
+      cachedPotFor357WinRef.current = 0;
     }
-  }, [game?.status, game?.game_type, game?.last_round_result, game?.pot, players, playerCards]);
+  }, [game?.status, game?.current_round]);
 
   // Handle Holm win pot animation complete - delay 2 seconds then proceed to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
