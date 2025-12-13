@@ -365,10 +365,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
       }
     } else {
-      // RESUMING: Set new deadline = now + paused_time_remaining
-      const savedTime = game.paused_time_remaining ?? decisionTimerRef.current;
-      const newDeadline = new Date(Date.now() + savedTime * 1000).toISOString();
-      console.log('[PAUSE] Resuming game, setting new deadline:', newDeadline, 'with', savedTime, 'seconds');
+      // RESUMING: Reset all active deadlines to maximum duration
+      const maxTime = decisionTimerRef.current;
+      const newDeadline = new Date(Date.now() + maxTime * 1000).toISOString();
+      console.log('[PAUSE] Resuming game, resetting deadline to max:', newDeadline, 'with', maxTime, 'seconds');
       
       // Optimistic UI update
       setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
