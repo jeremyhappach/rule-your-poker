@@ -1231,7 +1231,9 @@ anteAnimationTriggerId,
     const isLosingPlayer = isShowingAnnouncement && winnerPlayerId && player.id !== winnerPlayerId && playerDecision === 'stay';
     const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
     // Hide cards from original position when winner's cards are "tabled" above pot
-    const shouldHideForTabling = isHolmWinWinner;
+    // Applies to both Holm winners and 3-5-7 winners during win animation
+    const is357WinWinner = threeFiveSevenWinTriggerId && threeFiveSevenWinnerId === player.id;
+    const shouldHideForTabling = isHolmWinWinner || is357WinWinner;
     const cardsElement = isShowdown && !shouldHideForTabling ? (
       <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
         <PlayerHand 
