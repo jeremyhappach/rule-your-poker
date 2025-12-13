@@ -6,6 +6,7 @@ interface HolmWinPotAnimationProps {
   amount: number;
   winnerPosition: number;
   currentPlayerPosition: number | null;
+  isCurrentPlayerWinner: boolean; // Only show confetti for the winner
   getClockwiseDistance: (position: number) => number;
   containerRef: React.RefObject<HTMLDivElement>;
   onAnimationComplete?: () => void;
@@ -16,6 +17,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   amount,
   winnerPosition,
   currentPlayerPosition,
+  isCurrentPlayerWinner,
   getClockwiseDistance,
   containerRef,
   onAnimationComplete,
@@ -75,31 +77,33 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       toY: winnerCoords.y,
     });
 
-    // Fire confetti throughout the animation
-    const duration = 4000;
-    const end = Date.now() + duration;
-    
-    const frame = () => {
-      confetti({
-        particleCount: 2,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0, y: 0.7 },
-        colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
-      });
-      confetti({
-        particleCount: 2,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1, y: 0.7 },
-        colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
-      });
+    // Fire confetti only for the winner's client
+    if (isCurrentPlayerWinner) {
+      const duration = 4000;
+      const end = Date.now() + duration;
       
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    };
-    frame();
+      const frame = () => {
+        confetti({
+          particleCount: 2,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.7 },
+          colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
+        });
+        confetti({
+          particleCount: 2,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.7 },
+          colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
+        });
+        
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+    }
 
     // Animation complete after 5 seconds
     setTimeout(() => {
