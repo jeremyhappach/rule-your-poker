@@ -15,7 +15,7 @@ import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 import { HolmWinCelebration, parseHolmWinMessage } from "@/components/HolmWinCelebration";
-import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
+
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
 import { DealerSelection } from "@/components/DealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
@@ -3609,7 +3609,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onComplete={selectDealer}
               />
             )}
-            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
+            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') && !game.last_round_result.includes('beat Chucky') ? (
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable
@@ -3678,7 +3678,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       gameType={game.game_type}
                       roundStatus={currentRound?.status}
                     />
-                    {game.game_over_at ? (
+                    {game.game_over_at && (
                       <GameOverCountdown
                         winnerMessage={game.last_round_result}
                         nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
@@ -3687,14 +3687,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                         isSessionEnded={game.status === 'session_ended'}
                         pendingSessionEnd={game.pending_session_end || false}
                       />
-                    ) : (
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-                        <DealerConfirmGameOver
-                          isDealer={isDealer || dealerPlayer?.is_bot || false}
-                          onConfirm={handleDealerConfirmGameOver}
-                          resultMessage={game.last_round_result}
-                        />
-                      </div>
                     )}
                   </>
                 )}
