@@ -44,12 +44,16 @@ serve(async (req) => {
       });
     }
 
-    // Skip if game is paused
+    // Skip ALL deadline enforcement if game is paused
+    // This is critical - deadlines freeze when paused, resume when unpaused
     if (game.is_paused) {
+      console.log('[ENFORCE] Game is paused, skipping all deadline enforcement for game', gameId);
       return new Response(JSON.stringify({ 
         success: true, 
         message: 'Game is paused, no deadlines enforced',
-        actionsTaken: [] 
+        actionsTaken: [],
+        gameStatus: game.status,
+        isPaused: true,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -153,7 +157,7 @@ serve(async (req) => {
     }
 
     // 3. ENFORCE DECISION DEADLINE (stay/fold during gameplay)
-    if ((game.status === 'in_progress' || game.status === 'betting') && !game.is_paused) {
+    if (game.status === 'in_progress' || game.status === 'betting') {
       // Find the latest round
       const { data: rounds } = await supabase
         .from('rounds')
