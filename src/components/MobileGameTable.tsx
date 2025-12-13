@@ -959,7 +959,9 @@ anteAnimationTriggerId,
     // Dim cards for losing players during announcement, highlight winner's cards
     const isLosingPlayer = isShowingAnnouncement && winnerPlayerId && player.id !== winnerPlayerId && playerDecision === 'stay';
     const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
-    const cardsElement = isShowdown ? (
+    // Hide cards from original position when winner's cards are "tabled" above pot
+    const shouldHideForTabling = isHolmWinWinner;
+    const cardsElement = isShowdown && !shouldHideForTabling ? (
       <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
         <PlayerHand 
           cards={cards} 
@@ -1362,11 +1364,11 @@ anteAnimationTriggerId,
         })}
           </div>}
         
-        {/* Winner's Tabled Cards - shown below Chucky when player beats Chucky */}
+        {/* Winner's Tabled Cards - shown above pot (overlaying game name/pot max) when player beats Chucky */}
         {/* This displays during the pot-to-winner animation so cards are visible */}
         {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && (
-          <div className="absolute top-[76%] left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center gap-1">
-            <span className="text-green-400 text-xs font-bold">🏆 WINNER</span>
+          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
+            <span className="text-green-400 text-xs font-bold drop-shadow-md">🏆 WINNER</span>
             <div className="flex gap-1">
               {winnerCards.map((card, index) => {
                 const isFourColor = deckColorMode === 'four_color';
