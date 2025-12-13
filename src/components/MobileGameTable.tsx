@@ -1446,8 +1446,8 @@ anteAnimationTriggerId,
         )}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
-        {/* Hide during waiting phase and during Holm win animation */}
-        {!isWaitingPhase && !holmWinPotTriggerId && (
+        {/* Hide during waiting phase, Holm win animation, and 3-5-7 pot sweep animation */}
+        {!isWaitingPhase && !holmWinPotTriggerId && threeFiveSevenWinPhase !== 'pot-to-player' && (
           <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
             gameType === 'holm-game' 
               ? 'top-[35%] -translate-y-full' 
