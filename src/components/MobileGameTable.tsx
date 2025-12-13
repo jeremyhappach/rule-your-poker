@@ -362,6 +362,11 @@ anteAnimationTriggerId,
   const showdownRoundRef = useRef<number | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
   
+  // Cache Chucky cards to persist through announcement phase
+  const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
+  const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
+  const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+  
   // Compute showdown state synchronously during render
   // This should trigger when we need to show exposed cards
   const isInEarlyPhase = roundStatus === 'betting' || roundStatus === 'pending' || roundStatus === 'ante';
@@ -654,6 +659,28 @@ anteAnimationTriggerId,
       }
     };
   }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
+
+  // Cache Chucky cards when available, clear only when buck passes
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    
+    // When buck passes (awaitingNextRound AND no result), clear cached Chucky data
+    if (awaitingNextRound && !lastRoundResult) {
+      console.log('[MOBILE_CHUCKY] Buck passed - clearing cached Chucky cards');
+      setCachedChuckyCards(null);
+      setCachedChuckyActive(false);
+      setCachedChuckyCardsRevealed(0);
+      return;
+    }
+    
+    // Cache Chucky data when it's available
+    if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
+      console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length);
+      setCachedChuckyCards([...chuckyCards]);
+      setCachedChuckyActive(true);
+      setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
+    }
+  }, [gameType, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   useEffect(() => {
@@ -1248,12 +1275,11 @@ anteAnimationTriggerId,
           </div>
         )}
         
-        {/* Chucky's Hand - persist through announcement, hide when buck passes */}
-        {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && 
-         !(awaitingNextRound && !lastRoundResult) && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
+        {/* Chucky's Hand - use cached values to persist through announcement */}
+        {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
             <span className="text-red-400 text-sm mr-1">👿</span>
-            {chuckyCards.map((card, index) => {
-          const isRevealed = index < (chuckyCardsRevealed || 0);
+            {cachedChuckyCards.map((card, index) => {
+          const isRevealed = index < cachedChuckyCardsRevealed;
           const isFourColor = deckColorMode === 'four_color';
           const fourColorConfig = getFourColorSuit(card.suit);
 
