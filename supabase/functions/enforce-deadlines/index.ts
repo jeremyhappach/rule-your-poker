@@ -131,13 +131,14 @@ serve(async (req) => {
       if (now > anteDeadline) {
         console.log('[ENFORCE] Ante deadline expired for game', gameId);
         
-        // Find all undecided players and auto-sit them out
+        // Find all players
         const { data: players } = await supabase
           .from('players')
           .select('*')
           .eq('game_id', gameId);
         
-        const undecidedPlayers = players?.filter(p => !p.ante_decision) || [];
+        // Find undecided players (no ante_decision yet) and auto-sit them out
+        const undecidedPlayers = players?.filter(p => !p.ante_decision && !p.sitting_out) || [];
         
         if (undecidedPlayers.length > 0) {
           const undecidedIds = undecidedPlayers.map(p => p.id);
@@ -152,6 +153,87 @@ serve(async (req) => {
             .in('id', undecidedIds);
           
           actionsTaken.push(`Ante timeout: Auto-sat-out ${undecidedIds.length} undecided players`);
+        }
+        
+        // Re-fetch players after updates
+        const { data: freshPlayers } = await supabase
+          .from('players')
+          .select('*')
+          .eq('game_id', gameId);
+        
+        // Count how many players successfully anted up
+        const antedUpPlayers = freshPlayers?.filter(p => p.ante_decision === 'ante_up' && !p.sitting_out) || [];
+        
+        console.log('[ENFORCE] After ante timeout: anted_up=', antedUpPlayers.length, 'total=', freshPlayers?.length);
+        
+        if (antedUpPlayers.length >= 2) {
+          // Enough players to start - transition game to in_progress
+          // The client will detect this and call startHolmRound
+          await supabase
+            .from('games')
+            .update({
+              ante_decision_deadline: null,
+              // Don't change status here - let the client handle the transition
+              // to avoid race conditions with startHolmRound
+            })
+            .eq('id', gameId);
+          
+          actionsTaken.push(`Ante timeout: ${antedUpPlayers.length} players anted up, ready to start`);
+        } else if (antedUpPlayers.length < 2) {
+          // Not enough players - return to waiting_for_players
+          // Check if dealer is still active (not sitting out)
+          const currentDealer = freshPlayers?.find(p => p.position === game.dealer_position);
+          const dealerIsActive = currentDealer && !currentDealer.sitting_out;
+          
+          if (!dealerIsActive) {
+            // Dealer timed out - rotate to next eligible dealer
+            const eligibleDealers = freshPlayers?.filter(p => 
+              !p.is_bot && 
+              !p.sitting_out
+            ).sort((a, b) => a.position - b.position) || [];
+            
+            if (eligibleDealers.length >= 1) {
+              // Find next dealer clockwise from current position
+              const currentPos = game.dealer_position || 1;
+              const higherPositions = eligibleDealers.filter(p => p.position > currentPos);
+              const nextDealer = higherPositions.length > 0 
+                ? higherPositions[0] 
+                : eligibleDealers[0];
+              
+              await supabase
+                .from('games')
+                .update({
+                  status: 'waiting_for_players',
+                  ante_decision_deadline: null,
+                  dealer_position: nextDealer.position,
+                })
+                .eq('id', gameId);
+              
+              actionsTaken.push(`Ante timeout: Dealer sat out, rotated to position ${nextDealer.position}, returning to waiting`);
+            } else {
+              // No eligible dealers at all
+              await supabase
+                .from('games')
+                .update({
+                  status: 'waiting_for_players',
+                  ante_decision_deadline: null,
+                })
+                .eq('id', gameId);
+              
+              actionsTaken.push('Ante timeout: No active players, returning to waiting_for_players');
+            }
+          } else {
+            // Dealer is still active but not enough players
+            await supabase
+              .from('games')
+              .update({
+                status: 'waiting_for_players',
+                ante_decision_deadline: null,
+              })
+              .eq('id', gameId);
+            
+            actionsTaken.push(`Ante timeout: Only ${antedUpPlayers.length} player(s) anted up, returning to waiting_for_players`);
+          }
         }
       }
     }
