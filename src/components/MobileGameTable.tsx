@@ -357,11 +357,13 @@ anteAnimationTriggerId,
   
   
   // Sync displayedPot to actual pot when NOT animating (handles DB updates)
+  // Also don't sync during 3-5-7 win animation - use cached pot value instead
+  const hasPending357WinForPot = threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0;
   useEffect(() => {
-    if (!isAnteAnimatingRef.current) {
+    if (!isAnteAnimatingRef.current && !hasPending357WinForPot && threeFiveSevenWinPhase === 'idle') {
       setDisplayedPot(pot);
     }
-  }, [pot]);
+  }, [pot, hasPending357WinForPot, threeFiveSevenWinPhase]);
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
   // This ensures we never flash wrong values during the sync period
@@ -1010,8 +1012,10 @@ anteAnimationTriggerId,
     const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
     const hideLegsForWinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player';
     
-    // During win animation phases (before legs-to-player), use cached leg count to display legs
-    const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
+    // During win animation sequence, use cached leg count to display legs
+    // Use cached values when: trigger exists with cached data OR phase is active
+    const hasPending357Win = threeFiveSevenWinTriggerId && threeFiveSevenCachedLegPositions.length > 0;
+    const isIn357WinAnimation = gameType !== 'holm-game' && (threeFiveSevenWinPhase !== 'idle' || hasPending357Win);
     const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
     const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
     
@@ -1527,7 +1531,12 @@ anteAnimationTriggerId,
             }`}>
               <span className={`text-poker-gold font-bold ${
                 gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
-              }`}>${formatChipValue(Math.round(displayedPot))}</span>
+              }`}>${formatChipValue(Math.round(
+                // Use cached pot during 3-5-7 win animation sequence
+                (threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0) || threeFiveSevenWinPhase !== 'idle'
+                  ? threeFiveSevenWinPotAmount 
+                  : displayedPot
+              ))}</span>
               <ValueChangeFlash 
                 value={pot}
                 position="top-right" 
