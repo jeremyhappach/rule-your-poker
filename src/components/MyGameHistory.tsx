@@ -165,8 +165,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
                       {session.real_money && <span className="text-green-400 ml-1">$</span>}
                     </div>
                     <div className={`text-sm font-bold whitespace-nowrap ${session.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {session.real_money && <span className="text-green-400 mr-0.5">$</span>}
-                      {session.chips >= 0 ? '+' : '-'}${formatWithCommas(session.chips)}
+                      {session.chips >= 0 ? '+' : '-'}{session.real_money ? '$' : ''}{formatWithCommas(session.chips)}
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-0.5">

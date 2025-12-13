@@ -463,7 +463,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md flex-shrink-0">
                             <span className="text-black text-xs sm:text-sm font-bold">♦</span>
                           </div>
-                          <h3 className="font-bold text-amber-100 text-sm sm:text-base flex-1">{game.name || `Game #${game.id.slice(0, 8)}`}</h3>
+                          <h3 className="font-bold text-amber-100 text-sm sm:text-base flex-1">
+                            {game.name || `Game #${game.id.slice(0, 8)}`}
+                            {game.real_money && <span className="text-green-400 ml-1">$</span>}
+                          </h3>
                         </div>
                         
                         {/* Button and badges row */}
