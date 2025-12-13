@@ -1381,7 +1381,7 @@ anteAnimationTriggerId,
           <LegsToPlayerAnimation
             triggerId={legsToPlayerTriggerId}
             legPositions={players
-              .filter(p => p.legs > 0 && p.id !== threeFiveSevenWinnerId) // Exclude winner - only animate OTHER players' legs TO winner
+              .filter(p => p.legs > 0)
               .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }))}
             winnerPosition={players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1}
             currentPlayerPosition={currentPlayer?.position ?? null}
