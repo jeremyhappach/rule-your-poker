@@ -1074,10 +1074,10 @@ anteAnimationTriggerId,
     
     // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
     // During leg animation, show (legs - 1) so only the NEW leg is hidden
-    // During legs-to-player phase (final win), hide ALL leg indicators since they're animating to winner
+    // During legs-to-player phase AND pot-to-player phase, hide ALL leg indicators since they've already animated to winner
     // During 3-5-7 win animation (before legs-to-player), use CACHED leg count since backend may have reset them
     const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
-    const hideLegsForWinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player';
+    const hideLegsForWinAnimation = gameType !== 'holm-game' && (threeFiveSevenWinPhase === 'legs-to-player' || threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay');
     
     // During win animation sequence, use cached leg count to display legs
     // Use cached values when: any animation phase is active (waiting, legs-to-player, pot-to-player, delay)
@@ -1875,8 +1875,8 @@ anteAnimationTriggerId,
         {/* FIX: Use threeFiveSevenCachedLegPositions prop during game_over - it's pre-cached before backend resets */}
         {/* FIX: Also hide legs during legs-to-player phase (same as other players) */}
         {gameType !== 'holm-game' && currentPlayer && (() => {
-          // During legs-to-player phase, hide ALL leg indicators since they're animating to winner
-          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'legs-to-player';
+          // During legs-to-player phase AND pot-to-player/delay phases, hide ALL leg indicators since they've animated to winner
+          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'legs-to-player' || threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay';
           if (hideLegsForWinAnimation) {
             return false;
           }
