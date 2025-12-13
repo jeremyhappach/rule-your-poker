@@ -33,7 +33,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   const [animations, setAnimations] = useState<LegChipAnimation[]>([]);
   const lastTriggerIdRef = useRef<string | null>(null);
 
-  // Get position coordinates as percentage of container
+  // Get position coordinates as percentage of container (chipstack center positions)
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
     if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
@@ -47,13 +47,32 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     return slots[slotIndex] || { top: 50, left: 50 };
   };
 
-  const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+  // Get chipstack center position
+  const getChipstackCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
     const isCurrentPlayer = currentPlayerPosition === position;
     const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
     const slot = getSlotPercent(slotIndex);
     return {
       x: (slot.left / 100) * rect.width,
       y: (slot.top / 100) * rect.height,
+    };
+  };
+
+  // Get leg indicator position (offset toward table center from chipstack)
+  const getLegIndicatorCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+    const isCurrentPlayer = currentPlayerPosition === position;
+    const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
+    const chipCoords = getChipstackCoords(position, rect);
+    
+    // Leg indicators are offset toward table center by ~30px
+    // Right-side slots (3,4,5): legs are to the LEFT of chipstack
+    // Left-side slots (0,1,2) and current player: legs are to the RIGHT of chipstack
+    const isRightSide = slotIndex >= 3;
+    const offsetX = isRightSide ? -30 : 30;
+    
+    return {
+      x: chipCoords.x + offsetX,
+      y: chipCoords.y,
     };
   };
 
@@ -72,21 +91,22 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     }
 
     const rect = containerRef.current.getBoundingClientRect();
-    const winnerCoords = getPositionCoords(winnerPosition, rect);
+    const winnerCoords = getChipstackCoords(winnerPosition, rect);
 
     // Create animations for each leg from each player
     const newAnimations: LegChipAnimation[] = [];
     let animIndex = 0;
 
     legPositions.forEach((playerLeg) => {
-      const playerCoords = getPositionCoords(playerLeg.position, rect);
+      // Start from leg indicator position (offset from chipstack toward table center)
+      const legCoords = getLegIndicatorCoords(playerLeg.position, rect);
       const legCount = Math.min(playerLeg.legCount, legsToWin);
       
       for (let i = 0; i < legCount; i++) {
         newAnimations.push({
           id: `${playerLeg.playerId}-leg-${i}`,
-          fromX: playerCoords.x,
-          fromY: playerCoords.y,
+          fromX: legCoords.x,
+          fromY: legCoords.y,
           toX: winnerCoords.x,
           toY: winnerCoords.y,
           delay: animIndex * 100, // Stagger each leg by 100ms
