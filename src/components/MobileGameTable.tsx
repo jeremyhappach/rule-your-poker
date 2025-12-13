@@ -1158,10 +1158,6 @@ anteAnimationTriggerId,
     );
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
-        {/* DEBUG: Show real-time database values */}
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-[100] bg-red-600 rounded px-1 py-0.5 text-[8px] font-mono text-white whitespace-nowrap">
-          L:{player.legs} $:{pot}
-        </div>
         {/* Name above for bottom positions */}
         {isBottomPosition && nameElement}
         {/* Hide chip stack during showdown to make room for bigger cards */}
@@ -1170,6 +1166,10 @@ anteAnimationTriggerId,
             {chipElement}
           </MobilePlayerTimer>
         )}
+        {/* DEBUG: Show real-time database legs BELOW chip */}
+        <div className="bg-red-600 rounded px-1 py-0.5 text-[8px] font-mono text-white whitespace-nowrap">
+          L:{player.legs}
+        </div>
         {/* Name below for other positions */}
         {!isBottomPosition && nameElement}
         {/* Cards - show actual cards during showdown (bigger when chip hidden), or mini card backs otherwise */}
