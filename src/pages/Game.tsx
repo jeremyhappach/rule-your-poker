@@ -2903,22 +2903,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.pot, game?.game_type]);
   
   // Detect 3-5-7 final leg win and trigger win animation
-  // Trigger on "won a leg" message when a player has reached legsToWin (before game_over status)
+  // Trigger on "won a leg" message OR "won the game" message (backend may have already transitioned)
   useEffect(() => {
     if (game?.game_type === 'holm-game' || !game?.last_round_result) return;
     
     const resultMessage = game.last_round_result;
     
-    // Check if this is a leg win message
-    if (!resultMessage.includes('won a leg')) return;
-    
     // Prevent duplicate processing
     if (threeFiveSevenWinProcessedRef.current === resultMessage) return;
     
-    // Parse winner from message
+    // Check for two patterns: "won a leg" (before transition) or "won the game" (after transition)
+    const isLegWinMessage = resultMessage.includes('won a leg');
+    const isGameWinMessage = resultMessage.includes('won the game');
+    
+    if (!isLegWinMessage && !isGameWinMessage) return;
+    
+    // Parse winner from message - handle both formats
     const displayPart = resultMessage.split('|||')[0];
-    const winnerMatch = displayPart.match(/^(.+?) won a leg/);
-    const winnerName = winnerMatch ? winnerMatch[1] : '';
+    let winnerName = '';
+    
+    if (isLegWinMessage) {
+      const winnerMatch = displayPart.match(/^(.+?) won a leg/);
+      winnerName = winnerMatch ? winnerMatch[1] : '';
+    } else if (isGameWinMessage) {
+      // Format: "🏆 PlayerName won the game with X legs!"
+      const winnerMatch = displayPart.match(/🏆\s*(.+?)\s+won the game/);
+      winnerName = winnerMatch ? winnerMatch[1] : '';
+    }
     
     // Find winner player
     const winnerPlayer = players.find(p => p.profiles?.username === winnerName);
@@ -2927,9 +2938,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    // Check if this is the FINAL leg win (player has reached legsToWin)
+    // For leg win messages, check if this is the FINAL leg (player has reached legsToWin)
+    // For game win messages, we already know it's the final leg
     const legsToWin = game?.legs_to_win || 3;
-    if (winnerPlayer.legs < legsToWin) {
+    if (isLegWinMessage && winnerPlayer.legs < legsToWin) {
       console.log('[357 WIN] Not final leg, player has', winnerPlayer.legs, 'of', legsToWin);
       return;
     }
@@ -2937,11 +2949,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     threeFiveSevenWinProcessedRef.current = resultMessage;
     
     // CACHE LEG POSITIONS NOW before backend resets them
-    const legPositions = players
-      .filter(p => p.legs > 0)
-      .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }));
-    setCachedLegPositions(legPositions);
-    console.log('[357 WIN] Cached leg positions at detection:', legPositions);
+    // For game win message, player.legs may already be 0, so use legsToWin for winner
+    const legPositions = isGameWinMessage 
+      ? [{ playerId: winnerPlayer.id, position: winnerPlayer.position, legCount: legsToWin }]
+      : players
+          .filter(p => p.legs > 0)
+          .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }));
+    
+    // Only set cached positions if we got valid data
+    if (legPositions.length > 0) {
+      setCachedLegPositions(legPositions);
+      console.log('[357 WIN] Cached leg positions at detection:', legPositions);
+    }
     
     // Get winner's cards
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
@@ -2949,7 +2968,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Use cached pot value since current pot may already be reset
     const potAmount = cachedPotFor357WinRef.current || game.pot || 0;
-    console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'legs:', winnerPlayer.legs);
+    console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'messageType:', isGameWinMessage ? 'game_win' : 'leg_win');
     
     setThreeFiveSevenWinPotAmount(potAmount);
     setThreeFiveSevenWinnerId(winnerPlayer.id);

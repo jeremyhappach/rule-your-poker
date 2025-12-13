@@ -334,12 +334,12 @@ anteAnimationTriggerId,
   const lastSweepsResultRef = useRef<string | null>(null);
   
   // 3-5-7 win animation state (phases: leg -> legs-to-player -> pot-to-player)
-  const [threeFiveSevenWinPhase, setThreeFiveSevenWinPhase] = useState<'idle' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle');
+  const [threeFiveSevenWinPhase, setThreeFiveSevenWinPhase] = useState<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle');
   const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
   const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
-  const threeFiveSevenWinPhaseRef = useRef<'idle' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
+  const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
   
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -837,9 +837,10 @@ anteAnimationTriggerId,
     // Clear trigger in parent after starting
     onThreeFiveSevenWinAnimationStarted?.();
     
-    // Reset phase to idle first to clear any lingering state, then start sequence
-    setThreeFiveSevenWinPhase('idle');
-    threeFiveSevenWinPhaseRef.current = 'idle';
+    // IMMEDIATELY set phase to 'waiting' so display logic uses cached values
+    // This prevents the 2.6s gap where trigger is null and phase is idle
+    setThreeFiveSevenWinPhase('waiting');
+    threeFiveSevenWinPhaseRef.current = 'waiting';
     setLegsToPlayerTriggerId(null);
     setPotToPlayerTriggerId357(null);
     
@@ -900,49 +901,6 @@ anteAnimationTriggerId,
       onThreeFiveSevenWinAnimationComplete?.();
     }, 3000);
   }, [onThreeFiveSevenWinAnimationComplete]);
-
-  // DEBUG: 100ms visibility logger for all animation components
-  useEffect(() => {
-    const debugInterval = setInterval(() => {
-      console.log('[DEBUG 100ms] Component Visibility:', {
-        gameStatus,
-        gameType,
-        currentRound,
-        pot,
-        displayedPot,
-        // 3-5-7 Win animation states
-        threeFiveSevenWinTriggerId: threeFiveSevenWinTriggerId || null,
-        threeFiveSevenWinPhase,
-        threeFiveSevenWinPotAmount,
-        threeFiveSevenWinnerId: threeFiveSevenWinnerId || null,
-        threeFiveSevenCachedLegPositions: threeFiveSevenCachedLegPositions.length,
-        hasPending357WinForPot,
-        legsToPlayerTriggerId: legsToPlayerTriggerId || null,
-        potToPlayerTriggerId357: potToPlayerTriggerId357 || null,
-        // Other animations
-        showSweepsPot,
-        showLegEarned,
-        isWinningLegAnimation,
-        showChopped,
-        showBucksOnYou,
-        // Game states
-        isGameOver,
-        awaitingNextRound,
-        lastRoundResult: lastRoundResult?.substring(0, 30) || null,
-        // Pot box visibility logic
-        isPotBoxHidden: threeFiveSevenWinPhase !== 'idle',
-      });
-    }, 100);
-
-    return () => clearInterval(debugInterval);
-  }, [
-    gameStatus, gameType, currentRound, pot, displayedPot,
-    threeFiveSevenWinTriggerId, threeFiveSevenWinPhase, threeFiveSevenWinPotAmount,
-    threeFiveSevenWinnerId, threeFiveSevenCachedLegPositions, hasPending357WinForPot,
-    legsToPlayerTriggerId, potToPlayerTriggerId357,
-    showSweepsPot, showLegEarned, isWinningLegAnimation, showChopped, showBucksOnYou,
-    isGameOver, awaitingNextRound, lastRoundResult
-  ]);
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
@@ -1562,8 +1520,8 @@ anteAnimationTriggerId,
         )}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
-        {/* Hide during waiting phase, Holm win animation, and 3-5-7 pot sweep animation */}
-        {!isWaitingPhase && !holmWinPotTriggerId && threeFiveSevenWinPhase !== 'pot-to-player' && (
+        {/* Hide during: waiting phase, Holm win animation, pot-to-player animation, or delay after animation */}
+        {!isWaitingPhase && !holmWinPotTriggerId && threeFiveSevenWinPhase !== 'pot-to-player' && threeFiveSevenWinPhase !== 'delay' && (
           <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
             gameType === 'holm-game' 
               ? 'top-[35%] -translate-y-full' 
@@ -1902,8 +1860,14 @@ anteAnimationTriggerId,
           </div>}
         
         {/* Game Over state - result message (includes beat Chucky results now) */}
-        {/* Hide "won a leg" message during 3-5-7 win animation (they see the leg animation instead) */}
-        {isGameOver && lastRoundResult && !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) && (
+        {/* Hide all announcements during 3-5-7 win animation - the animation itself is the announcement */}
+        {isGameOver && lastRoundResult && !(
+          gameType !== 'holm-game' && (
+            threeFiveSevenWinTriggerId || 
+            threeFiveSevenWinPhase !== 'idle' ||
+            lastRoundResult.includes('won the game')
+          )
+        ) && (
           <div className="px-4 py-3">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-base text-center">
