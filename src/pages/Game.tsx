@@ -14,6 +14,7 @@ import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
+import { HolmWinCelebration, parseHolmWinMessage } from "@/components/HolmWinCelebration";
 import { DealerConfirmGameOver } from "@/components/DealerConfirmGameOver";
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
 import { DealerSelection } from "@/components/DealerSelection";
@@ -209,6 +210,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmShowdownWinnerId, setHolmShowdownWinnerId] = useState<string | null>(null);
   const [holmShowdownLoserIds, setHolmShowdownLoserIds] = useState<string[]>([]);
   const [holmShowdownPhase, setHolmShowdownPhase] = useState<'idle' | 'pot-to-winner' | 'losers-to-pot'>('idle');
+  
+  // Holm win celebration state (when player beats Chucky)
+  const [showHolmWinCelebration, setShowHolmWinCelebration] = useState(false);
+  const [holmWinData, setHolmWinData] = useState<{ winnerName: string; handDescription: string; potAmount: number } | null>(null);
+  const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
   
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
@@ -2824,6 +2830,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
+  // Detect Holm win (player beats Chucky) and show celebration
+  useEffect(() => {
+    if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
+      const resultMessage = game.last_round_result;
+      
+      // Check if this is a player beating Chucky (not Chucky beating a player)
+      if (resultMessage.includes('beat Chucky') && !resultMessage.includes('Chucky beat')) {
+        // Prevent duplicate processing
+        if (holmWinProcessedRef.current === resultMessage) {
+          return;
+        }
+        holmWinProcessedRef.current = resultMessage;
+        
+        const parsed = parseHolmWinMessage(resultMessage);
+        if (parsed) {
+          console.log('[HOLM WIN CELEBRATION] Triggering celebration for:', parsed.winnerName, 'with', parsed.handDescription, 'pot:', parsed.potAmount);
+          setHolmWinData({
+            winnerName: parsed.winnerName,
+            handDescription: parsed.handDescription,
+            potAmount: parsed.potAmount
+          });
+          setShowHolmWinCelebration(true);
+        }
+      }
+    }
+    
+    // Reset when game status changes away from game_over
+    if (game?.status !== 'game_over') {
+      holmWinProcessedRef.current = null;
+    }
+  }, [game?.status, game?.game_type, game?.last_round_result]);
+
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
       anteProcessingRef.current = false;
@@ -4049,6 +4087,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           currentPlayerId={currentPlayer?.id}
           isCurrentPlayerSittingOut={currentPlayer?.sitting_out}
           isCurrentPlayerWaiting={currentPlayer?.waiting}
+        />
+      )}
+
+      {/* Holm Win Celebration (player beats Chucky) */}
+      {showHolmWinCelebration && holmWinData && (
+        <HolmWinCelebration
+          winnerName={holmWinData.winnerName}
+          handDescription={holmWinData.handDescription}
+          potAmount={holmWinData.potAmount}
+          onComplete={() => {
+            setShowHolmWinCelebration(false);
+            setHolmWinData(null);
+            // After celebration, proceed to game over countdown
+          }}
         />
       )}
 

@@ -1147,16 +1147,17 @@ async function handleChuckyShowdown(
     console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Showing announcement. ***');
     
     // First show the result announcement (round stays completed, game stays in_progress)
+    // Include pot amount in message for the celebration component to parse
     await supabase
       .from('games')
       .update({
-        last_round_result: `${playerUsername} beat Chucky with ${playerHandDesc}!`
+        last_round_result: `${playerUsername} beat Chucky with ${playerHandDesc}!|||POT:${roundPot}`
       })
       .eq('id', gameId);
     
-    // 5-second delay for players to see exposed cards and winning announcement
-    console.log('[HOLM SHOWDOWN] Pausing 5 seconds for players to see results...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Reduced delay - celebration component will handle the dramatic pause
+    console.log('[HOLM SHOWDOWN] Pausing 2 seconds before triggering game_over...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
     // Dealer cannot pass to a bot or a sitting_out player
@@ -1699,7 +1700,7 @@ async function handleMultiPlayerShowdown(
       await supabase
         .from('games')
         .update({
-          last_round_result: `${winnerNames.join(' and ')} beat Chucky and take $${roundPot}!`
+          last_round_result: `${winnerNames.join(' and ')} beat Chucky!|||POT:${roundPot}`
         })
         .eq('id', gameId);
       
