@@ -2895,12 +2895,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Cache leg positions for 3-5-7 win animation (legs get reset before animation runs)
   const [cachedLegPositions, setCachedLegPositions] = useState<{ playerId: string; position: number; legCount: number }[]>([]);
   
-  // Cache pot whenever it's non-zero (before it gets reset)
+  // Aggressively cache pot and leg positions whenever they're non-zero
+  // This runs on every players/pot change to capture values BEFORE backend resets them
   useEffect(() => {
-    if (game?.pot && game.pot > 0 && game?.game_type !== 'holm-game') {
+    if (game?.game_type === 'holm-game') return;
+    
+    // Cache pot whenever non-zero
+    if (game?.pot && game.pot > 0) {
       cachedPotFor357WinRef.current = game.pot;
+      console.log('[357 CACHE] Cached pot:', game.pot);
     }
-  }, [game?.pot, game?.game_type]);
+    
+    // Cache leg positions whenever any player has legs (before they get reset)
+    const playersWithLegs = players.filter(p => p.legs > 0);
+    if (playersWithLegs.length > 0) {
+      const positions = playersWithLegs.map(p => ({
+        playerId: p.id,
+        position: p.position,
+        legCount: p.legs
+      }));
+      setCachedLegPositions(positions);
+      console.log('[357 CACHE] Cached leg positions:', positions);
+    }
+  }, [game?.pot, game?.game_type, players]);
   
   // Detect 3-5-7 final leg win and trigger win animation
   // Trigger on "won a leg" message OR "won the game" message (backend may have already transitioned)
