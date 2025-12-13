@@ -2880,7 +2880,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
-  // Handle Holm win pot animation complete - proceed directly to next game
+  // Handle Holm win pot animation complete - delay 2 seconds then proceed to next game
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
     // Guard: Only proceed if we're actually in game_over with a valid Holm win
     if (game?.status !== 'game_over' || game?.game_type !== 'holm-game') {
@@ -2894,8 +2894,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    console.log('[HOLM WIN POT] Animation complete, proceeding directly to next game');
-    // Skip the countdown entirely - animation provided enough time to see results
+    console.log('[HOLM WIN POT] Animation complete, waiting 2 seconds before proceeding');
+    // Wait 2 seconds after animation to let players see the final state
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
 
