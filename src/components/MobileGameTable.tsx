@@ -1270,6 +1270,7 @@ anteAnimationTriggerId,
             currentPlayerPosition={currentPlayer?.position ?? null}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
+            gameType={gameType}
             onAnimationStart={() => {
               // Pot goes to 0 visually, show -$X flash
               setAnteFlashTrigger({ id: `showdown-pot-out-${Date.now()}`, amount: -holmShowdownPotAmount });
@@ -1380,7 +1381,7 @@ anteAnimationTriggerId,
           <LegsToPlayerAnimation
             triggerId={legsToPlayerTriggerId}
             legPositions={players
-              .filter(p => p.legs > 0)
+              .filter(p => p.legs > 0 && p.id !== threeFiveSevenWinnerId) // Exclude winner - only animate OTHER players' legs TO winner
               .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }))}
             winnerPosition={players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1}
             currentPlayerPosition={currentPlayer?.position ?? null}
@@ -1400,6 +1401,7 @@ anteAnimationTriggerId,
             currentPlayerPosition={currentPlayer?.position ?? null}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
+            gameType={gameType}
             onAnimationStart={() => {
               // Pot goes to 0 visually
               setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
