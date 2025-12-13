@@ -161,6 +161,7 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   threeFiveSevenWinPotAmount?: number;
   threeFiveSevenWinnerId?: string | null;
   threeFiveSevenWinnerCards?: CardType[];
+  threeFiveSevenCachedLegPositions?: { playerId: string; position: number; legCount: number }[];
   onThreeFiveSevenWinAnimationComplete?: () => void;
   // Game over props
   isGameOver?: boolean;
@@ -255,6 +256,7 @@ anteAnimationTriggerId,
   threeFiveSevenWinPotAmount = 0,
   threeFiveSevenWinnerId,
   threeFiveSevenWinnerCards = [],
+  threeFiveSevenCachedLegPositions = [],
   onThreeFiveSevenWinAnimationComplete,
   isGameOver,
   isDealer,
@@ -336,7 +338,6 @@ anteAnimationTriggerId,
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
-  const cachedLegPositionsRef = useRef<{ playerId: string; position: number; legCount: number }[]>([]); // Cache leg positions before backend resets them
   
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -820,13 +821,7 @@ anteAnimationTriggerId,
     currentAnimationIdRef.current = animationId;
     
     console.log('[357 WIN] Starting win animation sequence, animationId:', animationId);
-    
-    // CACHE the current leg positions IMMEDIATELY before backend resets them
-    const legPositions = players
-      .filter(p => p.legs > 0)
-      .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }));
-    cachedLegPositionsRef.current = legPositions;
-    console.log('[357 WIN] Cached leg positions:', legPositions);
+    console.log('[357 WIN] Using leg positions from prop:', threeFiveSevenCachedLegPositions);
     
     // Reset phase to idle first to clear any lingering state, then start sequence
     setThreeFiveSevenWinPhase('idle');
@@ -842,12 +837,12 @@ anteAnimationTriggerId,
         console.log('[357 WIN] Stale animation, skipping Phase 1');
         return;
       }
-      console.log('[357 WIN] Phase 1: legs-to-player, using cached positions:', cachedLegPositionsRef.current);
+      console.log('[357 WIN] Phase 1: legs-to-player, using positions:', threeFiveSevenCachedLegPositions);
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
     }, 2600); // Slightly after leg earned animation completes
-  }, [threeFiveSevenWinTriggerId, players]);
+  }, [threeFiveSevenWinTriggerId, threeFiveSevenCachedLegPositions]);
 
   // Handle legs-to-player animation complete -> start pot-to-player
   const handleLegsToPlayerComplete = useCallback(() => {
@@ -1005,7 +1000,7 @@ anteAnimationTriggerId,
     
     // During win animation phases (before legs-to-player), use cached leg count to display legs
     const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
-    const cachedLegsForThisPlayer = cachedLegPositionsRef.current.find(p => p.playerId === player.id)?.legCount || 0;
+    const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
     const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
     
     const displayLegs = hideLegsForWinAnimation ? 0 : (isLegAnimatingForThisPlayer ? effectivePlayerLegs - 1 : effectivePlayerLegs);
@@ -1442,7 +1437,7 @@ anteAnimationTriggerId,
         {gameType !== 'holm-game' && threeFiveSevenWinPhase === 'legs-to-player' && threeFiveSevenWinnerId && (
           <LegsToPlayerAnimation
             triggerId={legsToPlayerTriggerId}
-            legPositions={cachedLegPositionsRef.current} // Use cached positions, not live data
+            legPositions={threeFiveSevenCachedLegPositions} // Use cached positions from parent
             winnerPosition={players.find(p => p.id === threeFiveSevenWinnerId)?.position ?? 1}
             currentPlayerPosition={currentPlayer?.position ?? null}
             getClockwiseDistance={getClockwiseDistance}

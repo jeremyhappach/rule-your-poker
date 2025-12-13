@@ -2892,6 +2892,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Cache pot value for 3-5-7 win animation (pot gets reset before game_over)
   const cachedPotFor357WinRef = useRef<number>(0);
   
+  // Cache leg positions for 3-5-7 win animation (legs get reset before animation runs)
+  const [cachedLegPositions, setCachedLegPositions] = useState<{ playerId: string; position: number; legCount: number }[]>([]);
+  
   // Cache pot whenever it's non-zero (before it gets reset)
   useEffect(() => {
     if (game?.pot && game.pot > 0 && game?.game_type !== 'holm-game') {
@@ -2933,6 +2936,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     threeFiveSevenWinProcessedRef.current = resultMessage;
     
+    // CACHE LEG POSITIONS NOW before backend resets them
+    const legPositions = players
+      .filter(p => p.legs > 0)
+      .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }));
+    setCachedLegPositions(legPositions);
+    console.log('[357 WIN] Cached leg positions at detection:', legPositions);
+    
     // Get winner's cards
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
     const winnerCards = winnerCardsData?.cards || [];
@@ -2958,6 +2968,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinPotAmount(0);
       setThreeFiveSevenWinnerCards([]);
       cachedPotFor357WinRef.current = 0;
+      setCachedLegPositions([]);
     }
     // Also reset when transitioning from game_over to dealer_selection (next game starting)
     if (game?.status === 'dealer_selection' || game?.status === 'configuring') {
@@ -2968,6 +2979,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinPotAmount(0);
       setThreeFiveSevenWinnerCards([]);
       cachedPotFor357WinRef.current = 0;
+      setCachedLegPositions([]);
     }
   }, [game?.status, game?.current_round]);
 
@@ -3801,6 +3813,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
                     threeFiveSevenWinnerId={threeFiveSevenWinnerId}
                     threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
+                    threeFiveSevenCachedLegPositions={cachedLegPositions}
                     onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
@@ -4159,6 +4172,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
               threeFiveSevenWinnerId={threeFiveSevenWinnerId}
               threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
+              threeFiveSevenCachedLegPositions={cachedLegPositions}
               onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
               onStay={handleStay}
               onFold={handleFold}
