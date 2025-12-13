@@ -74,8 +74,7 @@ export const SessionResults = ({ open, onOpenChange, session }: SessionResultsPr
                       </span>
                     </div>
                     <Badge variant={player.chips >= 0 ? 'default' : 'destructive'} className="text-xs">
-                      {session.real_money && <span className="text-green-400 mr-0.5">$</span>}
-                      {player.chips >= 0 ? '+' : '-'}${formatWithCommas(player.chips)}
+                      {player.chips >= 0 ? '+' : '-'}{session.real_money ? '$' : ''}{formatWithCommas(player.chips)}
                     </Badge>
                   </div>
                 ))}
