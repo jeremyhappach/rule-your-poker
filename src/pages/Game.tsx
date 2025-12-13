@@ -638,6 +638,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setCachedRoundData(null);
                 cachedRoundRef.current = null;
                 maxRevealedRef.current = 0;
+                cardIdentityRef.current = '';
+                showdownCardsCacheRef.current = new Map();
+                showdownRoundNumberRef.current = null;
               }
               
               if (debounceTimer) clearTimeout(debounceTimer);
@@ -1541,6 +1544,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setCachedRoundData(null);
       cachedRoundRef.current = null;
       prevRoundStateRef.current = { communityCardsHash: '', status: undefined };
+      setPlayerCards([]);
+      showdownCardsCacheRef.current = new Map();
+      showdownRoundNumberRef.current = null;
       return;
     }
     
@@ -2636,17 +2642,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
 
-    // CRITICAL: Clear all card state IMMEDIATELY when transitioning to new game
-    // This prevents stale cards from rendering while waiting for new game setup
-    console.log('[GAME OVER COMPLETE] 🧹 CLEARING ALL CARD STATE FOR NEW GAME');
-    setPlayerCards([]);
-    setCachedRoundData(null);
-    cachedRoundRef.current = null;
-    maxRevealedRef.current = 0;
-    cardIdentityRef.current = '';
-    // Clear the external showdown cache as well
-    showdownCardsCacheRef.current = new Map();
-    showdownRoundNumberRef.current = null;
+    // IMPORTANT: Do NOT clear card state here!
+    // Cards should persist during the transition until the game status actually changes.
+    // Card state will be cleared in the status change effect when transitioning to game_selection/configuring.
+    // Clearing here causes the tabled cards and highlights to disappear during the brief transition window.
 
     // Check if session should end
     const { data: gameData, error: fetchError } = await supabase
