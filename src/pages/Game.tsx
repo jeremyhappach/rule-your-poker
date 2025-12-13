@@ -2894,9 +2894,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    console.log('[HOLM WIN POT] Animation complete, waiting 2 seconds before proceeding');
-    // Wait 2 seconds after animation to let players see the final state
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log('[HOLM WIN POT] Animation complete, waiting 3 seconds before proceeding');
+    // Wait 3 seconds after animation to let players see the final state (tabled cards stay visible)
+    await new Promise(resolve => setTimeout(resolve, 3000));
     
     console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
