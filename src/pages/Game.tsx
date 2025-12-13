@@ -2915,6 +2915,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     if (!isLegWinMessage && !isGameWinMessage) return;
     
+    // DEBUG: Log what we see at detection time
+    console.log('[357 WIN DEBUG] Detection triggered:', {
+      message: resultMessage,
+      isLegWin: isLegWinMessage,
+      isGameWin: isGameWinMessage,
+      playersLegs: players.map(p => ({ name: p.profiles?.username, legs: p.legs })),
+      gamePot: game.pot,
+      cachedPot: cachedPotFor357WinRef.current
+    });
+    
     // Prevent duplicate processing - check if we already triggered for THIS game win sequence
     if (threeFiveSevenWinProcessedRef.current === '357_WIN_TRIGGERED') {
       console.log('[357 WIN] Already triggered, skipping duplicate detection');
@@ -2950,6 +2960,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // For leg win messages, check if this is the FINAL leg (player has reached legsToWin)
     // For game win messages, we already know it's the final leg
     const legsToWin = game?.legs_to_win || 3;
+    
+    console.log('[357 WIN DEBUG] Winner check:', {
+      winnerName,
+      winnerLegs: winnerPlayer.legs,
+      legsToWin,
+      isLegWinMessage,
+      willProceed: isGameWinMessage || winnerPlayer.legs >= legsToWin
+    });
+    
     if (isLegWinMessage && winnerPlayer.legs < legsToWin) {
       console.log('[357 WIN] Not final leg, player has', winnerPlayer.legs, 'of', legsToWin);
       return;
@@ -2960,17 +2979,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // CACHE LEG POSITIONS NOW before backend resets them
     // For game win message, player.legs may already be 0, so use legsToWin for winner
-    const legPositions = isGameWinMessage 
-      ? [{ playerId: winnerPlayer.id, position: winnerPlayer.position, legCount: legsToWin }]
-      : players
-          .filter(p => p.legs > 0)
-          .map(p => ({ playerId: p.id, position: p.position, legCount: p.legs }));
+    // Also, for leg win message if player.legs is already reset, use legsToWin
+    let legPositions: Array<{ playerId: string; position: number; legCount: number }> = [];
     
-    // Only set cached positions if we got valid data
-    if (legPositions.length > 0) {
-      setCachedLegPositions(legPositions);
-      console.log('[357 WIN] Cached leg positions at detection:', legPositions);
+    // First try to get from current player data
+    const playersWithLegs = players.filter(p => p.legs > 0);
+    
+    if (playersWithLegs.length > 0) {
+      // Use live data - legs haven't been reset yet
+      legPositions = playersWithLegs.map(p => ({ 
+        playerId: p.id, 
+        position: p.position, 
+        legCount: p.legs 
+      }));
+      console.log('[357 WIN] Using live leg data:', legPositions);
+    } else {
+      // Legs already reset - reconstruct from winner (guaranteed to have legsToWin)
+      legPositions = [{ 
+        playerId: winnerPlayer.id, 
+        position: winnerPlayer.position, 
+        legCount: legsToWin 
+      }];
+      console.log('[357 WIN] Legs already reset, using reconstructed data:', legPositions);
     }
+    
+    setCachedLegPositions(legPositions);
+    console.log('[357 WIN] Final cached leg positions:', legPositions);
     
     // Get winner's cards
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
