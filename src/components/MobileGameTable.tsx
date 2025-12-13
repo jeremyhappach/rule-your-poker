@@ -341,6 +341,12 @@ anteAnimationTriggerId,
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
   
+  // FIX: Keep pot hidden after Holm win animation until game resets
+  const [holmWinPotAnimationCompleted, setHolmWinPotAnimationCompleted] = useState(false);
+  
+  // FIX: Cache current player's legs to prevent disappearing during animation
+  const cachedCurrentPlayerLegsRef = useRef<number>(0);
+  
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
@@ -419,15 +425,18 @@ anteAnimationTriggerId,
         // POT VISIBILITY CONDITIONS
         isWaitingPhase,
         holmWinPotTriggerId: holmWinPotTriggerId ? holmWinPotTriggerId.slice(-8) : null,
+        holmWinPotAnimationCompleted, // NEW: shows if pot should stay hidden after animation
         threeFiveSevenWinPhase,
-        potShouldBeVisible: !isWaitingPhase && !holmWinPotTriggerId && 
+        potShouldBeVisible: !isWaitingPhase && !holmWinPotTriggerId && !holmWinPotAnimationCompleted &&
           !(threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay'),
         
         // LEGS VALUES  
         currentPlayer_legs_db: currentPlayerData?.legs,
+        cachedCurrentPlayerLegs: cachedCurrentPlayerLegsRef.current, // NEW: cached value for game_over
         showLegEarned,
         legEarnedPlayerPosition,
         isWinningLegAnimation,
+        isInGameOverStatus: gameStatus === 'game_over',
         
         // ANIMATION STATES
         isAnteAnimating: isAnteAnimatingRef.current,
@@ -447,10 +456,22 @@ anteAnimationTriggerId,
     };
   }, [
     pot, displayedPot, threeFiveSevenWinPotAmount, isWaitingPhase, holmWinPotTriggerId,
-    threeFiveSevenWinPhase, players, currentUserId, showLegEarned, legEarnedPlayerPosition,
-    isWinningLegAnimation, hasPending357WinForPot, gameStatus, roundStatus, gameType
+    holmWinPotAnimationCompleted, threeFiveSevenWinPhase, players, currentUserId, showLegEarned, 
+    legEarnedPlayerPosition, isWinningLegAnimation, hasPending357WinForPot, gameStatus, roundStatus, gameType
   ]);
   // ========== END DEBUG POLLING ==========
+  
+  // FIX: Reset animation completion states when game transitions from game_over
+  const prevGameStatusRef = useRef(gameStatus);
+  useEffect(() => {
+    if (prevGameStatusRef.current === 'game_over' && gameStatus !== 'game_over') {
+      // Game is starting fresh - reset all animation completion flags
+      setHolmWinPotAnimationCompleted(false);
+      cachedCurrentPlayerLegsRef.current = 0;
+      console.log('[RESET] Cleared holmWinPotAnimationCompleted and cachedCurrentPlayerLegs');
+    }
+    prevGameStatusRef.current = gameStatus;
+  }, [gameStatus]);
   
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
@@ -1450,7 +1471,11 @@ anteAnimationTriggerId,
             isCurrentPlayerWinner={currentPlayer?.position === holmWinWinnerPosition}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
-            onAnimationComplete={onHolmWinPotAnimationComplete}
+            onAnimationComplete={() => {
+              // FIX: Mark animation as completed to keep pot hidden
+              setHolmWinPotAnimationCompleted(true);
+              onHolmWinPotAnimationComplete?.();
+            }}
           />
         )}
         
@@ -1603,9 +1628,9 @@ anteAnimationTriggerId,
         )}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
-        {/* Hide during: waiting phase, Holm win animation, or once pot-to-player animation starts (pot-to-player or delay phase) */}
-        {/* Show during legs-to-player phase (legs-to-player, waiting) since pot should still be visible */}
-        {!isWaitingPhase && !holmWinPotTriggerId && 
+        {/* Hide during: waiting phase, Holm win animation (active OR completed), or once pot-to-player animation starts */}
+        {/* FIX: Also hide after holmWinPotAnimationCompleted to prevent -$X flash when pot goes to 0 */}
+        {!isWaitingPhase && !holmWinPotTriggerId && !holmWinPotAnimationCompleted &&
          !(threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay') && (
           <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
             gameType === 'holm-game' 
@@ -1837,10 +1862,20 @@ anteAnimationTriggerId,
       })()}
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
-        {/* During leg animation, show (legs - 1) so only the NEW leg is hidden */}
+        {/* FIX: Use cached legs value during game_over to prevent disappearing */}
         {gameType !== 'holm-game' && currentPlayer && (() => {
+          // Cache legs when they're > 0 (before backend resets them)
+          if (currentPlayer.legs > 0) {
+            cachedCurrentPlayerLegsRef.current = currentPlayer.legs;
+          }
+          
+          // Use cached value during game_over, otherwise use live value
+          const effectiveLegs = isInGameOverStatus && cachedCurrentPlayerLegsRef.current > 0 
+            ? cachedCurrentPlayerLegsRef.current 
+            : currentPlayer.legs;
+          
           const isAnimatingCurrentPlayer = showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
-          const displayLegs = isAnimatingCurrentPlayer ? currentPlayer.legs - 1 : currentPlayer.legs;
+          const displayLegs = isAnimatingCurrentPlayer ? effectiveLegs - 1 : effectiveLegs;
           return displayLegs > 0;
         })() && (
           <div 
@@ -1852,15 +1887,22 @@ anteAnimationTriggerId,
             }}
           >
             <div className="flex">
-              {Array.from({ length: Math.min(
-                (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
-                  ? currentPlayer.legs - 1 
-                  : currentPlayer.legs, 
-                legsToWin
-              ) }).map((_, i) => {
-                const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
-                  ? currentPlayer.legs - 1 
+              {Array.from({ length: (() => {
+                // Same caching logic for the array length
+                const effectiveLegs = isInGameOverStatus && cachedCurrentPlayerLegsRef.current > 0 
+                  ? cachedCurrentPlayerLegsRef.current 
                   : currentPlayer.legs;
+                const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
+                  ? effectiveLegs - 1 
+                  : effectiveLegs;
+                return Math.min(displayCount, legsToWin);
+              })() }).map((_, i) => {
+                const effectiveLegs = isInGameOverStatus && cachedCurrentPlayerLegsRef.current > 0 
+                  ? cachedCurrentPlayerLegsRef.current 
+                  : currentPlayer.legs;
+                const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
+                  ? effectiveLegs - 1 
+                  : effectiveLegs;
                 return (
                 <div 
                   key={i} 
