@@ -618,19 +618,10 @@ anteAnimationTriggerId,
       return;
     }
     
-    // CRITICAL: During game_over status, NEVER hide community cards
-    // They need to persist through the win animation and post-win delay
+    // CRITICAL: During game_over status, don't touch community card state at all
+    // The render logic directly uses communityCards prop during game_over, bypassing this state
     if (isInGameOverStatus) {
-      console.log('[MOBILE_COMMUNITY] In game_over status - keeping cards visible');
-      setIsDelayingCommunityCards(false);
-      if (communityCardsDelayRef.current) {
-        clearTimeout(communityCardsDelayRef.current);
-        communityCardsDelayRef.current = null;
-      }
-      // Ensure cards stay visible
-      if (!showCommunityCards && approvedCommunityCards) {
-        setShowCommunityCards(true);
-      }
+      console.log('[MOBILE_COMMUNITY] In game_over status - skipping state management (render uses props directly)');
       return;
     }
     
@@ -710,7 +701,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, isInGameOverStatus, showCommunityCards, approvedCommunityCards, lastRoundResult]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, isInGameOverStatus, lastRoundResult, communityCards]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
@@ -1332,13 +1323,18 @@ anteAnimationTriggerId,
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
         {/* Use approvedCommunityCards (cached at approval time) to prevent showing new round cards during announcement */}
-        {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
-        {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
-         (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
+        {/* During game_over, ALWAYS show community cards from props if available (bypass caching logic) */}
+        {gameType === 'holm-game' && (
+          // During game_over: use communityCards prop directly, bypassing showCommunityCards state
+          // Otherwise: use the cached/approved cards with proper gating
+          (isInGameOverStatus && communityCards && communityCards.length > 0) ||
+          (approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
+           (currentRound === approvedRoundForDisplay))
+        ) && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
-              cards={approvedCommunityCards} 
-              revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
+              cards={isInGameOverStatus && communityCards && communityCards.length > 0 ? communityCards : approvedCommunityCards!} 
+              revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 4)} 
               highlightedIndices={winningCardHighlights.communityIndices}
               kickerIndices={winningCardHighlights.kickerCommunityIndices}
               hasHighlights={winningCardHighlights.hasHighlights}
