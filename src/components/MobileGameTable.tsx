@@ -1015,9 +1015,22 @@ anteAnimationTriggerId,
     
     // During win animation sequence, use cached leg count to display legs
     // Use cached values when: any animation phase is active (waiting, legs-to-player, pot-to-player, delay)
-    const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenCachedLegPositions.length > 0;
+    const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
     const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
     const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
+    
+    // Debug: Log leg display calculation for winner
+    if (isIn357WinAnimation && player.id === threeFiveSevenWinnerId) {
+      console.log('[357 LEG DISPLAY]', player.profiles?.username, {
+        phase: threeFiveSevenWinPhase,
+        playerLegs,
+        cachedLegsForThisPlayer,
+        effectivePlayerLegs,
+        isLegAnimatingForThisPlayer,
+        hideLegsForWinAnimation,
+        cachedPositionsLength: threeFiveSevenCachedLegPositions.length
+      });
+    }
     
     const displayLegs = hideLegsForWinAnimation ? 0 : (isLegAnimatingForThisPlayer ? effectivePlayerLegs - 1 : effectivePlayerLegs);
     const legIndicator = displayLegs > 0 && (
