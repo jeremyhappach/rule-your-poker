@@ -179,6 +179,11 @@ export const GameTable = ({
   const showdownRoundRef = useRef<string | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
   
+  // Cache Chucky cards to persist through announcement phase
+  const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
+  const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
+  const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+  
   // Compute showdown state synchronously during render
   // Count players who stayed for multi-player showdown detection
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
@@ -466,6 +471,28 @@ export const GameTable = ({
     lastAllDecisionsInRef.current = allDecisionsIn;
   }, [allDecisionsIn, gameId, realtimeRound?.id]);
   
+  // Cache Chucky cards when available, clear only when buck passes
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    
+    // When buck passes (awaitingNextRound AND no result), clear cached Chucky data
+    if (awaitingNextRound && !lastRoundResult) {
+      console.log('[GAMETABLE_CHUCKY] Buck passed - clearing cached Chucky cards');
+      setCachedChuckyCards(null);
+      setCachedChuckyActive(false);
+      setCachedChuckyCardsRevealed(0);
+      return;
+    }
+    
+    // Cache Chucky data when it's available
+    if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
+      console.log('[GAMETABLE_CHUCKY] Caching Chucky cards:', chuckyCards.length);
+      setCachedChuckyCards([...chuckyCards]);
+      setCachedChuckyActive(true);
+      setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
+    }
+  }, [gameType, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult]);
+
   // CRITICAL: Derive effective round from realtime data (source of truth), falling back to props
   const effectiveRoundNumber = realtimeRound?.round_number ?? currentRound;
   const effectiveCardsDealt = realtimeRound?.cards_dealt ?? authoritativeCardCount;
@@ -913,13 +940,12 @@ export const GameTable = ({
             />
           )}
 
-          {/* Chucky's Hand for Holm Game - persist through announcement, hide when buck passes */}
-          {gameType === 'holm-game' && chuckyActive && chuckyCards && 
-           !(awaitingNextRound && !lastRoundResult) && (
+          {/* Chucky's Hand for Holm Game - use cached values to persist through announcement */}
+          {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && (
             <ChuckyHand 
-              cards={chuckyCards}
+              cards={cachedChuckyCards}
               show={true}
-              revealed={chuckyCardsRevealed}
+              revealed={cachedChuckyCardsRevealed}
               x={48}
               y={62}
             />
