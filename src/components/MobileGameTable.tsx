@@ -14,6 +14,7 @@ import { RejoinNextHandButton } from "./RejoinNextHandButton";
 import { AnteUpAnimation } from "./AnteUpAnimation";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
+import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
@@ -149,6 +150,11 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   onHolmShowdownPotToWinnerEnded?: () => void;
   onHolmShowdownLosersStarted?: () => void;
   onHolmShowdownLosersEnded?: () => void;
+  // Holm win pot animation props (player beats Chucky)
+  holmWinPotTriggerId?: string | null;
+  holmWinPotAmount?: number;
+  holmWinWinnerPosition?: number;
+  onHolmWinPotAnimationComplete?: () => void;
   // Game over props
   isGameOver?: boolean;
   isDealer?: boolean;
@@ -229,6 +235,10 @@ anteAnimationTriggerId,
   onHolmShowdownPotToWinnerEnded,
   onHolmShowdownLosersStarted,
   onHolmShowdownLosersEnded,
+  holmWinPotTriggerId,
+  holmWinPotAmount = 0,
+  holmWinWinnerPosition = 1,
+  onHolmWinPotAnimationComplete,
   isGameOver,
   isDealer,
   onNextGame,
@@ -1158,6 +1168,19 @@ anteAnimationTriggerId,
           />
         )}
         
+        {/* Holm Win Pot Animation (player beats Chucky - dramatic 5 second animation) */}
+        {holmWinPotTriggerId && (
+          <HolmWinPotAnimation
+            triggerId={holmWinPotTriggerId}
+            amount={holmWinPotAmount}
+            winnerPosition={holmWinWinnerPosition}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            onAnimationComplete={onHolmWinPotAnimationComplete}
+          />
+        )}
+        
         {/* Holm Multi-Player Showdown Phase 2: Losers to Pot */}
         {holmShowdownPhase === 'losers-to-pot' && holmShowdownLoserIds.length > 0 && (
           <AnteUpAnimation
@@ -1520,8 +1543,8 @@ anteAnimationTriggerId,
             </div>
           </div>}
         
-        {/* Game Over state - result message (no Next Game button - auto proceeds) */}
-        {isGameOver && lastRoundResult && !lastRoundResult.includes('beat Chucky') && <div className="px-4 py-3">
+        {/* Game Over state - result message (includes beat Chucky results now) */}
+        {isGameOver && lastRoundResult && <div className="px-4 py-3">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-base text-center">
                 {lastRoundResult.split('|||')[0]}

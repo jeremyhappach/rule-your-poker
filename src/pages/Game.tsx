@@ -14,7 +14,7 @@ import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
-import { HolmWinCelebration, parseHolmWinMessage } from "@/components/HolmWinCelebration";
+
 
 import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
 import { DealerSelection } from "@/components/DealerSelection";
@@ -211,9 +211,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmShowdownLoserIds, setHolmShowdownLoserIds] = useState<string[]>([]);
   const [holmShowdownPhase, setHolmShowdownPhase] = useState<'idle' | 'pot-to-winner' | 'losers-to-pot'>('idle');
   
-  // Holm win celebration state (when player beats Chucky)
-  const [showHolmWinCelebration, setShowHolmWinCelebration] = useState(false);
-  const [holmWinData, setHolmWinData] = useState<{ winnerName: string; handDescription: string; potAmount: number } | null>(null);
+  // Holm win pot animation state (when player beats Chucky - dramatic pot to winner)
+  const [holmWinPotTriggerId, setHolmWinPotTriggerId] = useState<string | null>(null);
+  const [holmWinPotAmount, setHolmWinPotAmount] = useState<number>(0);
+  const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
   
   // Chat functionality
@@ -2830,7 +2831,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
-  // Detect Holm win (player beats Chucky) and show celebration
+  // Detect Holm win (player beats Chucky) and trigger pot animation
   useEffect(() => {
     if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
       const resultMessage = game.last_round_result;
@@ -2843,16 +2844,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
         holmWinProcessedRef.current = resultMessage;
         
-        const parsed = parseHolmWinMessage(resultMessage);
-        if (parsed) {
-          console.log('[HOLM WIN CELEBRATION] Triggering celebration for:', parsed.winnerName, 'with', parsed.handDescription, 'pot:', parsed.potAmount);
-          setHolmWinData({
-            winnerName: parsed.winnerName,
-            handDescription: parsed.handDescription,
-            potAmount: parsed.potAmount
-          });
-          setShowHolmWinCelebration(true);
-        }
+        // Parse pot amount from message
+        const potMatch = resultMessage.match(/POT:(\d+)/);
+        const potAmount = potMatch ? parseInt(potMatch[1], 10) : 0;
+        
+        // Find winner position from username in message
+        const displayPart = resultMessage.split('|||')[0];
+        const winnerMatch = displayPart.match(/^(.+?) beat Chucky/);
+        const winnerName = winnerMatch ? winnerMatch[1] : '';
+        
+        // Find player by username
+        const winnerPlayer = players.find(p => p.profiles?.username === winnerName);
+        const winnerPosition = winnerPlayer?.position ?? 1;
+        
+        console.log('[HOLM WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPosition, 'pot:', potAmount);
+        
+        setHolmWinPotAmount(potAmount);
+        setHolmWinWinnerPosition(winnerPosition);
+        setHolmWinPotTriggerId(`holm-win-${Date.now()}`);
       }
     }
     
@@ -2860,7 +2869,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== 'game_over') {
       holmWinProcessedRef.current = null;
     }
-  }, [game?.status, game?.game_type, game?.last_round_result]);
+  }, [game?.status, game?.game_type, game?.last_round_result, players]);
+
+  // Handle Holm win pot animation complete - proceed to countdown
+  const handleHolmWinPotAnimationComplete = useCallback(async () => {
+    console.log('[HOLM WIN POT] Animation complete, setting game_over_at and proceeding');
+    if (gameId) {
+      await supabase
+        .from('games')
+        .update({ game_over_at: new Date().toISOString() })
+        .eq('id', gameId);
+      // Countdown will now show and auto-proceed
+    }
+  }, [gameId]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
@@ -3609,7 +3630,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onComplete={selectDealer}
               />
             )}
-            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') && !game.last_round_result.includes('beat Chucky') ? (
+            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable
@@ -3994,6 +4015,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setHolmShowdownWinnerId(null);
                 setHolmShowdownLoserIds([]);
               }}
+              holmWinPotTriggerId={holmWinPotTriggerId}
+              holmWinPotAmount={holmWinPotAmount}
+              holmWinWinnerPosition={holmWinWinnerPosition}
+              onHolmWinPotAnimationComplete={handleHolmWinPotAnimationComplete}
               onStay={handleStay}
               onFold={handleFold}
               onSelectSeat={handleSelectSeat}
@@ -4082,27 +4107,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         />
       )}
 
-      {/* Holm Win Celebration (player beats Chucky) */}
-      {showHolmWinCelebration && holmWinData && (
-        <HolmWinCelebration
-          winnerName={holmWinData.winnerName}
-          handDescription={holmWinData.handDescription}
-          potAmount={holmWinData.potAmount}
-          onComplete={async () => {
-            setShowHolmWinCelebration(false);
-            setHolmWinData(null);
-            // After celebration, set game_over_at and immediately proceed to next hand
-            if (gameId) {
-              await supabase
-                .from('games')
-                .update({ game_over_at: new Date().toISOString() })
-                .eq('id', gameId);
-              // Auto-proceed to next hand (no countdown needed)
-              handleGameOverComplete();
-            }
-          }}
-        />
-      )}
 
       <AlertDialog open={showEndSessionDialog} onOpenChange={setShowEndSessionDialog}>
         <AlertDialogContent>
