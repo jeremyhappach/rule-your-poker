@@ -221,6 +221,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
   
+  // LIFTED community cards cache - persists across MobileGameTable remounts to prevent flicker during win animation
+  const communityCardsCacheRef = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: false });
+  
   // Chat functionality
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
@@ -3693,6 +3696,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onHolmWinPotAnimationComplete={handleHolmWinPotAnimationComplete}
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
+                    externalCommunityCardsCache={communityCardsCacheRef}
                   />
                 ) : (
                   <>
@@ -4057,6 +4061,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               realMoney={game.real_money || false}
               externalShowdownCardsCache={showdownCardsCacheRef}
               externalShowdownRoundNumber={showdownRoundNumberRef}
+              externalCommunityCardsCache={communityCardsCacheRef}
             />
           ) : (
             <GameTable

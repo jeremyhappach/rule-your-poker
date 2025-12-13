@@ -180,6 +180,8 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   // External showdown card cache (lifted to Game.tsx to persist across remounts)
   externalShowdownCardsCache?: React.MutableRefObject<Map<string, CardType[]>>;
   externalShowdownRoundNumber?: React.MutableRefObject<number | null>;
+  // External community cards cache (lifted to Game.tsx to persist across remounts during win animation)
+  externalCommunityCardsCache?: React.MutableRefObject<{ cards: CardType[] | null; round: number | null; show: boolean }>;
 }
 export const MobileGameTable = ({
   players,
@@ -260,6 +262,7 @@ anteAnimationTriggerId,
   realMoney = false,
   externalShowdownCardsCache,
   externalShowdownRoundNumber,
+  externalCommunityCardsCache,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -365,14 +368,37 @@ anteAnimationTriggerId,
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
   // Delay community cards rendering by 1 second after player cards appear (Holm only)
-  // Initialize as false for Holm to prevent initial flicker
-  const [showCommunityCards, setShowCommunityCards] = useState(gameType !== 'holm-game');
+  // Use external cache for community cards if provided (to persist across remounts during win animation)
+  const internalCommunityCardsCache = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: gameType !== 'holm-game' });
+  const communityCardsCache = externalCommunityCardsCache || internalCommunityCardsCache;
+  
+  // Initialize local state from external cache if available
+  const [showCommunityCards, setShowCommunityCards] = useState(() => {
+    if (externalCommunityCardsCache?.current?.show) return true;
+    return gameType !== 'holm-game';
+  });
   const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
   const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
-  const [approvedRoundForDisplay, setApprovedRoundForDisplay] = useState<number | null>(null); // Round we're allowed to show cards for
-  const [approvedCommunityCards, setApprovedCommunityCards] = useState<CardType[] | null>(null); // Cached cards for approved round
+  const [approvedRoundForDisplay, setApprovedRoundForDisplay] = useState<number | null>(() => {
+    return externalCommunityCardsCache?.current?.round || null;
+  });
+  const [approvedCommunityCards, setApprovedCommunityCards] = useState<CardType[] | null>(() => {
+    return externalCommunityCardsCache?.current?.cards || null;
+  });
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
-  const lastDetectedRoundRef = useRef<number | null>(null); // Track which round we've detected (to prevent re-triggering)
+  const lastDetectedRoundRef = useRef<number | null>(externalCommunityCardsCache?.current?.round || null); // Track which round we've detected (to prevent re-triggering)
+  
+  // Sync local state changes back to external cache
+  useEffect(() => {
+    if (externalCommunityCardsCache) {
+      externalCommunityCardsCache.current = {
+        cards: approvedCommunityCards,
+        round: approvedRoundForDisplay,
+        show: showCommunityCards
+      };
+    }
+  }, [approvedCommunityCards, approvedRoundForDisplay, showCommunityCards, externalCommunityCardsCache]);
+  
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   // Use EXTERNAL refs when provided (from Game.tsx) to persist across component remounts
   const internalShowdownRoundRef = useRef<number | null>(null);
