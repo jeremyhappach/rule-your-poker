@@ -111,47 +111,52 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 
   return (
     <>
-      {animations.map((anim) => (
-        <div
-          key={anim.id}
-          className="absolute z-[100] pointer-events-none"
-          style={{
-            left: anim.fromX,
-            top: anim.fromY,
-            transform: 'translate(-50%, -50%)',
-            animationDelay: `${anim.delay}ms`,
-          }}
-        >
+      {animations.map((anim) => {
+        const deltaX = anim.toX - anim.fromX;
+        const deltaY = anim.toY - anim.fromY;
+        const uniqueKeyframeName = `legToPlayer-${anim.id.replace(/[^a-zA-Z0-9]/g, '')}`;
+        
+        return (
           <div
-            className="w-6 h-6 rounded-full bg-white border-2 border-amber-500 shadow-lg flex items-center justify-center"
+            key={anim.id}
+            className="absolute z-[100] pointer-events-none"
             style={{
-              animation: `legToPlayer 1.2s ease-in-out ${anim.delay}ms forwards`,
+              left: anim.fromX,
+              top: anim.fromY,
+              transform: 'translate(-50%, -50%)',
             }}
           >
-            <span className="text-slate-800 font-bold text-[10px]">L</span>
+            <div
+              className="w-6 h-6 rounded-full bg-white border-2 border-amber-500 shadow-lg flex items-center justify-center"
+              style={{
+                animation: `${uniqueKeyframeName} 1.2s ease-in-out ${anim.delay}ms forwards`,
+              }}
+            >
+              <span className="text-slate-800 font-bold text-[10px]">L</span>
+            </div>
+            <style>{`
+              @keyframes ${uniqueKeyframeName} {
+                0% {
+                  transform: translate(0, 0) scale(1);
+                  opacity: 1;
+                }
+                15% {
+                  transform: translate(0, -5px) scale(1.1);
+                  opacity: 1;
+                }
+                85% {
+                  transform: translate(${deltaX}px, ${deltaY}px) scale(1);
+                  opacity: 1;
+                }
+                100% {
+                  transform: translate(${deltaX}px, ${deltaY}px) scale(0);
+                  opacity: 0;
+                }
+              }
+            `}</style>
           </div>
-        </div>
-      ))}
-      <style>{`
-        @keyframes legToPlayer {
-          0% {
-            transform: translate(0, 0) scale(1);
-            opacity: 1;
-          }
-          15% {
-            transform: translate(0, -5px) scale(1.1);
-            opacity: 1;
-          }
-          85% {
-            transform: translate(${animations[0]?.toX - animations[0]?.fromX || 0}px, ${animations[0]?.toY - animations[0]?.fromY || 0}px) scale(1);
-            opacity: 1;
-          }
-          100% {
-            transform: translate(${animations[0]?.toX - animations[0]?.fromX || 0}px, ${animations[0]?.toY - animations[0]?.fromY || 0}px) scale(0);
-            opacity: 0;
-          }
-        }
-      `}</style>
+        );
+      })}
     </>
   );
 };
