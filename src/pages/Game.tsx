@@ -1037,9 +1037,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
   }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
 
-  // Ante timer countdown effect
+  // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
     if (anteTimeLeft === null || anteTimeLeft <= 0) return;
+    // Don't count down if game is paused
+    if (game?.is_paused) return;
 
     const timer = setInterval(() => {
       setAnteTimeLeft((prev) => {
@@ -1051,7 +1053,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [anteTimeLeft]);
+  }, [anteTimeLeft, game?.is_paused]);
 
   // Trigger bot ante decisions - INSTANT for bots
   useEffect(() => {
@@ -1384,8 +1386,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig]);
 
-  // Auto-sit-out when ante timer reaches 0
+  // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
   useEffect(() => {
+    // Don't auto-sit-out if game is paused
+    if (game?.is_paused) return;
+    
     if (anteTimeLeft === 0 && game?.status === 'ante_decision' && user) {
       const currentPlayer = players.find(p => p.user_id === user.id);
       if (currentPlayer && !currentPlayer.ante_decision) {
@@ -1399,7 +1404,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('id', currentPlayer.id);
       }
     }
-  }, [anteTimeLeft, game?.status, players, user]);
+  }, [anteTimeLeft, game?.status, game?.is_paused, players, user]);
 
   // Session ending tracking (removed toast)
 
