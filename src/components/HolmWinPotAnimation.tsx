@@ -105,11 +105,11 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       frame();
     }
 
-    // Animation complete after 5 seconds
+    // Animation complete after 2.5 seconds (matching ante animation speed)
     setTimeout(() => {
       setAnimation(null);
       onAnimationComplete?.();
-    }, 5000);
+    }, 2500);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerId]); // Only re-run when triggerId changes - other values are captured at trigger time
 
@@ -127,27 +127,15 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
         transform: 'translate(-50%, -50%)',
       }}
     >
-      {/* Main big chip */}
+      {/* Main chip - regular size like ante animation, enlarges only at destination */}
       <div
-        className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-4 border-white shadow-[0_0_30px_rgba(251,191,36,0.8)] flex items-center justify-center"
+        className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
-          animation: 'holmWinPotToPlayer 5s ease-in-out forwards',
+          animation: 'holmWinPotToPlayer 2.5s ease-out forwards',
         }}
       >
-        <span className="text-black text-lg font-black drop-shadow-sm">${lockedAmountRef.current}</span>
+        <span className="text-black text-xs font-black drop-shadow-sm">${lockedAmountRef.current}</span>
       </div>
-      
-      {/* Trailing sparkle chips */}
-      {[...Array(3)].map((_, i) => (
-        <div
-          key={i}
-          className="absolute w-8 h-8 rounded-full bg-gradient-to-br from-amber-200 to-amber-500 border-2 border-white/80 shadow-lg"
-          style={{
-            animation: `holmWinTrail${i + 1} 5s ease-in-out forwards`,
-            opacity: 0,
-          }}
-        />
-      ))}
       
       <style>{`
         @keyframes holmWinPotToPlayer {
@@ -155,66 +143,32 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
             transform: translate(0, 0) scale(1);
             opacity: 1;
           }
-          5% {
-            transform: translate(0, -15px) scale(1.05);
+          /* Linear movement to destination at constant speed */
+          70% {
+            transform: translate(${deltaX}px, ${deltaY}px) scale(1);
             opacity: 1;
           }
-          10% {
-            transform: translate(0, -25px) scale(1.1);
+          /* Arrive at destination, then enlarge and bounce */
+          78% {
+            transform: translate(${deltaX}px, ${deltaY - 8}px) scale(1.6);
             opacity: 1;
           }
-          20% {
-            transform: translate(0, -30px) scale(1.1);
+          86% {
+            transform: translate(${deltaX}px, ${deltaY}px) scale(1.4);
             opacity: 1;
           }
-          30% {
-            transform: translate(${deltaX * 0.1}px, ${-30 + deltaY * 0.1}px) scale(1.05);
+          92% {
+            transform: translate(${deltaX}px, ${deltaY - 4}px) scale(1.5);
             opacity: 1;
           }
-          60% {
-            transform: translate(${deltaX * 0.5}px, ${deltaY * 0.3}px) scale(1);
-            opacity: 1;
-          }
-          75% {
-            transform: translate(${deltaX * 0.75}px, ${deltaY * 0.6}px) scale(1.15);
-            opacity: 1;
-          }
-          90% {
+          96% {
             transform: translate(${deltaX}px, ${deltaY}px) scale(1.3);
-            opacity: 1;
-          }
-          95% {
-            transform: translate(${deltaX}px, ${deltaY}px) scale(1.5);
-            opacity: 1;
+            opacity: 0.8;
           }
           100% {
             transform: translate(${deltaX}px, ${deltaY}px) scale(0);
             opacity: 0;
           }
-        }
-        
-        @keyframes holmWinTrail1 {
-          0%, 15% { opacity: 0; transform: translate(0, 0) scale(0.5); }
-          20% { opacity: 0.8; transform: translate(${deltaX * 0.05}px, -30px) scale(0.7); }
-          60% { opacity: 0.6; transform: translate(${deltaX * 0.5}px, ${deltaY * 0.3}px) scale(0.6); }
-          90% { opacity: 0.4; transform: translate(${deltaX * 0.9}px, ${deltaY * 0.9}px) scale(0.5); }
-          100% { opacity: 0; transform: translate(${deltaX}px, ${deltaY}px) scale(0); }
-        }
-        
-        @keyframes holmWinTrail2 {
-          0%, 20% { opacity: 0; transform: translate(0, 0) scale(0.5); }
-          25% { opacity: 0.7; transform: translate(${deltaX * 0.1}px, -25px) scale(0.6); }
-          65% { opacity: 0.5; transform: translate(${deltaX * 0.55}px, ${deltaY * 0.35}px) scale(0.5); }
-          92% { opacity: 0.3; transform: translate(${deltaX * 0.92}px, ${deltaY * 0.92}px) scale(0.4); }
-          100% { opacity: 0; transform: translate(${deltaX}px, ${deltaY}px) scale(0); }
-        }
-        
-        @keyframes holmWinTrail3 {
-          0%, 25% { opacity: 0; transform: translate(0, 0) scale(0.4); }
-          30% { opacity: 0.6; transform: translate(${deltaX * 0.15}px, -20px) scale(0.5); }
-          70% { opacity: 0.4; transform: translate(${deltaX * 0.6}px, ${deltaY * 0.4}px) scale(0.4); }
-          94% { opacity: 0.2; transform: translate(${deltaX * 0.94}px, ${deltaY * 0.94}px) scale(0.3); }
-          100% { opacity: 0; transform: translate(${deltaX}px, ${deltaY}px) scale(0); }
         }
       `}</style>
     </div>
