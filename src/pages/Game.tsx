@@ -3536,7 +3536,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               )}
             </div>
             <span className="text-xs text-muted-foreground">
-              {gameName} - {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
+              {gameName}
               {game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}
             </span>
           </div>
