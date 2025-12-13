@@ -1520,15 +1520,12 @@ anteAnimationTriggerId,
             </div>
           </div>}
         
-        {/* Game Over state - result message with Next Game button */}
-        {isGameOver && lastRoundResult && <div className="px-4 py-3">
+        {/* Game Over state - result message (no Next Game button - auto proceeds) */}
+        {isGameOver && lastRoundResult && !lastRoundResult.includes('beat Chucky') && <div className="px-4 py-3">
             <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-base text-center mb-3">
+              <p className="text-slate-900 font-bold text-base text-center">
                 {lastRoundResult.split('|||')[0]}
               </p>
-              {isDealer && onNextGame ? <Button onClick={onNextGame} className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold">
-                  Next Game
-                </Button> : <p className="text-slate-700 text-sm text-center">Waiting for dealer to proceed...</p>}
             </div>
           </div>}
         
