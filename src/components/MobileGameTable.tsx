@@ -389,15 +389,18 @@ anteAnimationTriggerId,
     is357Round3MultiPlayerShowdown;
   
   // Clear showdown cache when:
-  // 1. A new round number is detected
+  // 1. A new round number is detected (but NOT during game_over - keep cards visible for animations)
   // 2. We're back in an early betting phase (new hand started)
-  if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound) {
+  const isInGameOverStatus = gameStatus === 'game_over' || isGameOver;
+  
+  if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound && !isInGameOverStatus) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
   
   // Also clear if we're in early phase, no announcement, AND allDecisionsIn is false (truly new hand)
-  if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult && !allDecisionsIn) {
+  // But NEVER clear during game_over - cards must remain visible for pot animation
+  if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult && !allDecisionsIn && !isInGameOverStatus) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
   }
@@ -427,6 +430,14 @@ anteAnimationTriggerId,
   const getPlayerCards = (playerId: string): CardType[] => {
     const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
     
+    // CRITICAL: During game_over, ALWAYS use cached cards for pot animation visibility
+    if (isInGameOverStatus) {
+      const cachedCards = showdownCardsCache.current.get(playerId);
+      if (cachedCards && cachedCards.length > 0) {
+        return cachedCards;
+      }
+    }
+    
     // CRITICAL: Once cards are cached for this round, ALWAYS use cache
     // This prevents flickering when isShowdownActive temporarily becomes false
     if (showdownRoundRef.current === currentRound) {
@@ -440,6 +451,10 @@ anteAnimationTriggerId,
   
   // Function to check if a player's cards should be shown
   const isPlayerCardsExposed = (playerId: string): boolean => {
+    // During game_over, always show cached cards (for pot animation)
+    if (isInGameOverStatus && showdownCardsCache.current.has(playerId)) {
+      return true;
+    }
     if (!currentRound) return false;
     // Cards are exposed if: we're in showdown round AND player has cached cards
     return showdownRoundRef.current === currentRound && showdownCardsCache.current.has(playerId);
