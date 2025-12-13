@@ -1519,8 +1519,10 @@ anteAnimationTriggerId,
         )}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
-        {/* Hide during: waiting phase, Holm win animation, pot-to-player animation, or delay after animation */}
-        {!isWaitingPhase && !holmWinPotTriggerId && threeFiveSevenWinPhase !== 'pot-to-player' && threeFiveSevenWinPhase !== 'delay' && (
+        {/* Hide during: waiting phase, Holm win animation, or once pot-to-player animation starts (pot-to-player or delay phase) */}
+        {/* Show during legs-to-player phase (legs-to-player, waiting) since pot should still be visible */}
+        {!isWaitingPhase && !holmWinPotTriggerId && 
+         !(threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay') && (
           <div className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
             gameType === 'holm-game' 
               ? 'top-[35%] -translate-y-full' 
