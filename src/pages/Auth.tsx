@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import peoriaSkyline from "@/assets/peoria-skyline.jpg";
+import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -19,7 +21,6 @@ const Auth = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        // Check if there's a redirect path stored
         const redirectPath = sessionStorage.getItem('redirectAfterAuth');
         if (redirectPath) {
           sessionStorage.removeItem('redirectAfterAuth');
@@ -32,7 +33,6 @@ const Auth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        // Check if there's a redirect path stored
         const redirectPath = sessionStorage.getItem('redirectAfterAuth');
         if (redirectPath) {
           sessionStorage.removeItem('redirectAfterAuth');
@@ -91,7 +91,6 @@ const Auth = () => {
 
       if (error) throw error;
       
-      // Check if user is active
       if (data.user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -100,7 +99,6 @@ const Auth = () => {
           .maybeSingle();
         
         if (profile && !profile.is_active) {
-          // Sign out the inactive user
           await supabase.auth.signOut();
           toast({
             title: "Account Inactive",
@@ -110,8 +108,6 @@ const Auth = () => {
           return;
         }
       }
-      
-      // Login successful - navigate will happen via auth state change listener
     } catch (error: any) {
       toast({
         title: "Error",
@@ -124,91 +120,159 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</CardTitle>
-          <CardDescription>Sign in to play online multiplayer poker</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Loading..." : "Login"}
-                </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-username">Username (optional)</Label>
-                  <Input
-                    id="signup-username"
-                    type="text"
-                    placeholder="PokerPro123"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating Account..." : "Sign Up"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background Images */}
+      <img 
+        src={peoriaSkyline} 
+        alt="Peoria Illinois Skyline"
+        className="absolute inset-0 w-full h-full object-cover hidden sm:block"
+      />
+      <img 
+        src={peoriaBridgeMobile} 
+        alt="I-74 Bridge Peoria Illinois"
+        className="absolute inset-0 w-full h-full object-cover sm:hidden"
+      />
+      
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/40" />
+      
+      {/* Content */}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
+        {/* Logo Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50">
+            <span className="text-black text-3xl sm:text-4xl">♠</span>
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+              Peoria Poker League
+            </h1>
+            <p className="text-amber-200/70 text-xs sm:text-sm">Sign in to play</p>
+          </div>
+        </div>
+        
+        {/* Auth Card */}
+        <Card className="w-full max-w-md bg-slate-900/90 border-2 border-amber-600/40 shadow-2xl shadow-black/50 backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-bold text-amber-100 flex items-center gap-2">
+              <span className="text-amber-400">♦</span>
+              Welcome
+            </CardTitle>
+            <CardDescription className="text-amber-200/60">
+              Sign in or create an account to join the table
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="login">
+              <TabsList className="grid w-full grid-cols-2 bg-slate-800/50 border border-amber-700/30">
+                <TabsTrigger 
+                  value="login"
+                  className="text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
+                >
+                  Login
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="signup"
+                  className="text-sm data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/20 data-[state=active]:to-amber-600/20 data-[state=active]:text-amber-400 data-[state=active]:border-b-2 data-[state=active]:border-amber-500"
+                >
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email" className="text-amber-200/80">Email</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password" className="text-amber-200/80">Password</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30" 
+                    disabled={loading}
+                  >
+                    {loading ? "Loading..." : "Login"}
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-username" className="text-amber-200/80">Username (optional)</Label>
+                    <Input
+                      id="signup-username"
+                      type="text"
+                      placeholder="PokerPro123"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-amber-200/80">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-amber-200/80">Password</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="bg-slate-800/50 border-amber-700/30 text-foreground placeholder:text-muted-foreground focus:border-amber-500 focus:ring-amber-500/20"
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30" 
+                    disabled={loading}
+                  >
+                    {loading ? "Creating Account..." : "Sign Up"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+        
+        {/* Footer decoration */}
+        <div className="mt-6 flex items-center gap-2 text-amber-400/40">
+          <span>♠</span>
+          <span>♥</span>
+          <span>♦</span>
+          <span>♣</span>
+        </div>
+      </div>
     </div>
   );
 };
