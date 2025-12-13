@@ -72,6 +72,7 @@ export type Database = {
           pot_max_value: number
           pussy_tax_enabled: boolean
           pussy_tax_value: number
+          rabbit_hunt: boolean
           real_money: boolean
           updated_at: string
         }
@@ -93,6 +94,7 @@ export type Database = {
           pot_max_value?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          rabbit_hunt?: boolean
           real_money?: boolean
           updated_at?: string
         }
@@ -114,6 +116,7 @@ export type Database = {
           pot_max_value?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          rabbit_hunt?: boolean
           real_money?: boolean
           updated_at?: string
         }
@@ -151,6 +154,7 @@ export type Database = {
           pussy_tax: number
           pussy_tax_enabled: boolean
           pussy_tax_value: number
+          rabbit_hunt: boolean
           real_money: boolean
           session_ended_at: string | null
           status: string
@@ -188,6 +192,7 @@ export type Database = {
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          rabbit_hunt?: boolean
           real_money?: boolean
           session_ended_at?: string | null
           status?: string
@@ -225,6 +230,7 @@ export type Database = {
           pussy_tax?: number
           pussy_tax_enabled?: boolean
           pussy_tax_value?: number
+          rabbit_hunt?: boolean
           real_money?: boolean
           session_ended_at?: string | null
           status?: string

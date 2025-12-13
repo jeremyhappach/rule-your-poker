@@ -47,6 +47,7 @@ export const DealerConfig = ({
   const [potMaxEnabled, setPotMaxEnabled] = useState(currentPotMaxEnabled ?? true);
   const [potMaxValue, setPotMaxValue] = useState(currentPotMaxValue || 10);
   const [chuckyCards, setChuckyCards] = useState(currentChuckyCards || 4);
+  const [rabbitHunt, setRabbitHunt] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   
   const isHolmGame = gameType === 'holm-game';
@@ -73,6 +74,7 @@ export const DealerConfig = ({
         
         if (isHolmGame) {
           setChuckyCards(data.chucky_cards);
+          setRabbitHunt(data.rabbit_hunt ?? false);
         } else {
           setLegValue(data.leg_value);
           setLegsToWin(data.legs_to_win);
@@ -107,6 +109,7 @@ export const DealerConfig = ({
 
         if (isHolmGame) {
           updateData.chucky_cards = chuckyCards;
+          updateData.rabbit_hunt = rabbitHunt;
         }
 
         const { error } = await supabase
@@ -176,6 +179,7 @@ export const DealerConfig = ({
 
     if (isHolmGame) {
       updateData.chucky_cards = chuckyCards;
+      updateData.rabbit_hunt = rabbitHunt;
       // Buck position will be calculated by startHolmRound
     }
 
@@ -363,18 +367,32 @@ export const DealerConfig = ({
         </div>
 
         {isHolmGame && (
-          <div className="space-y-2">
-            <Label htmlFor="chuckyCards">Chucky Cards</Label>
-            <Input
-              id="chuckyCards"
-              type="number"
-              min="2"
-              max="7"
-              value={chuckyCards}
-              onChange={(e) => setChuckyCards(parseInt(e.target.value) || 4)}
-            />
-            <p className="text-xs text-muted-foreground">Number of cards Chucky gets if only one player stays (2-7)</p>
-          </div>
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="chuckyCards">Chucky Cards</Label>
+              <Input
+                id="chuckyCards"
+                type="number"
+                min="2"
+                max="7"
+                value={chuckyCards}
+                onChange={(e) => setChuckyCards(parseInt(e.target.value) || 4)}
+              />
+              <p className="text-xs text-muted-foreground">Number of cards Chucky gets if only one player stays (2-7)</p>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="rabbitHunt">Rabbit Hunt</Label>
+                <p className="text-xs text-muted-foreground">Show hidden cards when everyone folds</p>
+              </div>
+              <Switch
+                id="rabbitHunt"
+                checked={rabbitHunt}
+                onCheckedChange={setRabbitHunt}
+              />
+            </div>
+          </>
         )}
 
         <div className="border-t border-muted pt-4">
