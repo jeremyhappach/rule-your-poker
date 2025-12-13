@@ -162,6 +162,7 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   threeFiveSevenWinnerId?: string | null;
   threeFiveSevenWinnerCards?: CardType[];
   threeFiveSevenCachedLegPositions?: { playerId: string; position: number; legCount: number }[];
+  onThreeFiveSevenWinAnimationStarted?: () => void; // Called when animation starts to clear trigger
   onThreeFiveSevenWinAnimationComplete?: () => void;
   // Game over props
   isGameOver?: boolean;
@@ -257,6 +258,7 @@ anteAnimationTriggerId,
   threeFiveSevenWinnerId,
   threeFiveSevenWinnerCards = [],
   threeFiveSevenCachedLegPositions = [],
+  onThreeFiveSevenWinAnimationStarted,
   onThreeFiveSevenWinAnimationComplete,
   isGameOver,
   isDealer,
@@ -823,6 +825,9 @@ anteAnimationTriggerId,
     console.log('[357 WIN] Starting win animation sequence, animationId:', animationId);
     console.log('[357 WIN] Using leg positions from prop:', threeFiveSevenCachedLegPositions);
     
+    // IMMEDIATELY clear trigger in parent to prevent remount re-trigger
+    onThreeFiveSevenWinAnimationStarted?.();
+    
     // Reset phase to idle first to clear any lingering state, then start sequence
     setThreeFiveSevenWinPhase('idle');
     threeFiveSevenWinPhaseRef.current = 'idle';
@@ -842,7 +847,7 @@ anteAnimationTriggerId,
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
     }, 2600); // Slightly after leg earned animation completes
-  }, [threeFiveSevenWinTriggerId, threeFiveSevenCachedLegPositions]);
+  }, [threeFiveSevenWinTriggerId, threeFiveSevenCachedLegPositions, onThreeFiveSevenWinAnimationStarted]);
 
   // Handle legs-to-player animation complete -> start pot-to-player
   const handleLegsToPlayerComplete = useCallback(() => {

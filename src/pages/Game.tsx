@@ -3005,6 +3005,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
 
+  // Handle 3-5-7 win animation started - clear trigger to prevent remount re-trigger
+  const handleThreeFiveSevenWinAnimationStarted = useCallback(() => {
+    console.log('[357 WIN] Animation started, clearing trigger to prevent duplicate');
+    setThreeFiveSevenWinTriggerId(null);
+  }, []);
+
   // Handle 3-5-7 win animation complete - set game_over_at to start countdown
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
     if (game?.status !== 'game_over' || game?.game_type === 'holm-game' || !gameId) {
@@ -3814,6 +3820,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     threeFiveSevenWinnerId={threeFiveSevenWinnerId}
                     threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
                     threeFiveSevenCachedLegPositions={cachedLegPositions}
+                    onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
                     onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
@@ -4173,6 +4180,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenWinnerId={threeFiveSevenWinnerId}
               threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
               threeFiveSevenCachedLegPositions={cachedLegPositions}
+              onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
               onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
               onStay={handleStay}
               onFold={handleFold}
