@@ -345,6 +345,9 @@ anteAnimationTriggerId,
   // NEW APPROACH: Use a "pot hidden until next game" flag that's set when Holm win starts
   const [holmWinPotHiddenUntilReset, setHolmWinPotHiddenUntilReset] = useState(false);
   
+  // FIX: Same for 357 - keep pot hidden after pot-to-player animation until game resets
+  const [threeFiveSevenPotHiddenUntilReset, setThreeFiveSevenPotHiddenUntilReset] = useState(false);
+  
   // FIX: Cache current player's legs EAGERLY - capture before any state transitions
   // This must be updated BEFORE game_over status, not during render
   const [cachedCurrentPlayerLegs, setCachedCurrentPlayerLegs] = useState<number>(0);
@@ -469,8 +472,9 @@ anteAnimationTriggerId,
     if (prevGameStatusRef.current === 'game_over' && gameStatus !== 'game_over') {
       // Game is starting fresh - reset all animation completion flags
       setHolmWinPotHiddenUntilReset(false);
+      setThreeFiveSevenPotHiddenUntilReset(false);
       setCachedCurrentPlayerLegs(0);
-      console.log('[RESET] Cleared holmWinPotHiddenUntilReset and cachedCurrentPlayerLegs');
+      console.log('[RESET] Cleared pot hidden flags and cachedCurrentPlayerLegs');
     }
     prevGameStatusRef.current = gameStatus;
   }, [gameStatus]);
@@ -954,7 +958,6 @@ anteAnimationTriggerId,
     }, 2600); // Slightly after leg earned animation completes
   }, [threeFiveSevenWinTriggerId, threeFiveSevenCachedLegPositions, onThreeFiveSevenWinAnimationStarted, gameStatus]);
 
-  // Handle legs-to-player animation complete -> start pot-to-player
   const handleLegsToPlayerComplete = useCallback(() => {
     // Use ref to get current phase (avoids stale closure)
     if (threeFiveSevenWinPhaseRef.current !== 'legs-to-player') {
@@ -964,6 +967,8 @@ anteAnimationTriggerId,
     console.log('[357 WIN] Phase 2: pot-to-player');
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
+    // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
+    setThreeFiveSevenPotHiddenUntilReset(true);
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
   }, []);
 
@@ -1644,7 +1649,7 @@ anteAnimationTriggerId,
         {/* FIX: Use visibility:hidden instead of conditional rendering to prevent ValueChangeFlash remount */}
         {(() => {
           const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerId || holmWinPotHiddenUntilReset ||
-            threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay');
+            threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay' || threeFiveSevenPotHiddenUntilReset);
           
           return (
             <div 
@@ -1886,7 +1891,15 @@ anteAnimationTriggerId,
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
         {/* FIX: Use threeFiveSevenCachedLegPositions prop during game_over - it's pre-cached before backend resets */}
+        {/* FIX: Also hide legs during legs-to-player phase (same as other players) */}
         {gameType !== 'holm-game' && currentPlayer && (() => {
+          // During legs-to-player phase, hide ALL leg indicators since they're animating to winner
+          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'legs-to-player';
+          if (hideLegsForWinAnimation) {
+            console.log('[LEGS RENDER] Hiding current player legs - legs-to-player phase');
+            return false;
+          }
+          
           // Get cached legs from the prop if available and in game_over
           const cachedLegData = threeFiveSevenCachedLegPositions?.find(
             p => p.playerId === currentPlayer.id
@@ -1902,7 +1915,8 @@ anteAnimationTriggerId,
             cachedLegData,
             cachedCurrentPlayerLegs,
             effectiveLegs,
-            isInGameOverStatus
+            isInGameOverStatus,
+            threeFiveSevenWinPhase
           });
           
           const isAnimatingCurrentPlayer = showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
