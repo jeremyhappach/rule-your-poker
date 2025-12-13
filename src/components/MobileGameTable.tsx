@@ -618,13 +618,6 @@ anteAnimationTriggerId,
       return;
     }
     
-    // CRITICAL: During game_over status, don't touch community card state at all
-    // The render logic directly uses communityCards prop during game_over, bypassing this state
-    if (isInGameOverStatus) {
-      console.log('[MOBILE_COMMUNITY] In game_over status - skipping state management (render uses props directly)');
-      return;
-    }
-    
     // If awaiting next round AND result is cleared (buck has passed), hide community cards
     // Cards should persist through announcement, only disappear when buck passes
     if (awaitingNextRound && !lastRoundResult) {
@@ -701,7 +694,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, isInGameOverStatus, lastRoundResult, communityCards]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
@@ -1323,18 +1316,13 @@ anteAnimationTriggerId,
         
         {/* Community Cards - vertically centered, delayed 1 second after player cards */}
         {/* Use approvedCommunityCards (cached at approval time) to prevent showing new round cards during announcement */}
-        {/* During game_over, ALWAYS show community cards from props if available (bypass caching logic) */}
-        {gameType === 'holm-game' && (
-          // During game_over: use communityCards prop directly, bypassing showCommunityCards state
-          // Otherwise: use the cached/approved cards with proper gating
-          (isInGameOverStatus && communityCards && communityCards.length > 0) ||
-          (approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
-           (currentRound === approvedRoundForDisplay))
-        ) && (
+        {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
+        {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
+         (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
-              cards={isInGameOverStatus && communityCards && communityCards.length > 0 ? communityCards : approvedCommunityCards!} 
-              revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 4)} 
+              cards={approvedCommunityCards} 
+              revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
               highlightedIndices={winningCardHighlights.communityIndices}
               kickerIndices={winningCardHighlights.kickerCommunityIndices}
               hasHighlights={winningCardHighlights.hasHighlights}
@@ -1381,6 +1369,7 @@ anteAnimationTriggerId,
         {/* This displays during the pot-to-winner animation so cards are visible */}
         {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
+            <span className="text-green-400 text-xs font-bold drop-shadow-md">🏆 WINNER</span>
             <div className="flex gap-1">
               {winnerCards.map((card, index) => {
                 const isFourColor = deckColorMode === 'four_color';
@@ -1389,12 +1378,8 @@ anteAnimationTriggerId,
                 const twoColorTextStyle = !isFourColor 
                   ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
                   : {};
-                // Calculate highlights directly for tabled cards (don't rely on isShowingAnnouncement timing)
-                const tabledHighlights = communityCards && winnerCards.length > 0 
-                  ? getWinningCardIndices(winnerCards, communityCards, false)
-                  : { playerIndices: [], kickerPlayerIndices: [] };
-                const isHighlighted = tabledHighlights.playerIndices.includes(index);
-                const isKicker = tabledHighlights.kickerPlayerIndices.includes(index);
+                const isHighlighted = winningCardHighlights.playerIndices.includes(index);
+                const isKicker = winningCardHighlights.kickerPlayerIndices.includes(index);
                 
                 return (
                   <div 
