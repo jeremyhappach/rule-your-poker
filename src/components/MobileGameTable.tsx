@@ -1381,15 +1381,22 @@ anteAnimationTriggerId,
                 const isHighlighted = winningCardHighlights.playerIndices.includes(index);
                 const isKicker = winningCardHighlights.kickerPlayerIndices.includes(index);
                 
+                // Apply lift effect for highlighted cards (same as PlayingCard component)
+                const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
+                
                 return (
                   <div 
                     key={index} 
-                    className={`w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 flex flex-col items-center justify-center shadow-lg ${
+                    className={`w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 flex flex-col items-center justify-center shadow-lg transition-transform duration-200 ${
                       isHighlighted ? 'border-yellow-400 ring-2 ring-yellow-400/50' : 
                       isKicker ? 'border-blue-400 ring-1 ring-blue-400/30' : 
                       'border-green-500'
                     }`}
-                    style={{ backgroundColor: cardBg, ...twoColorTextStyle }}
+                    style={{ 
+                      backgroundColor: cardBg, 
+                      ...twoColorTextStyle,
+                      transform: liftTransform || undefined
+                    }}
                   >
                     <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
                       {card.rank}
