@@ -163,12 +163,12 @@ function getThreeOfAKindRankValue(cards: Card[], roundNumber: number): number {
 }
 
 /**
- * Round 1 (3 cards, 3s wild):
+ * Round 1 (3 cards, 3s wild) - AGGRESSIVE:
  * - Pair of Queens or better: 0%
- * - Pair of 8s through Js: 20%
- * - Pair of 2s through 7s: 50%
- * - High card Ace: 70%
- * - Any other high card: 90%
+ * - Pair of 8s through Js: 5%
+ * - Pair of 2s through 7s: 15%
+ * - High card Ace: 30%
+ * - Any other high card: 45%
  */
 function getRound1FoldProbability(rank: HandRank, pairRankValue: number): number {
   // Three of a kind is always 0% (even stronger than pair of queens)
@@ -183,10 +183,10 @@ function getRound1FoldProbability(rank: HandRank, pairRankValue: number): number
     }
     // 8s through Js (8, 9, 10, 11)
     if (pairRankValue >= 8 && pairRankValue <= 11) {
-      return 20;
+      return 5;
     }
     // 2s through 7s (2-7)
-    return 50;
+    return 15;
   }
   
   // High card
@@ -195,21 +195,21 @@ function getRound1FoldProbability(rank: HandRank, pairRankValue: number): number
     if (pairRankValue === 0) {
       // No pair - check high card
       // Since we don't have exact high card here, assume worst case
-      return 90;
+      return 45;
     }
   }
   
   // Default high card
-  return 90;
+  return 45;
 }
 
 /**
- * Round 2 (5 cards, 5s wild):
+ * Round 2 (5 cards, 5s wild) - AGGRESSIVE:
  * - Flush or better: 0%
- * - 3 of a kind Queens through Straight: 20%
- * - 3 of a kind 3s through Jacks: 50%
- * - Two pair: 70%
- * - Pair or worse: 90%
+ * - 3 of a kind Queens through Straight: 5%
+ * - 3 of a kind 3s through Jacks: 20%
+ * - Two pair: 35%
+ * - Pair or worse: 50%
  */
 function getRound2FoldProbability(rank: HandRank, threeOfAKindRankValue: number): number {
   // Flush or better
@@ -219,35 +219,35 @@ function getRound2FoldProbability(rank: HandRank, threeOfAKindRankValue: number)
   
   // Straight
   if (rank === 'straight') {
-    return 20;
+    return 5;
   }
   
   // Three of a kind - check rank
   if (rank === 'three-of-a-kind') {
     // Queens (12) or better
     if (threeOfAKindRankValue >= 12) {
-      return 20;
+      return 5;
     }
     // 3s through Jacks (3-11) - but 5 is wild in round 2, so effectively 3, 4, 6-11
-    return 50;
+    return 20;
   }
   
   // Two pair
   if (rank === 'two-pair') {
-    return 70;
+    return 35;
   }
   
   // Pair or worse
-  return 90;
+  return 50;
 }
 
 /**
- * Round 3 (7 cards, 7s wild):
+ * Round 3 (7 cards, 7s wild) - AGGRESSIVE:
  * - Full house or better: 0%
- * - Straight or flush: 20%
- * - 3 of a kind Queens or better: 50%
- * - 3 of a kind 2s through Jacks: 70%
- * - Two pair or worse: 90%
+ * - Straight or flush: 5%
+ * - 3 of a kind Queens or better: 20%
+ * - 3 of a kind 2s through Jacks: 35%
+ * - Two pair or worse: 55%
  */
 function getRound3FoldProbability(rank: HandRank, threeOfAKindRankValue: number): number {
   // Full house or better
@@ -257,19 +257,19 @@ function getRound3FoldProbability(rank: HandRank, threeOfAKindRankValue: number)
   
   // Straight or flush
   if (rank === 'straight' || rank === 'flush') {
-    return 20;
+    return 5;
   }
   
   // Three of a kind - check rank
   if (rank === 'three-of-a-kind') {
     // Queens (12) or better
     if (threeOfAKindRankValue >= 12) {
-      return 50;
+      return 20;
     }
     // 2s through Jacks
-    return 70;
+    return 35;
   }
   
   // Two pair or worse (including pair and high-card)
-  return 90;
+  return 55;
 }
