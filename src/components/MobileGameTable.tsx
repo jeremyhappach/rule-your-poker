@@ -858,6 +858,10 @@ anteAnimationTriggerId,
   
   // 3-5-7 win animation sequence: triggered by parent when player wins final leg
   // CRITICAL: Only start animation when gameStatus === 'game_over' to ensure component doesn't unmount mid-animation
+  // CRITICAL: Capture leg positions at start in a ref to avoid dependency array issues that cause stale animation detection
+  const threeFiveSevenCachedLegPositionsRef = useRef(threeFiveSevenCachedLegPositions);
+  threeFiveSevenCachedLegPositionsRef.current = threeFiveSevenCachedLegPositions;
+  
   useEffect(() => {
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
       return;
@@ -875,8 +879,11 @@ anteAnimationTriggerId,
     const animationId = `anim-${Date.now()}`;
     currentAnimationIdRef.current = animationId;
     
+    // Capture leg positions at animation start (don't depend on prop changes during animation)
+    const capturedLegPositions = threeFiveSevenCachedLegPositionsRef.current;
+    
     console.log('[357 WIN] Starting win animation sequence, animationId:', animationId);
-    console.log('[357 WIN] Using leg positions from prop:', threeFiveSevenCachedLegPositions);
+    console.log('[357 WIN] Using leg positions from prop:', capturedLegPositions);
     
     // Clear trigger in parent after starting
     onThreeFiveSevenWinAnimationStarted?.();
@@ -896,12 +903,14 @@ anteAnimationTriggerId,
         console.log('[357 WIN] Stale animation, skipping Phase 1');
         return;
       }
-      console.log('[357 WIN] Phase 1: legs-to-player, using positions:', threeFiveSevenCachedLegPositions);
+      console.log('[357 WIN] Phase 1: legs-to-player, using positions:', capturedLegPositions);
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
     }, 2600); // Slightly after leg earned animation completes
-  }, [threeFiveSevenWinTriggerId, threeFiveSevenCachedLegPositions, onThreeFiveSevenWinAnimationStarted, gameStatus]);
+    // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
+    // to prevent dependency changes during animation from invalidating the animation sequence
+  }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus]);
 
   const handleLegsToPlayerComplete = useCallback(() => {
     // Use ref to get current phase (avoids stale closure)
