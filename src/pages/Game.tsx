@@ -2894,6 +2894,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Cache leg positions for 3-5-7 win animation (legs get reset before animation runs)
   const [cachedLegPositions, setCachedLegPositions] = useState<{ playerId: string; position: number; legCount: number }[]>([]);
+  // Also keep a ref for immediate access
+  const cachedLegPositionsRef = useRef<{ playerId: string; position: number; legCount: number }[]>([]);
+  
+  // Compute a string representation of player legs to use as dependency
+  // This ensures the effect runs whenever ANY player's legs change
+  const playerLegsString = players.map(p => `${p.id}:${p.legs}`).join(',');
   
   // Aggressively cache pot and leg positions whenever they're non-zero
   // This runs on every players/pot change to capture values BEFORE backend resets them
@@ -2915,9 +2921,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         legCount: p.legs
       }));
       setCachedLegPositions(positions);
+      cachedLegPositionsRef.current = positions;
       console.log('[357 CACHE] Cached leg positions:', positions);
     }
-  }, [game?.pot, game?.game_type, players]);
+  }, [game?.pot, game?.game_type, playerLegsString]);
   
   // Detect 3-5-7 final leg win and trigger win animation
   // Trigger on "won a leg" message OR "won the game" message (backend may have already transitioned)
@@ -3010,8 +3017,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         legCount: p.legs 
       }));
       console.log('[357 WIN] Using live leg data:', legPositions);
+    } else if (cachedLegPositionsRef.current.length > 0) {
+      // Use cached data from ref (more reliable than state during rapid updates)
+      legPositions = cachedLegPositionsRef.current;
+      console.log('[357 WIN] Using cached leg data from ref:', legPositions);
     } else {
-      // Legs already reset - reconstruct from winner (guaranteed to have legsToWin)
+      // Legs already reset and no cache - reconstruct from winner (guaranteed to have legsToWin)
       legPositions = [{ 
         playerId: winnerPlayer.id, 
         position: winnerPlayer.position, 
@@ -3021,6 +3032,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     setCachedLegPositions(legPositions);
+    cachedLegPositionsRef.current = legPositions;
     console.log('[357 WIN] Final cached leg positions:', legPositions);
     
     // Get winner's cards
