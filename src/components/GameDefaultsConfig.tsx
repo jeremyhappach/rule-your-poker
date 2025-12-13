@@ -27,6 +27,7 @@ interface GameDefaults {
   legs_to_win: number;
   pussy_tax_enabled: boolean;
   pussy_tax_value: number;
+  rabbit_hunt: boolean;
 }
 
 interface GameDefaultsConfigProps {
@@ -181,6 +182,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             legs_to_win: defaultConfig.legs_to_win,
             pussy_tax_enabled: defaultConfig.pussy_tax_enabled,
             pussy_tax_value: defaultConfig.pussy_tax_value,
+            rabbit_hunt: defaultConfig.rabbit_hunt,
           })
           .eq('game_type', defaultConfig.game_type);
 
@@ -412,6 +414,17 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                           onChange={(e) => updateDefault('holm', 'chucky_cards', e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">Number of cards Chucky receives</p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Rabbit Hunt</Label>
+                          <p className="text-xs text-muted-foreground">Show hidden cards when everyone folds</p>
+                        </div>
+                        <Switch
+                          checked={holmDefaults.rabbit_hunt ?? false}
+                          onCheckedChange={(checked) => updateDefault('holm', 'rabbit_hunt', checked)}
+                        />
                       </div>
                     </div>
 

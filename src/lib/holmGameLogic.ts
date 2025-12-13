@@ -748,6 +748,15 @@ export async function endHolmRound(gameId: string) {
 
     console.log('[HOLM END] Pussy tax - old pot:', game.pot, 'tax collected:', totalTaxCollected, 'new pot:', newPot);
 
+    // RABBIT HUNT: If enabled, reveal the 2 hidden community cards during pussy tax
+    if (game.rabbit_hunt) {
+      console.log('[HOLM END] Rabbit hunt enabled - revealing hidden community cards during pussy tax');
+      await supabase
+        .from('rounds')
+        .update({ community_cards_revealed: 4 })
+        .eq('id', capturedRoundId);
+    }
+
     // Update both games and rounds with the new pot
     const { error: gameUpdateError } = await supabase
       .from('games')
