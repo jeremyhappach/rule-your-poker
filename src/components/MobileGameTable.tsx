@@ -577,13 +577,24 @@ anteAnimationTriggerId,
       return;
     }
     
-    // If awaiting next round (between hands), IMMEDIATELY HIDE community cards
-    // Cards should disappear before the buck passes, not after
-    if (awaitingNextRound) {
-      console.log('[MOBILE_COMMUNITY] Awaiting next round - hiding community cards immediately');
+    // If awaiting next round AND result is cleared (buck has passed), hide community cards
+    // Cards should persist through announcement, only disappear when buck passes
+    if (awaitingNextRound && !lastRoundResult) {
+      console.log('[MOBILE_COMMUNITY] Buck passed (result cleared) - hiding community cards');
       setShowCommunityCards(false);
       setApprovedCommunityCards(null);
       setApprovedRoundForDisplay(null);
+      setIsDelayingCommunityCards(false);
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
+      }
+      return;
+    }
+    
+    // If awaiting next round but result still showing (announcement phase), keep cards visible
+    if (awaitingNextRound) {
+      console.log('[MOBILE_COMMUNITY] Awaiting next round with result showing - keeping cards visible');
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
@@ -1237,8 +1248,9 @@ anteAnimationTriggerId,
           </div>
         )}
         
-        {/* Chucky's Hand - directly below community cards, hide when awaitingNextRound */}
-        {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && !awaitingNextRound && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
+        {/* Chucky's Hand - persist through announcement, hide when buck passes */}
+        {gameType === 'holm-game' && chuckyActive && chuckyCards && chuckyCards.length > 0 && 
+         !(awaitingNextRound && !lastRoundResult) && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
             <span className="text-red-400 text-sm mr-1">👿</span>
             {chuckyCards.map((card, index) => {
           const isRevealed = index < (chuckyCardsRevealed || 0);
