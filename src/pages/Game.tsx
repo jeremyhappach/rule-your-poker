@@ -100,6 +100,7 @@ interface GameData {
   paused_time_remaining?: number | null;
   real_money?: boolean;
   rabbit_hunt?: boolean;
+  reveal_at_showdown?: boolean;
   rounds?: Round[];
 }
 
@@ -4357,6 +4358,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               getPositionForUserId={getPositionForUserId}
               onLeaveGameNow={handleLeaveGameNow}
               realMoney={game.real_money || false}
+              revealAtShowdown={game.reveal_at_showdown || false}
               externalShowdownCardsCache={showdownCardsCacheRef}
               externalShowdownRoundNumber={showdownRoundNumberRef}
               externalCommunityCardsCache={communityCardsCacheRef}
@@ -4406,6 +4408,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isChatSending={isChatSending}
               getPositionForUserId={getPositionForUserId}
               realMoney={game.real_money || false}
+              revealAtShowdown={game.reveal_at_showdown || false}
             />
           );
         })()}
