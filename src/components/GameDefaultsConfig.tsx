@@ -489,7 +489,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                       
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label>Reveal at Showdown</Label>
+                          <Label>Secret Reveal at Showdown</Label>
                           <p className="text-xs text-muted-foreground">In rounds 1-2, players who stay can see each other's cards</p>
                         </div>
                         <Switch
