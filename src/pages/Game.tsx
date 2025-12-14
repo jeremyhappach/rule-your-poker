@@ -229,6 +229,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
   
+  // Holm pre-fold/pre-stay state (for when it's not your turn yet)
+  const [holmPreFold, setHolmPreFold] = useState(false);
+  const [holmPreStay, setHolmPreStay] = useState(false);
+  
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
@@ -1630,7 +1634,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       liveRound?.community_cards?.length > 0; // CRITICAL: Only count as new if we have cards
     
     if (isNewHolmHand) {
-      console.log('[CACHE] 🔄 NEW HOLM HAND DETECTED - resetting maxRevealed (cache preserved until liveRound takes over)', {
+      console.log('[CACHE] 🔄 NEW HOLM HAND DETECTED - resetting maxRevealed and pre-decisions (cache preserved until liveRound takes over)', {
         prevHash: prevHash.slice(0, 50),
         newHash: currentCommunityHash.slice(0, 50),
         liveRoundId: liveRound?.id,
@@ -1639,6 +1643,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset max revealed for the new hand, but DON'T clear cache
       // The cache will be naturally superseded by liveRound in the currentRound calculation
       maxRevealedRef.current = liveRound?.community_cards_revealed ?? 0;
+      
+      // Reset pre-fold/pre-stay for the new hand
+      setHolmPreFold(false);
+      setHolmPreStay(false);
     }
     
     // Update tracking ref
@@ -1831,6 +1839,47 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRound?.id,
     game?.game_type,
     gameId
+  ]);
+
+  // Auto-execute pre-fold/pre-stay when it becomes player's turn in Holm games
+  useEffect(() => {
+    if (game?.game_type !== 'holm-game') return;
+    if (game?.status !== 'in_progress') return;
+    if (!currentRound || currentRound.status !== 'betting') return;
+    if (game?.is_paused) return;
+    
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (!currentPlayer) return;
+    if (currentPlayer.current_decision || currentPlayer.decision_locked) return; // Already decided
+    
+    const isMyTurn = currentRound.current_turn_position === currentPlayer.position;
+    if (!isMyTurn) return;
+    
+    // Check for pre-decisions and execute immediately
+    if (holmPreFold) {
+      console.log('[PRE-DECISION] Executing pre-FOLD for player');
+      setHolmPreFold(false);
+      setHolmPreStay(false);
+      handleFold();
+    } else if (holmPreStay) {
+      console.log('[PRE-DECISION] Executing pre-STAY for player');
+      setHolmPreFold(false);
+      setHolmPreStay(false);
+      handleStay();
+    }
+  // Note: handleStay and handleFold intentionally excluded to avoid infinite loops
+  // They're stable function references that don't change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    game?.game_type,
+    game?.status,
+    game?.is_paused,
+    currentRound?.status,
+    currentRound?.current_turn_position,
+    holmPreFold,
+    holmPreStay,
+    players,
+    user?.id
   ]);
 
   // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
@@ -4364,6 +4413,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               externalCommunityCardsCache={communityCardsCacheRef}
               winner357ShowCards={winner357ShowCards}
               onWinner357ShowCards={handleWinner357ShowCards}
+              holmPreFold={holmPreFold}
+              holmPreStay={holmPreStay}
+              onHolmPreFoldChange={setHolmPreFold}
+              onHolmPreStayChange={setHolmPreStay}
             />
           ) : (
             <GameTable
@@ -4412,6 +4465,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               threeFiveSevenWinnerId={threeFiveSevenWinnerId}
               threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
               winner357ShowCards={winner357ShowCards}
+              holmPreFold={holmPreFold}
+              holmPreStay={holmPreStay}
+              onHolmPreFoldChange={setHolmPreFold}
+              onHolmPreStayChange={setHolmPreStay}
             />
           );
         })()}
