@@ -409,6 +409,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          aggression_level: string
           card_back_design: string
           created_at: string
           deck_color_mode: string
@@ -419,6 +420,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          aggression_level?: string
           card_back_design?: string
           created_at?: string
           deck_color_mode?: string
@@ -429,6 +431,7 @@ export type Database = {
           username: string
         }
         Update: {
+          aggression_level?: string
           card_back_design?: string
           created_at?: string
           deck_color_mode?: string

@@ -2351,7 +2351,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .from('players')
       .select(`
         *,
-        profiles(username)
+        profiles(username, aggression_level)
       `)
       .eq('game_id', gameId)
       .order('position');

@@ -25,6 +25,7 @@ import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
+import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -77,6 +78,7 @@ interface Player {
   waiting?: boolean;
   profiles?: {
     username: string;
+    aggression_level?: string;
   };
 }
 interface PlayerCards {
@@ -1217,6 +1219,11 @@ anteAnimationTriggerId,
     const nameElement = (
       <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
         {player.profiles?.username || (player.is_bot ? `Bot` : `P${player.position}`)}
+        {player.is_bot && player.profiles?.aggression_level && (
+          <span className="text-purple-300 ml-0.5">
+            ({getAggressionAbbreviation(player.profiles.aggression_level)})
+          </span>
+        )}
       </span>
     );
     
