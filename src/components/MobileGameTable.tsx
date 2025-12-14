@@ -2208,6 +2208,16 @@ anteAnimationTriggerId,
                 !isPaused &&
                 currentPlayerCards.length > 0;
               
+              console.log('[PRE-DECISION UI] Checkbox visibility:', {
+                gameType,
+                isPlayerTurn,
+                hasDecided,
+                roundStatus,
+                isPaused,
+                hasCards: currentPlayerCards.length > 0,
+                showPreDecisionCheckboxes
+              });
+              
               return (
                 <div className="flex items-start justify-center gap-4">
                   {/* Pre-decision checkboxes - left of cards */}
