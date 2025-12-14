@@ -636,7 +636,7 @@ export const DealerGameSetup = ({
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-amber-100 text-sm">Reveal at Showdown</Label>
-                  <p className="text-xs text-amber-200/60">Show all player cards during showdown</p>
+                  <p className="text-xs text-amber-200/60">In rounds 1-2, players who stay can see each other's cards</p>
                 </div>
                 <Switch 
                   checked={revealAtShowdown} 

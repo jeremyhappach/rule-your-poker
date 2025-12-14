@@ -186,6 +186,8 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   isWaitingPhase?: boolean;
   // Real money indicator
   realMoney?: boolean;
+  // 3-5-7 reveal at showdown (secret reveal to players who stayed in rounds 1-2)
+  revealAtShowdown?: boolean;
   // External showdown card cache (lifted to Game.tsx to persist across remounts)
   externalShowdownCardsCache?: React.MutableRefObject<Map<string, CardType[]>>;
   externalShowdownRoundNumber?: React.MutableRefObject<number | null>;
@@ -279,6 +281,7 @@ anteAnimationTriggerId,
   onLeaveGameNow,
   isWaitingPhase = false,
   realMoney = false,
+  revealAtShowdown = false,
   externalShowdownCardsCache,
   externalShowdownRoundNumber,
   externalCommunityCardsCache,
@@ -490,9 +493,20 @@ anteAnimationTriggerId,
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
+  // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
+  const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
+  const currentPlayerStayed = currentPlayerForSecretReveal?.current_decision === 'stay';
+  const is357SecretRevealActive = gameType !== 'holm-game' && 
+    (currentRound === 1 || currentRound === 2) && 
+    allDecisionsIn && 
+    stayedPlayersCount >= 2 && 
+    revealAtShowdown && 
+    currentPlayerStayed;
+  
   const isShowdownActive = (gameType === 'holm-game' && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) ||
-    is357Round3MultiPlayerShowdown;
+    is357Round3MultiPlayerShowdown ||
+    is357SecretRevealActive;
   
   // Clear showdown cache when:
   // 1. A new round number is detected (but NOT during game_over - keep cards visible for animations)
@@ -1064,11 +1078,14 @@ anteAnimationTriggerId,
     // Determine if we should show this player's actual cards
     // Either: player has exposed cards in cache, OR we're showing announcement for a stayed player
     // OR: in 3-5-7, this player won the final leg (keep their cards visible during animation)
+    // OR: 3-5-7 "secret reveal" in rounds 1-2 for players who stayed (only visible to other stayed players)
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
     const isInAnnouncementShowdown = isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
     const is357WinningLegPlayer = gameType !== 'holm-game' && winningLegPlayerId === player.id && cards.length > 0;
     const is357Round3Showdown = is357Round3MultiPlayerShowdown && hasExposedCards;
-    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer || is357Round3Showdown;
+    // Secret reveal: show cards of OTHER players who stayed (rounds 1-2, revealAtShowdown enabled)
+    const is357SecretRevealShowdown = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
+    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer || is357Round3Showdown || is357SecretRevealShowdown;
     
     // During showdown/announcement, hide chip stack to make room for bigger cards
     // EXCEPTION: During Holm win animation, keep winner's chipstack visible (cards are "tabled" below Chucky)

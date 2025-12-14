@@ -97,6 +97,7 @@ interface GameTableProps {
   onLeaveGameNow?: () => void; // Observer leave game
   isWaitingPhase?: boolean; // Hide pot display during waiting phase
   realMoney?: boolean; // Real money indicator
+  revealAtShowdown?: boolean; // 3-5-7 reveal at showdown (secret reveal to players who stayed in rounds 1-2)
 }
 
 export const GameTable = ({
@@ -143,6 +144,7 @@ export const GameTable = ({
   onLeaveGameNow,
   isWaitingPhase = false,
   realMoney = false,
+  revealAtShowdown = false,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -189,9 +191,20 @@ export const GameTable = ({
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
+  // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
+  const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
+  const currentPlayerStayed = currentPlayerForSecretReveal?.current_decision === 'stay';
+  const is357SecretRevealActive = gameType !== 'holm-game' && 
+    (currentRound === 1 || currentRound === 2) && 
+    allDecisionsIn && 
+    stayedPlayersCount >= 2 && 
+    revealAtShowdown && 
+    currentPlayerStayed;
+  
   const isShowdownActive = (gameType === 'holm-game' && 
     (roundStatus === 'showdown' || roundStatus === 'completed' || communityCardsRevealed === 4 || allDecisionsIn)) ||
-    is357Round3MultiPlayerShowdown;
+    is357Round3MultiPlayerShowdown ||
+    is357SecretRevealActive;
   
   // Get current round ID for tracking
   const currentRoundId = realtimeRound?.id || null;
@@ -1218,11 +1231,13 @@ export const GameTable = ({
                               // 1. It's the current user, OR
                               // 2. In Holm game, this player's cards have been exposed (tracked by ID), OR
                               // 3. In 3-5-7 game, this player won the final leg (cards stay visible during animation), OR
-                              // 4. In 3-5-7 round 3 multi-player showdown, all stayed players' cards are exposed
+                              // 4. In 3-5-7 round 3 multi-player showdown, all stayed players' cards are exposed, OR
+                              // 5. In 3-5-7 rounds 1-2, secret reveal: this player stayed AND viewing player stayed
                               !isCurrentUser && !(
                                 (gameType === 'holm-game' && isPlayerCardsExposed(player.id)) ||
                                 (gameType !== 'holm-game' && winningLegPlayerId === player.id) ||
-                                (is357Round3MultiPlayerShowdown && isPlayerCardsExposed(player.id))
+                                (is357Round3MultiPlayerShowdown && isPlayerCardsExposed(player.id)) ||
+                                (is357SecretRevealActive && playerDecision === 'stay' && isPlayerCardsExposed(player.id))
                               )
                             }
                           />
