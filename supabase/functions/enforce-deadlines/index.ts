@@ -60,7 +60,7 @@ serve(async (req) => {
     }
 
     // 1. ENFORCE CONFIG DEADLINE (dealer setup timeout)
-    if (game.status === 'config' && game.config_deadline) {
+    if ((game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
       const configDeadline = new Date(game.config_deadline);
       if (now > configDeadline) {
         console.log('[ENFORCE] Config deadline expired for game', gameId);

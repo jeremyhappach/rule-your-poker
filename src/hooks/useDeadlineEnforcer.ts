@@ -19,7 +19,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     }
 
     // Only run enforcer during active game states that have deadlines
-    const activeStates = ['config', 'ante_decision', 'in_progress', 'betting', 'game_over'];
+    const activeStates = ['configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over'];
     if (!gameStatus || !activeStates.includes(gameStatus)) {
       console.log('[DEADLINE ENFORCER] Status not active, skipping. Status:', gameStatus);
       if (intervalRef.current) {
