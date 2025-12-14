@@ -104,6 +104,11 @@ interface GameTableProps {
   threeFiveSevenWinnerId?: string | null;
   threeFiveSevenWinnerCards?: CardType[];
   winner357ShowCards?: boolean;
+  // Holm pre-fold/pre-stay props
+  holmPreFold?: boolean;
+  holmPreStay?: boolean;
+  onHolmPreFoldChange?: (checked: boolean) => void;
+  onHolmPreStayChange?: (checked: boolean) => void;
 }
 
 export const GameTable = ({
@@ -154,6 +159,10 @@ export const GameTable = ({
   threeFiveSevenWinnerId,
   threeFiveSevenWinnerCards = [],
   winner357ShowCards = false,
+  holmPreFold = false,
+  holmPreStay = false,
+  onHolmPreFoldChange,
+  onHolmPreStayChange,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -1251,7 +1260,54 @@ export const GameTable = ({
                           <Badge variant="destructive" className="text-[8px] sm:text-[10px] px-0.5 sm:px-1 py-0">Out</Badge>
                         )}
                       </div>
-                      <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center">
+                      <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center gap-1">
+                        {/* Pre-decision checkboxes for Holm games - only for current user when not their turn */}
+                        {(() => {
+                          const buckIsAssignedCheck = buckPosition !== null && buckPosition !== undefined;
+                          const roundIsReadyCheck = currentTurnPosition !== null && currentTurnPosition !== undefined;
+                          const roundIsActiveCheck = roundStatus === 'betting';
+                          const isPlayerTurnCheck = gameType === 'holm-game' && buckIsAssignedCheck && roundIsReadyCheck && roundIsActiveCheck && currentTurnPosition === player.position && !awaitingNextRound;
+                          
+                          const showPreDecisionCheckboxes = isCurrentUser && 
+                            gameType === 'holm-game' && 
+                            !isPlayerTurnCheck && 
+                            !hasPlayerDecided && 
+                            roundStatus === 'betting' && 
+                            !isPaused &&
+                            cards.length > 0;
+                          
+                          if (!showPreDecisionCheckboxes) return null;
+                          
+                          return (
+                            <div className="flex flex-col gap-0.5 mr-1">
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={holmPreStay}
+                                  onChange={(e) => {
+                                    onHolmPreStayChange?.(e.target.checked);
+                                    if (e.target.checked) onHolmPreFoldChange?.(false);
+                                  }}
+                                  className="w-3 h-3 rounded border border-green-500 accent-green-500"
+                                />
+                                <span className="text-[8px] font-medium text-green-500">Stay</span>
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={holmPreFold}
+                                  onChange={(e) => {
+                                    onHolmPreFoldChange?.(e.target.checked);
+                                    if (e.target.checked) onHolmPreStayChange?.(false);
+                                  }}
+                                  className="w-3 h-3 rounded border border-red-500 accent-red-500"
+                                />
+                                <span className="text-[8px] font-medium text-red-500">Fold</span>
+                              </label>
+                            </div>
+                          );
+                        })()}
+                        
                         {(cards.length > 0 || shouldShowCardBacks) ? (
                           <PlayerHand 
                             cards={cards} 
