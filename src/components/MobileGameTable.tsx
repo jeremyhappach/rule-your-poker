@@ -1238,6 +1238,8 @@ anteAnimationTriggerId,
           highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
           kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
           hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
+          gameType={gameType}
+          currentRound={currentRound}
         />
       </div>
     ) : (

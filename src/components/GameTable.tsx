@@ -1240,6 +1240,8 @@ export const GameTable = ({
                                 (is357SecretRevealActive && playerDecision === 'stay' && isPlayerCardsExposed(player.id))
                               )
                             }
+                            gameType={gameType}
+                            currentRound={currentRound}
                           />
                         ) : (
                           <div className="text-[7px] sm:text-[8px] md:text-[10px] text-amber-300/50">Wait...</div>
