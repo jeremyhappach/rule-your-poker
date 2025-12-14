@@ -3,17 +3,25 @@ import { makeDecision } from "./gameLogic";
 import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
 
-// Aggression levels for random assignment
-const AGGRESSION_LEVELS: AggressionLevel[] = [
-  'very_conservative',
-  'conservative', 
-  'normal',
-  'aggressive',
-  'very_aggressive'
+// Weighted aggression levels - extreme levels are rare
+const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
+  { level: 'very_conservative', weight: 5 },   // 5% chance
+  { level: 'conservative', weight: 20 },       // 20% chance
+  { level: 'normal', weight: 50 },             // 50% chance
+  { level: 'aggressive', weight: 20 },         // 20% chance
+  { level: 'very_aggressive', weight: 5 }      // 5% chance
 ];
 
 function getRandomAggressionLevel(): AggressionLevel {
-  return AGGRESSION_LEVELS[Math.floor(Math.random() * AGGRESSION_LEVELS.length)];
+  const totalWeight = AGGRESSION_WEIGHTS.reduce((sum, w) => sum + w.weight, 0);
+  let random = Math.random() * totalWeight;
+  
+  for (const { level, weight } of AGGRESSION_WEIGHTS) {
+    random -= weight;
+    if (random <= 0) return level;
+  }
+  
+  return 'normal'; // fallback
 }
 
 export async function addBotPlayer(gameId: string) {
