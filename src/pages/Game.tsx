@@ -173,6 +173,7 @@ const Game = () => {
     pot_max_value: number;
     chucky_cards: number;
     rabbit_hunt: boolean;
+    reveal_at_showdown: boolean;
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   
@@ -2790,7 +2791,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         pot_max_enabled: game.pot_max_enabled ?? true,
         pot_max_value: game.pot_max_value || 10,
         chucky_cards: game.chucky_cards || 4,
-        rabbit_hunt: game.rabbit_hunt ?? false
+        rabbit_hunt: game.rabbit_hunt ?? false,
+        reveal_at_showdown: (game as any).reveal_at_showdown ?? false
       };
       
       console.log('[GAME OVER] Capturing game config:', gameConfig);

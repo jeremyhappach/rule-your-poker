@@ -21,6 +21,7 @@ interface PreviousGameConfig {
   pot_max_value: number;
   chucky_cards: number;
   rabbit_hunt: boolean;
+  reveal_at_showdown: boolean;
 }
 
 interface SessionGameConfigs {
@@ -51,6 +52,7 @@ interface GameDefaults {
   pot_max_value: number;
   chucky_cards: number;
   rabbit_hunt: boolean;
+  reveal_at_showdown: boolean;
 }
 
 export const DealerGameSetup = ({
@@ -81,6 +83,7 @@ export const DealerGameSetup = ({
   const [potMaxValue, setPotMaxValue] = useState("10");
   const [chuckyCards, setChuckyCards] = useState("4");
   const [rabbitHunt, setRabbitHunt] = useState(false);
+  const [revealAtShowdown, setRevealAtShowdown] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   
   // Cache defaults for both game types
@@ -114,6 +117,7 @@ export const DealerGameSetup = ({
         setPotMaxValue(String(previousGameConfig.pot_max_value));
         setChuckyCards(String(previousGameConfig.chucky_cards));
         setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
+        setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
         setLoadingDefaults(false);
         return;
       }
@@ -147,6 +151,7 @@ export const DealerGameSetup = ({
     setPotMaxValue(String(defaults.pot_max_value));
     setChuckyCards(String(defaults.chucky_cards));
     setRabbitHunt(defaults.rabbit_hunt ?? false);
+    setRevealAtShowdown(defaults.reveal_at_showdown ?? false);
   };
 
   // Update config when tab changes - PRIORITY: session config > global defaults
@@ -169,6 +174,7 @@ export const DealerGameSetup = ({
       setPotMaxValue(String(sessionConfig.pot_max_value));
       setChuckyCards(String(sessionConfig.chucky_cards));
       setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
+      setRevealAtShowdown(sessionConfig.reveal_at_showdown ?? false);
       return;
     }
     
@@ -341,6 +347,8 @@ export const DealerGameSetup = ({
     if (isHolmGame) {
       updateData.chucky_cards = parsedChucky;
       updateData.rabbit_hunt = rabbitHunt;
+    } else {
+      updateData.reveal_at_showdown = revealAtShowdown;
     }
 
     const { error } = await supabase
@@ -623,6 +631,17 @@ export const DealerGameSetup = ({
                     />
                   )}
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-amber-100 text-sm">Reveal at Showdown</Label>
+                  <p className="text-xs text-amber-200/60">Show all player cards during showdown</p>
+                </div>
+                <Switch 
+                  checked={revealAtShowdown} 
+                  onCheckedChange={setRevealAtShowdown} 
+                />
               </div>
             </TabsContent>
           </Tabs>

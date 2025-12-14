@@ -28,6 +28,7 @@ interface GameDefaults {
   pussy_tax_enabled: boolean;
   pussy_tax_value: number;
   rabbit_hunt: boolean;
+  reveal_at_showdown: boolean;
 }
 
 interface GameDefaultsConfigProps {
@@ -183,6 +184,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             pussy_tax_enabled: defaultConfig.pussy_tax_enabled,
             pussy_tax_value: defaultConfig.pussy_tax_value,
             rabbit_hunt: defaultConfig.rabbit_hunt,
+            reveal_at_showdown: defaultConfig.reveal_at_showdown,
           })
           .eq('game_type', defaultConfig.game_type);
 
@@ -483,6 +485,17 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                           onChange={(e) => updateDefault('3-5-7', 'legs_to_win', e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">Number of legs required to win</p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Reveal at Showdown</Label>
+                          <p className="text-xs text-muted-foreground">Show all player cards during showdown</p>
+                        </div>
+                        <Switch
+                          checked={defaults357.reveal_at_showdown ?? false}
+                          onCheckedChange={(checked) => updateDefault('3-5-7', 'reveal_at_showdown', checked)}
+                        />
                       </div>
                     </div>
 

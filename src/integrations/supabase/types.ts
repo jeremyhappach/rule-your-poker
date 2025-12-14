@@ -74,6 +74,7 @@ export type Database = {
           pussy_tax_value: number
           rabbit_hunt: boolean
           real_money: boolean
+          reveal_at_showdown: boolean
           updated_at: string
         }
         Insert: {
@@ -96,6 +97,7 @@ export type Database = {
           pussy_tax_value?: number
           rabbit_hunt?: boolean
           real_money?: boolean
+          reveal_at_showdown?: boolean
           updated_at?: string
         }
         Update: {
@@ -118,6 +120,7 @@ export type Database = {
           pussy_tax_value?: number
           rabbit_hunt?: boolean
           real_money?: boolean
+          reveal_at_showdown?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -156,6 +159,7 @@ export type Database = {
           pussy_tax_value: number
           rabbit_hunt: boolean
           real_money: boolean
+          reveal_at_showdown: boolean
           session_ended_at: string | null
           status: string
           total_hands: number | null
@@ -194,6 +198,7 @@ export type Database = {
           pussy_tax_value?: number
           rabbit_hunt?: boolean
           real_money?: boolean
+          reveal_at_showdown?: boolean
           session_ended_at?: string | null
           status?: string
           total_hands?: number | null
@@ -232,6 +237,7 @@ export type Database = {
           pussy_tax_value?: number
           rabbit_hunt?: boolean
           real_money?: boolean
+          reveal_at_showdown?: boolean
           session_ended_at?: string | null
           status?: string
           total_hands?: number | null
