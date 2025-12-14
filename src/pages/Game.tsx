@@ -4409,6 +4409,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               getPositionForUserId={getPositionForUserId}
               realMoney={game.real_money || false}
               revealAtShowdown={game.reveal_at_showdown || false}
+              threeFiveSevenWinnerId={threeFiveSevenWinnerId}
+              threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
+              winner357ShowCards={winner357ShowCards}
             />
           );
         })()}
