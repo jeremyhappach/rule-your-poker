@@ -1268,13 +1268,15 @@ export const GameTable = ({
                           const roundIsActiveCheck = roundStatus === 'betting';
                           const isPlayerTurnCheck = gameType === 'holm-game' && buckIsAssignedCheck && roundIsReadyCheck && roundIsActiveCheck && currentTurnPosition === player.position && !awaitingNextRound;
                           
+                          // Show pre-decision checkboxes when:
+                          // 1. Not player's turn (queue decision before turn), OR
+                          // 2. It IS player's turn but game is paused (queue while waiting for unpause)
                           const showPreDecisionCheckboxes = isCurrentUser && 
                             gameType === 'holm-game' && 
-                            !isPlayerTurnCheck && 
                             !hasPlayerDecided && 
                             roundStatus === 'betting' && 
-                            !isPaused &&
-                            cards.length > 0;
+                            cards.length > 0 &&
+                            (!isPlayerTurnCheck || isPaused);
                           
                           if (!showPreDecisionCheckboxes) return null;
                           

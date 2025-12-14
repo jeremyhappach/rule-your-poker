@@ -2200,13 +2200,14 @@ anteAnimationTriggerId,
               }
               
               // Normal card display
-              // Show pre-decision checkboxes for Holm games when not player's turn and hasn't decided
+              // Show pre-decision checkboxes for Holm games when:
+              // 1. Not player's turn (can queue decision before turn arrives), OR
+              // 2. It IS player's turn but game is paused (can queue decision while waiting for unpause)
               const showPreDecisionCheckboxes = gameType === 'holm-game' && 
-                !isPlayerTurn && 
                 !hasDecided && 
                 roundStatus === 'betting' && 
-                !isPaused &&
-                currentPlayerCards.length > 0;
+                currentPlayerCards.length > 0 &&
+                (!isPlayerTurn || isPaused);
               
               console.log('[PRE-DECISION UI] Checkbox visibility:', {
                 gameType,
