@@ -1122,6 +1122,8 @@ export async function endRound(gameId: string) {
           let totalWinnings = 0;
           
           // Charge each loser and accumulate (pot stays for game winner)
+          const loserIds: string[] = [];
+          let amountPerLoser = 0;
           for (const player of playersWhoStayed) {
             if (player.id !== winner.playerId) {
               let amountToCharge;
@@ -1133,6 +1135,8 @@ export async function endRound(gameId: string) {
                 amountToCharge = currentPot;
               }
               totalWinnings += amountToCharge;
+              amountPerLoser = amountToCharge; // All losers pay same amount
+              loserIds.push(player.id);
               
               await supabase
                 .from('players')
@@ -1151,8 +1155,8 @@ export async function endRound(gameId: string) {
             })
             .eq('id', winner.playerId);
           
-          // Don't clear the pot - it stays for the game winner
-          const showdownResult = `${winnerUsername} won with ${handName}`;
+          // Include metadata for chip transfer animation (similar to Holm format)
+          const showdownResult = `${winnerUsername} won with ${handName}|||WINNER:${winner.playerId}|||LOSERS:${loserIds.join(',')}|||AMOUNT:${amountPerLoser}`;
           
           console.log('[endRound] SHOWDOWN: Result determined:', {
             winner: winnerUsername,

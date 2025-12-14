@@ -2150,35 +2150,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       
       // Check if this is a 3-5-7 showdown and trigger chip transfer animation
-      // Format: "${winnerUsername} won $${amount} with ${handName}"
-      const showdownMatch = lastResult.match(/^(.+) won \$(\d+) with (.+)$/);
-      if (showdownMatch && game?.game_type === '3-5-7') {
-        const winnerUsername = showdownMatch[1];
-        const amount = parseInt(showdownMatch[2], 10);
+      // Format: "${winnerUsername} won with ${handName}|||WINNER:${id}|||LOSERS:${ids}|||AMOUNT:${amount}"
+      if (game?.game_type === '3-5-7' && lastResult.includes('|||WINNER:')) {
+        const winnerMatch = lastResult.match(/\|\|\|WINNER:([^|]+)/);
+        const losersMatch = lastResult.match(/\|\|\|LOSERS:([^|]+)/);
+        const amountMatch = lastResult.match(/\|\|\|AMOUNT:(\d+)/);
         
-        // Find the winner player by username
-        const winnerPlayer = players.find(p => p.profiles?.username === winnerUsername);
-        
-        // Find losers: players who stayed (have current_decision = 'stay' or just played) but aren't the winner
-        // In 3-5-7 showdown, losers are players who had status 'active' and weren't the winner
-        const loserPlayers = players.filter(p => 
-          p.id !== winnerPlayer?.id && 
-          !p.sitting_out && 
-          p.status !== 'folded'
-        );
-        
-        if (winnerPlayer && loserPlayers.length > 0 && amount > 0) {
-          console.log('[CHIP_TRANSFER_ANIMATION] Triggering showdown animation', {
-            winner: winnerUsername,
-            winnerId: winnerPlayer.id,
-            losers: loserPlayers.map(p => p.profiles?.username),
-            loserIds: loserPlayers.map(p => p.id),
-            amount
-          });
-          setChipTransferAmount(amount / loserPlayers.length); // Per-loser amount
-          setChipTransferWinnerId(winnerPlayer.id);
-          setChipTransferLoserIds(loserPlayers.map(p => p.id));
-          setChipTransferTriggerId(`showdown-${Date.now()}`);
+        if (winnerMatch && losersMatch && amountMatch) {
+          const winnerId = winnerMatch[1];
+          const loserIds = losersMatch[1].split(',').filter(id => id.length > 0);
+          const amount = parseInt(amountMatch[1], 10);
+          
+          if (loserIds.length > 0 && amount > 0) {
+            console.log('[CHIP_TRANSFER_ANIMATION] Triggering showdown animation', {
+              winnerId,
+              loserIds,
+              amount
+            });
+            setChipTransferAmount(amount);
+            setChipTransferWinnerId(winnerId);
+            setChipTransferLoserIds(loserIds);
+            setChipTransferTriggerId(`showdown-${Date.now()}`);
+          }
         }
       }
       
