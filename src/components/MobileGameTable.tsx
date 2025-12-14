@@ -1607,50 +1607,12 @@ anteAnimationTriggerId,
          threeFiveSevenWinnerCards.length > 0 && (
           <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
             <div className="flex gap-1">
-              {threeFiveSevenWinnerCards.map((card, index) => {
-                // Show card backs (face-down) unless winner chose to show
-                if (!winner357ShowCards) {
-                  // Card back design
-                  return (
-                    <div 
-                      key={index} 
-                      className="w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 border-green-500 flex items-center justify-center shadow-lg bg-gradient-to-br from-blue-800 to-blue-900"
-                    >
-                      <div className="w-7 h-10 rounded-sm border border-blue-600 bg-blue-700/50 flex items-center justify-center">
-                        <span className="text-blue-300 text-xs font-bold">♠</span>
-                      </div>
-                    </div>
-                  );
-                }
-                
-                // Face-up card (winner chose to show)
-                const isFourColor = deckColorMode === 'four_color';
-                const fourColorConfig = getFourColorSuit(card.suit);
-                const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
-                const twoColorTextStyle = !isFourColor 
-                  ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
-                  : {};
-                
-                return (
-                  <div 
-                    key={index} 
-                    className="w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 border-green-500 flex flex-col items-center justify-center shadow-lg"
-                    style={{ 
-                      backgroundColor: cardBg, 
-                      ...twoColorTextStyle
-                    }}
-                  >
-                    <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                      {card.rank}
-                    </span>
-                    {!isFourColor && (
-                      <span className="text-2xl leading-none -mt-0.5">
-                        {card.suit}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+              <PlayerHand 
+                cards={threeFiveSevenWinnerCards} 
+                isHidden={!winner357ShowCards}
+                gameType={gameType}
+                currentRound={currentRound}
+              />
             </div>
           </div>
         )}

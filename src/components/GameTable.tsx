@@ -98,6 +98,10 @@ interface GameTableProps {
   isWaitingPhase?: boolean; // Hide pot display during waiting phase
   realMoney?: boolean; // Real money indicator
   revealAtShowdown?: boolean; // 3-5-7 reveal at showdown (secret reveal to players who stayed in rounds 1-2)
+  // 3-5-7 win animation props
+  threeFiveSevenWinnerId?: string | null;
+  threeFiveSevenWinnerCards?: CardType[];
+  winner357ShowCards?: boolean;
 }
 
 export const GameTable = ({
@@ -145,6 +149,9 @@ export const GameTable = ({
   isWaitingPhase = false,
   realMoney = false,
   revealAtShowdown = false,
+  threeFiveSevenWinnerId,
+  threeFiveSevenWinnerCards = [],
+  winner357ShowCards = false,
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -941,6 +948,22 @@ export const GameTable = ({
                 </div>
               </div>
             </>
+          )}
+
+          {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation */}
+          {/* Cards are face-down unless winner chose to "Show Cards" */}
+          {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
+           threeFiveSevenWinnerCards.length > 0 && (
+            <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
+              <div className="flex gap-1">
+                <PlayerHand 
+                  cards={threeFiveSevenWinnerCards} 
+                  isHidden={!winner357ShowCards}
+                  gameType={gameType}
+                  currentRound={currentRound}
+                />
+              </div>
+            </div>
           )}
 
           {/* Community Cards for Holm Game - persist through announcement, hide when buck passes */}
