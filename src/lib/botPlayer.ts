@@ -1,7 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
-import { getBotFoldProbability } from "./botHandStrength";
+import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
+
+// Aggression levels for random assignment
+const AGGRESSION_LEVELS: AggressionLevel[] = [
+  'very_conservative',
+  'conservative', 
+  'normal',
+  'aggressive',
+  'very_aggressive'
+];
+
+function getRandomAggressionLevel(): AggressionLevel {
+  return AGGRESSION_LEVELS[Math.floor(Math.random() * AGGRESSION_LEVELS.length)];
+}
 
 export async function addBotPlayer(gameId: string) {
   console.log('[BOT CREATION] Starting bot creation for game:', gameId);
@@ -47,8 +60,9 @@ export async function addBotPlayer(gameId: string) {
     throw new Error('Game not found');
   }
 
-  // Create a bot profile first
+  // Create a bot profile first with random aggression level
   const botId = crypto.randomUUID();
+  const aggressionLevel = getRandomAggressionLevel();
   
   // Count ALL existing bot profiles across all games to get a globally unique bot number
   const { data: existingBotProfiles } = await supabase
@@ -59,14 +73,15 @@ export async function addBotPlayer(gameId: string) {
   const botNumber = (existingBotProfiles?.length || 0) + 1;
   const botName = `Bot ${botNumber}`;
   
-  console.log('[BOT CREATION] Creating bot profile:', { botId, botName });
+  console.log('[BOT CREATION] Creating bot profile:', { botId, botName, aggressionLevel });
   
-  // Insert bot profile
+  // Insert bot profile with aggression level
   const { error: profileError } = await supabase
     .from('profiles')
     .insert({
       id: botId,
-      username: botName
+      username: botName,
+      aggression_level: aggressionLevel
     });
 
   if (profileError) {
@@ -129,8 +144,9 @@ export async function addBotPlayerSittingOut(gameId: string) {
 
   console.log('[BOT CREATION] Random open position selected:', nextPosition);
 
-  // Create a bot profile first
+  // Create a bot profile first with random aggression level
   const botId = crypto.randomUUID();
+  const aggressionLevel = getRandomAggressionLevel();
   
   // Count ALL existing bot profiles across all games to get a globally unique bot number
   const { data: existingBotProfiles } = await supabase
@@ -141,14 +157,15 @@ export async function addBotPlayerSittingOut(gameId: string) {
   const botNumber = (existingBotProfiles?.length || 0) + 1;
   const botName = `Bot ${botNumber}`;
   
-  console.log('[BOT CREATION] Creating bot profile:', { botId, botName });
+  console.log('[BOT CREATION] Creating bot profile:', { botId, botName, aggressionLevel });
   
-  // Insert bot profile
+  // Insert bot profile with aggression level
   const { error: profileError } = await supabase
     .from('profiles')
     .insert({
       id: botId,
-      username: botName
+      username: botName,
+      aggression_level: aggressionLevel
     });
 
   if (profileError) {
@@ -237,6 +254,18 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 
   console.log('[BOT DECISIONS] Bots to decide:', botsToDecide.map(b => ({ id: b.id, pos: b.position })));
 
+  // Get bot profiles to fetch aggression levels
+  const botUserIds = botsToDecide.map(b => b.user_id);
+  const { data: botProfiles } = await supabase
+    .from('profiles')
+    .select('id, aggression_level')
+    .in('id', botUserIds);
+  
+  const aggressionMap = new Map<string, AggressionLevel>();
+  botProfiles?.forEach(p => {
+    aggressionMap.set(p.id, (p.aggression_level as AggressionLevel) || 'normal');
+  });
+
   // Get game defaults for bot behavior (for decision delay and hand strength toggle)
   const gameTypeKey = isHolmGame ? 'holm' : '3-5-7';
   const { data: gameDefaults } = await supabase
@@ -259,7 +288,8 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     const bot = botsToDecide[0];
     if (!bot) return false;
     
-    console.log('[BOT DECISIONS] Holm: Processing bot decision for position:', bot.position);
+    const botAggressionLevel = aggressionMap.get(bot.user_id) || 'normal';
+    console.log('[BOT DECISIONS] Holm: Processing bot decision for position:', bot.position, 'aggression:', botAggressionLevel);
     
     // Get this bot's cards
     const { data: playerCards } = await supabase
@@ -274,11 +304,13 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     // Calculate fold probability - use hand strength or universal setting
     let foldProbability: number;
     if (useHandStrength) {
-      foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1);
-      console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength');
+      foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1, botAggressionLevel);
+      console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength, aggression:', botAggressionLevel);
     } else {
-      foldProbability = universalFoldProbability;
-      console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '%');
+      // Apply aggression multiplier even to universal probability
+      const multiplier = { 'very_conservative': 1.6, 'conservative': 1.3, 'normal': 1.0, 'aggressive': 0.7, 'very_aggressive': 0.4 }[botAggressionLevel];
+      foldProbability = Math.min(100, Math.max(0, universalFoldProbability * multiplier));
+      console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '% (adjusted for aggression:', botAggressionLevel, ')');
     }
     
     // Add delay before bot makes decision
@@ -300,6 +332,8 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   
   // For 3-5-7 games, process all bots with staggered delays (simultaneous decisions)
   for (const bot of botsToDecide) {
+    const botAggressionLevel = aggressionMap.get(bot.user_id) || 'normal';
+    
     // Get this bot's cards
     const { data: playerCards } = await supabase
       .from('player_cards')
@@ -313,11 +347,13 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     // Calculate fold probability - use hand strength or universal setting
     let foldProbability: number;
     if (useHandStrength) {
-      foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber);
-      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'fold probability:', foldProbability, '% (round', roundNumber, ', hand strength)');
+      foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber, botAggressionLevel);
+      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'fold probability:', foldProbability, '% (round', roundNumber, ', hand strength, aggression:', botAggressionLevel, ')');
     } else {
-      foldProbability = universalFoldProbability;
-      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'using universal fold probability:', foldProbability, '%');
+      // Apply aggression multiplier even to universal probability
+      const multiplier = { 'very_conservative': 1.6, 'conservative': 1.3, 'normal': 1.0, 'aggressive': 0.7, 'very_aggressive': 0.4 }[botAggressionLevel];
+      foldProbability = Math.min(100, Math.max(0, universalFoldProbability * multiplier));
+      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'using universal fold probability:', foldProbability, '% (adjusted for aggression:', botAggressionLevel, ')');
     }
     
     // Stagger bot decisions slightly to feel more natural

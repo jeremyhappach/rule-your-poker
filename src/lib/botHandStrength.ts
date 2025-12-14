@@ -1,14 +1,30 @@
 import { Card, evaluateHand, RANK_VALUES, HandRank, Rank } from './cardUtils';
 
+export type AggressionLevel = 'very_conservative' | 'conservative' | 'normal' | 'aggressive' | 'very_aggressive';
+
 /**
- * Bot fold probability based on hand strength
+ * Aggression multipliers for fold probability
+ * Higher multiplier = more likely to fold (more conservative)
+ * Lower multiplier = less likely to fold (more aggressive)
+ */
+const AGGRESSION_MULTIPLIERS: Record<AggressionLevel, number> = {
+  'very_conservative': 1.6,  // 60% more likely to fold
+  'conservative': 1.3,       // 30% more likely to fold
+  'normal': 1.0,             // Base fold probability
+  'aggressive': 0.7,         // 30% less likely to fold
+  'very_aggressive': 0.4,    // 60% less likely to fold
+};
+
+/**
+ * Bot fold probability based on hand strength and aggression level
  * Returns a number 0-100 representing the probability the bot should fold
  */
 export function getBotFoldProbability(
   cards: Card[],
   communityCards: Card[],
   gameType: 'holm' | '357',
-  roundNumber: number
+  roundNumber: number,
+  aggressionLevel: AggressionLevel = 'normal'
 ): number {
   // Combine player cards with community cards for evaluation
   const allCards = [...cards, ...communityCards];
@@ -22,14 +38,29 @@ export function getBotFoldProbability(
     roundNumber,
     cardCount: allCards.length,
     rank: evaluation.rank,
-    value: evaluation.value
+    value: evaluation.value,
+    aggressionLevel
   });
   
+  // Get base fold probability
+  let baseProbability: number;
   if (gameType === 'holm') {
-    return getHolmFoldProbability(evaluation.rank, allCards);
+    baseProbability = getHolmFoldProbability(evaluation.rank, allCards);
   } else {
-    return get357FoldProbability(evaluation.rank, allCards, roundNumber);
+    baseProbability = get357FoldProbability(evaluation.rank, allCards, roundNumber);
   }
+  
+  // Apply aggression multiplier
+  const multiplier = AGGRESSION_MULTIPLIERS[aggressionLevel];
+  const adjustedProbability = Math.min(100, Math.max(0, baseProbability * multiplier));
+  
+  console.log('[BOT STRENGTH] Fold probability:', {
+    baseProbability,
+    multiplier,
+    adjustedProbability
+  });
+  
+  return adjustedProbability;
 }
 
 /**
