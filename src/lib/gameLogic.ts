@@ -703,7 +703,7 @@ async function handleGameOver(
     .update({ chips: allPlayers.find(p => p.id === winnerId)!.chips + totalPrize })
     .eq('id', winnerId);
   
-  const gameWinMessage = `🏆 ${winnerUsername} won the game with ${winnerLegs} legs! (+$${totalPrize}: $${currentPot} pot + $${totalLegValue} legs)`;
+  const gameWinMessage = `🏆 ${winnerUsername} won the game!`;
   
   // Reset all players' legs for new game and keep chips
   await supabase
@@ -1152,7 +1152,7 @@ export async function endRound(gameId: string) {
             .eq('id', winner.playerId);
           
           // Don't clear the pot - it stays for the game winner
-          const showdownResult = `${winnerUsername} won $${totalWinnings} with ${handName}`;
+          const showdownResult = `${winnerUsername} won with ${handName}`;
           
           console.log('[endRound] SHOWDOWN: Result determined:', {
             winner: winnerUsername,

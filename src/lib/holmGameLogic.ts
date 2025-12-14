@@ -1231,7 +1231,7 @@ async function handleChuckyShowdown(
     const { error: gameUpdateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}. -$${potMatchAmount}`,
+        last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}`,
         pot: newPot,
         awaiting_next_round: true  // Let frontend detect and animate
       })
@@ -1505,7 +1505,7 @@ async function handleMultiPlayerShowdown(
     // Embed debug JSON after the result message with a delimiter
     // Include both pot (winner takes) and matchAmount (losers pay) for animation coordination
     const loserIds = losers.map(l => l.player.id).join(',');
-    const resultWithDebug = `${winnerUsername} wins with ${winnerHandDesc} and takes $${roundPot}! Losers pay $${potMatchAmount}.|||WINNER:${winner.player.id}|||LOSERS:${loserIds}|||POT:${roundPot}|||MATCH:${potMatchAmount}|||DEBUG:${JSON.stringify(debugData)}`;
+    const resultWithDebug = `${winnerUsername} won with ${winnerHandDesc}|||WINNER:${winner.player.id}|||LOSERS:${loserIds}|||POT:${roundPot}|||MATCH:${potMatchAmount}|||DEBUG:${JSON.stringify(debugData)}`;
     
     const { error: updateError } = await supabase
       .from('games')
