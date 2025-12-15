@@ -14,21 +14,26 @@ const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
 
 function getRandomAggressionLevel(): AggressionLevel {
   const totalWeight = AGGRESSION_WEIGHTS.reduce((sum, w) => sum + w.weight, 0);
-  const initialRandom = Math.random() * totalWeight;
-  let random = initialRandom;
-  
-  console.log('[BOT AGGRESSION] totalWeight:', totalWeight, 'initialRandom:', initialRandom);
-  
+
+  // Use crypto RNG to avoid environments where Math.random may be non-random/deterministic.
+  const rand01 = (() => {
+    try {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      // 0 <= n < 2^32
+      return buf[0] / 2 ** 32;
+    } catch {
+      return Math.random();
+    }
+  })();
+
+  let random = rand01 * totalWeight;
+
   for (const { level, weight } of AGGRESSION_WEIGHTS) {
     random -= weight;
-    console.log('[BOT AGGRESSION] After', level, '(weight:', weight, '), random:', random);
-    if (random <= 0) {
-      console.log('[BOT AGGRESSION] Selected level:', level);
-      return level;
-    }
+    if (random <= 0) return level;
   }
-  
-  console.log('[BOT AGGRESSION] Fallback to normal');
+
   return 'normal'; // fallback
 }
 
