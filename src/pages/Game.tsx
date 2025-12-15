@@ -2326,7 +2326,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.last_round_result]);
 
   // Clear timer when results are shown
   useEffect(() => {
