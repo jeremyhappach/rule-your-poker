@@ -12,15 +12,22 @@ const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: 'very_aggressive', weight: 5 }      // 5% chance
 ];
 
-function getRandomAggressionLevel(): AggressionLevel {
+function getRandomAggressionLevel(seed?: string): AggressionLevel {
+  // If we have a seed (we do for bots via UUID), derive a stable 0-99 value from it.
+  // This avoids any environment where RNG APIs behave unexpectedly.
   const totalWeight = AGGRESSION_WEIGHTS.reduce((sum, w) => sum + w.weight, 0);
 
-  // Use crypto RNG to avoid environments where Math.random may be non-random/deterministic.
   const rand01 = (() => {
+    if (seed) {
+      const hex = seed.replace(/-/g, '');
+      const tail = hex.slice(-8);
+      const n = Number.parseInt(tail, 16);
+      if (Number.isFinite(n)) return (n % 100) / 100;
+    }
+
     try {
       const buf = new Uint32Array(1);
       crypto.getRandomValues(buf);
-      // 0 <= n < 2^32
       return buf[0] / 2 ** 32;
     } catch {
       return Math.random();
@@ -28,13 +35,12 @@ function getRandomAggressionLevel(): AggressionLevel {
   })();
 
   let random = rand01 * totalWeight;
-
   for (const { level, weight } of AGGRESSION_WEIGHTS) {
     random -= weight;
     if (random <= 0) return level;
   }
 
-  return 'normal'; // fallback
+  return 'normal';
 }
 
 export async function addBotPlayer(gameId: string) {
@@ -83,8 +89,7 @@ export async function addBotPlayer(gameId: string) {
 
   // Create a bot profile first with random aggression level
   const botId = crypto.randomUUID();
-  const aggressionLevel = getRandomAggressionLevel();
-  
+  const aggressionLevel = getRandomAggressionLevel(botId);
   // Count ALL existing bot profiles across all games to get a globally unique bot number
   const { data: existingBotProfiles } = await supabase
     .from('profiles')
@@ -167,8 +172,7 @@ export async function addBotPlayerSittingOut(gameId: string) {
 
   // Create a bot profile first with random aggression level
   const botId = crypto.randomUUID();
-  const aggressionLevel = getRandomAggressionLevel();
-  
+  const aggressionLevel = getRandomAggressionLevel(botId);
   // Count ALL existing bot profiles across all games to get a globally unique bot number
   const { data: existingBotProfiles } = await supabase
     .from('profiles')
