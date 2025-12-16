@@ -1691,7 +1691,8 @@ anteAnimationTriggerId,
         )}
         
         {/* Chucky's Hand - use cached values to persist through announcement */}
-        {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-1.5">
+        {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
+          <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px]">
             <span className="text-red-400 text-sm mr-1">👿</span>
             {cachedChuckyCards.map((card, index) => {
           const isRevealed = index < cachedChuckyCardsRevealed;
@@ -1723,7 +1724,8 @@ anteAnimationTriggerId,
                     </div>}
                 </div>;
         })}
-          </div>}
+          </div>
+        )}
         
         {/* Winner's Tabled Cards - shown above pot (overlaying game name/pot max) when player beats Chucky */}
         {/* This displays during the pot-to-winner animation so cards are visible */}
