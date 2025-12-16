@@ -134,12 +134,16 @@ export default {
         },
         "spin-table": {
           "0%": { 
-            transform: "translateY(100px) scale(0.5) rotateY(0deg)",
+            transform: "translateY(200px) scale(0.3) rotateY(0deg)",
             opacity: "0",
           },
-          "50%": { 
-            transform: "translateY(50px) scale(0.8) rotateY(360deg)",
-            opacity: "0.8",
+          "30%": { 
+            transform: "translateY(100px) scale(0.6) rotateY(360deg)",
+            opacity: "0.7",
+          },
+          "70%": { 
+            transform: "translateY(30px) scale(0.9) rotateY(540deg)",
+            opacity: "0.9",
           },
           "100%": { 
             transform: "translateY(0) scale(1) rotateY(720deg)",
@@ -157,7 +161,7 @@ export default {
         "card-flip": "card-flip 1.2s ease-in-out forwards",
         "fold-cards": "foldCards 1.5s ease-out forwards",
         "turn-pulse": "turn-pulse 0.8s ease-in-out infinite",
-        "spin-table": "spin-table 0.8s ease-out forwards",
+        "spin-table": "spin-table 1s ease-out forwards",
       },
     },
   },

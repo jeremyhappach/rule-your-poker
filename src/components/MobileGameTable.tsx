@@ -1625,7 +1625,7 @@ anteAnimationTriggerId,
          (currentRound === 3 || winner357ShowCards) && (
           <div className={`absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1 ${
             currentRound !== 3 && winner357ShowCards ? 'animate-spin-table' : ''
-          }`} style={{ perspective: '1000px' }}>
+          }`} style={{ perspective: '1000px', transformStyle: 'preserve-3d' }}>
             <div className="flex gap-1">
               <PlayerHand 
                 cards={threeFiveSevenWinnerCards} 
