@@ -1268,10 +1268,17 @@ export const GameTable = ({
                           const roundIsActiveCheck = roundStatus === 'betting';
                           const isPlayerTurnCheck = gameType === 'holm-game' && buckIsAssignedCheck && roundIsReadyCheck && roundIsActiveCheck && currentTurnPosition === player.position && !awaitingNextRound;
                           
-                          // Show pre-decision checkboxes ONLY when not player's turn yet
+                          // Compute if stay/fold buttons would be visible (canDecide equivalent)
+                          const canDecideCheck = isCurrentUser && 
+                            isPlayerTurnCheck && 
+                            !hasPlayerDecided && 
+                            player?.status === 'active' &&
+                            !isPaused;
+                          
+                          // Show pre-decision checkboxes when stay/fold buttons NOT visible but player hasn't decided
                           const showPreDecisionCheckboxes = isCurrentUser && 
                             gameType === 'holm-game' && 
-                            !isPlayerTurnCheck && 
+                            !canDecideCheck &&  // stay/fold buttons NOT visible
                             !hasPlayerDecided && 
                             roundStatus === 'betting' && 
                             !isPaused &&

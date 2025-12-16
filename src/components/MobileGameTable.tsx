@@ -2200,10 +2200,10 @@ anteAnimationTriggerId,
               }
               
               // Normal card display
-              // Show pre-decision checkboxes for Holm games ONLY when not player's turn yet
+              // Show pre-decision checkboxes for Holm games when stay/fold buttons aren't visible but player hasn't decided
               const showPreDecisionCheckboxes = gameType === 'holm-game' && 
-                !isPlayerTurn && 
-                !hasDecided && 
+                !canDecide &&  // stay/fold buttons NOT visible
+                !hasDecided &&  // hasn't made a decision yet
                 roundStatus === 'betting' && 
                 !isPaused &&
                 currentPlayerCards.length > 0;

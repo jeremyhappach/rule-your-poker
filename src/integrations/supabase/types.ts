@@ -338,6 +338,8 @@ export type Database = {
           legs: number
           mobile_view: boolean | null
           position: number
+          pre_fold: boolean | null
+          pre_stay: boolean | null
           sit_out_next_hand: boolean
           sitting_out: boolean
           sitting_out_hands: number
@@ -360,6 +362,8 @@ export type Database = {
           legs?: number
           mobile_view?: boolean | null
           position: number
+          pre_fold?: boolean | null
+          pre_stay?: boolean | null
           sit_out_next_hand?: boolean
           sitting_out?: boolean
           sitting_out_hands?: number
@@ -382,6 +386,8 @@ export type Database = {
           legs?: number
           mobile_view?: boolean | null
           position?: number
+          pre_fold?: boolean | null
+          pre_stay?: boolean | null
           sit_out_next_hand?: boolean
           sitting_out?: boolean
           sitting_out_hands?: number
