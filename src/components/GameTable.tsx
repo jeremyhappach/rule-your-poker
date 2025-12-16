@@ -962,14 +962,16 @@ export const GameTable = ({
           )}
 
           {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation */}
-          {/* Cards are face-down unless winner chose to "Show Cards" */}
+          {/* Rounds 1-2: Only table cards if winner clicked "Show Cards" (always face-up) */}
+          {/* Round 3: Always table cards (face-down unless "Show Cards" clicked) */}
           {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
-           threeFiveSevenWinnerCards.length > 0 && (
+           threeFiveSevenWinnerCards.length > 0 && 
+           (currentRound === 3 || winner357ShowCards) && (
             <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
               <div className="flex gap-1">
                 <PlayerHand 
                   cards={threeFiveSevenWinnerCards} 
-                  isHidden={!winner357ShowCards}
+                  isHidden={currentRound === 3 ? !winner357ShowCards : false}
                   gameType={gameType}
                   currentRound={currentRound}
                 />
