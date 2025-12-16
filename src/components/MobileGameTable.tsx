@@ -1766,7 +1766,13 @@ anteAnimationTriggerId,
         {/* Don't show tabled cards to the winner themselves - they can see their own cards in their player card area */}
         {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
-            <div className="flex gap-1">
+            <div 
+              className="flex gap-1"
+              style={{
+                animation: 'holmTableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards',
+                willChange: 'transform, opacity',
+              }}
+            >
               {winnerCards.map((card, index) => {
                 const isFourColor = deckColorMode === 'four_color';
                 const fourColorConfig = getFourColorSuit(card.suit);
@@ -1806,6 +1812,25 @@ anteAnimationTriggerId,
                 );
               })}
             </div>
+            <style>{`
+              @keyframes holmTableSpinIn {
+                0% {
+                  opacity: 0;
+                  transform: translateY(240px) scale(0.3) rotate(0deg);
+                }
+                40% {
+                  opacity: 1;
+                  transform: translateY(100px) scale(0.7) rotate(270deg);
+                }
+                70% {
+                  transform: translateY(30px) scale(0.9) rotate(540deg);
+                }
+                100% {
+                  opacity: 1;
+                  transform: translateY(0) scale(1) rotate(720deg);
+                }
+              }
+            `}</style>
           </div>
         )}
         
