@@ -31,7 +31,9 @@ export function getBotFoldProbability(
   
   // For Holm, we don't use wild cards. For 3-5-7, use wild based on round
   const useWildCards = gameType === '357';
-  const evaluation = evaluateHand(allCards, useWildCards);
+  // Determine explicit wild rank for 3-5-7 games
+  const wildRank = gameType === '357' ? (roundNumber === 1 ? '3' : roundNumber === 2 ? '5' : '7') : null;
+  const evaluation = evaluateHand(allCards, useWildCards, wildRank as any);
   
   console.log('[BOT STRENGTH] Evaluating hand:', {
     gameType,

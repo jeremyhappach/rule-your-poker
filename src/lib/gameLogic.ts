@@ -1078,13 +1078,14 @@ export async function endRound(gameId: string) {
     if (playerCards && playerCards.length > 0) {
       console.log('[endRound] SHOWDOWN: Processing cards for evaluation');
       // Only evaluate hands of players who stayed
-      // 3-5-7 game uses wildcards based on round
+      // 3-5-7 game uses wildcards based on round - determine explicit wild rank
+      const wildRank = currentRound === 1 ? '3' : currentRound === 2 ? '5' : '7';
       const hands = playerCards
         .filter(pc => playersWhoStayed.some(p => p.id === pc.player_id))
         .map(pc => ({
           playerId: pc.player_id,
           cards: pc.cards as unknown as Card[],
-          evaluation: evaluateHand(pc.cards as unknown as Card[], true) // 3-5-7 uses wildcards
+          evaluation: evaluateHand(pc.cards as unknown as Card[], true, wildRank as any) // Pass correct wild rank
         }));
 
       console.log('[endRound] SHOWDOWN: Hands evaluated:', {
