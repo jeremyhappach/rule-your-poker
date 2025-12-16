@@ -1036,9 +1036,12 @@ export const GameTable = ({
             const isEmptySeat = 'isEmpty' in seat && seat.isEmpty;
             const player = !isEmptySeat ? seat as Player : null;
             const isCurrentUser = player?.user_id === currentUserId;
-            const hasPlayerDecided = player?.decision_locked;
+            // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
+            // The hasPlayerDecided indicator should also be hidden while paused for non-current users
+            const hasPlayerDecided = (isCurrentUser || !isPaused) ? player?.decision_locked : false;
             // Always show current user's decision immediately, or all decisions when allDecisionsIn
-            const playerDecision = (isCurrentUser || allDecisionsIn || gameType === 'holm-game') 
+            // BUT if paused, hide non-current-user decisions to prevent revealing bot decisions
+            const playerDecision = (isCurrentUser || (!isPaused && (allDecisionsIn || gameType === 'holm-game'))) 
               ? player?.current_decision 
               : null;
             
