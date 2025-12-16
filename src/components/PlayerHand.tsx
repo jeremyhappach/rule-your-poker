@@ -144,53 +144,37 @@ export const PlayerHand = ({
     );
   }
 
-  // Special round 3 display with separated unused cards
+  // Special round 3 display with unused cards dimmed but all together
   if (isRound3With7Cards) {
+    // Combine all cards: unused (dimmed) first, then used cards
+    const allCardsOrdered = [...unusedCards, ...usedCards];
+    
     return (
-      <div className="flex items-end gap-3">
-        {/* Unused cards (2) - dimmed and off to the left */}
-        {unusedCards.length > 0 && (
-          <div className="flex opacity-50">
-            {unusedCards.map(({ card, originalIndex, isWild }, displayIndex) => (
-              <PlayingCard
-                key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
-                card={card}
-                size={cardSize}
-                isWild={isWild}
-                isDimmed={true}
-                className={displayIndex > 0 ? '-ml-3' : ''}
-                style={{ 
-                  transform: `rotate(${displayIndex * 2 - 1}deg) scale(0.85)`,
-                }}
-              />
-            ))}
-          </div>
-        )}
-        
-        {/* Used cards (5) - main hand display */}
-        <div className="flex">
-          {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
-            const isHighlighted = highlightedIndices.includes(originalIndex);
-            const isKicker = kickerIndices.includes(originalIndex);
-            const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-            
-            return (
-              <PlayingCard
-                key={`used-${card.rank}-${card.suit}-${originalIndex}`}
-                card={card}
-                size={cardSize}
-                isHighlighted={isHighlighted}
-                isKicker={isKicker}
-                isDimmed={isDimmed}
-                isWild={isWild}
-                className={overlapClass}
-                style={{ 
-                  transform: `rotate(${displayIndex * 2 - (usedCards.length - 1)}deg)`,
-                }}
-              />
-            );
-          })}
-        </div>
+      <div className="flex items-end">
+        {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
+          const isUnused = displayIndex < unusedCards.length;
+          const usedDisplayIndex = isUnused ? 0 : displayIndex - unusedCards.length;
+          const isHighlighted = !isUnused && highlightedIndices.includes(originalIndex);
+          const isKicker = !isUnused && kickerIndices.includes(originalIndex);
+          const isDimmed = isUnused || (hasHighlights && !isHighlighted && !isKicker);
+          
+          return (
+            <PlayingCard
+              key={`r3-${card.rank}-${card.suit}-${originalIndex}`}
+              card={card}
+              size={cardSize}
+              isHighlighted={isHighlighted}
+              isKicker={isKicker}
+              isDimmed={isDimmed}
+              isWild={!isUnused && isWild}
+              className={overlapClass}
+              style={{ 
+                transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
+                opacity: isUnused ? 0.4 : 1,
+              }}
+            />
+          );
+        })}
       </div>
     );
   }
