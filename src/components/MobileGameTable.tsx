@@ -2184,27 +2184,62 @@ anteAnimationTriggerId,
             
             {/* Cards display - moved up, less padding */}
             {/* Dim current player's cards if they lost (winner exists and it's not them) */}
-            {/* Hide cards and show "Show Cards" button if current player is 357 winner during win animation */}
+            {/* For 357 winner during animation: */}
+            {/*   - Round 3: Cards are tabled above pot, show "Show Cards" button here */}
+            {/*   - Rounds 1-2: Keep cards visible here with "Show Cards" button above them */}
             {(() => {
               const isWinner357InAnimation = gameType !== 'holm-game' && 
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
               
               if (isWinner357InAnimation) {
-                // Winner's cards are tabled - show "Show Cards" button unless already shown
+                // Round 3: Cards are tabled above pot - show only the button here
+                if (currentRound === 3) {
+                  return (
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      {!winner357ShowCards ? (
+                        <Button 
+                          variant="outline"
+                          size="lg"
+                          onClick={() => onWinner357ShowCards?.()}
+                          className="bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold px-6 py-3 text-base"
+                        >
+                          Show Cards
+                        </Button>
+                      ) : (
+                        <div className="text-sm text-green-400 font-medium">Cards Shown</div>
+                      )}
+                    </div>
+                  );
+                }
+                
+                // Rounds 1-2: Keep cards visible here with "Show Cards" button above
                 return (
-                  <div className="flex flex-col items-center justify-center gap-3">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    {/* Show Cards button above the cards - if clicked, cards table face-up */}
                     {!winner357ShowCards ? (
                       <Button 
                         variant="outline"
-                        size="lg"
+                        size="default"
                         onClick={() => onWinner357ShowCards?.()}
-                        className="bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold px-6 py-3 text-base"
+                        className="bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold px-4 py-2 text-sm"
                       >
                         Show Cards
                       </Button>
                     ) : (
-                      <div className="text-sm text-green-400 font-medium">Cards Shown</div>
+                      <div className="text-sm text-green-400 font-medium">Cards Tabled</div>
+                    )}
+                    
+                    {/* Winner's cards - stay visible until they choose to show */}
+                    {!winner357ShowCards && currentPlayerCards.length > 0 && (
+                      <div className="transform scale-[2.2] origin-top">
+                        <PlayerHand 
+                          cards={currentPlayerCards} 
+                          isHidden={false} 
+                          gameType={gameType}
+                          currentRound={currentRound}
+                        />
+                      </div>
                     )}
                   </div>
                 );
