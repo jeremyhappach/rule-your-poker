@@ -682,175 +682,40 @@ export function getBestFiveCardIndices(cards: Card[], useWildCards: boolean = fa
     };
   }
   
-  const eval_ = evaluateHand(cards, useWildCards);
-  const rank = eval_.rank;
+  // For 7 cards, try all C(7,5) = 21 combinations and find the best one
+  // This properly handles wildcards since evaluateHand considers them
+  const combinations: number[][] = [];
   
-  // Sort cards by value descending for reference
-  const sortedCards = [...cards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
-  
-  // Count ranks
-  const rankCounts: Record<string, number> = {};
-  cards.forEach(c => {
-    rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1;
-  });
-  
-  // Sort rank groups by count, then by value
-  const rankGroups = Object.entries(rankCounts)
-    .sort((a, b) => {
-      if (b[1] !== a[1]) return b[1] - a[1];
-      return RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank];
-    });
-  
-  const usedIndices: number[] = [];
-  const usedSet = new Set<number>();
-  
-  // Helper to find card index
-  const findAndAddCard = (targetCard: Card) => {
-    for (let i = 0; i < cards.length; i++) {
-      if (!usedSet.has(i) && cards[i].rank === targetCard.rank && cards[i].suit === targetCard.suit) {
-        usedSet.add(i);
-        usedIndices.push(i);
-        return true;
-      }
-    }
-    return false;
-  };
-  
-  // Helper to add cards by rank
-  const addCardsByRank = (targetRank: string, maxCount: number = 5) => {
-    let added = 0;
-    for (let i = 0; i < cards.length && added < maxCount; i++) {
-      if (!usedSet.has(i) && cards[i].rank === targetRank) {
-        usedSet.add(i);
-        usedIndices.push(i);
-        added++;
-      }
-    }
-  };
-  
-  // Add highest available cards as kickers until we have 5
-  const fillWithHighCards = () => {
-    const sortedWithIdx = cards.map((c, i) => ({ card: c, idx: i }))
-      .sort((a, b) => RANK_VALUES[b.card.rank] - RANK_VALUES[a.card.rank]);
-    
-    for (const { idx } of sortedWithIdx) {
-      if (usedIndices.length >= 5) break;
-      if (!usedSet.has(idx)) {
-        usedSet.add(idx);
-        usedIndices.push(idx);
-      }
-    }
-  };
-  
-  switch (rank) {
-    case 'five-of-a-kind': {
-      const quintRank = rankGroups.find(([_, count]) => count >= 5)?.[0];
-      if (quintRank) addCardsByRank(quintRank, 5);
-      break;
-    }
-    case 'four-of-a-kind': {
-      const quadRank = rankGroups.find(([_, count]) => count >= 4)?.[0];
-      if (quadRank) addCardsByRank(quadRank, 4);
-      fillWithHighCards();
-      break;
-    }
-    case 'full-house': {
-      const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0];
-      const pairRank = rankGroups.find(([r, count]) => count >= 2 && r !== tripRank)?.[0];
-      if (tripRank) addCardsByRank(tripRank, 3);
-      if (pairRank) addCardsByRank(pairRank, 2);
-      break;
-    }
-    case 'flush': {
-      const suitCounts: Record<Suit, number> = { '♠': 0, '♥': 0, '♦': 0, '♣': 0 };
-      cards.forEach(c => suitCounts[c.suit]++);
-      const flushSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0] as Suit;
-      
-      // Get 5 highest cards of flush suit
-      const flushCards = cards.map((c, i) => ({ card: c, idx: i }))
-        .filter(({ card }) => card.suit === flushSuit)
-        .sort((a, b) => RANK_VALUES[b.card.rank] - RANK_VALUES[a.card.rank])
-        .slice(0, 5);
-      
-      flushCards.forEach(({ idx }) => {
-        usedSet.add(idx);
-        usedIndices.push(idx);
-      });
-      break;
-    }
-    case 'straight':
-    case 'straight-flush': {
-      // Find the cards forming the straight
-      const values = cards.map(c => RANK_VALUES[c.rank]);
-      const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
-      
-      let straightValues: number[] = [];
-      
-      // Find best 5-card straight run
-      for (let i = 0; i <= uniqueValues.length - 5; i++) {
-        const run = uniqueValues.slice(i, i + 5);
-        if (run[0] - run[4] === 4) {
-          straightValues = run;
-          break;
-        }
-      }
-      
-      // Check wheel (A-2-3-4-5)
-      if (straightValues.length === 0) {
-        const wheel = [14, 5, 4, 3, 2];
-        if (wheel.every(v => values.includes(v))) {
-          straightValues = wheel;
-        }
-      }
-      
-      // Add one card for each value in the straight
-      for (const val of straightValues) {
-        for (let i = 0; i < cards.length; i++) {
-          if (!usedSet.has(i) && RANK_VALUES[cards[i].rank] === val) {
-            // For straight flush, must match the flush suit
-            if (rank === 'straight-flush') {
-              const suitCounts: Record<Suit, number> = { '♠': 0, '♥': 0, '♦': 0, '♣': 0 };
-              cards.forEach(c => suitCounts[c.suit]++);
-              const flushSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0] as Suit;
-              if (cards[i].suit !== flushSuit) continue;
-            }
-            usedSet.add(i);
-            usedIndices.push(i);
-            break;
+  // Generate all 5-card combinations from indices 0-6
+  for (let i = 0; i < cards.length - 4; i++) {
+    for (let j = i + 1; j < cards.length - 3; j++) {
+      for (let k = j + 1; k < cards.length - 2; k++) {
+        for (let l = k + 1; l < cards.length - 1; l++) {
+          for (let m = l + 1; m < cards.length; m++) {
+            combinations.push([i, j, k, l, m]);
           }
         }
       }
-      break;
     }
-    case 'three-of-a-kind': {
-      const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0];
-      if (tripRank) addCardsByRank(tripRank, 3);
-      fillWithHighCards();
-      break;
-    }
-    case 'two-pair': {
-      const pairs = rankGroups.filter(([_, count]) => count >= 2)
-        .sort((a, b) => RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
-      if (pairs[0]) addCardsByRank(pairs[0][0], 2);
-      if (pairs[1]) addCardsByRank(pairs[1][0], 2);
-      fillWithHighCards();
-      break;
-    }
-    case 'pair': {
-      const pairRank = rankGroups.find(([_, count]) => count >= 2)?.[0];
-      if (pairRank) addCardsByRank(pairRank, 2);
-      fillWithHighCards();
-      break;
-    }
-    case 'high-card':
-    default: {
-      fillWithHighCards();
-      break;
+  }
+  
+  let bestValue = -1;
+  let bestIndices: number[] = combinations[0];
+  
+  // Evaluate each 5-card combination
+  for (const combo of combinations) {
+    const fiveCards = combo.map(idx => cards[idx]);
+    const { value } = evaluateHand(fiveCards, useWildCards);
+    
+    if (value > bestValue) {
+      bestValue = value;
+      bestIndices = combo;
     }
   }
   
   // Build unused indices
+  const usedSet = new Set(bestIndices);
   const unusedIndices = cards.map((_, i) => i).filter(i => !usedSet.has(i));
   
-  return { usedIndices, unusedIndices };
+  return { usedIndices: bestIndices, unusedIndices };
 }
