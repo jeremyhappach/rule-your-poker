@@ -5,6 +5,34 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { AggressionLevel } from "@/lib/botHandStrength";
+
+// Keep bot aggression level distribution consistent with the rest of the app.
+const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
+  { level: "very_conservative", weight: 5 },
+  { level: "conservative", weight: 20 },
+  { level: "normal", weight: 50 },
+  { level: "aggressive", weight: 20 },
+  { level: "very_aggressive", weight: 5 },
+];
+
+function getAggressionLevelForBotId(botId: string): AggressionLevel {
+  // Stable pseudo-random selection from UUID to avoid relying on Math.random.
+  let hash = 2166136261;
+  for (let i = 0; i < botId.length; i++) {
+    hash ^= botId.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const bucket0to99 = (hash >>> 0) % 100;
+
+  let r = bucket0to99;
+  for (const { level, weight } of BOT_AGGRESSION_WEIGHTS) {
+    r -= weight;
+    if (r < 0) return level;
+  }
+
+  return "normal";
+}
 
 interface Player {
   id: string;
@@ -112,6 +140,7 @@ export const WaitingForPlayersTable = ({
       
       // Create bot profile
       const botId = crypto.randomUUID();
+      const aggressionLevel = getAggressionLevelForBotId(botId);
       const { data: existingBotProfiles } = await supabase
         .from('profiles')
         .select('username')
@@ -125,7 +154,8 @@ export const WaitingForPlayersTable = ({
         .from('profiles')
         .insert({
           id: botId,
-          username: botName
+          username: botName,
+          aggression_level: aggressionLevel,
         });
 
       if (profileError) {
