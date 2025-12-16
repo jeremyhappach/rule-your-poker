@@ -1640,6 +1640,7 @@ anteAnimationTriggerId,
                   isHidden={currentRound === 3 ? !winner357ShowCards : false}
                   gameType={gameType}
                   currentRound={currentRound}
+                  showSeparated={currentRound === 3}
                 />
               </div>
             </div>
@@ -2337,6 +2338,7 @@ anteAnimationTriggerId,
                         hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                         gameType={gameType}
                         currentRound={currentRound}
+                        showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
                       />
                     </div>
                   ) : (

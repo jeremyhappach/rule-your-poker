@@ -984,6 +984,7 @@ export const GameTable = ({
                     isHidden={currentRound === 3 ? !winner357ShowCards : false}
                     gameType={gameType}
                     currentRound={currentRound}
+                    showSeparated={currentRound === 3}
                   />
                 </div>
               </div>
@@ -1364,6 +1365,7 @@ export const GameTable = ({
                             }
                             gameType={gameType}
                             currentRound={currentRound}
+                            showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
                           />
                         ) : (
                           <div className="text-[7px] sm:text-[8px] md:text-[10px] text-amber-300/50">Wait...</div>
