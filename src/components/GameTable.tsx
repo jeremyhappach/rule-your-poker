@@ -1259,7 +1259,8 @@ export const GameTable = ({
                             </span>
                           )}
                         </p>
-                        {player.position === dealerPosition && (
+                        {/* Hide dealer button during 3-5-7 round 3 showdown to avoid blocking exposed cards */}
+                        {player.position === dealerPosition && !(gameType === '357-game' && currentRound === 3 && allDecisionsIn) && (
                           <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full bg-red-600 flex items-center justify-center border-2 border-white shadow-lg">
                             <span className="text-white font-black text-[7px] sm:text-[8px] md:text-[10px]">D</span>
                           </div>

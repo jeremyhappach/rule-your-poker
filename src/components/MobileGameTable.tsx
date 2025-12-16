@@ -1174,7 +1174,8 @@ anteAnimationTriggerId,
         )}
         
         {/* Dealer button - positioned OUTSIDE (away from table center), barely overlapping chip stack */}
-        {isDealer && (
+        {/* Hide during 3-5-7 round 3 showdown to avoid blocking exposed cards */}
+        {isDealer && !(gameType === '357-game' && currentRound === 3 && allDecisionsIn) && (
           <div className="absolute z-30" style={{
             ...(isRightSideSlot 
               ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(75%)' }
@@ -2015,7 +2016,8 @@ anteAnimationTriggerId,
         )}
         
         {/* Dealer button on felt for current player */}
-        {currentPlayer && dealerPosition === currentPlayer.position && (
+        {/* Hide during 3-5-7 round 3 showdown to avoid blocking exposed cards */}
+        {currentPlayer && dealerPosition === currentPlayer.position && !(gameType === '357-game' && currentRound === 3 && allDecisionsIn) && (
           <div 
             className="absolute z-20"
             style={{
