@@ -1275,7 +1275,7 @@ export const GameTable = ({
                         {isCurrentUser && cards.length > 0 && gameType && gameType !== 'holm-game' && !chuckyActive && (
                           <div className="bg-poker-gold/20 px-0.5 sm:px-1 md:px-2 py-0.5 rounded border border-poker-gold/40">
                             <span className="text-poker-gold text-[7px] sm:text-[8px] md:text-[10px] font-bold">
-                              {formatHandRank(evaluateHand(cards, true).rank)}
+                              {formatHandRank(evaluateHand(cards, true, (currentRound === 1 ? '3' : currentRound === 2 ? '5' : '7') as any).rank)}
                             </span>
                           </div>
                         )}

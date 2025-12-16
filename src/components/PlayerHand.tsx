@@ -1,4 +1,4 @@
-import { Card as CardType, getBestFiveCardIndices } from "@/lib/cardUtils";
+import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize } from "@/components/PlayingCard";
 
 interface PlayerHandProps {
@@ -50,7 +50,8 @@ export const PlayerHand = ({
   let unusedCards: { card: CardType; originalIndex: number; isWild: boolean }[] = [];
   
   if (isRound3With7Cards) {
-    const { usedIndices, unusedIndices } = getBestFiveCardIndices(cards, true);
+    // Pass '7' as explicit wild rank for round 3 (important for correct 5-card subset evaluation)
+    const { usedIndices, unusedIndices } = getBestFiveCardIndices(cards, true, '7' as Rank);
     
     usedCards = usedIndices.map(idx => ({
       card: cards[idx],

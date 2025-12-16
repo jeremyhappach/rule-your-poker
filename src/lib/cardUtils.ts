@@ -45,7 +45,8 @@ export function shuffleDeck(deck: Card[]): Card[] {
   return shuffled;
 }
 
-export function evaluateHand(cards: Card[], useWildCards: boolean = true): { rank: HandRank; value: number } {
+// Third parameter allows explicit wild rank override (important for evaluating 5-card subsets in round 3)
+export function evaluateHand(cards: Card[], useWildCards: boolean = true, explicitWildRank?: Rank | null): { rank: HandRank; value: number } {
   if (cards.length === 0) return { rank: 'high-card', value: 0 };
 
   // Normalize and validate cards - CRITICAL: convert ranks to uppercase for matching
@@ -66,10 +67,10 @@ export function evaluateHand(cards: Card[], useWildCards: boolean = true): { ran
   const cardStr = sortedCards.map(c => `${c.rank}${c.suit}`).join(' ');
   console.log('[EVAL] Evaluating:', cardStr, 'useWild:', useWildCards, 'cardCount:', validCards.length);
 
-  // Determine wild rank if enabled
-  const wildRank: Rank | null = useWildCards 
-    ? (validCards.length <= 3 ? '3' : validCards.length === 5 ? '5' : '7') 
-    : null;
+  // Determine wild rank: use explicit if provided, otherwise infer from card count
+  const wildRank: Rank | null = !useWildCards 
+    ? null 
+    : (explicitWildRank !== undefined ? explicitWildRank : (validCards.length <= 3 ? '3' : validCards.length === 5 ? '5' : '7'));
   
   const wildcardCount = wildRank ? validCards.filter(c => c.rank === wildRank).length : 0;
   const nonWildCards = wildRank ? sortedCards.filter(c => c.rank !== wildRank) : sortedCards;
@@ -357,12 +358,12 @@ function rankNamePlural(rankValue: number): string {
  * Format hand rank with card details for display
  * e.g., "Two Pair, Js and 8s", "Straight, K high", "Three of a Kind, 4s"
  */
-export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = false): string {
+export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = false, explicitWildRank?: Rank | null): string {
   if (cards.length === 0) return 'No Cards';
   
   console.log('[FORMAT] formatHandRankDetailed called with:', cards.map(c => `${c.rank}${c.suit}`).join(', '));
   
-  const eval_ = evaluateHand(cards, useWildCards);
+  const eval_ = evaluateHand(cards, useWildCards, explicitWildRank);
   const rank = eval_.rank;
   console.log('[FORMAT] Evaluated rank:', rank, 'value:', eval_.value);
   
@@ -521,14 +522,15 @@ function findStraightHighCard(cards: Card[], useWildCards: boolean): number {
 export function getWinningCardIndices(
   playerCards: Card[], 
   communityCards: Card[], 
-  useWildCards: boolean = false
+  useWildCards: boolean = false,
+  explicitWildRank?: Rank | null
 ): { playerIndices: number[]; communityIndices: number[]; kickerPlayerIndices: number[]; kickerCommunityIndices: number[] } {
   const allCards = [...playerCards, ...communityCards];
   if (allCards.length === 0) {
     return { playerIndices: [], communityIndices: [], kickerPlayerIndices: [], kickerCommunityIndices: [] };
   }
   
-  const eval_ = evaluateHand(allCards, useWildCards);
+  const eval_ = evaluateHand(allCards, useWildCards, explicitWildRank);
   const rank = eval_.rank;
   
   // Sort by rank value for finding hands
@@ -674,7 +676,8 @@ export function has357Hand(cards: Card[]): boolean {
 
 // Get indices of cards used in the best 5-card hand from 7 cards
 // Returns { usedIndices: number[], unusedIndices: number[] }
-export function getBestFiveCardIndices(cards: Card[], useWildCards: boolean = false): { usedIndices: number[], unusedIndices: number[] } {
+// Third parameter allows explicit wild rank (important for round 3 where 7s are wild)
+export function getBestFiveCardIndices(cards: Card[], useWildCards: boolean = false, explicitWildRank?: Rank | null): { usedIndices: number[], unusedIndices: number[] } {
   if (cards.length <= 5) {
     return { 
       usedIndices: cards.map((_, i) => i), 
@@ -702,10 +705,10 @@ export function getBestFiveCardIndices(cards: Card[], useWildCards: boolean = fa
   let bestValue = -1;
   let bestIndices: number[] = combinations[0];
   
-  // Evaluate each 5-card combination
+  // Evaluate each 5-card combination with the correct wild rank
   for (const combo of combinations) {
     const fiveCards = combo.map(idx => cards[idx]);
-    const { value } = evaluateHand(fiveCards, useWildCards);
+    const { value } = evaluateHand(fiveCards, useWildCards, explicitWildRank);
     
     if (value > bestValue) {
       bestValue = value;
