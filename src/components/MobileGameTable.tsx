@@ -1616,16 +1616,20 @@ anteAnimationTriggerId,
         )}
         
         {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation for ALL players */}
-        {/* Cards are face-down unless winner chose to "Show Cards" */}
+        {/* Rounds 1-2: Only table cards if winner clicked "Show Cards" (always face-up, with spin animation) */}
+        {/* Round 3: Always table cards (face-down unless "Show Cards" clicked) */}
         {/* Only show AFTER leg award animation completes (not during 'waiting' phase) */}
         {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
          threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting' &&
-         threeFiveSevenWinnerCards.length > 0 && (
-          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
+         threeFiveSevenWinnerCards.length > 0 && 
+         (currentRound === 3 || winner357ShowCards) && (
+          <div className={`absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1 ${
+            currentRound !== 3 && winner357ShowCards ? 'animate-spin-table' : ''
+          }`} style={{ perspective: '1000px' }}>
             <div className="flex gap-1">
               <PlayerHand 
                 cards={threeFiveSevenWinnerCards} 
-                isHidden={!winner357ShowCards}
+                isHidden={currentRound === 3 ? !winner357ShowCards : false}
                 gameType={gameType}
                 currentRound={currentRound}
               />
