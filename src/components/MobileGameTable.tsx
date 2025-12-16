@@ -1247,7 +1247,7 @@ anteAnimationTriggerId,
       threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting';
     const shouldHideForTabling = isHolmWinWinner || is357WinWinner;
     const cardsElement = isShowdown && !shouldHideForTabling ? (
-      <div className={`flex gap-0.5 ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
+      <div className={`flex ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
         <PlayerHand 
           cards={cards} 
           isHidden={false}
