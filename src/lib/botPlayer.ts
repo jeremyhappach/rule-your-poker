@@ -344,6 +344,18 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     
     // Add delay before bot makes decision
     await new Promise(resolve => setTimeout(resolve, decisionDelay * 1000));
+
+    // Pause guard: if game was paused after we scheduled the delay, do nothing
+    const { data: pauseCheck } = await supabase
+      .from('games')
+      .select('is_paused, status')
+      .eq('id', gameId)
+      .single();
+
+    if (pauseCheck?.is_paused || pauseCheck?.status !== 'in_progress') {
+      console.log('[BOT DECISIONS] Holm: Skipping decision because game is paused or not in progress');
+      return false;
+    }
     
     // Decide to stay or fold based on calculated probability
     const shouldFold = Math.random() * 100 < foldProbability;
@@ -389,13 +401,29 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     const randomDelay = (decisionDelay * 1000) + Math.random() * 1500;
     
     setTimeout(async () => {
-      // Decide to stay or fold based on calculated probability
-      const shouldFold = Math.random() * 100 < foldProbability;
-      const decision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
-      
-      console.log('[BOT DECISIONS] Bot', bot.id, 'deciding:', decision, 'after', randomDelay, 'ms');
-      
-      await makeDecision(gameId, bot.id, decision);
+      try {
+        // Pause guard: if game was paused after this was scheduled, do nothing
+        const { data: pauseCheck } = await supabase
+          .from('games')
+          .select('is_paused, status')
+          .eq('id', gameId)
+          .single();
+
+        if (pauseCheck?.is_paused || pauseCheck?.status !== 'in_progress') {
+          console.log('[BOT DECISIONS] 3-5-7: Skipping scheduled decision because game is paused or not in progress');
+          return;
+        }
+
+        // Decide to stay or fold based on calculated probability
+        const shouldFold = Math.random() * 100 < foldProbability;
+        const decision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
+
+        console.log('[BOT DECISIONS] Bot', bot.id, 'deciding:', decision, 'after', randomDelay, 'ms');
+
+        await makeDecision(gameId, bot.id, decision);
+      } catch (err) {
+        console.error('[BOT DECISIONS] 3-5-7: Error in scheduled bot decision:', err);
+      }
     }, randomDelay);
   }
   
