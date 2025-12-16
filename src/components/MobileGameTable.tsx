@@ -1256,6 +1256,7 @@ anteAnimationTriggerId,
           hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
           gameType={gameType}
           currentRound={currentRound}
+          showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
         />
       </div>
     ) : (
