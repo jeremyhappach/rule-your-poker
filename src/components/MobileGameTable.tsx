@@ -26,7 +26,7 @@ import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
-import { formatChipValue } from "@/lib/utils";
+import { cn, formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
@@ -2165,11 +2165,20 @@ anteAnimationTriggerId,
             )}
             
             {/* Decision feedback - above cards */}
-            {hasDecided && <div className="flex justify-center mb-1">
-                <Badge className={`text-sm px-3 py-0.5 ${(pendingDecision || currentPlayer.current_decision) === 'stay' ? 'bg-green-500 text-white' : 'bg-destructive text-destructive-foreground'}`}>
-                  ✓ {(pendingDecision || currentPlayer.current_decision) === 'stay' ? 'STAYED' : 'FOLDED'}
+            {hasDecided && (
+              <div className="flex justify-center mb-1">
+                <Badge
+                  className={cn(
+                    "text-sm px-3 py-0.5 border-transparent",
+                    (pendingDecision || currentPlayer.current_decision) === "stay"
+                      ? "bg-poker-chip-green text-poker-chip-white"
+                      : "bg-poker-chip-red text-poker-chip-white",
+                  )}
+                >
+                  ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
                 </Badge>
-              </div>}
+              </div>
+            )}
             
             {/* Cards display - moved up, less padding */}
             {/* Dim current player's cards if they lost (winner exists and it's not them) */}
