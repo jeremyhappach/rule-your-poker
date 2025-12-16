@@ -973,7 +973,7 @@ export const GameTable = ({
                 style={{
                   animation:
                     currentRound !== 3 && winner357ShowCards
-                      ? 'winner357TableSpinIn 900ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
+                      ? 'winner357TableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards'
                       : undefined,
                   willChange: 'transform, opacity',
                 }}
@@ -992,11 +992,14 @@ export const GameTable = ({
                 @keyframes winner357TableSpinIn {
                   0% {
                     opacity: 0;
-                    transform: translateY(220px) scale(0.2) rotate(0deg);
+                    transform: translateY(200px) scale(0.3) rotate(0deg);
                   }
-                  60% {
+                  40% {
                     opacity: 1;
-                    transform: translateY(40px) scale(0.9) rotate(540deg);
+                    transform: translateY(80px) scale(0.7) rotate(270deg);
+                  }
+                  70% {
+                    transform: translateY(25px) scale(0.9) rotate(540deg);
                   }
                   100% {
                     opacity: 1;
