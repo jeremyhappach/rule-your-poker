@@ -2218,10 +2218,10 @@ anteAnimationTriggerId,
               });
               
               return (
-                <div className="flex items-start justify-center gap-4">
-                  {/* Pre-decision checkboxes - left of cards */}
+                <div className="flex flex-col items-center justify-center gap-3 w-full">
+                  {/* Pre-decision checkboxes - ABOVE cards (cards are scaled up and can push left content off-screen) */}
                   {showPreDecisionCheckboxes && (
-                    <div className="flex flex-col gap-2 pt-4">
+                    <div className="flex items-center justify-center gap-6">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -2248,19 +2248,25 @@ anteAnimationTriggerId,
                       </label>
                     </div>
                   )}
-                  
+
                   {/* Cards */}
-                  {currentPlayerCards.length > 0 ? <div className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}>
-                    <PlayerHand 
-                      cards={currentPlayerCards} 
-                      isHidden={false} 
-                      highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                      kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                      hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                      gameType={gameType}
-                      currentRound={currentRound}
-                    />
-                  </div> : <div className="text-sm text-muted-foreground">Waiting for cards...</div>}
+                  {currentPlayerCards.length > 0 ? (
+                    <div
+                      className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}
+                    >
+                      <PlayerHand 
+                        cards={currentPlayerCards} 
+                        isHidden={false} 
+                        highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                        kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                        hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                        gameType={gameType}
+                        currentRound={currentRound}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Waiting for cards...</div>
+                  )}
                 </div>
               );
             })()}
