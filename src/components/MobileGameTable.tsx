@@ -2298,6 +2298,7 @@ anteAnimationTriggerId,
                           isHidden={false} 
                           gameType={gameType}
                           currentRound={currentRound}
+                          showSeparated={currentRound === 3}
                         />
                       </div>
                     )}
