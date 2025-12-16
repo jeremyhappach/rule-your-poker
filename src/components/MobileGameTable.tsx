@@ -2205,7 +2205,6 @@ anteAnimationTriggerId,
                 !canDecide &&  // stay/fold buttons NOT visible
                 !hasDecided &&  // hasn't made a decision yet
                 roundStatus === 'betting' && 
-                !isPaused &&
                 currentPlayerCards.length > 0;
               
               console.log('[PRE-DECISION UI] Checkbox visibility:', {

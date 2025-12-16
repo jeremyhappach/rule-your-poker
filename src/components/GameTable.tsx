@@ -1281,7 +1281,6 @@ export const GameTable = ({
                             !canDecideCheck &&  // stay/fold buttons NOT visible
                             !hasPlayerDecided && 
                             roundStatus === 'betting' && 
-                            !isPaused &&
                             cards.length > 0;
                           
                           if (!showPreDecisionCheckboxes) return null;
