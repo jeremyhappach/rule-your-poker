@@ -967,17 +967,42 @@ export const GameTable = ({
           {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
            threeFiveSevenWinnerCards.length > 0 && 
            (currentRound === 3 || winner357ShowCards) && (
-            <div className={`absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1 ${
-              currentRound !== 3 && winner357ShowCards ? 'animate-spin-table' : ''
-            }`} style={{ perspective: '1000px', transformStyle: 'preserve-3d' }}>
-              <div className="flex gap-1">
-                <PlayerHand 
-                  cards={threeFiveSevenWinnerCards} 
-                  isHidden={currentRound === 3 ? !winner357ShowCards : false}
-                  gameType={gameType}
-                  currentRound={currentRound}
-                />
+            <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
+              <div
+                className="flex flex-col items-center"
+                style={{
+                  animation:
+                    currentRound !== 3 && winner357ShowCards
+                      ? 'winner357TableSpinIn 900ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards'
+                      : undefined,
+                  willChange: 'transform, opacity',
+                }}
+              >
+                <div className="flex gap-1">
+                  <PlayerHand 
+                    cards={threeFiveSevenWinnerCards} 
+                    isHidden={currentRound === 3 ? !winner357ShowCards : false}
+                    gameType={gameType}
+                    currentRound={currentRound}
+                  />
+                </div>
               </div>
+              <style>{`
+                @keyframes winner357TableSpinIn {
+                  0% {
+                    opacity: 0;
+                    transform: translateY(220px) scale(0.2) rotate(0deg);
+                  }
+                  60% {
+                    opacity: 1;
+                    transform: translateY(40px) scale(0.9) rotate(540deg);
+                  }
+                  100% {
+                    opacity: 1;
+                    transform: translateY(0) scale(1) rotate(720deg);
+                  }
+                }
+              `}</style>
             </div>
           )}
 
