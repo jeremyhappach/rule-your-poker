@@ -1065,7 +1065,10 @@ anteAnimationTriggerId,
   // Render player chip - chipstack in center, name below (or above for bottom positions)
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
-    const playerDecision = player.current_decision;
+    const isCurrentUser = player.user_id === currentUserId;
+    // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
+    // Current user can always see their own decision
+    const playerDecision = (isCurrentUser || !isPaused) ? player.current_decision : null;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
     // Use getPlayerCards for showdown caching
     const cards = getPlayerCards(player.id);
