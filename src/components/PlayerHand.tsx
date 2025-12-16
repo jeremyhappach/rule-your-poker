@@ -1,4 +1,4 @@
-import { Card as CardType } from "@/lib/cardUtils";
+import { Card as CardType, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize } from "@/components/PlayingCard";
 
 interface PlayerHandProps {
@@ -10,6 +10,7 @@ interface PlayerHandProps {
   hasHighlights?: boolean;        // Whether highlights are active (to dim non-highlighted cards)
   gameType?: string | null;       // Game type for wild card determination
   currentRound?: number;          // Current round for wild card determination
+  showSeparated?: boolean;        // For round 3, show unused cards separated to left
 }
 
 // Get wild rank based on round (3-5-7 game only)
@@ -30,7 +31,8 @@ export const PlayerHand = ({
   kickerIndices = [],
   hasHighlights = false,
   gameType,
-  currentRound = 0
+  currentRound = 0,
+  showSeparated = false
 }: PlayerHandProps) => {
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -41,7 +43,39 @@ export const PlayerHand = ({
   const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game';
   const wildRank = is357Game ? getWildRank(currentRound) : null;
   
-  // Create sorted cards with original indices for highlighting
+  // For round 3 with 7 cards, separate into used and unused
+  const isRound3With7Cards = is357Game && currentRound === 3 && cards.length === 7 && showSeparated && !isHidden;
+  
+  let usedCards: { card: CardType; originalIndex: number; isWild: boolean }[] = [];
+  let unusedCards: { card: CardType; originalIndex: number; isWild: boolean }[] = [];
+  
+  if (isRound3With7Cards) {
+    const { usedIndices, unusedIndices } = getBestFiveCardIndices(cards, true);
+    
+    usedCards = usedIndices.map(idx => ({
+      card: cards[idx],
+      originalIndex: idx,
+      isWild: wildRank !== null && cards[idx].rank === wildRank
+    }));
+    
+    unusedCards = unusedIndices.map(idx => ({
+      card: cards[idx],
+      originalIndex: idx,
+      isWild: wildRank !== null && cards[idx].rank === wildRank
+    }));
+    
+    // Sort used cards: wild cards first, then by rank ascending
+    usedCards.sort((a, b) => {
+      if (a.isWild && !b.isWild) return -1;
+      if (!a.isWild && b.isWild) return 1;
+      return RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank];
+    });
+    
+    // Sort unused cards by rank ascending
+    unusedCards.sort((a, b) => RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank]);
+  }
+  
+  // Create sorted cards with original indices for highlighting (normal display)
   const cardsWithIndices = cards.map((card, index) => ({ 
     card, 
     originalIndex: index,
@@ -105,6 +139,57 @@ export const PlayerHand = ({
             />
           );
         })}
+      </div>
+    );
+  }
+
+  // Special round 3 display with separated unused cards
+  if (isRound3With7Cards) {
+    return (
+      <div className="flex items-end gap-3">
+        {/* Unused cards (2) - dimmed and off to the left */}
+        {unusedCards.length > 0 && (
+          <div className="flex opacity-50">
+            {unusedCards.map(({ card, originalIndex, isWild }, displayIndex) => (
+              <PlayingCard
+                key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
+                card={card}
+                size={cardSize}
+                isWild={isWild}
+                isDimmed={true}
+                className={displayIndex > 0 ? '-ml-3' : ''}
+                style={{ 
+                  transform: `rotate(${displayIndex * 2 - 1}deg) scale(0.85)`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+        
+        {/* Used cards (5) - main hand display */}
+        <div className="flex">
+          {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
+            const isHighlighted = highlightedIndices.includes(originalIndex);
+            const isKicker = kickerIndices.includes(originalIndex);
+            const isDimmed = hasHighlights && !isHighlighted && !isKicker;
+            
+            return (
+              <PlayingCard
+                key={`used-${card.rank}-${card.suit}-${originalIndex}`}
+                card={card}
+                size={cardSize}
+                isHighlighted={isHighlighted}
+                isKicker={isKicker}
+                isDimmed={isDimmed}
+                isWild={isWild}
+                className={overlapClass}
+                style={{ 
+                  transform: `rotate(${displayIndex * 2 - (usedCards.length - 1)}deg)`,
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
     );
   }
