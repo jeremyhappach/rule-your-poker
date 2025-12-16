@@ -13,16 +13,20 @@ const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
 ];
 
 function getRandomAggressionLevel(seed?: string): AggressionLevel {
-  // If we have a seed (we do for bots via UUID), derive a stable 0-99 value from it.
-  // This avoids any environment where RNG APIs behave unexpectedly.
   const totalWeight = AGGRESSION_WEIGHTS.reduce((sum, w) => sum + w.weight, 0);
 
+  // Prefer a stable pseudo-random value derived from a seed (UUID) so we never depend on
+  // potentially-deterministic RNG behavior in certain environments.
   const rand01 = (() => {
     if (seed) {
-      const hex = seed.replace(/-/g, '');
-      const tail = hex.slice(-8);
-      const n = Number.parseInt(tail, 16);
-      if (Number.isFinite(n)) return (n % 100) / 100;
+      // FNV-1a 32-bit hash over the seed string
+      let hash = 2166136261;
+      for (let i = 0; i < seed.length; i++) {
+        hash ^= seed.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      const bucket0to99 = (hash >>> 0) % 100;
+      return bucket0to99 / 100;
     }
 
     try {
