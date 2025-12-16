@@ -1113,12 +1113,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Trigger bot ante decisions - INSTANT for bots
   useEffect(() => {
-    if (game?.status === 'ante_decision') {
+    if (game?.status === 'ante_decision' && !game?.is_paused) {
       console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions IMMEDIATELY');
       // Call immediately - no delay needed for bots
       makeBotAnteDecisions(gameId!);
     }
-  }, [game?.status, gameId]);
+  }, [game?.status, game?.is_paused, gameId]);
 
   // CRITICAL: Aggressive polling fallback for realtime reliability issues
   // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
@@ -1775,6 +1775,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const botProcessingRef = useRef(false);
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
+
+    // CRITICAL: Nothing should advance while paused (bots included)
+    if (game?.is_paused) {
+      console.log('[BOT TRIGGER] Game is paused - skipping bot decisions');
+      return;
+    }
     
     console.log('[BOT TRIGGER EFFECT] Running', {
       status: game?.status,
@@ -2085,6 +2091,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
     const currentRound = game?.current_round || 0;
+
+    // CRITICAL: If paused, ensure we never start or keep an auto-proceed timer
+    if (game?.is_paused) {
+      if (awaitingTimerRef.current) {
+        console.log('[AWAITING_NEXT_ROUND] Game paused - clearing pending auto-proceed timer');
+        clearTimeout(awaitingTimerRef.current);
+        awaitingTimerRef.current = null;
+        gameStateAtTimerStart.current = null;
+      }
+      return;
+    }
     
     console.log('[AUTO_PROCEED_EFFECT] Running', {
       awaiting: currentAwaiting,
@@ -2248,6 +2265,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameStateAtTimerStart.current = null;
         
         try {
+          // Always re-check pause state from DB at execution time (pause can happen after timer starts)
+          const { data: pauseCheck } = await supabase
+            .from('games')
+            .select('is_paused')
+            .eq('id', gameId)
+            .single();
+
+          if (pauseCheck?.is_paused) {
+            console.log('[AWAITING_NEXT_ROUND] Game is paused (fresh DB check) - skipping proceed');
+            return;
+          }
+
           const isHolmGame = game?.game_type === 'holm-game';
           console.log('[AWAITING_NEXT_ROUND] Calling proceed function', { isHolmGame, gameId });
           
@@ -2258,13 +2287,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('last_round_result, next_round_number, pot, ante_amount, status')
+              .select('is_paused, last_round_result, next_round_number, pot, ante_amount, status')
               .eq('id', gameId)
               .single();
             
-            // Skip if game is already over (357 sweep sets game_over after 5s)
-            if (freshGame?.status === 'game_over') {
-              console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
+            // Skip if paused or game is already over (357 sweep sets game_over after 5s)
+            if (freshGame?.is_paused || freshGame?.status === 'game_over') {
+              console.log('[AWAITING_NEXT_ROUND] Game paused or already over, skipping proceed');
               return;
             }
             
@@ -2326,7 +2355,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.last_round_result]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.last_round_result, game?.is_paused]);
 
   // Clear timer when results are shown
   useEffect(() => {
