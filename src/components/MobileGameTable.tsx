@@ -1767,7 +1767,7 @@ anteAnimationTriggerId,
         {gameType === 'holm-game' && holmWinPotTriggerId && winnerPlayerId && winnerCards.length > 0 && winnerPlayerId !== currentPlayer?.id && (
           <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
             <div 
-              className="flex gap-1"
+              className="flex"
               style={{
                 animation: 'holmTableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards',
                 willChange: 'transform, opacity',
@@ -1797,7 +1797,8 @@ anteAnimationTriggerId,
                     style={{ 
                       backgroundColor: cardBg, 
                       ...twoColorTextStyle,
-                      transform: liftTransform || undefined
+                      transform: liftTransform || undefined,
+                      marginLeft: index > 0 ? '-12px' : '0'
                     }}
                   >
                     <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
