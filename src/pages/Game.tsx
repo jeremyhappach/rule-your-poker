@@ -350,7 +350,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const newPausedState = !game.is_paused;
 
     const isHolmGame = game.game_type === 'holm-game' || game.game_type === 'holm';
-    const isInProgress = game.status === 'in_progress';
+    const isInProgress = game.status === 'in_progress' || game.status === 'betting';
     const isAnteDecision = game.status === 'ante_decision';
     const isConfigPhase = game.status === 'configuring' || game.status === 'game_selection';
 
