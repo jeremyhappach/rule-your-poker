@@ -1709,12 +1709,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Immediately cache round data in ref when we have valid data with community cards
   // This ensures we capture it before game_over clears current_round
-  // Only update cache if revealed count is >= current cached count (never decrease)
+  // CRITICAL FIX: When round ID changes, ALWAYS update cache (it's a new hand)
+  // Only use revealed count comparison within the SAME round
   if (liveRound && liveRound.community_cards) {
-    const currentCachedRevealed = cachedRoundRef.current?.community_cards_revealed ?? 0;
-    const liveRevealed = liveRound.community_cards_revealed ?? 0;
-    if (liveRevealed >= currentCachedRevealed) {
+    const cachedRoundId = cachedRoundRef.current?.id;
+    const isDifferentRound = liveRound.id !== cachedRoundId;
+    
+    if (isDifferentRound) {
+      // New round - always replace cache regardless of revealed count
+      console.log('[CACHE] New round detected, replacing cache:', {
+        oldRoundId: cachedRoundId?.slice(0, 8),
+        newRoundId: liveRound.id?.slice(0, 8),
+        newCommunityCards: liveRound.community_cards?.map((c: any) => `${c.rank}${c.suit}`).join(',')
+      });
       cachedRoundRef.current = liveRound;
+    } else {
+      // Same round - only increase revealed count (never decrease)
+      const currentCachedRevealed = cachedRoundRef.current?.community_cards_revealed ?? 0;
+      const liveRevealed = liveRound.community_cards_revealed ?? 0;
+      if (liveRevealed >= currentCachedRevealed) {
+        cachedRoundRef.current = liveRound;
+      }
     }
   }
   
@@ -1781,12 +1796,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       liveRound.status === 'completed' ||
       liveRound.status === 'showdown'
     )) {
-      // Only update cache if revealed count is >= current cached count (never decrease)
-      const currentCachedRevealed = cachedRoundData?.community_cards_revealed ?? 0;
-      const liveRevealed = liveRound.community_cards_revealed ?? 0;
-      if (liveRevealed >= currentCachedRevealed) {
+      // CRITICAL FIX: When round ID changes, ALWAYS update cache (it's a new hand)
+      const cachedRoundId = cachedRoundData?.id;
+      const isDifferentRound = liveRound.id !== cachedRoundId;
+      
+      if (isDifferentRound) {
+        // New round - always replace cache
         setCachedRoundData(liveRound);
         cachedRoundRef.current = liveRound;
+      } else {
+        // Same round - only increase revealed count (never decrease)
+        const currentCachedRevealed = cachedRoundData?.community_cards_revealed ?? 0;
+        const liveRevealed = liveRound.community_cards_revealed ?? 0;
+        if (liveRevealed >= currentCachedRevealed) {
+          setCachedRoundData(liveRound);
+          cachedRoundRef.current = liveRound;
+        }
       }
     }
   }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type]);
