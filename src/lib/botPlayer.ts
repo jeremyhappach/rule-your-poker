@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
-import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
+import { getBotFoldProbability, AggressionLevel, SmartAggressionContext } from "./botHandStrength";
 import { Card } from "./cardUtils";
 
 // Weighted aggression levels - extreme levels are rare
@@ -240,7 +240,7 @@ export async function makeBotDecisions(
   // Get current round and game type
   const { data: gameData } = await supabase
     .from('games')
-    .select('game_type, current_round')
+    .select('game_type, current_round, pot, pot_max_value, legs_to_win')
     .eq('id', gameId)
     .single();
   
@@ -266,7 +266,7 @@ export async function makeBotDecisions(
   
   let botQuery = supabase
     .from('players')
-    .select('id, user_id, position, current_decision, is_bot')
+    .select('id, user_id, position, current_decision, is_bot, legs')
     .eq('game_id', gameId)
     .eq('is_bot', true)
     .eq('sitting_out', false)
@@ -335,13 +335,19 @@ export async function makeBotDecisions(
     const botCards: Card[] = playerCards?.cards ? (playerCards.cards as unknown as Card[]) : [];
     
     // Calculate fold probability - use hand strength or universal setting
+    // Build smart aggression context for Holm (pot/match ratio)
+    const holmContext: SmartAggressionContext = {
+      pot: gameData?.pot ?? 0,
+      potMax: gameData?.pot_max_value ?? 0
+    };
+    
     let foldProbability: number;
     if (useHandStrength) {
-      foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1, botAggressionLevel);
-      console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength, aggression:', botAggressionLevel);
+      foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1, botAggressionLevel, holmContext);
+      console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength, aggression:', botAggressionLevel, 'pot:', holmContext.pot, 'potMax:', holmContext.potMax);
     } else {
       // Apply aggression multiplier even to universal probability
-      const multiplier = { 'very_conservative': 1.6, 'conservative': 1.3, 'normal': 1.0, 'aggressive': 0.7, 'very_aggressive': 0.4 }[botAggressionLevel];
+      const multiplier = { 'very_conservative': 2.0, 'conservative': 1.6, 'normal': 1.3, 'aggressive': 1.0, 'very_aggressive': 0.7 }[botAggressionLevel];
       foldProbability = Math.min(100, Math.max(0, universalFoldProbability * multiplier));
       console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '% (adjusted for aggression:', botAggressionLevel, ')');
     }
@@ -396,9 +402,15 @@ export async function makeBotDecisions(
     const botCards: Card[] = playerCards?.cards ? (playerCards.cards as unknown as Card[]) : [];
 
     // Calculate fold probability - use hand strength or universal setting
+    // Build smart aggression context for 3-5-7 (legs to win)
+    const context357: SmartAggressionContext = {
+      legs: bot.legs ?? 0,
+      legsToWin: gameData?.legs_to_win ?? 3
+    };
+    
     let foldProbability: number;
     if (useHandStrength) {
-      foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber, botAggressionLevel);
+      foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber, botAggressionLevel, context357);
       console.log(
         '[BOT DECISIONS] 3-5-7 bot at position',
         bot.position,
@@ -406,13 +418,17 @@ export async function makeBotDecisions(
         foldProbability,
         '% (round',
         roundNumber,
-        ', hand strength, aggression:',
+        ', legs:',
+        context357.legs,
+        '/',
+        context357.legsToWin,
+        ', aggression:',
         botAggressionLevel,
         ')'
       );
     } else {
       // Apply aggression multiplier even to universal probability
-      const multiplier = { 'very_conservative': 1.6, 'conservative': 1.3, 'normal': 1.0, 'aggressive': 0.7, 'very_aggressive': 0.4 }[botAggressionLevel];
+      const multiplier = { 'very_conservative': 2.0, 'conservative': 1.6, 'normal': 1.3, 'aggressive': 1.0, 'very_aggressive': 0.7 }[botAggressionLevel];
       foldProbability = Math.min(100, Math.max(0, universalFoldProbability * multiplier));
       console.log(
         '[BOT DECISIONS] 3-5-7 bot at position',

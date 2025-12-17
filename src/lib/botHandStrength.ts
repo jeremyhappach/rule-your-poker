@@ -16,6 +16,18 @@ const AGGRESSION_MULTIPLIERS: Record<AggressionLevel, number> = {
 };
 
 /**
+ * Context for smart aggression adjustments
+ */
+export interface SmartAggressionContext {
+  // For 3-5-7: bot's current legs and legs needed to win
+  legs?: number;
+  legsToWin?: number;
+  // For Holm: current pot and max match amount
+  pot?: number;
+  potMax?: number;
+}
+
+/**
  * Bot fold probability based on hand strength and aggression level
  * Returns a number 0-100 representing the probability the bot should fold
  */
@@ -24,7 +36,8 @@ export function getBotFoldProbability(
   communityCards: Card[],
   gameType: 'holm' | '357',
   roundNumber: number,
-  aggressionLevel: AggressionLevel = 'normal'
+  aggressionLevel: AggressionLevel = 'normal',
+  context?: SmartAggressionContext
 ): number {
   // Combine player cards with community cards for evaluation
   const allCards = [...cards, ...communityCards];
@@ -41,7 +54,8 @@ export function getBotFoldProbability(
     cardCount: allCards.length,
     rank: evaluation.rank,
     value: evaluation.value,
-    aggressionLevel
+    aggressionLevel,
+    context
   });
   
   // Get base fold probability
@@ -54,7 +68,10 @@ export function getBotFoldProbability(
   
   // Apply aggression multiplier
   const multiplier = AGGRESSION_MULTIPLIERS[aggressionLevel];
-  const adjustedProbability = Math.min(100, Math.max(0, baseProbability * multiplier));
+  let adjustedProbability = Math.min(100, Math.max(0, baseProbability * multiplier));
+  
+  // Apply smart aggression adjustments
+  adjustedProbability = applySmartAggression(adjustedProbability, gameType, context);
   
   console.log('[BOT STRENGTH] Fold probability:', {
     baseProbability,
@@ -63,6 +80,55 @@ export function getBotFoldProbability(
   });
   
   return adjustedProbability;
+}
+
+/**
+ * Apply smart aggression adjustments based on game context
+ * Reduces fold probability when stakes are high
+ */
+function applySmartAggression(
+  foldProbability: number,
+  gameType: 'holm' | '357',
+  context?: SmartAggressionContext
+): number {
+  if (!context) return foldProbability;
+  
+  let adjusted = foldProbability;
+  
+  if (gameType === '357') {
+    // In 3-5-7: Be more aggressive when one leg away from winning
+    const { legs = 0, legsToWin = 3 } = context;
+    if (legs === legsToWin - 1) {
+      // One leg away - reduce fold probability by 40%
+      adjusted *= 0.6;
+      console.log('[BOT STRENGTH] Smart aggression: One leg away from winning, reducing fold probability by 40%');
+    } else if (legs === legsToWin - 2 && legsToWin > 2) {
+      // Two legs away - reduce fold probability by 20%
+      adjusted *= 0.8;
+      console.log('[BOT STRENGTH] Smart aggression: Two legs away from winning, reducing fold probability by 20%');
+    }
+  } else if (gameType === 'holm') {
+    // In Holm: Be more aggressive when pot/match ratio is favorable
+    const { pot = 0, potMax = 0 } = context;
+    if (potMax > 0 && pot > 0) {
+      const potToMatchRatio = pot / potMax;
+      if (potToMatchRatio >= 3) {
+        // Pot is 3x+ the match amount - very favorable, reduce fold by 50%
+        adjusted *= 0.5;
+        console.log('[BOT STRENGTH] Smart aggression: Pot/match ratio >= 3, reducing fold probability by 50%');
+      } else if (potToMatchRatio >= 2) {
+        // Pot is 2x+ the match amount - favorable, reduce fold by 30%
+        adjusted *= 0.7;
+        console.log('[BOT STRENGTH] Smart aggression: Pot/match ratio >= 2, reducing fold probability by 30%');
+      } else if (potToMatchRatio >= 1.5) {
+        // Pot is 1.5x+ the match amount - slightly favorable, reduce fold by 15%
+        adjusted *= 0.85;
+        console.log('[BOT STRENGTH] Smart aggression: Pot/match ratio >= 1.5, reducing fold probability by 15%');
+      }
+    }
+  }
+  
+  return Math.min(100, Math.max(0, adjusted));
 }
 
 /**
