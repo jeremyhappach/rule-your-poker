@@ -450,14 +450,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         toast({ title: 'Error', description: 'Failed to pause game', variant: 'destructive' });
       }
     } else {
-      // RESUMING: Restore the remaining time (do NOT reset to max)
-      const remainingTime = game.paused_time_remaining ?? null;
-      const newDeadline =
-        remainingTime !== null && remainingTime !== undefined
-          ? new Date(Date.now() + Math.max(0, remainingTime) * 1000).toISOString()
-          : null;
+      // RESUMING: Reset all timers to maximum duration
+      const maxTime = decisionTimerRef.current;
+      const newDeadline = new Date(Date.now() + maxTime * 1000).toISOString();
 
-      console.log('[PAUSE] Resuming game, restoring remaining time:', remainingTime, 'newDeadline:', newDeadline);
+      console.log('[PAUSE] Resuming game, resetting deadline to max:', newDeadline, 'with', maxTime, 'seconds');
 
       // Optimistic UI update
       setGame(prev => (prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev));
