@@ -344,72 +344,186 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Handle pause/resume toggle for host
   const handleTogglePause = useCallback(async () => {
     if (!game || !gameId) return;
-    
+
     const newPausedState = !game.is_paused;
-    
+
+    const isHolmGame = game.game_type === 'holm-game' || game.game_type === 'holm';
+    const isInProgress = game.status === 'in_progress';
+    const isAnteDecision = game.status === 'ante_decision';
+    const isConfigPhase = game.status === 'configuring' || game.status === 'game_selection';
+
+    const getRemainingSeconds = (iso: string | null | undefined) => {
+      if (!iso) return null;
+      const ms = new Date(iso).getTime() - Date.now();
+      if (Number.isNaN(ms)) return null;
+      return Math.max(0, Math.floor(ms / 1000));
+    };
+
     // Get current round for deadline updates - use latest round for Holm games
     const currentRoundData = game.game_type === 'holm-game'
-      ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
+      ? game.rounds?.reduce(
+          (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
+          null as Round | null
+        )
       : game.rounds?.find(r => r.round_number === game.current_round);
-    
+
     if (newPausedState) {
-      // PAUSING: Save current remaining time
-      const remainingTime = timeLeft ?? 0;
-      console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
-      
-      // Optimistic UI update
-      setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
-      
-      const { error } = await supabase
-        .from('games')
-        .update({ 
-          is_paused: true, 
-          paused_time_remaining: remainingTime 
-        })
-        .eq('id', gameId);
-      
-      if (error) {
-        console.error('[PAUSE] Error pausing:', error);
-        setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-        toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
+      // PAUSING: Freeze active deadlines and store remaining time (server-driven)
+      let remainingTime: number | null = null;
+      let roundIdToFreeze: string | null = null;
+
+      if (isInProgress) {
+        let activeDecisionDeadline: string | null | undefined =
+          decisionDeadline ?? (currentRoundData as any)?.decision_deadline ?? null;
+
+        roundIdToFreeze = currentRoundData?.id ?? null;
+
+        // Fallback: fetch latest round if we don't have a deadline yet (e.g., paused before cards render)
+        if (!activeDecisionDeadline || !roundIdToFreeze) {
+          const { data: latestRound } = await supabase
+            .from('rounds')
+            .select('id, decision_deadline')
+            .eq('game_id', gameId)
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .single();
+
+          activeDecisionDeadline = activeDecisionDeadline ?? latestRound?.decision_deadline ?? null;
+          roundIdToFreeze = roundIdToFreeze ?? latestRound?.id ?? null;
+        }
+
+        remainingTime = getRemainingSeconds(activeDecisionDeadline);
+      } else if (isAnteDecision) {
+        remainingTime = getRemainingSeconds(game.ante_decision_deadline);
+      } else if (isConfigPhase) {
+        remainingTime = getRemainingSeconds(game.config_deadline);
       }
-    } else {
-      // RESUMING: Reset all active deadlines to maximum duration
-      const maxTime = decisionTimerRef.current;
-      const newDeadline = new Date(Date.now() + maxTime * 1000).toISOString();
-      console.log('[PAUSE] Resuming game, resetting deadline to max:', newDeadline, 'with', maxTime, 'seconds');
-      
+
+      console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
+
       // Optimistic UI update
-      setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-      setDecisionDeadline(newDeadline);
-      
-      // Update game and current round deadline
+      setGame(prev => (prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev));
+      if (remainingTime !== null && remainingTime !== undefined) {
+        setTimeLeft(remainingTime);
+      }
+
+      // Stop client countdown immediately (we display paused_time_remaining instead)
+      if (isInProgress) {
+        setDecisionDeadline(null);
+      }
+
+      const gameUpdate: any = {
+        is_paused: true,
+        paused_time_remaining: remainingTime,
+      };
+
+      // Freeze phase-specific deadlines on pause so they can't expire while paused
+      if (isAnteDecision) {
+        gameUpdate.ante_decision_deadline = null;
+      }
+      if (isConfigPhase) {
+        gameUpdate.config_deadline = null;
+      }
+
       const { error: gameError } = await supabase
         .from('games')
-        .update({ 
-          is_paused: false, 
-          paused_time_remaining: null 
-        })
+        .update(gameUpdate)
         .eq('id', gameId);
-      
-      if (currentRoundData?.id) {
+
+      // Freeze in-progress decision deadline (stored on rounds)
+      if (!gameError && isInProgress && roundIdToFreeze) {
         const { error: roundError } = await supabase
           .from('rounds')
-          .update({ decision_deadline: newDeadline })
-          .eq('id', currentRoundData.id);
-        
+          .update({ decision_deadline: null })
+          .eq('id', roundIdToFreeze);
+
         if (roundError) {
-          console.error('[PAUSE] Error updating round deadline:', roundError);
+          console.error('[PAUSE] Error clearing round deadline:', roundError);
         }
       }
-      
+
+      if (gameError) {
+        console.error('[PAUSE] Error pausing:', gameError);
+        setGame(prev => (prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev));
+        toast({ title: 'Error', description: 'Failed to pause game', variant: 'destructive' });
+      }
+    } else {
+      // RESUMING: Restore the remaining time (do NOT reset to max)
+      const remainingTime = game.paused_time_remaining ?? null;
+      const newDeadline =
+        remainingTime !== null && remainingTime !== undefined
+          ? new Date(Date.now() + Math.max(0, remainingTime) * 1000).toISOString()
+          : null;
+
+      console.log('[PAUSE] Resuming game, restoring remaining time:', remainingTime, 'newDeadline:', newDeadline);
+
+      // Optimistic UI update
+      setGame(prev => (prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev));
+      autoFoldingRef.current = false;
+
+      // Restore client timer source (server deadline)
+      if (newDeadline && isInProgress) {
+        setDecisionDeadline(newDeadline);
+      }
+
+      const gameUpdate: any = {
+        is_paused: false,
+        paused_time_remaining: null,
+      };
+
+      // Restore phase-specific deadlines
+      if (newDeadline && isAnteDecision) {
+        gameUpdate.ante_decision_deadline = newDeadline;
+      }
+      if (newDeadline && isConfigPhase) {
+        gameUpdate.config_deadline = newDeadline;
+      }
+
+      const { error: gameError } = await supabase
+        .from('games')
+        .update(gameUpdate)
+        .eq('id', gameId);
+
+      // Restore in-progress decision deadline (stored on rounds)
+      if (newDeadline && isInProgress) {
+        let roundIdToRestore = currentRoundData?.id ?? null;
+
+        if (!roundIdToRestore) {
+          const { data: latestRound } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId)
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .single();
+
+          roundIdToRestore = latestRound?.id ?? null;
+        }
+
+        if (roundIdToRestore) {
+          const { error: roundError } = await supabase
+            .from('rounds')
+            .update({ decision_deadline: newDeadline })
+            .eq('id', roundIdToRestore);
+
+          if (roundError) {
+            console.error('[PAUSE] Error updating round deadline:', roundError);
+          }
+        }
+
+        // Bots should decide immediately when resuming in 3-5-7 (NOT Holm)
+        if (!isHolmGame) {
+          void makeBotDecisions(gameId, null, { immediate: true });
+        }
+      }
+
       if (gameError) {
         console.error('[PAUSE] Error resuming:', gameError);
-        setGame(prev => prev ? { ...prev, is_paused: true } : prev);
-        toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
+        setGame(prev => (prev ? { ...prev, is_paused: true } : prev));
+        toast({ title: 'Error', description: 'Failed to resume game', variant: 'destructive' });
       }
     }
-  }, [game, gameId, timeLeft, toast]);
+  }, [game, gameId, decisionDeadline, toast]);
 
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -1999,30 +2113,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.error('[TIMER EXPIRED HOLM] Error auto-folding:', err);
           autoFoldingRef.current = false;
         });
-      } else {
-        // For 3-5-7 games, also check pause state from database
-        (async () => {
-          const { data: freshGame } = await supabase
-            .from('games')
-            .select('is_paused')
-            .eq('id', gameId!)
-            .single();
-          
-          if (freshGame?.is_paused) {
-            console.log('[TIMER EXPIRED 3-5-7] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
-            autoFoldingRef.current = false;
+        } else {
+          // For 3-5-7 games, also verify server deadline before auto-folding
+          (async () => {
+            const { data: freshGame } = await supabase
+              .from('games')
+              .select('is_paused')
+              .eq('id', gameId!)
+              .single();
+
+            if (freshGame?.is_paused) {
+              console.log('[TIMER EXPIRED 3-5-7] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
+              autoFoldingRef.current = false;
+              fetchGameData();
+              return;
+            }
+
+            // CRITICAL: Timer must be server-based. If the round's decision_deadline is still in the future,
+            // skip auto-fold even if local timeLeft hit 0 due to stale/pause transitions.
+            const { data: freshRound } = await supabase
+              .from('rounds')
+              .select('decision_deadline')
+              .eq('game_id', gameId!)
+              .order('round_number', { ascending: false })
+              .limit(1)
+              .single();
+
+            const deadlineIso = freshRound?.decision_deadline;
+            const deadlineMs = deadlineIso ? new Date(deadlineIso).getTime() : null;
+
+            if (!deadlineMs || Number.isNaN(deadlineMs) || deadlineMs > Date.now()) {
+              console.log('[TIMER EXPIRED 3-5-7] Server deadline not expired - skipping auto-fold', {
+                deadlineIso,
+              });
+              autoFoldingRef.current = false;
+              fetchGameData();
+              return;
+            }
+
+            await autoFoldUndecided(gameId!);
             fetchGameData();
-            return;
-          }
-          
-          await autoFoldUndecided(gameId!);
-          fetchGameData();
-          autoFoldingRef.current = false;
-        })().catch(err => {
-          console.error('[TIMER EXPIRED] Error auto-folding:', err);
-          autoFoldingRef.current = false;
-        });
-      }
+            autoFoldingRef.current = false;
+          })().catch(err => {
+            console.error('[TIMER EXPIRED] Error auto-folding:', err);
+            autoFoldingRef.current = false;
+          });
+        }
     }
   }, [timeLeft, game?.status, game?.all_decisions_in, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
 
