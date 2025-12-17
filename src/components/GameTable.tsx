@@ -83,6 +83,8 @@ interface GameTableProps {
   roundStatus?: string;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
+  // 3-5-7: optionally hide other players' decisions until current user chooses (post-resume privacy)
+  hideOtherDecisionsUntilYouDecide?: boolean;
   debugHolmPaused?: boolean; // DEBUG: pause auto-progression for debugging
   isHost?: boolean; // Host can control players
   // Chat props
@@ -140,6 +142,7 @@ export const GameTable = ({
   roundStatus,
   pendingDecision,
   isPaused,
+  hideOtherDecisionsUntilYouDecide = false,
   debugHolmPaused,
   isHost,
   chatBubbles = [],
@@ -1036,13 +1039,12 @@ export const GameTable = ({
             const isEmptySeat = 'isEmpty' in seat && seat.isEmpty;
             const player = !isEmptySeat ? seat as Player : null;
             const isCurrentUser = player?.user_id === currentUserId;
-            // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
-            // The hasPlayerDecided indicator should also be hidden while paused for non-current users
-            const hasPlayerDecided = (isCurrentUser || !isPaused) ? player?.decision_locked : false;
+            // Hide OTHER players' decisions while paused, and optionally right-after-resume (3-5-7) until current user chooses.
+            const shouldHideOthers = !!isPaused || hideOtherDecisionsUntilYouDecide;
+            const hasPlayerDecided = (isCurrentUser || !shouldHideOthers) ? player?.decision_locked : false;
             // Always show current user's decision immediately, or all decisions when allDecisionsIn
-            // BUT if paused, hide non-current-user decisions to prevent revealing bot decisions
-            const playerDecision = (isCurrentUser || (!isPaused && (allDecisionsIn || gameType === 'holm-game'))) 
-              ? player?.current_decision 
+            const playerDecision = (isCurrentUser || (!shouldHideOthers && (allDecisionsIn || gameType === 'holm-game')))
+              ? player?.current_decision
               : null;
             
             // In Holm game, buck just indicates who decides first, but all players can decide

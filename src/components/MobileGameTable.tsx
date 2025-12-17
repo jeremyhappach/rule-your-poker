@@ -121,6 +121,8 @@ interface MobileGameTableProps {
   roundStatus?: string;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
+  // 3-5-7: optionally hide other players' decisions until current user chooses (post-resume privacy)
+  hideOtherDecisionsUntilYouDecide?: boolean;
   anteAmount?: number;
   pussyTaxValue?: number;
   gameStatus?: string; // For ante animation trigger
@@ -232,6 +234,7 @@ export const MobileGameTable = ({
   roundStatus,
   pendingDecision,
   isPaused,
+  hideOtherDecisionsUntilYouDecide = false,
   anteAmount = 1,
   pussyTaxValue = 1,
   gameStatus,
@@ -1067,8 +1070,9 @@ anteAnimationTriggerId,
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const isCurrentUser = player.user_id === currentUserId;
     // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
-    // Current user can always see their own decision
-    const playerDecision = (isCurrentUser || !isPaused) ? player.current_decision : null;
+    // Also after resume (3-5-7), optionally hide OTHER players' decisions until the current user chooses.
+    // Current user can always see their own decision.
+    const playerDecision = (isCurrentUser || (!isPaused && !hideOtherDecisionsUntilYouDecide)) ? player.current_decision : null;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
     // Use getPlayerCards for showdown caching
     const cards = getPlayerCards(player.id);
