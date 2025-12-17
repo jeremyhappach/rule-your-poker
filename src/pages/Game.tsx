@@ -4179,7 +4179,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
-                    currentRound={game.current_round || 0}
+                    currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 0) : (game.current_round || 0)}
                     allDecisionsIn={true}
                     playerCards={playerCards}
                     timeLeft={null}
@@ -4234,7 +4234,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       players={players}
                       currentUserId={user?.id}
                       pot={game.pot || 0}
-                      currentRound={game.current_round || 0}
+                      currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 0) : (game.current_round || 0)}
                       allDecisionsIn={true}
                       playerCards={playerCards}
                       timeLeft={null}
@@ -4501,7 +4501,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.current_round || 1}
+              currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 1) : (game.current_round || 1)}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               timeLeft={timeLeft}
@@ -4614,7 +4614,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.current_round || 1}
+              currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 1) : (game.current_round || 1)}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               authoritativeCardCount={cardStateContext?.cardsDealt}
