@@ -8,8 +8,8 @@ import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand,
 export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
   
-  // Short delay to ensure DB write has propagated before reading
-  await new Promise(resolve => setTimeout(resolve, 50));
+  // Minimal delay - just enough for DB write to propagate
+  await new Promise(resolve => setTimeout(resolve, 20));
   
   const { data: game } = await supabase
     .from('games')

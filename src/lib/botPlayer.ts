@@ -307,7 +307,8 @@ export async function makeBotDecisions(
     .eq('game_type', gameTypeKey)
     .single();
   
-  const decisionDelay = gameDefaults?.bot_decision_delay_seconds ?? 2.0;
+  // For Holm, use minimal delay (bots should feel instant); for 3-5-7 use configured delay
+  const decisionDelay = isHolmGame ? 0.1 : (gameDefaults?.bot_decision_delay_seconds ?? 2.0);
   const useHandStrength = gameDefaults?.bot_use_hand_strength ?? true;
   const universalFoldProbability = gameDefaults?.bot_fold_probability ?? 30;
   
