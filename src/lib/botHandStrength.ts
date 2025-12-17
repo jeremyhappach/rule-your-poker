@@ -8,11 +8,11 @@ export type AggressionLevel = 'very_conservative' | 'conservative' | 'normal' | 
  * Lower multiplier = less likely to fold (more aggressive)
  */
 const AGGRESSION_MULTIPLIERS: Record<AggressionLevel, number> = {
-  'very_conservative': 1.6,  // 60% more likely to fold
-  'conservative': 1.3,       // 30% more likely to fold
-  'normal': 1.0,             // Base fold probability
-  'aggressive': 0.7,         // 30% less likely to fold
-  'very_aggressive': 0.4,    // 60% less likely to fold
+  'very_conservative': 2.0,  // 100% more likely to fold
+  'conservative': 1.6,       // 60% more likely to fold
+  'normal': 1.3,             // 30% more likely to fold (base shifted up)
+  'aggressive': 1.0,         // Standard fold probability
+  'very_aggressive': 0.7,    // 30% less likely to fold
 };
 
 /**
