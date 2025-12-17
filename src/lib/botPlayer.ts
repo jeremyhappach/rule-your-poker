@@ -356,8 +356,10 @@ export async function makeBotDecisions(
       .eq('id', gameId)
       .single();
 
-    if (pauseCheck?.is_paused || pauseCheck?.status !== 'in_progress') {
-      console.log('[BOT DECISIONS] Holm: Skipping decision because game is paused or not in progress');
+    const statusAllowsDecisions = pauseCheck?.status === 'in_progress' || pauseCheck?.status === 'betting';
+
+    if (pauseCheck?.is_paused || !statusAllowsDecisions) {
+      console.log('[BOT DECISIONS] Holm: Skipping decision because game is paused or not in a decision phase');
       return false;
     }
     
@@ -431,8 +433,10 @@ export async function makeBotDecisions(
         .eq('id', gameId)
         .single();
 
-      if (pauseCheck?.is_paused || pauseCheck?.status !== 'in_progress') {
-        console.log('[BOT DECISIONS] 3-5-7: Skipping decision because game is paused or not in progress');
+      const statusAllowsDecisions = pauseCheck?.status === 'in_progress' || pauseCheck?.status === 'betting';
+
+      if (pauseCheck?.is_paused || !statusAllowsDecisions) {
+        console.log('[BOT DECISIONS] 3-5-7: Skipping decision because game is paused or not in a decision phase');
         return;
       }
 
