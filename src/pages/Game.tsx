@@ -81,6 +81,8 @@ interface GameData {
   awaiting_next_round?: boolean | null;
   next_round_number?: number | null;
   ante_decision_deadline?: string | null;
+  config_deadline?: string | null;
+  current_host?: string | null;
   ante_amount?: number;
   leg_value?: number;
   pussy_tax_enabled?: boolean;
