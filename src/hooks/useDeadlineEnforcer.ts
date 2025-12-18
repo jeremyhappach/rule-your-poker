@@ -11,8 +11,16 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   const lastCallRef = useRef<number>(0);
 
   useEffect(() => {
+    // If the publishable key is unavailable in this build context, any backend call can hard-fail.
+    // Bail early to prevent blank screens in error/preview environments.
+    const publishableKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '');
+    if (!publishableKey || publishableKey.length === 0) {
+      console.warn('[DEADLINE ENFORCER] Missing publishable key; skipping deadline enforcement');
+      return;
+    }
+
     console.log('[DEADLINE ENFORCER] Hook called with gameId:', gameId, 'status:', gameStatus);
-    
+
     if (!gameId) {
       console.log('[DEADLINE ENFORCER] No gameId, skipping');
       return;
@@ -32,24 +40,28 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     const enforceDeadlines = async () => {
       // Debounce - don't call more than once per 2 seconds
       const now = Date.now();
-      if (now - lastCallRef.current < 2000) {
-        return;
-      }
+      if (now - lastCallRef.current < 2000) return;
       lastCallRef.current = now;
 
       try {
+        // Must be authenticated to call this backend function (verify_jwt=true).
+        // If auth is still initializing, skip this tick instead of surfacing errors.
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !sessionData?.session) {
+          return;
+        }
+
         const { data, error } = await supabase.functions.invoke('enforce-deadlines', {
           body: { gameId },
         });
 
         if (error) {
+          const msg = String((error as any)?.message ?? error ?? '');
           // Transient backend/platform states we should silently ignore and retry next poll.
           // - 503: cold start / env not ready
-          // - 401 "Key length is zero": upstream rejected request before function runs (missing/empty apikey)
+          // - 401 "Key length is zero": upstream rejected request (missing/empty apikey)
           // - 401: general auth errors during cold start
-          const msg = String(error.message || error || '');
           if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('401') || msg.includes('cold start')) {
-            // Silent retry on next poll - these are transient infrastructure issues
             return;
           }
           console.error('[DEADLINE ENFORCER] Error:', error);
