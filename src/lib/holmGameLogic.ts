@@ -401,12 +401,13 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
   console.log('[HOLM] Using decision timer:', timerSeconds, 'seconds');
 
-  // For first hand, clean up any stale rounds from previous games and start at round 1
-  // For subsequent hands, increment round number
+  // CRITICAL FIX: For Holm games, current_round = 1 and is_first_hand = true is set in DealerConfig
+  // On first hand: use current_round (already 1), then set is_first_hand = false
+  // On subsequent hands: only increment if is_first_hand = false
   let nextRoundNumber: number;
   
   if (isFirstHand) {
-    console.log('[HOLM] FIRST HAND - Cleaning up old rounds and starting at round 1');
+    console.log('[HOLM] FIRST HAND - Cleaning up old rounds and using current_round = 1');
     
     // Delete old player_cards and rounds from previous games
     const { data: oldRounds } = await supabase
@@ -429,18 +430,28 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       console.log('[HOLM] Deleted', oldRounds.length, 'stale rounds from previous game');
     }
     
-    nextRoundNumber = 1;
+    // Use current_round from game (already set to 1 in DealerConfig)
+    nextRoundNumber = gameConfig.current_round || 1;
   } else {
-    // Subsequent hand - increment from max existing round
-    const { data: maxRoundData } = await supabase
-      .from('rounds')
-      .select('round_number')
-      .eq('game_id', gameId)
-      .order('round_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    nextRoundNumber = (maxRoundData?.round_number || 0) + 1;
+    // Subsequent hand - check is_first_hand flag
+    // If is_first_hand = true, DON'T increment (just set flag to false)
+    // If is_first_hand = false, increment normally
+    if (gameConfig.is_first_hand) {
+      console.log('[HOLM] is_first_hand = true, using current_round without incrementing');
+      nextRoundNumber = gameConfig.current_round || 1;
+      // Set is_first_hand = false (done below in the game update)
+    } else {
+      // Normal increment from max existing round
+      const { data: maxRoundData } = await supabase
+        .from('rounds')
+        .select('round_number')
+        .eq('game_id', gameId)
+        .order('round_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      nextRoundNumber = (maxRoundData?.round_number || 0) + 1;
+    }
   }
   
   console.log('[HOLM] Creating new round:', nextRoundNumber);
@@ -511,8 +522,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 
   // Update game status AND current_round for Holm games
   // CRITICAL: current_round MUST be updated so MobileGameTable can detect new rounds
-  // There is no check constraint on current_round - it can be any integer
-  console.log('[HOLM] Updating game status with current_round:', nextRoundNumber);
+  // Also set is_first_hand = false after first hand is dealt
+  console.log('[HOLM] Updating game status with current_round:', nextRoundNumber, 'is_first_hand will be set to false');
   const { error: gameUpdateError } = await supabase
     .from('games')
     .update({
@@ -520,7 +531,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       current_round: nextRoundNumber, // RESTORED: Must update for round detection
       buck_position: buckPosition,
       all_decisions_in: false,
-      last_round_result: null
+      last_round_result: null,
+      is_first_hand: false // CRITICAL: Clear flag after first hand is dealt
     })
     .eq('id', gameId);
 

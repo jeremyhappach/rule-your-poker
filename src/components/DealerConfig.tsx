@@ -180,6 +180,11 @@ export const DealerConfig = ({
     if (isHolmGame) {
       updateData.chucky_cards = chuckyCards;
       updateData.rabbit_hunt = rabbitHunt;
+      // CRITICAL FIX: Set current_round = 1 and is_first_hand = true upfront
+      // This prevents stale cards from rendering during the gap between
+      // ante_decision → in_progress transition. Round only increments when is_first_hand = false.
+      updateData.current_round = 1;
+      updateData.is_first_hand = true;
       // Buck position will be calculated by startHolmRound
     }
 
