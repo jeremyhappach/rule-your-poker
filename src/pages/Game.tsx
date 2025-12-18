@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -534,13 +534,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.game_type, game?.status, game?.rounds?.length, clearLiftedCardCaches]);
 
   // CRITICAL: Clear caches when game type changes (switching between Holm and 3-5-7)
+  // Use layout effect so the clear happens before paint (prevents a 1-frame flash of old cards)
   const prevGameTypeRef = useRef<string | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const prevType = prevGameTypeRef.current;
     const currentType = game?.game_type ?? null;
 
     if (prevType !== null && currentType !== null && prevType !== currentType) {
-      console.log('[CACHE_GUARD] Game type changed, clearing caches', { prevType, currentType });
+      console.log('[CACHE_GUARD] Game type changed, clearing caches (layout)', { prevType, currentType });
       clearLiftedCardCaches('GAME TYPE CHANGED', { prevType, currentType });
       setCachedRoundData(null);
       cachedRoundRef.current = null;

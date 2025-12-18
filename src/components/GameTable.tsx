@@ -210,26 +210,18 @@ export const GameTable = ({
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
 
-  // CRITICAL: Guard against stale card rendering when game type switches
-  // When switching from Holm to 3-5-7 (or vice versa), old cards may briefly exist in localPlayerCards
-  // before the new round is fetched. Suppress card rendering for one render cycle after game type changes.
-  const prevGameTypeForGuardRef = useRef(gameType);
-  const [gameTypeJustChanged, setGameTypeJustChanged] = useState(false);
-  useEffect(() => {
-    if (prevGameTypeForGuardRef.current !== gameType) {
-      console.log('[GAMETABLE_GUARD] Game type changed:', prevGameTypeForGuardRef.current, '->', gameType, '- suppressing stale card render');
-      setGameTypeJustChanged(true);
-      prevGameTypeForGuardRef.current = gameType;
-      // Also clear local cards immediately
+  // CRITICAL: When game type switches, clear any locally-held cards before paint to prevent stale flash.
+  const prevGameTypeForClearRef = useRef(gameType);
+  useLayoutEffect(() => {
+    if (prevGameTypeForClearRef.current !== gameType) {
+      console.log('[GAMETABLE] Game type changed -> clearing local cards/caches before paint', {
+        prevType: prevGameTypeForClearRef.current,
+        nextType: gameType,
+      });
       setLocalPlayerCards([]);
       showdownCardsCache.current = new Map();
       showdownRoundRef.current = null;
-      // Allow rendering again after a brief delay
-      const timer = setTimeout(() => {
-        setGameTypeJustChanged(false);
-        console.log('[GAMETABLE_GUARD] Clearing game type change guard');
-      }, 100);
-      return () => clearTimeout(timer);
+      prevGameTypeForClearRef.current = gameType;
     }
   }, [gameType]);
 
@@ -316,13 +308,8 @@ export const GameTable = ({
   
   // Function to get cards for a player (use cache during showdown)
   const getPlayerCards = (playerId: string): CardType[] => {
-    // GUARD: When game type just changed, suppress card rendering to prevent stale cards from wrong game type
-    if (gameTypeJustChanged) {
-      return [];
-    }
-    
     const liveCards = localPlayerCards.find(pc => pc.player_id === playerId)?.cards || [];
-    
+
     // CRITICAL: Once cards are cached for this round, ALWAYS use cache
     // This prevents flickering when isShowdownActive temporarily becomes false
     if (showdownRoundRef.current === currentRoundId) {
