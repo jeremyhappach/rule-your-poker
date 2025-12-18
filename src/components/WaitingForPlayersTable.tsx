@@ -7,6 +7,7 @@ import { Share2, Users, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { createUuid } from "@/lib/uuid";
+import { useToast } from "@/hooks/use-toast";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -97,6 +98,7 @@ export const WaitingForPlayersTable = ({
   getPositionForUserId,
   onLeaveGameNow
 }: WaitingForPlayersTableProps) => {
+  const { toast } = useToast();
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
   const [addingBot, setAddingBot] = useState(false);
@@ -121,8 +123,25 @@ export const WaitingForPlayersTable = ({
 
   // Add bot for waiting phase (joins as active, ready to play)
   const handleAddBot = async () => {
-    if (!hasOpenSeats || addingBot) return;
-    
+    console.log('[ADD BOT][waiting] click', {
+      gameId,
+      currentUserId,
+      isHost,
+      hasOpenSeats,
+      addingBot,
+      playersLen: players.length,
+    });
+
+    if (!hasOpenSeats) {
+      toast({ title: 'Table full', description: 'No open seats available.', variant: 'destructive' });
+      return;
+    }
+
+    if (addingBot) {
+      console.log('[ADD BOT][waiting] ignored: already adding');
+      return;
+    }
+
     setAddingBot(true);
     try {
       // Find open positions
@@ -131,21 +150,31 @@ export const WaitingForPlayersTable = ({
       const openPositions = allPositions.filter(pos => !occupiedPositions.has(pos));
       
       if (openPositions.length === 0) {
-        console.log('Table full - no open seats');
+        console.log('[ADD BOT][waiting] table full - no open seats');
+        toast({ title: 'Table full', description: 'No open seats available.', variant: 'destructive' });
         return;
       }
       
       // Pick a random open position
       const randomIndex = Math.floor(Math.random() * openPositions.length);
       const nextPosition = openPositions[randomIndex];
+
+      console.log('[ADD BOT][waiting] nextPosition', nextPosition);
       
       // Create bot profile
       const botId = createUuid();
       const aggressionLevel = getAggressionLevelForBotId(botId);
-      const { data: existingBotProfiles } = await supabase
+
+      console.log('[ADD BOT][waiting] creating bot profile', { botId, aggressionLevel });
+
+      const { data: existingBotProfiles, error: botProfilesError } = await supabase
         .from('profiles')
         .select('username')
         .like('username', 'Bot %');
+
+      if (botProfilesError) {
+        throw new Error(`Failed to list bots: ${botProfilesError.message}`);
+      }
       
       const botNumber = (existingBotProfiles?.length || 0) + 1;
       const botName = `Bot ${botNumber}`;
@@ -163,6 +192,8 @@ export const WaitingForPlayersTable = ({
         throw new Error(`Failed to create bot profile: ${profileError.message}`);
       }
 
+      console.log('[ADD BOT][waiting] profile ok, creating players row');
+
       // Create bot player - active and ready to play (not sitting out)
       const { error: playerError } = await supabase
         .from('players')
@@ -174,16 +205,18 @@ export const WaitingForPlayersTable = ({
           is_bot: true,
           status: 'active',
           sitting_out: false,
-          waiting: true // Waiting to start game
+          waiting: true, // Waiting to start game
         });
 
       if (playerError) {
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
 
-      // Bot added successfully - no toast needed
+      console.log('[ADD BOT][waiting] ✅ success');
+      toast({ title: 'Bot added', description: `${botName} joined seat ${nextPosition}.` });
     } catch (error: any) {
-      console.error('Error adding bot:', error);
+      console.error('[ADD BOT][waiting] error:', error);
+      toast({ title: 'Add bot failed', description: error?.message ?? 'Unknown error', variant: 'destructive' });
     } finally {
       setAddingBot(false);
     }

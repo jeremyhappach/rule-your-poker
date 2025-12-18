@@ -4121,13 +4121,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isPaused={game.is_paused}
                   onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
                   onAddBot={async () => {
+                    console.log('[ADD BOT] requested', { gameId, status: game.status });
                     try {
-                      await addBotPlayerSittingOut(gameId!);
+                      if (game.status === 'waiting') {
+                        await addBotPlayer(gameId!);
+                        console.log('[ADD BOT] ✅ added (waiting)');
+                        toast({ title: 'Bot added', description: 'Bot joined the table.' });
+                      } else {
+                        await addBotPlayerSittingOut(gameId!);
+                        console.log('[ADD BOT] ✅ added (sitting out)');
+                        toast({ title: 'Bot added', description: 'Bot will join next hand.' });
+                      }
                       fetchGameData();
                     } catch (error: any) {
+                      console.error('[ADD BOT] error', error);
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}
+
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting')}
                   onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
