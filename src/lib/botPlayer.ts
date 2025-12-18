@@ -147,6 +147,15 @@ export async function addBotPlayer(gameId: string) {
 
   console.log('[BOT CREATION] Profile created as', botName, 'now creating player');
 
+  // Fetch game buy_in for initial chips
+  const { data: gameData } = await supabase
+    .from('games')
+    .select('buy_in')
+    .eq('id', gameId)
+    .single();
+  
+  const initialChips = gameData?.buy_in || 100;
+
   // Create bot player
   const { data: botPlayer, error } = await supabase
     .from('players')
@@ -154,7 +163,7 @@ export async function addBotPlayer(gameId: string) {
       user_id: botId,
       game_id: gameId,
       position: nextPosition,
-      chips: 0,
+      chips: initialChips,
       is_bot: true,
       status: 'active'
     })
@@ -255,6 +264,15 @@ export async function addBotPlayerSittingOut(gameId: string) {
 
   console.log('[BOT CREATION] Profile created as', botName, 'now creating sitting-out player');
 
+  // Fetch game buy_in for initial chips
+  const { data: gameData } = await supabase
+    .from('games')
+    .select('buy_in')
+    .eq('id', gameId)
+    .single();
+  
+  const initialChips = gameData?.buy_in || 100;
+
   // Create bot player with sitting_out=true and waiting=true
   const { data: botPlayer, error } = await supabase
     .from('players')
@@ -262,7 +280,7 @@ export async function addBotPlayerSittingOut(gameId: string) {
       user_id: botId,
       game_id: gameId,
       position: nextPosition,
-      chips: 0,
+      chips: initialChips,
       is_bot: true,
       status: 'active',
       sitting_out: true,
