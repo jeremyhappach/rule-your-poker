@@ -509,11 +509,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // If we show anything during that gap, React will render the previous hand's cards/decisions.
   const inProgressNoRoundGuardRef = useRef(false);
   useEffect(() => {
-    const isHolm = game?.game_type === 'holm-game';
     const status = game?.status ?? null;
     const roundsCount = game?.rounds?.length ?? 0;
 
-    const shouldGuard = isHolm && status === 'in_progress' && roundsCount === 0;
+    // Guard for ANY game type transitioning to in_progress without rounds
+    const shouldGuard = status === 'in_progress' && roundsCount === 0;
 
     if (!shouldGuard) {
       inProgressNoRoundGuardRef.current = false;
@@ -523,8 +523,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (inProgressNoRoundGuardRef.current) return;
     inProgressNoRoundGuardRef.current = true;
 
-    console.warn('[CACHE_GUARD] in_progress without any rounds yet (Holm start) - clearing UI state to prevent stale render');
-    clearLiftedCardCaches('IN_PROGRESS WITHOUT ROUND (Holm start)', { status, roundsCount });
+    console.warn('[CACHE_GUARD] in_progress without any rounds yet - clearing UI state to prevent stale render');
+    clearLiftedCardCaches('IN_PROGRESS WITHOUT ROUND', { status, roundsCount, gameType: game?.game_type });
     setCachedRoundData(null);
     cachedRoundRef.current = null;
     setPlayerCards([]);
@@ -532,6 +532,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     maxRevealedRef.current = 0;
     cardIdentityRef.current = '';
   }, [game?.game_type, game?.status, game?.rounds?.length, clearLiftedCardCaches]);
+
+  // CRITICAL: Clear caches when game type changes (switching between Holm and 3-5-7)
+  const prevGameTypeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prevType = prevGameTypeRef.current;
+    const currentType = game?.game_type ?? null;
+
+    if (prevType !== null && currentType !== null && prevType !== currentType) {
+      console.log('[CACHE_GUARD] Game type changed, clearing caches', { prevType, currentType });
+      clearLiftedCardCaches('GAME TYPE CHANGED', { prevType, currentType });
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      setPlayerCards([]);
+      setCardStateContext(null);
+      maxRevealedRef.current = 0;
+      cardIdentityRef.current = '';
+    }
+
+    prevGameTypeRef.current = currentType;
+  }, [game?.game_type, clearLiftedCardCaches]);
 
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
   const dealerConfigGuardFiredRef = useRef(false);
