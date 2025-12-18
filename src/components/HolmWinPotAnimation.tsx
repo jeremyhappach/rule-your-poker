@@ -35,16 +35,17 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   };
 
   // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
-  // These coordinates target the CENTER of where player chips render
+  // Tailwind classes used: bottom-2 (0.5rem), left-10 (2.5rem), top-2 (0.5rem), right-10 (2.5rem), top-1/2, left-0, right-0
+  // For a ~400px wide container: 2.5rem ≈ 40px ≈ 10%, 0.5rem ≈ 8px ≈ 2%
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 88, left: 50 }; // Current player (bottom center)
+    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 88, left: 12 },   // Bottom-left: bottom-2 left-10 → ~88% from top, ~12% from left
-      1: { top: 50, left: 5 },    // Middle-left: left-0 top-1/2 → 50% from top, ~5% from left (chip width offset)
-      2: { top: 5, left: 12 },    // Top-left: top-2 left-10 → ~5% from top, ~12% from left
-      3: { top: 5, left: 88 },    // Top-right: top-2 right-10 → ~5% from top, ~88% from left
-      4: { top: 50, left: 95 },   // Middle-right: right-0 top-1/2 → 50% from top, ~95% from left
-      5: { top: 88, left: 88 },   // Bottom-right: bottom-2 right-10 → ~88% from top, ~88% from left
+      0: { top: 92, left: 10 },   // Bottom-left: bottom-2 left-10
+      1: { top: 50, left: 2 },    // Middle-left: left-0 top-1/2 (left edge + small offset for chip center)
+      2: { top: 2, left: 10 },    // Top-left: top-2 left-10
+      3: { top: 2, left: 90 },    // Top-right: top-2 right-10
+      4: { top: 50, left: 98 },   // Middle-right: right-0 top-1/2 (right edge - small offset)
+      5: { top: 92, left: 90 },   // Bottom-right: bottom-2 right-10
     };
     return slots[slotIndex] || { top: 50, left: 50 };
   };
