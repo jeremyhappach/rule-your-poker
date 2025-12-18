@@ -568,27 +568,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     prevRoundForCacheRef.current = currentRoundNum;
   }, [game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
-  // CRITICAL: Also clear caches when buck passes (awaiting next round with result cleared)
-  // This catches the moment between hands before round number updates
-  const prevResultRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    if (game?.game_type !== 'holm-game') return;
-
-    const prevResult = prevResultRef.current;
-    const currentResult = game?.last_round_result;
-    const isAwaiting = game?.awaiting_next_round;
-
-    // Buck passes: result goes from something to null while awaiting
-    if (prevResult && !currentResult && isAwaiting) {
-      clearLiftedCardCaches('BUCK PASSED (result cleared)', {
-        prevResult,
-        currentResult,
-        isAwaiting,
-      });
-    }
-
-    prevResultRef.current = currentResult;
-  }, [game?.last_round_result, game?.awaiting_next_round, game?.game_type, clearLiftedCardCaches]);
+  // NOTE: Buck passed cache clear was removed - redundant with NEW HAND DETECTED
+  // The round number change is more reliable and fires shortly after buck passes
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
