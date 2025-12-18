@@ -3,6 +3,7 @@ import { makeDecision } from "./gameLogic";
 import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
 import { generateUUID } from "./uuid";
+import { getNextBotNumber, makeBotUsername } from "./botNaming";
 
 // Weighted aggression levels - extreme levels are rare
 const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -120,24 +121,40 @@ export async function addBotPlayer(gameId: string) {
     .from('profiles')
     .select('username')
     .like('username', 'Bot %');
-  
+
   if (profilesError) {
     console.error('[BOT CREATION] Error fetching existing bot profiles:', profilesError);
   }
-  
-  const botNumber = (existingBotProfiles?.length || 0) + 1;
-  const botName = `Bot ${botNumber}`;
-  
+
+  const existingUsernames = (existingBotProfiles ?? []).map((p) => p.username);
+  const nextNumber = getNextBotNumber(existingUsernames);
+
+  // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
+  let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
+
   console.log('[BOT CREATION] Creating bot profile:', { botId, botName, aggressionLevel });
-  
+
   // Insert bot profile with aggression level
-  const { error: profileError } = await supabase
+  let { error: profileError } = await supabase
     .from('profiles')
     .insert({
       id: botId,
       username: botName,
-      aggression_level: aggressionLevel
+      aggression_level: aggressionLevel,
     });
+
+  if (profileError?.code === '23505') {
+    botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
+    console.warn('[BOT CREATION] Bot username collision, retrying with suffix:', botName);
+
+    ({ error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: botId,
+        username: botName,
+        aggression_level: aggressionLevel,
+      }));
+  }
 
   if (profileError) {
     console.error('[BOT CREATION] Profile creation error:', profileError);
@@ -224,24 +241,40 @@ export async function addBotPlayerSittingOut(gameId: string) {
     .from('profiles')
     .select('username')
     .like('username', 'Bot %');
-  
+
   if (profilesError) {
     console.error('[BOT CREATION SITTING-OUT] Error fetching existing bot profiles:', profilesError);
   }
-  
-  const botNumber = (existingBotProfiles?.length || 0) + 1;
-  const botName = `Bot ${botNumber}`;
-  
+
+  const existingUsernames = (existingBotProfiles ?? []).map((p) => p.username);
+  const nextNumber = getNextBotNumber(existingUsernames);
+
+  // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
+  let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
+
   console.log('[BOT CREATION SITTING-OUT] Creating bot profile:', { botId, botName, aggressionLevel });
-  
+
   // Insert bot profile with aggression level
-  const { error: profileError } = await supabase
+  let { error: profileError } = await supabase
     .from('profiles')
     .insert({
       id: botId,
       username: botName,
-      aggression_level: aggressionLevel
+      aggression_level: aggressionLevel,
     });
+
+  if (profileError?.code === '23505') {
+    botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
+    console.warn('[BOT CREATION SITTING-OUT] Bot username collision, retrying with suffix:', botName);
+
+    ({ error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: botId,
+        username: botName,
+        aggression_level: aggressionLevel,
+      }));
+  }
 
   if (profileError) {
     console.error('[BOT CREATION SITTING-OUT] Profile creation error:', profileError);

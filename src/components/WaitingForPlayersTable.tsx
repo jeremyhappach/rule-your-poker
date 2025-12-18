@@ -7,6 +7,7 @@ import { Share2, Users, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
+import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
 import { useToast } from "@/hooks/use-toast";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
@@ -158,17 +159,33 @@ export const WaitingForPlayersTable = ({
         console.warn('[WAITING ADD BOT] Could not fetch existing bot profiles:', existingBotsError);
       }
 
-      const botNumber = (existingBotProfiles?.length || 0) + 1;
-      const botName = `Bot ${botNumber}`;
+      const existingUsernames = (existingBotProfiles ?? []).map((p) => p.username);
+      const nextNumber = getNextBotNumber(existingUsernames);
+
+      // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
+      let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
 
       // Insert bot profile
-      const { error: profileError } = await supabase
+      let { error: profileError } = await supabase
         .from('profiles')
         .insert({
           id: botId,
           username: botName,
           aggression_level: aggressionLevel,
         });
+
+      if (profileError?.code === '23505') {
+        botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
+        console.warn('[WAITING ADD BOT] Bot username collision, retrying with suffix:', botName);
+
+        ({ error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: botId,
+            username: botName,
+            aggression_level: aggressionLevel,
+          }));
+      }
 
       if (profileError) {
         throw new Error(`Failed to create bot profile: ${profileError.message}`);
