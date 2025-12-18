@@ -237,11 +237,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
-  
+
   // LIFTED community cards cache - persists across MobileGameTable remounts to prevent flicker during win animation
   const communityCardsCacheRef = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: false });
-  
-  // Chat functionality
+
+  // DEBUG: force periodic re-render to "read" ref values in UI (refs don't trigger renders)
+  const [cacheDebugTick, setCacheDebugTick] = useState(0);
+  useEffect(() => {
+    const s = game?.status;
+    const isDealerConfig = s === 'game_selection' || s === 'configuring' || s === 'dealer_selection';
+    if (!isDealerConfig) return;
+
+    const id = setInterval(() => setCacheDebugTick((t) => (t + 1) % 1000000), 300);
+    return () => clearInterval(id);
+  }, [game?.status]);
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
@@ -463,21 +472,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         description: reason,
       });
 
-      // Detect "cache immediately repopulated" bugs (e.g., a child writes stale state back)
-      setTimeout(() => {
-        const after = snapshotCommunityCache();
-        const ok = after.len === 0 && after.round === null && after.show === false;
-        if (!ok) {
-          console.error('[CACHE_CLEAR] ❌ Cache clear failed / was repopulated', { reason, before, after, extra });
-          toast({
-            title: 'Card cache clear FAILED',
-            description: `Repopulated: len=${after.len} round=${after.round} show=${after.show}`,
-            variant: 'destructive',
-          });
-        } else {
-          console.log('[CACHE_CLEAR] ✅ Cache is empty after clear', { reason, after });
-        }
-      }, 50);
+      // Detect "cache repopulated" bugs (e.g., a child writes stale state back)
+      // Check multiple times because repopulation can happen after effects fire.
+      let hasFailed = false;
+      const check = (ms: number) => {
+        setTimeout(() => {
+          const after = snapshotCommunityCache();
+          const ok = after.len === 0 && after.round === null && after.show === false;
+          if (!ok) {
+            console.error(`[CACHE_CLEAR] ❌ Cache clear failed / repopulated @${ms}ms`, { reason, before, after, extra });
+            if (!hasFailed) {
+              hasFailed = true;
+              toast({
+                title: 'Card cache clear FAILED',
+                description: `@${ms}ms: len=${after.len} round=${after.round} show=${after.show}`,
+                variant: 'destructive',
+              });
+            }
+          } else {
+            console.log(`[CACHE_CLEAR] ✅ Cache empty @${ms}ms`, { reason, after });
+          }
+        }, ms);
+      };
+
+      check(50);
+      check(500);
+      check(2000);
     },
     [snapshotCommunityCache, toast],
   );
@@ -4179,6 +4199,56 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               </div>
             ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
               <div className="relative">
+                {/* DEBUG: live snapshot of lifted caches while dealer config is visible */}
+                <div className="absolute top-2 left-2 z-50 max-w-[92vw]">
+                  <Card className="border-border/60 bg-background/80 backdrop-blur">
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs">
+                          <div className="font-medium">Cache snapshot (dealer config)</div>
+                          <div className="text-muted-foreground">tick: {cacheDebugTick}</div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            const snap = (communityCardsCacheRef.current?.cards ?? []).slice(0, 4).map((c: any) => (typeof c === 'string' ? c : `${c?.rank ?? '?'}${c?.suit ?? '?'}`));
+                            const payload = {
+                              status: game.status,
+                              communityCache: {
+                                show: communityCardsCacheRef.current.show,
+                                round: communityCardsCacheRef.current.round,
+                                len: communityCardsCacheRef.current.cards?.length ?? 0,
+                                preview: snap,
+                              },
+                              showdownCache: {
+                                size: showdownCardsCacheRef.current.size,
+                                round: showdownRoundNumberRef.current,
+                              },
+                              cachedRoundDataRound: cachedRoundData?.round_number ?? null,
+                            };
+                            console.log('[CACHE_DEBUG] Dump', payload);
+                            toast({ title: 'Cache dumped to console', description: 'See [CACHE_DEBUG] Dump' });
+                          }}
+                        >
+                          Dump
+                        </Button>
+                      </div>
+                      <div className="text-xs leading-snug">
+                        <div>
+                          <span className="text-muted-foreground">community:</span>{' '}
+                          show={String(communityCardsCacheRef.current.show)} round={String(communityCardsCacheRef.current.round)} len={String(communityCardsCacheRef.current.cards?.length ?? 0)}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">showdown:</span>{' '}
+                          size={String(showdownCardsCacheRef.current.size)} round={String(showdownRoundNumberRef.current)}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {isMobile ? (
                   <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     players={players}
