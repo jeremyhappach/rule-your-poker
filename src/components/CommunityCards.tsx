@@ -70,11 +70,13 @@ export const CommunityCards = ({
       timeoutsRef.current.push(timeout);
     });
 
-    // Notify parent once last card has been dealt (used to hide bot decisions until cards are visible)
+    // Notify parent once the last card has *finished* its enter transition.
+    // (We use this to hide Holm bot decisions until community cards are fully rendered.)
+    const CARD_ENTER_ANIMATION_MS = 300; // matches inline transition: '... 0.3s ...'
     const lastDealAt = INITIAL_DELAY + Math.max(0, cards.length - 1) * CARD_INTERVAL;
     const dealCompleteTimeout = setTimeout(() => {
       onDealComplete?.();
-    }, lastDealAt + 75);
+    }, lastDealAt + CARD_ENTER_ANIMATION_MS + 50);
     timeoutsRef.current.push(dealCompleteTimeout);
     
     // Pre-flip the initially revealed cards after all are dealt
