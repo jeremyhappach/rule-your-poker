@@ -126,10 +126,13 @@ export const PlayerOptionsMenu = ({
           {/* Host Add Bot option */}
           {isHost && onAddBot && canAddBot && (
             <>
-              <DropdownMenuItem onClick={() => {
-                console.log('[PLAYER OPTIONS MENU] Add Bot clicked in waiting phase');
-                onAddBot?.();
-              }}>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  console.log('[PLAYER OPTIONS MENU] Add Bot selected in waiting phase');
+                  void onAddBot();
+                }}
+              >
                 🤖 Add Bot
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -193,10 +196,13 @@ export const PlayerOptionsMenu = ({
               </DropdownMenuItem>
             )}
             {onAddBot && canAddBot && (
-              <DropdownMenuItem onClick={() => {
-                console.log('[PLAYER OPTIONS MENU] Add Bot clicked in active game');
-                onAddBot?.();
-              }}>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  console.log('[PLAYER OPTIONS MENU] Add Bot selected in active game');
+                  void onAddBot();
+                }}
+              >
                 🤖 Add Bot
               </DropdownMenuItem>
             )}
