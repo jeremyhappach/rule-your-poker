@@ -13,8 +13,24 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[ENFORCE] Missing env vars:', { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseServiceKey,
+        keyLength: supabaseServiceKey?.length || 0
+      });
+      return new Response(JSON.stringify({ 
+        error: 'Server configuration error',
+        details: 'Missing required environment variables'
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { gameId } = await req.json();
