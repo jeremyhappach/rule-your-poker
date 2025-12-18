@@ -772,24 +772,16 @@ anteAnimationTriggerId,
     // Use REF for detection (to prevent re-triggering) but STATE for render gating
     const isNewRound = currentRound && currentRound !== lastDetectedRoundRef.current;
     
-    // FIX: Also check if we have community cards but they're not approved (desync recovery)
-    const hasUnapprovedCards = communityCards && communityCards.length > 0 && 
-      (!approvedCommunityCards || approvedCommunityCards.length === 0) && 
-      !isDelayingCommunityCards;
-    
     console.log('[MOBILE_COMMUNITY] Checking new round:', { 
       isNewRound, 
       currentRound, 
       lastDetectedRound: lastDetectedRoundRef.current,
       approvedRoundForDisplay,
-      hasUnapprovedCards,
-      communityCardsLength: communityCards?.length,
-      approvedCardsLength: approvedCommunityCards?.length
+      communityCardsLength: communityCards?.length
     });
     
-    // Trigger approval if new round OR if we have cards but they're not approved
-    if (isNewRound || hasUnapprovedCards) {
-      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND or DESYNC RECOVERY - starting reveal delay');
+    if (isNewRound) {
+      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting reveal delay (cards hidden until approved)');
       lastDetectedRoundRef.current = currentRound; // Mark as detected to prevent re-trigger
       
       // Hide cards and reset state
@@ -804,8 +796,6 @@ anteAnimationTriggerId,
       }
       
       // Initial delay of 1 second, then reveal cards one at a time
-      // FIX: For desync recovery, use shorter delay (300ms) to catch up faster
-      const delayTime = hasUnapprovedCards && !isNewRound ? 300 : 1000;
       const cardCount = communityCardsRevealed || 2;
       communityCardsDelayRef.current = setTimeout(() => {
         console.log('[MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
@@ -821,7 +811,7 @@ anteAnimationTriggerId,
             }
           }, (i - 1) * 150);
         }
-      }, delayTime);
+      }, 1000);
     }
     
     return () => {
@@ -829,7 +819,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards, approvedCommunityCards, isDelayingCommunityCards]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
@@ -1330,8 +1320,8 @@ anteAnimationTriggerId,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }} />
         
-        {/* Game name on felt */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
+        {/* Game name on felt - z-30 to stay above pot (z-20) */}
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-30 flex flex-col items-center">
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
             {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
           </span>
