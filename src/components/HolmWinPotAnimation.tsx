@@ -50,8 +50,19 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
 
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
     const isCurrentPlayer = currentPlayerPosition === position;
-    const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
+    const clockwiseDist = getClockwiseDistance(position);
+    const slotIndex = isCurrentPlayer ? -1 : clockwiseDist - 1;
     const slot = getSlotPercent(slotIndex);
+    
+    console.log('[HOLM WIN ANIM] getPositionCoords:', {
+      winnerPosition: position,
+      currentPlayerPosition,
+      isCurrentPlayer,
+      clockwiseDist,
+      slotIndex,
+      slot,
+    });
+    
     return {
       x: (slot.left / 100) * rect.width,
       y: (slot.top / 100) * rect.height,
