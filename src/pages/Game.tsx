@@ -1862,9 +1862,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     toast({
       title: `Round: ${next.roundNumber ?? "—"}`,
-      description: next.roundId ? `Round id: ${next.roundId}` : `Game status: ${game?.status ?? "unknown"}`,
+      description: next.roundId
+        ? `Round id: ${next.roundId}`
+        : `Game status: ${game?.status ?? "unknown"}`,
     });
   }, [currentRound?.id, currentRound?.round_number, game?.status, toast]);
+
+  // CRITICAL: Clear optimistic decision UI whenever we move to a new hand/round.
+  // Otherwise the UI can keep showing "STAYED/FOLDED" from the previous hand via pendingDecision.
+  useEffect(() => {
+    setPendingDecision(null);
+  }, [cardStateContext?.roundId, currentRound?.id, currentRound?.round_number, game?.status]);
 
   // Compute current card identity to detect new hands
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
