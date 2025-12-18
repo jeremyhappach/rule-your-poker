@@ -759,12 +759,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             
             // CRITICAL FIX: Immediately update game state to prevent stale rendering
             // This ensures GameTable sees the new game_type BEFORE fetchGameData completes
+            const optimisticRound =
+              (typeof newData?.current_round === 'number')
+                ? newData.current_round
+                : (incomingGameType === 'holm-game' ? 1 : null);
+
             setGame(prevGame => prevGame ? {
               ...prevGame,
               game_type: incomingGameType,
-              // If the backend already set a round (e.g., Holm sets round 1 on setup), keep it.
-              // Otherwise clear to avoid stale card count calculation.
-              current_round: (typeof newData?.current_round === 'number') ? newData.current_round : null,
+              // Holm: setup pre-seeds round 1; realtime payload may omit current_round, so default to 1.
+              // 3-5-7: clear to avoid stale card count calculation.
+              current_round: optimisticRound,
               awaiting_next_round: false,
               status: newData?.status || prevGame.status
             } : null);
