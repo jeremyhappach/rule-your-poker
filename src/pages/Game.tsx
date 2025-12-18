@@ -1858,15 +1858,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Use cached round ONLY when we intentionally need to preserve visuals across transitions
   // (e.g., showdown/game_over animations). For fresh play/setup, never fall back to old cached rounds.
+  // IMPORTANT: Do NOT fall back during `in_progress` gaps (e.g. Holm briefly has no round yet) —
+  // that is the primary cause of stale cards/decisions rendering.
   const allowRoundCacheFallback = Boolean(
-    game?.status === 'game_over' ||
-      game?.status === 'session_ended' ||
-      game?.awaiting_next_round ||
-      game?.all_decisions_in
+    (game?.status === 'game_over' || game?.status === 'session_ended') &&
+      (cachedRoundData || cachedRoundRef.current)
   );
 
   // Priority: liveRound > (optional) state cache > (optional) ref cache
-  const currentRound = liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+  const currentRound =
+    liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
   // DEBUG: show a "Round: X" toast whenever round number/id changes
   useEffect(() => {
@@ -4598,8 +4599,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             liveRoundNumber: liveRound?.round_number,
             cachedRoundNumber: cachedRoundData?.round_number
           });
+          const hasActiveRound = Boolean(currentRound?.id);
           return isMobile ? (
-            <MobileGameTable key={gameId ?? 'unknown-game'}
+            <MobileGameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
@@ -4699,11 +4701,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onLeaveGameNow={handleLeaveGameNow}
               realMoney={game.real_money || false}
               revealAtShowdown={game.reveal_at_showdown || false}
-              externalShowdownCardsCache={showdownCardsCacheRef}
-              externalShowdownRoundNumber={showdownRoundNumberRef}
-              externalCommunityCardsCache={communityCardsCacheRef}
+              externalShowdownCardsCache={hasActiveRound ? showdownCardsCacheRef : undefined}
+              externalShowdownRoundNumber={hasActiveRound ? showdownRoundNumberRef : undefined}
+              externalCommunityCardsCache={hasActiveRound ? communityCardsCacheRef : undefined}
               externalCommunityCacheEpoch={communityCacheEpoch}
-              handContextId={handContextKey}
+              handContextId={hasActiveRound ? handContextKey : null}
               winner357ShowCards={winner357ShowCards}
               onWinner357ShowCards={handleWinner357ShowCards}
               holmPreFold={holmPreFold}
@@ -4712,7 +4714,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onHolmPreStayChange={setHolmPreStay}
             />
           ) : (
-            <GameTable key={gameId ?? 'unknown-game'}
+            <GameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
               gameId={gameId}
               players={players}
               currentUserId={user?.id}
@@ -4721,7 +4723,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               authoritativeCardCount={cardStateContext?.cardsDealt}
-              handContextId={handContextKey}
+              handContextId={hasActiveRound ? handContextKey : null}
               timeLeft={timeLeft}
               lastRoundResult={(game as any).last_round_result || null}
               dealerPosition={game.dealer_position}
