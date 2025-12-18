@@ -489,13 +489,22 @@ anteAnimationTriggerId,
   // Sync local state changes back to external cache
   useEffect(() => {
     if (externalCommunityCardsCache) {
+      const approvedLen = approvedCommunityCards?.length ?? 0;
+      console.log('[MOBILE_COMMUNITY] ↔️ sync->external cache', {
+        gameStatus,
+        currentRound,
+        approvedRoundForDisplay,
+        approvedLen,
+        showCommunityCards,
+      });
+
       externalCommunityCardsCache.current = {
         cards: approvedCommunityCards,
         round: approvedRoundForDisplay,
-        show: showCommunityCards
+        show: showCommunityCards,
       };
     }
-  }, [approvedCommunityCards, approvedRoundForDisplay, showCommunityCards, externalCommunityCardsCache]);
+  }, [approvedCommunityCards, approvedRoundForDisplay, showCommunityCards, externalCommunityCardsCache, gameStatus, currentRound]);
   
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   // Use EXTERNAL refs when provided (from Game.tsx) to persist across component remounts
