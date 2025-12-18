@@ -88,6 +88,7 @@ interface GameTableProps {
   debugHolmPaused?: boolean; // DEBUG: pause auto-progression for debugging
   isHost?: boolean; // Host can control players
   gameStatus?: string; // Game status for detecting new game start
+  handContextId?: string | null; // Authoritative round id to hard-reset UI caches (prevents stale community/Chucky cards)
   // Chat props
   chatBubbles?: ChatBubbleData[];
   onSendChat?: (message: string) => void;
@@ -146,6 +147,7 @@ export const GameTable = ({
   debugHolmPaused,
   isHost,
   gameStatus,
+  handContextId,
   chatBubbles = [],
   onSendChat,
   isChatSending = false,
@@ -207,6 +209,29 @@ export const GameTable = ({
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+
+  // AGGRESSIVE: When your player-hand round changes, hard-reset Chucky/showdown caches.
+  const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
+  useEffect(() => {
+    if (!handContextId) return;
+    const prev = prevHandContextIdRef.current;
+
+    if (prev && prev !== handContextId) {
+      console.error('[HAND_RESET][DESKTOP] Authoritative round changed -> clearing cached Chucky/showdown/local cards', {
+        prev,
+        next: handContextId,
+      });
+      setCachedChuckyCards(null);
+      setCachedChuckyActive(false);
+      setCachedChuckyCardsRevealed(0);
+      showdownRoundRef.current = null;
+      showdownCardsCache.current = new Map();
+      setLocalPlayerCards([]);
+      lastFetchedRoundIdRef.current = null;
+    }
+
+    prevHandContextIdRef.current = handContextId;
+  }, [handContextId]);
   
   // Compute showdown state synchronously during render
   // Count players who stayed for multi-player showdown detection
