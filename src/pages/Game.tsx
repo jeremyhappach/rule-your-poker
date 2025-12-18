@@ -562,6 +562,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     prevStatusForCacheRef.current = next;
   }, [game?.status, clearLiftedCardCaches]);
 
+  // CRITICAL: Holm first-hand start can briefly flip game.status to in_progress BEFORE the new round exists.
+  // If we show anything during that gap, React will render the previous hand's cards/decisions.
+  const inProgressNoRoundGuardRef = useRef(false);
+  useEffect(() => {
+    const isHolm = game?.game_type === 'holm-game';
+    const status = game?.status ?? null;
+    const roundsCount = game?.rounds?.length ?? 0;
+
+    const shouldGuard = isHolm && status === 'in_progress' && roundsCount === 0;
+
+    if (!shouldGuard) {
+      inProgressNoRoundGuardRef.current = false;
+      return;
+    }
+
+    if (inProgressNoRoundGuardRef.current) return;
+    inProgressNoRoundGuardRef.current = true;
+
+    console.warn('[CACHE_GUARD] in_progress without any rounds yet (Holm start) - clearing UI state to prevent stale render');
+    clearLiftedCardCaches('IN_PROGRESS WITHOUT ROUND (Holm start)', { status, roundsCount });
+    setCachedRoundData(null);
+    cachedRoundRef.current = null;
+    setPlayerCards([]);
+    setCardStateContext(null);
+    maxRevealedRef.current = 0;
+    cardIdentityRef.current = '';
+  }, [game?.game_type, game?.status, game?.rounds?.length, clearLiftedCardCaches]);
+
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
   const dealerConfigGuardFiredRef = useRef(false);
   useEffect(() => {
@@ -2673,6 +2701,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
 
         if (roundData) {
+          const prevPlayerCardsRoundId = cardStateContext?.roundId ?? null;
+
           // Store authoritative card context from the round record
           const newCardContext: CardStateContext = {
             roundId: roundData.id,
@@ -2703,8 +2733,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else if (cardsError) {
             console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
           } else {
-            console.log('[FETCH] No cards found for round, keeping existing cards');
-            // Don't clear cards if none found - might just be a timing issue
+            // IMPORTANT: If the round id changed but the new round has no cards yet,
+            // we MUST clear local cards to avoid rendering the previous hand while we wait.
+            if (prevPlayerCardsRoundId && prevPlayerCardsRoundId !== roundData.id) {
+              console.warn('[FETCH] No cards yet for NEW round - clearing stale playerCards until backend inserts land', {
+                prevPlayerCardsRoundId,
+                nextRoundId: roundData.id,
+              });
+              setPlayerCards([]);
+            } else {
+              console.log('[FETCH] No cards found for round, keeping existing cards (same round - likely timing)');
+            }
           }
         }
       } else if (isHolmGame && gameData.awaiting_next_round && !gameData.last_round_result) {
