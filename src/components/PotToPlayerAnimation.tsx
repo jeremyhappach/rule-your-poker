@@ -38,15 +38,16 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   };
 
   // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
+  // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 88, left: 50 }; // Current player (bottom center)
+    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 88, left: 12 },   // Bottom-left: bottom-2 left-10
-      1: { top: 50, left: 5 },    // Middle-left: left-0 top-1/2
-      2: { top: 5, left: 12 },    // Top-left: top-2 left-10
-      3: { top: 5, left: 88 },    // Top-right: top-2 right-10
-      4: { top: 50, left: 95 },   // Middle-right: right-0 top-1/2
-      5: { top: 88, left: 88 },   // Bottom-right: bottom-2 right-10
+      0: { top: 92, left: 10 },   // Bottom-left: bottom-2 left-10
+      1: { top: 50, left: 2 },    // Middle-left: left-0 top-1/2
+      2: { top: 2, left: 10 },    // Top-left: top-2 left-10
+      3: { top: 2, left: 90 },    // Top-right: top-2 right-10
+      4: { top: 50, left: 98 },   // Middle-right: right-0 top-1/2
+      5: { top: 92, left: 90 },   // Bottom-right: bottom-2 right-10
     };
     return slots[slotIndex] || { top: 50, left: 50 };
   };
