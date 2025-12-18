@@ -1204,6 +1204,8 @@ export const MobileGameTable = ({
 
   // Handle pot-to-player animation complete -> 3 second delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
+    console.log('[357 WIN] handlePotToPlayerComplete357 called, phase:', threeFiveSevenWinPhaseRef.current);
+    
     // Use ref to get current phase (avoids stale closure)
     if (threeFiveSevenWinPhaseRef.current !== 'pot-to-player') {
       console.log('[357 WIN] handlePotToPlayerComplete357 called but not in pot-to-player phase, ignoring. Current phase:', threeFiveSevenWinPhaseRef.current);
@@ -1225,20 +1227,27 @@ export const MobileGameTable = ({
     
     // Capture current animation ID
     const animationId = currentAnimationIdRef.current;
+    console.log('[357 WIN] Captured animationId for completion check:', animationId);
     
     // 3 second delay before proceeding to next game
     setTimeout(() => {
+      console.log('[357 WIN] 3s delay complete, checking animationId. Current:', currentAnimationIdRef.current, 'Expected:', animationId);
       // Only complete if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
         console.log('[357 WIN] Stale animation, skipping completion');
         return;
       }
-      console.log('[357 WIN] Animation sequence complete, proceeding to next game');
+      console.log('[357 WIN] Animation sequence complete, calling onThreeFiveSevenWinAnimationComplete. Callback exists:', !!onThreeFiveSevenWinAnimationComplete);
       setThreeFiveSevenWinPhase('idle');
       threeFiveSevenWinPhaseRef.current = 'idle';
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
-      onThreeFiveSevenWinAnimationComplete?.();
+      if (onThreeFiveSevenWinAnimationComplete) {
+        console.log('[357 WIN] Invoking parent callback now');
+        onThreeFiveSevenWinAnimationComplete();
+      } else {
+        console.error('[357 WIN] ERROR: onThreeFiveSevenWinAnimationComplete is undefined!');
+      }
     }, 3000);
   }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount]);
 

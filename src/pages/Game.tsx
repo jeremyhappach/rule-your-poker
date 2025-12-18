@@ -3138,25 +3138,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
   // SAFETY FALLBACK: Auto-proceed for 3-5-7 games if stuck in game_over without game_over_at
-  // This prevents the game from getting stuck if the win animation doesn't trigger
+  // This prevents the game from getting stuck if the win animation callback doesn't fire
+  // Uses fresh DB check to avoid stale React state issues
   useEffect(() => {
     if (game?.status === 'game_over' && 
         game?.game_type !== 'holm-game' && 
         !game?.game_over_at && 
         game?.last_round_result?.includes('won the game')) {
-      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed');
+      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed in 8s');
       
       const timer = setTimeout(async () => {
-        // Double-check we're still stuck before proceeding
-        if (game?.status === 'game_over' && !game?.game_over_at) {
-          console.log('[357 SAFETY FALLBACK] Still stuck after 5s, auto-proceeding to next game');
+        // Fetch FRESH game state from DB - React state may be stale
+        const { data: freshGame } = await supabase
+          .from('games')
+          .select('status, game_over_at')
+          .eq('id', gameId)
+          .single();
+        
+        // Only proceed if we're STILL stuck (fresh DB check)
+        if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
+          console.log('[357 SAFETY FALLBACK] Still stuck after 8s (verified via DB), auto-proceeding to next game');
           await handleGameOverComplete();
+        } else {
+          console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame?.status, freshGame?.game_over_at);
         }
-      }, 5000); // 5 second fallback (enough time for animation to complete normally)
+      }, 8000); // 8 second fallback (enough time for full animation sequence: 2.6s + 1.8s + 3s = 7.4s)
       
       return () => clearTimeout(timer);
     }
-  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, handleGameOverComplete]);
+  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, gameId, handleGameOverComplete]);
 
   useEffect(() => {
     if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
