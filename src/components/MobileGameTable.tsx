@@ -772,15 +772,24 @@ anteAnimationTriggerId,
     // Use REF for detection (to prevent re-triggering) but STATE for render gating
     const isNewRound = currentRound && currentRound !== lastDetectedRoundRef.current;
     
+    // FIX: Also check if we have community cards but they're not approved (desync recovery)
+    const hasUnapprovedCards = communityCards && communityCards.length > 0 && 
+      (!approvedCommunityCards || approvedCommunityCards.length === 0) && 
+      !isDelayingCommunityCards;
+    
     console.log('[MOBILE_COMMUNITY] Checking new round:', { 
       isNewRound, 
       currentRound, 
       lastDetectedRound: lastDetectedRoundRef.current,
-      approvedRoundForDisplay
+      approvedRoundForDisplay,
+      hasUnapprovedCards,
+      communityCardsLength: communityCards?.length,
+      approvedCardsLength: approvedCommunityCards?.length
     });
     
-    if (isNewRound) {
-      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting reveal delay (cards hidden until approved)');
+    // Trigger approval if new round OR if we have cards but they're not approved
+    if (isNewRound || hasUnapprovedCards) {
+      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND or DESYNC RECOVERY - starting reveal delay');
       lastDetectedRoundRef.current = currentRound; // Mark as detected to prevent re-trigger
       
       // Hide cards and reset state
@@ -795,6 +804,8 @@ anteAnimationTriggerId,
       }
       
       // Initial delay of 1 second, then reveal cards one at a time
+      // FIX: For desync recovery, use shorter delay (300ms) to catch up faster
+      const delayTime = hasUnapprovedCards && !isNewRound ? 300 : 1000;
       const cardCount = communityCardsRevealed || 2;
       communityCardsDelayRef.current = setTimeout(() => {
         console.log('[MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
@@ -810,7 +821,7 @@ anteAnimationTriggerId,
             }
           }, (i - 1) * 150);
         }
-      }, 1000);
+      }, delayTime);
     }
     
     return () => {
@@ -818,7 +829,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards, approvedCommunityCards, isDelayingCommunityCards]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
