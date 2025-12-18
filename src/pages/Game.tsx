@@ -28,6 +28,7 @@ import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDeci
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
+import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot, Settings } from "lucide-react";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
@@ -4134,7 +4135,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {(isDealer || dealerPlayer?.is_bot) ? (
                   <DealerGameSetup
                     gameId={gameId!}
-                    dealerUsername={dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`}
+                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)}
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
@@ -4147,7 +4148,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 ) : (
                   // Non-dealer waiting message - show for all non-dealers
                   <DealerSettingUpGame 
-                    dealerUsername={dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`}
+                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)}
                   />
                 )}
               </div>
@@ -4261,7 +4262,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       <div className="flex items-center gap-2">
                         {index === 0 && <span className="text-2xl">🏆</span>}
                         <span className={index === 0 ? 'font-bold text-poker-gold' : ''}>
-                          {p.profiles?.username || `Player ${p.position}`}
+                          {p.is_bot ? getBotAlias(players, p.user_id) : (p.profiles?.username || `Player ${p.position}`)}
                           {p.is_bot && ' 🤖'}
                         </span>
                       </div>
@@ -4466,6 +4467,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         open={showPlayerOptions}
         onOpenChange={setShowPlayerOptions}
         player={selectedPlayer}
+        players={players}
         gameId={gameId!}
         isHost={isCreator}
         currentUserId={user?.id}

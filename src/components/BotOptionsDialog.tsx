@@ -8,12 +8,16 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { getBotAlias } from "@/lib/botAlias";
 
 interface BotPlayer {
   id: string;
+  user_id: string;
   position: number;
   sitting_out: boolean;
   waiting?: boolean;
+  is_bot: boolean;
+  created_at?: string;
   profiles?: {
     username: string;
   };
@@ -23,6 +27,7 @@ interface BotOptionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bot: BotPlayer | null;
+  players: BotPlayer[];
   onUpdate: () => void;
 }
 
@@ -30,13 +35,14 @@ export const BotOptionsDialog = ({
   open,
   onOpenChange,
   bot,
+  players,
   onUpdate,
 }: BotOptionsDialogProps) => {
   const [updating, setUpdating] = useState(false);
   
   if (!bot) return null;
   
-  const botName = bot.profiles?.username || `Bot ${bot.position}`;
+  const botName = getBotAlias(players, bot.user_id);
   const isSittingOut = bot.sitting_out && !bot.waiting;
   
   const handleSitOutNextHand = async () => {

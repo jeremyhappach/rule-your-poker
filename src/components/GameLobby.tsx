@@ -11,6 +11,7 @@ import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
 import { formatChipValue } from "@/lib/utils";
+import { getBotAlias } from "@/lib/botAlias";
 import { Settings, Info } from "lucide-react";
 import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
@@ -206,7 +207,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           host_username,
           duration_minutes: durationMinutes,
           players: playersData?.map(p => ({
-            username: p.profiles?.username || 'Unknown',
+            username: p.is_bot 
+              ? getBotAlias(playersData.map(pd => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })), p.user_id)
+              : (p.profiles?.username || 'Unknown'),
             chips: p.chips,
             legs: p.legs,
             is_bot: p.is_bot,

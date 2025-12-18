@@ -17,6 +17,7 @@ import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
 
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
+import { getBotAlias } from "@/lib/botAlias";
 import { formatChipValue } from "@/lib/utils";
 import { useState, useMemo, useLayoutEffect, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
@@ -35,6 +36,7 @@ interface Player {
   sitting_out: boolean;
   sitting_out_hands?: number;
   waiting?: boolean;
+  created_at?: string;
   profiles?: {
     username: string;
     aggression_level?: string;
@@ -1242,7 +1244,7 @@ export const GameTable = ({
                         <ChipChangeIndicator currentChips={player.chips} playerId={player.id} />
                         {/* Player name - no longer clickable, moved to chip balance */}
                         <p className="font-bold text-[9px] sm:text-[10px] md:text-xs text-amber-100 truncate max-w-[50px] sm:max-w-[70px] md:max-w-[90px] lg:max-w-[100px]">
-                          {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
+                          {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
                           {player.is_bot && player.profiles?.aggression_level && (
                             <span className="text-purple-300 ml-0.5">
                               ({getAggressionAbbreviation(player.profiles.aggression_level)})
