@@ -3563,16 +3563,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const handleAddBot = async () => {
     if (!gameId) return;
-
-    console.log('[ADD BOT] Starting to add bot player');
-    
     try {
       await addBotPlayer(gameId);
-      console.log('[ADD BOT] Bot added successfully');
-      // Manual refetch to ensure bot shows up immediately
       setTimeout(() => fetchGameData(), 500);
     } catch (error: any) {
-      console.error('[ADD BOT] Error adding bot:', error);
       toast({
         title: "Error",
         description: "Failed to add bot player",
@@ -3821,16 +3815,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isPaused={game.is_paused}
                   onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
                   onAddBot={async () => {
-                    console.log('[ADD BOT CLICK] Desktop menu clicked, gameId:', gameId);
-                    toast({ title: "Adding bot…", description: "Creating a bot seat for next hand." });
                     try {
-                      console.log('[ADD BOT CLICK] Calling addBotPlayerSittingOut...');
-                      const result = await addBotPlayerSittingOut(gameId!);
-                      console.log('[ADD BOT CLICK] Bot created successfully:', result);
-                      toast({ title: "Bot added", description: "Bot will join next hand." });
+                      await addBotPlayerSittingOut(gameId!);
                       fetchGameData();
                     } catch (error: any) {
-                      console.error('[ADD BOT CLICK] Error creating bot:', error);
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}
@@ -3859,16 +3847,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       <Button 
                         variant="outline" 
                         onClick={async () => {
-                          console.log('[ADD BOT CLICK] Standalone button clicked, gameId:', gameId);
-                          toast({ title: "Adding bot…", description: "Creating a bot seat for next hand." });
                           try {
-                            console.log('[ADD BOT CLICK] Calling addBotPlayerSittingOut...');
-                            const result = await addBotPlayerSittingOut(gameId!);
-                            console.log('[ADD BOT CLICK] Bot created successfully:', result);
-                            toast({ title: "Bot added", description: "Bot will join next hand." });
+                            await addBotPlayerSittingOut(gameId!);
                             fetchGameData();
                           } catch (error: any) {
-                            console.error('[ADD BOT CLICK] Error creating bot:', error);
                             toast({ title: "Error", description: error.message, variant: "destructive" });
                           }
                         }}
@@ -3939,16 +3921,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isPaused={game.is_paused}
                   onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
                   onAddBot={async () => {
-                    console.log('[ADD BOT CLICK] Mobile menu clicked, gameId:', gameId);
-                    toast({ title: "Adding bot…", description: "Creating a bot seat for next hand." });
                     try {
-                      console.log('[ADD BOT CLICK] Calling addBotPlayerSittingOut...');
-                      const result = await addBotPlayerSittingOut(gameId!);
-                      console.log('[ADD BOT CLICK] Bot created successfully:', result);
-                      toast({ title: "Bot added", description: "Bot will join next hand." });
+                      await addBotPlayerSittingOut(gameId!);
                       fetchGameData();
                     } catch (error: any) {
-                      console.error('[ADD BOT CLICK] Error creating bot:', error);
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}

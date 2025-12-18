@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
-import { useToast } from "@/hooks/use-toast";
+
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -102,7 +102,6 @@ export const WaitingForPlayersTable = ({
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
   const [addingBot, setAddingBot] = useState(false);
-  const { toast } = useToast();
   
   // Check if current user is seated
   const currentPlayer = players.find(p => p.user_id === currentUserId);
@@ -126,10 +125,7 @@ export const WaitingForPlayersTable = ({
   const handleAddBot = async () => {
     if (!hasOpenSeats || addingBot) return;
 
-    console.log('[WAITING ADD BOT] Clicked Add Bot', { gameId, hasOpenSeats, addingBot });
-
     setAddingBot(true);
-    toast({ title: "Adding bot…", description: "Creating a bot seat." });
 
     try {
       // Find open positions
@@ -138,8 +134,6 @@ export const WaitingForPlayersTable = ({
       const openPositions = allPositions.filter(pos => !occupiedPositions.has(pos));
 
       if (openPositions.length === 0) {
-        console.log('[WAITING ADD BOT] Table full - no open seats');
-        toast({ title: "No open seats", description: "Table is full." });
         return;
       }
 
@@ -150,14 +144,10 @@ export const WaitingForPlayersTable = ({
       // Create bot profile
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
-      const { data: existingBotProfiles, error: existingBotsError } = await supabase
+      const { data: existingBotProfiles } = await supabase
         .from('profiles')
         .select('username')
         .like('username', 'Bot %');
-
-      if (existingBotsError) {
-        console.warn('[WAITING ADD BOT] Could not fetch existing bot profiles:', existingBotsError);
-      }
 
       const existingUsernames = (existingBotProfiles ?? []).map((p) => p.username);
       const nextNumber = getNextBotNumber(existingUsernames);
@@ -176,7 +166,6 @@ export const WaitingForPlayersTable = ({
 
       if (profileError?.code === '23505') {
         botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
-        console.warn('[WAITING ADD BOT] Bot username collision, retrying with suffix:', botName);
 
         ({ error: profileError } = await supabase
           .from('profiles')
@@ -208,15 +197,8 @@ export const WaitingForPlayersTable = ({
       if (playerError) {
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
-
-      toast({ title: "Bot added", description: `${botName} joined seat #${nextPosition}.` });
     } catch (error: any) {
-      console.error('[WAITING ADD BOT] Error adding bot:', error);
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to add bot",
-        variant: "destructive",
-      });
+      console.error('Error adding bot:', error);
     } finally {
       setAddingBot(false);
     }
