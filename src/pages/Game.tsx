@@ -3137,7 +3137,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
-  // Detect Holm win (player beats Chucky) and trigger pot animation
+  // SAFETY FALLBACK: Auto-proceed for 3-5-7 games if stuck in game_over without game_over_at
+  // This prevents the game from getting stuck if the win animation doesn't trigger
+  useEffect(() => {
+    if (game?.status === 'game_over' && 
+        game?.game_type !== 'holm-game' && 
+        !game?.game_over_at && 
+        game?.last_round_result?.includes('won the game')) {
+      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed');
+      
+      const timer = setTimeout(async () => {
+        // Double-check we're still stuck before proceeding
+        if (game?.status === 'game_over' && !game?.game_over_at) {
+          console.log('[357 SAFETY FALLBACK] Still stuck after 5s, auto-proceeding to next game');
+          await handleGameOverComplete();
+        }
+      }, 5000); // 5 second fallback (enough time for animation to complete normally)
+      
+      return () => clearTimeout(timer);
+    }
+  }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, handleGameOverComplete]);
+
   useEffect(() => {
     if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
       const resultMessage = game.last_round_result;
