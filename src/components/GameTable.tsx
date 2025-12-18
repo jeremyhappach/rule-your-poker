@@ -1325,18 +1325,6 @@ export const GameTable = ({
                               <label className="flex items-center gap-1 cursor-pointer">
                                 <input
                                   type="checkbox"
-                                  checked={holmPreStay}
-                                  onChange={(e) => {
-                                    onHolmPreStayChange?.(e.target.checked);
-                                    if (e.target.checked) onHolmPreFoldChange?.(false);
-                                  }}
-                                  className="w-3 h-3 rounded border border-green-500 accent-green-500"
-                                />
-                                <span className="text-[8px] font-medium text-green-500">Stay</span>
-                              </label>
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input
-                                  type="checkbox"
                                   checked={holmPreFold}
                                   onChange={(e) => {
                                     onHolmPreFoldChange?.(e.target.checked);
@@ -1345,6 +1333,18 @@ export const GameTable = ({
                                   className="w-3 h-3 rounded border border-red-500 accent-red-500"
                                 />
                                 <span className="text-[8px] font-medium text-red-500">Fold</span>
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={holmPreStay}
+                                  onChange={(e) => {
+                                    onHolmPreStayChange?.(e.target.checked);
+                                    if (e.target.checked) onHolmPreFoldChange?.(false);
+                                  }}
+                                  className="w-3 h-3 rounded border border-green-500 accent-green-500"
+                                />
+                                <span className="text-[8px] font-medium text-green-500">Stay</span>
                               </label>
                             </div>
                           );

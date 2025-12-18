@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
+import { getDisplayName } from "./botAlias";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -799,8 +800,15 @@ export async function endHolmRound(gameId: string) {
   if (stayedPlayers.length === 1) {
     console.log('[HOLM END] Case 2: Single player vs Chucky');
     
+    // Fetch all players for bot alias calculation
+    const { data: allPlayersForAlias } = await supabase
+      .from('players')
+      .select('user_id, is_bot, created_at')
+      .eq('game_id', gameId);
+    const aliasPlayersList = allPlayersForAlias || [];
+    
     const player = stayedPlayers[0];
-    const playerUsername = player.profiles?.username || player.user_id;
+    const playerUsername = getDisplayName(aliasPlayersList, player, player.profiles?.username || player.user_id);
     
     // Step 1: Expose player's cards by setting all_decisions_in
     console.log('[HOLM END] Step 1: Exposing player cards...');
@@ -1025,6 +1033,13 @@ async function handleChuckyShowdown(
   console.log('[HOLM SHOWDOWN] Community cards:', communityCards);
   console.log('[HOLM SHOWDOWN] Round pot (authoritative):', roundPot, 'game.pot:', game.pot);
 
+  // Fetch all players for bot alias calculation
+  const { data: allPlayers } = await supabase
+    .from('players')
+    .select('user_id, is_bot, created_at')
+    .eq('game_id', gameId);
+  const playersList = allPlayers || [];
+
   // Get player's cards (use limit(1) to handle potential duplicates gracefully)
   const { data: playerCardsArray, error: cardsError } = await supabase
     .from('player_cards')
@@ -1104,8 +1119,8 @@ async function handleChuckyShowdown(
 
   console.log('[HOLM SHOWDOWN] *** WINNER:', playerWins ? 'PLAYER' : 'CHUCKY', '***');
   
-  // Get player username
-  const playerUsername = player.profiles?.username || player.user_id;
+  // Get player display name (bot alias for bots, username for humans)
+  const playerUsername = getDisplayName(playersList, player, player.profiles?.username || player.user_id);
 
   if (playerWins) {
     console.log('[HOLM SHOWDOWN] Player wins! Pot:', roundPot);
@@ -1293,6 +1308,13 @@ async function handleMultiPlayerShowdown(
   });
   console.log('[HOLM MULTI] roundPot:', roundPot, 'game.pot:', game.pot);
 
+  // Fetch all players for bot alias calculation
+  const { data: allPlayers } = await supabase
+    .from('players')
+    .select('user_id, is_bot, created_at')
+    .eq('game_id', gameId);
+  const playersList = allPlayers || [];
+
   // Status already set to 'showdown' and 3-second delay already completed in endHolmRound
   // Now reveal the 2 hidden community cards (cards 3 and 4)
   console.log('[HOLM MULTI] Revealing hidden community cards (3 and 4)...');
@@ -1366,7 +1388,8 @@ async function handleMultiPlayerShowdown(
         position: playerData?.position,
         chips: playerData?.chips || 0,
         profiles: playerData?.profiles,
-        user_id: playerData?.user_id
+        user_id: playerData?.user_id,
+        is_bot: playerData?.is_bot || false
       },
       evaluation,
       cards: playerCards
@@ -1452,7 +1475,7 @@ async function handleMultiPlayerShowdown(
 
   if (winners.length === 1) {
     const winner = winners[0];
-    const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
+    const winnerUsername = getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id);
     
     // Winner takes ONLY the pot
     console.log('[HOLM MULTI] Winner', winnerUsername, 'takes pot:', roundPot);
@@ -1613,7 +1636,7 @@ async function handleMultiPlayerShowdown(
       
       // Use atomic decrement to prevent race conditions / stale chip values
       const loserIds = playersLoseToChucky.map(l => l.player.id);
-      const loserNames = playersLoseToChucky.map(l => l.player.profiles?.username || l.player.user_id);
+      const loserNames = playersLoseToChucky.map(l => getDisplayName(playersList, l.player, l.player.profiles?.username || l.player.user_id));
       
       const { error: tieLoserChipError } = await supabase.rpc('decrement_player_chips', {
         player_ids: loserIds,
@@ -1656,7 +1679,7 @@ async function handleMultiPlayerShowdown(
       let winnerNames: string[] = [];
       
       for (const winner of playersBeatChucky) {
-        const winnerUsername = winner.player.profiles?.username || winner.player.user_id;
+        const winnerUsername = getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id);
         winnerNames.push(winnerUsername);
         
         await supabase
