@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from "react";
+import { getBotAlias } from "@/lib/botAlias";
 
 interface Player {
   id: string;
+  user_id: string;
   position: number;
+  created_at?: string;
   profiles?: {
     username: string;
   };
@@ -103,7 +106,9 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
             <h2 className="text-xl sm:text-3xl font-bold text-poker-gold">Selecting Dealer...</h2>
             <div className="bg-poker-gold/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 border-2 border-poker-gold/40">
               <p className="text-lg sm:text-2xl font-bold text-white truncate max-w-[200px] sm:max-w-none mx-auto">
-                {currentPlayer?.profiles?.username || `Seat ${currentPlayer?.position}`}
+                {currentPlayer?.is_bot 
+                  ? getBotAlias(sortedPlayers, currentPlayer.user_id) 
+                  : (currentPlayer?.profiles?.username || `Seat ${currentPlayer?.position}`)}
                 {currentPlayer?.is_bot && ' 🤖'}
               </p>
             </div>

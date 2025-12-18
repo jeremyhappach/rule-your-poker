@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { getBotAlias } from "@/lib/botAlias";
 
 interface ClickedPlayer {
   id: string;
@@ -16,6 +17,7 @@ interface ClickedPlayer {
   sitting_out: boolean;
   waiting?: boolean;
   is_bot: boolean;
+  created_at?: string;
   profiles?: {
     username: string;
   };
@@ -25,6 +27,7 @@ interface PlayerClickDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   player: ClickedPlayer | null;
+  players: ClickedPlayer[];
   gameId: string;
   isHost: boolean;
   currentUserId?: string;
@@ -35,6 +38,7 @@ export const PlayerClickDialog = ({
   open,
   onOpenChange,
   player,
+  players,
   gameId,
   isHost,
   currentUserId,
@@ -44,7 +48,9 @@ export const PlayerClickDialog = ({
   
   if (!player) return null;
   
-  const playerName = player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `Player ${player.position}`);
+  const playerName = player.is_bot 
+    ? getBotAlias(players, player.user_id) 
+    : (player.profiles?.username || `Player ${player.position}`);
   const isSittingOut = player.sitting_out && !player.waiting;
   const isClickedPlayerSelf = player.user_id === currentUserId;
   const canMakeHost = isHost && !player.is_bot && !isClickedPlayerSelf;
@@ -59,7 +65,6 @@ export const PlayerClickDialog = ({
       
       if (error) throw error;
       
-      console.log(`Host changed to ${playerName}`);
       onUpdate();
       onOpenChange(false);
     } catch (error) {
