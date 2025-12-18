@@ -127,7 +127,8 @@ interface MobileGameTableProps {
   anteAmount?: number;
   pussyTaxValue?: number;
   gameStatus?: string; // For ante animation trigger
-anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
+  handContextId?: string | null; // Authoritative round id to hard-reset UI caches (prevents stale community/Chucky cards)
+  anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
   preAnteChips?: Record<string, number> | null; // Captured chip values BEFORE ante deduction to prevent race conditions
   expectedPostAnteChips?: Record<string, number> | null; // Expected chip values AFTER ante deduction - use this directly for display
@@ -238,7 +239,8 @@ export const MobileGameTable = ({
   anteAmount = 1,
   pussyTaxValue = 1,
   gameStatus,
-anteAnimationTriggerId,
+  handContextId,
+  anteAnimationTriggerId,
   anteAnimationExpectedPot,
   preAnteChips,
   expectedPostAnteChips,
@@ -545,6 +547,51 @@ anteAnimationTriggerId,
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+
+  // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
+  // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
+  const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
+  useEffect(() => {
+    if (!handContextId) return;
+
+    const prev = prevHandContextIdRef.current;
+    if (prev && prev !== handContextId) {
+      console.error('[HAND_RESET][MOBILE] Authoritative round changed -> clearing ALL local card UI caches', {
+        prev,
+        next: handContextId,
+        currentRound,
+        gameStatus,
+      });
+
+      // Community UI cache
+      setShowCommunityCards(false);
+      setApprovedCommunityCards(null);
+      setApprovedRoundForDisplay(null);
+      setIsDelayingCommunityCards(false);
+      setStaggeredCardCount(0);
+      lastDetectedRoundRef.current = null;
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
+      }
+
+      // Showdown exposure cache
+      showdownRoundRef.current = null;
+      showdownCardsCache.current = new Map();
+
+      // Chucky UI cache
+      setCachedChuckyCards(null);
+      setCachedChuckyActive(false);
+      setCachedChuckyCardsRevealed(0);
+
+      // External lifted community cache (parent)
+      if (externalCommunityCardsCache) {
+        externalCommunityCardsCache.current = { cards: null, round: null, show: false };
+      }
+    }
+
+    prevHandContextIdRef.current = handContextId;
+  }, [handContextId, currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache]);
   
   // Compute showdown state synchronously during render
   // This should trigger when we need to show exposed cards
