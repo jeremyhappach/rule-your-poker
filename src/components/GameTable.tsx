@@ -900,6 +900,16 @@ export const GameTable = ({
           <span className="text-white/30 font-bold text-sm sm:text-base md:text-lg uppercase tracking-wider">
             {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
           </span>
+          {/* TEMP DEBUG: show effective round number to diagnose early/incorrect increments */}
+          {gameType === 'holm-game' && (
+            <Badge
+              variant="secondary"
+              className="mt-1 text-[10px] sm:text-[11px] px-2 py-0.5 bg-background/30 text-foreground border border-border/40 backdrop-blur-sm"
+            >
+              Round {effectiveRoundNumber}
+              {realtimeRound?.round_number ? ` (rt ${realtimeRound.round_number})` : ''}
+            </Badge>
+          )}
         </div>
         
         <div className="relative h-full">
