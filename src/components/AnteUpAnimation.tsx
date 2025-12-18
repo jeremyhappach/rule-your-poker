@@ -166,16 +166,16 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     setAnimations(newAnims);
     lastAnimatedPotRef.current = pot;
     
-    // Trigger callback when chips arrive at pot (at 80% of 2s = 1.6s)
+    // Trigger callback when chips arrive at pot (at end of travel animation)
     if (onChipsArrived) {
       setTimeout(() => {
         onChipsArrived();
-      }, 1600);
+      }, 800); // Faster callback - chips arrive at 70% of 1s = 700ms
     }
     
     setTimeout(() => {
       setAnimations([]);
-    }, 2200);
+    }, 1200); // Cleanup after animation completes
   }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, gameStatus, triggerId, anteAmount, onAnimationStart, onChipsArrived]);
 
   if (animations.length === 0) return null;
@@ -195,7 +195,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
           <div
             className="w-7 h-7 rounded-full bg-sky-400 border-2 border-white shadow-lg flex items-center justify-center"
             style={{
-              animation: `anteChipMove${i} 2s ease-in-out forwards`,
+              animation: `anteChipMove${i} 1s ease-out forwards`,
             }}
           >
             <span className="text-black text-[10px] font-bold">${lockedDisplayAmountRef.current}</span>
@@ -206,8 +206,12 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
                 transform: translate(0, 0) scale(1);
                 opacity: 1;
               }
-              80% {
-                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(0.9);
+              70% {
+                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(1);
+                opacity: 1;
+              }
+              85% {
+                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(1.1);
                 opacity: 1;
               }
               100% {
