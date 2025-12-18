@@ -2433,11 +2433,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (isHolmGame) {
             await proceedToNextHolmRound(gameId);
           } else {
-            // CRITICAL: Fetch FRESH game state to check for 357 sweep
+            // CRITICAL: Fetch FRESH game state to check for 357 sweep or final leg win
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('last_round_result, next_round_number, pot, ante_amount, status')
+              .select('last_round_result, next_round_number, pot, ante_amount, status, legs_to_win')
               .eq('id', gameId)
               .single();
             
@@ -2445,6 +2445,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             if (freshGame?.status === 'game_over') {
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
               return;
+            }
+            
+            // CRITICAL FIX: Check if this is a final leg win scenario
+            // If the result says "won a leg" we need to check if any player reached legs_to_win
+            // The backend's handleGameOver runs after a 4-second delay (same as this timer)
+            // so we might race with it. If it's a final leg, DON'T proceed - wait for game_over
+            const lastResult = freshGame?.last_round_result || '';
+            const isLegWin = lastResult.includes('won a leg');
+            if (isLegWin) {
+              // Fetch current player leg counts to check if anyone reached the goal
+              const { data: currentPlayers } = await supabase
+                .from('players')
+                .select('id, legs, user_id, profiles(username)')
+                .eq('game_id', gameId);
+              
+              const legsToWin = freshGame?.legs_to_win || 3;
+              const winningPlayer = currentPlayers?.find(p => p.legs >= legsToWin);
+              
+              if (winningPlayer) {
+                console.log('[AWAITING_NEXT_ROUND] ⚠️ Final leg win detected! Player reached', legsToWin, 'legs. Waiting for game_over instead of proceeding.');
+                console.log('[AWAITING_NEXT_ROUND] Winner:', winningPlayer.profiles?.username || winningPlayer.user_id);
+                // Don't proceed - the backend's handleGameOver will transition to game_over shortly
+                // The safety fallback or next fetch will catch the game_over state
+                return;
+              }
             }
             
             // First, clear the result and proceed to next round
