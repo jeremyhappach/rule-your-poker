@@ -34,16 +34,17 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
     };
   };
 
-  // Slot positions as percentages of container
+  // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
+  // These coordinates target the CENTER of where player chips render
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
+    if (slotIndex === -1) return { top: 88, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 82, left: 18 },
-      1: { top: 50, left: 8 },
-      2: { top: 12, left: 18 },
-      3: { top: 12, left: 82 },
-      4: { top: 50, left: 92 },
-      5: { top: 82, left: 82 },
+      0: { top: 88, left: 12 },   // Bottom-left: bottom-2 left-10 → ~88% from top, ~12% from left
+      1: { top: 50, left: 5 },    // Middle-left: left-0 top-1/2 → 50% from top, ~5% from left (chip width offset)
+      2: { top: 5, left: 12 },    // Top-left: top-2 left-10 → ~5% from top, ~12% from left
+      3: { top: 5, left: 88 },    // Top-right: top-2 right-10 → ~5% from top, ~88% from left
+      4: { top: 50, left: 95 },   // Middle-right: right-0 top-1/2 → 50% from top, ~95% from left
+      5: { top: 88, left: 88 },   // Bottom-right: bottom-2 right-10 → ~88% from top, ~88% from left
     };
     return slots[slotIndex] || { top: 50, left: 50 };
   };
