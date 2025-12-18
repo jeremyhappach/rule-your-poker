@@ -510,9 +510,9 @@ export const GameTable = ({
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     
-    // CRITICAL: Clear cached Chucky cards when a new game starts (ante_decision or configuring status)
+    // CRITICAL: Clear cached Chucky cards when a new game starts (dealer config phases)
     // This prevents old cards from the previous game showing up
-    if (gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection') {
+    if (gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection') {
       if (cachedChuckyCards && cachedChuckyCards.length > 0) {
         console.log('[GAMETABLE_CHUCKY] New game starting - clearing cached Chucky cards');
         setCachedChuckyCards(null);
