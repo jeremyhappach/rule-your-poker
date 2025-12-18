@@ -552,13 +552,13 @@ export const MobileGameTable = ({
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
   const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
   useEffect(() => {
-    if (!handContextId) return;
-
     const prev = prevHandContextIdRef.current;
-    if (prev && prev !== handContextId) {
-      console.error('[HAND_RESET][MOBILE] Authoritative round changed -> clearing ALL local card UI caches', {
+    const next = handContextId ?? null;
+
+    if (prev !== next) {
+      console.error('[HAND_RESET][MOBILE] Hand context changed -> clearing ALL local card UI caches', {
         prev,
-        next: handContextId,
+        next,
         currentRound,
         gameStatus,
       });
@@ -590,7 +590,7 @@ export const MobileGameTable = ({
       }
     }
 
-    prevHandContextIdRef.current = handContextId;
+    prevHandContextIdRef.current = next;
   }, [handContextId, currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache]);
   
   // Compute showdown state synchronously during render

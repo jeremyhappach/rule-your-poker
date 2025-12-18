@@ -4162,6 +4162,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
                     externalCommunityCardsCache={communityCardsCacheRef}
+                    handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
                     winner357ShowCards={winner357ShowCards}
                     onWinner357ShowCards={handleWinner357ShowCards}
                   />
@@ -4194,6 +4195,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       gameType={game.game_type}
                       roundStatus={currentRound?.status}
                       gameStatus={game.status}
+                      handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
                     />
                     {game.game_over_at && (
                       <GameOverCountdown
@@ -4292,6 +4294,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
                     gameStatus={game.status}
+                    handContextId={null}
                     chatBubbles={chatBubbles}
                     allMessages={allMessages}
                     onSendChat={sendChatMessage}
@@ -4320,6 +4323,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
                     gameStatus={game.status}
+                    handContextId={null}
                   />
                 )}
                 {(isDealer || dealerPlayer?.is_bot) ? (
@@ -4373,6 +4377,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 anteAmount={game.ante_amount}
                 pussyTaxValue={game.pussy_tax_value || 1}
                 gameStatus={game.status}
+                handContextId={null}
                 anteAnimationTriggerId={anteAnimationTriggerId}
                 anteAnimationExpectedPot={anteAnimationExpectedPot}
                 onAnteAnimationStarted={() => { setAnteAnimationTriggerId(null); setAnteAnimationExpectedPot(null); }}
@@ -4404,6 +4409,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onFold={() => {}}
                 onSelectSeat={handleSelectSeat}
                 gameStatus={game.status}
+                handContextId={null}
               />
             )}
             

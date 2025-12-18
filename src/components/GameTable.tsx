@@ -213,13 +213,13 @@ export const GameTable = ({
   // AGGRESSIVE: When your player-hand round changes, hard-reset Chucky/showdown caches.
   const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
   useEffect(() => {
-    if (!handContextId) return;
     const prev = prevHandContextIdRef.current;
+    const next = handContextId ?? null;
 
-    if (prev && prev !== handContextId) {
-      console.error('[HAND_RESET][DESKTOP] Authoritative round changed -> clearing cached Chucky/showdown/local cards', {
+    if (prev !== next) {
+      console.error('[HAND_RESET][DESKTOP] Hand context changed -> clearing cached Chucky/showdown/local cards', {
         prev,
-        next: handContextId,
+        next,
       });
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
@@ -230,7 +230,7 @@ export const GameTable = ({
       lastFetchedRoundIdRef.current = null;
     }
 
-    prevHandContextIdRef.current = handContextId;
+    prevHandContextIdRef.current = next;
   }, [handContextId]);
   
   // Compute showdown state synchronously during render
