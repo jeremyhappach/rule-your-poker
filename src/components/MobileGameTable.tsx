@@ -800,7 +800,13 @@ anteAnimationTriggerId,
       communityCardsDelayRef.current = setTimeout(() => {
         console.log('[MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
         setApprovedRoundForDisplay(currentRound); // NOW we approve this round for display
-        setApprovedCommunityCards(communityCards ? [...communityCards] : null); // Cache the cards at approval time
+
+        // IMPORTANT: Don't cache null here; community cards may arrive slightly after round number.
+        // We'll backfill approvedCommunityCards in a separate effect once cards exist.
+        if (communityCards && communityCards.length > 0) {
+          setApprovedCommunityCards([...communityCards]);
+        }
+
         setShowCommunityCards(true);
         // Stagger each card with 150ms delay
         for (let i = 1; i <= cardCount; i++) {
@@ -820,6 +826,18 @@ anteAnimationTriggerId,
       }
     };
   }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards]);
+
+  // Backfill approved community cards if the round was approved before cards arrived (Holm only)
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!approvedRoundForDisplay || approvedRoundForDisplay !== currentRound) return;
+    if (approvedCommunityCards && approvedCommunityCards.length > 0) return;
+    if (!communityCards || communityCards.length === 0) return;
+
+    console.log('[MOBILE_COMMUNITY] Backfilling approvedCommunityCards for round:', currentRound);
+    setApprovedCommunityCards([...communityCards]);
+    setShowCommunityCards(true);
+  }, [gameType, currentRound, approvedRoundForDisplay, approvedCommunityCards, communityCards]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
@@ -1332,7 +1350,7 @@ anteAnimationTriggerId,
             <span className="text-white/40 text-xs font-medium">{legsToWin} legs to win</span>
           )}
           {/* TEMP DEBUG: show round number on felt */}
-          {gameType === 'holm-game' && (
+          {gameType === 'holm-game' && currentRound > 0 && (
             <Badge
               variant="secondary"
               className="mt-1 text-[10px] px-2 py-0.5 bg-background/30 text-foreground border border-border/40 backdrop-blur-sm"
