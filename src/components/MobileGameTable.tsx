@@ -474,7 +474,18 @@ anteAnimationTriggerId,
   });
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastDetectedRoundRef = useRef<number | null>(externalCommunityCardsCache?.current?.round || null); // Track which round we've detected (to prevent re-triggering)
-  
+
+  // Never let effect cleanups cancel the 1s community-cards approval timer mid-flight.
+  // Only clear timers on explicit state transitions (buck passed) or on unmount.
+  useEffect(() => {
+    return () => {
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
+      }
+    };
+  }, []);
+
   // Sync local state changes back to external cache
   useEffect(() => {
     if (externalCommunityCardsCache) {
@@ -822,11 +833,8 @@ anteAnimationTriggerId,
       }, 1000);
     }
     
-    return () => {
-      if (communityCardsDelayRef.current) {
-        clearTimeout(communityCardsDelayRef.current);
-      }
-    };
+    // IMPORTANT: do NOT return a cleanup that clears communityCardsDelayRef here.
+    // This effect can rerun frequently; clearing would cancel the 1s approval timer and leave cards hidden.
   }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards, lastRoundResult, gameStatus]);
 
   // Backfill approvedCommunityCards if they arrive AFTER the 1s approval delay.
