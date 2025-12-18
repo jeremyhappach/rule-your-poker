@@ -177,19 +177,44 @@ export const WaitingForPlayersTable = ({
       }
       
       const botNumber = (existingBotProfiles?.length || 0) + 1;
-      const botName = `Bot ${botNumber}`;
-      
-      // Insert bot profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: botId,
-          username: botName,
-          aggression_level: aggressionLevel,
-        });
+      const candidateNames = [
+        `Bot ${botNumber}`,
+        `Bot ${botNumber}-${botId.slice(0, 4)}`,
+        `Bot ${botId.slice(0, 8)}`,
+      ];
 
-      if (profileError) {
-        throw new Error(`Failed to create bot profile: ${profileError.message}`);
+      let botName: string | null = null;
+      let lastProfileErr: any = null;
+
+      for (const name of candidateNames) {
+        console.log('[ADD BOT][waiting] trying bot username', name);
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: botId,
+            username: name,
+            aggression_level: aggressionLevel,
+          });
+
+        if (!profileError) {
+          botName = name;
+          break;
+        }
+
+        lastProfileErr = profileError;
+        const isUniqueViolation =
+          (profileError as any)?.code === '23505' ||
+          String((profileError as any)?.message ?? '').includes('profiles_username_key');
+
+        if (!isUniqueViolation) {
+          throw new Error(`Failed to create bot profile: ${(profileError as any)?.message ?? 'Unknown error'}`);
+        }
+      }
+
+      if (!botName) {
+        throw new Error(
+          `Failed to create bot profile: duplicate bot username (last error: ${String(lastProfileErr?.message ?? lastProfileErr)})`
+        );
       }
 
       console.log('[ADD BOT][waiting] profile ok, creating players row');
