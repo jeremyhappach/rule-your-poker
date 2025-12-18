@@ -13,9 +13,40 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
+    const keyToUse = serviceRoleKey || anonKey;
+
+    console.log('[ENFORCE] Init', {
+      hasUrl: !!supabaseUrl,
+      serviceRoleKeyLen: serviceRoleKey.length,
+      anonKeyLen: anonKey.length,
+      hasAuthHeader: !!authHeader,
+    });
+
+    if (!supabaseUrl || !keyToUse) {
+      return new Response(JSON.stringify({
+        error: 'Backend configuration missing (SUPABASE_URL / key)',
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabase = createClient(
+      supabaseUrl,
+      keyToUse,
+      serviceRoleKey
+        ? undefined
+        : {
+            global: {
+              headers: authHeader ? { Authorization: authHeader } : {},
+            },
+          }
+    );
 
     const { gameId } = await req.json();
     
