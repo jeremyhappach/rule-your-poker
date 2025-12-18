@@ -51,16 +51,26 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           return;
         }
 
-        const { data, error } = await supabase.functions.invoke('enforce-deadlines', {
-          body: { gameId },
-        });
+        // Wrap in inner try-catch to fully suppress transient cold-start errors
+        let data, error;
+        try {
+          const result = await supabase.functions.invoke('enforce-deadlines', {
+            body: { gameId },
+          });
+          data = result.data;
+          error = result.error;
+        } catch (invokeErr: any) {
+          // Completely suppress transient errors - don't even log
+          const msg = String(invokeErr?.message ?? invokeErr ?? '');
+          if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('401') || msg.includes('cold start')) {
+            return;
+          }
+          throw invokeErr; // Re-throw non-transient errors
+        }
 
         if (error) {
           const msg = String((error as any)?.message ?? error ?? '');
           // Transient backend/platform states we should silently ignore and retry next poll.
-          // - 503: cold start / env not ready
-          // - 401 "Key length is zero": upstream rejected request (missing/empty apikey)
-          // - 401: general auth errors during cold start
           if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('401') || msg.includes('cold start')) {
             return;
           }
