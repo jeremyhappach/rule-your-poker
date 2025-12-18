@@ -446,6 +446,25 @@ export const MobileGameTable = ({
     prevGameStatusRef.current = gameStatus;
   }, [gameStatus]);
   
+  // CRITICAL: Guard against stale card rendering when game type switches
+  // When switching from Holm to 3-5-7 (or vice versa), old cards may briefly exist in playerCards
+  // before parent clears them. Suppress card rendering for one render cycle after game type changes.
+  const prevGameTypeForGuardRef = useRef(gameType);
+  const [gameTypeJustChanged, setGameTypeJustChanged] = useState(false);
+  useEffect(() => {
+    if (prevGameTypeForGuardRef.current !== gameType) {
+      console.log('[GAME_TYPE_GUARD] Game type changed:', prevGameTypeForGuardRef.current, '->', gameType, '- suppressing stale card render');
+      setGameTypeJustChanged(true);
+      prevGameTypeForGuardRef.current = gameType;
+      // Allow rendering again after a brief delay
+      const timer = setTimeout(() => {
+        setGameTypeJustChanged(false);
+        console.log('[GAME_TYPE_GUARD] Clearing game type change guard');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [gameType]);
+  
   // EAGER CACHING: Capture current player's legs BEFORE game_over clears them
   // This must run whenever legs change, capturing the value before backend resets it
   useEffect(() => {
@@ -738,8 +757,10 @@ export const MobileGameTable = ({
   };
 
   // Find current player and their cards
+  // GUARD: When game type just changed, suppress card rendering to prevent stale cards from wrong game type
   const currentPlayer = players.find(p => p.user_id === currentUserId);
-  const currentPlayerCards = currentPlayer ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] : [];
+  const rawCurrentPlayerCards = currentPlayer ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] : [];
+  const currentPlayerCards = gameTypeJustChanged ? [] : rawCurrentPlayerCards;
 
   // Calculate lose amount
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
