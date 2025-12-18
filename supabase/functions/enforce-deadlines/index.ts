@@ -48,7 +48,20 @@ serve(async (req) => {
           }
     );
 
-    const { gameId } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      console.error('[ENFORCE] Failed to parse request body:', parseErr);
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const { gameId } = body;
+    
+    console.log('[ENFORCE] Received gameId:', gameId, 'type:', typeof gameId);
     
     if (!gameId) {
       return new Response(JSON.stringify({ error: 'gameId required' }), {
@@ -62,14 +75,28 @@ serve(async (req) => {
     let actionsTaken: string[] = [];
 
     // Fetch game data
+    console.log('[ENFORCE] Querying game:', gameId);
     const { data: game, error: gameError } = await supabase
       .from('games')
       .select('*')
       .eq('id', gameId)
       .single();
 
+    console.log('[ENFORCE] Game query result:', {
+      found: !!game,
+      error: gameError?.message || null,
+      errorCode: gameError?.code || null,
+      gameStatus: game?.status || null,
+    });
+
     if (gameError || !game) {
-      return new Response(JSON.stringify({ error: 'Game not found' }), {
+      console.error('[ENFORCE] Game not found:', { gameId, error: gameError });
+      return new Response(JSON.stringify({ 
+        error: 'Game not found',
+        gameId,
+        dbError: gameError?.message || null,
+        dbCode: gameError?.code || null,
+      }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
