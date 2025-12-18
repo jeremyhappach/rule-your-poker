@@ -3848,15 +3848,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // For waiting status: players join with waiting=true (ready to play when game starts)
           // For other setup phases: players join immediately
           // For in_progress games: players sit out until next game
-          // Use buy_in from game for initial chips
-          const initialChips = game?.buy_in || 100;
-          
           const { error: joinError } = await supabase
             .from('players')
             .insert({
               game_id: gameId,
               user_id: user.id,
-              chips: initialChips,
+              chips: 0,
               position: position,
               sitting_out: gameInProgress,
               waiting: isWaitingForPlayers ? true : gameInProgress, // waiting: mark as waiting to play
