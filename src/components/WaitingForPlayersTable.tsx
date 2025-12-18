@@ -217,6 +217,15 @@ export const WaitingForPlayersTable = ({
 
       console.log('[ADD BOT][waiting] profile ok, creating players row');
 
+      // Fetch game buy_in for initial chips
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('buy_in')
+        .eq('id', gameId)
+        .single();
+      
+      const initialChips = gameData?.buy_in || 100;
+      
       // Create bot player - active and ready to play (not sitting out)
       const { error: playerError } = await supabase
         .from('players')
@@ -224,7 +233,7 @@ export const WaitingForPlayersTable = ({
           user_id: botId,
           game_id: gameId,
           position: nextPosition,
-          chips: 0,
+          chips: initialChips,
           is_bot: true,
           status: 'active',
           sitting_out: false,
