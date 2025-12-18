@@ -1050,6 +1050,8 @@ export const MobileGameTable = ({
   }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards]);
 
   // Detect when a player earns a leg (3-5-7 games only)
+  // Track which player+leg combo we've already triggered for to prevent double-fires
+  const legAnimationFiredRef = useRef<string | null>(null);
   useEffect(() => {
     if (gameType === 'holm-game') return;
     players.forEach(player => {
@@ -1058,7 +1060,18 @@ export const MobileGameTable = ({
 
       // Player gained a leg
       if (currentLegs > prevLegs && prevLegs >= 0) {
-        const playerName = player.profiles?.username || `Player ${player.position}`;
+        // Prevent double-fire: check if we already animated this exact leg gain
+        const animationKey = `${player.id}-${currentLegs}`;
+        if (legAnimationFiredRef.current === animationKey) {
+          console.log('[LEG ANIMATION] Skipping duplicate animation for:', animationKey);
+          return;
+        }
+        legAnimationFiredRef.current = animationKey;
+        
+        // Use bot alias for bots
+        const playerName = player.is_bot 
+          ? getBotAlias(players, player.user_id) 
+          : (player.profiles?.username || `Player ${player.position}`);
         setLegEarnedPlayerName(playerName);
         setLegEarnedPlayerPosition(player.position);
         const isWinningLeg = currentLegs >= legsToWin;
