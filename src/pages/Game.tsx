@@ -154,8 +154,6 @@ const Game = () => {
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
   const [timerTurnPosition, setTimerTurnPosition] = useState<number | null>(null);
   const [pendingDecision, setPendingDecision] = useState<'stay' | 'fold' | null>(null);
-  // 3-5-7: after resuming pause, hide other players' decisions until you choose (prevents "bot decided" reveal)
-  const [hideOtherDecisionsUntilYouDecide, setHideOtherDecisionsUntilYouDecide] = useState(false);
   const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(30);
   const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
@@ -352,7 +350,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const newPausedState = !game.is_paused;
 
     const isHolmGame = game.game_type === 'holm-game' || game.game_type === 'holm';
-    const isInProgress = game.status === 'in_progress' || game.status === 'betting';
+    const isInProgress = game.status === 'in_progress';
     const isAnteDecision = game.status === 'ante_decision';
     const isConfigPhase = game.status === 'configuring' || game.status === 'game_selection';
 
@@ -461,9 +459,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Optimistic UI update
       setGame(prev => (prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev));
       autoFoldingRef.current = false;
-
-      // 3-5-7: hide other players' decisions right after resume until you choose
-      setHideOtherDecisionsUntilYouDecide(!isHolmGame);
 
       // Restore client timer source (server deadline)
       if (newDeadline && isInProgress) {
@@ -3635,7 +3630,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Optimistic UI update - show indicator immediately
     setPendingDecision('stay');
-    setHideOtherDecisionsUntilYouDecide(false);
 
     console.log('[PLAYER DECISION] Player staying:', {
       playerId: currentPlayer.id,
@@ -3669,7 +3663,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Optimistic UI update - show indicator immediately
     setPendingDecision('fold');
-    setHideOtherDecisionsUntilYouDecide(false);
 
     try {
       await makeDecision(gameId, currentPlayer.id, 'fold');
@@ -4500,7 +4493,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               roundStatus={currentRound?.status}
               pendingDecision={pendingDecision}
               isPaused={game.is_paused || false}
-              hideOtherDecisionsUntilYouDecide={hideOtherDecisionsUntilYouDecide}
               anteAmount={game.ante_amount}
               pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
@@ -4613,7 +4605,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               roundStatus={currentRound?.status}
               pendingDecision={pendingDecision}
               isPaused={game.is_paused || false}
-              hideOtherDecisionsUntilYouDecide={hideOtherDecisionsUntilYouDecide}
               debugHolmPaused={debugHolmPaused}
               onStay={handleStay}
               onFold={handleFold}
