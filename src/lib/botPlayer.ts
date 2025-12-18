@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
 import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
+import { generateUUID } from "./uuid";
 
 // Weighted aggression levels - extreme levels are rare
 const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -48,14 +49,22 @@ function getRandomAggressionLevel(seed?: string): AggressionLevel {
 }
 
 export async function addBotPlayer(gameId: string) {
-  console.log('[BOT CREATION] Starting bot creation for game:', gameId);
+  console.log('[BOT CREATION] ========== Starting bot creation ==========');
+  console.log('[BOT CREATION] Game ID:', gameId);
   
   // Get existing players to determine optimal position
-  const { data: existingPlayers } = await supabase
+  const { data: existingPlayers, error: playersError } = await supabase
     .from('players')
     .select('position')
     .eq('game_id', gameId)
     .order('position', { ascending: true });
+
+  if (playersError) {
+    console.error('[BOT CREATION] Error fetching existing players:', playersError);
+    throw new Error(`Failed to fetch existing players: ${playersError.message}`);
+  }
+
+  console.log('[BOT CREATION] Existing players:', existingPlayers);
 
   // Calculate optimal position for spacing players around the table
   let nextPosition: number;
@@ -64,6 +73,7 @@ export async function addBotPlayer(gameId: string) {
     nextPosition = 1;
   } else {
     const occupiedPositions = new Set(existingPlayers.map(p => p.position));
+    console.log('[BOT CREATION] Occupied positions:', Array.from(occupiedPositions));
     
     // For 2 players (1 existing + 1 bot), position 4 is closest to opposite on 7-seat table
     // For more players, spread them evenly: 1, 4, 2, 6, 3, 5, 7
@@ -77,28 +87,43 @@ export async function addBotPlayer(gameId: string) {
                    existingPlayers[existingPlayers.length - 1].position + 1;
   }
 
-  console.log('[BOT CREATION] Next position:', nextPosition);
+  console.log('[BOT CREATION] Selected position:', nextPosition);
 
   // Get the current game's buy-in amount
-  const { data: game } = await supabase
+  const { data: game, error: gameError } = await supabase
     .from('games')
     .select('buy_in')
     .eq('id', gameId)
     .single();
+
+  if (gameError) {
+    console.error('[BOT CREATION] Error fetching game:', gameError);
+    throw new Error(`Failed to fetch game: ${gameError.message}`);
+  }
 
   if (!game) {
     console.error('[BOT CREATION] Game not found');
     throw new Error('Game not found');
   }
 
+  console.log('[BOT CREATION] Game found, buy_in:', game.buy_in);
+
   // Create a bot profile first with random aggression level
-  const botId = crypto.randomUUID();
+  const botId = generateUUID();
+  console.log('[BOT CREATION] Generated bot ID:', botId);
+  
   const aggressionLevel = getRandomAggressionLevel(botId);
+  console.log('[BOT CREATION] Assigned aggression level:', aggressionLevel);
+  
   // Count ALL existing bot profiles across all games to get a globally unique bot number
-  const { data: existingBotProfiles } = await supabase
+  const { data: existingBotProfiles, error: profilesError } = await supabase
     .from('profiles')
     .select('username')
     .like('username', 'Bot %');
+  
+  if (profilesError) {
+    console.error('[BOT CREATION] Error fetching existing bot profiles:', profilesError);
+  }
   
   const botNumber = (existingBotProfiles?.length || 0) + 1;
   const botName = `Bot ${botNumber}`;
@@ -119,7 +144,7 @@ export async function addBotPlayer(gameId: string) {
     throw new Error(`Failed to create bot profile: ${profileError.message}`);
   }
 
-  console.log('[BOT CREATION] Profile created, now creating player');
+  console.log('[BOT CREATION] Profile created successfully, now creating player record');
 
   // Create bot player
   const { data: botPlayer, error } = await supabase
@@ -140,7 +165,8 @@ export async function addBotPlayer(gameId: string) {
     throw error;
   }
 
-  console.log('[BOT CREATION] Bot player created successfully:', botPlayer);
+  console.log('[BOT CREATION] ========== Bot player created successfully ==========');
+  console.log('[BOT CREATION] Bot player:', botPlayer);
 
   return botPlayer;
 }
@@ -150,21 +176,33 @@ export async function addBotPlayer(gameId: string) {
  * Used by host during active games to add bots that will join at next hand
  */
 export async function addBotPlayerSittingOut(gameId: string) {
-  console.log('[BOT CREATION] Starting sitting-out bot creation for game:', gameId);
+  console.log('[BOT CREATION SITTING-OUT] ========== Starting sitting-out bot creation ==========');
+  console.log('[BOT CREATION SITTING-OUT] Game ID:', gameId);
   
   // Get existing players to find a random open seat
-  const { data: existingPlayers } = await supabase
+  const { data: existingPlayers, error: playersError } = await supabase
     .from('players')
     .select('position')
     .eq('game_id', gameId)
     .order('position', { ascending: true });
+
+  if (playersError) {
+    console.error('[BOT CREATION SITTING-OUT] Error fetching existing players:', playersError);
+    throw new Error(`Failed to fetch existing players: ${playersError.message}`);
+  }
+
+  console.log('[BOT CREATION SITTING-OUT] Existing players:', existingPlayers);
 
   // Find all open positions
   const occupiedPositions = new Set(existingPlayers?.map(p => p.position) || []);
   const allPositions = [1, 2, 3, 4, 5, 6, 7];
   const openPositions = allPositions.filter(pos => !occupiedPositions.has(pos));
   
+  console.log('[BOT CREATION SITTING-OUT] Occupied positions:', Array.from(occupiedPositions));
+  console.log('[BOT CREATION SITTING-OUT] Open positions:', openPositions);
+  
   if (openPositions.length === 0) {
+    console.error('[BOT CREATION SITTING-OUT] No open seats available');
     throw new Error('No open seats available');
   }
   
@@ -172,21 +210,29 @@ export async function addBotPlayerSittingOut(gameId: string) {
   const randomIndex = Math.floor(Math.random() * openPositions.length);
   const nextPosition = openPositions[randomIndex];
 
-  console.log('[BOT CREATION] Random open position selected:', nextPosition);
+  console.log('[BOT CREATION SITTING-OUT] Selected random position:', nextPosition);
 
   // Create a bot profile first with random aggression level
-  const botId = crypto.randomUUID();
+  const botId = generateUUID();
+  console.log('[BOT CREATION SITTING-OUT] Generated bot ID:', botId);
+  
   const aggressionLevel = getRandomAggressionLevel(botId);
+  console.log('[BOT CREATION SITTING-OUT] Assigned aggression level:', aggressionLevel);
+  
   // Count ALL existing bot profiles across all games to get a globally unique bot number
-  const { data: existingBotProfiles } = await supabase
+  const { data: existingBotProfiles, error: profilesError } = await supabase
     .from('profiles')
     .select('username')
     .like('username', 'Bot %');
   
+  if (profilesError) {
+    console.error('[BOT CREATION SITTING-OUT] Error fetching existing bot profiles:', profilesError);
+  }
+  
   const botNumber = (existingBotProfiles?.length || 0) + 1;
   const botName = `Bot ${botNumber}`;
   
-  console.log('[BOT CREATION] Creating bot profile:', { botId, botName, aggressionLevel });
+  console.log('[BOT CREATION SITTING-OUT] Creating bot profile:', { botId, botName, aggressionLevel });
   
   // Insert bot profile with aggression level
   const { error: profileError } = await supabase
@@ -198,11 +244,11 @@ export async function addBotPlayerSittingOut(gameId: string) {
     });
 
   if (profileError) {
-    console.error('[BOT CREATION] Profile creation error:', profileError);
+    console.error('[BOT CREATION SITTING-OUT] Profile creation error:', profileError);
     throw new Error(`Failed to create bot profile: ${profileError.message}`);
   }
 
-  console.log('[BOT CREATION] Profile created, now creating sitting-out player');
+  console.log('[BOT CREATION SITTING-OUT] Profile created successfully, now creating sitting-out player record');
 
   // Create bot player with sitting_out=true and waiting=true
   const { data: botPlayer, error } = await supabase
@@ -221,11 +267,12 @@ export async function addBotPlayerSittingOut(gameId: string) {
     .single();
 
   if (error) {
-    console.error('[BOT CREATION] Player creation error:', error);
+    console.error('[BOT CREATION SITTING-OUT] Player creation error:', error);
     throw error;
   }
 
-  console.log('[BOT CREATION] Sitting-out bot player created successfully:', botPlayer);
+  console.log('[BOT CREATION SITTING-OUT] ========== Bot player created successfully ==========');
+  console.log('[BOT CREATION SITTING-OUT] Bot player:', botPlayer);
 
   return botPlayer;
 }
