@@ -244,19 +244,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Children use this to avoid writing stale local state back into the external cache.
   const [communityCacheEpoch, setCommunityCacheEpoch] = useState(0);
 
-  // DEBUG: toast whenever the active round changes (helps diagnose stale render vs cache issues)
-  const lastRoundToastRef = useRef<{ roundNumber: number | null; roundId: string | null } | null>(null);
-
-  // DEBUG: force periodic re-render to "read" ref values in UI (refs don't trigger renders)
-  const [cacheDebugTick, setCacheDebugTick] = useState(0);
-  useEffect(() => {
-    const s = game?.status;
-    const isDealerConfig = s === 'game_selection' || s === 'configuring' || s === 'dealer_selection';
-    if (!isDealerConfig) return;
-
-    const id = setInterval(() => setCacheDebugTick((t) => (t + 1) % 1000000), 300);
-    return () => clearInterval(id);
-  }, [game?.status]);
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
@@ -461,59 +448,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const clearLiftedCardCaches = useCallback(
     (reason: string, extra?: Record<string, any>) => {
-      const before = snapshotCommunityCache();
-
-      console.groupCollapsed(`[CACHE_CLEAR] ${reason}`);
-      console.log('before:', before);
-      if (extra) console.log('context:', extra);
-      console.groupEnd();
+      console.log(`[CACHE_CLEAR] ${reason}`, extra);
 
       // Lifted caches used by MobileGameTable to prevent flicker during animations
       communityCardsCacheRef.current = { cards: null, round: null, show: false };
       showdownCardsCacheRef.current = new Map();
       showdownRoundNumberRef.current = null;
       setCommunityCacheEpoch((e) => e + 1);
-
-      toast({
-        title: 'Card cache cleared',
-        description: reason,
-      });
-
-      // Only treat "repopulation" as an error when we EXPECT the cache to stay empty
-      // (e.g. during dealer config screens). During active gameplay a repopulation is often legitimate.
-      const shouldMonitorRepopulation =
-        reason.includes('DEALER') || reason.includes('GAME ID CHANGED') || reason.includes('FORCED CLEAR');
-
-      if (!shouldMonitorRepopulation) return;
-
-      // Detect "cache repopulated" bugs (e.g., a child writes stale state back)
-      // Check multiple times because repopulation can happen after effects fire.
-      let hasFailed = false;
-      const check = (ms: number) => {
-        setTimeout(() => {
-          const after = snapshotCommunityCache();
-          const ok = after.len === 0 && after.round === null && after.show === false;
-          if (!ok) {
-            console.error(`[CACHE_CLEAR] ❌ Cache clear failed / repopulated @${ms}ms`, { reason, before, after, extra });
-            if (!hasFailed) {
-              hasFailed = true;
-              toast({
-                title: 'Card cache clear FAILED',
-                description: `@${ms}ms: len=${after.len} round=${after.round} show=${after.show}`,
-                variant: 'destructive',
-              });
-            }
-          } else {
-            console.log(`[CACHE_CLEAR] ✅ Cache empty @${ms}ms`, { reason, after });
-          }
-        }, ms);
-      };
-
-      check(50);
-      check(500);
-      check(2000);
     },
-    [snapshotCommunityCache, toast],
+    [],
   );
 
   // CRITICAL: React Router does not remount this page when only :gameId changes.
@@ -1877,33 +1820,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
   // DEBUG: show a "Round: X" toast whenever round number/id changes
-  useEffect(() => {
-    const next = {
-      roundNumber: currentRound?.round_number ?? null,
-      roundId: currentRound?.id ?? null,
-    };
-
-    const prev = lastRoundToastRef.current;
-    if (prev && prev.roundNumber === next.roundNumber && prev.roundId === next.roundId) return;
-
-    lastRoundToastRef.current = next;
-
-
-    if (next.roundNumber === null && next.roundId === null) {
-      toast({
-        title: "Round: —",
-        description: `No active round (${game?.status ?? "unknown"})`,
-      });
-      return;
-    }
-
-    toast({
-      title: `Round: ${next.roundNumber ?? "—"}`,
-      description: next.roundId
-        ? `Round id: ${next.roundId}`
-        : `Game status: ${game?.status ?? "unknown"}`,
-    });
-  }, [currentRound?.id, currentRound?.round_number, game?.status, toast]);
 
   // CRITICAL: Clear optimistic decision UI whenever we move to a new hand/round.
   // Otherwise the UI can keep showing "STAYED/FOLDED" from the previous hand via pendingDecision.
@@ -4338,56 +4254,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               </div>
             ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
               <div className="relative">
-                {/* DEBUG: live snapshot of lifted caches while dealer config is visible */}
-                <div className="absolute top-2 left-2 z-50 max-w-[92vw]">
-                  <Card className="border-border/60 bg-background/80 backdrop-blur">
-                    <CardContent className="p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-xs">
-                          <div className="font-medium">Cache snapshot (dealer config)</div>
-                          <div className="text-muted-foreground">tick: {cacheDebugTick}</div>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            const snap = (communityCardsCacheRef.current?.cards ?? []).slice(0, 4).map((c: any) => (typeof c === 'string' ? c : `${c?.rank ?? '?'}${c?.suit ?? '?'}`));
-                            const payload = {
-                              status: game.status,
-                              communityCache: {
-                                show: communityCardsCacheRef.current.show,
-                                round: communityCardsCacheRef.current.round,
-                                len: communityCardsCacheRef.current.cards?.length ?? 0,
-                                preview: snap,
-                              },
-                              showdownCache: {
-                                size: showdownCardsCacheRef.current.size,
-                                round: showdownRoundNumberRef.current,
-                              },
-                              cachedRoundDataRound: cachedRoundData?.round_number ?? null,
-                            };
-                            console.log('[CACHE_DEBUG] Dump', payload);
-                            toast({ title: 'Cache dumped to console', description: 'See [CACHE_DEBUG] Dump' });
-                          }}
-                        >
-                          Dump
-                        </Button>
-                      </div>
-                      <div className="text-xs leading-snug">
-                        <div>
-                          <span className="text-muted-foreground">community:</span>{' '}
-                          show={String(communityCardsCacheRef.current.show)} round={String(communityCardsCacheRef.current.round)} len={String(communityCardsCacheRef.current.cards?.length ?? 0)}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">showdown:</span>{' '}
-                          size={String(showdownCardsCacheRef.current.size)} round={String(showdownRoundNumberRef.current)}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
                 {isMobile ? (
                   <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     players={players}
