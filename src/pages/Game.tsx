@@ -240,6 +240,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // LIFTED community cards cache - persists across MobileGameTable remounts to prevent flicker during win animation
   const communityCardsCacheRef = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: false });
+  // Epoch increments whenever the parent explicitly clears lifted card caches.
+  // Children use this to avoid writing stale local state back into the external cache.
+  const [communityCacheEpoch, setCommunityCacheEpoch] = useState(0);
 
   // DEBUG: force periodic re-render to "read" ref values in UI (refs don't trigger renders)
   const [cacheDebugTick, setCacheDebugTick] = useState(0);
@@ -466,6 +469,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       communityCardsCacheRef.current = { cards: null, round: null, show: false };
       showdownCardsCacheRef.current = new Map();
       showdownRoundNumberRef.current = null;
+      setCommunityCacheEpoch((e) => e + 1);
 
       toast({
         title: 'Card cache cleared',
@@ -793,6 +797,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 showdownRoundNumberRef.current = null;
                 // CRITICAL: Also clear community cards cache to prevent old cards showing in new game
                 communityCardsCacheRef.current = { cards: null, round: null, show: false };
+                setCommunityCacheEpoch((e) => e + 1);
               }
               
               if (debounceTimer) clearTimeout(debounceTimer);
@@ -1757,6 +1762,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       showdownRoundNumberRef.current = null;
       // CRITICAL: Also clear community cards cache
       communityCardsCacheRef.current = { cards: null, round: null, show: false };
+      setCommunityCacheEpoch((e) => e + 1);
       return;
     }
     
@@ -1812,9 +1818,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type]);
   
-  // Use cached round during game_over if live round is unavailable
-  // Priority: liveRound > state cache > ref cache
-  const currentRound = liveRound || cachedRoundData || cachedRoundRef.current;
+  // Use cached round ONLY when we intentionally need to preserve visuals across transitions
+  // (e.g., showdown/game_over animations). For fresh play/setup, never fall back to old cached rounds.
+  const allowRoundCacheFallback = Boolean(
+    game?.status === 'game_over' ||
+      game?.status === 'session_ended' ||
+      game?.awaiting_next_round ||
+      game?.all_decisions_in ||
+      game?.last_round_result
+  );
+
+  // Priority: liveRound > (optional) state cache > (optional) ref cache
+  const currentRound = liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
   
   // Compute current card identity to detect new hands
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
@@ -4162,6 +4177,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     externalShowdownCardsCache={showdownCardsCacheRef}
                     externalShowdownRoundNumber={showdownRoundNumberRef}
                     externalCommunityCardsCache={communityCardsCacheRef}
+                    externalCommunityCacheEpoch={communityCacheEpoch}
                     handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
                     winner357ShowCards={winner357ShowCards}
                     onWinner357ShowCards={handleWinner357ShowCards}
@@ -4596,6 +4612,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               externalShowdownCardsCache={showdownCardsCacheRef}
               externalShowdownRoundNumber={showdownRoundNumberRef}
               externalCommunityCardsCache={communityCardsCacheRef}
+              externalCommunityCacheEpoch={communityCacheEpoch}
               handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
               winner357ShowCards={winner357ShowCards}
               onWinner357ShowCards={handleWinner357ShowCards}
