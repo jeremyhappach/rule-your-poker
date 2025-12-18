@@ -143,6 +143,7 @@ export type Database = {
           game_over_at: string | null
           game_type: string | null
           id: string
+          is_first_hand: boolean
           is_paused: boolean | null
           last_round_result: string | null
           leg_value: number
@@ -182,6 +183,7 @@ export type Database = {
           game_over_at?: string | null
           game_type?: string | null
           id?: string
+          is_first_hand?: boolean
           is_paused?: boolean | null
           last_round_result?: string | null
           leg_value?: number
@@ -221,6 +223,7 @@ export type Database = {
           game_over_at?: string | null
           game_type?: string | null
           id?: string
+          is_first_hand?: boolean
           is_paused?: boolean | null
           last_round_result?: string | null
           leg_value?: number

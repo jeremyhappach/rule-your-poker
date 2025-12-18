@@ -1881,18 +1881,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     lastRoundToastRef.current = next;
 
-    const isHolmFirstHandGap =
-      game?.game_type === 'holm-game' &&
-      game?.status === 'in_progress' &&
-      (game?.rounds?.length ?? 0) === 0;
-
-    if (isHolmFirstHandGap) {
-      toast({
-        title: "Round: 1",
-        description: "Starting hand — dealing cards…",
-      });
-      return;
-    }
 
     if (next.roundNumber === null && next.roundId === null) {
       toast({
@@ -4603,22 +4591,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         )}
 
         {game.status === 'in_progress' && (() => {
-          const isHolmFirstHandGap =
-            game.game_type === 'holm-game' && (game.rounds?.length ?? 0) === 0;
-
-          if (isHolmFirstHandGap) {
-            return (
-              <Card>
-                <CardContent className="py-10 text-center">
-                  <h2 className="text-lg font-semibold">Starting Round 1…</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Dealing cards. This prevents any stale cards from flashing.
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          }
-
           console.log('[RENDER] in_progress - communityCards being passed:', {
             currentRoundId: currentRound?.id,
             currentRoundNumber: currentRound?.round_number,
