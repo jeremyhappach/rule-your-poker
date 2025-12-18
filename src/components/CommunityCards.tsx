@@ -20,13 +20,12 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
   const lastRevealedRef = useRef<number>(0);
   const mountTimeRef = useRef<number>(Date.now());
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const isFirstMountRef = useRef<boolean>(true);
   
   const clearTimeouts = () => {
     timeoutsRef.current.forEach(t => clearTimeout(t));
     timeoutsRef.current = [];
   };
-  
-  const isFirstMount = Date.now() - mountTimeRef.current < 500;
   
   useEffect(() => {
     console.log('[COMMUNITY_CARDS] useEffect - handId:', handId, 'animatedHandId:', animatedHandId, 'cardsLength:', cards.length, 'dealtCardsSize:', dealtCards.size);
@@ -45,9 +44,9 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     
     // For first mount OR subsequent hands (not first game load), show cards immediately
     // Only animate dealing on the very first hand of a session
-    const shouldSkipAnimation = isFirstMount || animatedHandId !== '';
+    const shouldSkipAnimation = isFirstMountRef.current || animatedHandId !== '';
     
-    console.log('[COMMUNITY_CARDS] shouldSkipAnimation:', shouldSkipAnimation, 'isFirstMount:', isFirstMount);
+    console.log('[COMMUNITY_CARDS] shouldSkipAnimation:', shouldSkipAnimation, 'isFirstMountRef:', isFirstMountRef.current);
     
     if (shouldSkipAnimation) {
       const allDealt = new Set<number>();
@@ -61,6 +60,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
       setFlippedCards(preFlipped);
       setAnimatedHandId(handId);
       lastRevealedRef.current = revealed;
+      isFirstMountRef.current = false; // Mark first mount as complete
       return;
     }
     
@@ -81,10 +81,11 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     
     const idTimeout = setTimeout(() => {
       setAnimatedHandId(handId);
+      isFirstMountRef.current = false; // Mark first mount as complete
     }, 50);
     timeoutsRef.current.push(idTimeout);
     
-  }, [handId, cards, revealed, animatedHandId, isFirstMount]);
+  }, [handId, cards, revealed, animatedHandId]);
   
   useEffect(() => {
     if (cards.length === 0) return;
