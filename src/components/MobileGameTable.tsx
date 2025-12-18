@@ -820,12 +820,19 @@ anteAnimationTriggerId,
       }, 1000);
     }
     
+    // IMPORTANT: do NOT clear the reveal timeout on routine re-renders (e.g. communityCards array ref changes).
+    // That was canceling the 1s approval timer before it could fire, leaving cards hidden forever.
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards]);
+
+  // Cleanup on unmount only
+  useEffect(() => {
     return () => {
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards]);
+  }, []);
 
   // Backfill approved community cards if the round was approved before cards arrived (Holm only)
   useEffect(() => {
@@ -1750,7 +1757,10 @@ anteAnimationTriggerId,
         {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
         {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
          (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+          // IMPORTANT: CommunityCards is internally absolutely-positioned.
+          // It must be rendered inside a full-size positioned container (inset-0)
+          // so it doesn't anchor to a 0x0 wrapper and disappear on mobile.
+          <div className="absolute inset-0 z-10 pointer-events-none scale-[1.8] origin-center">
             <CommunityCards 
               cards={approvedCommunityCards} 
               revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
