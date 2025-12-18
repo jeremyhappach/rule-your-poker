@@ -762,7 +762,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setGame(prevGame => prevGame ? {
               ...prevGame,
               game_type: incomingGameType,
-              current_round: null,  // Clear round to prevent stale card count calculation
+              // If the backend already set a round (e.g., Holm sets round 1 on setup), keep it.
+              // Otherwise clear to avoid stale card count calculation.
+              current_round: (typeof newData?.current_round === 'number') ? newData.current_round : null,
               awaiting_next_round: false,
               status: newData?.status || prevGame.status
             } : null);
