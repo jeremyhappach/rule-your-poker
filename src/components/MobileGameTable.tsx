@@ -1069,10 +1069,19 @@ anteAnimationTriggerId,
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const isCurrentUser = player.user_id === currentUserId;
+
+    // Holm: community cards deal/appear in a stagger; don't reveal bot decisions until the dealing finishes.
+    const hideBotDecisionDuringDeal = gameType === 'holm-game' && isDelayingCommunityCards && player.is_bot;
+
     // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
     // Also after resume (3-5-7), optionally hide OTHER players' decisions until the current user chooses.
     // Current user can always see their own decision.
-    const playerDecision = (isCurrentUser || (!isPaused && !hideOtherDecisionsUntilYouDecide)) ? player.current_decision : null;
+    const playerDecision = hideBotDecisionDuringDeal
+      ? null
+      : (isCurrentUser || (!isPaused && !hideOtherDecisionsUntilYouDecide))
+        ? player.current_decision
+        : null;
+
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
     // Use getPlayerCards for showdown caching
     const cards = getPlayerCards(player.id);

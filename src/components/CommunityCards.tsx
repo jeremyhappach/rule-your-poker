@@ -5,12 +5,22 @@ import { useState, useEffect, useRef, useMemo } from "react";
 interface CommunityCardsProps {
   cards: CardType[];
   revealed: number;
-  highlightedIndices?: number[];  // Indices of cards that are part of winning hand
-  kickerIndices?: number[];       // Indices of kicker cards
-  hasHighlights?: boolean;        // Whether highlights are active (to dim non-highlighted cards)
+  highlightedIndices?: number[]; // Indices of cards that are part of winning hand
+  kickerIndices?: number[]; // Indices of kicker cards
+  hasHighlights?: boolean; // Whether highlights are active (to dim non-highlighted cards)
+  onDealStart?: () => void;
+  onDealComplete?: () => void;
 }
 
-export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false }: CommunityCardsProps) => {
+export const CommunityCards = ({
+  cards,
+  revealed,
+  highlightedIndices = [],
+  kickerIndices = [],
+  hasHighlights = false,
+  onDealStart,
+  onDealComplete,
+}: CommunityCardsProps) => {
   const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
   const [animatedHandId, setAnimatedHandId] = useState<string>('');
@@ -42,21 +52,30 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     
     console.log('[COMMUNITY_CARDS] Processing NEW hand - handId changed from', animatedHandId, 'to', handId);
     clearTimeouts();
-    
+
+    onDealStart?.();
+
     // Always animate dealing for new hands - deal cards one at a time
     setDealtCards(new Set());
     setFlippedCards(new Set());
     lastRevealedRef.current = revealed;
-    
+
     const INITIAL_DELAY = 400;
     const CARD_INTERVAL = 350; // Slower dealing - 350ms between each card
-    
+
     cards.forEach((_, index) => {
       const timeout = setTimeout(() => {
         setDealtCards(prev => new Set([...prev, index]));
       }, INITIAL_DELAY + index * CARD_INTERVAL);
       timeoutsRef.current.push(timeout);
     });
+
+    // Notify parent once last card has been dealt (used to hide bot decisions until cards are visible)
+    const lastDealAt = INITIAL_DELAY + Math.max(0, cards.length - 1) * CARD_INTERVAL;
+    const dealCompleteTimeout = setTimeout(() => {
+      onDealComplete?.();
+    }, lastDealAt + 75);
+    timeoutsRef.current.push(dealCompleteTimeout);
     
     // Pre-flip the initially revealed cards after all are dealt
     const totalDealTime = INITIAL_DELAY + cards.length * CARD_INTERVAL;

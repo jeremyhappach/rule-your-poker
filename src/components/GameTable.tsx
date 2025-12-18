@@ -169,6 +169,9 @@ export const GameTable = ({
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
+
+  // Holm: community cards deal one-by-one; don't show bot decisions until the deal animation finishes.
+  const [holmCommunityDealInProgress, setHolmCommunityDealInProgress] = useState(false);
   
   // DEBUG: Log community cards prop to diagnose rendering issues
   if (gameType === 'holm-game') {
@@ -1019,7 +1022,9 @@ export const GameTable = ({
            !(awaitingNextRound && !lastRoundResult) && (
             <CommunityCards 
               cards={communityCards} 
-              revealed={communityCardsRevealed || 2} 
+              revealed={communityCardsRevealed || 2}
+              onDealStart={() => setHolmCommunityDealInProgress(true)}
+              onDealComplete={() => setHolmCommunityDealInProgress(false)}
             />
           )}
 
@@ -1041,11 +1046,26 @@ export const GameTable = ({
             const isCurrentUser = player?.user_id === currentUserId;
             // Hide OTHER players' decisions while paused, and optionally right-after-resume (3-5-7) until current user chooses.
             const shouldHideOthers = !!isPaused || hideOtherDecisionsUntilYouDecide;
-            const hasPlayerDecided = (isCurrentUser || !shouldHideOthers) ? player?.decision_locked : false;
+
+            // Holm: bots may decide instantly in the DB, but we don't want to reveal it while community cards are still dealing.
+            const hideHolmBotDecisionForDeal =
+              gameType === 'holm-game' &&
+              roundStatus === 'betting' &&
+              holmCommunityDealInProgress &&
+              !!player?.is_bot;
+
+            const hasPlayerDecided = hideHolmBotDecisionForDeal
+              ? false
+              : (isCurrentUser || !shouldHideOthers)
+                ? player?.decision_locked
+                : false;
+
             // Always show current user's decision immediately, or all decisions when allDecisionsIn
-            const playerDecision = (isCurrentUser || (!shouldHideOthers && (allDecisionsIn || gameType === 'holm-game')))
-              ? player?.current_decision
-              : null;
+            const playerDecision = hideHolmBotDecisionForDeal
+              ? null
+              : (isCurrentUser || (!shouldHideOthers && (allDecisionsIn || gameType === 'holm-game')))
+                ? player?.current_decision
+                : null;
             
             // In Holm game, buck just indicates who decides first, but all players can decide
             // Only show buck when round is fully initialized with turn position
