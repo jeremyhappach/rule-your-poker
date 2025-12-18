@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { makeDecision } from "./gameLogic";
 import { getBotFoldProbability, AggressionLevel, SmartAggressionContext } from "./botHandStrength";
 import { Card } from "./cardUtils";
+import { createUuid } from "@/lib/uuid";
 
 // Weighted aggression levels - extreme levels are rare
 const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -92,7 +93,7 @@ export async function addBotPlayer(gameId: string) {
   }
 
   // Create a bot profile first with random aggression level
-  const botId = crypto.randomUUID();
+  const botId = createUuid();
   const aggressionLevel = getRandomAggressionLevel(botId);
   // Count ALL existing bot profiles across all games to get a globally unique bot number
   const { data: existingBotProfiles } = await supabase
@@ -175,7 +176,7 @@ export async function addBotPlayerSittingOut(gameId: string) {
   console.log('[BOT CREATION] Random open position selected:', nextPosition);
 
   // Create a bot profile first with random aggression level
-  const botId = crypto.randomUUID();
+  const botId = createUuid();
   const aggressionLevel = getRandomAggressionLevel(botId);
   // Count ALL existing bot profiles across all games to get a globally unique bot number
   const { data: existingBotProfiles } = await supabase
