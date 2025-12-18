@@ -1327,9 +1327,21 @@ anteAnimationTriggerId,
           <span className="text-white/40 text-xs font-medium">
             {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
           </span>
-          {gameType !== 'holm-game' && <span className="text-white/40 text-xs font-medium">
-              {legsToWin} legs to win
-            </span>}
+          {gameType !== 'holm-game' && (
+            <span className="text-white/40 text-xs font-medium">{legsToWin} legs to win</span>
+          )}
+          {/* TEMP DEBUG: show round number on felt */}
+          {gameType === 'holm-game' && (
+            <Badge
+              variant="secondary"
+              className="mt-1 text-[10px] px-2 py-0.5 bg-background/30 text-foreground border border-border/40 backdrop-blur-sm"
+            >
+              Round {currentRound}
+              {approvedRoundForDisplay !== null && approvedRoundForDisplay !== currentRound
+                ? ` (shown ${approvedRoundForDisplay})`
+                : ''}
+            </Badge>
+          )}
         </div>
         
         
