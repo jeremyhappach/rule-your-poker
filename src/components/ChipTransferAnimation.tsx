@@ -136,19 +136,19 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
           <style>{`
             @keyframes chipTransfer${i} {
               0% {
-                transform: translate(0, 0) scale(1);
+                transform: translate(-50%, -50%) scale(1);
                 opacity: 1;
               }
               15% {
-                transform: translate(0, -8px) scale(1.1);
+                transform: translate(-50%, calc(-50% - 8px)) scale(1.1);
                 opacity: 1;
               }
               85% {
-                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(1);
+                transform: translate(calc(-50% + ${anim.toX - anim.fromX}px), calc(-50% + ${anim.toY - anim.fromY}px)) scale(1);
                 opacity: 1;
               }
               100% {
-                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(0);
+                transform: translate(calc(-50% + ${anim.toX - anim.fromX}px), calc(-50% + ${anim.toY - anim.fromY}px)) scale(0);
                 opacity: 0;
               }
             }
