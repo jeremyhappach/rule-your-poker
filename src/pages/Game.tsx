@@ -4183,6 +4183,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable
+                    gameId={gameId!}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
@@ -4505,6 +4506,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           });
           return isMobile ? (
             <MobileGameTable
+              gameId={gameId!}
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
