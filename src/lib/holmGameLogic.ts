@@ -65,47 +65,47 @@ export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] All players decided?', allDecided);
   
   if (allDecided) {
-    // CRITICAL: Check if all_decisions_in is ALREADY true (another call beat us)
-    // This prevents multiple concurrent calls from all triggering endHolmRound
-    if (game.all_decisions_in) {
-      console.log('[HOLM CHECK] all_decisions_in already true - another call already processing, skipping');
-      return;
-    }
-    
-    // CRITICAL: Also check round status - if already processing/showdown/completed, skip
+    // If the round is already processing/showdown/completed, don't do anything.
+    // (This is the primary guard against duplicate work.)
     if (round.status === 'processing' || round.status === 'showdown' || round.status === 'completed') {
       console.log('[HOLM CHECK] Round already in status:', round.status, '- skipping duplicate call');
       return;
     }
-    
-    console.log('[HOLM CHECK] All players decided, attempting atomic all_decisions_in flag set');
-    
-    // CRITICAL: Use atomic guard to prevent race conditions / duplicate endHolmRound calls
-    const { data: updateResult, error: updateError } = await supabase
-      .from('games')
-      .update({ all_decisions_in: true })
-      .eq('id', gameId)
-      .eq('all_decisions_in', false) // Only update if not already set - atomic guard
-      .select();
-    
-    // Only the first call that successfully sets the flag should proceed
-    if (updateError || !updateResult || updateResult.length === 0) {
-      console.log('[HOLM CHECK] Another client already set all_decisions_in - skipping duplicate endHolmRound');
-      return;
+
+    // If all_decisions_in is already true, we might be recovering from a race where
+    // another process set the flag but never advanced the round. In that case, we
+    // still proceed and rely on endHolmRound's atomic round lock to ensure only one runner.
+    if (!game.all_decisions_in) {
+      console.log('[HOLM CHECK] All players decided, attempting atomic all_decisions_in flag set');
+
+      // CRITICAL: Use atomic guard to prevent race conditions / duplicate endHolmRound calls
+      const { data: updateResult, error: updateError } = await supabase
+        .from('games')
+        .update({ all_decisions_in: true })
+        .eq('id', gameId)
+        .eq('all_decisions_in', false) // Only update if not already set - atomic guard
+        .select();
+
+      // Only the first call that successfully sets the flag should proceed
+      if (updateError || !updateResult || updateResult.length === 0) {
+        console.log('[HOLM CHECK] Another client already set all_decisions_in - continuing with recovery path');
+      } else {
+        console.log('[HOLM CHECK] Successfully acquired lock (all_decisions_in -> true)');
+      }
+    } else {
+      console.log('[HOLM CHECK] all_decisions_in already true - attempting recovery to end round');
     }
-    
-    console.log('[HOLM CHECK] Successfully acquired lock, proceeding with endHolmRound');
-    
+
     // Clear the timer and turn position since all decisions are in
     await supabase
       .from('rounds')
-      .update({ 
+      .update({
         current_turn_position: null,
-        decision_deadline: null
+        decision_deadline: null,
       })
       .eq('id', round.id);
-    
-    // End the round
+
+    // End the round (endHolmRound has its own atomic lock on rounds.status)
     try {
       await endHolmRound(gameId);
     } catch (error) {
