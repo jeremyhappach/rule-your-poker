@@ -7,7 +7,7 @@ import { Share2, Users, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { createUuid } from "@/lib/uuid";
-import { useToast } from "@/hooks/use-toast";
+
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -98,7 +98,6 @@ export const WaitingForPlayersTable = ({
   getPositionForUserId,
   onLeaveGameNow
 }: WaitingForPlayersTableProps) => {
-  const { toast } = useToast();
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
   const [addingBot, setAddingBot] = useState(false);
@@ -133,7 +132,7 @@ export const WaitingForPlayersTable = ({
     });
 
     if (!hasOpenSeats) {
-      toast({ title: 'Table full', description: 'No open seats available.', variant: 'destructive' });
+      console.log('[ADD BOT][waiting] table full');
       return;
     }
 
@@ -151,7 +150,6 @@ export const WaitingForPlayersTable = ({
       
       if (openPositions.length === 0) {
         console.log('[ADD BOT][waiting] table full - no open seats');
-        toast({ title: 'Table full', description: 'No open seats available.', variant: 'destructive' });
         return;
       }
       
@@ -238,14 +236,13 @@ export const WaitingForPlayersTable = ({
       }
 
       console.log('[ADD BOT][waiting] ✅ success');
-      toast({ title: 'Bot added', description: `${botName} joined seat ${nextPosition}.` });
     } catch (error: any) {
       console.error('[ADD BOT][waiting] error:', error);
-      toast({ title: 'Add bot failed', description: error?.message ?? 'Unknown error', variant: 'destructive' });
     } finally {
       setAddingBot(false);
     }
   };
+
 
   // Handle host clicking Start Game button
   const handleStartGame = () => {
