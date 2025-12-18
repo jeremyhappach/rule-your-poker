@@ -1940,7 +1940,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    if (game?.status === 'in_progress' && !game.all_decisions_in) {
+    if ((game?.status === 'in_progress' || game?.status === 'betting') && !game.all_decisions_in) {
       // For Holm games, only trigger if there's a valid turn position
       // For other games, trigger on any undecided bot
       if (isHolmGame && !currentRound?.current_turn_position) {
