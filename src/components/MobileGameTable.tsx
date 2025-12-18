@@ -462,6 +462,16 @@ anteAnimationTriggerId,
   // CRITICAL: During dealer config phases, NEVER read from external cache - it may contain stale cards
   const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
 
+  // AGGRESSIVE: If we enter dealer config, wipe the *external* cache immediately.
+  // MobileGameTable can unmount fast (switching screens) before state-based sync effects run.
+  useEffect(() => {
+    if (!externalCommunityCardsCache) return;
+    if (!isDealerConfigPhase) return;
+
+    externalCommunityCardsCache.current = { cards: null, round: null, show: false };
+    console.log('[MOBILE_COMMUNITY] 🧹 wiped external community cache immediately (dealer config phase)', { gameStatus });
+  }, [externalCommunityCardsCache, isDealerConfigPhase, gameStatus]);
+
   // Initialize local state from external cache if available (but NOT during dealer config)
   const [showCommunityCards, setShowCommunityCards] = useState(() => {
     if (isDealerConfigPhase) return false;
