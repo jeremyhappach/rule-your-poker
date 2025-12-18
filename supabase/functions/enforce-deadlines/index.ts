@@ -13,40 +13,38 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization') ?? '';
+    // Prefer service role key for bypassing RLS, fallback to anon key
     const keyToUse = serviceRoleKey || anonKey;
 
     console.log('[ENFORCE] Init', {
       hasUrl: !!supabaseUrl,
-      serviceRoleKeyLen: serviceRoleKey.length,
-      anonKeyLen: anonKey.length,
-      hasAuthHeader: !!authHeader,
+      hasServiceKey: !!serviceRoleKey,
+      hasAnonKey: !!anonKey,
+      serviceRoleKeyLen: serviceRoleKey?.length || 0,
+      anonKeyLen: anonKey?.length || 0,
     });
 
-    if (!supabaseUrl || !keyToUse) {
+    // Early exit if env vars not ready (can happen during cold start)
+    if (!supabaseUrl || !keyToUse || keyToUse.length === 0) {
+      console.error('[ENFORCE] Missing required env vars:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!keyToUse,
+        keyLen: keyToUse?.length || 0,
+      });
       return new Response(JSON.stringify({
-        error: 'Backend configuration missing (SUPABASE_URL / key)',
+        error: 'Backend configuration missing - env vars not available',
+        retry: true,
       }), {
-        status: 500,
+        status: 503, // Service Unavailable - tells client to retry
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const supabase = createClient(
-      supabaseUrl,
-      keyToUse,
-      serviceRoleKey
-        ? undefined
-        : {
-            global: {
-              headers: authHeader ? { Authorization: authHeader } : {},
-            },
-          }
-    );
+    const supabase = createClient(supabaseUrl, keyToUse);
 
     let body;
     try {
