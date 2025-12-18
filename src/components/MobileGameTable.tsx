@@ -94,6 +94,7 @@ interface ChatBubbleData {
 }
 
 interface MobileGameTableProps {
+  gameId?: string; // For realtime self-healing sync
   players: Player[];
   currentUserId: string | undefined;
   pot: number;
@@ -207,12 +208,13 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   onHolmPreStayChange?: (checked: boolean) => void;
 }
 export const MobileGameTable = ({
+  gameId,
   players,
   currentUserId,
   pot,
   currentRound,
   allDecisionsIn,
-  playerCards,
+  playerCards: propPlayerCards,
   timeLeft,
   maxTime = 10,
   lastRoundResult,
@@ -224,8 +226,8 @@ export const MobileGameTable = ({
   pendingSessionEnd,
   awaitingNextRound,
   gameType,
-  communityCards,
-  communityCardsRevealed,
+  communityCards: propCommunityCards,
+  communityCardsRevealed: propCommunityCardsRevealed,
   buckPosition,
   currentTurnPosition,
   chuckyCards,
@@ -453,8 +455,125 @@ anteAnimationTriggerId,
   
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
-  
-  // Delay community cards rendering by 1 second after player cards appear (Holm only)
+
+  // --- Realtime self-healing sync (mobile only) ---
+  // MobileGameTable historically relied on parent-provided props which can desync across clients.
+  // We subscribe + hydrate directly so every player sees the same community + player cards.
+  const [rtRoundId, setRtRoundId] = useState<string | null>(null);
+  const rtRoundIdRef = useRef<string | null>(null);
+  const [rtPlayerCards, setRtPlayerCards] = useState<PlayerCards[] | null>(null);
+  const [rtCommunityCards, setRtCommunityCards] = useState<CardType[] | null>(null);
+  const [rtCommunityCardsRevealed, setRtCommunityCardsRevealed] = useState<number | null>(null);
+
+  useEffect(() => {
+    rtRoundIdRef.current = rtRoundId;
+  }, [rtRoundId]);
+
+  const playerCards = rtPlayerCards ?? propPlayerCards;
+  const communityCards = (rtCommunityCards ?? propCommunityCards) ?? undefined;
+  const communityCardsRevealed = rtCommunityCardsRevealed ?? propCommunityCardsRevealed;
+
+  useEffect(() => {
+    if (!gameId) return;
+
+    let cancelled = false;
+
+    const mapPlayerCards = (rows: any[] | null | undefined): PlayerCards[] => {
+      if (!rows) return [];
+      return rows.map((r) => ({
+        player_id: r.player_id,
+        cards: (r.cards ?? []) as unknown as CardType[],
+      }));
+    };
+
+    const hydrate = async () => {
+      const { data: roundData } = await supabase
+        .from('rounds')
+        .select('id, round_number, community_cards, community_cards_revealed')
+        .eq('game_id', gameId)
+        .order('round_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (roundData?.id) {
+        setRtRoundId(roundData.id);
+        setRtCommunityCards((roundData.community_cards ?? []) as unknown as CardType[]);
+        setRtCommunityCardsRevealed(roundData.community_cards_revealed ?? 0);
+
+        const { data: cardsData } = await supabase
+          .from('player_cards')
+          .select('player_id, cards')
+          .eq('round_id', roundData.id);
+
+        if (cancelled) return;
+        setRtPlayerCards(mapPlayerCards(cardsData));
+      }
+    };
+
+    hydrate();
+
+    const channel = supabase
+      .channel(`mobile-table-sync-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rounds',
+          filter: `game_id=eq.${gameId}`,
+        },
+        async (payload) => {
+          const r = payload.new as any;
+          if (!r?.id) return;
+
+          const roundIdChanged = rtRoundIdRef.current !== r.id;
+          setRtRoundId(r.id);
+          setRtCommunityCards((r.community_cards ?? []) as unknown as CardType[]);
+          setRtCommunityCardsRevealed(r.community_cards_revealed ?? 0);
+
+          if (roundIdChanged) {
+            const { data: cardsData } = await supabase
+              .from('player_cards')
+              .select('player_id, cards')
+              .eq('round_id', r.id);
+
+            if (!cancelled) {
+              setRtPlayerCards(mapPlayerCards(cardsData));
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'player_cards',
+        },
+        (payload) => {
+          const pc = (payload.new || payload.old) as any;
+          const roundId = pc?.round_id as string | undefined;
+          if (!roundId || roundId !== rtRoundIdRef.current) return;
+
+          // Refresh full set for the current round (simple + consistent)
+          supabase
+            .from('player_cards')
+            .select('player_id, cards')
+            .eq('round_id', roundId)
+            .then(({ data }) => {
+              if (!cancelled) setRtPlayerCards(mapPlayerCards(data));
+            });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [gameId]);
   // Use external cache for community cards if provided (to persist across remounts during win animation)
   const internalCommunityCardsCache = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: gameType !== 'holm-game' });
   const communityCardsCache = externalCommunityCardsCache || internalCommunityCardsCache;
