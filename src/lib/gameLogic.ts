@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, has357Hand } from "./cardUtils";
+import { getBotAlias } from "./botAlias";
 
 export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
@@ -333,18 +334,26 @@ export async function startRound(gameId: string, roundNumber: number) {
   if (roundNumber === 1) {
     console.log('[START_ROUND] Checking for immediate 3-5-7 hands...');
     
-    // Fetch all player cards just dealt
+    // Fetch all player cards just dealt (include is_bot for alias resolution)
     const { data: dealtCards } = await supabase
       .from('player_cards')
-      .select('*, players!inner(id, position, legs, user_id, profiles(username))')
+      .select('*, players!inner(id, position, legs, user_id, is_bot, profiles(username), created_at)')
       .eq('round_id', round.id);
+    
+    // Fetch all players for bot alias resolution
+    const { data: allPlayersForAlias } = await supabase
+      .from('players')
+      .select('user_id, is_bot, created_at')
+      .eq('game_id', gameId);
     
     if (dealtCards) {
       for (const pc of dealtCards) {
         const cards = pc.cards as unknown as Card[];
         if (has357Hand(cards)) {
           const player = pc.players as any;
-          const username = player?.profiles?.username || `Player ${player?.position}`;
+          const username = player?.is_bot && allPlayersForAlias
+            ? getBotAlias(allPlayersForAlias, player.user_id) 
+            : (player?.profiles?.username || `Player ${player?.position}`);
           console.log('[START_ROUND] 🎉 IMMEDIATE 357 DETECTED!', { playerId: player?.id, username, cards });
           
           // NOTE: 3-5-7 sweep is an INSTANT WIN - do NOT award legs!
@@ -904,7 +913,9 @@ export async function endRound(gameId: string) {
         if (player) {
           const cards = pc.cards as unknown as Card[];
           if (has357Hand(cards)) {
-            const username = player.profiles?.username || `Player ${player.position}`;
+            const username = player.is_bot 
+              ? getBotAlias(allPlayers, player.user_id) 
+              : (player.profiles?.username || `Player ${player.position}`);
             console.log('[endRound] 🎉 357 SWEEP DETECTED!', { playerId: player.id, username, cards });
             
             // Award all legs needed to win
@@ -972,7 +983,9 @@ export async function endRound(gameId: string) {
   if (playersWhoStayed.length === 1) {
     console.log('[endRound] SOLO STAY detected - awarding leg');
     const soloStayer = playersWhoStayed[0];
-    const username = soloStayer.profiles?.username || `Player ${soloStayer.position}`;
+    const username = soloStayer.is_bot 
+      ? getBotAlias(allPlayers, soloStayer.user_id) 
+      : (soloStayer.profiles?.username || `Player ${soloStayer.position}`);
     
     // Check if player already has enough legs (game should have ended)
     if (soloStayer.legs >= legsToWin) {
@@ -1116,7 +1129,9 @@ export async function endRound(gameId: string) {
           .single();
 
         if (winningPlayer) {
-          const winnerUsername = winningPlayer.profiles?.username || `Player ${winningPlayer.position}`;
+          const winnerUsername = winningPlayer.is_bot 
+            ? getBotAlias(allPlayers, winningPlayer.user_id) 
+            : (winningPlayer.profiles?.username || `Player ${winningPlayer.position}`);
           const handName = formatHandRank(winner.evaluation.rank);
           
           const currentPot = game.pot || 0;
