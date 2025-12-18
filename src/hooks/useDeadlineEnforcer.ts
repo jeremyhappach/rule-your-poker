@@ -43,6 +43,10 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
         });
 
         if (error) {
+          // 503 = cold start, keys not ready yet - silently ignore and retry next poll
+          if (error.message?.includes('503')) {
+            return;
+          }
           console.error('[DEADLINE ENFORCER] Error:', error);
           return;
         }
