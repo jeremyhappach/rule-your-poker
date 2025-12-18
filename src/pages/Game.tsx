@@ -661,6 +661,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 cardIdentityRef.current = '';
                 showdownCardsCacheRef.current = new Map();
                 showdownRoundNumberRef.current = null;
+                // CRITICAL: Also clear community cards cache to prevent old cards showing in new game
+                communityCardsCacheRef.current = { cards: null, round: null, show: false };
               }
               
               if (debounceTimer) clearTimeout(debounceTimer);
@@ -1619,6 +1621,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setPlayerCards([]);
       showdownCardsCacheRef.current = new Map();
       showdownRoundNumberRef.current = null;
+      // CRITICAL: Also clear community cards cache
+      communityCardsCacheRef.current = { cards: null, round: null, show: false };
       return;
     }
     
@@ -4055,6 +4059,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       chuckyActive={currentRound?.chucky_active}
                       gameType={game.game_type}
                       roundStatus={currentRound?.status}
+                      gameStatus={game.status}
                     />
                     {game.game_over_at && (
                       <GameOverCountdown
@@ -4130,6 +4135,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
+                    gameStatus={game.status}
                   />
                 )}
                 {(isDealer || dealerPlayer?.is_bot) ? (
@@ -4213,6 +4219,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onStay={() => {}}
                 onFold={() => {}}
                 onSelectSeat={handleSelectSeat}
+                gameStatus={game.status}
               />
             )}
             
@@ -4457,6 +4464,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               holmPreStay={holmPreStay}
               onHolmPreFoldChange={setHolmPreFold}
               onHolmPreStayChange={setHolmPreStay}
+              gameStatus={game.status}
             />
           );
         })()}

@@ -752,6 +752,24 @@ anteAnimationTriggerId,
       gameStatus
     });
     
+    // CRITICAL: Clear community cards state when a new game starts
+    // This prevents old cards from the previous game showing up
+    if (gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection') {
+      if (approvedCommunityCards && approvedCommunityCards.length > 0) {
+        console.log('🔥 [MOBILE_COMMUNITY] New game starting - clearing community cards');
+        setShowCommunityCards(false);
+        setApprovedCommunityCards(null);
+        setApprovedRoundForDisplay(null);
+        setIsDelayingCommunityCards(false);
+        lastDetectedRoundRef.current = null;
+        if (communityCardsDelayRef.current) {
+          clearTimeout(communityCardsDelayRef.current);
+          communityCardsDelayRef.current = null;
+        }
+      }
+      return;
+    }
+    
     if (gameType !== 'holm-game') {
       console.log('🔥 [MOBILE_COMMUNITY] Not holm game, showing cards immediately');
       setShowCommunityCards(true);
@@ -863,9 +881,21 @@ anteAnimationTriggerId,
     setApprovedCommunityCards([...(communityCards ?? [])]);
   }, [gameType, currentRound, communityCards, approvedCommunityCards, approvedRoundForDisplay, isDelayingCommunityCards, showCommunityCards]);
 
-  // Cache Chucky cards when available, clear only when buck passes
+  // Cache Chucky cards when available, clear only when buck passes or new game starts
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    
+    // CRITICAL: Clear cached Chucky cards when a new game starts (ante_decision or configuring status)
+    // This prevents old cards from the previous game showing up
+    if (gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection') {
+      if (cachedChuckyCards && cachedChuckyCards.length > 0) {
+        console.log('[MOBILE_CHUCKY] New game starting - clearing cached Chucky cards');
+        setCachedChuckyCards(null);
+        setCachedChuckyActive(false);
+        setCachedChuckyCardsRevealed(0);
+      }
+      return;
+    }
     
     // When buck passes (awaitingNextRound AND no result), clear cached Chucky data
     if (awaitingNextRound && !lastRoundResult) {
@@ -883,7 +913,7 @@ anteAnimationTriggerId,
       setCachedChuckyActive(true);
       setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
     }
-  }, [gameType, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult]);
+  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   useEffect(() => {

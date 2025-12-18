@@ -87,6 +87,7 @@ interface GameTableProps {
   isPaused?: boolean;
   debugHolmPaused?: boolean; // DEBUG: pause auto-progression for debugging
   isHost?: boolean; // Host can control players
+  gameStatus?: string; // Game status for detecting new game start
   // Chat props
   chatBubbles?: ChatBubbleData[];
   onSendChat?: (message: string) => void;
@@ -144,6 +145,7 @@ export const GameTable = ({
   isPaused,
   debugHolmPaused,
   isHost,
+  gameStatus,
   chatBubbles = [],
   onSendChat,
   isChatSending = false,
@@ -504,9 +506,21 @@ export const GameTable = ({
     lastAllDecisionsInRef.current = allDecisionsIn;
   }, [allDecisionsIn, gameId, realtimeRound?.id]);
   
-  // Cache Chucky cards when available, clear only when buck passes
+  // Cache Chucky cards when available, clear only when buck passes or new game starts
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    
+    // CRITICAL: Clear cached Chucky cards when a new game starts (ante_decision or configuring status)
+    // This prevents old cards from the previous game showing up
+    if (gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection') {
+      if (cachedChuckyCards && cachedChuckyCards.length > 0) {
+        console.log('[GAMETABLE_CHUCKY] New game starting - clearing cached Chucky cards');
+        setCachedChuckyCards(null);
+        setCachedChuckyActive(false);
+        setCachedChuckyCardsRevealed(0);
+      }
+      return;
+    }
     
     // When buck passes (awaitingNextRound AND no result), clear cached Chucky data
     if (awaitingNextRound && !lastRoundResult) {
@@ -524,7 +538,7 @@ export const GameTable = ({
       setCachedChuckyActive(true);
       setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
     }
-  }, [gameType, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult]);
+  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards]);
 
   // CRITICAL: Derive effective round from realtime data (source of truth), falling back to props
   const effectiveRoundNumber = realtimeRound?.round_number ?? currentRound;
