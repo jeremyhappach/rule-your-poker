@@ -1352,16 +1352,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const intervalId = setInterval(async () => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
       
-      // If stuck in Holm state, try to fix it by resetting all_decisions_in
+      // If stuck in Holm state, try to fix it by ending the round (not by flipping flags)
       if (stuckHolmState) {
-        console.log('[CRITICAL POLL] Detected stuck Holm state - attempting recovery');
-        // Reset all_decisions_in to allow the game to continue
-        await supabase
-          .from('games')
-          .update({ all_decisions_in: false })
-          .eq('id', gameId)
-          .eq('all_decisions_in', true)
-          .eq('awaiting_next_round', false);
+        console.log('[CRITICAL POLL] Detected stuck Holm state - attempting end-round recovery');
+        try {
+          await checkHolmRoundComplete(gameId);
+        } catch (e) {
+          console.error('[CRITICAL POLL] Holm recovery error:', e);
+        }
       }
       
       // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
