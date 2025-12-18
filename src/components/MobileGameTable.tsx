@@ -1760,7 +1760,7 @@ anteAnimationTriggerId,
           // IMPORTANT: CommunityCards is internally absolutely-positioned.
           // It must be rendered inside a full-size positioned container (inset-0)
           // so it doesn't anchor to a 0x0 wrapper and disappear on mobile.
-          <div className="absolute inset-0 z-10 pointer-events-none scale-[1.8] origin-center">
+          <div className="absolute inset-0 z-10 pointer-events-none scale-[1.8] origin-center" style={{ top: '8%' }}>
             <CommunityCards 
               cards={approvedCommunityCards} 
               revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
