@@ -476,6 +476,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         description: reason,
       });
 
+      // Only treat "repopulation" as an error when we EXPECT the cache to stay empty
+      // (e.g. during dealer config screens). During active gameplay a repopulation is often legitimate.
+      const shouldMonitorRepopulation =
+        reason.includes('DEALER') || reason.includes('GAME ID CHANGED') || reason.includes('FORCED CLEAR');
+
+      if (!shouldMonitorRepopulation) return;
+
       // Detect "cache repopulated" bugs (e.g., a child writes stale state back)
       // Check multiple times because repopulation can happen after effects fire.
       let hasFailed = false;
@@ -1824,8 +1831,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.status === 'game_over' ||
       game?.status === 'session_ended' ||
       game?.awaiting_next_round ||
-      game?.all_decisions_in ||
-      game?.last_round_result
+      game?.all_decisions_in
   );
 
   // Priority: liveRound > (optional) state cache > (optional) ref cache
@@ -1834,7 +1840,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Compute current card identity to detect new hands
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
   const currentCardIdentity = communityCards?.map(c => `${c.rank}${c.suit}`).join(',') || '';
-  
+
+  // Hand context key: Holm reuses the same round_number (and sometimes the same round id) across hands.
+  // So we include the card identity + chucky state to force child UI caches to reset on true hand changes.
+  const handContextKey =
+    cardStateContext?.roundId ??
+    (currentRound?.id
+      ? `${currentRound.id}:${currentCardIdentity}:${currentRound?.chucky_active ? '1' : '0'}:${currentRound?.chucky_cards_revealed ?? 0}`
+      : null);
+
   // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
     maxRevealedRef.current = 0;
@@ -1850,11 +1864,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Effective revealed count - use max during showdowns/game_over/completed rounds/awaiting next to prevent re-hiding
   const shouldUseMax = (
-    game?.status === 'game_over' || 
-    game?.all_decisions_in || 
+    game?.status === 'game_over' ||
+    game?.status === 'session_ended' ||
+    game?.all_decisions_in ||
     currentRound?.status === 'completed' ||
-    game?.awaiting_next_round ||
-    game?.last_round_result // Keep cards visible while result message is showing
+    game?.awaiting_next_round
   );
   
   const effectiveCommunityCardsRevealed = shouldUseMax
@@ -4178,7 +4192,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     externalShowdownRoundNumber={showdownRoundNumberRef}
                     externalCommunityCardsCache={communityCardsCacheRef}
                     externalCommunityCacheEpoch={communityCacheEpoch}
-                    handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
+                    handContextId={handContextKey}
                     winner357ShowCards={winner357ShowCards}
                     onWinner357ShowCards={handleWinner357ShowCards}
                   />
@@ -4211,7 +4225,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       gameType={game.game_type}
                       roundStatus={currentRound?.status}
                       gameStatus={game.status}
-                      handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
+                      handContextId={handContextKey}
                     />
                     {game.game_over_at && (
                       <GameOverCountdown
@@ -4613,7 +4627,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               externalShowdownRoundNumber={showdownRoundNumberRef}
               externalCommunityCardsCache={communityCardsCacheRef}
               externalCommunityCacheEpoch={communityCacheEpoch}
-              handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
+              handContextId={handContextKey}
               winner357ShowCards={winner357ShowCards}
               onWinner357ShowCards={handleWinner357ShowCards}
               holmPreFold={holmPreFold}
@@ -4631,7 +4645,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               authoritativeCardCount={cardStateContext?.cardsDealt}
-              handContextId={cardStateContext?.roundId ?? currentRound?.id ?? null}
+              handContextId={handContextKey}
               timeLeft={timeLeft}
               lastRoundResult={(game as any).last_round_result || null}
               dealerPosition={game.dealer_position}
