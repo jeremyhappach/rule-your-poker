@@ -333,7 +333,7 @@ serve(async (req) => {
           const fetchRound = async (roundId: string) => {
             const { data } = await supabase
               .from('rounds')
-              .select('id, status, round_number, current_turn_position, decision_deadline')
+              .select('id, status, round_number, current_turn_position, decision_deadline, community_cards_revealed')
               .eq('id', roundId)
               .single();
             return data;
@@ -341,6 +341,13 @@ serve(async (req) => {
 
           let activePlayers = await fetchActivePlayers();
           let workingRound = currentRound;
+
+          // Wait for community cards to be dealt before bots can decide (at least 2 should be revealed)
+          const communityRevealed = workingRound.community_cards_revealed ?? 0;
+          if (communityRevealed < 2) {
+            actionsTaken.push(`Holm: waiting for community cards (${communityRevealed}/2 revealed)`);
+            // Don't process bot turns yet - community cards not ready
+          } else {
 
           // If multiple bots are back-to-back, resolve them all in a single invocation.
           for (let i = 0; i < 10; i++) {
@@ -431,6 +438,7 @@ serve(async (req) => {
             activePlayers = await fetchActivePlayers();
             await advanceHolmTurn(workingRound.id, currentPos, activePlayers);
           }
+          } // end of community cards ready check
         }
 
         // 3-5-7 (simultaneous)
