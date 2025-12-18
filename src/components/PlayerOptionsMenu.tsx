@@ -59,6 +59,16 @@ export const PlayerOptionsMenu = ({
   deckColorMode,
   onDeckColorModeChange,
 }: PlayerOptionsMenuProps) => {
+  // Debug logging for Add Bot visibility
+  console.log('[PLAYER OPTIONS MENU] Rendering with:', {
+    isHost,
+    canAddBot,
+    hasOnAddBot: !!onAddBot,
+    gameStatus,
+    isObserver,
+    isWaitingPhase: gameStatus === 'waiting'
+  });
+  
   // Check if we're in the waiting phase (before game starts)
   const isWaitingPhase = gameStatus === 'waiting';
   
@@ -116,7 +126,10 @@ export const PlayerOptionsMenu = ({
           {/* Host Add Bot option */}
           {isHost && onAddBot && canAddBot && (
             <>
-              <DropdownMenuItem onClick={onAddBot}>
+              <DropdownMenuItem onClick={() => {
+                console.log('[PLAYER OPTIONS MENU] Add Bot clicked in waiting phase');
+                onAddBot?.();
+              }}>
                 🤖 Add Bot
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -180,7 +193,10 @@ export const PlayerOptionsMenu = ({
               </DropdownMenuItem>
             )}
             {onAddBot && canAddBot && (
-              <DropdownMenuItem onClick={onAddBot}>
+              <DropdownMenuItem onClick={() => {
+                console.log('[PLAYER OPTIONS MENU] Add Bot clicked in active game');
+                onAddBot?.();
+              }}>
                 🤖 Add Bot
               </DropdownMenuItem>
             )}
