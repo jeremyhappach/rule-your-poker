@@ -1349,18 +1349,7 @@ anteAnimationTriggerId,
           {gameType !== 'holm-game' && (
             <span className="text-white/40 text-xs font-medium">{legsToWin} legs to win</span>
           )}
-          {/* TEMP DEBUG: show round number on felt */}
-          {gameType === 'holm-game' && currentRound > 0 && (
-            <Badge
-              variant="secondary"
-              className="mt-1 text-[10px] px-2 py-0.5 bg-background/30 text-foreground border border-border/40 backdrop-blur-sm"
-            >
-              Round {currentRound}
-              {approvedRoundForDisplay !== null && approvedRoundForDisplay !== currentRound
-                ? ` (shown ${approvedRoundForDisplay})`
-                : ''}
-            </Badge>
-          )}
+          {/* Round label removed - was potentially blocking community cards */}
         </div>
         
         
@@ -1761,7 +1750,7 @@ anteAnimationTriggerId,
         {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
         {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
          (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 scale-[1.8]">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={approvedCommunityCards} 
               revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
