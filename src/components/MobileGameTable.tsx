@@ -1761,7 +1761,7 @@ anteAnimationTriggerId,
         {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
         {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
          (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 scale-[1.8]">
             <CommunityCards 
               cards={approvedCommunityCards} 
               revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
