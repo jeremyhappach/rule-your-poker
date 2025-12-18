@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
+import { createUuid } from "@/lib/uuid";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -139,7 +140,7 @@ export const WaitingForPlayersTable = ({
       const nextPosition = openPositions[randomIndex];
       
       // Create bot profile
-      const botId = crypto.randomUUID();
+      const botId = createUuid();
       const aggressionLevel = getAggressionLevelForBotId(botId);
       const { data: existingBotProfiles } = await supabase
         .from('profiles')
