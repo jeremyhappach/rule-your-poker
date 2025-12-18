@@ -347,6 +347,9 @@ export const DealerGameSetup = ({
     if (isHolmGame) {
       updateData.chucky_cards = parsedChucky;
       updateData.rabbit_hunt = rabbitHunt;
+      // CRITICAL (Holm only): pre-set round 1 + first-hand flag to prevent stale card flashes
+      updateData.current_round = 1;
+      updateData.is_first_hand = true;
     } else {
       updateData.reveal_at_showdown = revealAtShowdown;
     }
