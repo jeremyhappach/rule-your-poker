@@ -199,6 +199,8 @@ interface MobileGameTableProps {
   externalShowdownRoundNumber?: React.MutableRefObject<number | null>;
   // External community cards cache (lifted to Game.tsx to persist across remounts during win animation)
   externalCommunityCardsCache?: React.MutableRefObject<{ cards: CardType[] | null; round: number | null; show: boolean }>;
+  // Epoch that increments whenever the parent clears externalCommunityCardsCache (prevents repopulation)
+  externalCommunityCacheEpoch?: number;
   // 3-5-7 winner show cards - lifted to parent for realtime sync
   winner357ShowCards?: boolean;
   onWinner357ShowCards?: () => void;
@@ -297,6 +299,7 @@ export const MobileGameTable = ({
   externalShowdownCardsCache,
   externalShowdownRoundNumber,
   externalCommunityCardsCache,
+  externalCommunityCacheEpoch,
   winner357ShowCards = false,
   onWinner357ShowCards,
   holmPreFold = false,
@@ -464,6 +467,43 @@ export const MobileGameTable = ({
   // CRITICAL: During dealer config phases, NEVER read from external cache - it may contain stale cards
   const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
 
+  // CRITICAL: If parent clears the external cache, it increments an epoch.
+  // If we keep local state from the previous hand, we'd immediately write it back into the external cache.
+  const effectiveExternalCacheEpoch = externalCommunityCacheEpoch ?? 0;
+  const lastExternalCacheEpochRef = useRef<number>(effectiveExternalCacheEpoch);
+
+  useEffect(() => {
+    if (!externalCommunityCardsCache) {
+      lastExternalCacheEpochRef.current = effectiveExternalCacheEpoch;
+      return;
+    }
+
+    if (lastExternalCacheEpochRef.current === effectiveExternalCacheEpoch) return;
+
+    console.error('[MOBILE_COMMUNITY] 🔒 Parent cache epoch changed -> clearing local community cache to prevent repopulation', {
+      prevEpoch: lastExternalCacheEpochRef.current,
+      nextEpoch: effectiveExternalCacheEpoch,
+      gameStatus,
+    });
+
+    // Clear local community UI cache immediately
+    setShowCommunityCards(false);
+    setApprovedCommunityCards(null);
+    setApprovedRoundForDisplay(null);
+    setIsDelayingCommunityCards(false);
+    setStaggeredCardCount(0);
+    lastDetectedRoundRef.current = null;
+    if (communityCardsDelayRef.current) {
+      clearTimeout(communityCardsDelayRef.current);
+      communityCardsDelayRef.current = null;
+    }
+
+    // Also ensure the external cache stays empty for this epoch
+    externalCommunityCardsCache.current = { cards: null, round: null, show: false };
+
+    lastExternalCacheEpochRef.current = effectiveExternalCacheEpoch;
+  }, [effectiveExternalCacheEpoch, externalCommunityCardsCache, gameStatus]);
+
   // AGGRESSIVE: If we enter dealer config, wipe the *external* cache immediately.
   // MobileGameTable can unmount fast (switching screens) before state-based sync effects run.
   useEffect(() => {
@@ -511,6 +551,16 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (!externalCommunityCardsCache) return;
 
+    // If parent just cleared caches, do NOT write local state back for the "new" epoch.
+    if (externalCommunityCacheEpoch !== undefined && lastExternalCacheEpochRef.current !== effectiveExternalCacheEpoch) {
+      console.log('[MOBILE_COMMUNITY] ⛔ NOT syncing to external cache (epoch mismatch)', {
+        gameStatus,
+        localEpoch: lastExternalCacheEpochRef.current,
+        parentEpoch: effectiveExternalCacheEpoch,
+      });
+      return;
+    }
+
     // Never write to external cache during new game setup phases
     const isDealerConfig = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
     if (isDealerConfig) {
@@ -532,7 +582,7 @@ export const MobileGameTable = ({
       round: approvedRoundForDisplay,
       show: showCommunityCards,
     };
-  }, [approvedCommunityCards, approvedRoundForDisplay, showCommunityCards, externalCommunityCardsCache, gameStatus, currentRound]);
+  }, [approvedCommunityCards, approvedRoundForDisplay, showCommunityCards, externalCommunityCardsCache, gameStatus, currentRound, externalCommunityCacheEpoch, effectiveExternalCacheEpoch]);
   
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   // Use EXTERNAL refs when provided (from Game.tsx) to persist across component remounts
