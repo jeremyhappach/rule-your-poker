@@ -454,6 +454,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     prevGameIdRef.current = gameId;
   }, [gameId]);
 
+  // CRITICAL: When the dealer config flow starts (same gameId, new game setup),
+  // clear all lifted card caches immediately so the new game can't render old cards.
+  const prevStatusForCacheRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevStatusForCacheRef.current;
+    const next = game?.status ?? null;
+
+    const isDealerConfigScreen = next === 'game_selection' || next === 'configuring' || next === 'dealer_selection';
+    const entered = next !== prev && isDealerConfigScreen;
+
+    if (entered) {
+      console.log('[CACHE] 🧹 ENTERED DEALER CONFIG FLOW - clearing lifted caches', { prev, next });
+      communityCardsCacheRef.current = { cards: null, round: null, show: false };
+      showdownCardsCacheRef.current = new Map();
+      showdownRoundNumberRef.current = null;
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      setPlayerCards([]);
+      setCardStateContext(null);
+      maxRevealedRef.current = 0;
+      cardIdentityRef.current = '';
+    }
+
+    prevStatusForCacheRef.current = next;
+  }, [game?.status]);
+
   // Load player options from current player when player data changes
   useEffect(() => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
@@ -4160,7 +4186,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
               <div className="relative">
                 {isMobile ? (
-                  <MobileGameTable key={gameId ?? 'unknown-game'}
+                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
@@ -4188,7 +4214,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onLeaveGameNow={handleLeaveGameNow}
                   />
                 ) : (
-                  <GameTable key={gameId ?? 'unknown-game'}
+                  <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
