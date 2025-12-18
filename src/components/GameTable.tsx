@@ -200,7 +200,11 @@ export const GameTable = ({
   // CRITICAL: Track round reset hash (for Holm games where same round ID is reused)
   // This detects when round 2 is reset for a new hand by comparing key fields
   const lastRoundResetHashRef = useRef<string>('');
-  
+
+  // Holm: when a round transitions into a state where more cards become visible (RLS),
+  // force a refetch even if the round_id didn't change.
+  const lastExposureRefetchKeyRef = useRef<string>('');
+
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<string | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
@@ -422,11 +426,12 @@ export const GameTable = ({
               });
               setLocalPlayerCards([]);
               lastFetchedRoundIdRef.current = null;
+              lastExposureRefetchKeyRef.current = '';
             }
-            
+
             // Update the reset hash
             lastRoundResetHashRef.current = roundResetHash;
-            
+
             // Update round state
             setRealtimeRound({
               id: newRound.id,
@@ -434,10 +439,28 @@ export const GameTable = ({
               cards_dealt: newRound.cards_dealt,
               status: newRound.status
             });
-            
+
+            // If the round transitioned into a showdown/exposure state, force a card refetch even if
+            // the round_id did not change (RLS can now return more rows).
+            const exposureEligible =
+              gameType === 'holm-game' &&
+              (newRound.status === 'showdown' ||
+                newRound.status === 'completed' ||
+                newRound.community_cards_revealed === 4);
+
+            const exposureKey = `${newRound.id}-${newRound.status}-${newRound.community_cards_revealed ?? ''}`;
+            const shouldForceExposureRefetch =
+              exposureEligible &&
+              newRound.id === lastFetchedRoundIdRef.current &&
+              lastExposureRefetchKeyRef.current !== exposureKey;
+
+            if (shouldForceExposureRefetch) {
+              lastExposureRefetchKeyRef.current = exposureKey;
+            }
+
             // Fetch cards for new round (with small delay to ensure cards are inserted)
             setTimeout(async () => {
-              if (newRound.id !== lastFetchedRoundIdRef.current || isRoundReset) {
+              if (newRound.id !== lastFetchedRoundIdRef.current || isRoundReset || shouldForceExposureRefetch) {
                 await fetchCardsForRound(newRound.id, newRound.round_number);
               }
             }, 100);
