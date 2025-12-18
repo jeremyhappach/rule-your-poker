@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
 import { CommunityCards } from "./CommunityCards";
+import { CommunityCardsDebugOverlay } from "./CommunityCardsDebugOverlay";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
@@ -828,6 +829,32 @@ anteAnimationTriggerId,
     };
   }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards, lastRoundResult, gameStatus]);
 
+  // Backfill approvedCommunityCards if they arrive AFTER the 1s approval delay.
+  // Bug: round gets "approved" while communityCards prop is still undefined -> approvedCommunityCards becomes null and never re-approved.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!currentRound) return;
+    if (isDelayingCommunityCards) return; // don't bypass the intended delay
+    if (!showCommunityCards) return; // only backfill when UI intends to show them
+
+    const liveLen = communityCards?.length ?? 0;
+    const approvedLen = approvedCommunityCards?.length ?? 0;
+
+    const shouldBackfill = liveLen > 0 && approvedLen === 0 && (approvedRoundForDisplay === currentRound || approvedRoundForDisplay === null);
+
+    if (!shouldBackfill) return;
+
+    console.log('🔥 [MOBILE_COMMUNITY] BACKFILL approvedCommunityCards (late arrival):', {
+      currentRound,
+      approvedRoundForDisplay,
+      liveLen,
+      showCommunityCards,
+    });
+
+    setApprovedRoundForDisplay(currentRound);
+    setApprovedCommunityCards([...(communityCards ?? [])]);
+  }, [gameType, currentRound, communityCards, approvedCommunityCards, approvedRoundForDisplay, isDelayingCommunityCards, showCommunityCards]);
+
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
     if (gameType !== 'holm-game') return;
@@ -1312,6 +1339,24 @@ anteAnimationTriggerId,
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }} />
+
+        {/* Debug overlay (never blocks clicks) */}
+        <CommunityCardsDebugOverlay
+          gameId={undefined}
+          gameType={gameType}
+          gameStatus={gameStatus}
+          roundStatus={roundStatus}
+          isPaused={isPaused}
+          currentRound={currentRound}
+          awaitingNextRound={awaitingNextRound}
+          communityCardsLength={communityCards?.length ?? 0}
+          communityCardsRevealed={communityCardsRevealed ?? null}
+          approvedCommunityCardsLength={approvedCommunityCards?.length ?? 0}
+          approvedRoundForDisplay={approvedRoundForDisplay}
+          showCommunityCards={showCommunityCards}
+          isDelayingCommunityCards={isDelayingCommunityCards}
+          staggeredCardCount={staggeredCardCount}
+        />
         
         {/* Game name on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
