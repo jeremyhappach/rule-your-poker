@@ -727,16 +727,21 @@ anteAnimationTriggerId,
   // currentRound is already a number (round_number), use it directly
   
   useEffect(() => {
-    console.log('[MOBILE_COMMUNITY] useEffect triggered:', { 
+    console.log('🔥🔥🔥 [MOBILE_COMMUNITY] useEffect triggered:', { 
       gameType, 
       currentRound, 
       awaitingNextRound, 
       showCommunityCards,
       approvedRoundForDisplay,
-      lastDetectedRound: lastDetectedRoundRef.current
+      lastDetectedRound: lastDetectedRoundRef.current,
+      communityCards: communityCards?.length,
+      communityCardsRevealed,
+      lastRoundResult,
+      gameStatus
     });
     
     if (gameType !== 'holm-game') {
+      console.log('🔥 [MOBILE_COMMUNITY] Not holm game, showing cards immediately');
       setShowCommunityCards(true);
       return;
     }
@@ -744,7 +749,7 @@ anteAnimationTriggerId,
     // If awaiting next round AND result is cleared (buck has passed), hide community cards
     // Cards should persist through announcement, only disappear when buck passes
     if (awaitingNextRound && !lastRoundResult) {
-      console.log('[MOBILE_COMMUNITY] Buck passed (result cleared) - hiding community cards');
+      console.log('🔥 [MOBILE_COMMUNITY] Buck passed (result cleared) - hiding community cards');
       setShowCommunityCards(false);
       setApprovedCommunityCards(null);
       setApprovedRoundForDisplay(null);
@@ -758,7 +763,7 @@ anteAnimationTriggerId,
     
     // If awaiting next round but result still showing (announcement phase), keep cards visible
     if (awaitingNextRound) {
-      console.log('[MOBILE_COMMUNITY] Awaiting next round with result showing - keeping cards visible');
+      console.log('🔥 [MOBILE_COMMUNITY] Awaiting next round with result showing - keeping cards visible');
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
@@ -771,15 +776,17 @@ anteAnimationTriggerId,
     // Use REF for detection (to prevent re-triggering) but STATE for render gating
     const isNewRound = currentRound && currentRound !== lastDetectedRoundRef.current;
     
-    console.log('[MOBILE_COMMUNITY] Checking new round:', { 
+    console.log('🔥🔥🔥 [MOBILE_COMMUNITY] Checking new round:', { 
       isNewRound, 
       currentRound, 
       lastDetectedRound: lastDetectedRoundRef.current,
-      approvedRoundForDisplay
+      approvedRoundForDisplay,
+      hasCommunityCards: !!communityCards,
+      communityCardsLength: communityCards?.length
     });
     
     if (isNewRound) {
-      console.log('[MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting reveal delay (cards hidden until approved)');
+      console.log('🔥🔥🔥🔥 [MOBILE_COMMUNITY] 🎴 NEW ROUND DETECTED - starting reveal delay (cards hidden until approved)');
       lastDetectedRoundRef.current = currentRound; // Mark as detected to prevent re-trigger
       
       // Hide cards and reset state
@@ -795,14 +802,16 @@ anteAnimationTriggerId,
       
       // Initial delay of 1 second, then reveal cards one at a time
       const cardCount = communityCardsRevealed || 2;
+      console.log('🔥🔥 [MOBILE_COMMUNITY] Setting 1000ms timeout to approve round', currentRound, 'with', cardCount, 'cards');
       communityCardsDelayRef.current = setTimeout(() => {
-        console.log('[MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
+        console.log('🔥🔥🔥🔥🔥 [MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
         setApprovedRoundForDisplay(currentRound); // NOW we approve this round for display
         setApprovedCommunityCards(communityCards ? [...communityCards] : null); // Cache the cards at approval time
         setShowCommunityCards(true);
         // Stagger each card with 150ms delay
         for (let i = 1; i <= cardCount; i++) {
           setTimeout(() => {
+            console.log('🔥 [MOBILE_COMMUNITY] Revealing card', i, 'of', cardCount);
             setStaggeredCardCount(i);
             if (i === cardCount) {
               setIsDelayingCommunityCards(false);
@@ -817,7 +826,7 @@ anteAnimationTriggerId,
         clearTimeout(communityCardsDelayRef.current);
       }
     };
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards, lastRoundResult, gameStatus]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
@@ -1710,21 +1719,36 @@ anteAnimationTriggerId,
           );
         })()}
         
-        {/* Community Cards - vertically centered, delayed 1 second after player cards */}
-        {/* Use approvedCommunityCards (cached at approval time) to prevent showing new round cards during announcement */}
-        {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
-        {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
-         (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
-            <CommunityCards 
-              cards={approvedCommunityCards} 
-              revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
-              highlightedIndices={winningCardHighlights.communityIndices}
-              kickerIndices={winningCardHighlights.kickerCommunityIndices}
-              hasHighlights={winningCardHighlights.hasHighlights}
-            />
-          </div>
-        )}
+        {(() => {
+          const shouldShow = gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
+           (isInGameOverStatus || currentRound === approvedRoundForDisplay);
+          
+          console.log('🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:', {
+            shouldShow,
+            gameType,
+            hasApprovedCards: !!approvedCommunityCards,
+            approvedCardsLength: approvedCommunityCards?.length,
+            showCommunityCards,
+            isInGameOverStatus,
+            currentRound,
+            approvedRoundForDisplay,
+            roundMatch: currentRound === approvedRoundForDisplay
+          });
+          
+          if (!shouldShow) return null;
+          
+          return (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+              <CommunityCards 
+                cards={approvedCommunityCards!} 
+                revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
+                highlightedIndices={winningCardHighlights.communityIndices}
+                kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                hasHighlights={winningCardHighlights.hasHighlights}
+              />
+            </div>
+          );
+        })()}
         
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
