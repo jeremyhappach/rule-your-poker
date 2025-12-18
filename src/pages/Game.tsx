@@ -81,8 +81,6 @@ interface GameData {
   awaiting_next_round?: boolean | null;
   next_round_number?: number | null;
   ante_decision_deadline?: string | null;
-  config_deadline?: string | null;
-  current_host?: string | null;
   ante_amount?: number;
   leg_value?: number;
   pussy_tax_enabled?: boolean;
@@ -346,183 +344,72 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Handle pause/resume toggle for host
   const handleTogglePause = useCallback(async () => {
     if (!game || !gameId) return;
-
+    
     const newPausedState = !game.is_paused;
-
-    const isHolmGame = game.game_type === 'holm-game' || game.game_type === 'holm';
-    const isInProgress = game.status === 'in_progress';
-    const isAnteDecision = game.status === 'ante_decision';
-    const isConfigPhase = game.status === 'configuring' || game.status === 'game_selection';
-
-    const getRemainingSeconds = (iso: string | null | undefined) => {
-      if (!iso) return null;
-      const ms = new Date(iso).getTime() - Date.now();
-      if (Number.isNaN(ms)) return null;
-      return Math.max(0, Math.floor(ms / 1000));
-    };
-
+    
     // Get current round for deadline updates - use latest round for Holm games
     const currentRoundData = game.game_type === 'holm-game'
-      ? game.rounds?.reduce(
-          (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
-          null as Round | null
-        )
+      ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
       : game.rounds?.find(r => r.round_number === game.current_round);
-
+    
     if (newPausedState) {
-      // PAUSING: Freeze active deadlines and store remaining time (server-driven)
-      let remainingTime: number | null = null;
-      let roundIdToFreeze: string | null = null;
-
-      if (isInProgress) {
-        let activeDecisionDeadline: string | null | undefined =
-          decisionDeadline ?? (currentRoundData as any)?.decision_deadline ?? null;
-
-        roundIdToFreeze = currentRoundData?.id ?? null;
-
-        // Fallback: fetch latest round if we don't have a deadline yet (e.g., paused before cards render)
-        if (!activeDecisionDeadline || !roundIdToFreeze) {
-          const { data: latestRound } = await supabase
-            .from('rounds')
-            .select('id, decision_deadline')
-            .eq('game_id', gameId)
-            .order('round_number', { ascending: false })
-            .limit(1)
-            .single();
-
-          activeDecisionDeadline = activeDecisionDeadline ?? latestRound?.decision_deadline ?? null;
-          roundIdToFreeze = roundIdToFreeze ?? latestRound?.id ?? null;
-        }
-
-        remainingTime = getRemainingSeconds(activeDecisionDeadline);
-      } else if (isAnteDecision) {
-        remainingTime = getRemainingSeconds(game.ante_decision_deadline);
-      } else if (isConfigPhase) {
-        remainingTime = getRemainingSeconds(game.config_deadline);
-      }
-
+      // PAUSING: Save current remaining time
+      const remainingTime = timeLeft ?? 0;
       console.log('[PAUSE] Pausing game, saving remaining time:', remainingTime);
-
+      
       // Optimistic UI update
-      setGame(prev => (prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev));
-      if (remainingTime !== null && remainingTime !== undefined) {
-        setTimeLeft(remainingTime);
-      }
-
-      // Stop client countdown immediately (we display paused_time_remaining instead)
-      if (isInProgress) {
-        setDecisionDeadline(null);
-      }
-
-      const gameUpdate: any = {
-        is_paused: true,
-        paused_time_remaining: remainingTime,
-      };
-
-      // Freeze phase-specific deadlines on pause so they can't expire while paused
-      if (isAnteDecision) {
-        gameUpdate.ante_decision_deadline = null;
-      }
-      if (isConfigPhase) {
-        gameUpdate.config_deadline = null;
-      }
-
-      const { error: gameError } = await supabase
+      setGame(prev => prev ? { ...prev, is_paused: true, paused_time_remaining: remainingTime } : prev);
+      
+      const { error } = await supabase
         .from('games')
-        .update(gameUpdate)
+        .update({ 
+          is_paused: true, 
+          paused_time_remaining: remainingTime 
+        })
         .eq('id', gameId);
-
-      // Freeze in-progress decision deadline (stored on rounds)
-      if (!gameError && isInProgress && roundIdToFreeze) {
-        const { error: roundError } = await supabase
-          .from('rounds')
-          .update({ decision_deadline: null })
-          .eq('id', roundIdToFreeze);
-
-        if (roundError) {
-          console.error('[PAUSE] Error clearing round deadline:', roundError);
-        }
-      }
-
-      if (gameError) {
-        console.error('[PAUSE] Error pausing:', gameError);
-        setGame(prev => (prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev));
-        toast({ title: 'Error', description: 'Failed to pause game', variant: 'destructive' });
+      
+      if (error) {
+        console.error('[PAUSE] Error pausing:', error);
+        setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+        toast({ title: "Error", description: "Failed to pause game", variant: "destructive" });
       }
     } else {
-      // RESUMING: Reset all timers to maximum duration
+      // RESUMING: Reset all active deadlines to maximum duration
       const maxTime = decisionTimerRef.current;
       const newDeadline = new Date(Date.now() + maxTime * 1000).toISOString();
-
       console.log('[PAUSE] Resuming game, resetting deadline to max:', newDeadline, 'with', maxTime, 'seconds');
-
+      
       // Optimistic UI update
-      setGame(prev => (prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev));
-      autoFoldingRef.current = false;
-
-      // Restore client timer source (server deadline)
-      if (newDeadline && isInProgress) {
-        setDecisionDeadline(newDeadline);
-      }
-
-      const gameUpdate: any = {
-        is_paused: false,
-        paused_time_remaining: null,
-      };
-
-      // Restore phase-specific deadlines
-      if (newDeadline && isAnteDecision) {
-        gameUpdate.ante_decision_deadline = newDeadline;
-      }
-      if (newDeadline && isConfigPhase) {
-        gameUpdate.config_deadline = newDeadline;
-      }
-
+      setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
+      setDecisionDeadline(newDeadline);
+      
+      // Update game and current round deadline
       const { error: gameError } = await supabase
         .from('games')
-        .update(gameUpdate)
+        .update({ 
+          is_paused: false, 
+          paused_time_remaining: null 
+        })
         .eq('id', gameId);
-
-      // Restore in-progress decision deadline (stored on rounds)
-      if (newDeadline && isInProgress) {
-        let roundIdToRestore = currentRoundData?.id ?? null;
-
-        if (!roundIdToRestore) {
-          const { data: latestRound } = await supabase
-            .from('rounds')
-            .select('id')
-            .eq('game_id', gameId)
-            .order('round_number', { ascending: false })
-            .limit(1)
-            .single();
-
-          roundIdToRestore = latestRound?.id ?? null;
-        }
-
-        if (roundIdToRestore) {
-          const { error: roundError } = await supabase
-            .from('rounds')
-            .update({ decision_deadline: newDeadline })
-            .eq('id', roundIdToRestore);
-
-          if (roundError) {
-            console.error('[PAUSE] Error updating round deadline:', roundError);
-          }
-        }
-
-        // Bots should decide immediately when resuming in 3-5-7 (NOT Holm)
-        if (!isHolmGame) {
-          void makeBotDecisions(gameId, null, { immediate: true });
+      
+      if (currentRoundData?.id) {
+        const { error: roundError } = await supabase
+          .from('rounds')
+          .update({ decision_deadline: newDeadline })
+          .eq('id', currentRoundData.id);
+        
+        if (roundError) {
+          console.error('[PAUSE] Error updating round deadline:', roundError);
         }
       }
-
+      
       if (gameError) {
         console.error('[PAUSE] Error resuming:', gameError);
-        setGame(prev => (prev ? { ...prev, is_paused: true } : prev));
-        toast({ title: 'Error', description: 'Failed to resume game', variant: 'destructive' });
+        setGame(prev => prev ? { ...prev, is_paused: true } : prev);
+        toast({ title: "Error", description: "Failed to resume game", variant: "destructive" });
       }
     }
-  }, [game, gameId, decisionDeadline, toast]);
+  }, [game, gameId, timeLeft, toast]);
 
   // DEBUG: Pause auto-progression for Holm games to debug stale card issues
   // Set to true to enable debug mode (shows "Proceed to Next Round" button)
@@ -1226,12 +1113,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Trigger bot ante decisions - INSTANT for bots
   useEffect(() => {
-    if (game?.status === 'ante_decision' && !game?.is_paused) {
+    if (game?.status === 'ante_decision') {
       console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions IMMEDIATELY');
       // Call immediately - no delay needed for bots
       makeBotAnteDecisions(gameId!);
     }
-  }, [game?.status, game?.is_paused, gameId]);
+  }, [game?.status, gameId]);
 
   // CRITICAL: Aggressive polling fallback for realtime reliability issues
   // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
@@ -1888,12 +1775,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const botProcessingRef = useRef(false);
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
-
-    // CRITICAL: Nothing should advance while paused (bots included)
-    if (game?.is_paused) {
-      console.log('[BOT TRIGGER] Game is paused - skipping bot decisions');
-      return;
-    }
     
     console.log('[BOT TRIGGER EFFECT] Running', {
       status: game?.status,
@@ -2112,52 +1993,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.error('[TIMER EXPIRED HOLM] Error auto-folding:', err);
           autoFoldingRef.current = false;
         });
-        } else {
-          // For 3-5-7 games, also verify server deadline before auto-folding
-          (async () => {
-            const { data: freshGame } = await supabase
-              .from('games')
-              .select('is_paused')
-              .eq('id', gameId!)
-              .single();
-
-            if (freshGame?.is_paused) {
-              console.log('[TIMER EXPIRED 3-5-7] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
-              autoFoldingRef.current = false;
-              fetchGameData();
-              return;
-            }
-
-            // CRITICAL: Timer must be server-based. If the round's decision_deadline is still in the future,
-            // skip auto-fold even if local timeLeft hit 0 due to stale/pause transitions.
-            const { data: freshRound } = await supabase
-              .from('rounds')
-              .select('decision_deadline')
-              .eq('game_id', gameId!)
-              .order('round_number', { ascending: false })
-              .limit(1)
-              .single();
-
-            const deadlineIso = freshRound?.decision_deadline;
-            const deadlineMs = deadlineIso ? new Date(deadlineIso).getTime() : null;
-
-            if (!deadlineMs || Number.isNaN(deadlineMs) || deadlineMs > Date.now()) {
-              console.log('[TIMER EXPIRED 3-5-7] Server deadline not expired - skipping auto-fold', {
-                deadlineIso,
-              });
-              autoFoldingRef.current = false;
-              fetchGameData();
-              return;
-            }
-
-            await autoFoldUndecided(gameId!);
+      } else {
+        // For 3-5-7 games, also check pause state from database
+        (async () => {
+          const { data: freshGame } = await supabase
+            .from('games')
+            .select('is_paused')
+            .eq('id', gameId!)
+            .single();
+          
+          if (freshGame?.is_paused) {
+            console.log('[TIMER EXPIRED 3-5-7] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
+            autoFoldingRef.current = false;
             fetchGameData();
-            autoFoldingRef.current = false;
-          })().catch(err => {
-            console.error('[TIMER EXPIRED] Error auto-folding:', err);
-            autoFoldingRef.current = false;
-          });
-        }
+            return;
+          }
+          
+          await autoFoldUndecided(gameId!);
+          fetchGameData();
+          autoFoldingRef.current = false;
+        })().catch(err => {
+          console.error('[TIMER EXPIRED] Error auto-folding:', err);
+          autoFoldingRef.current = false;
+        });
+      }
     }
   }, [timeLeft, game?.status, game?.all_decisions_in, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
 
@@ -2226,17 +2085,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
     const currentRound = game?.current_round || 0;
-
-    // CRITICAL: If paused, ensure we never start or keep an auto-proceed timer
-    if (game?.is_paused) {
-      if (awaitingTimerRef.current) {
-        console.log('[AWAITING_NEXT_ROUND] Game paused - clearing pending auto-proceed timer');
-        clearTimeout(awaitingTimerRef.current);
-        awaitingTimerRef.current = null;
-        gameStateAtTimerStart.current = null;
-      }
-      return;
-    }
     
     console.log('[AUTO_PROCEED_EFFECT] Running', {
       awaiting: currentAwaiting,
@@ -2400,18 +2248,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameStateAtTimerStart.current = null;
         
         try {
-          // Always re-check pause state from DB at execution time (pause can happen after timer starts)
-          const { data: pauseCheck } = await supabase
-            .from('games')
-            .select('is_paused')
-            .eq('id', gameId)
-            .single();
-
-          if (pauseCheck?.is_paused) {
-            console.log('[AWAITING_NEXT_ROUND] Game is paused (fresh DB check) - skipping proceed');
-            return;
-          }
-
           const isHolmGame = game?.game_type === 'holm-game';
           console.log('[AWAITING_NEXT_ROUND] Calling proceed function', { isHolmGame, gameId });
           
@@ -2422,13 +2258,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('is_paused, last_round_result, next_round_number, pot, ante_amount, status')
+              .select('last_round_result, next_round_number, pot, ante_amount, status')
               .eq('id', gameId)
               .single();
             
-            // Skip if paused or game is already over (357 sweep sets game_over after 5s)
-            if (freshGame?.is_paused || freshGame?.status === 'game_over') {
-              console.log('[AWAITING_NEXT_ROUND] Game paused or already over, skipping proceed');
+            // Skip if game is already over (357 sweep sets game_over after 5s)
+            if (freshGame?.status === 'game_over') {
+              console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
               return;
             }
             
@@ -2490,7 +2326,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.last_round_result, game?.is_paused]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.last_round_result]);
 
   // Clear timer when results are shown
   useEffect(() => {

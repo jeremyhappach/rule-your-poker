@@ -230,11 +230,7 @@ export async function addBotPlayerSittingOut(gameId: string) {
   return botPlayer;
 }
 
-export async function makeBotDecisions(
-  gameId: string,
-  passedTurnPosition?: number | null,
-  options?: { immediate?: boolean }
-) {
+export async function makeBotDecisions(gameId: string, passedTurnPosition?: number | null) {
   console.log('[BOT DECISIONS] Making decisions for game:', gameId, 'turnPosition:', passedTurnPosition);
   
   // Get current round and game type
@@ -348,18 +344,6 @@ export async function makeBotDecisions(
     
     // Add delay before bot makes decision
     await new Promise(resolve => setTimeout(resolve, decisionDelay * 1000));
-
-    // Pause guard: if game was paused after we scheduled the delay, do nothing
-    const { data: pauseCheck } = await supabase
-      .from('games')
-      .select('is_paused, status')
-      .eq('id', gameId)
-      .single();
-
-    if (pauseCheck?.is_paused || pauseCheck?.status !== 'in_progress') {
-      console.log('[BOT DECISIONS] Holm: Skipping decision because game is paused or not in progress');
-      return false;
-    }
     
     // Decide to stay or fold based on calculated probability
     const shouldFold = Math.random() * 100 < foldProbability;
@@ -375,14 +359,10 @@ export async function makeBotDecisions(
     return true;
   }
   
-  // For 3-5-7 games, process all bots (simultaneous decisions)
-  // When resuming from pause, callers can request immediate decisions (no delay).
-  const immediate357 = options?.immediate === true;
-  let anyDecisionMade = false;
-
+  // For 3-5-7 games, process all bots with staggered delays (simultaneous decisions)
   for (const bot of botsToDecide) {
     const botAggressionLevel = aggressionMap.get(bot.user_id) || 'normal';
-
+    
     // Get this bot's cards
     const { data: playerCards } = await supabase
       .from('player_cards')
@@ -390,87 +370,36 @@ export async function makeBotDecisions(
       .eq('player_id', bot.id)
       .eq('round_id', currentRound.id)
       .single();
-
+    
     const botCards: Card[] = playerCards?.cards ? (playerCards.cards as unknown as Card[]) : [];
-
+    
     // Calculate fold probability - use hand strength or universal setting
     let foldProbability: number;
     if (useHandStrength) {
       foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber, botAggressionLevel);
-      console.log(
-        '[BOT DECISIONS] 3-5-7 bot at position',
-        bot.position,
-        'fold probability:',
-        foldProbability,
-        '% (round',
-        roundNumber,
-        ', hand strength, aggression:',
-        botAggressionLevel,
-        ')'
-      );
+      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'fold probability:', foldProbability, '% (round', roundNumber, ', hand strength, aggression:', botAggressionLevel, ')');
     } else {
       // Apply aggression multiplier even to universal probability
       const multiplier = { 'very_conservative': 1.6, 'conservative': 1.3, 'normal': 1.0, 'aggressive': 0.7, 'very_aggressive': 0.4 }[botAggressionLevel];
       foldProbability = Math.min(100, Math.max(0, universalFoldProbability * multiplier));
-      console.log(
-        '[BOT DECISIONS] 3-5-7 bot at position',
-        bot.position,
-        'using universal fold probability:',
-        foldProbability,
-        '% (adjusted for aggression:',
-        botAggressionLevel,
-        ')'
-      );
+      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'using universal fold probability:', foldProbability, '% (adjusted for aggression:', botAggressionLevel, ')');
     }
-
-    const decideAndPersist = async () => {
-      // Pause/status guard (in case pause toggled after this decision was queued)
-      const { data: pauseCheck } = await supabase
-        .from('games')
-        .select('is_paused, status')
-        .eq('id', gameId)
-        .single();
-
-      if (pauseCheck?.is_paused || pauseCheck?.status !== 'in_progress') {
-        console.log('[BOT DECISIONS] 3-5-7: Skipping decision because game is paused or not in progress');
-        return;
-      }
-
-      // Guard against double decisions (e.g., scheduled timeouts + resume-triggered immediate run)
-      const { data: botFresh } = await supabase
-        .from('players')
-        .select('current_decision, decision_locked')
-        .eq('id', bot.id)
-        .single();
-
-      if (botFresh?.decision_locked || botFresh?.current_decision) {
-        console.log('[BOT DECISIONS] 3-5-7: Bot already decided, skipping', bot.id);
-        return;
-      }
-
+    
+    // Stagger bot decisions slightly to feel more natural
+    const randomDelay = (decisionDelay * 1000) + Math.random() * 1500;
+    
+    setTimeout(async () => {
+      // Decide to stay or fold based on calculated probability
       const shouldFold = Math.random() * 100 < foldProbability;
       const decision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
-
-      console.log('[BOT DECISIONS] 3-5-7: Bot', bot.id, 'deciding:', decision);
+      
+      console.log('[BOT DECISIONS] Bot', bot.id, 'deciding:', decision, 'after', randomDelay, 'ms');
+      
       await makeDecision(gameId, bot.id, decision);
-      anyDecisionMade = true;
-    };
-
-    if (immediate357) {
-      await decideAndPersist();
-    } else {
-      // Stagger bot decisions slightly to feel more natural
-      const randomDelay = (decisionDelay * 1000) + Math.random() * 1500;
-
-      setTimeout(() => {
-        decideAndPersist().catch((err) => {
-          console.error('[BOT DECISIONS] 3-5-7: Error in scheduled bot decision:', err);
-        });
-      }, randomDelay);
-    }
+    }, randomDelay);
   }
-
-  return anyDecisionMade;
+  
+  return false; // 3-5-7 decisions are async, don't need immediate refetch
 }
 
 export async function makeBotAnteDecisions(gameId: string) {

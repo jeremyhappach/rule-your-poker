@@ -1036,12 +1036,9 @@ export const GameTable = ({
             const isEmptySeat = 'isEmpty' in seat && seat.isEmpty;
             const player = !isEmptySeat ? seat as Player : null;
             const isCurrentUser = player?.user_id === currentUserId;
-            // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
-            // The hasPlayerDecided indicator should also be hidden while paused for non-current users
-            const hasPlayerDecided = (isCurrentUser || !isPaused) ? player?.decision_locked : false;
+            const hasPlayerDecided = player?.decision_locked;
             // Always show current user's decision immediately, or all decisions when allDecisionsIn
-            // BUT if paused, hide non-current-user decisions to prevent revealing bot decisions
-            const playerDecision = (isCurrentUser || (!isPaused && (allDecisionsIn || gameType === 'holm-game'))) 
+            const playerDecision = (isCurrentUser || allDecisionsIn || gameType === 'holm-game') 
               ? player?.current_decision 
               : null;
             
@@ -1259,8 +1256,7 @@ export const GameTable = ({
                             </span>
                           )}
                         </p>
-                        {/* Hide dealer button during 3-5-7 round 3 showdown to avoid blocking exposed cards */}
-                        {player.position === dealerPosition && !(gameType === '357-game' && currentRound === 3 && allDecisionsIn) && (
+                        {player.position === dealerPosition && (
                           <div className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 rounded-full bg-red-600 flex items-center justify-center border-2 border-white shadow-lg">
                             <span className="text-white font-black text-[7px] sm:text-[8px] md:text-[10px]">D</span>
                           </div>
@@ -1327,18 +1323,6 @@ export const GameTable = ({
                               <label className="flex items-center gap-1 cursor-pointer">
                                 <input
                                   type="checkbox"
-                                  checked={holmPreFold}
-                                  onChange={(e) => {
-                                    onHolmPreFoldChange?.(e.target.checked);
-                                    if (e.target.checked) onHolmPreStayChange?.(false);
-                                  }}
-                                  className="w-3 h-3 rounded border border-red-500 accent-red-500"
-                                />
-                                <span className="text-[8px] font-medium text-red-500">Fold</span>
-                              </label>
-                              <label className="flex items-center gap-1 cursor-pointer">
-                                <input
-                                  type="checkbox"
                                   checked={holmPreStay}
                                   onChange={(e) => {
                                     onHolmPreStayChange?.(e.target.checked);
@@ -1347,6 +1331,18 @@ export const GameTable = ({
                                   className="w-3 h-3 rounded border border-green-500 accent-green-500"
                                 />
                                 <span className="text-[8px] font-medium text-green-500">Stay</span>
+                              </label>
+                              <label className="flex items-center gap-1 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={holmPreFold}
+                                  onChange={(e) => {
+                                    onHolmPreFoldChange?.(e.target.checked);
+                                    if (e.target.checked) onHolmPreStayChange?.(false);
+                                  }}
+                                  className="w-3 h-3 rounded border border-red-500 accent-red-500"
+                                />
+                                <span className="text-[8px] font-medium text-red-500">Fold</span>
                               </label>
                             </div>
                           );

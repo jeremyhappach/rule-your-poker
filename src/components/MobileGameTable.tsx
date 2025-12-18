@@ -1065,10 +1065,7 @@ anteAnimationTriggerId,
   // Render player chip - chipstack in center, name below (or above for bottom positions)
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
-    const isCurrentUser = player.user_id === currentUserId;
-    // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
-    // Current user can always see their own decision
-    const playerDecision = (isCurrentUser || !isPaused) ? player.current_decision : null;
+    const playerDecision = player.current_decision;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
     // Use getPlayerCards for showdown caching
     const cards = getPlayerCards(player.id);
@@ -1174,8 +1171,7 @@ anteAnimationTriggerId,
         )}
         
         {/* Dealer button - positioned OUTSIDE (away from table center), barely overlapping chip stack */}
-        {/* Hide during 3-5-7 round 3 showdown to avoid blocking exposed cards */}
-        {isDealer && !(gameType === '357-game' && currentRound === 3 && allDecisionsIn) && (
+        {isDealer && (
           <div className="absolute z-30" style={{
             ...(isRightSideSlot 
               ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(75%)' }
@@ -2016,8 +2012,7 @@ anteAnimationTriggerId,
         )}
         
         {/* Dealer button on felt for current player */}
-        {/* Hide during 3-5-7 round 3 showdown to avoid blocking exposed cards */}
-        {currentPlayer && dealerPosition === currentPlayer.position && !(gameType === '357-game' && currentRound === 3 && allDecisionsIn) && (
+        {currentPlayer && dealerPosition === currentPlayer.position && (
           <div 
             className="absolute z-20"
             style={{
@@ -2337,18 +2332,6 @@ anteAnimationTriggerId,
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={holmPreFold}
-                          onChange={(e) => {
-                            onHolmPreFoldChange?.(e.target.checked);
-                            if (e.target.checked) onHolmPreStayChange?.(false);
-                          }}
-                          className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
-                        />
-                        <span className="text-sm font-medium text-red-500">Fold</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
                           checked={holmPreStay}
                           onChange={(e) => {
                             onHolmPreStayChange?.(e.target.checked);
@@ -2357,6 +2340,18 @@ anteAnimationTriggerId,
                           className="w-5 h-5 rounded border-2 border-green-500 accent-green-500"
                         />
                         <span className="text-sm font-medium text-green-500">Stay</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={holmPreFold}
+                          onChange={(e) => {
+                            onHolmPreFoldChange?.(e.target.checked);
+                            if (e.target.checked) onHolmPreStayChange?.(false);
+                          }}
+                          className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
+                        />
+                        <span className="text-sm font-medium text-red-500">Fold</span>
                       </label>
                     </div>
                   )}

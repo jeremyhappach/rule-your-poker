@@ -43,13 +43,34 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     console.log('[COMMUNITY_CARDS] Processing NEW hand - handId changed from', animatedHandId, 'to', handId);
     clearTimeouts();
     
-    // Always animate dealing for new hands - deal cards one at a time
+    // For first mount OR subsequent hands (not first game load), show cards immediately
+    // Only animate dealing on the very first hand of a session
+    const shouldSkipAnimation = isFirstMount || animatedHandId !== '';
+    
+    console.log('[COMMUNITY_CARDS] shouldSkipAnimation:', shouldSkipAnimation, 'isFirstMount:', isFirstMount);
+    
+    if (shouldSkipAnimation) {
+      const allDealt = new Set<number>();
+      for (let i = 0; i < cards.length; i++) allDealt.add(i);
+      
+      const preFlipped = new Set<number>();
+      for (let i = 2; i < revealed; i++) preFlipped.add(i);
+      
+      console.log('[COMMUNITY_CARDS] Setting dealtCards to all', cards.length, 'cards, flipped up to', revealed);
+      setDealtCards(allDealt);
+      setFlippedCards(preFlipped);
+      setAnimatedHandId(handId);
+      lastRevealedRef.current = revealed;
+      return;
+    }
+    
+    // First hand animation (rare - only when component mounts with no prior handId)
     setDealtCards(new Set());
     setFlippedCards(new Set());
     lastRevealedRef.current = revealed;
     
-    const INITIAL_DELAY = 400;
-    const CARD_INTERVAL = 350; // Slower dealing - 350ms between each card
+    const INITIAL_DELAY = 800;
+    const CARD_INTERVAL = 200;
     
     cards.forEach((_, index) => {
       const timeout = setTimeout(() => {
@@ -58,21 +79,12 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
       timeoutsRef.current.push(timeout);
     });
     
-    // Pre-flip the initially revealed cards after all are dealt
-    const totalDealTime = INITIAL_DELAY + cards.length * CARD_INTERVAL;
-    const flipTimeout = setTimeout(() => {
-      const preFlipped = new Set<number>();
-      for (let i = 2; i < revealed; i++) preFlipped.add(i);
-      setFlippedCards(preFlipped);
-    }, totalDealTime + 200);
-    timeoutsRef.current.push(flipTimeout);
-    
     const idTimeout = setTimeout(() => {
       setAnimatedHandId(handId);
     }, 50);
     timeoutsRef.current.push(idTimeout);
     
-  }, [handId, cards, revealed]);
+  }, [handId, cards, revealed, animatedHandId, isFirstMount]);
   
   useEffect(() => {
     if (cards.length === 0) return;
