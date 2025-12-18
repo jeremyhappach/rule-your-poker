@@ -318,61 +318,103 @@ serve(async (req) => {
         };
 
         // HOLM (turn-based)
-        if (game.game_type === 'holm-game' && currentRound.current_turn_position) {
-          const { data: players } = await supabase
-            .from('players')
-            .select('*')
-            .eq('game_id', gameId);
+        // Simplified + reliable: bots decide ONLY on the server, immediately when it's their turn.
+        // Clients simply render whatever is in the DB.
+        if ((game.game_type === 'holm-game' || game.game_type === 'holm') && currentRound.current_turn_position) {
+          const fetchActivePlayers = async () => {
+            const { data } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', gameId);
 
-          const activePlayers = (players ?? []).filter(p => p.status === 'active' && !p.sitting_out);
-          const currentPos = currentRound.current_turn_position;
-          const currentTurnPlayer = activePlayers.find(p => p.position === currentPos);
+            return (data ?? []).filter((p: any) => p.status === 'active' && !p.sitting_out);
+          };
 
-          // Proactive bot turns: if it's a bot's turn and they haven't decided yet, decide immediately.
-          // This prevents bots from "using the whole countdown" due to client-side timing/realtime hiccups.
-          if (currentTurnPlayer && currentTurnPlayer.is_bot) {
-            const needsDecision = !currentTurnPlayer.decision_locked && !currentTurnPlayer.current_decision;
+          const fetchRound = async (roundId: string) => {
+            const { data } = await supabase
+              .from('rounds')
+              .select('id, status, round_number, current_turn_position, decision_deadline')
+              .eq('id', roundId)
+              .single();
+            return data;
+          };
 
-            if (needsDecision) {
-              const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
+          let activePlayers = await fetchActivePlayers();
+          let workingRound = currentRound;
 
-              const { data: updatedBot, error: botUpdateError } = await supabase
-                .from('players')
-                .update({ current_decision: botDecision, decision_locked: true })
-                .eq('id', currentTurnPlayer.id)
-                .is('current_decision', null)
-                .or('decision_locked.is.null,decision_locked.eq.false')
-                .select();
+          // If multiple bots are back-to-back, resolve them all in a single invocation.
+          for (let i = 0; i < 10; i++) {
+            const currentPos = workingRound.current_turn_position;
+            if (!currentPos) break;
 
-              if (!botUpdateError && updatedBot && updatedBot.length > 0) {
-                actionsTaken.push(`Bot turn: Auto-decided '${botDecision}' for bot at position ${currentPos}`);
+            const currentTurnPlayer = activePlayers.find((p: any) => p.position === currentPos);
+            if (!currentTurnPlayer || !currentTurnPlayer.is_bot) break;
 
-                // Re-fetch to get authoritative decision_locked values
-                const { data: freshPlayers } = await supabase
+            // If the bot already has a decision recorded but the turn didn't advance (race), advance now.
+            if (currentTurnPlayer.decision_locked || currentTurnPlayer.current_decision) {
+              if (!currentTurnPlayer.decision_locked) {
+                await supabase
                   .from('players')
-                  .select('*')
-                  .eq('game_id', gameId);
-
-                const freshActivePlayers = (freshPlayers ?? []).filter(p => p.status === 'active' && !p.sitting_out);
-                await advanceHolmTurn(currentRound.id, currentPos, freshActivePlayers);
+                  .update({ decision_locked: true })
+                  .eq('id', currentTurnPlayer.id)
+                  .or('decision_locked.is.null,decision_locked.eq.false');
               }
+
+              await advanceHolmTurn(workingRound.id, currentPos, activePlayers);
+              activePlayers = await fetchActivePlayers();
+              const refreshed = await fetchRound(workingRound.id);
+              if (refreshed) workingRound = refreshed as any;
+              continue;
             }
+
+            // Decide immediately (no waiting on the countdown).
+            const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
+
+            const { data: updatedBot, error: botUpdateError } = await supabase
+              .from('players')
+              .update({ current_decision: botDecision, decision_locked: true })
+              .eq('id', currentTurnPlayer.id)
+              .is('current_decision', null)
+              .or('decision_locked.is.null,decision_locked.eq.false')
+              .select();
+
+            if (botUpdateError) {
+              console.error('[ENFORCE] Holm bot decision update error:', botUpdateError);
+              break;
+            }
+
+            if (updatedBot && updatedBot.length > 0) {
+              actionsTaken.push(`Holm bot turn: decided '${botDecision}' at position ${currentPos}`);
+            }
+
+            // Advance to next player (or lock all_decisions_in if complete)
+            activePlayers = await fetchActivePlayers();
+            await advanceHolmTurn(workingRound.id, currentPos, activePlayers);
+
+            const refreshed = await fetchRound(workingRound.id);
+            if (refreshed) workingRound = refreshed as any;
           }
 
-          // Timeout enforcement (humans: auto-fold; bots: decide if still pending)
-          if (deadlineExpired) {
-            console.log('[ENFORCE] Decision deadline expired for game', gameId, 'round', currentRound.round_number);
+          // Timeout enforcement for HUMAN turns
+          const holmDeadline = workingRound.decision_deadline ? new Date(workingRound.decision_deadline) : null;
+          const holmDeadlineExpired = holmDeadline ? now > holmDeadline : false;
+
+          if (holmDeadlineExpired && workingRound.current_turn_position) {
+            console.log('[ENFORCE] Decision deadline expired for game', gameId, 'round', workingRound.round_number);
+
+            const currentPos = workingRound.current_turn_position;
+            const currentTurnPlayer = activePlayers.find((p: any) => p.position === currentPos);
 
             if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
               if (currentTurnPlayer.is_bot) {
+                // Should be rare because bots are handled above, but keep as a safety net.
                 const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
-
                 await supabase
                   .from('players')
                   .update({ current_decision: botDecision, decision_locked: true })
                   .eq('id', currentTurnPlayer.id);
 
-                actionsTaken.push(`Bot timeout: Made decision '${botDecision}' for bot at position ${currentPos}`);
+                actionsTaken.push(`Holm bot timeout fallback: decided '${botDecision}' at position ${currentPos}`);
               } else {
                 await supabase
                   .from('players')
@@ -383,13 +425,8 @@ serve(async (req) => {
               }
             }
 
-            const { data: freshPlayers } = await supabase
-              .from('players')
-              .select('*')
-              .eq('game_id', gameId);
-
-            const freshActivePlayers = (freshPlayers ?? []).filter(p => p.status === 'active' && !p.sitting_out);
-            await advanceHolmTurn(currentRound.id, currentPos, freshActivePlayers);
+            activePlayers = await fetchActivePlayers();
+            await advanceHolmTurn(workingRound.id, currentPos, activePlayers);
           }
         }
 

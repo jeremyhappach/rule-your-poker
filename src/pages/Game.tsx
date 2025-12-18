@@ -1913,81 +1913,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.game_type, game?.status, communityCards, currentRound, game?.awaiting_next_round, playerCards]);
 
-  // Auto-trigger bot decisions when appropriate
-  // Use a ref to track if we're already processing a bot decision to avoid duplicates
-  const botProcessingRef = useRef(false);
+  // Holm bots are server-driven: bots write decisions to the DB instantly, and the UI only renders DB state.
+  // When the turn switches to a bot, we "kick" the backend once to resolve it immediately (no client bot logic).
+  const holmBotKickRef = useRef<string | null>(null);
   useEffect(() => {
-    const isHolmGame = game?.game_type === 'holm-game';
+    const isHolmGame = game?.game_type === 'holm-game' || game?.game_type === 'holm';
 
-    // CRITICAL: Nothing should advance while paused (bots included)
-    if (game?.is_paused) {
-      console.log('[BOT TRIGGER] Game is paused - skipping bot decisions');
-      return;
-    }
-    
-    console.log('[BOT TRIGGER EFFECT] Running', {
-      status: game?.status,
-      all_decisions_in: game?.all_decisions_in,
-      game_type: game?.game_type,
-      current_turn: currentRound?.current_turn_position,
-      round_id: currentRound?.id,
-      isProcessing: botProcessingRef.current
-    });
-    
-    // Skip if already processing
-    if (botProcessingRef.current) {
-      console.log('[BOT TRIGGER] Already processing a bot decision, skipping');
-      return;
-    }
-    
-    if ((game?.status === 'in_progress' || game?.status === 'betting') && !game.all_decisions_in) {
-      // For Holm games, only trigger if there's a valid turn position
-      // For other games, trigger on any undecided bot
-      if (isHolmGame && !currentRound?.current_turn_position) {
-        console.log('[BOT TRIGGER] Holm game but no turn position set, skipping');
-        return;
-      }
-      
-      console.log('[BOT TRIGGER] Triggering bot decisions', {
-        game_type: game?.game_type,
-        current_turn: currentRound?.current_turn_position
-      });
-      
-      // Capture the turn position now to pass to the bot logic (avoids stale DB reads)
-      const capturedTurnPosition = currentRound?.current_turn_position;
-      
-      // Set processing flag
-      botProcessingRef.current = true;
-      
-      // Call immediately - no delay needed, makeBotDecisions has its own delay
-      const triggerBot = async () => {
-        try {
-          console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
-          const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
-          
-          // If bot made a decision, explicitly fetch to get updated turn position
-          if (botMadeDecision) {
-            console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
-            await fetchGameData();
-          }
-        } finally {
-          botProcessingRef.current = false;
+    // Only Holm needs this turn-based bot kick
+    if (!isHolmGame) return;
+
+    // Nothing should advance while paused
+    if (game?.is_paused) return;
+
+    if (!(game?.status === 'in_progress' || game?.status === 'betting')) return;
+    if (!currentRound?.id || !currentRound?.current_turn_position) return;
+
+    const turnPlayer = players.find(p => p.position === currentRound.current_turn_position);
+    if (!turnPlayer?.is_bot) return;
+
+    // If the bot already has a decision recorded, nothing to do.
+    if (turnPlayer.decision_locked || turnPlayer.current_decision) return;
+
+    const kickKey = `${currentRound.id}:${currentRound.current_turn_position}`;
+    if (holmBotKickRef.current === kickKey) return;
+    holmBotKickRef.current = kickKey;
+
+    void supabase.functions
+      .invoke('enforce-deadlines', { body: { gameId } })
+      .then(({ error }) => {
+        if (error) {
+          console.error('[HOLM BOT KICK] enforce-deadlines error:', error);
         }
-      };
-      
-      triggerBot();
-    } else {
-      console.log('[BOT TRIGGER] Conditions not met for bot trigger');
-    }
+      });
   }, [
-    game?.status, 
-    game?.all_decisions_in, 
-    // Watch turn position for Holm games (turn-based)
-    // Watch round id to catch new rounds (since current_round isn't updated for Holm)
-    currentRound?.current_turn_position,
-    currentRound?.id,
     game?.game_type,
-    gameId
+    game?.status,
+    game?.is_paused,
+    currentRound?.id,
+    currentRound?.current_turn_position,
+    players,
+    gameId,
   ]);
 
   // Auto-execute pre-fold/pre-stay when it becomes player's turn in Holm games
