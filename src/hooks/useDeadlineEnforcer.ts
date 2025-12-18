@@ -46,8 +46,10 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           // Transient backend/platform states we should silently ignore and retry next poll.
           // - 503: cold start / env not ready
           // - 401 "Key length is zero": upstream rejected request before function runs (missing/empty apikey)
-          const msg = error.message || '';
-          if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('code":401')) {
+          // - 401: general auth errors during cold start
+          const msg = String(error.message || error || '');
+          if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('401') || msg.includes('cold start')) {
+            // Silent retry on next poll - these are transient infrastructure issues
             return;
           }
           console.error('[DEADLINE ENFORCER] Error:', error);
