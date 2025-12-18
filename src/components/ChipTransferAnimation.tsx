@@ -39,16 +39,16 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
   const lastTriggerIdRef = useRef<string | null>(null);
   const animIdRef = useRef(0);
 
-  // Slot positions as percentages of container (matching AnteUpAnimation)
+  // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
+    if (slotIndex === -1) return { top: 88, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 82, left: 18 },   // Bottom-left
-      1: { top: 50, left: 8 },    // Middle-left
-      2: { top: 12, left: 18 },   // Top-left
-      3: { top: 12, left: 82 },   // Top-right
-      4: { top: 50, left: 92 },   // Middle-right
-      5: { top: 82, left: 82 },   // Bottom-right
+      0: { top: 88, left: 12 },   // Bottom-left: bottom-2 left-10
+      1: { top: 50, left: 5 },    // Middle-left: left-0 top-1/2
+      2: { top: 5, left: 12 },    // Top-left: top-2 left-10
+      3: { top: 5, left: 88 },    // Top-right: top-2 right-10
+      4: { top: 50, left: 95 },   // Middle-right: right-0 top-1/2
+      5: { top: 88, left: 88 },   // Bottom-right: bottom-2 right-10
     };
     return slots[slotIndex] || { top: 50, left: 50 };
   };
