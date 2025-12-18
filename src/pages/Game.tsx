@@ -426,18 +426,69 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Track card identity to detect new hands (when cards change completely)
   const cardIdentityRef = useRef<string>('');
 
+  // ---------- Card cache debugging helpers ----------
+  const snapshotCommunityCache = useCallback(() => {
+    const c = communityCardsCacheRef.current;
+    const preview = (c.cards ?? []).slice(0, 4).map((card: any) => {
+      if (!card) return String(card);
+      if (typeof card === 'string') return card;
+      const rank = (card as any).rank ?? '?';
+      const suit = (card as any).suit ?? '?';
+      return `${rank}${suit}`;
+    });
+    return {
+      show: c.show,
+      round: c.round,
+      len: c.cards?.length ?? 0,
+      preview,
+    };
+  }, []);
+
+  const clearLiftedCardCaches = useCallback(
+    (reason: string, extra?: Record<string, any>) => {
+      const before = snapshotCommunityCache();
+
+      console.groupCollapsed(`[CACHE_CLEAR] ${reason}`);
+      console.log('before:', before);
+      if (extra) console.log('context:', extra);
+      console.groupEnd();
+
+      // Lifted caches used by MobileGameTable to prevent flicker during animations
+      communityCardsCacheRef.current = { cards: null, round: null, show: false };
+      showdownCardsCacheRef.current = new Map();
+      showdownRoundNumberRef.current = null;
+
+      toast({
+        title: 'Card cache cleared',
+        description: reason,
+      });
+
+      // Detect "cache immediately repopulated" bugs (e.g., a child writes stale state back)
+      setTimeout(() => {
+        const after = snapshotCommunityCache();
+        const ok = after.len === 0 && after.round === null && after.show === false;
+        if (!ok) {
+          console.error('[CACHE_CLEAR] ❌ Cache clear failed / was repopulated', { reason, before, after, extra });
+          toast({
+            title: 'Card cache clear FAILED',
+            description: `Repopulated: len=${after.len} round=${after.round} show=${after.show}`,
+            variant: 'destructive',
+          });
+        } else {
+          console.log('[CACHE_CLEAR] ✅ Cache is empty after clear', { reason, after });
+        }
+      }, 50);
+    },
+    [snapshotCommunityCache, toast],
+  );
+
   // CRITICAL: React Router does not remount this page when only :gameId changes.
   // If we keep lifted caches, a new game's first hand can render the last hand's cards.
   const prevGameIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevGameIdRef.current;
     if (prev && prev !== gameId) {
-      console.log('[CACHE] 🧹 GAME ID CHANGED - clearing lifted caches', { prev, next: gameId });
-
-      // Lifted caches used by MobileGameTable to prevent flicker during animations
-      communityCardsCacheRef.current = { cards: null, round: null, show: false };
-      showdownCardsCacheRef.current = new Map();
-      showdownRoundNumberRef.current = null;
+      clearLiftedCardCaches('GAME ID CHANGED', { prev, next: gameId });
 
       // Related state that can keep old cards visible briefly
       setCachedRoundData(null);
@@ -452,7 +503,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       cardIdentityRef.current = '';
     }
     prevGameIdRef.current = gameId;
-  }, [gameId]);
+  }, [gameId, clearLiftedCardCaches]);
 
   // CRITICAL: When the dealer config flow starts (same gameId, new game setup),
   // clear all lifted card caches immediately so the new game can't render old cards.
@@ -465,10 +516,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const entered = next !== prev && isDealerConfigScreen;
 
     if (entered) {
-      console.log('[CACHE] 🧹 ENTERED DEALER CONFIG FLOW - clearing lifted caches', { prev, next });
-      communityCardsCacheRef.current = { cards: null, round: null, show: false };
-      showdownCardsCacheRef.current = new Map();
-      showdownRoundNumberRef.current = null;
+      clearLiftedCardCaches('ENTERED DEALER CONFIG FLOW', { prev, next });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
       setPlayerCards([]);
@@ -478,103 +526,49 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     prevStatusForCacheRef.current = next;
-  }, [game?.status]);
-
-  // Load player options from current player when player data changes
-  useEffect(() => {
-    const currentPlayer = players.find(p => p.user_id === user?.id);
-    if (currentPlayer) {
-      setPlayerOptions({
-        autoAnte: currentPlayer.auto_ante || false,
-        sitOutNextHand: currentPlayer.sit_out_next_hand || false,
-        standUpNextHand: currentPlayer.stand_up_next_hand || false,
-      });
-    }
-  }, [players, user?.id]);
-
-  // Clear pending decision when backend confirms - but keep it visible for 3-5-7 feedback
-  useEffect(() => {
-    const currentPlayer = players.find(p => p.user_id === user?.id);
-    // For 3-5-7, don't clear immediately when decision_locked - keep showing the visual feedback
-    // Only clear when all_decisions_in becomes false again (next round)
-    if (currentPlayer?.decision_locked && pendingDecision && game?.game_type === 'holm-game') {
-      console.log('[PENDING_DECISION] Backend confirmed (Holm), clearing pending decision');
-      setPendingDecision(null);
-    }
-  }, [players, user?.id, pendingDecision, game?.game_type]);
-
-  // Clear pending decision when a new round starts (awaiting_next_round goes from true to false, or new cards dealt)
-  const prevAwaitingRef = useRef<boolean | null>(null);
-  useEffect(() => {
-    const prevAwaiting = prevAwaitingRef.current;
-    const currentAwaiting = game?.awaiting_next_round || false;
-    
-    // Clear when round transitions: awaiting goes from true to false
-    if (prevAwaiting === true && currentAwaiting === false && pendingDecision) {
-      console.log('[PENDING_DECISION] Round transitioned (awaiting false), clearing pending decision');
-      setPendingDecision(null);
-    }
-    
-    prevAwaitingRef.current = currentAwaiting;
-  }, [game?.awaiting_next_round, pendingDecision]);
-  
-  // Also clear when current_round changes (new round started)
-  const prevRoundRef = useRef<number | null>(null);
-  useEffect(() => {
-    const prevRound = prevRoundRef.current;
-    const currentRoundNum = game?.current_round || 0;
-    
-    if (prevRound !== null && currentRoundNum !== prevRound && pendingDecision) {
-      console.log('[PENDING_DECISION] Round number changed, clearing pending decision');
-      setPendingDecision(null);
-    }
-    
-    prevRoundRef.current = currentRoundNum;
-  }, [game?.current_round, pendingDecision]);
+  }, [game?.status, clearLiftedCardCaches]);
 
   // CRITICAL: Clear card caches when a new hand starts (round number changes in Holm games)
   // This prevents stale cards from the previous hand showing up
   const prevRoundForCacheRef = useRef<number | null>(null);
   useEffect(() => {
     if (game?.game_type !== 'holm-game') return;
-    
+
     const prevRound = prevRoundForCacheRef.current;
     const currentRoundNum = game?.current_round || 0;
-    
+
     // When round number changes (new hand), clear all card caches
     if (prevRound !== null && currentRoundNum !== prevRound && currentRoundNum > 0) {
-      console.log('[CACHE] 🔄 NEW HAND DETECTED (round changed) - clearing all card caches', {
+      clearLiftedCardCaches('NEW HAND DETECTED (round changed)', {
         prevRound,
-        currentRound: currentRoundNum
+        currentRound: currentRoundNum,
       });
-      communityCardsCacheRef.current = { cards: null, round: null, show: false };
-      showdownCardsCacheRef.current = new Map();
-      showdownRoundNumberRef.current = null;
     }
-    
+
     prevRoundForCacheRef.current = currentRoundNum;
-  }, [game?.current_round, game?.game_type]);
+  }, [game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
   // CRITICAL: Also clear caches when buck passes (awaiting next round with result cleared)
   // This catches the moment between hands before round number updates
   const prevResultRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (game?.game_type !== 'holm-game') return;
-    
+
     const prevResult = prevResultRef.current;
     const currentResult = game?.last_round_result;
     const isAwaiting = game?.awaiting_next_round;
-    
+
     // Buck passes: result goes from something to null while awaiting
     if (prevResult && !currentResult && isAwaiting) {
-      console.log('[CACHE] 🔄 BUCK PASSED (result cleared) - clearing all card caches');
-      communityCardsCacheRef.current = { cards: null, round: null, show: false };
-      showdownCardsCacheRef.current = new Map();
-      showdownRoundNumberRef.current = null;
+      clearLiftedCardCaches('BUCK PASSED (result cleared)', {
+        prevResult,
+        currentResult,
+        isAwaiting,
+      });
     }
-    
+
     prevResultRef.current = currentResult;
-  }, [game?.last_round_result, game?.awaiting_next_round, game?.game_type]);
+  }, [game?.last_round_result, game?.awaiting_next_round, game?.game_type, clearLiftedCardCaches]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
