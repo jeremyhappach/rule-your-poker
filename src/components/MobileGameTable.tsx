@@ -458,22 +458,30 @@ anteAnimationTriggerId,
   // Use external cache for community cards if provided (to persist across remounts during win animation)
   const internalCommunityCardsCache = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: gameType !== 'holm-game' });
   const communityCardsCache = externalCommunityCardsCache || internalCommunityCardsCache;
-  
-  // Initialize local state from external cache if available
+
+  // CRITICAL: During dealer config phases, NEVER read from external cache - it may contain stale cards
+  const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
+
+  // Initialize local state from external cache if available (but NOT during dealer config)
   const [showCommunityCards, setShowCommunityCards] = useState(() => {
+    if (isDealerConfigPhase) return false;
     if (externalCommunityCardsCache?.current?.show) return true;
     return gameType !== 'holm-game';
   });
   const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
   const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
   const [approvedRoundForDisplay, setApprovedRoundForDisplay] = useState<number | null>(() => {
+    if (isDealerConfigPhase) return null;
     return externalCommunityCardsCache?.current?.round || null;
   });
   const [approvedCommunityCards, setApprovedCommunityCards] = useState<CardType[] | null>(() => {
+    if (isDealerConfigPhase) return null;
     return externalCommunityCardsCache?.current?.cards || null;
   });
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
-  const lastDetectedRoundRef = useRef<number | null>(externalCommunityCardsCache?.current?.round || null); // Track which round we've detected (to prevent re-triggering)
+  const lastDetectedRoundRef = useRef<number | null>(
+    isDealerConfigPhase ? null : (externalCommunityCardsCache?.current?.round || null)
+  ); // Track which round we've detected (to prevent re-triggering)
 
   // Never let effect cleanups cancel the 1s community-cards approval timer mid-flight.
   // Only clear timers on explicit state transitions (buck passed) or on unmount.
@@ -487,23 +495,31 @@ anteAnimationTriggerId,
   }, []);
 
   // Sync local state changes back to external cache
+  // CRITICAL: Do NOT sync during dealer config phases - this would write stale cards back!
   useEffect(() => {
-    if (externalCommunityCardsCache) {
-      const approvedLen = approvedCommunityCards?.length ?? 0;
-      console.log('[MOBILE_COMMUNITY] ↔️ sync->external cache', {
-        gameStatus,
-        currentRound,
-        approvedRoundForDisplay,
-        approvedLen,
-        showCommunityCards,
-      });
+    if (!externalCommunityCardsCache) return;
 
-      externalCommunityCardsCache.current = {
-        cards: approvedCommunityCards,
-        round: approvedRoundForDisplay,
-        show: showCommunityCards,
-      };
+    // Never write to external cache during new game setup phases
+    const isDealerConfig = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
+    if (isDealerConfig) {
+      console.log('[MOBILE_COMMUNITY] ⛔ NOT syncing to external cache (dealer config phase)', { gameStatus });
+      return;
     }
+
+    const approvedLen = approvedCommunityCards?.length ?? 0;
+    console.log('[MOBILE_COMMUNITY] ↔️ sync->external cache', {
+      gameStatus,
+      currentRound,
+      approvedRoundForDisplay,
+      approvedLen,
+      showCommunityCards,
+    });
+
+    externalCommunityCardsCache.current = {
+      cards: approvedCommunityCards,
+      round: approvedRoundForDisplay,
+      show: showCommunityCards,
+    };
   }, [approvedCommunityCards, approvedRoundForDisplay, showCommunityCards, externalCommunityCardsCache, gameStatus, currentRound]);
   
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
