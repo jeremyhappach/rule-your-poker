@@ -116,12 +116,18 @@ export const PlayerOptionsMenu = ({
           {/* Host Add Bot option */}
           {isHost && onAddBot && canAddBot && (
             <>
-              <DropdownMenuItem onClick={onAddBot}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  console.log('[ADD BOT] Menu select (waiting phase)');
+                  onAddBot();
+                }}
+              >
                 🤖 Add Bot
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
           )}
+
           
           {/* Deck color mode toggle */}
           {deckColorMode && onDeckColorModeChange && (
@@ -180,10 +186,16 @@ export const PlayerOptionsMenu = ({
               </DropdownMenuItem>
             )}
             {onAddBot && canAddBot && (
-              <DropdownMenuItem onClick={onAddBot}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  console.log('[ADD BOT] Menu select');
+                  onAddBot();
+                }}
+              >
                 🤖 Add Bot
               </DropdownMenuItem>
             )}
+
             {onEndSession && (
               <DropdownMenuItem 
                 onClick={onEndSession}
