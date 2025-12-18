@@ -983,14 +983,21 @@ export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] Case 3: Multi-player showdown (no Chucky)');
   
   // Player cards are already visible to their owners, but now expose them to everyone
-  // by marking the round as "showdown" phase - the UI will handle showing all cards
-  console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown...');
+  // by marking the round as "showdown" phase AND setting all_decisions_in
+  // CRITICAL: all_decisions_in = true is required for RLS to allow viewing other players' cards
+  console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown + all_decisions_in...');
   
   // SET STATUS TO SHOWDOWN (from 'processing') so UI reveals player cards
   await supabase
     .from('rounds')
     .update({ status: 'showdown' })
     .eq('id', capturedRoundId);
+  
+  // CRITICAL: Set all_decisions_in = true so RLS allows players to see each other's cards
+  await supabase
+    .from('games')
+    .update({ all_decisions_in: true })
+    .eq('id', gameId);
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
   console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');
