@@ -349,6 +349,13 @@ serve(async (req) => {
             // Don't process bot turns yet - community cards not ready
           } else {
 
+          // Holm: ensure the FIRST bot decision of the hand never hits the DB until
+          // the community-card deal animation has had time to fully render on clients.
+          // We can’t observe client animation state server-side, so we enforce a fixed grace delay
+          // ONLY when no one has decided yet.
+          const HOLM_FIRST_BOT_DECISION_GRACE_MS = 1900;
+          let firstBotDecisionPending = !activePlayers.some((p: any) => p.decision_locked || p.current_decision);
+
           // If multiple bots are back-to-back, resolve them all in a single invocation.
           for (let i = 0; i < 10; i++) {
             const currentPos = workingRound.current_turn_position;
@@ -356,6 +363,14 @@ serve(async (req) => {
 
             const currentTurnPlayer = activePlayers.find((p: any) => p.position === currentPos);
             if (!currentTurnPlayer || !currentTurnPlayer.is_bot) break;
+
+            // If this is the FIRST decision of the hand and a bot is up first, wait for
+            // the community-card animation to complete before writing the bot decision.
+            if (firstBotDecisionPending) {
+              await new Promise(resolve => setTimeout(resolve, HOLM_FIRST_BOT_DECISION_GRACE_MS));
+              firstBotDecisionPending = false;
+              actionsTaken.push(`Holm: waited ${HOLM_FIRST_BOT_DECISION_GRACE_MS}ms before first bot decision (community deal grace)`);
+            }
 
             // If the bot already has a decision recorded but the turn didn't advance (race), advance now.
             if (currentTurnPlayer.decision_locked || currentTurnPlayer.current_decision) {
