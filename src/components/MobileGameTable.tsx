@@ -487,6 +487,8 @@ anteAnimationTriggerId,
       }));
     };
 
+    const lastExposureFetchKeyRef = { current: '' as string };
+
     const hydrate = async () => {
       const { data: roundData } = await supabase
         .from('rounds')
@@ -534,7 +536,19 @@ anteAnimationTriggerId,
           setRtCommunityCards((r.community_cards ?? []) as unknown as CardType[]);
           setRtCommunityCardsRevealed(r.community_cards_revealed ?? 0);
 
-          if (roundIdChanged) {
+          const exposureEligible =
+            gameType === 'holm-game' &&
+            (r.status === 'showdown' || r.status === 'completed' || (r.community_cards_revealed ?? 0) === 4);
+
+          const exposureKey = `${r.id}-${r.status}-${r.community_cards_revealed ?? ''}`;
+          const shouldForceExposureRefetch =
+            !roundIdChanged && exposureEligible && lastExposureFetchKeyRef.current !== exposureKey;
+
+          if (shouldForceExposureRefetch) {
+            lastExposureFetchKeyRef.current = exposureKey;
+          }
+
+          if (roundIdChanged || shouldForceExposureRefetch) {
             const { data: cardsData } = await supabase
               .from('player_cards')
               .select('player_id, cards')
@@ -574,7 +588,7 @@ anteAnimationTriggerId,
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [gameId]);
+  }, [gameId, gameType]);
   // Use external cache for community cards if provided (to persist across remounts during win animation)
   const internalCommunityCardsCache = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: gameType !== 'holm-game' });
   const communityCardsCache = externalCommunityCardsCache || internalCommunityCardsCache;
