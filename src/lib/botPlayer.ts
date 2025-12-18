@@ -102,25 +102,50 @@ export async function addBotPlayer(gameId: string) {
     .like('username', 'Bot %');
   
   const botNumber = (existingBotProfiles?.length || 0) + 1;
-  const botName = `Bot ${botNumber}`;
-  
-  console.log('[BOT CREATION] Creating bot profile:', { botId, botName, aggressionLevel });
-  
-  // Insert bot profile with aggression level
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .insert({
-      id: botId,
-      username: botName,
-      aggression_level: aggressionLevel
-    });
+  const candidateNames = [
+    `Bot ${botNumber}`,
+    `Bot ${botNumber}-${botId.slice(0, 4)}`,
+    `Bot ${botId.slice(0, 8)}`,
+  ];
 
-  if (profileError) {
-    console.error('[BOT CREATION] Profile creation error:', profileError);
-    throw new Error(`Failed to create bot profile: ${profileError.message}`);
+  console.log('[BOT CREATION] Creating bot profile:', { botId, botNumber, aggressionLevel, candidates: candidateNames });
+
+  let botName: string | null = null;
+  let lastProfileErr: any = null;
+
+  for (const name of candidateNames) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: botId,
+        username: name,
+        aggression_level: aggressionLevel,
+      });
+
+    if (!profileError) {
+      botName = name;
+      break;
+    }
+
+    lastProfileErr = profileError;
+    const isUniqueViolation =
+      (profileError as any)?.code === '23505' ||
+      String((profileError as any)?.message ?? '').includes('profiles_username_key');
+
+    console.log('[BOT CREATION] Profile insert failed for name', name, profileError);
+
+    if (!isUniqueViolation) {
+      throw new Error(`Failed to create bot profile: ${(profileError as any)?.message ?? 'Unknown error'}`);
+    }
   }
 
-  console.log('[BOT CREATION] Profile created, now creating player');
+  if (!botName) {
+    throw new Error(
+      `Failed to create bot profile: duplicate bot username (last error: ${String(lastProfileErr?.message ?? lastProfileErr)})`
+    );
+  }
+
+  console.log('[BOT CREATION] Profile created as', botName, 'now creating player');
 
   // Create bot player
   const { data: botPlayer, error } = await supabase
@@ -185,25 +210,50 @@ export async function addBotPlayerSittingOut(gameId: string) {
     .like('username', 'Bot %');
   
   const botNumber = (existingBotProfiles?.length || 0) + 1;
-  const botName = `Bot ${botNumber}`;
-  
-  console.log('[BOT CREATION] Creating bot profile:', { botId, botName, aggressionLevel });
-  
-  // Insert bot profile with aggression level
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .insert({
-      id: botId,
-      username: botName,
-      aggression_level: aggressionLevel
-    });
+  const candidateNames = [
+    `Bot ${botNumber}`,
+    `Bot ${botNumber}-${botId.slice(0, 4)}`,
+    `Bot ${botId.slice(0, 8)}`,
+  ];
 
-  if (profileError) {
-    console.error('[BOT CREATION] Profile creation error:', profileError);
-    throw new Error(`Failed to create bot profile: ${profileError.message}`);
+  console.log('[BOT CREATION] Creating bot profile:', { botId, botNumber, aggressionLevel, candidates: candidateNames });
+
+  let botName: string | null = null;
+  let lastProfileErr: any = null;
+
+  for (const name of candidateNames) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: botId,
+        username: name,
+        aggression_level: aggressionLevel
+      });
+
+    if (!profileError) {
+      botName = name;
+      break;
+    }
+
+    lastProfileErr = profileError;
+    const isUniqueViolation =
+      (profileError as any)?.code === '23505' ||
+      String((profileError as any)?.message ?? '').includes('profiles_username_key');
+
+    console.log('[BOT CREATION] Profile insert failed for name', name, profileError);
+
+    if (!isUniqueViolation) {
+      throw new Error(`Failed to create bot profile: ${(profileError as any)?.message ?? 'Unknown error'}`);
+    }
   }
 
-  console.log('[BOT CREATION] Profile created, now creating sitting-out player');
+  if (!botName) {
+    throw new Error(
+      `Failed to create bot profile: duplicate bot username (last error: ${String(lastProfileErr?.message ?? lastProfileErr)})`
+    );
+  }
+
+  console.log('[BOT CREATION] Profile created as', botName, 'now creating sitting-out player');
 
   // Create bot player with sitting_out=true and waiting=true
   const { data: botPlayer, error } = await supabase
