@@ -367,6 +367,9 @@ serve(async (req) => {
               continue;
             }
 
+            // Small delay before bot reveals decision for visual pacing
+            await new Promise(resolve => setTimeout(resolve, 300));
+
             // Decide immediately (no waiting on the countdown).
             const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
 
