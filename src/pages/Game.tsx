@@ -548,9 +548,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     prevStatusForCacheRef.current = next;
   }, [game?.status, clearLiftedCardCaches]);
 
+  // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
+  const dealerConfigGuardFiredRef = useRef(false);
+  useEffect(() => {
+    const status = game?.status ?? null;
+    const isDealerConfig = status === 'game_selection' || status === 'configuring' || status === 'dealer_selection';
+
+    if (!isDealerConfig) {
+      dealerConfigGuardFiredRef.current = false;
+      return;
+    }
+
+    const communityCache = snapshotCommunityCache();
+    const hasCachedRound = !!cachedRoundData || !!cachedRoundRef.current;
+
+    if (
+      !dealerConfigGuardFiredRef.current &&
+      (hasCachedRound || communityCache.len > 0 || communityCache.show || communityCache.round !== null)
+    ) {
+      dealerConfigGuardFiredRef.current = true;
+      console.error('[CACHE_GUARD] Dealer config phase has cached cards - forcing clear', {
+        status,
+        communityCache,
+        hasCachedRoundData: !!cachedRoundData,
+        hasCachedRoundRef: !!cachedRoundRef.current,
+      });
+
+      clearLiftedCardCaches('FORCED CLEAR (dealer config guard)', { status });
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      setPlayerCards([]);
+      setCardStateContext(null);
+      maxRevealedRef.current = 0;
+      cardIdentityRef.current = '';
+    }
+  }, [game?.status, cachedRoundData, clearLiftedCardCaches, snapshotCommunityCache]);
+
   // CRITICAL: Clear card caches when a new hand starts (round number changes in Holm games)
   // This prevents stale cards from the previous hand showing up
   const prevRoundForCacheRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (game?.game_type !== 'holm-game') return;
 
@@ -1706,8 +1743,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // NEVER clear cache during round transitions - liveRound will naturally replace it
     // The previous "new Holm hand detection" was clearing cache BEFORE new data arrived, causing cards to disappear
     
-    if (game?.status === 'game_selection' || game?.status === 'configuring') {
-      console.log('[CACHE] Clearing cache for new game selection/config');
+    if (
+      game?.status === 'game_selection' ||
+      game?.status === 'configuring' ||
+      game?.status === 'dealer_selection'
+    ) {
+      console.log('[CACHE] Clearing cache for dealer config phase:', game?.status);
       setCachedRoundData(null);
       cachedRoundRef.current = null;
       prevRoundStateRef.current = { communityCardsHash: '', status: undefined };
@@ -1780,7 +1821,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentCardIdentity = communityCards?.map(c => `${c.rank}${c.suit}`).join(',') || '';
   
   // Reset when starting new game OR when cards change (new hand)
-  if (game?.status === 'game_selection' || game?.status === 'configuring') {
+  if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
     maxRevealedRef.current = 0;
     cardIdentityRef.current = '';
   } else if (currentCardIdentity && currentCardIdentity !== cardIdentityRef.current) {
