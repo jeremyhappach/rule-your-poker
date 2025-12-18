@@ -106,10 +106,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         }
       }
       
-      // Bot delay: 0.5-10
+      // Bot delay: 0.1-10
       const botDelay = Number(defaultConfig.bot_decision_delay_seconds);
-      if (isNaN(botDelay) || botDelay < 0.5 || botDelay > 10) {
-        validationErrors.push(`${gameType}: Bot delay must be 0.5-10 seconds`);
+      if (isNaN(botDelay) || botDelay < 0.1 || botDelay > 10) {
+        validationErrors.push(`${gameType}: Bot delay must be 0.1-10 seconds`);
       }
       
       // Game-specific validations
