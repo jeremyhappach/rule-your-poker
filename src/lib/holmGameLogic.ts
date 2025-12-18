@@ -252,46 +252,74 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
   console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
   
-  // CRITICAL ATOMIC GUARD: For first hand, atomically transition from ante_decision to in_progress
-  // This prevents multiple clients from all executing startHolmRound simultaneously
+  // CRITICAL ATOMIC GUARD (Holm first hand): do NOT flip status to in_progress yet.
+  // Flipping status early makes clients fetch rounds while OLD rounds still exist, causing stale cards.
+  // Instead, atomically clear is_first_hand as a lock while keeping status in ante_decision.
   if (isFirstHand) {
     const { data: lockResult, error: lockError } = await supabase
       .from('games')
-      .update({ status: 'in_progress' })
+      .update({ is_first_hand: false })
       .eq('id', gameId)
-      .eq('status', 'ante_decision') // Only update if still in ante_decision - atomic guard
+      .eq('status', 'ante_decision')
+      .eq('is_first_hand', true)
       .select();
-    
+
     if (lockError || !lockResult || lockResult.length === 0) {
       console.log('[HOLM] ⚠️ ATOMIC GUARD: Another client already started the first hand, skipping');
-      return; // Another client beat us - don't double-process
+      return;
     }
-    console.log('[HOLM] ✅ Successfully acquired first-hand lock (status -> in_progress)');
+    console.log('[HOLM] ✅ Successfully acquired first-hand lock (is_first_hand -> false)');
+
+    // CRITICAL: Remove any old rounds/cards IMMEDIATELY while we are still in ante_decision,
+    // so no client can fetch and render a previous hand during the dealing window.
+    console.log('[HOLM] FIRST HAND - deleting any existing rounds/player_cards BEFORE dealing');
+    const { data: oldRounds } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId);
+
+    if (oldRounds && oldRounds.length > 0) {
+      const oldRoundIds = oldRounds.map(r => r.id);
+      await supabase
+        .from('player_cards')
+        .delete()
+        .in('round_id', oldRoundIds);
+
+      await supabase
+        .from('rounds')
+        .delete()
+        .eq('game_id', gameId);
+
+      console.log('[HOLM] Deleted', oldRounds.length, 'old rounds before first hand');
+    }
   }
   
   // CRITICAL FIX: Before creating any new round, mark ALL existing non-completed rounds as completed
   // This prevents the "round misalignment" bug where multiple betting rounds exist simultaneously
   // and hand evaluation uses community cards from the wrong round
-  console.log('[HOLM] Cleaning up any non-completed rounds before creating new hand...');
-  
-  const { data: nonCompletedRounds } = await supabase
-    .from('rounds')
-    .select('id, round_number, status')
-    .eq('game_id', gameId)
-    .neq('status', 'completed');
-  
-  if (nonCompletedRounds && nonCompletedRounds.length > 0) {
-    console.log('[HOLM] Found', nonCompletedRounds.length, 'non-completed rounds to clean up:', 
-      nonCompletedRounds.map(r => ({ id: r.id, round: r.round_number, status: r.status })));
-    
-    // Mark all non-completed rounds as completed
-    const roundIds = nonCompletedRounds.map(r => r.id);
-    await supabase
+  // NOTE: Skip on first hand because we delete any old rounds above.
+  if (!isFirstHand) {
+    console.log('[HOLM] Cleaning up any non-completed rounds before creating new hand...');
+
+    const { data: nonCompletedRounds } = await supabase
       .from('rounds')
-      .update({ status: 'completed' })
-      .in('id', roundIds);
-    
-    console.log('[HOLM] ✅ Marked', roundIds.length, 'rounds as completed');
+      .select('id, round_number, status')
+      .eq('game_id', gameId)
+      .neq('status', 'completed');
+
+    if (nonCompletedRounds && nonCompletedRounds.length > 0) {
+      console.log('[HOLM] Found', nonCompletedRounds.length, 'non-completed rounds to clean up:',
+        nonCompletedRounds.map(r => ({ id: r.id, round: r.round_number, status: r.status })));
+
+      // Mark all non-completed rounds as completed
+      const roundIds = nonCompletedRounds.map(r => r.id);
+      await supabase
+        .from('rounds')
+        .update({ status: 'completed' })
+        .in('id', roundIds);
+
+      console.log('[HOLM] ✅ Marked', roundIds.length, 'rounds as completed');
+    }
   }
   
   // Fetch game configuration
@@ -407,30 +435,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   let nextRoundNumber: number;
   
   if (isFirstHand) {
-    console.log('[HOLM] FIRST HAND - Cleaning up old rounds and using current_round = 1');
-    
-    // Delete old player_cards and rounds from previous games
-    const { data: oldRounds } = await supabase
-      .from('rounds')
-      .select('id')
-      .eq('game_id', gameId);
-    
-    if (oldRounds && oldRounds.length > 0) {
-      const oldRoundIds = oldRounds.map(r => r.id);
-      await supabase
-        .from('player_cards')
-        .delete()
-        .in('round_id', oldRoundIds);
-      
-      await supabase
-        .from('rounds')
-        .delete()
-        .eq('game_id', gameId);
-      
-      console.log('[HOLM] Deleted', oldRounds.length, 'stale rounds from previous game');
-    }
-    
-    // Use current_round from game (already set to 1 in DealerConfig)
+    console.log('[HOLM] FIRST HAND - using current_round = 1');
+    // Use current_round from game (pre-seeded to 1 during setup)
     nextRoundNumber = gameConfig.current_round || 1;
   } else {
     // Subsequent hand - check is_first_hand flag
