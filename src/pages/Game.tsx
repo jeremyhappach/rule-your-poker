@@ -426,6 +426,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Track card identity to detect new hands (when cards change completely)
   const cardIdentityRef = useRef<string>('');
 
+  // CRITICAL: React Router does not remount this page when only :gameId changes.
+  // If we keep lifted caches, a new game's first hand can render the last hand's cards.
+  const prevGameIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevGameIdRef.current;
+    if (prev && prev !== gameId) {
+      console.log('[CACHE] 🧹 GAME ID CHANGED - clearing lifted caches', { prev, next: gameId });
+
+      // Lifted caches used by MobileGameTable to prevent flicker during animations
+      communityCardsCacheRef.current = { cards: null, round: null, show: false };
+      showdownCardsCacheRef.current = new Map();
+      showdownRoundNumberRef.current = null;
+
+      // Related state that can keep old cards visible briefly
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      setPlayerCards([]);
+      setCardStateContext(null);
+
+      // Hand identity tracking
+      lastKnownGameTypeRef.current = null;
+      lastKnownRoundRef.current = null;
+      maxRevealedRef.current = 0;
+      cardIdentityRef.current = '';
+    }
+    prevGameIdRef.current = gameId;
+  }, [gameId]);
+
   // Load player options from current player when player data changes
   useEffect(() => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
@@ -4022,7 +4050,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
               <div className="relative">
                 {isMobile ? (
-                  <MobileGameTable
+                  <MobileGameTable key={gameId ?? 'unknown-game'}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
@@ -4077,7 +4105,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   />
                 ) : (
                   <>
-                    <GameTable
+                    <GameTable key={gameId ?? 'unknown-game'}
                       players={players}
                       currentUserId={user?.id}
                       pot={game.pot || 0}
@@ -4132,7 +4160,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
               <div className="relative">
                 {isMobile ? (
-                  <MobileGameTable
+                  <MobileGameTable key={gameId ?? 'unknown-game'}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
@@ -4160,7 +4188,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onLeaveGameNow={handleLeaveGameNow}
                   />
                 ) : (
-                  <GameTable
+                  <GameTable key={gameId ?? 'unknown-game'}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
@@ -4210,7 +4238,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           <>
             {/* Show table during ante decisions */}
             {isMobile ? (
-              <MobileGameTable
+              <MobileGameTable key={gameId ?? 'unknown-game'}
                 players={players}
                 currentUserId={user?.id}
                 pot={game.pot || 0}
@@ -4244,7 +4272,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onLeaveGameNow={handleLeaveGameNow}
               />
             ) : (
-              <GameTable
+              <GameTable key={gameId ?? 'unknown-game'}
                 players={players}
                 currentUserId={user?.id}
                 pot={game.pot || 0}
@@ -4347,7 +4375,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             cachedRoundNumber: cachedRoundData?.round_number
           });
           return isMobile ? (
-            <MobileGameTable
+            <MobileGameTable key={gameId ?? 'unknown-game'}
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
@@ -4458,7 +4486,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onHolmPreStayChange={setHolmPreStay}
             />
           ) : (
-            <GameTable
+            <GameTable key={gameId ?? 'unknown-game'}
               gameId={gameId}
               players={players}
               currentUserId={user?.id}
