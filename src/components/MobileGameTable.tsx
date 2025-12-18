@@ -1317,10 +1317,18 @@ export const MobileGameTable = ({
     const cards = getPlayerCards(player.id);
 
     // Show card backs for active players even if we don't have their cards data
-    const isActivePlayer = player.status === 'active' && !player.sitting_out;
+    // CRITICAL: For 3-5-7, when hiding decisions from other players, also hide their folded status
+    // Use "apparent" status that only shows fold after allDecisionsIn
+    const rawIsActivePlayer = player.status === 'active' && !player.sitting_out;
+    // In 3-5-7, if we're hiding this player's decision (not current user, not allDecisionsIn),
+    // treat them as still active even if they've folded in the database
+    const apparentIsActivePlayer = (isCurrentUser || allDecisionsIn || gameType === 'holm-game')
+      ? rawIsActivePlayer
+      : (player.status === 'active' || player.status === 'folded') && !player.sitting_out;
+    
     // For Holm games, hide card backs when player folds
     const hasFolded = gameType === 'holm-game' && playerDecision === 'fold';
-    const showCardBacks = isActivePlayer && expectedCardCount > 0 && currentRound > 0 && !hasFolded;
+    const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && !hasFolded;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
 
     // Status chip background color
@@ -1506,7 +1514,7 @@ export const MobileGameTable = ({
         />
       </div>
     ) : (
-      isActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
+      apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
         <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
           {Array.from({
             length: Math.min(cardCountToShow, 7)
