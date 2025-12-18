@@ -25,7 +25,6 @@ import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
-import { supabase } from "@/integrations/supabase/client";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { cn, formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
@@ -95,7 +94,6 @@ interface ChatBubbleData {
 }
 
 interface MobileGameTableProps {
-  gameId?: string; // For realtime self-healing sync
   players: Player[];
   currentUserId: string | undefined;
   pot: number;
@@ -209,13 +207,12 @@ anteAnimationTriggerId?: string | null; // Direct trigger for ante animation fro
   onHolmPreStayChange?: (checked: boolean) => void;
 }
 export const MobileGameTable = ({
-  gameId,
   players,
   currentUserId,
   pot,
   currentRound,
   allDecisionsIn,
-  playerCards: propPlayerCards,
+  playerCards,
   timeLeft,
   maxTime = 10,
   lastRoundResult,
@@ -227,8 +224,8 @@ export const MobileGameTable = ({
   pendingSessionEnd,
   awaitingNextRound,
   gameType,
-  communityCards: propCommunityCards,
-  communityCardsRevealed: propCommunityCardsRevealed,
+  communityCards,
+  communityCardsRevealed,
   buckPosition,
   currentTurnPosition,
   chuckyCards,
@@ -456,139 +453,8 @@ anteAnimationTriggerId,
   
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
-
-  // --- Realtime self-healing sync (mobile only) ---
-  // MobileGameTable historically relied on parent-provided props which can desync across clients.
-  // We subscribe + hydrate directly so every player sees the same community + player cards.
-  const [rtRoundId, setRtRoundId] = useState<string | null>(null);
-  const rtRoundIdRef = useRef<string | null>(null);
-  const [rtPlayerCards, setRtPlayerCards] = useState<PlayerCards[] | null>(null);
-  const [rtCommunityCards, setRtCommunityCards] = useState<CardType[] | null>(null);
-  const [rtCommunityCardsRevealed, setRtCommunityCardsRevealed] = useState<number | null>(null);
-
-  useEffect(() => {
-    rtRoundIdRef.current = rtRoundId;
-  }, [rtRoundId]);
-
-  const playerCards = rtPlayerCards ?? propPlayerCards;
-  const communityCards = (rtCommunityCards ?? propCommunityCards) ?? undefined;
-  const communityCardsRevealed = rtCommunityCardsRevealed ?? propCommunityCardsRevealed;
-
-  useEffect(() => {
-    if (!gameId) return;
-
-    let cancelled = false;
-
-    const mapPlayerCards = (rows: any[] | null | undefined): PlayerCards[] => {
-      if (!rows) return [];
-      return rows.map((r) => ({
-        player_id: r.player_id,
-        cards: (r.cards ?? []) as unknown as CardType[],
-      }));
-    };
-
-    const lastExposureFetchKeyRef = { current: '' as string };
-
-    const hydrate = async () => {
-      const { data: roundData } = await supabase
-        .from('rounds')
-        .select('id, round_number, community_cards, community_cards_revealed')
-        .eq('game_id', gameId)
-        .order('round_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      if (roundData?.id) {
-        setRtRoundId(roundData.id);
-        setRtCommunityCards((roundData.community_cards ?? []) as unknown as CardType[]);
-        setRtCommunityCardsRevealed(roundData.community_cards_revealed ?? 0);
-
-        const { data: cardsData } = await supabase
-          .from('player_cards')
-          .select('player_id, cards')
-          .eq('round_id', roundData.id);
-
-        if (cancelled) return;
-        setRtPlayerCards(mapPlayerCards(cardsData));
-      }
-    };
-
-    hydrate();
-
-    const channel = supabase
-      .channel(`mobile-table-sync-${gameId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rounds',
-          filter: `game_id=eq.${gameId}`,
-        },
-        async (payload) => {
-          const r = payload.new as any;
-          if (!r?.id) return;
-
-          const roundIdChanged = rtRoundIdRef.current !== r.id;
-          setRtRoundId(r.id);
-          setRtCommunityCards((r.community_cards ?? []) as unknown as CardType[]);
-          setRtCommunityCardsRevealed(r.community_cards_revealed ?? 0);
-
-          const exposureEligible =
-            gameType === 'holm-game' &&
-            (r.status === 'showdown' || r.status === 'completed' || (r.community_cards_revealed ?? 0) === 4);
-
-          const exposureKey = `${r.id}-${r.status}-${r.community_cards_revealed ?? ''}`;
-          const shouldForceExposureRefetch =
-            !roundIdChanged && exposureEligible && lastExposureFetchKeyRef.current !== exposureKey;
-
-          if (shouldForceExposureRefetch) {
-            lastExposureFetchKeyRef.current = exposureKey;
-          }
-
-          if (roundIdChanged || shouldForceExposureRefetch) {
-            const { data: cardsData } = await supabase
-              .from('player_cards')
-              .select('player_id, cards')
-              .eq('round_id', r.id);
-
-            if (!cancelled) {
-              setRtPlayerCards(mapPlayerCards(cardsData));
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'player_cards',
-        },
-        (payload) => {
-          const pc = (payload.new || payload.old) as any;
-          const roundId = pc?.round_id as string | undefined;
-          if (!roundId || roundId !== rtRoundIdRef.current) return;
-
-          // Refresh full set for the current round (simple + consistent)
-          supabase
-            .from('player_cards')
-            .select('player_id, cards')
-            .eq('round_id', roundId)
-            .then(({ data }) => {
-              if (!cancelled) setRtPlayerCards(mapPlayerCards(data));
-            });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [gameId, gameType]);
+  
+  // Delay community cards rendering by 1 second after player cards appear (Holm only)
   // Use external cache for community cards if provided (to persist across remounts during win animation)
   const internalCommunityCardsCache = useRef<{ cards: CardType[] | null; round: number | null; show: boolean }>({ cards: null, round: null, show: gameType !== 'holm-game' });
   const communityCardsCache = externalCommunityCardsCache || internalCommunityCardsCache;
@@ -910,8 +776,7 @@ anteAnimationTriggerId,
       isNewRound, 
       currentRound, 
       lastDetectedRound: lastDetectedRoundRef.current,
-      approvedRoundForDisplay,
-      communityCardsLength: communityCards?.length
+      approvedRoundForDisplay
     });
     
     if (isNewRound) {
@@ -934,13 +799,7 @@ anteAnimationTriggerId,
       communityCardsDelayRef.current = setTimeout(() => {
         console.log('[MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
         setApprovedRoundForDisplay(currentRound); // NOW we approve this round for display
-
-        // IMPORTANT: Don't cache null here; community cards may arrive slightly after round number.
-        // We'll backfill approvedCommunityCards in a separate effect once cards exist.
-        if (communityCards && communityCards.length > 0) {
-          setApprovedCommunityCards([...communityCards]);
-        }
-
+        setApprovedCommunityCards(communityCards ? [...communityCards] : null); // Cache the cards at approval time
         setShowCommunityCards(true);
         // Stagger each card with 150ms delay
         for (let i = 1; i <= cardCount; i++) {
@@ -954,31 +813,12 @@ anteAnimationTriggerId,
       }, 1000);
     }
     
-    // IMPORTANT: do NOT clear the reveal timeout on routine re-renders (e.g. communityCards array ref changes).
-    // That was canceling the 1s approval timer before it could fire, leaving cards hidden forever.
-  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed, communityCards]);
-
-  // Cleanup on unmount only
-  useEffect(() => {
     return () => {
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
-        communityCardsDelayRef.current = null;
       }
     };
-  }, []);
-
-  // Backfill approved community cards if the round was approved before cards arrived (Holm only)
-  useEffect(() => {
-    if (gameType !== 'holm-game') return;
-    if (!approvedRoundForDisplay || approvedRoundForDisplay !== currentRound) return;
-    if (approvedCommunityCards && approvedCommunityCards.length > 0) return;
-    if (!communityCards || communityCards.length === 0) return;
-
-    console.log('[MOBILE_COMMUNITY] Backfilling approvedCommunityCards for round:', currentRound);
-    setApprovedCommunityCards([...communityCards]);
-    setShowCommunityCards(true);
-  }, [gameType, currentRound, approvedRoundForDisplay, approvedCommunityCards, communityCards]);
+  }, [gameType, currentRound, awaitingNextRound, communityCardsRevealed]);
 
   // Cache Chucky cards when available, clear only when buck passes
   useEffect(() => {
@@ -1229,19 +1069,10 @@ anteAnimationTriggerId,
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const isCurrentUser = player.user_id === currentUserId;
-
-    // Holm: community cards deal/appear in a stagger; don't reveal bot decisions until the dealing finishes.
-    const hideBotDecisionDuringDeal = gameType === 'holm-game' && isDelayingCommunityCards && player.is_bot;
-
     // CRITICAL: While paused, hide OTHER players' decisions to prevent revealing bot decisions
     // Also after resume (3-5-7), optionally hide OTHER players' decisions until the current user chooses.
     // Current user can always see their own decision.
-    const playerDecision = hideBotDecisionDuringDeal
-      ? null
-      : (isCurrentUser || (!isPaused && !hideOtherDecisionsUntilYouDecide))
-        ? player.current_decision
-        : null;
-
+    const playerDecision = (isCurrentUser || (!isPaused && !hideOtherDecisionsUntilYouDecide)) ? player.current_decision : null;
     const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
     // Use getPlayerCards for showdown caching
     const cards = getPlayerCards(player.id);
@@ -1479,18 +1310,17 @@ anteAnimationTriggerId,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }} />
         
-        {/* Game name on felt - z-30 to stay above pot (z-20) */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-30 flex flex-col items-center">
+        {/* Game name on felt */}
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
             {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
           </span>
           <span className="text-white/40 text-xs font-medium">
             {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
           </span>
-          {gameType !== 'holm-game' && (
-            <span className="text-white/40 text-xs font-medium">{legsToWin} legs to win</span>
-          )}
-          {/* Round label removed - was potentially blocking community cards */}
+          {gameType !== 'holm-game' && <span className="text-white/40 text-xs font-medium">
+              {legsToWin} legs to win
+            </span>}
         </div>
         
         
@@ -1891,7 +1721,7 @@ anteAnimationTriggerId,
         {/* During game_over, always show if we have approved cards (don't check currentRound match) */}
         {gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
          (isInGameOverStatus || currentRound === approvedRoundForDisplay) && (
-          <div className="absolute inset-0 z-10 pointer-events-none" style={{ transform: 'scale(1.8) translateY(12%)' }}>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
             <CommunityCards 
               cards={approvedCommunityCards} 
               revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 

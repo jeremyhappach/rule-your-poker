@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
-import { createUuid } from "@/lib/uuid";
-
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -122,25 +120,8 @@ export const WaitingForPlayersTable = ({
 
   // Add bot for waiting phase (joins as active, ready to play)
   const handleAddBot = async () => {
-    console.log('[ADD BOT][waiting] click', {
-      gameId,
-      currentUserId,
-      isHost,
-      hasOpenSeats,
-      addingBot,
-      playersLen: players.length,
-    });
-
-    if (!hasOpenSeats) {
-      console.log('[ADD BOT][waiting] table full');
-      return;
-    }
-
-    if (addingBot) {
-      console.log('[ADD BOT][waiting] ignored: already adding');
-      return;
-    }
-
+    if (!hasOpenSeats || addingBot) return;
+    
     setAddingBot(true);
     try {
       // Find open positions
@@ -149,73 +130,37 @@ export const WaitingForPlayersTable = ({
       const openPositions = allPositions.filter(pos => !occupiedPositions.has(pos));
       
       if (openPositions.length === 0) {
-        console.log('[ADD BOT][waiting] table full - no open seats');
+        console.log('Table full - no open seats');
         return;
       }
       
       // Pick a random open position
       const randomIndex = Math.floor(Math.random() * openPositions.length);
       const nextPosition = openPositions[randomIndex];
-
-      console.log('[ADD BOT][waiting] nextPosition', nextPosition);
       
       // Create bot profile
-      const botId = createUuid();
+      const botId = crypto.randomUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
-
-      console.log('[ADD BOT][waiting] creating bot profile', { botId, aggressionLevel });
-
-      const { data: existingBotProfiles, error: botProfilesError } = await supabase
+      const { data: existingBotProfiles } = await supabase
         .from('profiles')
         .select('username')
         .like('username', 'Bot %');
-
-      if (botProfilesError) {
-        throw new Error(`Failed to list bots: ${botProfilesError.message}`);
-      }
       
       const botNumber = (existingBotProfiles?.length || 0) + 1;
-      const candidateNames = [
-        `Bot ${botNumber}`,
-        `Bot ${botNumber}-${botId.slice(0, 4)}`,
-        `Bot ${botId.slice(0, 8)}`,
-      ];
+      const botName = `Bot ${botNumber}`;
+      
+      // Insert bot profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: botId,
+          username: botName,
+          aggression_level: aggressionLevel,
+        });
 
-      let botName: string | null = null;
-      let lastProfileErr: any = null;
-
-      for (const name of candidateNames) {
-        console.log('[ADD BOT][waiting] trying bot username', name);
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: botId,
-            username: name,
-            aggression_level: aggressionLevel,
-          });
-
-        if (!profileError) {
-          botName = name;
-          break;
-        }
-
-        lastProfileErr = profileError;
-        const isUniqueViolation =
-          (profileError as any)?.code === '23505' ||
-          String((profileError as any)?.message ?? '').includes('profiles_username_key');
-
-        if (!isUniqueViolation) {
-          throw new Error(`Failed to create bot profile: ${(profileError as any)?.message ?? 'Unknown error'}`);
-        }
+      if (profileError) {
+        throw new Error(`Failed to create bot profile: ${profileError.message}`);
       }
-
-      if (!botName) {
-        throw new Error(
-          `Failed to create bot profile: duplicate bot username (last error: ${String(lastProfileErr?.message ?? lastProfileErr)})`
-        );
-      }
-
-      console.log('[ADD BOT][waiting] profile ok, creating players row');
 
       // Create bot player - active and ready to play (not sitting out)
       const { error: playerError } = await supabase
@@ -228,21 +173,20 @@ export const WaitingForPlayersTable = ({
           is_bot: true,
           status: 'active',
           sitting_out: false,
-          waiting: true, // Waiting to start game
+          waiting: true // Waiting to start game
         });
 
       if (playerError) {
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
 
-      console.log('[ADD BOT][waiting] ✅ success');
+      // Bot added successfully - no toast needed
     } catch (error: any) {
-      console.error('[ADD BOT][waiting] error:', error);
+      console.error('Error adding bot:', error);
     } finally {
       setAddingBot(false);
     }
   };
-
 
   // Handle host clicking Start Game button
   const handleStartGame = () => {

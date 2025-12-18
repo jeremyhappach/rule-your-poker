@@ -546,19 +546,6 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     const { checkHolmRoundComplete } = await import('./holmGameLogic');
     console.log('[MAKE DECISION] Holm game - calling checkHolmRoundComplete');
     await checkHolmRoundComplete(gameId);
-
-    // If the next turn is a bot, force an immediate server-side enforcement pass so the bot
-    // doesn't wait for the periodic enforcer interval.
-    try {
-      const { error } = await supabase.functions.invoke('enforce-deadlines', {
-        body: { gameId },
-      });
-      if (error) {
-        console.warn('[MAKE DECISION] enforce-deadlines returned error:', error);
-      }
-    } catch (err) {
-      console.warn('[MAKE DECISION] enforce-deadlines invoke exception:', err);
-    }
   } else {
     // Check if all players have decided (only for non-Holm games)
     await checkAllDecisionsIn(gameId);

@@ -1352,14 +1352,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const intervalId = setInterval(async () => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
       
-      // If stuck in Holm state, try to fix it by ending the round (not by flipping flags)
+      // If stuck in Holm state, try to fix it by resetting all_decisions_in
       if (stuckHolmState) {
-        console.log('[CRITICAL POLL] Detected stuck Holm state - attempting end-round recovery');
-        try {
-          await checkHolmRoundComplete(gameId);
-        } catch (e) {
-          console.error('[CRITICAL POLL] Holm recovery error:', e);
-        }
+        console.log('[CRITICAL POLL] Detected stuck Holm state - attempting recovery');
+        // Reset all_decisions_in to allow the game to continue
+        await supabase
+          .from('games')
+          .update({ all_decisions_in: false })
+          .eq('id', gameId)
+          .eq('all_decisions_in', true)
+          .eq('awaiting_next_round', false);
       }
       
       // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
@@ -1707,27 +1709,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Immediately cache round data in ref when we have valid data with community cards
   // This ensures we capture it before game_over clears current_round
-  // CRITICAL FIX: When round ID changes, ALWAYS update cache (it's a new hand)
-  // Only use revealed count comparison within the SAME round
+  // Only update cache if revealed count is >= current cached count (never decrease)
   if (liveRound && liveRound.community_cards) {
-    const cachedRoundId = cachedRoundRef.current?.id;
-    const isDifferentRound = liveRound.id !== cachedRoundId;
-    
-    if (isDifferentRound) {
-      // New round - always replace cache regardless of revealed count
-      console.log('[CACHE] New round detected, replacing cache:', {
-        oldRoundId: cachedRoundId?.slice(0, 8),
-        newRoundId: liveRound.id?.slice(0, 8),
-        newCommunityCards: liveRound.community_cards?.map((c: any) => `${c.rank}${c.suit}`).join(',')
-      });
+    const currentCachedRevealed = cachedRoundRef.current?.community_cards_revealed ?? 0;
+    const liveRevealed = liveRound.community_cards_revealed ?? 0;
+    if (liveRevealed >= currentCachedRevealed) {
       cachedRoundRef.current = liveRound;
-    } else {
-      // Same round - only increase revealed count (never decrease)
-      const currentCachedRevealed = cachedRoundRef.current?.community_cards_revealed ?? 0;
-      const liveRevealed = liveRound.community_cards_revealed ?? 0;
-      if (liveRevealed >= currentCachedRevealed) {
-        cachedRoundRef.current = liveRound;
-      }
     }
   }
   
@@ -1794,22 +1781,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       liveRound.status === 'completed' ||
       liveRound.status === 'showdown'
     )) {
-      // CRITICAL FIX: When round ID changes, ALWAYS update cache (it's a new hand)
-      const cachedRoundId = cachedRoundData?.id;
-      const isDifferentRound = liveRound.id !== cachedRoundId;
-      
-      if (isDifferentRound) {
-        // New round - always replace cache
+      // Only update cache if revealed count is >= current cached count (never decrease)
+      const currentCachedRevealed = cachedRoundData?.community_cards_revealed ?? 0;
+      const liveRevealed = liveRound.community_cards_revealed ?? 0;
+      if (liveRevealed >= currentCachedRevealed) {
         setCachedRoundData(liveRound);
         cachedRoundRef.current = liveRound;
-      } else {
-        // Same round - only increase revealed count (never decrease)
-        const currentCachedRevealed = cachedRoundData?.community_cards_revealed ?? 0;
-        const liveRevealed = liveRound.community_cards_revealed ?? 0;
-        if (liveRevealed >= currentCachedRevealed) {
-          setCachedRoundData(liveRound);
-          cachedRoundRef.current = liveRound;
-        }
       }
     }
   }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type]);
@@ -1911,81 +1888,81 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.game_type, game?.status, communityCards, currentRound, game?.awaiting_next_round, playerCards]);
 
-  // Holm bots are server-driven: bots write decisions to the DB instantly, and the UI only renders DB state.
-  // When the turn switches to a bot, we "kick" the backend once to resolve it immediately (no client bot logic).
-  // Additionally, poll every 500ms to detect and unstick stuck bot turns.
-  const holmBotKickRef = useRef<string | null>(null);
-  const holmBotPollRef = useRef<NodeJS.Timeout | null>(null);
-  
+  // Auto-trigger bot decisions when appropriate
+  // Use a ref to track if we're already processing a bot decision to avoid duplicates
+  const botProcessingRef = useRef(false);
   useEffect(() => {
-    const isHolmGame = game?.game_type === 'holm-game' || game?.game_type === 'holm';
+    const isHolmGame = game?.game_type === 'holm-game';
 
-    // Clean up polling when not needed
-    const stopPolling = () => {
-      if (holmBotPollRef.current) {
-        clearInterval(holmBotPollRef.current);
-        holmBotPollRef.current = null;
-      }
-    };
-
-    // Only Holm needs this turn-based bot kick
-    if (!isHolmGame) {
-      stopPolling();
-      return;
-    }
-
-    // Nothing should advance while paused
+    // CRITICAL: Nothing should advance while paused (bots included)
     if (game?.is_paused) {
-      stopPolling();
+      console.log('[BOT TRIGGER] Game is paused - skipping bot decisions');
       return;
     }
-
-    if (!(game?.status === 'in_progress' || game?.status === 'betting')) {
-      stopPolling();
-      return;
-    }
-
-    if (!currentRound?.id || !currentRound?.current_turn_position) {
-      stopPolling();
-      return;
-    }
-
-    const turnPlayer = players.find(p => p.position === currentRound.current_turn_position);
     
-    // If it's a bot's turn and they haven't decided yet, kick the backend
-    if (turnPlayer?.is_bot && !turnPlayer.decision_locked && !turnPlayer.current_decision) {
-      const kickKey = `${currentRound.id}:${currentRound.current_turn_position}`;
-      if (holmBotKickRef.current !== kickKey) {
-        holmBotKickRef.current = kickKey;
-        void supabase.functions
-          .invoke('enforce-deadlines', { body: { gameId } })
-          .then(({ error }) => {
-            if (error) {
-              console.error('[HOLM BOT KICK] enforce-deadlines error:', error);
-            }
-          });
+    console.log('[BOT TRIGGER EFFECT] Running', {
+      status: game?.status,
+      all_decisions_in: game?.all_decisions_in,
+      game_type: game?.game_type,
+      current_turn: currentRound?.current_turn_position,
+      round_id: currentRound?.id,
+      isProcessing: botProcessingRef.current
+    });
+    
+    // Skip if already processing
+    if (botProcessingRef.current) {
+      console.log('[BOT TRIGGER] Already processing a bot decision, skipping');
+      return;
+    }
+    
+    if (game?.status === 'in_progress' && !game.all_decisions_in) {
+      // For Holm games, only trigger if there's a valid turn position
+      // For other games, trigger on any undecided bot
+      if (isHolmGame && !currentRound?.current_turn_position) {
+        console.log('[BOT TRIGGER] Holm game but no turn position set, skipping');
+        return;
       }
+      
+      console.log('[BOT TRIGGER] Triggering bot decisions', {
+        game_type: game?.game_type,
+        current_turn: currentRound?.current_turn_position
+      });
+      
+      // Capture the turn position now to pass to the bot logic (avoids stale DB reads)
+      const capturedTurnPosition = currentRound?.current_turn_position;
+      
+      // Set processing flag
+      botProcessingRef.current = true;
+      
+      // Call immediately - no delay needed, makeBotDecisions has its own delay
+      const triggerBot = async () => {
+        try {
+          console.log('[BOT TRIGGER] *** CALLING makeBotDecisions with turn position:', capturedTurnPosition, '***');
+          const botMadeDecision = await makeBotDecisions(gameId!, capturedTurnPosition);
+          
+          // If bot made a decision, explicitly fetch to get updated turn position
+          if (botMadeDecision) {
+            console.log('[BOT TRIGGER] *** Bot decided, forcing fetch to get updated turn position ***');
+            await fetchGameData();
+          }
+        } finally {
+          botProcessingRef.current = false;
+        }
+      };
+      
+      triggerBot();
+    } else {
+      console.log('[BOT TRIGGER] Conditions not met for bot trigger');
     }
-
-    // Start polling to detect stuck bot turns every 500ms
-    if (!holmBotPollRef.current) {
-      holmBotPollRef.current = setInterval(() => {
-        // Re-check current state to see if a bot is stuck
-        void supabase.functions
-          .invoke('enforce-deadlines', { body: { gameId } })
-          .catch(err => console.error('[HOLM BOT POLL] error:', err));
-      }, 500);
-    }
-
-    return stopPolling;
   }, [
-    game?.game_type,
-    game?.status,
-    game?.is_paused,
-    currentRound?.id,
+    game?.status, 
+    game?.all_decisions_in, 
+    // Watch turn position for Holm games (turn-based)
+    // Watch round id to catch new rounds (since current_round isn't updated for Holm)
     currentRound?.current_turn_position,
-    players,
-    gameId,
+    currentRound?.id,
+    game?.game_type,
+    gameId
   ]);
 
   // Auto-execute pre-fold/pre-stay when it becomes player's turn in Holm games
@@ -4121,22 +4098,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isPaused={game.is_paused}
                   onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
                   onAddBot={async () => {
-                    console.log('[ADD BOT] requested', { gameId, status: game.status });
                     try {
-                      if (game.status === 'waiting') {
-                        await addBotPlayer(gameId!);
-                        console.log('[ADD BOT] ✅ added (waiting)');
-                      } else {
-                        await addBotPlayerSittingOut(gameId!);
-                        console.log('[ADD BOT] ✅ added (sitting out)');
-                      }
+                      await addBotPlayerSittingOut(gameId!);
                       fetchGameData();
                     } catch (error: any) {
-                      console.error('[ADD BOT] error', error);
+                      toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}
-
-
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting')}
                   onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
@@ -4183,11 +4151,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable
-                    gameId={gameId!}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
-                    currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 0) : (game.current_round || 0)}
+                    currentRound={game.current_round || 0}
                     allDecisionsIn={true}
                     playerCards={playerCards}
                     timeLeft={null}
@@ -4242,7 +4209,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       players={players}
                       currentUserId={user?.id}
                       pot={game.pot || 0}
-                      currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 0) : (game.current_round || 0)}
+                      currentRound={game.current_round || 0}
                       allDecisionsIn={true}
                       playerCards={playerCards}
                       timeLeft={null}
@@ -4506,11 +4473,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           });
           return isMobile ? (
             <MobileGameTable
-              gameId={gameId!}
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 1) : (game.current_round || 1)}
+              currentRound={game.current_round || 1}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               timeLeft={timeLeft}
@@ -4623,7 +4589,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.game_type === 'holm-game' ? (currentRound?.round_number ?? 1) : (game.current_round || 1)}
+              currentRound={game.current_round || 1}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               authoritativeCardCount={cardStateContext?.cardsDealt}

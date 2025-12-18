@@ -8,8 +8,9 @@ import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand,
 export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
   
-  // Minimal delay - just enough for DB write to propagate
-  await new Promise(resolve => setTimeout(resolve, 20));
+  // Longer delay to ensure DB write has propagated before reading
+  // Previous 100ms was causing race conditions where decision_locked wasn't visible yet
+  await new Promise(resolve => setTimeout(resolve, 300));
   
   const { data: game } = await supabase
     .from('games')
@@ -65,47 +66,47 @@ export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] All players decided?', allDecided);
   
   if (allDecided) {
-    // If the round is already processing/showdown/completed, don't do anything.
-    // (This is the primary guard against duplicate work.)
+    // CRITICAL: Check if all_decisions_in is ALREADY true (another call beat us)
+    // This prevents multiple concurrent calls from all triggering endHolmRound
+    if (game.all_decisions_in) {
+      console.log('[HOLM CHECK] all_decisions_in already true - another call already processing, skipping');
+      return;
+    }
+    
+    // CRITICAL: Also check round status - if already processing/showdown/completed, skip
     if (round.status === 'processing' || round.status === 'showdown' || round.status === 'completed') {
       console.log('[HOLM CHECK] Round already in status:', round.status, '- skipping duplicate call');
       return;
     }
-
-    // If all_decisions_in is already true, we might be recovering from a race where
-    // another process set the flag but never advanced the round. In that case, we
-    // still proceed and rely on endHolmRound's atomic round lock to ensure only one runner.
-    if (!game.all_decisions_in) {
-      console.log('[HOLM CHECK] All players decided, attempting atomic all_decisions_in flag set');
-
-      // CRITICAL: Use atomic guard to prevent race conditions / duplicate endHolmRound calls
-      const { data: updateResult, error: updateError } = await supabase
-        .from('games')
-        .update({ all_decisions_in: true })
-        .eq('id', gameId)
-        .eq('all_decisions_in', false) // Only update if not already set - atomic guard
-        .select();
-
-      // Only the first call that successfully sets the flag should proceed
-      if (updateError || !updateResult || updateResult.length === 0) {
-        console.log('[HOLM CHECK] Another client already set all_decisions_in - continuing with recovery path');
-      } else {
-        console.log('[HOLM CHECK] Successfully acquired lock (all_decisions_in -> true)');
-      }
-    } else {
-      console.log('[HOLM CHECK] all_decisions_in already true - attempting recovery to end round');
+    
+    console.log('[HOLM CHECK] All players decided, attempting atomic all_decisions_in flag set');
+    
+    // CRITICAL: Use atomic guard to prevent race conditions / duplicate endHolmRound calls
+    const { data: updateResult, error: updateError } = await supabase
+      .from('games')
+      .update({ all_decisions_in: true })
+      .eq('id', gameId)
+      .eq('all_decisions_in', false) // Only update if not already set - atomic guard
+      .select();
+    
+    // Only the first call that successfully sets the flag should proceed
+    if (updateError || !updateResult || updateResult.length === 0) {
+      console.log('[HOLM CHECK] Another client already set all_decisions_in - skipping duplicate endHolmRound');
+      return;
     }
-
+    
+    console.log('[HOLM CHECK] Successfully acquired lock, proceeding with endHolmRound');
+    
     // Clear the timer and turn position since all decisions are in
     await supabase
       .from('rounds')
-      .update({
+      .update({ 
         current_turn_position: null,
-        decision_deadline: null,
+        decision_deadline: null
       })
       .eq('id', round.id);
-
-    // End the round (endHolmRound has its own atomic lock on rounds.status)
+    
+    // End the round
     try {
       await endHolmRound(gameId);
     } catch (error) {
@@ -983,21 +984,14 @@ export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] Case 3: Multi-player showdown (no Chucky)');
   
   // Player cards are already visible to their owners, but now expose them to everyone
-  // by marking the round as "showdown" phase AND setting all_decisions_in
-  // CRITICAL: all_decisions_in = true is required for RLS to allow viewing other players' cards
-  console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown + all_decisions_in...');
+  // by marking the round as "showdown" phase - the UI will handle showing all cards
+  console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown...');
   
   // SET STATUS TO SHOWDOWN (from 'processing') so UI reveals player cards
   await supabase
     .from('rounds')
     .update({ status: 'showdown' })
     .eq('id', capturedRoundId);
-  
-  // CRITICAL: Set all_decisions_in = true so RLS allows players to see each other's cards
-  await supabase
-    .from('games')
-    .update({ all_decisions_in: true })
-    .eq('id', gameId);
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
   console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');

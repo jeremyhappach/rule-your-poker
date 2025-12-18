@@ -169,9 +169,6 @@ export const GameTable = ({
 }: GameTableProps) => {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
-
-  // Holm: community cards deal one-by-one; don't show bot decisions until the deal animation finishes.
-  const [holmCommunityDealInProgress, setHolmCommunityDealInProgress] = useState(false);
   
   // DEBUG: Log community cards prop to diagnose rendering issues
   if (gameType === 'holm-game') {
@@ -200,11 +197,7 @@ export const GameTable = ({
   // CRITICAL: Track round reset hash (for Holm games where same round ID is reused)
   // This detects when round 2 is reset for a new hand by comparing key fields
   const lastRoundResetHashRef = useRef<string>('');
-
-  // Holm: when a round transitions into a state where more cards become visible (RLS),
-  // force a refetch even if the round_id didn't change.
-  const lastExposureRefetchKeyRef = useRef<string>('');
-
+  
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<string | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
@@ -426,12 +419,11 @@ export const GameTable = ({
               });
               setLocalPlayerCards([]);
               lastFetchedRoundIdRef.current = null;
-              lastExposureRefetchKeyRef.current = '';
             }
-
+            
             // Update the reset hash
             lastRoundResetHashRef.current = roundResetHash;
-
+            
             // Update round state
             setRealtimeRound({
               id: newRound.id,
@@ -439,28 +431,10 @@ export const GameTable = ({
               cards_dealt: newRound.cards_dealt,
               status: newRound.status
             });
-
-            // If the round transitioned into a showdown/exposure state, force a card refetch even if
-            // the round_id did not change (RLS can now return more rows).
-            const exposureEligible =
-              gameType === 'holm-game' &&
-              (newRound.status === 'showdown' ||
-                newRound.status === 'completed' ||
-                newRound.community_cards_revealed === 4);
-
-            const exposureKey = `${newRound.id}-${newRound.status}-${newRound.community_cards_revealed ?? ''}`;
-            const shouldForceExposureRefetch =
-              exposureEligible &&
-              newRound.id === lastFetchedRoundIdRef.current &&
-              lastExposureRefetchKeyRef.current !== exposureKey;
-
-            if (shouldForceExposureRefetch) {
-              lastExposureRefetchKeyRef.current = exposureKey;
-            }
-
+            
             // Fetch cards for new round (with small delay to ensure cards are inserted)
             setTimeout(async () => {
-              if (newRound.id !== lastFetchedRoundIdRef.current || isRoundReset || shouldForceExposureRefetch) {
+              if (newRound.id !== lastFetchedRoundIdRef.current || isRoundReset) {
                 await fetchCardsForRound(newRound.id, newRound.round_number);
               }
             }, 100);
@@ -923,16 +897,6 @@ export const GameTable = ({
           <span className="text-white/30 font-bold text-sm sm:text-base md:text-lg uppercase tracking-wider">
             {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
           </span>
-          {/* TEMP DEBUG: show effective round number to diagnose early/incorrect increments */}
-          {gameType === 'holm-game' && (
-            <Badge
-              variant="secondary"
-              className="mt-1 text-[10px] sm:text-[11px] px-2 py-0.5 bg-background/30 text-foreground border border-border/40 backdrop-blur-sm"
-            >
-              Round {effectiveRoundNumber}
-              {realtimeRound?.round_number ? ` (rt ${realtimeRound.round_number})` : ''}
-            </Badge>
-          )}
         </div>
         
         <div className="relative h-full">
@@ -1055,9 +1019,7 @@ export const GameTable = ({
            !(awaitingNextRound && !lastRoundResult) && (
             <CommunityCards 
               cards={communityCards} 
-              revealed={communityCardsRevealed || 2}
-              onDealStart={() => setHolmCommunityDealInProgress(true)}
-              onDealComplete={() => setHolmCommunityDealInProgress(false)}
+              revealed={communityCardsRevealed || 2} 
             />
           )}
 
@@ -1079,26 +1041,11 @@ export const GameTable = ({
             const isCurrentUser = player?.user_id === currentUserId;
             // Hide OTHER players' decisions while paused, and optionally right-after-resume (3-5-7) until current user chooses.
             const shouldHideOthers = !!isPaused || hideOtherDecisionsUntilYouDecide;
-
-            // Holm: bots may decide instantly in the DB, but we don't want to reveal it while community cards are still dealing.
-            const hideHolmBotDecisionForDeal =
-              gameType === 'holm-game' &&
-              roundStatus === 'betting' &&
-              holmCommunityDealInProgress &&
-              !!player?.is_bot;
-
-            const hasPlayerDecided = hideHolmBotDecisionForDeal
-              ? false
-              : (isCurrentUser || !shouldHideOthers)
-                ? player?.decision_locked
-                : false;
-
+            const hasPlayerDecided = (isCurrentUser || !shouldHideOthers) ? player?.decision_locked : false;
             // Always show current user's decision immediately, or all decisions when allDecisionsIn
-            const playerDecision = hideHolmBotDecisionForDeal
-              ? null
-              : (isCurrentUser || (!shouldHideOthers && (allDecisionsIn || gameType === 'holm-game')))
-                ? player?.current_decision
-                : null;
+            const playerDecision = (isCurrentUser || (!shouldHideOthers && (allDecisionsIn || gameType === 'holm-game')))
+              ? player?.current_decision
+              : null;
             
             // In Holm game, buck just indicates who decides first, but all players can decide
             // Only show buck when round is fully initialized with turn position
