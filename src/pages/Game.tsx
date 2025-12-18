@@ -3141,36 +3141,77 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
       const resultMessage = game.last_round_result;
-      
+
       // Check if this is a player beating Chucky (not Chucky beating a player)
       if (resultMessage.includes('beat Chucky') && !resultMessage.includes('Chucky beat')) {
         // Prevent duplicate processing
         if (holmWinProcessedRef.current === resultMessage) {
           return;
         }
-        holmWinProcessedRef.current = resultMessage;
-        
+
         // Parse pot amount from message
         const potMatch = resultMessage.match(/POT:(\d+)/);
         const potAmount = potMatch ? parseInt(potMatch[1], 10) : 0;
-        
-        // Find winner position from username in message
+
+        // Find winner name from message
         const displayPart = resultMessage.split('|||')[0];
         const winnerMatch = displayPart.match(/^(.+?) beat Chucky/);
-        const winnerName = winnerMatch ? winnerMatch[1] : '';
-        
-        // Find player by username
-        const winnerPlayer = players.find(p => p.profiles?.username === winnerName);
-        const winnerPosition = winnerPlayer?.position ?? 1;
-        
-        console.log('[HOLM WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPosition, 'pot:', potAmount);
-        
+        const winnerNameRaw = winnerMatch ? winnerMatch[1] : '';
+        const winnerName = winnerNameRaw.trim();
+
+        // Resolve winner player robustly (username match, bot alias match, then stayed-player fallback)
+        const lowerWinner = winnerName.toLowerCase();
+        let winnerPlayer = players.find((p) => (p.profiles?.username ?? '').trim() === winnerName);
+
+        if (!winnerPlayer) {
+          winnerPlayer = players.find((p) => p.is_bot && getBotAlias(players, p.user_id).trim() === winnerName);
+        }
+
+        if (!winnerPlayer && winnerName) {
+          winnerPlayer = players.find((p) => (p.profiles?.username ?? '').trim().toLowerCase() === lowerWinner);
+        }
+
+        if (!winnerPlayer && winnerName) {
+          winnerPlayer = players.find((p) => p.is_bot && getBotAlias(players, p.user_id).trim().toLowerCase() === lowerWinner);
+        }
+
+        // Holm win-vs-Chucky is a solo stay scenario; use that as a safe fallback for animation targeting.
+        if (!winnerPlayer) {
+          const stayed = players.filter((p) => p.current_decision === 'stay' && !p.sitting_out);
+          if (stayed.length === 1) {
+            winnerPlayer = stayed[0];
+          }
+        }
+
+        if (!winnerPlayer) {
+          console.warn('[HOLM WIN POT] Could not resolve winner player for animation; skipping trigger.', {
+            winnerName,
+            displayPart,
+            players: players.map((p) => ({
+              id: p.id,
+              pos: p.position,
+              username: p.profiles?.username,
+              is_bot: p.is_bot,
+              alias: p.is_bot ? getBotAlias(players, p.user_id) : undefined,
+              decision: p.current_decision,
+            })),
+          });
+          return;
+        }
+
+        // Mark processed only once we successfully resolved a winner.
+        holmWinProcessedRef.current = resultMessage;
+
+        const winnerPosition = winnerPlayer.position;
+
+        console.log('[HOLM WIN POT] Triggering pot animation for:', winnerName || winnerPlayer.profiles?.username, 'position:', winnerPosition, 'pot:', potAmount);
+
         setHolmWinPotAmount(potAmount);
         setHolmWinWinnerPosition(winnerPosition);
         setHolmWinPotTriggerId(`holm-win-${Date.now()}`);
       }
     }
-    
+
     // Reset when game status changes away from game_over
     if (game?.status !== 'game_over') {
       holmWinProcessedRef.current = null;

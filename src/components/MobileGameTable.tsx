@@ -1050,44 +1050,61 @@ export const MobileGameTable = ({
   }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards]);
 
   // Detect when a player earns a leg (3-5-7 games only)
-  // Track which player+leg combo we've already triggered for to prevent double-fires
-  const legAnimationFiredRef = useRef<string | null>(null);
+  // IMPORTANT: MobileGameTable can remount between hands/round transitions; we must NOT treat existing legs as "new" on mount.
+  const legsTrackerInitializedRef = useRef(false);
+  const firedLegAnimationKeysRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     if (gameType === 'holm-game') return;
-    players.forEach(player => {
-      const prevLegs = playerLegsRef.current[player.id] ?? 0;
+
+    // One-time baseline snapshot so we only animate *changes* in legs, not whatever legs already exist.
+    if (!legsTrackerInitializedRef.current) {
+      const snapshot: Record<string, number> = {};
+      players.forEach((p) => {
+        snapshot[p.id] = p.legs;
+      });
+      playerLegsRef.current = snapshot;
+      firedLegAnimationKeysRef.current = new Set();
+      legsTrackerInitializedRef.current = true;
+      console.log('[LEG ANIMATION] Initialized baseline legs snapshot:', snapshot);
+      return;
+    }
+
+    players.forEach((player) => {
+      const prevLegs = playerLegsRef.current[player.id] ?? player.legs;
       const currentLegs = player.legs;
 
       // Player gained a leg
-      if (currentLegs > prevLegs && prevLegs >= 0) {
-        // Prevent double-fire: check if we already animated this exact leg gain
+      if (currentLegs > prevLegs) {
         const animationKey = `${player.id}-${currentLegs}`;
-        if (legAnimationFiredRef.current === animationKey) {
+        if (firedLegAnimationKeysRef.current.has(animationKey)) {
           console.log('[LEG ANIMATION] Skipping duplicate animation for:', animationKey);
-          return;
-        }
-        legAnimationFiredRef.current = animationKey;
-        
-        // Use bot alias for bots
-        const playerName = player.is_bot 
-          ? getBotAlias(players, player.user_id) 
-          : (player.profiles?.username || `Player ${player.position}`);
-        setLegEarnedPlayerName(playerName);
-        setLegEarnedPlayerPosition(player.position);
-        const isWinningLeg = currentLegs >= legsToWin;
-        setIsWinningLegAnimation(isWinningLeg);
-        setShowLegEarned(true);
-        
-        // Track the winning leg player for card exposure
-        if (isWinningLeg) {
-          console.log('[MOBILE] 🏆 FINAL LEG WON - exposing cards for:', player.id);
-          setWinningLegPlayerId(player.id);
+        } else {
+          firedLegAnimationKeysRef.current.add(animationKey);
+
+          // Use bot alias for bots
+          const playerName = player.is_bot
+            ? getBotAlias(players, player.user_id)
+            : (player.profiles?.username || `Player ${player.position}`);
+
+          setLegEarnedPlayerName(playerName);
+          setLegEarnedPlayerPosition(player.position);
+
+          const isWinningLeg = currentLegs >= legsToWin;
+          setIsWinningLegAnimation(isWinningLeg);
+          setShowLegEarned(true);
+
+          // Track the winning leg player for card exposure
+          if (isWinningLeg) {
+            console.log('[MOBILE] 🏆 FINAL LEG WON - exposing cards for:', player.id);
+            setWinningLegPlayerId(player.id);
+          }
         }
       }
+
       playerLegsRef.current[player.id] = currentLegs;
     });
   }, [players, gameType, legsToWin]);
-  
   // Clear winning leg player when game status changes (next game starting)
   useEffect(() => {
     if (roundStatus === undefined || roundStatus === 'pending' || !allDecisionsIn) {
