@@ -25,6 +25,7 @@ import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
+import { supabase } from "@/integrations/supabase/client";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { cn, formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
