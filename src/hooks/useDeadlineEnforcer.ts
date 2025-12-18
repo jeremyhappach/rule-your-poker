@@ -43,8 +43,11 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
         });
 
         if (error) {
-          // 503 = cold start, keys not ready yet - silently ignore and retry next poll
-          if (error.message?.includes('503')) {
+          // Transient backend/platform states we should silently ignore and retry next poll.
+          // - 503: cold start / env not ready
+          // - 401 "Key length is zero": upstream rejected request before function runs (missing/empty apikey)
+          const msg = error.message || '';
+          if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('code":401')) {
             return;
           }
           console.error('[DEADLINE ENFORCER] Error:', error);
