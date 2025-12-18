@@ -244,6 +244,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Children use this to avoid writing stale local state back into the external cache.
   const [communityCacheEpoch, setCommunityCacheEpoch] = useState(0);
 
+  // DEBUG: toast whenever the active round changes (helps diagnose stale render vs cache issues)
+  const lastRoundToastRef = useRef<{ roundNumber: number | null; roundId: string | null } | null>(null);
+
   // DEBUG: force periodic re-render to "read" ref values in UI (refs don't trigger renders)
   const [cacheDebugTick, setCacheDebugTick] = useState(0);
   useEffect(() => {
@@ -1836,7 +1839,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound = liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
-  
+
+  // DEBUG: show a "Round: X" toast whenever round number/id changes
+  useEffect(() => {
+    const next = {
+      roundNumber: currentRound?.round_number ?? null,
+      roundId: currentRound?.id ?? null,
+    };
+
+    const prev = lastRoundToastRef.current;
+    if (prev && prev.roundNumber === next.roundNumber && prev.roundId === next.roundId) return;
+
+    lastRoundToastRef.current = next;
+
+    if (next.roundNumber === null && next.roundId === null) {
+      toast({
+        title: "Round: —",
+        description: `No active round (${game?.status ?? "unknown"})`,
+      });
+      return;
+    }
+
+    toast({
+      title: `Round: ${next.roundNumber ?? "—"}`,
+      description: next.roundId ? `Round id: ${next.roundId}` : `Game status: ${game?.status ?? "unknown"}`,
+    });
+  }, [currentRound?.id, currentRound?.round_number, game?.status, toast]);
+
   // Compute current card identity to detect new hands
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
   const currentCardIdentity = communityCards?.map(c => `${c.rank}${c.suit}`).join(',') || '';
