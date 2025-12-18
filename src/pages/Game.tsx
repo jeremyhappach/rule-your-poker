@@ -1915,36 +1915,71 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Holm bots are server-driven: bots write decisions to the DB instantly, and the UI only renders DB state.
   // When the turn switches to a bot, we "kick" the backend once to resolve it immediately (no client bot logic).
+  // Additionally, poll every 500ms to detect and unstick stuck bot turns.
   const holmBotKickRef = useRef<string | null>(null);
+  const holmBotPollRef = useRef<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game' || game?.game_type === 'holm';
 
+    // Clean up polling when not needed
+    const stopPolling = () => {
+      if (holmBotPollRef.current) {
+        clearInterval(holmBotPollRef.current);
+        holmBotPollRef.current = null;
+      }
+    };
+
     // Only Holm needs this turn-based bot kick
-    if (!isHolmGame) return;
+    if (!isHolmGame) {
+      stopPolling();
+      return;
+    }
 
     // Nothing should advance while paused
-    if (game?.is_paused) return;
+    if (game?.is_paused) {
+      stopPolling();
+      return;
+    }
 
-    if (!(game?.status === 'in_progress' || game?.status === 'betting')) return;
-    if (!currentRound?.id || !currentRound?.current_turn_position) return;
+    if (!(game?.status === 'in_progress' || game?.status === 'betting')) {
+      stopPolling();
+      return;
+    }
+
+    if (!currentRound?.id || !currentRound?.current_turn_position) {
+      stopPolling();
+      return;
+    }
 
     const turnPlayer = players.find(p => p.position === currentRound.current_turn_position);
-    if (!turnPlayer?.is_bot) return;
+    
+    // If it's a bot's turn and they haven't decided yet, kick the backend
+    if (turnPlayer?.is_bot && !turnPlayer.decision_locked && !turnPlayer.current_decision) {
+      const kickKey = `${currentRound.id}:${currentRound.current_turn_position}`;
+      if (holmBotKickRef.current !== kickKey) {
+        holmBotKickRef.current = kickKey;
+        void supabase.functions
+          .invoke('enforce-deadlines', { body: { gameId } })
+          .then(({ error }) => {
+            if (error) {
+              console.error('[HOLM BOT KICK] enforce-deadlines error:', error);
+            }
+          });
+      }
+    }
 
-    // If the bot already has a decision recorded, nothing to do.
-    if (turnPlayer.decision_locked || turnPlayer.current_decision) return;
+    // Start polling to detect stuck bot turns every 500ms
+    if (!holmBotPollRef.current) {
+      holmBotPollRef.current = setInterval(() => {
+        // Re-check current state to see if a bot is stuck
+        void supabase.functions
+          .invoke('enforce-deadlines', { body: { gameId } })
+          .catch(err => console.error('[HOLM BOT POLL] error:', err));
+      }, 500);
+    }
 
-    const kickKey = `${currentRound.id}:${currentRound.current_turn_position}`;
-    if (holmBotKickRef.current === kickKey) return;
-    holmBotKickRef.current = kickKey;
-
-    void supabase.functions
-      .invoke('enforce-deadlines', { body: { gameId } })
-      .then(({ error }) => {
-        if (error) {
-          console.error('[HOLM BOT KICK] enforce-deadlines error:', error);
-        }
-      });
+    return stopPolling;
   }, [
     game?.game_type,
     game?.status,
