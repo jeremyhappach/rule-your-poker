@@ -1232,7 +1232,10 @@ async function handleChuckyShowdown(
       console.log('[HOLM SHOWDOWN] Successfully set game_over status with new dealer:', nextDealerPosition);
     }
   } else {
-    console.log('[HOLM SHOWDOWN] Chucky wins!');
+    // Check if it's a tie (player equals Chucky) vs Chucky actually winning
+    const isTie = playerEval.value === chuckyEval.value;
+    console.log('[HOLM SHOWDOWN] Chucky wins!', isTie ? '(TIE - Chucky wins ties)' : '(Chucky has better hand)');
+    
     // Chucky wins - player matches pot (capped)
     const potMatchAmount = game.pot_max_enabled 
       ? Math.min(roundPot, game.pot_max_value) 
@@ -1261,10 +1264,15 @@ async function handleChuckyShowdown(
 
     console.log('[HOLM SHOWDOWN] Pot update - old:', roundPot, 'adding:', potMatchAmount, 'new:', newPot);
 
+    // Use different message for tie vs actual loss
+    const resultMessage = isTie 
+      ? `Ya tie but ya lose!`
+      : `Chucky beat ${playerUsername} with ${chuckyHandDesc}`;
+
     const { error: gameUpdateError } = await supabase
       .from('games')
       .update({
-        last_round_result: `Chucky beat ${playerUsername} with ${chuckyHandDesc}`,
+        last_round_result: resultMessage,
         pot: newPot,
         awaiting_next_round: true  // Let frontend detect and animate
       })
@@ -1726,13 +1734,15 @@ async function handleMultiPlayerShowdown(
     console.log('[HOLM TIE] Chucky hand:', chuckyHandDesc, 'value:', chuckyEval.value);
     
     const playersBeatChucky = winners.filter(w => w.evaluation.value > chuckyEval.value);
+    const playersTieChucky = winners.filter(w => w.evaluation.value === chuckyEval.value);
     const playersLoseToChucky = winners.filter(w => w.evaluation.value <= chuckyEval.value);
     
-    console.log('[HOLM TIE] Players beat Chucky:', playersBeatChucky.length, 'Players lose:', playersLoseToChucky.length);
+    console.log('[HOLM TIE] Players beat Chucky:', playersBeatChucky.length, 'Players tie Chucky:', playersTieChucky.length, 'Players lose:', playersLoseToChucky.length);
     
     if (playersBeatChucky.length === 0) {
-      // All tied players lost to Chucky - they all match pot (capped)
-      console.log('[HOLM TIE] Chucky beats all tied players, roundPot:', roundPot);
+      // All tied players lost to or tied with Chucky - they all match pot (capped)
+      const allTiedWithChucky = playersTieChucky.length === playersLoseToChucky.length;
+      console.log('[HOLM TIE] Chucky beats/ties all players, roundPot:', roundPot, 'allTiedWithChucky:', allTiedWithChucky);
       
       const potMatchAmount = game.pot_max_enabled 
         ? Math.min(roundPot, game.pot_max_value) 
@@ -1761,10 +1771,15 @@ async function handleMultiPlayerShowdown(
       
       const newPot = roundPot + totalMatched;
       
+      // Use different message for tie vs actual loss
+      const resultMessage = allTiedWithChucky 
+        ? `Ya tie but ya lose!`
+        : `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`;
+      
       await supabase
         .from('games')
         .update({
-          last_round_result: `Tie broken by Chucky! ${loserNames.join(' and ')} lose to Chucky's ${chuckyHandDesc}. $${totalMatched} added to pot.`,
+          last_round_result: resultMessage,
           awaiting_next_round: true,
           pot: newPot
         })
