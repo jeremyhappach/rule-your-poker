@@ -1473,9 +1473,31 @@ export const MobileGameTable = ({
   };
 
   // Render player chip - chipstack in center, name below (or above for bottom positions)
+  // For observers (!currentPlayer), slotIndex represents the visual slot matching the absolute position
+  // Map absolute positions to visual slot indices for consistent behavior:
+  // Pos 1 -> slot 2 (top-left), Pos 2 -> slot 1 (middle-left), Pos 3 -> slot 0 (bottom-left)
+  // Pos 4 -> slot -1 (home/bottom-center), Pos 5 -> slot 5 (bottom-right), Pos 6 -> slot 4 (middle-right), Pos 7 -> slot 3 (top-right)
+  const getObserverSlotFromPosition = (position: number): number => {
+    const posToSlot: Record<number, number> = {
+      1: 2,   // Top-left
+      2: 1,   // Middle-left
+      3: 0,   // Bottom-left
+      4: -1,  // Bottom center (home position)
+      5: 5,   // Bottom-right
+      6: 4,   // Middle-right
+      7: 3,   // Top-right
+    };
+    return posToSlot[position] ?? 0;
+  };
+  
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
     const isCurrentUser = player.user_id === currentUserId;
+    
+    // For observers, derive slot from absolute position for consistent behavior
+    const isObserver = !currentPlayer;
+    const effectiveSlotIndex = isObserver ? getObserverSlotFromPosition(player.position) : slotIndex;
+    
     // CRITICAL: Only show other players' decisions after allDecisionsIn (for 3-5-7)
     // Holm game shows decisions immediately (turn-based), 3-5-7 hides until all in
     // Current user always sees their own decision immediately
@@ -1508,7 +1530,7 @@ export const MobileGameTable = ({
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
     
     // Bottom positions (slot 0 = bottom-left, slot 5 = bottom-right) need name above chip
-    const isBottomPosition = slotIndex === 0 || slotIndex === 5;
+    const isBottomPosition = effectiveSlotIndex === 0 || effectiveSlotIndex === 5 || effectiveSlotIndex === -1;
     
     // Determine if we should show this player's actual cards
     // Either: player has exposed cards in cache, OR we're showing announcement for a stayed player
@@ -1537,7 +1559,7 @@ export const MobileGameTable = ({
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
     
     // Determine if legs should be on the left (inside for right-side slots 3,4,5)
-    const isRightSideSlot = slotIndex !== undefined && slotIndex >= 3;
+    const isRightSideSlot = effectiveSlotIndex !== undefined && effectiveSlotIndex >= 3;
     
     // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
     // During leg animation, show (legs - 1) so only the NEW leg is hidden
@@ -1680,8 +1702,8 @@ export const MobileGameTable = ({
     const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer;
     
     // Determine if name should appear below cards (for upper corners and middle positions during showdown)
-    const isUpperCorner = slotIndex === 2 || slotIndex === 3;
-    const isMiddlePosition = slotIndex === 1 || slotIndex === 4;
+    const isUpperCorner = effectiveSlotIndex === 2 || effectiveSlotIndex === 3;
+    const isMiddlePosition = effectiveSlotIndex === 1 || effectiveSlotIndex === 4;
     const showNameBelowCards = isShowdown && hideChipForShowdown && (isUpperCorner || isMiddlePosition);
     
     const cardsElement = isShowdown && !shouldHideForTabling ? (
