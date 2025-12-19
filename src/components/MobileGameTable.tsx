@@ -516,25 +516,33 @@ export const MobileGameTable = ({
     console.log('[MOBILE_COMMUNITY] 🧹 wiped external community cache immediately (dealer config phase)', { gameStatus });
   }, [externalCommunityCardsCache, isDealerConfigPhase, gameStatus]);
 
-  // Initialize local state from external cache if available (but NOT during dealer config)
+  // Initialize local state from external cache if available (but ONLY if it matches currentRound, and NOT during dealer config)
+  const initialExternalCache = externalCommunityCardsCache?.current;
+  const initialExternalCacheRound = initialExternalCache?.round ?? null;
+  const canUseInitialExternalCache =
+    !isDealerConfigPhase &&
+    initialExternalCacheRound !== null &&
+    initialExternalCacheRound === currentRound &&
+    (initialExternalCache?.cards?.length ?? 0) > 0;
+
   const [showCommunityCards, setShowCommunityCards] = useState(() => {
     if (isDealerConfigPhase) return false;
-    if (externalCommunityCardsCache?.current?.show) return true;
+    if (canUseInitialExternalCache && initialExternalCache?.show) return true;
     return gameType !== 'holm-game';
   });
   const [staggeredCardCount, setStaggeredCardCount] = useState(0); // How many cards to show in staggered animation
   const [isDelayingCommunityCards, setIsDelayingCommunityCards] = useState(false); // Only true during active delay
   const [approvedRoundForDisplay, setApprovedRoundForDisplay] = useState<number | null>(() => {
     if (isDealerConfigPhase) return null;
-    return externalCommunityCardsCache?.current?.round || null;
+    return canUseInitialExternalCache ? initialExternalCacheRound : null;
   });
   const [approvedCommunityCards, setApprovedCommunityCards] = useState<CardType[] | null>(() => {
     if (isDealerConfigPhase) return null;
-    return externalCommunityCardsCache?.current?.cards || null;
+    return canUseInitialExternalCache ? (initialExternalCache?.cards ?? null) : null;
   });
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastDetectedRoundRef = useRef<number | null>(
-    isDealerConfigPhase ? null : (externalCommunityCardsCache?.current?.round || null)
+    isDealerConfigPhase ? null : (canUseInitialExternalCache ? initialExternalCacheRound : null)
   ); // Track which round we've detected (to prevent re-triggering)
 
   // Never let effect cleanups cancel the 1s community-cards approval timer mid-flight.
