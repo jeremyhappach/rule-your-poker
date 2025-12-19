@@ -416,10 +416,10 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
       foldProbability = getBotFoldProbability(botCards, communityCards, 'holm', 1, botAggressionLevel);
       console.log('[BOT DECISIONS] Holm bot fold probability:', foldProbability, '% based on hand strength, aggression:', botAggressionLevel);
     } else {
-      // Apply aggression multiplier even to universal probability
-      const multiplier = { 'very_conservative': 1.6, 'conservative': 1.3, 'normal': 1.0, 'aggressive': 0.7, 'very_aggressive': 0.4 }[botAggressionLevel];
-      foldProbability = Math.min(100, Math.max(0, universalFoldProbability * multiplier));
-      console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '% (adjusted for aggression:', botAggressionLevel, ')');
+      // Use universal fold probability directly - no aggression adjustment
+      // When user sets 100% fold, ALL bots should fold
+      foldProbability = universalFoldProbability;
+      console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '%');
     }
     
     // Add delay before bot makes decision
@@ -459,10 +459,10 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
       foldProbability = getBotFoldProbability(botCards, [], '357', roundNumber, botAggressionLevel);
       console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'fold probability:', foldProbability, '% (round', roundNumber, ', hand strength, aggression:', botAggressionLevel, ')');
     } else {
-      // Apply aggression multiplier even to universal probability
-      const multiplier = { 'very_conservative': 1.6, 'conservative': 1.3, 'normal': 1.0, 'aggressive': 0.7, 'very_aggressive': 0.4 }[botAggressionLevel];
-      foldProbability = Math.min(100, Math.max(0, universalFoldProbability * multiplier));
-      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'using universal fold probability:', foldProbability, '% (adjusted for aggression:', botAggressionLevel, ')');
+      // Use universal fold probability directly - no aggression adjustment
+      // When user sets 100% fold, ALL bots should fold
+      foldProbability = universalFoldProbability;
+      console.log('[BOT DECISIONS] 3-5-7 bot at position', bot.position, 'using universal fold probability:', foldProbability, '%');
     }
     
     // Stagger bot decisions slightly to feel more natural
