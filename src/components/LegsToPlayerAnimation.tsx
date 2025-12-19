@@ -49,11 +49,35 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     return slots[slotIndex] || { top: 50, left: 50 };
   };
 
+  // Absolute position mapping for observers (positions 1-7 around the table)
+  const getAbsolutePositionPercent = (position: number): { top: number; left: number } => {
+    const positions: Record<number, { top: number; left: number }> = {
+      1: { top: 92, left: 50 },   // Bottom center
+      2: { top: 50, left: 2 },    // Middle-left
+      3: { top: 2, left: 10 },    // Top-left
+      4: { top: 2, left: 50 },    // Top center
+      5: { top: 2, left: 90 },    // Top-right
+      6: { top: 50, left: 98 },   // Middle-right
+      7: { top: 92, left: 90 },   // Bottom-right
+    };
+    return positions[position] || { top: 50, left: 50 };
+  };
+
   // Get chipstack center position
   const getChipstackCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
-    const isCurrentPlayer = currentPlayerPosition === position;
-    const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
-    const slot = getSlotPercent(slotIndex);
+    const isObserver = currentPlayerPosition === null;
+    
+    let slot: { top: number; left: number };
+    if (isObserver) {
+      // Observer: use absolute positions
+      slot = getAbsolutePositionPercent(position);
+    } else {
+      // Seated player: use relative slot positions
+      const isCurrentPlayer = currentPlayerPosition === position;
+      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
+      slot = getSlotPercent(slotIndex);
+    }
+    
     return {
       x: (slot.left / 100) * rect.width,
       y: (slot.top / 100) * rect.height,
@@ -62,14 +86,22 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 
   // Get leg indicator position (offset toward table center from chipstack)
   const getLegIndicatorCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
-    const isCurrentPlayer = currentPlayerPosition === position;
-    const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
+    const isObserver = currentPlayerPosition === null;
     const chipCoords = getChipstackCoords(position, rect);
     
     // Leg indicators are offset toward table center by ~30px
-    // Right-side slots (3,4,5): legs are to the LEFT of chipstack
-    // Left-side slots (0,1,2) and current player: legs are to the RIGHT of chipstack
-    const isRightSide = slotIndex >= 3;
+    // For observers: use absolute position to determine side
+    // For seated players: use slot index
+    let isRightSide: boolean;
+    if (isObserver) {
+      // Positions 5, 6, 7 are on the right side
+      isRightSide = position >= 5;
+    } else {
+      const isCurrentPlayer = currentPlayerPosition === position;
+      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
+      isRightSide = slotIndex >= 3;
+    }
+    
     const offsetX = isRightSide ? -30 : 30;
     
     return {

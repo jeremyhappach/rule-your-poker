@@ -76,10 +76,46 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     }
   };
 
+  // Absolute position coords for observers (positions 1-7 around the table)
+  const getAbsolutePositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+    const chipRadius = 20;
+    const tailwindBottom2 = 8;
+    const tailwindTop2 = 8;
+    const tailwindLeft10 = 40;
+    const tailwindRight10 = 40;
+    
+    switch (position) {
+      case 1: // Bottom center
+        return { x: rect.width / 2, y: rect.height - tailwindBottom2 - chipRadius };
+      case 2: // Middle-left
+        return { x: chipRadius, y: rect.height / 2 };
+      case 3: // Top-left
+        return { x: tailwindLeft10 + chipRadius, y: tailwindTop2 + chipRadius };
+      case 4: // Top center
+        return { x: rect.width / 2, y: tailwindTop2 + chipRadius };
+      case 5: // Top-right
+        return { x: rect.width - tailwindRight10 - chipRadius, y: tailwindTop2 + chipRadius };
+      case 6: // Middle-right
+        return { x: rect.width - chipRadius, y: rect.height / 2 };
+      case 7: // Bottom-right
+        return { x: rect.width - tailwindRight10 - chipRadius, y: rect.height - tailwindBottom2 - chipRadius };
+      default:
+        return { x: rect.width / 2, y: rect.height / 2 };
+    }
+  };
+
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
-    const isCurrentPlayer = currentPlayerPosition === position;
-    const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
-    return getSlotCenterCoords(slotIndex, rect);
+    const isObserver = currentPlayerPosition === null;
+    
+    if (isObserver) {
+      // Observer: use absolute positions
+      return getAbsolutePositionCoords(position, rect);
+    } else {
+      // Seated player: use relative slot positions
+      const isCurrentPlayer = currentPlayerPosition === position;
+      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
+      return getSlotCenterCoords(slotIndex, rect);
+    }
   };
 
   useEffect(() => {
