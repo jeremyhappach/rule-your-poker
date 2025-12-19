@@ -87,13 +87,38 @@ serve(async (req) => {
       gameStatus: game?.status || null,
     });
 
-    if (gameError || !game) {
-      console.error('[ENFORCE] Game not found:', { gameId, error: gameError });
-      return new Response(JSON.stringify({ 
-        error: 'Game not found',
+    if (gameError) {
+      const msg = String(gameError.message ?? '');
+      const lower = msg.toLowerCase();
+      const isTransient =
+        lower.includes('connection reset') ||
+        lower.includes('sendrequest') ||
+        lower.includes('client error') ||
+        lower.includes('timeout') ||
+        lower.includes('network');
+
+      console.error('[ENFORCE] Game query failed:', { gameId, error: gameError, isTransient });
+
+      return new Response(JSON.stringify({
+        error: isTransient ? 'Temporary backend error' : 'Game not found',
+        retry: isTransient,
         gameId,
         dbError: gameError?.message || null,
-        dbCode: gameError?.code || null,
+        dbCode: (gameError as any)?.code || null,
+      }), {
+        status: isTransient ? 503 : 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!game) {
+      console.error('[ENFORCE] Game not found:', { gameId });
+      return new Response(JSON.stringify({
+        error: 'Game not found',
+        retry: false,
+        gameId,
+        dbError: null,
+        dbCode: null,
       }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

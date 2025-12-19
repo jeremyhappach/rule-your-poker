@@ -835,6 +835,16 @@ export const MobileGameTable = ({
   // Check if current player is the winner (for dimming logic)
   const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
 
+  // HOLM: If the current player is the solo-vs-Chucky player, keep their cards "tabled" on the felt
+  // through the win/payout sequence (hide from bottom section to prevent the "snap back" effect).
+  const isCurrentPlayerSoloVsChucky =
+    gameType === 'holm-game' &&
+    isSoloVsChucky &&
+    !!currentPlayer &&
+    (soloVsChuckyPlayerIdLocked
+      ? soloVsChuckyPlayerIdLocked === currentPlayer.id
+      : currentPlayer.current_decision === 'stay');
+
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
   const winnerCards = useMemo(() => {
@@ -2024,13 +2034,13 @@ export const MobileGameTable = ({
           );
         })()}
         
-        {/* Solo Opponent's Tabled Cards - shown above pot when ANOTHER player goes solo vs Chucky */}
-        {/* Only table OTHER player's cards - the current player sees their own cards in the bottom section */}
+        {/* Solo player's Tabled Cards - shown above pot during solo-vs-Chucky showdown/win */}
+        {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}
         {gameType === 'holm-game' && isSoloVsChucky && (() => {
           // Find the solo player (use locked id so tabling persists even if decisions clear)
           const soloPlayerId = soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id;
           const soloPlayer = soloPlayerId ? players.find(p => p.id === soloPlayerId) : null;
-          if (!soloPlayer || soloPlayer.id === currentPlayer?.id) return null;
+          if (!soloPlayer) return null;
           
           // Get solo player's cards
           const soloPlayerCards = getPlayerCards(soloPlayer.id);
@@ -2828,8 +2838,11 @@ export const MobileGameTable = ({
                     </div>
                   )}
 
-                  {/* Cards - current player always sees their own cards in the bottom section */}
-                  {currentPlayerCards.length > 0 ? (
+                  {/* Cards - current player normally sees their own cards in the bottom section */}
+                  {/* EXCEPTION: solo-vs-Chucky -> keep cards tabled on the felt through win animation */}
+                  {isCurrentPlayerSoloVsChucky ? (
+                    <div className="text-sm text-muted-foreground">Cards tabled on the felt</div>
+                  ) : currentPlayerCards.length > 0 ? (
                     <div
                       className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}
                     >
