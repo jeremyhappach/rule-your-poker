@@ -39,29 +39,46 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
   const lastTriggerIdRef = useRef<string | null>(null);
   const animIdRef = useRef(0);
 
-  // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
-  // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
-  const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
-    const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 92, left: 10 },   // Bottom-left: bottom-2 left-10
-      1: { top: 50, left: 2 },    // Middle-left: left-0 top-1/2
-      2: { top: 2, left: 10 },    // Top-left: top-2 left-10
-      3: { top: 2, left: 90 },    // Top-right: top-2 right-10
-      4: { top: 50, left: 98 },   // Middle-right: right-0 top-1/2
-      5: { top: 92, left: 90 },   // Bottom-right: bottom-2 right-10
-    };
-    return slots[slotIndex] || { top: 50, left: 50 };
+  // Get the CENTER of the chip stack at each slot position
+  // ChipStack is w-10 h-10 (40x40px), so we need to find the center of that circle
+  // Slot positions in MobileGameTable:
+  //   Slot 0: bottom-2 left-10 → bottom: 8px, left: 40px (chip center = left+20, bottom-relative)
+  //   Slot 1: left-0 top-1/2 → left: 0, top: 50% (chip center = left+20, top: 50%)
+  //   Slot 2: top-2 left-10 → top: 8px, left: 40px (chip center = left+20, top+20)
+  //   Slot 3: top-2 right-10 → top: 8px, right: 40px (chip center = right-20, top+20)
+  //   Slot 4: right-0 top-1/2 → right: 0, top: 50% (chip center = right-20, top: 50%)
+  //   Slot 5: bottom-2 right-10 → bottom: 8px, right: 40px (chip center = right-20, bottom-relative)
+  const getSlotCenterCoords = (slotIndex: number, rect: DOMRect): { x: number; y: number } => {
+    const chipRadius = 20; // w-10 = 40px, so radius = 20px
+    const tailwindBottom2 = 8; // bottom-2 = 0.5rem = 8px
+    const tailwindTop2 = 8;    // top-2 = 0.5rem = 8px
+    const tailwindLeft10 = 40; // left-10 = 2.5rem = 40px
+    const tailwindRight10 = 40; // right-10 = 2.5rem = 40px
+    
+    switch (slotIndex) {
+      case -1: // Current player (bottom center)
+        return { x: rect.width / 2, y: rect.height - tailwindBottom2 - chipRadius };
+      case 0: // Bottom-left: bottom-2 left-10
+        return { x: tailwindLeft10 + chipRadius, y: rect.height - tailwindBottom2 - chipRadius };
+      case 1: // Middle-left: left-0 top-1/2
+        return { x: chipRadius, y: rect.height / 2 };
+      case 2: // Top-left: top-2 left-10
+        return { x: tailwindLeft10 + chipRadius, y: tailwindTop2 + chipRadius };
+      case 3: // Top-right: top-2 right-10
+        return { x: rect.width - tailwindRight10 - chipRadius, y: tailwindTop2 + chipRadius };
+      case 4: // Middle-right: right-0 top-1/2
+        return { x: rect.width - chipRadius, y: rect.height / 2 };
+      case 5: // Bottom-right: bottom-2 right-10
+        return { x: rect.width - tailwindRight10 - chipRadius, y: rect.height - tailwindBottom2 - chipRadius };
+      default:
+        return { x: rect.width / 2, y: rect.height / 2 };
+    }
   };
 
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
     const isCurrentPlayer = currentPlayerPosition === position;
     const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
-    const slot = getSlotPercent(slotIndex);
-    return {
-      x: (slot.left / 100) * rect.width,
-      y: (slot.top / 100) * rect.height,
-    };
+    return getSlotCenterCoords(slotIndex, rect);
   };
 
   useEffect(() => {
