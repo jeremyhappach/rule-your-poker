@@ -1568,9 +1568,97 @@ async function handleMultiPlayerShowdown(
       .from('rounds')
       .update({ status: 'completed' })
       .eq('id', roundId);
+  } else if (losers.length > 0) {
+    // PARTIAL TIE: Multiple winners but there are also losers
+    // Winners split the pot, losers match the pot, do NOT proceed with Chucky
+    console.log('[HOLM PARTIAL TIE] Partial tie detected. Winners split pot, losers match. No Chucky.');
+    console.log('[HOLM PARTIAL TIE] Winners:', winners.length, 'Losers:', losers.length);
+    
+    // Winners split the pot
+    const splitAmount = Math.floor(roundPot / winners.length);
+    const winnerNames: string[] = [];
+    
+    for (const winner of winners) {
+      const winnerUsername = getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id);
+      winnerNames.push(winnerUsername);
+      
+      await supabase
+        .from('players')
+        .update({ 
+          chips: winner.player.chips + splitAmount
+        })
+        .eq('id', winner.player.id);
+    }
+    
+    console.log('[HOLM PARTIAL TIE] Winners each get:', splitAmount);
+    
+    // Losers match the pot (capped) - this becomes the NEW pot for next hand
+    const potMatchAmount = game.pot_max_enabled 
+      ? Math.min(roundPot, game.pot_max_value) 
+      : roundPot;
+    
+    console.log('[HOLM PARTIAL TIE] Losers pay potMatchAmount:', potMatchAmount, '(becomes new pot)');
+    
+    // Use atomic decrement to prevent race conditions / stale chip values
+    const loserPlayerIds = losers.map(l => l.player.id);
+    const { error: loserChipError } = await supabase.rpc('decrement_player_chips', {
+      player_ids: loserPlayerIds,
+      amount: potMatchAmount
+    });
+    
+    if (loserChipError) {
+      console.error('[HOLM PARTIAL TIE] ERROR deducting loser chips:', loserChipError);
+    } else {
+      console.log('[HOLM PARTIAL TIE] Loser chips deducted atomically, amount:', potMatchAmount);
+    }
+    
+    let newPot = losers.length * potMatchAmount;
+    console.log('[HOLM PARTIAL TIE] New pot from losers match:', newPot);
+    
+    // Get detailed hand description for winners
+    const winnerAllCards = [...winners[0].cards, ...communityCards];
+    const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
+    
+    // Build debug data object to embed in result message
+    const debugData = {
+      roundId: roundId,
+      roundNumber: currentRoundNumber,
+      communityCards: communityCards.map(c => `${c.rank}${c.suit}`).join(' '),
+      evaluations: debugEvaluations,
+      winnerIds: winners.map(w => w.player.id),
+      winnerNames: winnerNames,
+      maxValue: maxValue
+    };
+    
+    // Embed debug JSON after the result message with a delimiter
+    // Include both pot (winners split) and matchAmount (losers pay) for animation coordination
+    const loserIds = losers.map(l => l.player.id).join(',');
+    const winnerIds = winners.map(w => w.player.id).join(',');
+    const resultWithDebug = `${winnerNames.join(' and ')} tied and split the pot with ${winnerHandDesc}|||WINNERS:${winnerIds}|||LOSERS:${loserIds}|||POT:${roundPot}|||MATCH:${potMatchAmount}|||DEBUG:${JSON.stringify(debugData)}`;
+    
+    const { error: updateError } = await supabase
+      .from('games')
+      .update({
+        last_round_result: resultWithDebug,
+        awaiting_next_round: true,
+        pot: newPot
+      })
+      .eq('id', gameId);
+    
+    if (updateError) {
+      console.error('[HOLM PARTIAL TIE] ERROR updating game:', updateError);
+    } else {
+      console.log('[HOLM PARTIAL TIE] Successfully set awaiting_next_round=true, pot=', newPot);
+    }
+  
+    // Mark round as completed to hide timer
+    await supabase
+      .from('rounds')
+      .update({ status: 'completed' })
+      .eq('id', roundId);
   } else {
-    // Tie - both/all tied players must face Chucky
-    console.log('[HOLM TIE] Tie detected. Tied players must face Chucky.');
+    // FULL TIE: ALL players tied - they must all face Chucky
+    console.log('[HOLM TIE] Full tie detected (all players tied). Tied players must face Chucky.');
     
     // Deal Chucky cards (4 cards for Holm game) - EXCLUDE used cards
     // Get all player cards for this round to exclude from Chucky's deck
