@@ -653,9 +653,10 @@ export const MobileGameTable = ({
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
   // HOLM: Detect solo player vs Chucky showdown (1 player stayed, Chucky is active or showdown phase)
+  // Include awaitingNextRound when lastRoundResult is showing to keep tabled cards visible through announcement
   const isSoloVsChucky = gameType === 'holm-game' && 
     stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn);
+    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn || (awaitingNextRound && lastRoundResult));
   
   // HOLM: Detect multi-player showdown (2+ players stayed) - needs tighter card overlap
   const isHolmMultiPlayerShowdown = gameType === 'holm-game' && 
