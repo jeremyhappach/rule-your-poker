@@ -124,8 +124,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     }
 
     // Only animate via triggerId - lastTriggerIdRef prevents duplicate animations from same trigger
-    // Removed hasAnimatedThisSessionRef to allow re-antes in 3-5-7 (round 1 after round 3)
-    if (!triggerId || triggerId === lastTriggerIdRef.current) {
+    // CRITICAL: Also check if we already have animations running to prevent double-fire
+    if (!triggerId || triggerId === lastTriggerIdRef.current || animations.length > 0) {
       return;
     }
     
