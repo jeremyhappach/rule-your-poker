@@ -1756,7 +1756,7 @@ export const MobileGameTable = ({
         {cardsElement}
         {/* Name below cards for upper corners and middle positions during showdown */}
         {showNameBelowCards && (
-          <div className={isUpperCorner ? 'mt-1' : ''}>
+          <div className={isUpperCorner ? 'mt-2' : ''}>
             {nameElement}
           </div>
         )}
