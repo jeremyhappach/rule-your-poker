@@ -114,9 +114,11 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   }
   
   // After evaluation, count remaining players with their status
+  // NOTE: At this point, waiting players have ALREADY been converted to active in the loop above
+  // So we're counting post-evaluation state
   const { data: remainingPlayers, error: countError } = await supabase
     .from('players')
-    .select('id, sitting_out, is_bot')
+    .select('id, sitting_out, is_bot, waiting')
     .eq('game_id', gameId);
   
   if (countError || !remainingPlayers) {
@@ -125,12 +127,20 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   }
   
   // Count active players (not sitting_out) - includes bots
+  // NOTE: Players who had waiting=true are now sitting_out=false after evaluation above
   const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out).length;
   
   // Count eligible dealers (non-sitting-out AND non-bot humans)
+  // NOTE: After evaluation, waiting players are now eligible (sitting_out=false, waiting=false)
   const eligibleDealerCount = remainingPlayers.filter(p => !p.sitting_out && !p.is_bot).length;
   
   console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Eligible dealers:', eligibleDealerCount, 'Removed:', playersRemoved.length);
+  console.log('[PLAYER EVAL] Remaining players detail:', remainingPlayers.map(p => ({
+    id: p.id.slice(0, 8),
+    sitting_out: p.sitting_out,
+    is_bot: p.is_bot,
+    waiting: p.waiting
+  })));
   
   return { activePlayerCount, eligibleDealerCount, playersRemoved };
 }
