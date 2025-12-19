@@ -33,6 +33,7 @@ import cubsLogo from "@/assets/cubs-logo.png";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { DevDebugOverlay } from "./DevDebugOverlay";
 
 // Custom hook for swipe detection
 const useSwipeGesture = (onSwipeUp: () => void, onSwipeDown: () => void) => {
@@ -1678,12 +1679,23 @@ export const MobileGameTable = ({
       </div>;
   };
   return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
+      <DevDebugOverlay
+        title="MobileGameTable"
+        items={[
+          { label: "handContextId", value: handContextId ?? "null" },
+          { label: "pendingHandContextId", value: pendingHandContextIdRef.current ?? "null" },
+          { label: "soloVsChuckyTableLocked", value: soloVsChuckyTableLocked },
+          { label: "holmWinPotTriggerId", value: holmWinPotTriggerId ?? "null" },
+          { label: "resetDeferred", value: shouldDeferHandReset() },
+        ]}
+      />
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{
       maxHeight: '55vh'
     }}>
+
         {/* Table felt background - wide horizontal ellipse */}
         <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner" style={{
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
