@@ -2275,39 +2275,48 @@ export const MobileGameTable = ({
         })()}
         
         {/* Chucky's Hand - use cached values to persist through announcement */}
+        {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
           <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[70%]' : 'top-[62%]'}`}>
             <span className="text-red-400 text-sm mr-1">👿</span>
             {cachedChuckyCards.map((card, index) => {
-          const isRevealed = index < cachedChuckyCardsRevealed;
-          const isFourColor = deckColorMode === 'four_color';
-          const fourColorConfig = getFourColorSuit(card.suit);
+              const isRevealed = index < cachedChuckyCardsRevealed;
+              const isFourColor = deckColorMode === 'four_color';
+              const fourColorConfig = getFourColorSuit(card.suit);
 
-          // Card face styling based on deck mode
-          const cardBg = isRevealed ? isFourColor && fourColorConfig ? fourColorConfig.bg : 'white' : undefined;
-          // Use inline color style for 2-color mode to override dark mode text colors
-          const twoColorTextStyle = !isFourColor && isRevealed 
-            ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
-            : {};
-          
-          return <div key={index} className="w-10 h-14 sm:w-11 sm:h-15">
-                  {isRevealed ? <div className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg" style={{
-              backgroundColor: cardBg,
-              ...twoColorTextStyle
-            }}>
-                      <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                        {card.rank}
-                      </span>
-                      {!isFourColor && <span className="text-2xl leading-none -mt-0.5">
-                          {card.suit}
-                        </span>}
-                    </div> : <div className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg" style={{
-              background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`
-            }}>
-                      <span className="text-amber-400/50 text-xl">?</span>
-                    </div>}
-                </div>;
-        })}
+              // Card face styling based on deck mode
+              const cardBg = isRevealed ? isFourColor && fourColorConfig ? fourColorConfig.bg : 'white' : undefined;
+              // Use inline color style for 2-color mode to override dark mode text colors
+              const twoColorTextStyle = !isFourColor && isRevealed 
+                ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
+                : {};
+              
+              // Dim Chucky's cards when a player won (winnerPlayerId is set - meaning player beat Chucky)
+              const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
+              const dimStyle = shouldDimChucky ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
+              
+              return <div key={index} className="w-10 h-14 sm:w-11 sm:h-15">
+                      {isRevealed ? <div 
+                        className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300" 
+                        style={{
+                          backgroundColor: cardBg,
+                          ...twoColorTextStyle,
+                          ...dimStyle
+                        }}
+                      >
+                          <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                            {card.rank}
+                          </span>
+                          {!isFourColor && <span className="text-2xl leading-none -mt-0.5">
+                              {card.suit}
+                            </span>}
+                        </div> : <div className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg" style={{
+                  background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`
+                }}>
+                          <span className="text-amber-400/50 text-xl">?</span>
+                        </div>}
+                    </div>;
+            })}
           </div>
         )}
         

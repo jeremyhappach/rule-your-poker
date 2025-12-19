@@ -13,7 +13,7 @@ interface AnteUpAnimationProps {
   anteAmount: number;
   chipAmount?: number; // Display amount on chip (defaults to anteAmount, use pussyTaxValue for pussy tax)
   activePlayers: { position: number; id?: string }[];
-  currentPlayerPosition: number | null;
+  currentPlayerPosition: number | null; // null for observers
   getClockwiseDistance: (position: number) => number;
   isWaitingPhase?: boolean;
   containerRef: React.RefObject<HTMLDivElement>;
@@ -66,6 +66,24 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       5: { top: 92, left: 90 },   // Bottom-right: bottom-2 right-10
     };
     return slots[slotIndex] || { top: 50, left: 50 };
+  };
+
+  // OBSERVER MODE: Map absolute position (1-7) to slot percent for observers (no currentPlayer)
+  // Positions 1-7 around the table, mapped to visual positions
+  const getAbsolutePositionPercent = (position: number): { top: number; left: number } => {
+    // Absolute position layout (clockwise from top-left):
+    // 1: Top-left, 2: Middle-left, 3: Bottom-left, 4: Bottom-center
+    // 5: Bottom-right, 6: Middle-right, 7: Top-right
+    const absoluteSlots: Record<number, { top: number; left: number }> = {
+      1: { top: 2, left: 10 },    // Top-left
+      2: { top: 50, left: 2 },    // Middle-left
+      3: { top: 92, left: 10 },   // Bottom-left
+      4: { top: 92, left: 50 },   // Bottom-center
+      5: { top: 92, left: 90 },   // Bottom-right
+      6: { top: 50, left: 98 },   // Middle-right
+      7: { top: 2, left: 90 },    // Top-right
+    };
+    return absoluteSlots[position] || { top: 50, left: 50 };
   };
 
   // Get target position on pot box edge based on VISUAL slot position (closest edge to player)
@@ -148,11 +166,30 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
       ? activePlayers.filter(p => p.id && specificPlayerIds.includes(p.id))
       : activePlayers;
 
+    // CRITICAL: For observers (currentPlayerPosition is null), use ABSOLUTE position mapping
+    // For seated players, use RELATIVE slots based on clockwise distance
+    const isObserver = currentPlayerPosition === null;
+    
     const newAnims: ChipAnimation[] = playersToAnimate.map(player => {
-      const isCurrentPlayer = currentPlayerPosition === player.position;
-      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
-      const slot = getSlotPercent(slotIndex);
-      const target = getPotBoxTarget(slotIndex, rect, isHolm);
+      let slot: { top: number; left: number };
+      let slotIndexForTarget: number;
+      
+      if (isObserver) {
+        // Observer mode: use absolute position directly
+        slot = getAbsolutePositionPercent(player.position);
+        // For pot target, map absolute position to equivalent slot index
+        // Position 1=top-left(slot2), 2=mid-left(slot1), 3=bot-left(slot0), 4=bot-center(-1)
+        // 5=bot-right(slot5), 6=mid-right(slot4), 7=top-right(slot3)
+        const absToSlot: Record<number, number> = { 1: 2, 2: 1, 3: 0, 4: -1, 5: 5, 6: 4, 7: 3 };
+        slotIndexForTarget = absToSlot[player.position] ?? 0;
+      } else {
+        // Seated player mode: use relative slots
+        const isCurrentPlayer = currentPlayerPosition === player.position;
+        slotIndexForTarget = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
+        slot = getSlotPercent(slotIndexForTarget);
+      }
+      
+      const target = getPotBoxTarget(slotIndexForTarget, rect, isHolm);
       
       return {
         id: `chip-${animIdRef.current++}`,
