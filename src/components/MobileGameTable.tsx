@@ -673,9 +673,24 @@ export const MobileGameTable = ({
     if (soloVsChuckyPlayerIdLocked) return;
     if (!(isSoloVsChuckyRaw || soloVsChuckyTableLocked || holmWinPotTriggerId)) return;
 
+    // Prefer the actual stayed player while decisions are still present; fall back to parsing the winner from lastRoundResult.
     const stayed = players.find(p => p.current_decision === 'stay');
-    if (stayed) setSoloVsChuckyPlayerIdLocked(stayed.id);
-  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked]);
+    if (stayed) {
+      setSoloVsChuckyPlayerIdLocked(stayed.id);
+      return;
+    }
+
+    if (lastRoundResult) {
+      const result = lastRoundResult.toLowerCase();
+      for (const p of players) {
+        const username = p.profiles?.username?.toLowerCase() || '';
+        if (username && (result.includes(`${username} beat`) || result.includes(`${username} won`) || result.includes(`${username} wins`) || result.includes(`${username} earns`))) {
+          setSoloVsChuckyPlayerIdLocked(p.id);
+          return;
+        }
+      }
+    }
+  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult]);
 
   // Reset the lock on new hand context (prevents sticking into next hand)
   useEffect(() => {
@@ -843,7 +858,9 @@ export const MobileGameTable = ({
     !!currentPlayer &&
     (soloVsChuckyPlayerIdLocked
       ? soloVsChuckyPlayerIdLocked === currentPlayer.id
-      : currentPlayer.current_decision === 'stay');
+      : winnerPlayerId
+        ? winnerPlayerId === currentPlayer.id
+        : currentPlayer.current_decision === 'stay');
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
@@ -2038,7 +2055,8 @@ export const MobileGameTable = ({
         {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}
         {gameType === 'holm-game' && isSoloVsChucky && (() => {
           // Find the solo player (use locked id so tabling persists even if decisions clear)
-          const soloPlayerId = soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id;
+          // Fallback to derived winner (lastRoundResult) when decisions have already been cleared.
+          const soloPlayerId = soloVsChuckyPlayerIdLocked || winnerPlayerId || players.find(p => p.current_decision === 'stay')?.id;
           const soloPlayer = soloPlayerId ? players.find(p => p.id === soloPlayerId) : null;
           if (!soloPlayer) return null;
           
