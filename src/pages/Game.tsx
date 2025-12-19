@@ -1874,18 +1874,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Hand context key: Holm can reuse the same round_number (and sometimes even the same round id) across hands.
   // This MUST change as soon as the round/cards change so MobileGameTable can clear UI caches before paint.
+  // CRITICAL: Do NOT include chucky_cards_revealed or community_cards_revealed here - those change WITHIN
+  // the same hand as cards are progressively revealed, and would cause community cards to flash/reset.
   const handContextKey = useMemo(() => {
     if (!currentRound?.id) return null;
     const chuckyActiveFlag = currentRound?.chucky_active ? '1' : '0';
-    const chuckyRevealed = currentRound?.chucky_cards_revealed ?? 0;
-    const communityRevealed = currentRound?.community_cards_revealed ?? 0;
-    return `${currentRound.id}:${currentCardIdentity}:${chuckyActiveFlag}:${chuckyRevealed}:${communityRevealed}`;
+    // Only use round id + card identity + chucky active flag - NOT revealed counts
+    return `${currentRound.id}:${currentCardIdentity}:${chuckyActiveFlag}`;
   }, [
     currentRound?.id,
     currentCardIdentity,
     currentRound?.chucky_active,
-    currentRound?.chucky_cards_revealed,
-    currentRound?.community_cards_revealed,
   ]);
 
   // Reset when starting new game OR when cards change (new hand)
