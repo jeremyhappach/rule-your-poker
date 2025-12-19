@@ -16,14 +16,16 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
   const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cardsKeyRef = useRef(0);
   
-  // Reset when cards change (new hand)
+  // Reset when cards change (new hand) - use stable identity
+  const cardsId = cards.map(c => `${c.rank}${c.suit}`).join(',');
+  
   useEffect(() => {
     flipTimeoutsRef.current.forEach(t => clearTimeout(t));
     flipTimeoutsRef.current = [];
     setFlippedCards(new Set());
     prevRevealedRef.current = 0;
     cardsKeyRef.current += 1;
-  }, [cards.length]);
+  }, [cardsId]);
   
   // Handle reveal progression
   useEffect(() => {

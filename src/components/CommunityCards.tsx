@@ -16,9 +16,9 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
   const [animatedHandId, setAnimatedHandId] = useState<string>('');
   const [dealtCards, setDealtCards] = useState<Set<number>>(new Set());
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
+  const [handCounter, setHandCounter] = useState(0); // Track hand changes for unique keys
   
   const lastRevealedRef = useRef<number>(0);
-  const mountTimeRef = useRef<number>(Date.now());
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const isFirstMountRef = useRef<boolean>(true);
   
@@ -28,64 +28,41 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
   };
   
   useEffect(() => {
-    console.log('[COMMUNITY_CARDS] useEffect - handId:', handId, 'animatedHandId:', animatedHandId, 'cardsLength:', cards.length, 'dealtCardsSize:', dealtCards.size);
-    
     if (cards.length === 0) {
-      console.log('[COMMUNITY_CARDS] Early return: no cards');
-      return;
-    }
-    if (handId === animatedHandId) {
-      console.log('[COMMUNITY_CARDS] Early return: handId matches animatedHandId, dealtCards size:', dealtCards.size);
+      // Reset state when cards are cleared
+      setDealtCards(new Set());
+      setFlippedCards(new Set());
+      setAnimatedHandId('');
+      lastRevealedRef.current = 0;
       return;
     }
     
-    console.log('[COMMUNITY_CARDS] Processing NEW hand - handId changed from', animatedHandId, 'to', handId);
+    if (handId === animatedHandId && dealtCards.size > 0) {
+      // Already processed this hand and have cards dealt
+      return;
+    }
+    
+    // New hand detected - increment counter for unique keys
+    if (handId !== animatedHandId) {
+      setHandCounter(prev => prev + 1);
+    }
+    
     clearTimeouts();
     
-    // For first mount OR subsequent hands (not first game load), show cards immediately
-    // Only animate dealing on the very first hand of a session
-    const shouldSkipAnimation = isFirstMountRef.current || animatedHandId !== '';
+    // Always show cards immediately (skip dealing animation for simplicity)
+    const allDealt = new Set<number>();
+    for (let i = 0; i < cards.length; i++) allDealt.add(i);
     
-    console.log('[COMMUNITY_CARDS] shouldSkipAnimation:', shouldSkipAnimation, 'isFirstMountRef:', isFirstMountRef.current);
+    const preFlipped = new Set<number>();
+    for (let i = 2; i < revealed; i++) preFlipped.add(i);
     
-    if (shouldSkipAnimation) {
-      const allDealt = new Set<number>();
-      for (let i = 0; i < cards.length; i++) allDealt.add(i);
-      
-      const preFlipped = new Set<number>();
-      for (let i = 2; i < revealed; i++) preFlipped.add(i);
-      
-      console.log('[COMMUNITY_CARDS] Setting dealtCards to all', cards.length, 'cards, flipped up to', revealed);
-      setDealtCards(allDealt);
-      setFlippedCards(preFlipped);
-      setAnimatedHandId(handId);
-      lastRevealedRef.current = revealed;
-      isFirstMountRef.current = false; // Mark first mount as complete
-      return;
-    }
-    
-    // First hand animation (rare - only when component mounts with no prior handId)
-    setDealtCards(new Set());
-    setFlippedCards(new Set());
+    setDealtCards(allDealt);
+    setFlippedCards(preFlipped);
+    setAnimatedHandId(handId);
     lastRevealedRef.current = revealed;
+    isFirstMountRef.current = false;
     
-    const INITIAL_DELAY = 800;
-    const CARD_INTERVAL = 200;
-    
-    cards.forEach((_, index) => {
-      const timeout = setTimeout(() => {
-        setDealtCards(prev => new Set([...prev, index]));
-      }, INITIAL_DELAY + index * CARD_INTERVAL);
-      timeoutsRef.current.push(timeout);
-    });
-    
-    const idTimeout = setTimeout(() => {
-      setAnimatedHandId(handId);
-      isFirstMountRef.current = false; // Mark first mount as complete
-    }, 50);
-    timeoutsRef.current.push(idTimeout);
-    
-  }, [handId, cards, revealed, animatedHandId]);
+  }, [handId, cards, revealed, animatedHandId, dealtCards.size]);
   
   useEffect(() => {
     if (cards.length === 0) return;
@@ -134,7 +111,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
           
           return (
             <div
-              key={index}
+              key={`${handCounter}-${index}-${card.rank}${card.suit}`}
               className="w-9 h-12 sm:w-10 sm:h-14 relative"
               style={{ 
                 transformStyle: 'preserve-3d',
