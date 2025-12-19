@@ -2395,7 +2395,7 @@ export const MobileGameTable = ({
             )}
             {/* Position 2: Left - DON'T raise during solo vs Chucky */}
             <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && players.find(p => p.position === 2) && isPlayerCardsExposed(players.find(p => p.position === 2)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
+              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2421,7 +2421,7 @@ export const MobileGameTable = ({
             )}
             {/* Position 6: Right - DON'T raise during solo vs Chucky */}
             <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && players.find(p => p.position === 6) && isPlayerCardsExposed(players.find(p => p.position === 6)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
+              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2444,7 +2444,7 @@ export const MobileGameTable = ({
             {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards (Holm only) */}
             {/* CRITICAL: Return to original position when win animation is active or solo vs Chucky */}
             <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
+              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2461,7 +2461,7 @@ export const MobileGameTable = ({
             {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards (Holm only) */}
             {/* CRITICAL: Return to original position when win animation is active or solo vs Chucky */}
             <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
+              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
