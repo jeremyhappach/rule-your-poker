@@ -84,25 +84,25 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         validationErrors.push(`${gameType}: Decision timer must be 5-60 seconds`);
       }
       
-      // Ante: 1-100
+      // Ante: minimum 1, no max
       const ante = Number(defaultConfig.ante_amount);
-      if (isNaN(ante) || ante < 1 || ante > 100) {
-        validationErrors.push(`${gameType}: Ante must be $1-$100`);
+      if (isNaN(ante) || ante < 1) {
+        validationErrors.push(`${gameType}: Ante must be at least $1`);
       }
       
-      // Pot max: 1-1000
+      // Pot max: minimum 1, no max
       if (defaultConfig.pot_max_enabled) {
         const potMax = Number(defaultConfig.pot_max_value);
-        if (isNaN(potMax) || potMax < 1 || potMax > 1000) {
-          validationErrors.push(`${gameType}: Pot max must be $1-$1000`);
+        if (isNaN(potMax) || potMax < 1) {
+          validationErrors.push(`${gameType}: Pot max must be at least $1`);
         }
       }
       
-      // Pussy tax: 1-100
+      // Pussy tax: minimum 1, no max
       if (defaultConfig.pussy_tax_enabled) {
         const pussyTax = Number(defaultConfig.pussy_tax_value);
-        if (isNaN(pussyTax) || pussyTax < 1 || pussyTax > 100) {
-          validationErrors.push(`${gameType}: Pussy tax must be $1-$100`);
+        if (isNaN(pussyTax) || pussyTax < 1) {
+          validationErrors.push(`${gameType}: Pussy tax must be at least $1`);
         }
       }
       
@@ -132,8 +132,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       
       if (gameType === '3-5-7') {
         const legValue = Number(defaultConfig.leg_value);
-        if (isNaN(legValue) || legValue < 1 || legValue > 100) {
-          validationErrors.push(`3-5-7: Leg value must be $1-$100`);
+        if (isNaN(legValue) || legValue < 1) {
+          validationErrors.push(`3-5-7: Leg value must be at least $1`);
         }
         
         const legsToWin = Number(defaultConfig.legs_to_win);
