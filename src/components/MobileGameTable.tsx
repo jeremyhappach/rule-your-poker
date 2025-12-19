@@ -886,11 +886,14 @@ export const MobileGameTable = ({
   // This is true when: 
   // 1. Any player has exposed cards during active showdown, OR
   // 2. We have a result announcement showing (lastRoundResult is set)
-  // 3. We've locked showdown mode (prevents snap-back after announcement clears)
+  // 3. Chucky is active (community cards being revealed)
+  // 4. We've locked showdown mode (prevents snap-back after announcement clears)
   const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
   // Check if we're showing an announcement (either normal round result or game-over)
   const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && (awaitingNextRound || isGameOver);
-  const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
+  // Include Chucky active state to prevent flicker when community cards start revealing
+  const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
+  const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
   
   // Lock showdown mode once it becomes true - only reset via resetHandUiCaches
   useEffect(() => {
@@ -2253,7 +2256,7 @@ export const MobileGameTable = ({
           if (!shouldShow) return null;
           
           return (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 scale-[1.8]">
+            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[58%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
               <CommunityCards 
                 cards={approvedCommunityCards!} 
                 revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
@@ -2268,7 +2271,7 @@ export const MobileGameTable = ({
         
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[70%]' : 'top-[62%]'}`}>
+          <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px]">
             <span className="text-red-400 text-sm mr-1">👿</span>
             {cachedChuckyCards.map((card, index) => {
           const isRevealed = index < cachedChuckyCardsRevealed;
