@@ -162,6 +162,7 @@ const Game = () => {
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
+  const gameOverTransitionRef = useRef<boolean>(false); // Guard against multiple clients racing to transition game_over
   
   // Track previous game config for "Running it Back" detection
   interface PreviousGameConfig {
@@ -2964,6 +2965,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // GUARD: Prevent multiple clients from racing to transition the game state
+    if (gameOverTransitionRef.current) {
+      console.log('[GAME OVER COMPLETE] Already processing transition, skipping duplicate call');
+      return;
+    }
+    gameOverTransitionRef.current = true;
+
     console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
 
     // IMPORTANT: Do NOT clear card state here!
@@ -2971,7 +2979,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Card state will be cleared in the status change effect when transitioning to game_selection/configuring.
     // Clearing here causes the tabled cards and highlights to disappear during the brief transition window.
 
-    // Check if session should end
+    // Check if session should end AND verify game is still in game_over status (not already transitioned by another client)
     const { data: gameData, error: fetchError } = await supabase
       .from('games')
       .select('pending_session_end, current_round, status, dealer_position')
@@ -2979,6 +2987,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .single();
 
     console.log('[GAME OVER COMPLETE] Game data:', gameData, 'error:', fetchError);
+
+    // GUARD: If game is no longer in game_over, another client already handled the transition
+    if (gameData?.status !== 'game_over') {
+      console.log('[GAME OVER COMPLETE] Game already transitioned to', gameData?.status, '- skipping');
+      gameOverTransitionRef.current = false;
+      return;
+    }
 
     if (gameData?.pending_session_end) {
       console.log('[GAME OVER] Session should end, transitioning to session_ended');
@@ -2992,6 +3007,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })
         .eq('id', gameId);
 
+      gameOverTransitionRef.current = false;
       setTimeout(() => navigate('/'), 2000);
       return;
     }
@@ -3006,6 +3022,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Need: 1+ eligible dealer (non-sitting-out, non-bot) AND 2+ active players (including bots)
     if (eligibleDealerCount < 1 || activePlayerCount < 2) {
       console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount);
+      gameOverTransitionRef.current = false;
       setShowNotEnoughPlayers(true);
       return; // The countdown component will handle session end
     }
@@ -3111,10 +3128,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('[GAME OVER] Failed to start game selection:', error);
+      gameOverTransitionRef.current = false;
       return;
     }
 
     console.log('[GAME OVER] Successfully transitioned to game_selection');
+
+    // Reset transition guard for next game
+    gameOverTransitionRef.current = false;
 
     // Manual refetch to update UI
     // Bot dealers will be handled automatically by DealerGameSetup component
@@ -3272,6 +3293,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       holmWinProcessedRef.current = null;
       // CRITICAL: Clear the trigger ID so animation doesn't re-fire in new game
       setHolmWinPotTriggerId(null);
+      // Reset the transition guard for future game_over handling
+      gameOverTransitionRef.current = false;
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
