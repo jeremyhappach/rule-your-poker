@@ -70,7 +70,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     setFlippedCards(new Set());
     lastRevealedRef.current = revealed;
     
-    const INITIAL_DELAY = 800;
+    const INITIAL_DELAY = 400;
     const CARD_INTERVAL = 200;
     
     cards.forEach((_, index) => {
