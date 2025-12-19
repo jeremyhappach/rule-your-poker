@@ -652,6 +652,11 @@ export const MobileGameTable = ({
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
+  // HOLM: Detect solo player vs Chucky showdown (1 player stayed, Chucky is active or showdown phase)
+  const isSoloVsChucky = gameType === 'holm-game' && 
+    stayedPlayersCount === 1 && 
+    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn);
+  
   // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
   const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
   const currentPlayerStayed = currentPlayerForSecretReveal?.current_decision === 'stay';
@@ -1977,6 +1982,72 @@ export const MobileGameTable = ({
           );
         })()}
         
+        {/* Solo Player's Tabled Cards - shown above pot during solo vs Chucky showdown */}
+        {/* This displays current player's cards tabled on the felt when they go alone against Chucky */}
+        {gameType === 'holm-game' && isSoloVsChucky && currentPlayer?.current_decision === 'stay' && currentPlayerCards.length > 0 && (
+          <div className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
+            <div 
+              className="flex"
+              style={{
+                animation: 'holmSoloTableSlide 0.6s ease-out forwards',
+                willChange: 'transform, opacity',
+              }}
+            >
+              {currentPlayerCards.map((card, index) => {
+                const isFourColor = deckColorMode === 'four_color';
+                const fourColorConfig = getFourColorSuit(card.suit);
+                const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
+                const twoColorTextStyle = !isFourColor 
+                  ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
+                  : {};
+                const isHighlighted = isCurrentPlayerWinner && winningCardHighlights.playerIndices.includes(index);
+                const isKicker = isCurrentPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(index);
+                
+                // Apply lift effect for highlighted cards (same as PlayingCard component)
+                const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 flex flex-col items-center justify-center shadow-lg transition-transform duration-200 ${
+                      isHighlighted ? 'border-yellow-400 ring-2 ring-yellow-400/50' : 
+                      isKicker ? 'border-blue-400 ring-1 ring-blue-400/30' : 
+                      'border-green-500'
+                    }`}
+                    style={{ 
+                      backgroundColor: cardBg, 
+                      ...twoColorTextStyle,
+                      transform: liftTransform || undefined,
+                      marginLeft: index > 0 ? '-12px' : '0'
+                    }}
+                  >
+                    <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                      {card.rank}
+                    </span>
+                    {!isFourColor && (
+                      <span className="text-2xl leading-none -mt-0.5">
+                        {card.suit}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <style>{`
+              @keyframes holmSoloTableSlide {
+                0% {
+                  opacity: 0;
+                  transform: translateY(120px) scale(0.8);
+                }
+                100% {
+                  opacity: 1;
+                  transform: translateY(0) scale(1);
+                }
+              }
+            `}</style>
+          </div>
+        )}
+        
         {(() => {
           const shouldShow = gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
            (isInGameOverStatus || currentRound === approvedRoundForDisplay);
@@ -2131,9 +2202,9 @@ export const MobileGameTable = ({
                 {renderPlayerChip(players.find(p => p.position === 1)!, 2)}
               </div>
             )}
-            {/* Position 2: Left */}
+            {/* Position 2: Left - DON'T raise during solo vs Chucky */}
             <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && players.find(p => p.position === 2) && isPlayerCardsExposed(players.find(p => p.position === 2)!.id) && !holmWinPotTriggerId
+              gameType === 'holm-game' && players.find(p => p.position === 2) && isPlayerCardsExposed(players.find(p => p.position === 2)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2157,9 +2228,9 @@ export const MobileGameTable = ({
                 {renderPlayerChip(players.find(p => p.position === 5)!, 5)}
               </div>
             )}
-            {/* Position 6: Right */}
+            {/* Position 6: Right - DON'T raise during solo vs Chucky */}
             <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && players.find(p => p.position === 6) && isPlayerCardsExposed(players.find(p => p.position === 6)!.id) && !holmWinPotTriggerId
+              gameType === 'holm-game' && players.find(p => p.position === 6) && isPlayerCardsExposed(players.find(p => p.position === 6)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2180,9 +2251,9 @@ export const MobileGameTable = ({
               {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
             </div>
             {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards (Holm only) */}
-            {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
+            {/* CRITICAL: Return to original position when win animation is active or solo vs Chucky */}
             <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) && !holmWinPotTriggerId
+              gameType === 'holm-game' && getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2197,9 +2268,9 @@ export const MobileGameTable = ({
               {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
             </div>
             {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards (Holm only) */}
-            {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
+            {/* CRITICAL: Return to original position when win animation is active or solo vs Chucky */}
             <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) && !holmWinPotTriggerId
+              gameType === 'holm-game' && getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) && !holmWinPotTriggerId && !isSoloVsChucky
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2691,8 +2762,10 @@ export const MobileGameTable = ({
                     </div>
                   )}
 
-                  {/* Cards */}
-                  {currentPlayerCards.length > 0 ? (
+                  {/* Cards - hide during solo vs Chucky showdown since they're tabled above */}
+                  {isSoloVsChucky && currentPlayer?.current_decision === 'stay' ? (
+                    <div className="text-sm text-green-400 font-medium">Cards tabled</div>
+                  ) : currentPlayerCards.length > 0 ? (
                     <div
                       className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}
                     >
