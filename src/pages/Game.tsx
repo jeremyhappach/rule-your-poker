@@ -195,6 +195,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [anteAnimationExpectedPot, setAnteAnimationExpectedPot] = useState<number | null>(null); // Expected pot after antes for re-ante scenarios
   const [preAnteChips, setPreAnteChips] = useState<Record<string, number> | null>(null); // Capture chips BEFORE ante deduction to prevent race conditions
   const [expectedPostAnteChips, setExpectedPostAnteChips] = useState<Record<string, number> | null>(null); // Expected chip values AFTER ante deduction
+  const anteAnimationFiredRef = useRef<string | null>(null); // Guard against duplicate ante animation triggers within same round
   
   // Chip transfer animation state (for 3-5-7 showdowns)
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -2326,7 +2327,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setPreAnteChips(chipSnapshot);
         setExpectedPostAnteChips(expectedChips);
         setAnteAnimationExpectedPot((game?.pot || 0)); // Pot already includes the tax
-        setAnteAnimationTriggerId(`pussy-tax-${Date.now()}`);
+        // Guard against duplicate triggers
+        const pussyTaxTriggerKey = `pussy-tax-${game?.current_round}-${game?.pot}`;
+        if (anteAnimationFiredRef.current !== pussyTaxTriggerKey) {
+          anteAnimationFiredRef.current = pussyTaxTriggerKey;
+          setAnteAnimationTriggerId(`pussy-tax-${Date.now()}`);
+        }
       }
       
       // Check if this is a 3-5-7 showdown and trigger chip transfer animation
@@ -2501,7 +2507,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               setPreAnteChips(chipSnapshot);
               setExpectedPostAnteChips(expectedChips);
               setAnteAnimationExpectedPot(updatedGame?.pot || 0);
-              setAnteAnimationTriggerId(`ante-${Date.now()}`);
+              // Guard against duplicate triggers
+              const anteTriggerKey = `ante-round1-${updatedGame?.pot}`;
+              if (anteAnimationFiredRef.current !== anteTriggerKey) {
+                anteAnimationFiredRef.current = anteTriggerKey;
+                setAnteAnimationTriggerId(`ante-${Date.now()}`);
+              }
             }
           }
           
@@ -2954,7 +2965,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Clear guard after a longer delay to ensure optimistic update isn't overwritten
       setTimeout(() => {
         gameTypeSwitchingRef.current = false;
-        console.log('[GAME SELECTION] Cleared game type switching guard');
+        anteAnimationFiredRef.current = null; // Reset ante guard for new game
+        console.log('[GAME SELECTION] Cleared game type switching guard and ante animation guard');
       }, 500);
     }, 100);
   };
@@ -3134,8 +3146,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME OVER] Successfully transitioned to game_selection');
 
-    // Reset transition guard for next game
+    // Reset transition guard and ante animation guard for next game
     gameOverTransitionRef.current = false;
+    anteAnimationFiredRef.current = null;
 
     // Manual refetch to update UI
     // Bot dealers will be handled automatically by DealerGameSetup component
@@ -3698,7 +3711,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setPreAnteChips(chipSnapshot);
         setExpectedPostAnteChips(expectedChips);
         setAnteAnimationExpectedPot(anteTotal);
-        setAnteAnimationTriggerId(`ante-${Date.now()}`);
+        // Guard against duplicate triggers (first hand Holm)
+        const holmFirstAnteTriggerKey = `holm-first-ante-${anteTotal}`;
+        if (anteAnimationFiredRef.current !== holmFirstAnteTriggerKey) {
+          anteAnimationFiredRef.current = holmFirstAnteTriggerKey;
+          setAnteAnimationTriggerId(`ante-${Date.now()}`);
+        }
         
         // For Holm game, let startHolmRound handle everything including status
         await startHolmRound(gameId, true); // First hand - collect antes
@@ -3718,7 +3736,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setPreAnteChips(chipSnapshot);
         setExpectedPostAnteChips(expectedChips);
         setAnteAnimationExpectedPot(anteTotal);
-        setAnteAnimationTriggerId(`ante-${Date.now()}`);
+        // Guard against duplicate triggers (first hand 3-5-7)
+        const firstAnteTriggerKey = `357-first-ante-${anteTotal}`;
+        if (anteAnimationFiredRef.current !== firstAnteTriggerKey) {
+          anteAnimationFiredRef.current = firstAnteTriggerKey;
+          setAnteAnimationTriggerId(`ante-${Date.now()}`);
+        }
         
         // For 3-5-7, update status first then start round
         await supabase
