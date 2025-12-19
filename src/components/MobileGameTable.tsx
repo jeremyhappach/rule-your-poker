@@ -374,6 +374,9 @@ export const MobileGameTable = ({
   
   // FIX: Same for 357 - keep pot hidden after pot-to-player animation until game resets
   const [threeFiveSevenPotHiddenUntilReset, setThreeFiveSevenPotHiddenUntilReset] = useState(false);
+
+  // HOLM: Lock solo-vs-Chucky tabling once it starts to prevent flicker/unmount during win animation
+  const [soloVsChuckyTableLocked, setSoloVsChuckyTableLocked] = useState(false);
   
   // Flash triggers for winner's chipstack when receiving legs/pot
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
@@ -652,12 +655,25 @@ export const MobileGameTable = ({
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
-  // HOLM: Detect solo player vs Chucky showdown (1 player stayed, Chucky is active or showdown phase)
-  // Include awaitingNextRound when lastRoundResult is showing to keep tabled cards visible through announcement
-  const isSoloVsChucky = gameType === 'holm-game' && 
+  // HOLM: Detect solo player vs Chucky showdown (1 player stayed)
+  // Keep tabled cards visible through win animation + until next hand to avoid flicker.
+  const isSoloVsChuckyRaw = gameType === 'holm-game' && 
     stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn || (awaitingNextRound && lastRoundResult));
-  
+    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
+
+  useEffect(() => {
+    if (isSoloVsChuckyRaw || holmWinPotTriggerId) {
+      setSoloVsChuckyTableLocked(true);
+    }
+  }, [isSoloVsChuckyRaw, holmWinPotTriggerId]);
+
+  // Reset the lock on new hand context (prevents sticking into next hand)
+  useEffect(() => {
+    setSoloVsChuckyTableLocked(false);
+  }, [handContextId]);
+
+  const isSoloVsChucky = isSoloVsChuckyRaw || soloVsChuckyTableLocked;
+
   // HOLM: Detect multi-player showdown (2+ players stayed) - needs tighter card overlap
   const isHolmMultiPlayerShowdown = gameType === 'holm-game' && 
     stayedPlayersCount >= 2 && 
