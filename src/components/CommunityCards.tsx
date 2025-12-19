@@ -144,10 +144,9 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
               }}
             >
               {showFront ? (
-                <PlayingCard
+              <PlayingCard
                   card={card}
                   size="lg"
-                  borderColor="border-poker-gold"
                   isHighlighted={highlightedIndices.includes(index)}
                   isKicker={kickerIndices.includes(index)}
                   isDimmed={hasHighlights && !highlightedIndices.includes(index) && !kickerIndices.includes(index)}
@@ -160,10 +159,9 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
                 />
               ) : (
                 <>
-                  <PlayingCard
+                <PlayingCard
                     isHidden
                     size="lg"
-                    borderColor="border-poker-gold"
                     className="absolute inset-0"
                     style={{
                       backfaceVisibility: 'hidden',
@@ -171,10 +169,9 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
                       transition: 'transform 1.2s ease-in-out',
                     }}
                   />
-                  <PlayingCard
+                <PlayingCard
                     card={card}
                     size="lg"
-                    borderColor="border-poker-gold"
                     className="absolute inset-0"
                     style={{
                       backfaceVisibility: 'hidden',
