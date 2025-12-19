@@ -91,6 +91,9 @@ serve(async (req) => {
       const msg = String(gameError.message ?? '');
       const lower = msg.toLowerCase();
       const isTransient =
+        // In practice these backend/network failures often come through as TypeError with no code
+        lower.includes('typeerror') ||
+        lower.includes('econnreset') ||
         lower.includes('connection reset') ||
         lower.includes('sendrequest') ||
         lower.includes('client error') ||

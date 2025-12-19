@@ -606,48 +606,96 @@ export const MobileGameTable = ({
 
   // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
+  // IMPORTANT: During payout/win animations, the parent may advance handContextId early.
+  // If we reset caches immediately, tabled cards can "snap back" during the pot-to-player animation.
   const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
+  const pendingHandContextIdRef = useRef<string | null>(null);
+
+  const resetHandUiCaches = useCallback((reason: string, from: string | null, to: string | null) => {
+    console.error('[HAND_RESET][MOBILE] Clearing card UI caches', {
+      reason,
+      from,
+      to,
+      currentRound,
+      gameStatus,
+    });
+
+    // Community UI cache
+    setShowCommunityCards(false);
+    setApprovedCommunityCards(null);
+    setApprovedRoundForDisplay(null);
+    setIsDelayingCommunityCards(false);
+    setStaggeredCardCount(0);
+    lastDetectedRoundRef.current = null;
+    if (communityCardsDelayRef.current) {
+      clearTimeout(communityCardsDelayRef.current);
+      communityCardsDelayRef.current = null;
+    }
+
+    // Showdown exposure cache
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+
+    // Chucky UI cache
+    setCachedChuckyCards(null);
+    setCachedChuckyActive(false);
+    setCachedChuckyCardsRevealed(0);
+
+    // Solo-vs-Chucky tabling lock (must clear together with caches)
+    setSoloVsChuckyTableLocked(false);
+    setSoloVsChuckyPlayerIdLocked(null);
+
+    // External lifted community cache (parent)
+    if (externalCommunityCardsCache) {
+      externalCommunityCardsCache.current = { cards: null, round: null, show: false };
+    }
+  }, [currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache]);
+
+  const shouldDeferHandReset = useCallback(() => {
+    const isGameOverPhase = gameStatus === 'game_over' || !!isGameOver;
+    const is357Animating = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
+    const isHolmAnimating = !!holmWinPotTriggerId || holmShowdownPhase !== 'idle';
+    return isGameOverPhase || isHolmAnimating || is357Animating;
+  }, [gameStatus, isGameOver, gameType, threeFiveSevenWinPhase, holmWinPotTriggerId, holmShowdownPhase]);
+
   useEffect(() => {
     const prev = prevHandContextIdRef.current;
     const next = handContextId ?? null;
 
-    if (prev !== next) {
-      console.error('[HAND_RESET][MOBILE] Hand context changed -> clearing ALL local card UI caches', {
+    if (prev === next) return;
+
+    if (shouldDeferHandReset()) {
+      pendingHandContextIdRef.current = next;
+      console.warn('[HAND_RESET][MOBILE] Deferring hand context reset until animations complete', {
         prev,
         next,
-        currentRound,
         gameStatus,
+        holmWinPotTriggerId,
+        holmShowdownPhase,
+        threeFiveSevenWinPhase,
       });
-
-      // Community UI cache
-      setShowCommunityCards(false);
-      setApprovedCommunityCards(null);
-      setApprovedRoundForDisplay(null);
-      setIsDelayingCommunityCards(false);
-      setStaggeredCardCount(0);
-      lastDetectedRoundRef.current = null;
-      if (communityCardsDelayRef.current) {
-        clearTimeout(communityCardsDelayRef.current);
-        communityCardsDelayRef.current = null;
-      }
-
-      // Showdown exposure cache
-      showdownRoundRef.current = null;
-      showdownCardsCache.current = new Map();
-
-      // Chucky UI cache
-      setCachedChuckyCards(null);
-      setCachedChuckyActive(false);
-      setCachedChuckyCardsRevealed(0);
-
-      // External lifted community cache (parent)
-      if (externalCommunityCardsCache) {
-        externalCommunityCardsCache.current = { cards: null, round: null, show: false };
-      }
+      return;
     }
 
+    resetHandUiCaches('hand_context_changed', prev, next);
     prevHandContextIdRef.current = next;
-  }, [handContextId, currentRound, gameStatus, externalCommunityCardsCache, showdownRoundRef, showdownCardsCache]);
+  }, [handContextId, gameStatus, holmWinPotTriggerId, holmShowdownPhase, threeFiveSevenWinPhase, shouldDeferHandReset, resetHandUiCaches]);
+
+  useEffect(() => {
+    const pending = pendingHandContextIdRef.current;
+    if (!pending) return;
+
+    if (shouldDeferHandReset()) return;
+
+    const prev = prevHandContextIdRef.current;
+    if (prev !== pending) {
+      resetHandUiCaches('deferred_hand_context_changed', prev, pending);
+      prevHandContextIdRef.current = pending;
+    }
+
+    pendingHandContextIdRef.current = null;
+  }, [shouldDeferHandReset, resetHandUiCaches]);
+
   
   // Compute showdown state synchronously during render
   // This should trigger when we need to show exposed cards
@@ -692,11 +740,9 @@ export const MobileGameTable = ({
     }
   }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult]);
 
-  // Reset the lock on new hand context (prevents sticking into next hand)
-  useEffect(() => {
-    setSoloVsChuckyTableLocked(false);
-    setSoloVsChuckyPlayerIdLocked(null);
-  }, [handContextId]);
+  // Reset of solo-vs-Chucky locks is handled inside resetHandUiCaches (and is deferred during animations)
+  // so tabled cards can't snap back mid pot-to-player animation.
+
 
   const isSoloVsChucky = isSoloVsChuckyRaw || soloVsChuckyTableLocked;
 
