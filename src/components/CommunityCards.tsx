@@ -8,9 +8,10 @@ interface CommunityCardsProps {
   highlightedIndices?: number[];  // Indices of cards that are part of winning hand
   kickerIndices?: number[];       // Indices of kicker cards
   hasHighlights?: boolean;        // Whether highlights are active (to dim non-highlighted cards)
+  tightOverlap?: boolean;         // Use tighter spacing for multi-player showdown
 }
 
-export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false }: CommunityCardsProps) => {
+export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false, tightOverlap = false }: CommunityCardsProps) => {
   const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
   const [animatedHandId, setAnimatedHandId] = useState<string>('');
@@ -126,7 +127,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
 
   return (
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-      <div className="flex -space-x-1" style={{ perspective: '1000px' }}>
+      <div className={`flex ${tightOverlap ? '-space-x-3' : '-space-x-1'}`} style={{ perspective: '1000px' }}>
         {cards.map((card, index) => {
           const isVisible = dealtCards.has(index);
           const hasFlipped = flippedCards.has(index);
