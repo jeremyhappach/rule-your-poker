@@ -1525,14 +1525,13 @@ export const MobileGameTable = ({
     // During showdown/announcement, hide chip stack to make room for bigger cards
     // EXCEPTION: During Holm win animation, keep winner's chipstack visible (cards are "tabled" below Chucky)
     // EXCEPTION: During solo vs Chucky, keep solo player's chipstack visible (only their cards are tabled)
-    // CRITICAL: For Holm, ONLY hide chips during MULTI-PLAYER showdown (2+ stayed), and ONLY for middle positions (slots 1,4)
-    // These middle positions have their cards overlap community cards when exposed
+    // CRITICAL: For Holm, hide chips during MULTI-PLAYER showdown (2+ stayed) for ALL positions except home position
+    // This gives room for cards to display without overlap
     const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
     const isSoloVsChuckyPlayerForChip = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
-    const isMiddleSlot = slotIndex === 1 || slotIndex === 4;
-    // For Holm: only hide if it's a multi-player showdown AND this is a middle slot player who stayed
+    // For Holm: hide chips for all players in showdown (gives room for exposed cards)
     // For 3-5-7: never hide chips (their showdown layout is different)
-    const hideChipForShowdown = gameType === 'holm-game' && isHolmMultiPlayerShowdown && isMiddleSlot && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
+    const hideChipForShowdown = gameType === 'holm-game' && isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
     
     const isDealer = dealerPosition === player.position;
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
@@ -1679,8 +1678,14 @@ export const MobileGameTable = ({
       threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting';
     const isSoloVsChuckyPlayer = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
     const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer;
+    
+    // Determine if name should appear below cards (for upper corners and middle positions during showdown)
+    const isUpperCorner = slotIndex === 2 || slotIndex === 3;
+    const isMiddlePosition = slotIndex === 1 || slotIndex === 4;
+    const showNameBelowCards = isShowdown && hideChipForShowdown && (isUpperCorner || isMiddlePosition);
+    
     const cardsElement = isShowdown && !shouldHideForTabling ? (
-      <div className={`flex ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
+      <div className={`flex scale-75 origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
         <PlayerHand 
           cards={cards} 
           isHidden={false}
@@ -1710,18 +1715,20 @@ export const MobileGameTable = ({
     );
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
-        {/* Name above for bottom positions */}
-        {isBottomPosition && nameElement}
-        {/* Hide chip stack during showdown to make room for bigger cards */}
+        {/* Name above for bottom positions (always) and non-bottom positions when NOT in showdown-with-name-below mode */}
+        {(isBottomPosition || (!showNameBelowCards && !isBottomPosition)) && !hideChipForShowdown && nameElement}
+        {/* During showdown with hidden chips, show name above cards for bottom positions only */}
+        {hideChipForShowdown && isBottomPosition && nameElement}
+        {/* Hide chip stack during showdown to make room for cards */}
         {!hideChipForShowdown && (
           <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
             {chipElement}
           </MobilePlayerTimer>
         )}
-        {/* Name below for other positions */}
-        {!isBottomPosition && nameElement}
-        {/* Cards - show actual cards during showdown (bigger when chip hidden), or mini card backs otherwise */}
+        {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
         {cardsElement}
+        {/* Name below cards for upper corners and middle positions during showdown */}
+        {showNameBelowCards && nameElement}
       </div>;
   };
   return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
@@ -2261,7 +2268,7 @@ export const MobileGameTable = ({
           if (!shouldShow) return null;
           
           return (
-            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[58%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
+            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
               <CommunityCards 
                 cards={approvedCommunityCards!} 
                 revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
@@ -2277,7 +2284,7 @@ export const MobileGameTable = ({
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[70%]' : 'top-[62%]'}`}>
+          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[74%]' : 'top-[62%]'}`}>
             <span className="text-red-400 text-sm mr-1">👿</span>
             {cachedChuckyCards.map((card, index) => {
               const isRevealed = index < cachedChuckyCardsRevealed;
@@ -2401,12 +2408,19 @@ export const MobileGameTable = ({
         {!currentPlayer ? (
           // OBSERVER MODE: Render players at ABSOLUTE positions
           <>
-            {/* Position 1: Top-left */}
-            {players.find(p => p.position === 1) && (
-              <div className="absolute top-2 left-10 z-10">
-                {renderPlayerChip(players.find(p => p.position === 1)!, 2)}
-              </div>
-            )}
+            {/* Position 1: Top-left - move up during showdown */}
+            {(() => {
+              const player = players.find(p => p.position === 1);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return player && (
+                <div className={`absolute left-10 z-10 transition-all duration-300 ${
+                  shouldMoveUp ? 'top-0' : 'top-2'
+                }`}>
+                  {renderPlayerChip(player, 2)}
+                </div>
+              );
+            })()}
             {/* Position 2: Left - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
             {(() => {
               const player = players.find(p => p.position === 2);
@@ -2414,7 +2428,7 @@ export const MobileGameTable = ({
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
                 <div className={`absolute left-0 z-10 transition-all duration-300 ${
-                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 1)}
                 </div>
@@ -2445,18 +2459,25 @@ export const MobileGameTable = ({
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
                 <div className={`absolute right-0 z-10 transition-all duration-300 ${
-                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 4)}
                 </div>
               );
             })()}
-            {/* Position 7: Top-right */}
-            {players.find(p => p.position === 7) && (
-              <div className="absolute top-2 right-10 z-10">
-                {renderPlayerChip(players.find(p => p.position === 7)!, 3)}
-              </div>
-            )}
+            {/* Position 7: Top-right - move up during showdown */}
+            {(() => {
+              const player = players.find(p => p.position === 7);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return player && (
+                <div className={`absolute right-10 z-10 transition-all duration-300 ${
+                  shouldMoveUp ? 'top-0' : 'top-2'
+                }`}>
+                  {renderPlayerChip(player, 3)}
+                </div>
+              );
+            })()}
           </>
         ) : (
           // SEATED PLAYER MODE: Render players at relative slots (clockwise from current player)
@@ -2473,20 +2494,38 @@ export const MobileGameTable = ({
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
                 <div className={`absolute left-0 z-10 transition-all duration-300 ${
-                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 1)}
                 </div>
               );
             })()}
-            {/* Slot 2 (3 seats clockwise): Top-left */}
-            <div className="absolute top-2 left-10 z-10">
-              {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, 2)}
-            </div>
-            {/* Slot 3 (4 seats clockwise): Top-right */}
-            <div className="absolute top-2 right-10 z-10">
-              {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
-            </div>
+            {/* Slot 2 (3 seats clockwise): Top-left - move up during showdown */}
+            {(() => {
+              const player = getPlayerAtSlot(2);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return player && (
+                <div className={`absolute left-10 z-10 transition-all duration-300 ${
+                  shouldMoveUp ? 'top-0' : 'top-2'
+                }`}>
+                  {renderPlayerChip(player, 2)}
+                </div>
+              );
+            })()}
+            {/* Slot 3 (4 seats clockwise): Top-right - move up during showdown */}
+            {(() => {
+              const player = getPlayerAtSlot(3);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return player && (
+                <div className={`absolute right-10 z-10 transition-all duration-300 ${
+                  shouldMoveUp ? 'top-0' : 'top-2'
+                }`}>
+                  {renderPlayerChip(player, 3)}
+                </div>
+              );
+            })()}
             {/* Slot 4 (5 seats clockwise): Middle-right - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
             {/* This prevents cards from overlapping community cards when exposed */}
             {(() => {
@@ -2495,7 +2534,7 @@ export const MobileGameTable = ({
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
                 <div className={`absolute right-0 z-10 transition-all duration-300 ${
-                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 4)}
                 </div>
