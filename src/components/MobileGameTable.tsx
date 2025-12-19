@@ -772,8 +772,11 @@ export const MobileGameTable = ({
   const isAnyPlayerInShowdown = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
 
   // Determine winner from lastRoundResult for dimming logic
+  // ALSO derive winner when holmWinPotTriggerId is set (for tabling winner cards during animation)
   const winnerPlayerId = useMemo(() => {
-    if (!isShowingAnnouncement || !lastRoundResult) return null;
+    // Need announcement OR active holm win animation to determine winner
+    const shouldDeriveWinner = isShowingAnnouncement || holmWinPotTriggerId;
+    if (!shouldDeriveWinner || !lastRoundResult) return null;
     // Parse winner from announcement - format usually includes player username
     // Look for patterns like "PlayerName beat", "PlayerName won", "PlayerName wins", "PlayerName earns"
     const result = lastRoundResult.toLowerCase();
@@ -789,21 +792,23 @@ export const MobileGameTable = ({
       }
     }
     return null;
-  }, [isShowingAnnouncement, lastRoundResult, players]);
+  }, [isShowingAnnouncement, holmWinPotTriggerId, lastRoundResult, players]);
 
   // Check if current player is the winner (for dimming logic)
   const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
 
   // Get winner's cards for highlighting (winner may be current player or another player)
+  // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
   const winnerCards = useMemo(() => {
-    if (!winnerPlayerId || !isShowingAnnouncement) return [];
+    const shouldDeriveCards = isShowingAnnouncement || holmWinPotTriggerId;
+    if (!winnerPlayerId || !shouldDeriveCards) return [];
     if (winnerPlayerId === currentPlayer?.id) {
       return currentPlayerCards;
     }
     // Find winner's cards from playerCards
     const winnerCardData = playerCards.find(pc => pc.player_id === winnerPlayerId);
     return winnerCardData?.cards || [];
-  }, [winnerPlayerId, isShowingAnnouncement, currentPlayer?.id, currentPlayerCards, playerCards]);
+  }, [winnerPlayerId, isShowingAnnouncement, holmWinPotTriggerId, currentPlayer?.id, currentPlayerCards, playerCards]);
 
   // Calculate winning card highlights based on WINNER's hand (not current player)
   // Calculate winning card highlights for announcement phase
