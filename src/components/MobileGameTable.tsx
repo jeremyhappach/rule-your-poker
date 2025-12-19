@@ -2398,14 +2398,19 @@ export const MobileGameTable = ({
                 {renderPlayerChip(players.find(p => p.position === 1)!, 2)}
               </div>
             )}
-            {/* Position 2: Left - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
-            <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
-                ? 'top-[32%] -translate-y-1/2' 
-                : 'top-1/2 -translate-y-1/2'
-            }`}>
-              {players.find(p => p.position === 2) && renderPlayerChip(players.find(p => p.position === 2)!, 1)}
-            </div>
+            {/* Position 2: Left - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
+            {(() => {
+              const player = players.find(p => p.position === 2);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return (
+                <div className={`absolute left-0 z-10 transition-all duration-300 ${
+                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                }`}>
+                  {player && renderPlayerChip(player, 1)}
+                </div>
+              );
+            })()}
             {/* Position 3: Bottom-left */}
             {players.find(p => p.position === 3) && (
               <div className="absolute bottom-2 left-10 z-10">
@@ -2424,14 +2429,19 @@ export const MobileGameTable = ({
                 {renderPlayerChip(players.find(p => p.position === 5)!, 5)}
               </div>
             )}
-            {/* Position 6: Right - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
-            <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
-                ? 'top-[32%] -translate-y-1/2' 
-                : 'top-1/2 -translate-y-1/2'
-            }`}>
-              {players.find(p => p.position === 6) && renderPlayerChip(players.find(p => p.position === 6)!, 4)}
-            </div>
+            {/* Position 6: Right - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
+            {(() => {
+              const player = players.find(p => p.position === 6);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return (
+                <div className={`absolute right-0 z-10 transition-all duration-300 ${
+                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                }`}>
+                  {player && renderPlayerChip(player, 4)}
+                </div>
+              );
+            })()}
             {/* Position 7: Top-right */}
             {players.find(p => p.position === 7) && (
               <div className="absolute top-2 right-10 z-10">
@@ -2446,15 +2456,20 @@ export const MobileGameTable = ({
             <div className="absolute bottom-2 left-10 z-10">
               {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
             </div>
-            {/* Slot 1 (2 seats clockwise): Middle-left - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
+            {/* Slot 1 (2 seats clockwise): Middle-left - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
             {/* This prevents cards from overlapping community cards when exposed */}
-            <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
-                ? 'top-[32%] -translate-y-1/2' 
-                : 'top-1/2 -translate-y-1/2'
-            }`}>
-              {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, 1)}
-            </div>
+            {(() => {
+              const player = getPlayerAtSlot(1);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return (
+                <div className={`absolute left-0 z-10 transition-all duration-300 ${
+                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                }`}>
+                  {player && renderPlayerChip(player, 1)}
+                </div>
+              );
+            })()}
             {/* Slot 2 (3 seats clockwise): Top-left */}
             <div className="absolute top-2 left-10 z-10">
               {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, 2)}
@@ -2463,15 +2478,20 @@ export const MobileGameTable = ({
             <div className="absolute top-2 right-10 z-10">
               {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
             </div>
-            {/* Slot 4 (5 seats clockwise): Middle-right - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
+            {/* Slot 4 (5 seats clockwise): Middle-right - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
             {/* This prevents cards from overlapping community cards when exposed */}
-            <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
-                ? 'top-[32%] -translate-y-1/2' 
-                : 'top-1/2 -translate-y-1/2'
-            }`}>
-              {getPlayerAtSlot(4) && renderPlayerChip(getPlayerAtSlot(4)!, 4)}
-            </div>
+            {(() => {
+              const player = getPlayerAtSlot(4);
+              const playerStayed = player?.current_decision === 'stay';
+              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
+              return (
+                <div className={`absolute right-0 z-10 transition-all duration-300 ${
+                  shouldRaise ? 'top-[32%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
+                }`}>
+                  {player && renderPlayerChip(player, 4)}
+                </div>
+              );
+            })()}
             {/* Slot 5 (6 seats clockwise): Bottom-right */}
             <div className="absolute bottom-2 right-10 z-10">
               {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, 5)}
