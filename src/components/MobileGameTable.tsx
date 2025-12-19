@@ -333,7 +333,7 @@ export const MobileGameTable = ({
   // Buck's on you animation state
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
-  const bucksOnYouShownRef = useRef(false); // Prevent re-triggering
+  const bucksOnYouShownForRoundRef = useRef<number | null>(null); // Track which round we showed animation for
   
   // Holm showdown phase 2 trigger ref
   const [phase2TriggerId, setPhase2TriggerId] = useState<string | null>(null);
@@ -860,24 +860,27 @@ export const MobileGameTable = ({
   // Detect buck passed to current player (Holm games only)
   // Also clear showdown state when buck moves - new hand is starting
   useEffect(() => {
-    if (gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && currentPlayer && buckPosition === currentPlayer.position && lastBuckPositionRef.current !== buckPosition && lastBuckPositionRef.current !== null &&
-    // Don't show on initial load
-    !bucksOnYouShownRef.current // Don't re-trigger if already shown for this position
+    if (
+      gameType === 'holm-game' && 
+      buckPosition !== null && 
+      buckPosition !== undefined && 
+      currentPlayer && 
+      buckPosition === currentPlayer.position && 
+      lastBuckPositionRef.current !== buckPosition && 
+      lastBuckPositionRef.current !== null && // Don't show on initial load
+      bucksOnYouShownForRoundRef.current !== currentRound // Only show once per round
     ) {
       // Clear showdown state - new hand starting
       showdownRoundRef.current = null;
       showdownCardsCache.current = new Map();
       
-      bucksOnYouShownRef.current = true;
+      // Mark this round as shown and trigger animation
+      bucksOnYouShownForRoundRef.current = currentRound;
       setShowBucksOnYou(true);
     }
 
-    // Reset the shown flag when buck moves away from current player
-    if (buckPosition !== currentPlayer?.position) {
-      bucksOnYouShownRef.current = false;
-    }
     lastBuckPositionRef.current = buckPosition ?? null;
-  }, [buckPosition, currentPlayer, gameType]);
+  }, [buckPosition, currentPlayer, gameType, currentRound]);
 
   // Delay community cards by 1 second after player cards appear (Holm games only)
   // currentRound is already a number (round_number), use it directly
