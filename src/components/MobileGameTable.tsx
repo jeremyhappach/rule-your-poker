@@ -732,8 +732,20 @@ export const MobileGameTable = ({
     if (lastRoundResult) {
       const result = lastRoundResult.toLowerCase();
       for (const p of players) {
-        const username = p.profiles?.username?.toLowerCase() || '';
-        if (username && (result.includes(`${username} beat`) || result.includes(`${username} won`) || result.includes(`${username} wins`) || result.includes(`${username} earns`))) {
+        const botAlias = p.is_bot ? getBotAlias(players, p.user_id) : '';
+        const candidates = [p.profiles?.username, botAlias]
+          .filter(Boolean)
+          .map((s) => String(s).toLowerCase());
+
+        if (
+          candidates.some(
+            (name) =>
+              result.includes(`${name} beat`) ||
+              result.includes(`${name} won`) ||
+              result.includes(`${name} wins`) ||
+              result.includes(`${name} earns`)
+          )
+        ) {
           setSoloVsChuckyPlayerIdLocked(p.id);
           return;
         }
@@ -881,13 +893,20 @@ export const MobileGameTable = ({
     // Look for patterns like "PlayerName beat", "PlayerName won", "PlayerName wins", "PlayerName earns"
     const result = lastRoundResult.toLowerCase();
     for (const player of players) {
-      const username = player.profiles?.username?.toLowerCase() || '';
-      if (username && (
-        result.includes(`${username} beat`) || 
-        result.includes(`${username} won`) || 
-        result.includes(`${username} wins`) || 
-        result.includes(`${username} earns`)
-      )) {
+      const botAlias = player.is_bot ? getBotAlias(players, player.user_id) : '';
+      const candidates = [player.profiles?.username, botAlias]
+        .filter(Boolean)
+        .map((s) => String(s).toLowerCase());
+
+      if (
+        candidates.some(
+          (name) =>
+            result.includes(`${name} beat`) ||
+            result.includes(`${name} won`) ||
+            result.includes(`${name} wins`) ||
+            result.includes(`${name} earns`)
+        )
+      ) {
         return player.id;
       }
     }
@@ -1685,6 +1704,8 @@ export const MobileGameTable = ({
           { label: "handContextId", value: handContextId ?? "null" },
           { label: "pendingHandContextId", value: pendingHandContextIdRef.current ?? "null" },
           { label: "soloVsChuckyTableLocked", value: soloVsChuckyTableLocked },
+          { label: "soloVsChuckyPlayerIdLocked", value: soloVsChuckyPlayerIdLocked ?? "null" },
+          { label: "winnerPlayerId", value: winnerPlayerId ?? "null" },
           { label: "holmWinPotTriggerId", value: holmWinPotTriggerId ?? "null" },
           { label: "resetDeferred", value: shouldDeferHandReset() },
         ]}
