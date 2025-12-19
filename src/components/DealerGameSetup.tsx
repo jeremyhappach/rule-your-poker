@@ -67,7 +67,7 @@ export const DealerGameSetup = ({
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
-  // Default to previous game type if provided, otherwise holm-game
+  // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
   const [timeLeft, setTimeLeft] = useState(30);
   const [isSubmitting, setIsSubmitting] = useState(false);
