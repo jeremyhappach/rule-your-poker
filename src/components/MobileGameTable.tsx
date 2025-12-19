@@ -2119,42 +2119,98 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Players arranged clockwise around table from current player's perspective */}
-        {/* getPlayerAtSlot(n) returns the player who is n+1 seats clockwise from current player */}
-        {/* Slot 0 (1 seat clockwise): Bottom-left */}
-        <div className="absolute bottom-2 left-10 z-10">
-          {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
-        </div>
-        {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards (Holm only) */}
-        {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
-        <div className={`absolute left-0 z-10 transition-all duration-300 ${
-          gameType === 'holm-game' && getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) && !holmWinPotTriggerId
-            ? 'top-[32%] -translate-y-1/2' 
-            : 'top-1/2 -translate-y-1/2'
-        }`}>
-          {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, 1)}
-        </div>
-        {/* Slot 2 (3 seats clockwise): Top-left */}
-        <div className="absolute top-2 left-10 z-10">
-          {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, 2)}
-        </div>
-        {/* Slot 3 (4 seats clockwise): Top-right */}
-        <div className="absolute top-2 right-10 z-10">
-          {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
-        </div>
-        {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards (Holm only) */}
-        {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
-        <div className={`absolute right-0 z-10 transition-all duration-300 ${
-          gameType === 'holm-game' && getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) && !holmWinPotTriggerId
-            ? 'top-[32%] -translate-y-1/2' 
-            : 'top-1/2 -translate-y-1/2'
-        }`}>
-          {getPlayerAtSlot(4) && renderPlayerChip(getPlayerAtSlot(4)!, 4)}
-        </div>
-        {/* Slot 5 (6 seats clockwise): Bottom-right */}
-        <div className="absolute bottom-2 right-10 z-10">
-          {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, 5)}
-        </div>
+        {/* Players arranged around table */}
+        {/* CRITICAL: For observers (!currentPlayer), use ABSOLUTE position mapping */}
+        {/* For seated players, use relative slots based on clockwise distance */}
+        {!currentPlayer ? (
+          // OBSERVER MODE: Render players at ABSOLUTE positions
+          <>
+            {/* Position 1: Top-left */}
+            {players.find(p => p.position === 1) && (
+              <div className="absolute top-2 left-10 z-10">
+                {renderPlayerChip(players.find(p => p.position === 1)!, 2)}
+              </div>
+            )}
+            {/* Position 2: Left */}
+            <div className={`absolute left-0 z-10 transition-all duration-300 ${
+              gameType === 'holm-game' && players.find(p => p.position === 2) && isPlayerCardsExposed(players.find(p => p.position === 2)!.id) && !holmWinPotTriggerId
+                ? 'top-[32%] -translate-y-1/2' 
+                : 'top-1/2 -translate-y-1/2'
+            }`}>
+              {players.find(p => p.position === 2) && renderPlayerChip(players.find(p => p.position === 2)!, 1)}
+            </div>
+            {/* Position 3: Bottom-left */}
+            {players.find(p => p.position === 3) && (
+              <div className="absolute bottom-2 left-10 z-10">
+                {renderPlayerChip(players.find(p => p.position === 3)!, 0)}
+              </div>
+            )}
+            {/* Position 4: Bottom center */}
+            {players.find(p => p.position === 4) && (
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+                {renderPlayerChip(players.find(p => p.position === 4)!, -1)}
+              </div>
+            )}
+            {/* Position 5: Bottom-right */}
+            {players.find(p => p.position === 5) && (
+              <div className="absolute bottom-2 right-10 z-10">
+                {renderPlayerChip(players.find(p => p.position === 5)!, 5)}
+              </div>
+            )}
+            {/* Position 6: Right */}
+            <div className={`absolute right-0 z-10 transition-all duration-300 ${
+              gameType === 'holm-game' && players.find(p => p.position === 6) && isPlayerCardsExposed(players.find(p => p.position === 6)!.id) && !holmWinPotTriggerId
+                ? 'top-[32%] -translate-y-1/2' 
+                : 'top-1/2 -translate-y-1/2'
+            }`}>
+              {players.find(p => p.position === 6) && renderPlayerChip(players.find(p => p.position === 6)!, 4)}
+            </div>
+            {/* Position 7: Top-right */}
+            {players.find(p => p.position === 7) && (
+              <div className="absolute top-2 right-10 z-10">
+                {renderPlayerChip(players.find(p => p.position === 7)!, 3)}
+              </div>
+            )}
+          </>
+        ) : (
+          // SEATED PLAYER MODE: Render players at relative slots (clockwise from current player)
+          <>
+            {/* Slot 0 (1 seat clockwise): Bottom-left */}
+            <div className="absolute bottom-2 left-10 z-10">
+              {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
+            </div>
+            {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards (Holm only) */}
+            {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
+            <div className={`absolute left-0 z-10 transition-all duration-300 ${
+              gameType === 'holm-game' && getPlayerAtSlot(1) && isPlayerCardsExposed(getPlayerAtSlot(1)!.id) && !holmWinPotTriggerId
+                ? 'top-[32%] -translate-y-1/2' 
+                : 'top-1/2 -translate-y-1/2'
+            }`}>
+              {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, 1)}
+            </div>
+            {/* Slot 2 (3 seats clockwise): Top-left */}
+            <div className="absolute top-2 left-10 z-10">
+              {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, 2)}
+            </div>
+            {/* Slot 3 (4 seats clockwise): Top-right */}
+            <div className="absolute top-2 right-10 z-10">
+              {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
+            </div>
+            {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards (Holm only) */}
+            {/* CRITICAL: Return to original position when win animation is active so chip animation targets correct location */}
+            <div className={`absolute right-0 z-10 transition-all duration-300 ${
+              gameType === 'holm-game' && getPlayerAtSlot(4) && isPlayerCardsExposed(getPlayerAtSlot(4)!.id) && !holmWinPotTriggerId
+                ? 'top-[32%] -translate-y-1/2' 
+                : 'top-1/2 -translate-y-1/2'
+            }`}>
+              {getPlayerAtSlot(4) && renderPlayerChip(getPlayerAtSlot(4)!, 4)}
+            </div>
+            {/* Slot 5 (6 seats clockwise): Bottom-right */}
+            <div className="absolute bottom-2 right-10 z-10">
+              {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, 5)}
+            </div>
+          </>
+        )}
         
         {/* Dealer button is now shown on player chip stacks (OUTSIDE position), no separate felt button needed */}
         
@@ -2312,29 +2368,24 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Open seats for seat selection - show in actual positions around the table */}
+        {/* Open seats for seat selection - show in ABSOLUTE positions around the table */}
+        {/* CRITICAL: For observers (canSelectSeat), use ABSOLUTE position mapping, not relative */}
+        {/* Observers don't have a position, so seats must be at fixed visual locations */}
         {canSelectSeat && openSeats.length > 0 && (() => {
-          // Use same clockwise distance calculation as occupied player positions
-          // This ensures open seats appear in their correct relative positions
-          const getOpenSeatSlotIndex = (seatPosition: number): number => {
-            // Use same calculation as getClockwiseDistance for consistency with occupied players
-            let distance = seatPosition - currentPos;
-            if (distance <= 0) distance += 7;
-            return distance - 1; // Convert 1-6 distance to 0-5 slot index
-          };
-
-          const slotPositions: Record<number, string> = {
-            0: 'bottom-2 left-10',        // Bottom-left
-            1: 'top-1/2 -translate-y-1/2 left-0', // Left
-            2: 'top-2 left-10',           // Top-left
-            3: 'top-2 right-10',          // Top-right
-            4: 'top-1/2 -translate-y-1/2 right-0', // Right
+          // ABSOLUTE position → CSS class mapping for observers
+          // Position 4 is conceptually at bottom center, positions arranged clockwise
+          const absolutePositionClasses: Record<number, string> = {
+            1: 'top-2 left-10',           // Top-left
+            2: 'top-1/2 -translate-y-1/2 left-0', // Left
+            3: 'bottom-2 left-10',        // Bottom-left
+            4: 'bottom-2 left-1/2 -translate-x-1/2', // Bottom center
             5: 'bottom-2 right-10',       // Bottom-right
+            6: 'top-1/2 -translate-y-1/2 right-0', // Right
+            7: 'top-2 right-10',          // Top-right
           };
 
           return openSeats.map(pos => {
-            const slotIndex = getOpenSeatSlotIndex(pos);
-            const positionClass = slotPositions[slotIndex] || slotPositions[0];
+            const positionClass = absolutePositionClasses[pos] || absolutePositionClasses[1];
             
             return (
               <div key={pos} className={`absolute z-20 ${positionClass}`}>
