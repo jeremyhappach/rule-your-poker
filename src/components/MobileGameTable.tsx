@@ -1709,7 +1709,7 @@ export const MobileGameTable = ({
     const showNameBelowChipstack = isUpperCorner && !hideChipForShowdown;
     
     const cardsElement = isShowdown && !shouldHideForTabling ? (
-      <div className={`flex scale-75 origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-1' : ''}`}>
+      <div className={`flex scale-[0.85] origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-2' : ''}`}>
         <PlayerHand 
           cards={cards} 
           isHidden={false}
@@ -2442,7 +2442,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute left-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-4' : 'top-2'
+                  shouldMoveUp ? 'top-6' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 2)}
                 </div>
@@ -2499,7 +2499,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute right-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-4' : 'top-2'
+                  shouldMoveUp ? 'top-6' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 3)}
                 </div>
@@ -2534,7 +2534,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute left-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-4' : 'top-2'
+                  shouldMoveUp ? 'top-6' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 2)}
                 </div>
@@ -2547,7 +2547,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute right-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-4' : 'top-2'
+                  shouldMoveUp ? 'top-6' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 3)}
                 </div>
