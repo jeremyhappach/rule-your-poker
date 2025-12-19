@@ -12,6 +12,8 @@ interface PlayerHandProps {
   currentRound?: number;          // Current round for wild card determination
   showSeparated?: boolean;        // For round 3, show unused cards separated to left
   tightOverlap?: boolean;         // Use tighter spacing for multi-player showdown
+  exposedLayout?: boolean;        // 357 showdown: compact layout with unused cards underneath
+  positionSide?: 'left' | 'right' | 'top' | 'bottom'; // Which side of table for unused card placement
 }
 
 // Get wild rank based on round (3-5-7 game only)
@@ -34,7 +36,9 @@ export const PlayerHand = ({
   gameType,
   currentRound = 0,
   showSeparated = false,
-  tightOverlap = false
+  tightOverlap = false,
+  exposedLayout = false,
+  positionSide = 'bottom'
 }: PlayerHandProps) => {
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -95,10 +99,16 @@ export const PlayerHand = ({
   });
   
   const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
-  const cardSize = getCardSize(displayCardCount);
   
-  // Calculate overlap based on card count and tightOverlap flag
+  // Use smaller cards for exposed layout
+  const cardSize = exposedLayout ? 'xs' : getCardSize(displayCardCount);
+  
+  // Calculate overlap based on card count, tightOverlap flag, and exposedLayout
   const getOverlapClass = () => {
+    if (exposedLayout) {
+      // Extra tight for exposed layout - want to see suits but maximize space
+      return '-ml-5 first:ml-0';
+    }
     if (tightOverlap) {
       // Tighter overlap for multi-player showdown
       if (displayCardCount >= 7) return '-ml-4 sm:-ml-4 first:ml-0';
@@ -137,7 +147,7 @@ export const PlayerHand = ({
             <PlayingCard
               key={index}
               isHidden
-              size={cardSize}
+              size={exposedLayout ? 'xs' : cardSize}
               className={`${useFannedArc ? '-ml-4 first:ml-0' : overlapClass} animate-fade-in`}
               style={{ 
                 transform: `rotate(${rotation}deg) translateY(${verticalOffset}px)`,
@@ -148,6 +158,69 @@ export const PlayerHand = ({
             />
           );
         })}
+      </div>
+    );
+  }
+
+  // Special exposed layout for 357 showdowns - unused cards go UNDER used cards towards outside edge
+  if (exposedLayout && isRound3With7Cards) {
+    // Determine direction for unused cards based on position
+    // Left side of table: unused cards go further left (before used)
+    // Right side of table: unused cards go further right (after used)
+    // Top positions: unused cards go right
+    // Bottom positions: unused cards go right
+    const unusedOnLeft = positionSide === 'left';
+    
+    return (
+      <div className="relative">
+        {/* Unused cards layer - positioned underneath and towards outside edge */}
+        <div 
+          className={`absolute flex ${unusedOnLeft ? '-left-6' : '-right-6'}`}
+          style={{ 
+            top: '8px',
+            zIndex: 0,
+            opacity: 0.5,
+          }}
+        >
+          {unusedCards.map(({ card, originalIndex, isWild }, displayIndex) => (
+            <PlayingCard
+              key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
+              card={card}
+              size="xs"
+              isDimmed={true}
+              isWild={isWild}
+              className="-ml-6 first:ml-0"
+              style={{ 
+                transform: `rotate(${displayIndex * 2 - 1}deg)`,
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Used cards layer - main display */}
+        <div className="relative flex" style={{ zIndex: 1 }}>
+          {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
+            const isHighlighted = highlightedIndices.includes(originalIndex);
+            const isKicker = kickerIndices.includes(originalIndex);
+            const isDimmed = hasHighlights && !isHighlighted && !isKicker;
+            
+            return (
+              <PlayingCard
+                key={`used-${card.rank}-${card.suit}-${originalIndex}`}
+                card={card}
+                size="xs"
+                isHighlighted={isHighlighted}
+                isKicker={isKicker}
+                isDimmed={isDimmed}
+                isWild={isWild}
+                className="-ml-5 first:ml-0"
+                style={{ 
+                  transform: `rotate(${displayIndex * 1.5 - 3}deg)`,
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
     );
   }

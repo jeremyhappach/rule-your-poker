@@ -253,6 +253,9 @@ export const GameTable = ({
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
+  // NEW: 357 exposed layout mode - active during ANY 357 multiplayer showdown (all rounds)
+  const is357ExposedLayout = gameType !== 'holm-game' && allDecisionsIn && stayedPlayersCount >= 2;
+  
   // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
   const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
   const currentPlayerStayed = currentPlayerForSecretReveal?.current_decision === 'stay';
@@ -981,17 +984,23 @@ export const GameTable = ({
                     </div>
                   )}
                   
-                  {/* Pot - hide during waiting phase */}
+                  {/* Pot - hide during waiting phase, smaller during 357 showdown */}
                   {!isWaitingPhase && (
                     <div className="relative">
-                      <div className="bg-poker-felt-dark/90 rounded-lg p-1.5 sm:p-2 md:p-3 backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl">
+                      <div className={`bg-poker-felt-dark/90 rounded-lg backdrop-blur-sm border-2 border-poker-gold/30 shadow-2xl ${
+                        is357ExposedLayout ? 'p-1' : 'p-1.5 sm:p-2 md:p-3'
+                      }`}>
                         <div className="flex items-baseline justify-center gap-1">
-                          <span className="text-[10px] sm:text-xs md:text-sm text-poker-gold/80 font-semibold">POT:</span>
-                          <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-poker-gold drop-shadow-lg">${formatChipValue(pot)}</span>
+                          <span className={`text-poker-gold/80 font-semibold ${is357ExposedLayout ? 'text-[8px]' : 'text-[10px] sm:text-xs md:text-sm'}`}>POT:</span>
+                          <span className={`font-bold text-poker-gold drop-shadow-lg ${is357ExposedLayout ? 'text-sm' : 'text-lg sm:text-xl md:text-2xl lg:text-3xl'}`}>${formatChipValue(pot)}</span>
                         </div>
-                        <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Lose: ${formatChipValue(loseAmount)}</p>
-                        {gameType && gameType !== 'holm-game' && (
-                          <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">{legsToWin} legs to win</p>
+                        {!is357ExposedLayout && (
+                          <>
+                            <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">Lose: ${formatChipValue(loseAmount)}</p>
+                            {gameType && gameType !== 'holm-game' && (
+                              <p className="text-[8px] sm:text-[10px] md:text-xs text-white/90 mt-0.5 font-semibold">{legsToWin} legs to win</p>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -1122,6 +1131,16 @@ export const GameTable = ({
             const x = 50 + radius * Math.cos(angle);
             const y = 50 + radius * Math.sin(angle);
             
+            // Determine position side for 357 exposed layout (which edge of table is player on)
+            // Position 1 = top, 2-3 = right side, 4 = bottom-right, 5 = bottom-left, 6-7 = left side
+            const getPositionSide = (pos: number): 'left' | 'right' | 'top' | 'bottom' => {
+              if (pos === 1) return 'top';
+              if (pos === 2 || pos === 3) return 'right';
+              if (pos === 4 || pos === 5) return 'bottom';
+              return 'left'; // 6, 7
+            };
+            const positionSide = getPositionSide(seatPosition);
+            
             // Get cards for this player - use getPlayerCards which handles showdown caching
             const rawCards = player ? getPlayerCards(player.id) : [];
             
@@ -1242,6 +1261,110 @@ export const GameTable = ({
             }
             
             if (!player) return null;
+
+            // Special 357 EXPOSED LAYOUT for multiplayer showdowns
+            // Players who stayed get a compact layout: cards move to chipstack area, no buttons, name beside cards
+            const playerStayedIn357 = playerDecision === 'stay' && is357ExposedLayout;
+            const playerFoldedIn357 = playerDecision === 'fold' && is357ExposedLayout;
+            const shouldUseExposedLayout = playerStayedIn357 && (cards.length > 0 || shouldShowCardBacks);
+            
+            // For folded players during 357 exposed layout, show minimized display
+            if (playerFoldedIn357) {
+              return (
+                <div
+                  key={player.id}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10 opacity-40"
+                  style={{ left: `${x}%`, top: `${y}%` }}
+                >
+                  <div className="bg-poker-felt-dark/60 rounded px-1 py-0.5 border border-amber-800/30">
+                    <p className="text-[7px] text-amber-300/60 font-medium truncate max-w-[40px]">
+                      {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+                    </p>
+                    <p className="text-[6px] text-red-400/60">Out</p>
+                  </div>
+                </div>
+              );
+            }
+            
+            if (shouldUseExposedLayout) {
+              // Calculate position adjustments based on seat position
+              // Bottom positions (4, 5): move cards up into chipstack area
+              // Top position (1): name goes under cards on right
+              // Left positions (6, 7): name goes under cards on right
+              // Right positions (2, 3): name goes under cards on right
+              // Middle positions have name next to unused cards on right
+              
+              const isBottomPosition = positionSide === 'bottom';
+              const isTopPosition = positionSide === 'top';
+              
+              // Calculate where to render - move towards center for bottom positions
+              const adjustedY = isBottomPosition ? y - 6 : y;
+              
+              return (
+                <div
+                  key={player.id}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
+                  style={{ left: `${x}%`, top: `${adjustedY}%` }}
+                >
+                  <div className="relative flex flex-col items-center">
+                    {/* Name ABOVE cards for bottom positions */}
+                    {isBottomPosition && (
+                      <p className="text-[8px] text-amber-100 font-bold mb-0.5 truncate max-w-[60px]">
+                        {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+                        {isCurrentUser && <span className="text-poker-gold ml-1">You</span>}
+                      </p>
+                    )}
+                    
+                    {/* Cards with optional name beside for non-bottom positions */}
+                    <div className={`flex items-end gap-1 ${!isBottomPosition ? 'flex-row' : ''}`}>
+                      {/* Cards */}
+                      <div className={`relative ${playerDecision === 'stay' ? 'ring-2 ring-green-500 rounded p-0.5' : ''}`}>
+                        <PlayerHand 
+                          cards={cards} 
+                          expectedCardCount={expectedCardCount}
+                          isHidden={
+                            !isCurrentUser && !(
+                              (is357Round3MultiPlayerShowdown && isPlayerCardsExposed(player.id)) ||
+                              (is357SecretRevealActive && isPlayerCardsExposed(player.id))
+                            )
+                          }
+                          gameType={gameType}
+                          currentRound={currentRound}
+                          showSeparated={currentRound === 3 && cards.length === 7}
+                          exposedLayout={true}
+                          positionSide={positionSide}
+                          tightOverlap={true}
+                        />
+                      </div>
+                      
+                      {/* Name BESIDE cards (right side) for non-bottom positions */}
+                      {!isBottomPosition && (
+                        <div className="flex flex-col items-start ml-0.5">
+                          <p className="text-[7px] text-amber-100 font-bold truncate max-w-[50px] whitespace-nowrap">
+                            {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+                          </p>
+                          {isCurrentUser && <span className="text-[6px] text-poker-gold">You</span>}
+                          <LegIndicator 
+                            legs={player.legs} 
+                            maxLegs={legsToWin} 
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Leg indicator for bottom positions */}
+                    {isBottomPosition && (
+                      <div className="mt-0.5">
+                        <LegIndicator 
+                          legs={player.legs} 
+                          maxLegs={legsToWin} 
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div
