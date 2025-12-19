@@ -1525,9 +1525,14 @@ export const MobileGameTable = ({
     // During showdown/announcement, hide chip stack to make room for bigger cards
     // EXCEPTION: During Holm win animation, keep winner's chipstack visible (cards are "tabled" below Chucky)
     // EXCEPTION: During solo vs Chucky, keep solo player's chipstack visible (only their cards are tabled)
+    // CRITICAL: For Holm, ONLY hide chips during MULTI-PLAYER showdown (2+ stayed), and ONLY for middle positions (slots 1,4)
+    // These middle positions have their cards overlap community cards when exposed
     const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
     const isSoloVsChuckyPlayerForChip = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
-    const hideChipForShowdown = isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
+    const isMiddleSlot = slotIndex === 1 || slotIndex === 4;
+    // For Holm: only hide if it's a multi-player showdown AND this is a middle slot player who stayed
+    // For 3-5-7: never hide chips (their showdown layout is different)
+    const hideChipForShowdown = gameType === 'holm-game' && isHolmMultiPlayerShowdown && isMiddleSlot && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
     
     const isDealer = dealerPosition === player.position;
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
@@ -2393,9 +2398,9 @@ export const MobileGameTable = ({
                 {renderPlayerChip(players.find(p => p.position === 1)!, 2)}
               </div>
             )}
-            {/* Position 2: Left - DON'T raise during solo vs Chucky */}
+            {/* Position 2: Left - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
             <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
+              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2419,9 +2424,9 @@ export const MobileGameTable = ({
                 {renderPlayerChip(players.find(p => p.position === 5)!, 5)}
               </div>
             )}
-            {/* Position 6: Right - DON'T raise during solo vs Chucky */}
+            {/* Position 6: Right - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
             <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
+              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2441,10 +2446,10 @@ export const MobileGameTable = ({
             <div className="absolute bottom-2 left-10 z-10">
               {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
             </div>
-            {/* Slot 1 (2 seats clockwise): Middle-left - moves up during showdown to avoid community cards (Holm only) */}
-            {/* CRITICAL: Return to original position when win animation is active or solo vs Chucky */}
+            {/* Slot 1 (2 seats clockwise): Middle-left - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
+            {/* This prevents cards from overlapping community cards when exposed */}
             <div className={`absolute left-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
+              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
@@ -2458,10 +2463,10 @@ export const MobileGameTable = ({
             <div className="absolute top-2 right-10 z-10">
               {getPlayerAtSlot(3) && renderPlayerChip(getPlayerAtSlot(3)!, 3)}
             </div>
-            {/* Slot 4 (5 seats clockwise): Middle-right - moves up during showdown to avoid community cards (Holm only) */}
-            {/* CRITICAL: Return to original position when win animation is active or solo vs Chucky */}
+            {/* Slot 4 (5 seats clockwise): Middle-right - ONLY raise during Holm MULTI-PLAYER showdown (2+ stayed) */}
+            {/* This prevents cards from overlapping community cards when exposed */}
             <div className={`absolute right-0 z-10 transition-all duration-300 ${
-              gameType === 'holm-game' && isAnyPlayerInShowdown && !holmWinPotTriggerId && !isSoloVsChucky
+              isHolmMultiPlayerShowdown && !holmWinPotTriggerId
                 ? 'top-[32%] -translate-y-1/2' 
                 : 'top-1/2 -translate-y-1/2'
             }`}>
