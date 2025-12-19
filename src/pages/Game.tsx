@@ -1711,24 +1711,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.status, gameId]);
 
   // Extract current round info - use cached data during game_over to preserve community cards
-  // CRITICAL: For Holm games, prefer the ACTIVE (non-completed) round, fall back to latest by round_number
-  // This prevents stale cards from completed rounds showing when new hand is starting
-  const liveRound = useMemo(() => {
-    if (game?.game_type === 'holm-game') {
-      if (!game?.rounds || game.rounds.length === 0) return null;
-      
-      // First try to find an active (non-completed) round
-      const activeRound = game.rounds.find(r => r.status !== 'completed');
-      if (activeRound) return activeRound;
-      
-      // Fall back to latest by round_number (for showdowns/game_over)
-      return game.rounds.reduce((latest, r) => 
-        (!latest || r.round_number > latest.round_number) ? r : latest, 
-        null as Round | null
-      );
-    }
-    return game?.rounds?.find(r => r.round_number === game.current_round) ?? null;
-  }, [game?.game_type, game?.rounds, game?.current_round]);
+  // CRITICAL: For Holm games, always use the LATEST round by round_number (not game.current_round which can be stale)
+  const liveRound = game?.game_type === 'holm-game'
+    ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
+    : game?.rounds?.find(r => r.round_number === game.current_round);
   
   // DEBUG: Always log liveRound details during in_progress Holm games
   if (game?.game_type === 'holm-game' && game?.status === 'in_progress') {
@@ -1806,18 +1792,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         prevHash: prevHash.slice(0, 50),
         newHash: currentCommunityHash.slice(0, 50),
         liveRoundId: liveRound?.id,
-        hasLiveCards: !!liveRound?.community_cards?.length,
+        hasLiveCards: !!liveRound?.community_cards?.length
       });
-
-      // IMPORTANT: Clear player cards immediately so we never render the previous hand's player cards
-      // while we're waiting for fresh player_cards inserts for this hand.
-      setPlayerCards([]);
-      setCardStateContext(null);
-
       // Reset max revealed for the new hand, but DON'T clear cache
       // The cache will be naturally superseded by liveRound in the currentRound calculation
       maxRevealedRef.current = liveRound?.community_cards_revealed ?? 0;
-
+      
       // Reset pre-fold/pre-stay for the new hand
       setHolmPreFold(false);
       setHolmPreStay(false);
@@ -1872,20 +1852,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
   const currentCardIdentity = communityCards?.map(c => `${c.rank}${c.suit}`).join(',') || '';
 
-  // Hand context key: Holm can reuse the same round_number (and sometimes even the same round id) across hands.
-  // This MUST change as soon as the round/cards change so MobileGameTable can clear UI caches before paint.
-  // CRITICAL: Do NOT include chucky_cards_revealed or community_cards_revealed here - those change WITHIN
-  // the same hand as cards are progressively revealed, and would cause community cards to flash/reset.
-  const handContextKey = useMemo(() => {
-    if (!currentRound?.id) return null;
-    const chuckyActiveFlag = currentRound?.chucky_active ? '1' : '0';
-    // Only use round id + card identity + chucky active flag - NOT revealed counts
-    return `${currentRound.id}:${currentCardIdentity}:${chuckyActiveFlag}`;
-  }, [
-    currentRound?.id,
-    currentCardIdentity,
-    currentRound?.chucky_active,
-  ]);
+  // Hand context key: Holm reuses the same round_number (and sometimes the same round id) across hands.
+  // So we include the card identity + chucky state to force child UI caches to reset on true hand changes.
+  const handContextKey =
+    cardStateContext?.roundId ??
+    (currentRound?.id
+      ? `${currentRound.id}:${currentCardIdentity}:${currentRound?.chucky_active ? '1' : '0'}:${currentRound?.chucky_cards_revealed ?? 0}`
+      : null);
 
   // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
@@ -2541,9 +2514,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] ERROR during proceed:', error);
         }
-      }, 2000);
+      }, 4000);
       
-      console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 2 seconds');
+      console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
     }
     // If awaiting changed to false, clear any existing timer
     else if (!currentAwaiting && awaitingTimerRef.current) {
@@ -4618,13 +4591,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             cachedRoundNumber: cachedRoundData?.round_number
           });
           const hasActiveRound = Boolean(currentRound?.id);
-          const roundNumberForUI = currentRound?.round_number ?? game.current_round ?? 1;
           return isMobile ? (
             <MobileGameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={roundNumberForUI}
+              currentRound={game.current_round || 1}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               timeLeft={timeLeft}
@@ -4738,7 +4710,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={roundNumberForUI}
+              currentRound={game.current_round || 1}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               authoritativeCardCount={cardStateContext?.cardsDealt}

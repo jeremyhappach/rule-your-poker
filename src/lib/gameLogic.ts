@@ -1064,9 +1064,9 @@ export async function endRound(gameId: string) {
           currentPot,
           legValue,
           legsToWin,
-        freshGameData?.dealer_position || 1
+          freshGameData?.dealer_position || 1
         );
-      }, 2000);
+      }, 4000);
       
       return; // Exit early, game over will be handled after delay
     }

@@ -1,6 +1,6 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 interface CommunityCardsProps {
   cards: CardType[];
@@ -11,73 +11,85 @@ interface CommunityCardsProps {
 }
 
 export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false }: CommunityCardsProps) => {
-  // Stable identity for the current hand - memoized to prevent unnecessary recalculations
-  const handId = useMemo(() => {
-    if (!cards || cards.length === 0) return '';
-    return cards.map(c => `${c.rank}${c.suit}`).join(',');
-  }, [cards]);
+  const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
-  // Track processed hand and counter with refs to avoid render loops
-  const processedHandIdRef = useRef<string>('');
-  const handCounterRef = useRef(0);
-  const lastRevealedRef = useRef<number>(0);
-  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
-  
-  // State for animation control
-  const [renderKey, setRenderKey] = useState(0);
+  const [animatedHandId, setAnimatedHandId] = useState<string>('');
   const [dealtCards, setDealtCards] = useState<Set<number>>(new Set());
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   
-  const clearTimeouts = useCallback(() => {
+  const lastRevealedRef = useRef<number>(0);
+  const mountTimeRef = useRef<number>(Date.now());
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const isFirstMountRef = useRef<boolean>(true);
+  
+  const clearTimeouts = () => {
     timeoutsRef.current.forEach(t => clearTimeout(t));
     timeoutsRef.current = [];
-  }, []);
+  };
   
-  // Process new hands - use functional updates to batch state changes
   useEffect(() => {
-    // No cards - reset everything
-    if (!handId || cards.length === 0) {
-      if (processedHandIdRef.current !== '') {
-        processedHandIdRef.current = '';
-        lastRevealedRef.current = 0;
-        clearTimeouts();
-        setDealtCards(new Set());
-        setFlippedCards(new Set());
-      }
+    console.log('[COMMUNITY_CARDS] useEffect - handId:', handId, 'animatedHandId:', animatedHandId, 'cardsLength:', cards.length, 'dealtCardsSize:', dealtCards.size);
+    
+    if (cards.length === 0) {
+      console.log('[COMMUNITY_CARDS] Early return: no cards');
+      return;
+    }
+    if (handId === animatedHandId) {
+      console.log('[COMMUNITY_CARDS] Early return: handId matches animatedHandId, dealtCards size:', dealtCards.size);
       return;
     }
     
-    // Same hand, already processed - skip
-    if (handId === processedHandIdRef.current && dealtCards.size > 0) {
-      return;
-    }
+    console.log('[COMMUNITY_CARDS] Processing NEW hand - handId changed from', animatedHandId, 'to', handId);
+    clearTimeouts();
     
-    // New hand detected!
-    if (handId !== processedHandIdRef.current) {
-      handCounterRef.current += 1;
-      processedHandIdRef.current = handId;
-      clearTimeouts();
-      
-      // Build all state in one go to prevent flashing
+    // For first mount OR subsequent hands (not first game load), show cards immediately
+    // Only animate dealing on the very first hand of a session
+    const shouldSkipAnimation = isFirstMountRef.current || animatedHandId !== '';
+    
+    console.log('[COMMUNITY_CARDS] shouldSkipAnimation:', shouldSkipAnimation, 'isFirstMountRef:', isFirstMountRef.current);
+    
+    if (shouldSkipAnimation) {
       const allDealt = new Set<number>();
       for (let i = 0; i < cards.length; i++) allDealt.add(i);
       
       const preFlipped = new Set<number>();
       for (let i = 2; i < revealed; i++) preFlipped.add(i);
       
-      lastRevealedRef.current = revealed;
-      
-      // Batch updates - React 18 will batch these automatically
-      setRenderKey(prev => prev + 1);
+      console.log('[COMMUNITY_CARDS] Setting dealtCards to all', cards.length, 'cards, flipped up to', revealed);
       setDealtCards(allDealt);
       setFlippedCards(preFlipped);
+      setAnimatedHandId(handId);
+      lastRevealedRef.current = revealed;
+      isFirstMountRef.current = false; // Mark first mount as complete
+      return;
     }
-  }, [handId, cards, revealed, clearTimeouts, dealtCards.size]);
+    
+    // First hand animation (rare - only when component mounts with no prior handId)
+    setDealtCards(new Set());
+    setFlippedCards(new Set());
+    lastRevealedRef.current = revealed;
+    
+    const INITIAL_DELAY = 800;
+    const CARD_INTERVAL = 200;
+    
+    cards.forEach((_, index) => {
+      const timeout = setTimeout(() => {
+        setDealtCards(prev => new Set([...prev, index]));
+      }, INITIAL_DELAY + index * CARD_INTERVAL);
+      timeoutsRef.current.push(timeout);
+    });
+    
+    const idTimeout = setTimeout(() => {
+      setAnimatedHandId(handId);
+      isFirstMountRef.current = false; // Mark first mount as complete
+    }, 50);
+    timeoutsRef.current.push(idTimeout);
+    
+  }, [handId, cards, revealed, animatedHandId]);
   
-  // Handle reveal progression (cards flipping face up)
   useEffect(() => {
-    if (cards.length === 0 || !handId) return;
-    if (handId !== processedHandIdRef.current) return;
+    if (cards.length === 0) return;
+    if (handId !== animatedHandId) return;
     if (revealed <= lastRevealedRef.current) return;
     
     const previousRevealed = lastRevealedRef.current;
@@ -101,18 +113,16 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
       }, delay);
       timeoutsRef.current.push(timeout);
     });
-  }, [revealed, handId, cards.length, flippedCards]);
+  }, [revealed, handId, animatedHandId, cards.length, flippedCards]);
   
-  // Cleanup on unmount
   useEffect(() => {
     return () => clearTimeouts();
-  }, [clearTimeouts]);
+  }, []);
   
-  // Don't render if no cards
-  if (!cards || cards.length === 0) return null;
-
-  // Use stable key based on handCounter ref (not state) to avoid re-triggering
-  const stableHandKey = handCounterRef.current;
+  if (cards.length === 0) return null;
+  
+  // Don't return null during hand transitions - just render with current dealt cards state
+  // The previous null return caused cards to disappear during state sync
 
   return (
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
@@ -124,7 +134,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
           
           return (
             <div
-              key={`${stableHandKey}-${index}-${card.rank}${card.suit}`}
+              key={index}
               className="w-9 h-12 sm:w-10 sm:h-14 relative"
               style={{ 
                 transformStyle: 'preserve-3d',
