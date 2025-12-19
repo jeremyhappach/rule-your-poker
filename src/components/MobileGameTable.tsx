@@ -2478,59 +2478,61 @@ export const MobileGameTable = ({
         
         {/* Buck indicator on felt - Holm games only, hide during showdown */}
         {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdown && (() => {
-        // Calculate buck's slot from clockwise distance
+        // CRITICAL: For observers (!currentPlayer), use ABSOLUTE position mapping
+        // For seated players, use relative slots based on clockwise distance
+        const isObserver = !currentPlayer;
         const isCurrentPlayerBuck = currentPlayer?.position === buckPosition;
-        const buckSlot = isCurrentPlayerBuck ? -1 : getClockwiseDistance(buckPosition) - 1;
-
-        // Calculate pixel positions - offset from dealer button
+        
+        // Calculate pixel positions
         let positionStyle: React.CSSProperties = {
           bottom: '8px',
           left: '55%',
           transform: 'translateX(-50%)',
           transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
         };
-        if (!isCurrentPlayerBuck && buckSlot >= 0) {
+        
+        if (isObserver) {
+          // OBSERVER MODE: Use absolute position mapping matching player positions
+          // Position 1: Top-left, Position 2: Left, Position 3: Bottom-left
+          // Position 4: Bottom center, Position 5: Bottom-right, Position 6: Right, Position 7: Top-right
+          if (buckPosition === 1) {
+            positionStyle = { top: '44px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+          } else if (buckPosition === 2) {
+            positionStyle = { top: '38%', left: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+          } else if (buckPosition === 3) {
+            positionStyle = { bottom: '52px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+          } else if (buckPosition === 4) {
+            // Bottom center - current player position for seated players
+            positionStyle = { bottom: '8px', left: '55%', transform: 'translateX(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+          } else if (buckPosition === 5) {
+            positionStyle = { bottom: '52px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+          } else if (buckPosition === 6) {
+            positionStyle = { top: '38%', right: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+          } else if (buckPosition === 7) {
+            positionStyle = { top: '44px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
+          }
+        } else if (!isCurrentPlayerBuck) {
+          // SEATED PLAYER MODE: Use relative slots based on clockwise distance
+          const buckSlot = getClockwiseDistance(buckPosition) - 1;
           // Slot positions match clockwise layout:
           // 0: Bottom-left, 1: Middle-left, 2: Top-left
           // 3: Top-right, 4: Middle-right, 5: Bottom-right
           if (buckSlot === 0) {
-            positionStyle = {
-              bottom: '52px',
-              left: '80px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
+            positionStyle = { bottom: '52px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
           } else if (buckSlot === 1) {
-            positionStyle = {
-              top: '38%',
-              left: '52px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
+            positionStyle = { top: '38%', left: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
           } else if (buckSlot === 2) {
-            positionStyle = {
-              top: '44px',
-              left: '80px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
+            positionStyle = { top: '44px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
           } else if (buckSlot === 3) {
-            positionStyle = {
-              top: '44px',
-              right: '80px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
+            positionStyle = { top: '44px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
           } else if (buckSlot === 4) {
-            positionStyle = {
-              top: '38%',
-              right: '52px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
+            positionStyle = { top: '38%', right: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
           } else if (buckSlot === 5) {
-            positionStyle = {
-              bottom: '52px',
-              right: '80px',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            };
+            positionStyle = { bottom: '52px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
           }
         }
+        // else: isCurrentPlayerBuck - use default bottom center position
+        
         return <div className="absolute z-20" style={positionStyle}>
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
