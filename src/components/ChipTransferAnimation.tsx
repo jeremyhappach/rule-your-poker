@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { formatChipValue } from '@/lib/utils';
 
 interface ChipAnimation {
   id: string;
@@ -148,7 +149,7 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
               animation: `chipTransfer${i} 2s ease-in-out forwards`,
             }}
           >
-            <span className="text-black text-[10px] font-bold">${lockedAmountRef.current}</span>
+            <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
           </div>
           <style>{`
             @keyframes chipTransfer${i} {

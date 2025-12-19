@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { formatChipValue } from '@/lib/utils';
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
@@ -112,7 +113,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
           animation: 'potToPlayer 2s ease-in-out forwards',
         }}
       >
-        <span className="text-black text-[10px] font-bold">${lockedAmountRef.current}</span>
+        <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
       </div>
       <style>{`
         @keyframes potToPlayer {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
+import { formatChipValue } from '@/lib/utils';
 
 interface HolmWinPotAnimationProps {
   triggerId: string | null;
@@ -162,7 +163,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
           animation: `holmWinPot-${triggerId} 5.5s ease-out forwards`,
         }}
       >
-        <span className="text-black text-xs font-black drop-shadow-sm">${lockedAmountRef.current}</span>
+        <span className="text-black text-xs font-black drop-shadow-sm">${formatChipValue(lockedAmountRef.current)}</span>
       </div>
       
       <style dangerouslySetInnerHTML={{ __html: `
