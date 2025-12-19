@@ -51,7 +51,22 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           return;
         }
 
-        // Wrap in inner try-catch to fully suppress transient cold-start errors
+        const shouldSuppress = (rawMsg: string) => {
+          const msg = rawMsg.toLowerCase();
+          return (
+            msg.includes('503') ||
+            msg.includes('401') ||
+            msg.includes('404') ||
+            msg.includes('cold start') ||
+            msg.includes('key length is zero') ||
+            msg.includes('game not found') ||
+            msg.includes('connection reset') ||
+            msg.includes('sendrequest') ||
+            msg.includes('client error')
+          );
+        };
+
+        // Wrap in inner try-catch to fully suppress transient backend errors
         let data, error;
         try {
           const result = await supabase.functions.invoke('enforce-deadlines', {
@@ -60,21 +75,16 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           data = result.data;
           error = result.error;
         } catch (invokeErr: any) {
-          // Completely suppress transient errors - don't even log
           const msg = String(invokeErr?.message ?? invokeErr ?? '');
-          if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('401') || msg.includes('cold start')) {
-            return;
-          }
-          throw invokeErr; // Re-throw non-transient errors
+          if (shouldSuppress(msg)) return;
+          console.warn('[DEADLINE ENFORCER] invoke exception:', invokeErr);
+          return;
         }
 
         if (error) {
           const msg = String((error as any)?.message ?? error ?? '');
-          // Transient backend/platform states we should silently ignore and retry next poll.
-          if (msg.includes('503') || msg.includes('Key length is zero') || msg.includes('401') || msg.includes('cold start')) {
-            return;
-          }
-          console.error('[DEADLINE ENFORCER] Error:', error);
+          if (shouldSuppress(msg)) return;
+          console.warn('[DEADLINE ENFORCER] Error:', error);
           return;
         }
 
