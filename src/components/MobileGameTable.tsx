@@ -1519,9 +1519,11 @@ export const MobileGameTable = ({
     // Hide cards from original position when winner's cards are "tabled" above pot
     // Applies to both Holm winners and 3-5-7 winners during win animation
     // For 3-5-7: only table AFTER leg award animation completes (not during 'waiting' phase)
+    // For solo vs Chucky: hide solo player's cards from slot (they're tabled above pot)
     const is357WinWinner = threeFiveSevenWinnerId === player.id && 
       threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting';
-    const shouldHideForTabling = isHolmWinWinner || is357WinWinner;
+    const isSoloVsChuckyPlayer = isSoloVsChucky && player.current_decision === 'stay' && player.id !== currentPlayer?.id;
+    const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer;
     const cardsElement = isShowdown && !shouldHideForTabling ? (
       <div className={`flex ${hideChipForShowdown ? 'scale-100' : 'scale-75'} origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
         <PlayerHand 
@@ -1997,6 +1999,14 @@ export const MobileGameTable = ({
           const soloPlayerCards = getPlayerCards(soloPlayer.id);
           if (soloPlayerCards.length === 0) return null;
           
+          // Sort cards by rank (ascending) like PlayerHand does
+          const RANK_ORDER: Record<string, number> = {
+            '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+            '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+          };
+          const sortedCards = [...soloPlayerCards].map((card, index) => ({ card, originalIndex: index }))
+            .sort((a, b) => RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank]);
+          
           // Determine if solo player is the winner (for highlighting)
           const isSoloPlayerWinner = winnerPlayerId === soloPlayer.id;
           
@@ -2009,32 +2019,32 @@ export const MobileGameTable = ({
                   willChange: 'transform, opacity',
                 }}
               >
-                {soloPlayerCards.map((card, index) => {
+                {sortedCards.map(({ card, originalIndex }, displayIndex) => {
                   const isFourColor = deckColorMode === 'four_color';
                   const fourColorConfig = getFourColorSuit(card.suit);
                   const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
                   const twoColorTextStyle = !isFourColor 
                     ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
                     : {};
-                  const isHighlighted = isSoloPlayerWinner && winningCardHighlights.playerIndices.includes(index);
-                  const isKicker = isSoloPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(index);
+                  const isHighlighted = isSoloPlayerWinner && winningCardHighlights.playerIndices.includes(originalIndex);
+                  const isKicker = isSoloPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(originalIndex);
                   
                   // Apply lift effect for highlighted cards
                   const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
                   
                   return (
                     <div 
-                      key={index} 
+                      key={displayIndex} 
                       className={`w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 flex flex-col items-center justify-center shadow-lg transition-transform duration-200 ${
                         isHighlighted ? 'border-yellow-400 ring-2 ring-yellow-400/50' : 
                         isKicker ? 'border-blue-400 ring-1 ring-blue-400/30' : 
-                        'border-green-500'
+                        'border-gray-300'
                       }`}
                       style={{ 
                         backgroundColor: cardBg, 
                         ...twoColorTextStyle,
                         transform: liftTransform || undefined,
-                        marginLeft: index > 0 ? '-12px' : '0'
+                        marginLeft: displayIndex > 0 ? '-12px' : '0'
                       }}
                     >
                       <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
