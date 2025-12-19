@@ -29,7 +29,13 @@ export function DevDebugOverlay({
   items: DebugItem[];
   className?: string;
 }) {
-  if (!import.meta.env.DEV) return null;
+  const enabled =
+    import.meta.env.DEV ||
+    (typeof window !== "undefined" &&
+      (new URLSearchParams(window.location.search).get("debug") === "1" ||
+        window.localStorage.getItem("debugOverlay") === "1"));
+
+  if (!enabled) return null;
 
   return (
     <aside
