@@ -33,7 +33,6 @@ import cubsLogo from "@/assets/cubs-logo.png";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { ChevronUp, ChevronDown } from "lucide-react";
-import { DevDebugOverlay } from "./DevDebugOverlay";
 
 // Custom hook for swipe detection
 const useSwipeGesture = (onSwipeUp: () => void, onSwipeDown: () => void) => {
@@ -379,6 +378,8 @@ export const MobileGameTable = ({
   // HOLM: Lock solo-vs-Chucky tabling once it starts to prevent flicker/unmount during win animation
   const [soloVsChuckyTableLocked, setSoloVsChuckyTableLocked] = useState(false);
   const [soloVsChuckyPlayerIdLocked, setSoloVsChuckyPlayerIdLocked] = useState<string | null>(null);
+  // Track if tabled cards have already animated (to prevent re-animation on re-render)
+  const soloVsChuckyAnimatedRef = useRef(false);
   
   // Flash triggers for winner's chipstack when receiving legs/pot
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
@@ -645,6 +646,7 @@ export const MobileGameTable = ({
     // Solo-vs-Chucky tabling lock (must clear together with caches)
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
+    soloVsChuckyAnimatedRef.current = false;
 
     // External lifted community cache (parent)
     if (externalCommunityCardsCache) {
@@ -1698,18 +1700,6 @@ export const MobileGameTable = ({
       </div>;
   };
   return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
-      <DevDebugOverlay
-        title="MobileGameTable"
-        items={[
-          { label: "handContextId", value: handContextId ?? "null" },
-          { label: "pendingHandContextId", value: pendingHandContextIdRef.current ?? "null" },
-          { label: "soloVsChuckyTableLocked", value: soloVsChuckyTableLocked },
-          { label: "soloVsChuckyPlayerIdLocked", value: soloVsChuckyPlayerIdLocked ?? "null" },
-          { label: "winnerPlayerId", value: winnerPlayerId ?? "null" },
-          { label: "holmWinPotTriggerId", value: holmWinPotTriggerId ?? "null" },
-          { label: "resetDeferred", value: shouldDeferHandReset() },
-        ]}
-      />
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
@@ -2153,15 +2143,22 @@ export const MobileGameTable = ({
           
           // Determine if solo player is the winner (for highlighting)
           const isSoloPlayerWinner = winnerPlayerId === soloPlayer.id;
+          const hasHighlights = isSoloPlayerWinner && winningCardHighlights.hasHighlights;
+          
+          // Only animate once - mark as animated after first render
+          const shouldAnimate = !soloVsChuckyAnimatedRef.current;
+          if (shouldAnimate) {
+            soloVsChuckyAnimatedRef.current = true;
+          }
           
           return (
             <div className="absolute top-[8%] left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
               <div 
                 className="flex"
-                style={{
+                style={shouldAnimate ? {
                   animation: 'holmSoloTableSlide 0.6s ease-out forwards',
                   willChange: 'transform, opacity',
-                }}
+                } : undefined}
               >
                 {sortedCards.map(({ card, originalIndex }, displayIndex) => {
                   const isFourColor = deckColorMode === 'four_color';
@@ -2172,21 +2169,22 @@ export const MobileGameTable = ({
                     : {};
                   const isHighlighted = isSoloPlayerWinner && winningCardHighlights.playerIndices.includes(originalIndex);
                   const isKicker = isSoloPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(originalIndex);
+                  // Dim cards not part of winning hand (when we have highlights)
+                  const isDimmed = hasHighlights && !isHighlighted && !isKicker;
                   
                   // Apply lift effect for highlighted cards
                   const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
+                  // Dim style
+                  const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
                   
                   return (
                     <div 
                       key={displayIndex} 
-                      className={`w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 flex flex-col items-center justify-center shadow-lg transition-transform duration-200 ${
-                        isHighlighted ? 'border-yellow-400 ring-2 ring-yellow-400/50' : 
-                        isKicker ? 'border-blue-400 ring-1 ring-blue-400/30' : 
-                        'border-gray-300'
-                      }`}
+                      className="w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 border-gray-300 flex flex-col items-center justify-center shadow-lg transition-transform duration-200"
                       style={{ 
                         backgroundColor: cardBg, 
                         ...twoColorTextStyle,
+                        ...dimStyle,
                         transform: liftTransform || undefined,
                         marginLeft: displayIndex > 0 ? '-12px' : '0'
                       }}
