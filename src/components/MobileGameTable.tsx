@@ -1488,7 +1488,7 @@ export const MobileGameTable = ({
             ${isClickable ? 'active:scale-95' : ''}
           `}>
             <span className={`text-sm font-bold leading-none ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-              ${Math.round(displayedChips[player.id] ?? player.chips)}
+              ${formatChipValue(Math.round(displayedChips[player.id] ?? player.chips))}
             </span>
             {/* Flash for legs received */}
             <ValueChangeFlash 
@@ -2615,7 +2615,7 @@ export const MobileGameTable = ({
                       
                       {/* Chip stack - prioritize locked ref > displayedChips state > actual chips */}
                       <div className={`text-right min-w-[45px] font-bold text-sm ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                        ${Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips)}
+                        ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
                       </div>
                     </div>
                   </div>
@@ -2835,7 +2835,7 @@ export const MobileGameTable = ({
                 {/* Chip stack - prioritize locked ref > displayedChips state > actual chips */}
                 <div className="relative">
                   <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                    ${Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips).toLocaleString()}
+                    ${formatChipValue(Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips))}
                   </span>
                   {/* Flash for legs received */}
                   <ValueChangeFlash 

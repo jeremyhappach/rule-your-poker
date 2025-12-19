@@ -4565,7 +4565,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                         <Badge variant={index === 0 ? "default" : "secondary"}>
                           {p.legs} legs
                         </Badge>
-                        <Badge variant="outline" className={p.chips < 0 ? 'text-red-500' : ''}>${p.chips}</Badge>
+                        <Badge variant="outline" className={p.chips < 0 ? 'text-red-500' : ''}>${formatChipValue(p.chips)}</Badge>
                       </div>
                     </div>
                   ))}
