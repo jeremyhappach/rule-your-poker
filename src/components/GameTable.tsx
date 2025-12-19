@@ -227,7 +227,7 @@ export const GameTable = ({
 
   // AGGRESSIVE: When your player-hand round changes, hard-reset Chucky/showdown caches.
   const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const prev = prevHandContextIdRef.current;
     const next = handContextId ?? null;
 
