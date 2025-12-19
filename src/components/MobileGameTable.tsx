@@ -30,7 +30,7 @@ import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
@@ -611,7 +611,7 @@ export const MobileGameTable = ({
   // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
   const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const prev = prevHandContextIdRef.current;
     const next = handContextId ?? null;
 
