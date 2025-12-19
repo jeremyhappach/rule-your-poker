@@ -11,6 +11,7 @@ interface PlayerHandProps {
   gameType?: string | null;       // Game type for wild card determination
   currentRound?: number;          // Current round for wild card determination
   showSeparated?: boolean;        // For round 3, show unused cards separated to left
+  tightOverlap?: boolean;         // Use tighter spacing for multi-player showdown
 }
 
 // Get wild rank based on round (3-5-7 game only)
@@ -32,7 +33,8 @@ export const PlayerHand = ({
   hasHighlights = false,
   gameType,
   currentRound = 0,
-  showSeparated = false
+  showSeparated = false,
+  tightOverlap = false
 }: PlayerHandProps) => {
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -95,8 +97,14 @@ export const PlayerHand = ({
   const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
   const cardSize = getCardSize(displayCardCount);
   
-  // Calculate overlap based on card count
+  // Calculate overlap based on card count and tightOverlap flag
   const getOverlapClass = () => {
+    if (tightOverlap) {
+      // Tighter overlap for multi-player showdown
+      if (displayCardCount >= 7) return '-ml-4 sm:-ml-4 first:ml-0';
+      if (displayCardCount >= 5) return '-ml-3 sm:-ml-3 first:ml-0';
+      return '-ml-2 first:ml-0';
+    }
     if (displayCardCount >= 7) return '-ml-2 sm:-ml-2 first:ml-0';
     if (displayCardCount >= 5) return '-ml-2 sm:-ml-2 first:ml-0';
     return '-ml-1 first:ml-0';

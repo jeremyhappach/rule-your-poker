@@ -657,6 +657,11 @@ export const MobileGameTable = ({
     stayedPlayersCount === 1 && 
     (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn);
   
+  // HOLM: Detect multi-player showdown (2+ players stayed) - needs tighter card overlap
+  const isHolmMultiPlayerShowdown = gameType === 'holm-game' && 
+    stayedPlayersCount >= 2 && 
+    (roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn);
+  
   // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
   const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
   const currentPlayerStayed = currentPlayerForSecretReveal?.current_decision === 'stay';
@@ -1537,6 +1542,7 @@ export const MobileGameTable = ({
           gameType={gameType}
           currentRound={currentRound}
           showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
+          tightOverlap={isHolmMultiPlayerShowdown}
         />
       </div>
     ) : (
@@ -2104,6 +2110,7 @@ export const MobileGameTable = ({
                 highlightedIndices={winningCardHighlights.communityIndices}
                 kickerIndices={winningCardHighlights.kickerCommunityIndices}
                 hasHighlights={winningCardHighlights.hasHighlights}
+                tightOverlap={isHolmMultiPlayerShowdown}
               />
             </div>
           );
@@ -2807,6 +2814,7 @@ export const MobileGameTable = ({
                         gameType={gameType}
                         currentRound={currentRound}
                         showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
+                        tightOverlap={isHolmMultiPlayerShowdown}
                       />
                     </div>
                   ) : (
