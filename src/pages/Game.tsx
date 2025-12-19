@@ -1711,10 +1711,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.status, gameId]);
 
   // Extract current round info - use cached data during game_over to preserve community cards
-  // CRITICAL: For Holm games, always use the LATEST round by round_number (not game.current_round which can be stale)
-  const liveRound = game?.game_type === 'holm-game'
-    ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
-    : game?.rounds?.find(r => r.round_number === game.current_round);
+  // CRITICAL: For Holm games, prefer the ACTIVE (non-completed) round, fall back to latest by round_number
+  // This prevents stale cards from completed rounds showing when new hand is starting
+  const liveRound = useMemo(() => {
+    if (game?.game_type === 'holm-game') {
+      if (!game?.rounds || game.rounds.length === 0) return null;
+      
+      // First try to find an active (non-completed) round
+      const activeRound = game.rounds.find(r => r.status !== 'completed');
+      if (activeRound) return activeRound;
+      
+      // Fall back to latest by round_number (for showdowns/game_over)
+      return game.rounds.reduce((latest, r) => 
+        (!latest || r.round_number > latest.round_number) ? r : latest, 
+        null as Round | null
+      );
+    }
+    return game?.rounds?.find(r => r.round_number === game.current_round) ?? null;
+  }, [game?.game_type, game?.rounds, game?.current_round]);
   
   // DEBUG: Always log liveRound details during in_progress Holm games
   if (game?.game_type === 'holm-game' && game?.status === 'in_progress') {
