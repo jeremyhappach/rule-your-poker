@@ -1806,12 +1806,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         prevHash: prevHash.slice(0, 50),
         newHash: currentCommunityHash.slice(0, 50),
         liveRoundId: liveRound?.id,
-        hasLiveCards: !!liveRound?.community_cards?.length
+        hasLiveCards: !!liveRound?.community_cards?.length,
       });
+
+      // IMPORTANT: Clear player cards immediately so we never render the previous hand's player cards
+      // while we're waiting for fresh player_cards inserts for this hand.
+      setPlayerCards([]);
+      setCardStateContext(null);
+
       // Reset max revealed for the new hand, but DON'T clear cache
       // The cache will be naturally superseded by liveRound in the currentRound calculation
       maxRevealedRef.current = liveRound?.community_cards_revealed ?? 0;
-      
+
       // Reset pre-fold/pre-stay for the new hand
       setHolmPreFold(false);
       setHolmPreStay(false);
@@ -1866,13 +1872,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
   const currentCardIdentity = communityCards?.map(c => `${c.rank}${c.suit}`).join(',') || '';
 
-  // Hand context key: Holm reuses the same round_number (and sometimes the same round id) across hands.
-  // So we include the card identity + chucky state to force child UI caches to reset on true hand changes.
-  const handContextKey =
-    cardStateContext?.roundId ??
-    (currentRound?.id
-      ? `${currentRound.id}:${currentCardIdentity}:${currentRound?.chucky_active ? '1' : '0'}:${currentRound?.chucky_cards_revealed ?? 0}`
-      : null);
+  // Hand context key: Holm can reuse the same round_number (and sometimes even the same round id) across hands.
+  // This MUST change as soon as the round/cards change so MobileGameTable can clear UI caches before paint.
+  const handContextKey = useMemo(() => {
+    if (!currentRound?.id) return null;
+    const chuckyActiveFlag = currentRound?.chucky_active ? '1' : '0';
+    const chuckyRevealed = currentRound?.chucky_cards_revealed ?? 0;
+    const communityRevealed = currentRound?.community_cards_revealed ?? 0;
+    return `${currentRound.id}:${currentCardIdentity}:${chuckyActiveFlag}:${chuckyRevealed}:${communityRevealed}`;
+  }, [
+    currentRound?.id,
+    currentCardIdentity,
+    currentRound?.chucky_active,
+    currentRound?.chucky_cards_revealed,
+    currentRound?.community_cards_revealed,
+  ]);
 
   // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
@@ -4605,12 +4619,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             cachedRoundNumber: cachedRoundData?.round_number
           });
           const hasActiveRound = Boolean(currentRound?.id);
+          const roundNumberForUI = currentRound?.round_number ?? game.current_round ?? 1;
           return isMobile ? (
             <MobileGameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.current_round || 1}
+              currentRound={roundNumberForUI}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               timeLeft={timeLeft}
@@ -4724,7 +4739,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.current_round || 1}
+              currentRound={roundNumberForUI}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               authoritativeCardCount={cardStateContext?.cardsDealt}
