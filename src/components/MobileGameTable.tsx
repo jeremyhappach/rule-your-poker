@@ -1728,9 +1728,9 @@ export const MobileGameTable = ({
         <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
           {Array.from({
             length: Math.min(cardCountToShow, 7)
-          }, (_, i) => <div key={i} className="w-2 h-3 rounded-[1px] border border-amber-600/50" style={{
+          }, (_, i) => <div key={i} className="w-3 h-5 rounded-[2px] border border-amber-600/50" style={{
             background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-            marginLeft: i > 0 ? '-3px' : '0', // Overlap card backs
+            marginLeft: i > 0 ? '-5px' : '0', // Overlap card backs
             zIndex: cardCountToShow - i,
             animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
           }} />)}
