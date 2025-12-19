@@ -1705,9 +1705,11 @@ export const MobileGameTable = ({
     const isUpperCorner = effectiveSlotIndex === 2 || effectiveSlotIndex === 3;
     const isMiddlePosition = effectiveSlotIndex === 1 || effectiveSlotIndex === 4;
     const showNameBelowCards = isShowdown && hideChipForShowdown && (isUpperCorner || isMiddlePosition);
+    // In REGULAR mode (not showdown), upper corners should show name below chipstack for readability
+    const showNameBelowChipstack = isUpperCorner && !hideChipForShowdown;
     
     const cardsElement = isShowdown && !shouldHideForTabling ? (
-      <div className={`flex scale-75 origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''}`}>
+      <div className={`flex scale-75 origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-1' : ''}`}>
         <PlayerHand 
           cards={cards} 
           isHidden={false}
@@ -1737,8 +1739,9 @@ export const MobileGameTable = ({
     );
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
-        {/* Name above for bottom positions (always) and non-bottom positions when NOT in showdown-with-name-below mode */}
-        {(isBottomPosition || (!showNameBelowCards && !isBottomPosition)) && !hideChipForShowdown && nameElement}
+        {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
+        {/* Upper corners in regular mode show name BELOW chipstack for readability */}
+        {(isBottomPosition || (!showNameBelowCards && !isBottomPosition && !showNameBelowChipstack)) && !hideChipForShowdown && nameElement}
         {/* During showdown with hidden chips, show name above cards for bottom positions only */}
         {hideChipForShowdown && isBottomPosition && nameElement}
         {/* Hide chip stack during showdown to make room for cards */}
@@ -1747,6 +1750,8 @@ export const MobileGameTable = ({
             {chipElement}
           </MobilePlayerTimer>
         )}
+        {/* Name below chipstack for upper corners in regular mode */}
+        {showNameBelowChipstack && nameElement}
         {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
         {cardsElement}
         {/* Name below cards for upper corners and middle positions during showdown */}
