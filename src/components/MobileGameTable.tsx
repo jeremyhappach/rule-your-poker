@@ -2437,7 +2437,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute left-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-0' : 'top-2'
+                  shouldMoveUp ? 'top-4' : 'top-2'
                 }`}>
                   {renderPlayerChip(player, 2)}
                 </div>
@@ -2494,7 +2494,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute right-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-0' : 'top-2'
+                  shouldMoveUp ? 'top-4' : 'top-2'
                 }`}>
                   {renderPlayerChip(player, 3)}
                 </div>
@@ -2529,7 +2529,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute left-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-0' : 'top-2'
+                  shouldMoveUp ? 'top-4' : 'top-2'
                 }`}>
                   {renderPlayerChip(player, 2)}
                 </div>
@@ -2542,7 +2542,7 @@ export const MobileGameTable = ({
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
                 <div className={`absolute right-10 z-10 transition-all duration-300 ${
-                  shouldMoveUp ? 'top-0' : 'top-2'
+                  shouldMoveUp ? 'top-4' : 'top-2'
                 }`}>
                   {renderPlayerChip(player, 3)}
                 </div>
