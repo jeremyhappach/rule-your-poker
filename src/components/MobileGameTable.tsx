@@ -1376,8 +1376,10 @@ export const MobileGameTable = ({
     
     // During showdown/announcement, hide chip stack to make room for bigger cards
     // EXCEPTION: During Holm win animation, keep winner's chipstack visible (cards are "tabled" below Chucky)
+    // EXCEPTION: During solo vs Chucky, keep solo player's chipstack visible (only their cards are tabled)
     const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
-    const hideChipForShowdown = isShowdown && !isHolmWinWinner;
+    const isSoloVsChuckyPlayerForChip = isSoloVsChucky && player.current_decision === 'stay' && player.id !== currentPlayer?.id;
+    const hideChipForShowdown = isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
     
     const isDealer = dealerPosition === player.position;
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
@@ -1538,7 +1540,8 @@ export const MobileGameTable = ({
         />
       </div>
     ) : (
-      apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
+      // Also hide card backs when cards are tabled (solo vs Chucky)
+      !shouldHideForTabling && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
         <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
           {Array.from({
             length: Math.min(cardCountToShow, 7)
@@ -2011,7 +2014,7 @@ export const MobileGameTable = ({
           const isSoloPlayerWinner = winnerPlayerId === soloPlayer.id;
           
           return (
-            <div className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
+            <div className="absolute top-[8%] left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
               <div 
                 className="flex"
                 style={{
