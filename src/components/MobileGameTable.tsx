@@ -381,6 +381,9 @@ export const MobileGameTable = ({
   // Track if tabled cards have already animated (to prevent re-animation on re-render)
   const soloVsChuckyAnimatedRef = useRef(false);
   
+  // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
+  const [showdownModeLocked, setShowdownModeLocked] = useState(false);
+  
   // Flash triggers for winner's chipstack when receiving legs/pot
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   const [winnerPotFlashTrigger, setWinnerPotFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
@@ -647,6 +650,9 @@ export const MobileGameTable = ({
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
     soloVsChuckyAnimatedRef.current = false;
+    
+    // Showdown mode lock (prevents cards from snapping back after announcement clears)
+    setShowdownModeLocked(false);
 
     // External lifted community cache (parent)
     if (externalCommunityCardsCache) {
@@ -880,10 +886,21 @@ export const MobileGameTable = ({
   // This is true when: 
   // 1. Any player has exposed cards during active showdown, OR
   // 2. We have a result announcement showing (lastRoundResult is set)
+  // 3. We've locked showdown mode (prevents snap-back after announcement clears)
   const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
   // Check if we're showing an announcement (either normal round result or game-over)
   const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && (awaitingNextRound || isGameOver);
-  const isAnyPlayerInShowdown = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
+  const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement);
+  
+  // Lock showdown mode once it becomes true - only reset via resetHandUiCaches
+  useEffect(() => {
+    if (isAnyPlayerInShowdownRaw && !showdownModeLocked) {
+      setShowdownModeLocked(true);
+    }
+  }, [isAnyPlayerInShowdownRaw, showdownModeLocked]);
+  
+  // Use locked state to prevent snap-back (cards stay narrow after announcement clears)
+  const isAnyPlayerInShowdown = isAnyPlayerInShowdownRaw || showdownModeLocked;
 
   // Determine winner from lastRoundResult for dimming logic
   // ALSO derive winner when holmWinPotTriggerId is set (for tabling winner cards during animation)
@@ -2251,7 +2268,7 @@ export const MobileGameTable = ({
         
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div className="absolute top-[62%] left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px]">
+          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[70%]' : 'top-[62%]'}`}>
             <span className="text-red-400 text-sm mr-1">👿</span>
             {cachedChuckyCards.map((card, index) => {
           const isRevealed = index < cachedChuckyCardsRevealed;
@@ -2939,7 +2956,7 @@ export const MobileGameTable = ({
                     <div className="text-sm text-muted-foreground">Cards tabled on the felt</div>
                   ) : currentPlayerCards.length > 0 ? (
                     <div
-                      className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay' ? 'opacity-40 grayscale-[30%]' : ''}`}
+                      className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                     >
                       <PlayerHand 
                         cards={currentPlayerCards} 
