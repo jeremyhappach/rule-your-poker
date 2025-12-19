@@ -1755,7 +1755,11 @@ export const MobileGameTable = ({
         {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
         {cardsElement}
         {/* Name below cards for upper corners and middle positions during showdown */}
-        {showNameBelowCards && nameElement}
+        {showNameBelowCards && (
+          <div className={isUpperCorner ? 'mt-1' : ''}>
+            {nameElement}
+          </div>
+        )}
       </div>;
   };
   return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
