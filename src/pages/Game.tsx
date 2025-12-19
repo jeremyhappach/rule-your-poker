@@ -2514,9 +2514,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         } catch (error) {
           console.error('[AWAITING_NEXT_ROUND] ERROR during proceed:', error);
         }
-      }, 4000);
+      }, 2000);
       
-      console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
+      console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 2 seconds');
     }
     // If awaiting changed to false, clear any existing timer
     else if (!currentAwaiting && awaitingTimerRef.current) {
