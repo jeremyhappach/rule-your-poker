@@ -159,6 +159,15 @@ const PEORIA_CUSTOM = [
   "Lou's Drive In",
   "Sheridan Village",
   "Lakeview Museum",
+  "Grandview Motel",
+  "SOPs",
+  "Sullivan's",
+  "Nick's Place",
+  "Grand Prarie",
+  "Main St.",
+  "Big Al's",
+  "Columbia Terrace",
+  "Casey's",
 ];
 
 // Chicago athletes - NO WHITE SOX, Cubs players post-2010 only
