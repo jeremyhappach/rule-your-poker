@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
+import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
 
 import { ChuckyHand } from "./ChuckyHand";
@@ -430,6 +431,9 @@ export const MobileGameTable = ({
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   const [winnerPotFlashTrigger, setWinnerPotFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   
+  // Emoticon overlay state - shows emoticon instead of chipstack value for 4 seconds
+  const [emoticonOverlay, setEmoticonOverlay] = useState<{ emoticon: string; expiresAt: number } | null>(null);
+  
   // FIX: Cache current player's legs EAGERLY - capture before any state transitions
   // This must be updated BEFORE game_over status, not during render
   const [cachedCurrentPlayerLegs, setCachedCurrentPlayerLegs] = useState<number>(0);
@@ -511,6 +515,35 @@ export const MobileGameTable = ({
   
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
+  
+  // Cleanup emoticon overlay after it expires
+  useEffect(() => {
+    if (!emoticonOverlay) return;
+    
+    const timeRemaining = emoticonOverlay.expiresAt - Date.now();
+    if (timeRemaining <= 0) {
+      setEmoticonOverlay(null);
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setEmoticonOverlay(null);
+    }, timeRemaining);
+    
+    return () => clearTimeout(timer);
+  }, [emoticonOverlay]);
+  
+  // Handler for quick emoticon selection - sends to chat and shows on chipstack
+  const handleQuickEmoticon = useCallback((emoticon: string) => {
+    // Send to chat
+    onSendChat?.(emoticon);
+    
+    // Show on chipstack for 4 seconds
+    setEmoticonOverlay({
+      emoticon,
+      expiresAt: Date.now() + 4000
+    });
+  }, [onSendChat]);
   
   // Delay community cards rendering by 1 second after player cards appear (Holm only)
   // Use external cache for community cards if provided (to persist across remounts during win animation)
@@ -3280,16 +3313,30 @@ export const MobileGameTable = ({
             })()}
             
             {/* Player info - below cards */}
-            <div className="flex flex-col gap-2 mt-16">
+            <div className="flex flex-col gap-1 mt-16">
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
                   {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
                 <div className="relative">
-                  <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                    ${formatChipValue(Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips))}
-                  </span>
+                  {/* Show emoticon overlay OR chipstack value */}
+                  {emoticonOverlay ? (
+                    <span 
+                      className="text-2xl animate-in fade-in zoom-in duration-200"
+                      style={{
+                        animation: emoticonOverlay.expiresAt - Date.now() < 500 
+                          ? 'fadeOutEmoticon 0.5s ease-out forwards' 
+                          : undefined
+                      }}
+                    >
+                      {emoticonOverlay.emoticon}
+                    </span>
+                  ) : (
+                    <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                      ${formatChipValue(Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips))}
+                    </span>
+                  )}
                   <ValueChangeFlash 
                     value={0}
                     prefix="+L"
@@ -3307,7 +3354,27 @@ export const MobileGameTable = ({
                     {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
                   </Badge>}
               </div>
+              
+              {/* Quick emoticon picker */}
+              <QuickEmoticonPicker 
+                onSelect={handleQuickEmoticon} 
+                disabled={!onSendChat || isChatSending}
+              />
             </div>
+            
+            {/* Emoticon fade-out animation */}
+            <style>{`
+              @keyframes fadeOutEmoticon {
+                from {
+                  opacity: 1;
+                  transform: scale(1);
+                }
+                to {
+                  opacity: 0;
+                  transform: scale(0.8);
+                }
+              }
+            `}</style>
           </div>}
         
         {/* CARDS TAB - Observer state */}
