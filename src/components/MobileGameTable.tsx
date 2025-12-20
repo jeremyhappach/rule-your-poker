@@ -2409,24 +2409,20 @@ export const MobileGameTable = ({
               </div>
 
               {/* Rabbit Hunt label (separate element so scaling doesn't affect placement) */}
-              {rabbitHunt &&
-                stayedPlayersCount === 0 &&
-                revealedForUi > 2 &&
-                revealedForUi < totalCommunity &&
-                !hasWinResult && (
-                  <div
-                    className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
-                    style={{
-                      top: isHolmMultiPlayerShowdown
-                        ? "calc(62% + 190px)"
-                        : "calc(50% + 190px)",
-                    }}
-                  >
-                    <span className="text-[11px] text-poker-gold/80 italic">
-                      Rabbit Hunting...
-                    </span>
-                  </div>
-                )}
+              {rabbitHunt && stayedPlayersCount === 0 && revealedForUi > 2 && !hasWinResult && (
+                <div
+                  className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
+                  style={{
+                    top: isHolmMultiPlayerShowdown
+                      ? "calc(62% + 170px)"
+                      : "calc(50% + 170px)",
+                  }}
+                >
+                  <span className="text-[11px] text-poker-gold/80 italic">
+                    Rabbit Hunting...
+                  </span>
+                </div>
+              )}
             </>
           );
         })()}
