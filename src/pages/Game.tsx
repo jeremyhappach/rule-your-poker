@@ -284,8 +284,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         toast({
           title: 'Session deleted',
           description: 'Not enough players, deleting this empty session.',
+          duration: 3000,
         });
-        navigate('/');
+        // Delay navigation so user sees the toast
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
       }
     };
 
@@ -2667,8 +2671,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           toast({
             title: 'Session deleted',
             description: 'Not enough players, deleting this empty session.',
+            duration: 3000,
           });
-          navigate('/');
+          setTimeout(() => {
+            navigate('/');
+          }, 2000);
         }
         return;
       }
@@ -2685,8 +2692,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         toast({
           title: 'Session deleted',
           description: 'Not enough players, deleting this empty session.',
+          duration: 3000,
         });
-        navigate('/');
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
       }
       return;
     }
