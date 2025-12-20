@@ -15,21 +15,16 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     // Bail early to prevent blank screens in error/preview environments.
     const publishableKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '');
     if (!publishableKey || publishableKey.length === 0) {
-      console.warn('[DEADLINE ENFORCER] Missing publishable key; skipping deadline enforcement');
       return;
     }
 
-    console.log('[DEADLINE ENFORCER] Hook called with gameId:', gameId, 'status:', gameStatus);
-
     if (!gameId) {
-      console.log('[DEADLINE ENFORCER] No gameId, skipping');
       return;
     }
 
     // Only run enforcer during active game states that have deadlines
     const activeStates = ['configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over'];
     if (!gameStatus || !activeStates.includes(gameStatus)) {
-      console.log('[DEADLINE ENFORCER] Status not active, skipping. Status:', gameStatus);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -98,11 +93,9 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           return;
         }
 
-        if (data?.actionsTaken?.length > 0) {
-          console.log('[DEADLINE ENFORCER] Actions taken:', data.actionsTaken);
-        }
-      } catch (err) {
-        console.error('[DEADLINE ENFORCER] Exception:', err);
+        // Silently ignore success results
+      } catch {
+        // Silently suppress all exceptions
       }
     };
 
