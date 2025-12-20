@@ -486,16 +486,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // CRITICAL: When the dealer config flow starts (same gameId, new game setup),
   // clear all lifted card caches immediately so the new game can't render old cards.
+  // ALSO clear when entering ante_decision - this is start of a new hand, any cached cards from previous game should go.
   const prevStatusForCacheRef = useRef<string | null>(null);
   useEffect(() => {
     const prev = prevStatusForCacheRef.current;
     const next = game?.status ?? null;
 
     const isDealerConfigScreen = next === 'game_selection' || next === 'configuring' || next === 'dealer_selection';
-    const entered = next !== prev && isDealerConfigScreen;
+    const isAntePhase = next === 'ante_decision';
+    const shouldClear = next !== prev && (isDealerConfigScreen || isAntePhase);
 
-    if (entered) {
-      clearLiftedCardCaches('ENTERED DEALER CONFIG FLOW', { prev, next });
+    if (shouldClear) {
+      console.log('[CACHE_GUARD] Clearing caches on status transition', { prev, next });
+      clearLiftedCardCaches('ENTERED NEW HAND FLOW', { prev, next });
       setCachedRoundData(null);
       cachedRoundRef.current = null;
       setPlayerCards([]);
@@ -797,7 +800,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               
               // CRITICAL FIX: Clear ALL card state when a new game is being set up
               // This ensures stale cards from previous game types are removed
-              if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'game_selection') {
+              if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'game_selection' || newStatus === 'dealer_selection') {
                 console.log('[REALTIME] 🧹 NEW GAME SETUP DETECTED - CLEARING ALL CARD STATE!');
                 setPlayerCards([]);
                 setCardStateContext(null);
