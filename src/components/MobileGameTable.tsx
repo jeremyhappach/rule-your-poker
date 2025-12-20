@@ -3070,7 +3070,9 @@ export const MobileGameTable = ({
         {/* Tab navigation bar */}
         {(() => {
           // Determine if we should pulse the cards tab (it's your turn and you're not on cards tab)
-          const isYourTurnNotOnCardsTab = isPlayerTurn && !hasDecided && activeTab !== 'cards' && roundStatus === 'betting';
+          // Only flash when game is NOT paused
+          const isYourTurnNotOnCardsTab = !isPaused && isPlayerTurn && !hasDecided && activeTab !== 'cards' && roundStatus === 'betting';
+          const showCardsTabFlashing = !isPaused && cardsTabFlashing;
           
           return (
             <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
@@ -3080,9 +3082,9 @@ export const MobileGameTable = ({
                   activeTab === 'cards' 
                     ? 'bg-primary/20 text-foreground' 
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
-                } ${cardsTabFlashing ? 'animate-pulse ring-2 ring-green-500' : ''} ${isYourTurnNotOnCardsTab && !cardsTabFlashing ? 'animate-pulse ring-2 ring-red-500' : ''}`}
+                } ${showCardsTabFlashing ? 'animate-pulse ring-2 ring-green-500' : ''} ${isYourTurnNotOnCardsTab && !showCardsTabFlashing ? 'animate-pulse ring-2 ring-red-500' : ''}`}
               >
-                <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${cardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
+                <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
               </button>
               <button 
                 onClick={() => setActiveTab('chat')}
