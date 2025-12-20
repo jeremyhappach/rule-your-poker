@@ -432,7 +432,8 @@ export const MobileGameTable = ({
   const [winnerPotFlashTrigger, setWinnerPotFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   
   // Emoticon overlay state - shows emoticon instead of chipstack value for 4 seconds
-  const [emoticonOverlay, setEmoticonOverlay] = useState<{ emoticon: string; expiresAt: number } | null>(null);
+  // Now keyed by player ID to support showing emoticons on other players' chipstacks
+  const [emoticonOverlays, setEmoticonOverlays] = useState<Record<string, { emoticon: string; expiresAt: number }>>({});
   
   // FIX: Cache current player's legs EAGERLY - capture before any state transitions
   // This must be updated BEFORE game_over status, not during render
@@ -516,34 +517,112 @@ export const MobileGameTable = ({
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
-  // Cleanup emoticon overlay after it expires
+  // Cleanup emoticon overlays after they expire
   useEffect(() => {
-    if (!emoticonOverlay) return;
+    const overlayEntries = Object.entries(emoticonOverlays);
+    if (overlayEntries.length === 0) return;
     
-    const timeRemaining = emoticonOverlay.expiresAt - Date.now();
-    if (timeRemaining <= 0) {
-      setEmoticonOverlay(null);
-      return;
+    // Find the next expiration time
+    const now = Date.now();
+    let nextExpiry = Infinity;
+    const expiredPlayerIds: string[] = [];
+    
+    overlayEntries.forEach(([playerId, overlay]) => {
+      if (overlay.expiresAt <= now) {
+        expiredPlayerIds.push(playerId);
+      } else if (overlay.expiresAt < nextExpiry) {
+        nextExpiry = overlay.expiresAt;
+      }
+    });
+    
+    // Remove expired overlays immediately
+    if (expiredPlayerIds.length > 0) {
+      setEmoticonOverlays(prev => {
+        const updated = { ...prev };
+        expiredPlayerIds.forEach(id => delete updated[id]);
+        return updated;
+      });
     }
     
-    const timer = setTimeout(() => {
-      setEmoticonOverlay(null);
-    }, timeRemaining);
-    
-    return () => clearTimeout(timer);
-  }, [emoticonOverlay]);
+    // Set timer for next expiration
+    if (nextExpiry !== Infinity) {
+      const timer = setTimeout(() => {
+        setEmoticonOverlays(prev => {
+          const updated = { ...prev };
+          Object.entries(updated).forEach(([playerId, overlay]) => {
+            if (overlay.expiresAt <= Date.now()) {
+              delete updated[playerId];
+            }
+          });
+          return updated;
+        });
+      }, nextExpiry - now);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [emoticonOverlays]);
   
   // Handler for quick emoticon selection - sends to chat and shows on chipstack
   const handleQuickEmoticon = useCallback((emoticon: string) => {
     // Send to chat
     onSendChat?.(emoticon);
     
-    // Show on chipstack for 4 seconds
-    setEmoticonOverlay({
-      emoticon,
-      expiresAt: Date.now() + 4000
+    // Show on current player's chipstack for 4 seconds
+    // Find current player inside the callback to avoid dependency issues
+    const currPlayer = players.find(p => p.user_id === currentUserId);
+    if (currPlayer) {
+      setEmoticonOverlays(prev => ({
+        ...prev,
+        [currPlayer.id]: {
+          emoticon,
+          expiresAt: Date.now() + 4000
+        }
+      }));
+    }
+  }, [onSendChat, players, currentUserId]);
+  
+  // Common emoticons to detect in chat messages
+  const emoticons = useMemo(() => ['😀', '😂', '🤣', '😎', '🤔', '😤', '🔥', '💰', '🎰', '👍', '👎', '🙏', '💪', '🤷', '😭', '🥳'], []);
+  
+  // Watch for incoming chat messages that are pure emoticons from other players
+  const prevAllMessagesLengthRef = useRef(allMessages.length);
+  useEffect(() => {
+    // Only process new messages
+    if (allMessages.length <= prevAllMessagesLengthRef.current) {
+      prevAllMessagesLengthRef.current = allMessages.length;
+      return;
+    }
+    
+    // Get new messages
+    const newMessages = allMessages.slice(prevAllMessagesLengthRef.current);
+    prevAllMessagesLengthRef.current = allMessages.length;
+    
+    // Check each new message
+    newMessages.forEach(msg => {
+      // Skip messages from current user (already handled by handleQuickEmoticon)
+      if (msg.user_id === currentUserId) return;
+      
+      // Check if message is a single emoticon
+      const trimmedMsg = msg.message.trim();
+      const isEmoticon = emoticons.includes(trimmedMsg) || 
+        // Also check if it's a single emoji (broader check)
+        (trimmedMsg.length <= 4 && /^\p{Extended_Pictographic}$/u.test(trimmedMsg));
+      
+      if (isEmoticon) {
+        // Find the player who sent this message
+        const senderPlayer = players.find(p => p.user_id === msg.user_id);
+        if (senderPlayer) {
+          setEmoticonOverlays(prev => ({
+            ...prev,
+            [senderPlayer.id]: {
+              emoticon: trimmedMsg,
+              expiresAt: Date.now() + 4000
+            }
+          }));
+        }
+      }
     });
-  }, [onSendChat]);
+  }, [allMessages, currentUserId, players, emoticons]);
   
   // Delay community cards rendering by 1 second after player cards appear (Holm only)
   // Use external cache for community cards if provided (to persist across remounts during win animation)
@@ -1894,9 +1973,23 @@ export const MobileGameTable = ({
             ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
             ${isClickable ? 'active:scale-95' : ''}
           `}>
-            <span className={`text-sm font-bold leading-none ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-              ${formatChipValue(Math.round(displayedChips[player.id] ?? player.chips))}
-            </span>
+            {/* Show emoticon overlay OR chipstack value */}
+            {emoticonOverlays[player.id] ? (
+              <span 
+                className="text-xl animate-in fade-in zoom-in duration-200"
+                style={{
+                  animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500 
+                    ? 'fadeOutEmoticon 0.5s ease-out forwards' 
+                    : undefined
+                }}
+              >
+                {emoticonOverlays[player.id].emoticon}
+              </span>
+            ) : (
+              <span className={`text-sm font-bold leading-none ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                ${formatChipValue(Math.round(displayedChips[player.id] ?? player.chips))}
+              </span>
+            )}
             {/* Flash for legs received */}
             <ValueChangeFlash 
               value={0}
@@ -1979,6 +2072,22 @@ export const MobileGameTable = ({
       )
     );
     
+    // Emoticon overlay element - shown when chip is hidden during showdown but player has an emoticon
+    const emoticonOverlayElement = emoticonOverlays[player.id] && hideChipForShowdown && (
+      <div className="w-12 h-12 rounded-full bg-slate-700/80 border-2 border-slate-600/50 flex items-center justify-center">
+        <span 
+          className="text-xl animate-in fade-in zoom-in duration-200"
+          style={{
+            animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500 
+              ? 'fadeOutEmoticon 0.5s ease-out forwards' 
+              : undefined
+          }}
+        >
+          {emoticonOverlays[player.id].emoticon}
+        </span>
+      </div>
+    );
+    
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
         {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
         {/* Upper corners in regular mode show name BELOW chipstack for readability */}
@@ -1991,6 +2100,8 @@ export const MobileGameTable = ({
             {chipElement}
           </MobilePlayerTimer>
         )}
+        {/* Emoticon overlay when chip is hidden during showdown */}
+        {emoticonOverlayElement}
         {/* Name below chipstack for upper corners in regular mode */}
         {showNameBelowChipstack && nameElement}
         {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
@@ -3321,16 +3432,16 @@ export const MobileGameTable = ({
                 </p>
                 <div className="relative">
                   {/* Show emoticon overlay OR chipstack value */}
-                  {emoticonOverlay ? (
+                  {emoticonOverlays[currentPlayer.id] ? (
                     <span 
                       className="text-2xl animate-in fade-in zoom-in duration-200"
                       style={{
-                        animation: emoticonOverlay.expiresAt - Date.now() < 500 
+                        animation: emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500 
                           ? 'fadeOutEmoticon 0.5s ease-out forwards' 
                           : undefined
                       }}
                     >
-                      {emoticonOverlay.emoticon}
+                      {emoticonOverlays[currentPlayer.id].emoticon}
                     </span>
                   ) : (
                     <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
