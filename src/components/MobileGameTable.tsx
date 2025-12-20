@@ -343,6 +343,7 @@ export const MobileGameTable = ({
   
   // Flash the chat tab icon when new messages arrive
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const prevMessageCountRef = useRef<number>(allMessages.length);
   
   // Swipe gesture handlers for tab switching
@@ -1047,6 +1048,7 @@ export const MobileGameTable = ({
     
     if (currentMessageCount > prevMessageCountRef.current && activeTab !== 'chat') {
       setChatTabFlashing(true);
+      setHasUnreadMessages(true);
       const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
       prevMessageCountRef.current = currentMessageCount;
       return () => clearTimeout(timeout);
@@ -1054,6 +1056,13 @@ export const MobileGameTable = ({
     
     prevMessageCountRef.current = currentMessageCount;
   }, [allMessages.length, activeTab]);
+  
+  // Clear unread messages indicator when user switches to chat tab
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      setHasUnreadMessages(false);
+    }
+  }, [activeTab]);
 
   // Calculate lose amount
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
@@ -3052,7 +3061,7 @@ export const MobileGameTable = ({
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
             } ${chatTabFlashing ? 'animate-pulse' : ''}`}
           >
-            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''}`} />
+            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500' : ''}`} />
           </button>
           <button 
             onClick={() => setActiveTab('lobby')}
