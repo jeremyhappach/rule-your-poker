@@ -2222,7 +2222,7 @@ export const MobileGameTable = ({
             <div 
               className={`absolute left-1/2 transform -translate-x-1/2 z-20 transition-all duration-300 ${
                 gameType === 'holm-game' 
-                  ? (isAnyPlayerInShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
+                  ? (isHolmMultiPlayerShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
                   : 'top-1/2 -translate-y-1/2'
               }`}
               style={{ 
@@ -2369,7 +2369,7 @@ export const MobileGameTable = ({
           if (!shouldShow) return null;
           
           return (
-            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
+            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
               <CommunityCards 
                 cards={approvedCommunityCards!} 
                 revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
@@ -2385,7 +2385,7 @@ export const MobileGameTable = ({
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isAnyPlayerInShowdown ? 'top-[74%]' : 'top-[62%]'}`}>
+          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[74%]' : 'top-[62%]'}`}>
             <span className="text-red-400 text-sm mr-1">👿</span>
             {cachedChuckyCards.map((card, index) => {
               const isRevealed = index < cachedChuckyCardsRevealed;
