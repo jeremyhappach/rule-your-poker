@@ -78,20 +78,36 @@ serve(async (req) => {
       .from('games')
       .select('*')
       .eq('id', gameId)
-      .single();
+      .maybeSingle();
 
     console.log('[ENFORCE] Game query result:', {
       found: !!game,
       error: gameError?.message || null,
-      errorCode: gameError?.code || null,
-      gameStatus: game?.status || null,
+      errorCode: (gameError as any)?.code || null,
+      gameStatus: (game as any)?.status || null,
     });
+
+    // Treat "game not found" as a SUCCESS response so clients don't surface 404s.
+    const notFoundCode = (gameError as any)?.code;
+    const notFoundMsg = String(gameError?.message ?? '').toLowerCase();
+    const isNotFound = !game || notFoundCode === 'PGRST116' || notFoundMsg.includes('0 rows');
+
+    if (isNotFound) {
+      return new Response(JSON.stringify({
+        success: true,
+        gameMissing: true,
+        retry: false,
+        gameId,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (gameError) {
       const msg = String(gameError.message ?? '');
       const lower = msg.toLowerCase();
       const isTransient =
-        // In practice these backend/network failures often come through as TypeError with no code
         lower.includes('typeerror') ||
         lower.includes('econnreset') ||
         lower.includes('connection reset') ||
@@ -103,27 +119,13 @@ serve(async (req) => {
       console.error('[ENFORCE] Game query failed:', { gameId, error: gameError, isTransient });
 
       return new Response(JSON.stringify({
-        error: isTransient ? 'Temporary backend error' : 'Game not found',
-        retry: isTransient,
+        error: 'Temporary backend error',
+        retry: true,
         gameId,
         dbError: gameError?.message || null,
         dbCode: (gameError as any)?.code || null,
       }), {
-        status: isTransient ? 503 : 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (!game) {
-      console.error('[ENFORCE] Game not found:', { gameId });
-      return new Response(JSON.stringify({
-        error: 'Game not found',
-        retry: false,
-        gameId,
-        dbError: null,
-        dbCode: null,
-      }), {
-        status: 404,
+        status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

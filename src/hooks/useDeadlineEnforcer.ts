@@ -71,6 +71,18 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           );
         };
 
+        const stopPolling = () => {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        };
+
+        const isGameMissing = (raw: string) => {
+          const msg = raw.toLowerCase();
+          return msg.includes('game not found') || msg.includes('pgrst116');
+        };
+
         // Wrap in inner try-catch to fully suppress transient backend errors
         let data, error;
         try {
@@ -79,17 +91,27 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           });
           data = result.data;
           error = result.error;
-        } catch (invokeErr: any) {
+        } catch {
           // Silently suppress all invoke exceptions - these are transient
           return;
         }
 
+        // If the backend tells us the game is gone, stop polling.
+        if ((data as any)?.gameMissing) {
+          stopPolling();
+          return;
+        }
+
         if (error) {
-          // Check multiple properties for suppression patterns
           const errorStr = JSON.stringify(error);
           const msg = String((error as any)?.message ?? (error as any)?.context?.message ?? error ?? '');
+
+          if (isGameMissing(msg) || isGameMissing(errorStr)) {
+            stopPolling();
+            return;
+          }
+
           if (shouldSuppress(msg) || shouldSuppress(errorStr)) return;
-          // Don't even log - just return silently for any edge function error
           return;
         }
 

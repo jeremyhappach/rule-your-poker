@@ -257,6 +257,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
   useDeadlineEnforcer(gameId, game?.status);
+
+  // If an empty session was deleted (no longer exists in DB), leave the game route.
+  const missingGameHandledRef = useRef(false);
+  useEffect(() => {
+    if (!gameId || !user) return;
+
+    let cancelled = false;
+
+    const checkGameExists = async () => {
+      const { data, error } = await supabase
+        .from('games')
+        .select('id')
+        .eq('id', gameId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      const code = (error as any)?.code;
+      const isMissing = !data || code === 'PGRST116';
+
+      if (isMissing && !missingGameHandledRef.current) {
+        missingGameHandledRef.current = true;
+        setGame(null);
+        setPlayers([]);
+        toast({
+          title: 'Session deleted',
+          description: 'Not enough players, deleting this empty session.',
+        });
+        navigate('/');
+      }
+    };
+
+    checkGameExists();
+    const interval = window.setInterval(checkGameExists, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [gameId, user?.id, navigate, toast]);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
@@ -2615,10 +2655,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .from('games')
       .select('*, rounds(*)')
       .eq('id', gameId)
-      .single();
+      .maybeSingle();
 
     if (gameError) {
+      const code = (gameError as any)?.code;
+      if (code === 'PGRST116' || String(gameError.message ?? '').toLowerCase().includes('0 rows')) {
+        if (!missingGameHandledRef.current) {
+          missingGameHandledRef.current = true;
+          setGame(null);
+          setPlayers([]);
+          toast({
+            title: 'Session deleted',
+            description: 'Not enough players, deleting this empty session.',
+          });
+          navigate('/');
+        }
+        return;
+      }
+
       console.error('Failed to fetch game:', gameError);
+      return;
+    }
+
+    if (!gameData) {
+      if (!missingGameHandledRef.current) {
+        missingGameHandledRef.current = true;
+        setGame(null);
+        setPlayers([]);
+        toast({
+          title: 'Session deleted',
+          description: 'Not enough players, deleting this empty session.',
+        });
+        navigate('/');
+      }
       return;
     }
     
@@ -4598,7 +4667,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onHasUnreadMessagesChange={setMobileHasUnreadMessages}
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
-                    dealerSetupMessage={!isDealer && !(dealerPlayer?.is_bot && allowBotDealers) ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`)} is configuring the next game` : undefined}
+                    dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
                   />
                 ) : (
                   <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
@@ -4622,13 +4691,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onSelectSeat={handleSelectSeat}
                     gameStatus={game.status}
                     handContextId={null}
-                    dealerSetupMessage={!isDealer && !(dealerPlayer?.is_bot && allowBotDealers) ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`)} is configuring the next game` : undefined}
+                    dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
                   />
                 )}
                 {(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
                     gameId={gameId!}
-                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Player ${game.dealer_position}`)}
+                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
