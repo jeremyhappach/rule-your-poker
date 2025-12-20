@@ -191,6 +191,7 @@ const Game = () => {
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showPlayerOptions, setShowPlayerOptions] = useState(false);
+  const [allowBotDealers, setAllowBotDealers] = useState(false); // Fetched from game_defaults
 const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | null>(null); // Immediate trigger for ante animation
   const [anteAnimationExpectedPot, setAnteAnimationExpectedPot] = useState<number | null>(null); // Expected pot after antes for re-ante scenarios
   const [preAnteChips, setPreAnteChips] = useState<Record<string, number> | null>(null); // Capture chips BEFORE ante deduction to prevent race conditions
@@ -2621,6 +2622,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
+    // Fetch allowBotDealers setting
+    const { data: gameDefaults } = await supabase
+      .from('game_defaults')
+      .select('allow_bot_dealers')
+      .eq('game_type', 'holm')
+      .single();
+    
+    setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
+    
     // CRITICAL: Update refs for detecting changes via local state comparison
     const prevGameType = lastKnownGameTypeRef.current;
     const prevRound = lastKnownRoundRef.current;
@@ -4399,7 +4409,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameStatus={game.status}
                     roundStatus={currentRound?.status}
                     isGameOver={!game.game_over_at}
-                    isDealer={isDealer || dealerPlayer?.is_bot || false}
+                    isDealer={isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false}
                     onNextGame={handleDealerConfirmGameOver}
                     chatBubbles={chatBubbles}
                     allMessages={allMessages}
@@ -4524,7 +4534,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onHasUnreadMessagesChange={setMobileHasUnreadMessages}
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
-                    dealerSetupMessage={!isDealer ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)} is configuring the next game` : undefined}
+                    dealerSetupMessage={!isDealer && !(dealerPlayer?.is_bot && allowBotDealers) ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)} is configuring the next game` : undefined}
                   />
                 ) : (
                   <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
@@ -4548,10 +4558,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onSelectSeat={handleSelectSeat}
                     gameStatus={game.status}
                     handContextId={null}
-                    dealerSetupMessage={!isDealer ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)} is configuring the next game` : undefined}
+                    dealerSetupMessage={!isDealer && !(dealerPlayer?.is_bot && allowBotDealers) ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)} is configuring the next game` : undefined}
                   />
                 )}
-                {(isDealer || dealerPlayer?.is_bot) && (
+                {(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
                     gameId={gameId!}
                     dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)}
