@@ -3042,7 +3042,7 @@ export const MobileGameTable = ({
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
             } ${cardsTabFlashing ? 'animate-pulse' : ''}`}
           >
-            <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${cardsTabFlashing ? 'text-poker-gold animate-ping' : ''}`} />
+            <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${cardsTabFlashing ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
           </button>
           <button 
             onClick={() => setActiveTab('chat')}
