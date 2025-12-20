@@ -4419,6 +4419,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     handContextId={handContextKey}
                     winner357ShowCards={winner357ShowCards}
                     onWinner357ShowCards={handleWinner357ShowCards}
+                    rabbitHunt={game.rabbit_hunt ?? false}
                   />
                 ) : (
                   <>
@@ -4809,6 +4810,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               holmPreStay={holmPreStay}
               onHolmPreFoldChange={setHolmPreFold}
               onHolmPreStayChange={setHolmPreStay}
+              rabbitHunt={game.rabbit_hunt ?? false}
             />
           ) : (
             <GameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}

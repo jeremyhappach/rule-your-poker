@@ -209,6 +209,8 @@ interface MobileGameTableProps {
   holmPreStay?: boolean;
   onHolmPreFoldChange?: (checked: boolean) => void;
   onHolmPreStayChange?: (checked: boolean) => void;
+  // Holm rabbit hunt enabled
+  rabbitHunt?: boolean;
 }
 export const MobileGameTable = ({
   players,
@@ -306,6 +308,7 @@ export const MobileGameTable = ({
   holmPreStay = false,
   onHolmPreFoldChange,
   onHolmPreStayChange,
+  rabbitHunt = false,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -2369,15 +2372,23 @@ export const MobileGameTable = ({
           if (!shouldShow) return null;
           
           return (
-            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
-              <CommunityCards 
-                cards={approvedCommunityCards!} 
-                revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
-                highlightedIndices={winningCardHighlights.communityIndices}
-                kickerIndices={winningCardHighlights.kickerCommunityIndices}
-                hasHighlights={winningCardHighlights.hasHighlights}
-                tightOverlap={isHolmMultiPlayerShowdown}
-              />
+            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
+              <div className="scale-[1.8]">
+                <CommunityCards 
+                  cards={approvedCommunityCards!} 
+                  revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
+                  highlightedIndices={winningCardHighlights.communityIndices}
+                  kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                  hasHighlights={winningCardHighlights.hasHighlights}
+                  tightOverlap={isHolmMultiPlayerShowdown}
+                />
+              </div>
+              {/* Rabbit Hunt label - show when everyone folded and rabbit hunt is enabled */}
+              {rabbitHunt && stayedPlayersCount === 0 && cachedChuckyActive && (
+                <div className="mt-2 text-center">
+                  <span className="text-xs text-amber-400/80 italic">Rabbit Hunting...</span>
+                </div>
+              )}
             </div>
           );
         })()}
