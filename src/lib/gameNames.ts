@@ -150,6 +150,15 @@ const PEORIA_CUSTOM = [
   "Farm Rd",
   "Duck's Place",
   "Gondola Deluxe",
+  "Grandview Hotel",
+  "Short Change",
+  "Generations",
+  "Blue Magoo",
+  "King Orange",
+  "Agatucci's",
+  "Lou's Drive In",
+  "Sheridan Village",
+  "Lakeview Museum",
 ];
 
 // Chicago athletes - NO WHITE SOX, Cubs players post-2010 only
