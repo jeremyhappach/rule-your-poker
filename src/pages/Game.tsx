@@ -2250,6 +2250,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             
           if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
             console.log('[TIMER EXPIRED HOLM] Auto-folding player at position', currentTurnPlayer.position);
+
+            // Mark as timed-out so UI shows (folding) and they can sit out next hand.
+            // Only apply to humans; bots already have their own decision logic.
+            if (!currentTurnPlayer.is_bot) {
+              await supabase
+                .from('players')
+                .update({ auto_fold: true })
+                .eq('id', currentTurnPlayer.id);
+            }
+
             await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
             // NOTE: makeDecision already calls checkHolmRoundComplete internally
             console.log('[TIMER EXPIRED HOLM] *** Realtime will trigger refetch after auto-fold ***');
