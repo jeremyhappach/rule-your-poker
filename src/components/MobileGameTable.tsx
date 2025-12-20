@@ -40,6 +40,7 @@ import React, {
   useMemo,
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { MessageSquare, User, Spade } from "lucide-react";
 
 // Custom hook for swipe detection
@@ -105,6 +106,7 @@ interface ChatBubbleData {
 }
 
 interface MobileGameTableProps {
+  gameId?: string;
   players: Player[];
   currentUserId: string | undefined;
   pot: number;
@@ -232,6 +234,7 @@ interface MobileGameTableProps {
   dealerSetupMessage?: string | null;
 }
 export const MobileGameTable = ({
+  gameId,
   players,
   currentUserId,
   pot,
@@ -431,9 +434,8 @@ export const MobileGameTable = ({
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   const [winnerPotFlashTrigger, setWinnerPotFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   
-  // Emoticon overlay state - shows emoticon instead of chipstack value for 4 seconds
-  // Now keyed by player ID to support showing emoticons on other players' chipstacks
-  const [emoticonOverlays, setEmoticonOverlays] = useState<Record<string, { emoticon: string; expiresAt: number }>>({});
+  // Chip stack emoticon hook - manages realtime emoticon overlays
+  // (hook is initialized below after currentPlayer is defined)
   
   // FIX: Cache current player's legs EAGERLY - capture before any state transitions
   // This must be updated BEFORE game_over status, not during render
@@ -517,112 +519,6 @@ export const MobileGameTable = ({
   // Manual trigger for value flash when ante arrives at pot
   const [anteFlashTrigger, setAnteFlashTrigger] = useState<{ id: string; amount: number } | null>(null);
   
-  // Cleanup emoticon overlays after they expire
-  useEffect(() => {
-    const overlayEntries = Object.entries(emoticonOverlays);
-    if (overlayEntries.length === 0) return;
-    
-    // Find the next expiration time
-    const now = Date.now();
-    let nextExpiry = Infinity;
-    const expiredPlayerIds: string[] = [];
-    
-    overlayEntries.forEach(([playerId, overlay]) => {
-      if (overlay.expiresAt <= now) {
-        expiredPlayerIds.push(playerId);
-      } else if (overlay.expiresAt < nextExpiry) {
-        nextExpiry = overlay.expiresAt;
-      }
-    });
-    
-    // Remove expired overlays immediately
-    if (expiredPlayerIds.length > 0) {
-      setEmoticonOverlays(prev => {
-        const updated = { ...prev };
-        expiredPlayerIds.forEach(id => delete updated[id]);
-        return updated;
-      });
-    }
-    
-    // Set timer for next expiration
-    if (nextExpiry !== Infinity) {
-      const timer = setTimeout(() => {
-        setEmoticonOverlays(prev => {
-          const updated = { ...prev };
-          Object.entries(updated).forEach(([playerId, overlay]) => {
-            if (overlay.expiresAt <= Date.now()) {
-              delete updated[playerId];
-            }
-          });
-          return updated;
-        });
-      }, nextExpiry - now);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [emoticonOverlays]);
-  
-  // Handler for quick emoticon selection - sends to chat and shows on chipstack
-  const handleQuickEmoticon = useCallback((emoticon: string) => {
-    // Send to chat
-    onSendChat?.(emoticon);
-    
-    // Show on current player's chipstack for 4 seconds
-    // Find current player inside the callback to avoid dependency issues
-    const currPlayer = players.find(p => p.user_id === currentUserId);
-    if (currPlayer) {
-      setEmoticonOverlays(prev => ({
-        ...prev,
-        [currPlayer.id]: {
-          emoticon,
-          expiresAt: Date.now() + 4000
-        }
-      }));
-    }
-  }, [onSendChat, players, currentUserId]);
-  
-  // Common emoticons to detect in chat messages
-  const emoticons = useMemo(() => ['😀', '😂', '🤣', '😎', '🤔', '😤', '🔥', '💰', '🎰', '👍', '👎', '🙏', '💪', '🤷', '😭', '🥳'], []);
-  
-  // Watch for incoming chat messages that are pure emoticons from other players
-  const prevAllMessagesLengthRef = useRef(allMessages.length);
-  useEffect(() => {
-    // Only process new messages
-    if (allMessages.length <= prevAllMessagesLengthRef.current) {
-      prevAllMessagesLengthRef.current = allMessages.length;
-      return;
-    }
-    
-    // Get new messages
-    const newMessages = allMessages.slice(prevAllMessagesLengthRef.current);
-    prevAllMessagesLengthRef.current = allMessages.length;
-    
-    // Check each new message
-    newMessages.forEach(msg => {
-      // Skip messages from current user (already handled by handleQuickEmoticon)
-      if (msg.user_id === currentUserId) return;
-      
-      // Check if message is a single emoticon
-      const trimmedMsg = msg.message.trim();
-      const isEmoticon = emoticons.includes(trimmedMsg) || 
-        // Also check if it's a single emoji (broader check)
-        (trimmedMsg.length <= 4 && /^\p{Extended_Pictographic}$/u.test(trimmedMsg));
-      
-      if (isEmoticon) {
-        // Find the player who sent this message
-        const senderPlayer = players.find(p => p.user_id === msg.user_id);
-        if (senderPlayer) {
-          setEmoticonOverlays(prev => ({
-            ...prev,
-            [senderPlayer.id]: {
-              emoticon: trimmedMsg,
-              expiresAt: Date.now() + 4000
-            }
-          }));
-        }
-      }
-    });
-  }, [allMessages, currentUserId, players, emoticons]);
   
   // Delay community cards rendering by 1 second after player cards appear (Holm only)
   // Use external cache for community cards if provided (to persist across remounts during win animation)
@@ -1155,6 +1051,17 @@ export const MobileGameTable = ({
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerCards = currentPlayer ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] : [];
+
+  // Chip stack emoticon overlays - realtime synced via database
+  const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
+    gameId,
+    currentPlayer?.id
+  );
+  
+  // Handler for quick emoticon selection
+  const handleQuickEmoticon = useCallback((emoticon: string) => {
+    sendEmoticon(emoticon);
+  }, [sendEmoticon]);
 
   // Detect when cards are dealt and trigger flash (only when not on cards tab)
   useEffect(() => {
@@ -3469,7 +3376,7 @@ export const MobileGameTable = ({
               {/* Quick emoticon picker */}
               <QuickEmoticonPicker 
                 onSelect={handleQuickEmoticon} 
-                disabled={!onSendChat || isChatSending}
+                disabled={isEmoticonSending || !currentPlayer}
               />
             </div>
             

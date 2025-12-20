@@ -56,6 +56,48 @@ export type Database = {
           },
         ]
       }
+      chip_stack_emoticons: {
+        Row: {
+          created_at: string
+          emoticon: string
+          expires_at: string
+          game_id: string
+          id: string
+          player_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoticon: string
+          expires_at: string
+          game_id: string
+          id?: string
+          player_id: string
+        }
+        Update: {
+          created_at?: string
+          emoticon?: string
+          expires_at?: string
+          game_id?: string
+          id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chip_stack_emoticons_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chip_stack_emoticons_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_game_names: {
         Row: {
           created_at: string
