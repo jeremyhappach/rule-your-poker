@@ -608,6 +608,24 @@ export const MobileGameTable = ({
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+  
+  // Track previous round to detect new game start (round going from 3 back to 1)
+  const prevRoundForCacheClearRef = useRef<number | null>(null);
+  
+  // Clear showdown cache when starting a NEW game (round goes from 2/3 back to 1)
+  // This prevents stale cards from previous game flashing at start of new game
+  useEffect(() => {
+    const prevRound = prevRoundForCacheClearRef.current;
+    
+    // If round dropped back to 1 from a higher round, it's a new game - clear cache immediately
+    if (currentRound === 1 && prevRound !== null && prevRound > 1) {
+      console.log('[SHOWDOWN_CACHE] Clearing cache - new game detected (round went from', prevRound, 'to 1)');
+      showdownRoundRef.current = null;
+      showdownCardsCache.current = new Map();
+    }
+    
+    prevRoundForCacheClearRef.current = currentRound;
+  }, [currentRound, showdownRoundRef, showdownCardsCache]);
 
   // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
