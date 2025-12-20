@@ -227,6 +227,8 @@ interface MobileGameTableProps {
   // Chat input state (lifted to parent to persist across remounts)
   chatInputValue?: string;
   onChatInputChange?: (value: string) => void;
+  // Dealer setup message - shown as yellow announcement when another player is configuring
+  dealerSetupMessage?: string | null;
 }
 export const MobileGameTable = ({
   players,
@@ -331,6 +333,7 @@ export const MobileGameTable = ({
   onHasUnreadMessagesChange,
   chatInputValue: externalChatInputValue,
   onChatInputChange: externalOnChatInputChange,
+  dealerSetupMessage,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -3053,6 +3056,16 @@ export const MobileGameTable = ({
           </div>
         )}
         
+        {/* Dealer setup message - shown as yellow announcement when another player is configuring */}
+        {dealerSetupMessage && (
+          <div className="px-4 py-2">
+            <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center animate-pulse">
+                {dealerSetupMessage}
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Tab navigation bar */}
         {(() => {
