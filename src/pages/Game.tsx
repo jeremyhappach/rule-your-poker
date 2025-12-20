@@ -65,6 +65,7 @@ interface Player {
   waiting: boolean;
   deck_color_mode?: string | null;
   created_at?: string;
+  auto_fold: boolean;
   profiles?: {
     username: string;
   };
@@ -3989,6 +3990,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
+  // Handle auto_fold toggle - player can disable their auto_fold status
+  const handleAutoFoldChange = async (playerId: string, autoFold: boolean) => {
+    console.log('[AUTO_FOLD] Changing auto_fold for player:', playerId, 'to:', autoFold);
+    const { error } = await supabase
+      .from('players')
+      .update({ auto_fold: autoFold })
+      .eq('id', playerId);
+    
+    if (error) {
+      console.error('[AUTO_FOLD] Error updating auto_fold:', error);
+    }
+  };
+
   const handleStay = async () => {
     if (!gameId || !user) return;
     
@@ -4975,6 +4989,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onHasUnreadMessagesChange={setMobileHasUnreadMessages}
               chatInputValue={mobileChatInput}
               onChatInputChange={setMobileChatInput}
+              onAutoFoldChange={handleAutoFoldChange}
             />
           ) : (
             <GameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}

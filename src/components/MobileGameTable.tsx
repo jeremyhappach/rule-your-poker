@@ -88,6 +88,7 @@ interface Player {
   sitting_out_hands?: number;
   waiting?: boolean;
   created_at?: string;
+  auto_fold?: boolean;
   profiles?: {
     username: string;
     aggression_level?: string;
@@ -232,6 +233,8 @@ interface MobileGameTableProps {
   onChatInputChange?: (value: string) => void;
   // Dealer setup message - shown as yellow announcement when another player is configuring
   dealerSetupMessage?: string | null;
+  // Auto-fold callback for when player disables auto_fold
+  onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
 }
 export const MobileGameTable = ({
   gameId,
@@ -338,6 +341,7 @@ export const MobileGameTable = ({
   chatInputValue: externalChatInputValue,
   onChatInputChange: externalOnChatInputChange,
   dealerSetupMessage,
+  onAutoFoldChange,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -1927,6 +1931,9 @@ export const MobileGameTable = ({
     const nameElement = (
       <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
         {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+        {player.auto_fold && !player.is_bot && (
+          <span className="text-amber-400 ml-0.5">(folding)</span>
+        )}
         {player.is_bot && player.profiles?.aggression_level && (
           <span className="text-purple-300 ml-0.5">
             ({getAggressionAbbreviation(player.profiles.aggression_level)})
@@ -3188,8 +3195,27 @@ export const MobileGameTable = ({
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1">
-            {/* Action buttons - ABOVE cards */}
-            {canDecide && <div className="flex gap-2 justify-center mb-1 mt-2">
+            {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
+            {currentPlayer.auto_fold && !currentPlayer.sitting_out && (
+              <div className="flex justify-center mb-1 mt-2 px-4">
+                <label className="flex items-center gap-3 cursor-pointer bg-amber-900/30 rounded-lg px-4 py-2 border border-amber-600/50">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    onChange={(e) => {
+                      if (!e.target.checked && onAutoFoldChange) {
+                        onAutoFoldChange(currentPlayer.id, false);
+                      }
+                    }}
+                    className="w-5 h-5 rounded border-2 border-amber-500 accent-amber-500"
+                  />
+                  <span className="text-sm font-medium text-amber-400">Auto-fold (will sit out next hand)</span>
+                </label>
+              </div>
+            )}
+            
+            {/* Action buttons - ABOVE cards (hide when auto_fold is true) */}
+            {canDecide && !currentPlayer.auto_fold && <div className="flex gap-2 justify-center mb-1 mt-2">
                 <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
                   {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                 </Button>
@@ -3281,7 +3307,8 @@ export const MobileGameTable = ({
                 !canDecide && 
                 !hasDecided && 
                 roundStatus === 'betting' && 
-                currentPlayerCards.length > 0;
+                currentPlayerCards.length > 0 &&
+                !currentPlayer?.auto_fold; // Hide when auto_fold is active
               
               return (
                 <div className="flex flex-col items-center justify-center gap-3 w-full">
@@ -3344,7 +3371,7 @@ export const MobileGameTable = ({
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
-                  {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
+                  {currentPlayer.auto_fold && !currentPlayer.sitting_out ? <span className="ml-1 text-amber-400 font-bold">(folding)</span> : currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
                 <div className="relative">
                   {/* Show emoticon overlay OR chipstack value */}
@@ -3481,6 +3508,7 @@ export const MobileGameTable = ({
                       {isDealing && !is357MultiPlayerShowdown && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
                       {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
                       {player.is_bot && <span className="text-[9px] text-muted-foreground">(Bot)</span>}
+                      {player.auto_fold && !player.is_bot && !player.sitting_out && <span className="text-[9px] text-amber-400 italic">folding</span>}
                       {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
                     </div>
                     
