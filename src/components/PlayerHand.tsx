@@ -12,6 +12,8 @@ interface PlayerHandProps {
   currentRound?: number;          // Current round for wild card determination
   showSeparated?: boolean;        // For round 3, show unused cards separated to left
   tightOverlap?: boolean;         // Use tighter spacing for multi-player showdown
+  unusedCardsBelow?: boolean;     // For 3-5-7 showdown: render unused cards in row below used cards
+  isRightSide?: boolean;          // For positioning unused cards on outer edge (right side of table)
 }
 
 // Get wild rank based on round (3-5-7 game only)
@@ -34,7 +36,9 @@ export const PlayerHand = ({
   gameType,
   currentRound = 0,
   showSeparated = false,
-  tightOverlap = false
+  tightOverlap = false,
+  unusedCardsBelow = false,
+  isRightSide = false
 }: PlayerHandProps) => {
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -47,25 +51,42 @@ export const PlayerHand = ({
   
   // For round 3 with 7 cards, separate into used and unused
   const isRound3With7Cards = is357Game && currentRound === 3 && cards.length === 7 && showSeparated && !isHidden;
+  // For round 2 with 5 cards when unusedCardsBelow is requested
+  const isRound2With5Cards = is357Game && currentRound === 2 && cards.length === 5 && unusedCardsBelow && !isHidden;
+  // For round 3 with 7 cards when unusedCardsBelow is requested  
+  const isRound3WithUnusedBelow = is357Game && currentRound === 3 && cards.length === 7 && unusedCardsBelow && !isHidden;
+  const shouldSeparateCards = isRound3With7Cards || isRound2With5Cards || isRound3WithUnusedBelow;
   
   let usedCards: { card: CardType; originalIndex: number; isWild: boolean }[] = [];
   let unusedCards: { card: CardType; originalIndex: number; isWild: boolean }[] = [];
   
-  if (isRound3With7Cards) {
-    // Pass '7' as explicit wild rank for round 3 (important for correct 5-card subset evaluation)
-    const { usedIndices, unusedIndices } = getBestFiveCardIndices(cards, true, '7' as Rank);
-    
-    usedCards = usedIndices.map(idx => ({
-      card: cards[idx],
-      originalIndex: idx,
-      isWild: wildRank !== null && cards[idx].rank === wildRank
-    }));
-    
-    unusedCards = unusedIndices.map(idx => ({
-      card: cards[idx],
-      originalIndex: idx,
-      isWild: wildRank !== null && cards[idx].rank === wildRank
-    }));
+  if (shouldSeparateCards) {
+    // For round 2: best 5 from 5 = all used (but we need to find unused from original sorting)
+    // For round 3: best 5 from 7 = 5 used, 2 unused
+    if (currentRound === 2 && cards.length === 5) {
+      // In round 2, all 5 cards are used - no unused cards
+      usedCards = cards.map((card, idx) => ({
+        card,
+        originalIndex: idx,
+        isWild: wildRank !== null && card.rank === wildRank
+      }));
+      unusedCards = [];
+    } else if (currentRound === 3 && cards.length === 7) {
+      // Pass '7' as explicit wild rank for round 3 (important for correct 5-card subset evaluation)
+      const { usedIndices, unusedIndices } = getBestFiveCardIndices(cards, true, '7' as Rank);
+      
+      usedCards = usedIndices.map(idx => ({
+        card: cards[idx],
+        originalIndex: idx,
+        isWild: wildRank !== null && cards[idx].rank === wildRank
+      }));
+      
+      unusedCards = unusedIndices.map(idx => ({
+        card: cards[idx],
+        originalIndex: idx,
+        isWild: wildRank !== null && cards[idx].rank === wildRank
+      }));
+    }
     
     // Sort used cards: wild cards first, then by rank ascending
     usedCards.sort((a, b) => {
@@ -152,8 +173,62 @@ export const PlayerHand = ({
     );
   }
 
-  // Special round 3 display with unused cards dimmed but all together
-  if (isRound3With7Cards) {
+  // 3-5-7 showdown display with unused cards in row below used cards (on outer edge)
+  if ((isRound2With5Cards || isRound3WithUnusedBelow) && unusedCardsBelow) {
+    const usedCardSize = getCardSize(5); // Size for 5 used cards
+    const unusedCardSize = getCardSize(7); // Smaller size for unused cards
+    
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        {/* Used cards row */}
+        <div className="flex items-end">
+          {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
+            const isHighlighted = highlightedIndices.includes(originalIndex);
+            const isKicker = kickerIndices.includes(originalIndex);
+            const isDimmed = hasHighlights && !isHighlighted && !isKicker;
+            
+            return (
+              <PlayingCard
+                key={`used-${card.rank}-${card.suit}-${originalIndex}`}
+                card={card}
+                size={usedCardSize}
+                isHighlighted={isHighlighted}
+                isKicker={isKicker}
+                isDimmed={isDimmed}
+                isWild={isWild}
+                className="-ml-3 first:ml-0"
+                style={{ 
+                  transform: `rotate(${displayIndex * 2 - (usedCards.length - 1)}deg)`,
+                }}
+              />
+            );
+          })}
+        </div>
+        {/* Unused cards row - positioned on outer edge */}
+        {unusedCards.length > 0 && (
+          <div className={`flex items-center ${isRightSide ? 'justify-end' : 'justify-start'}`}>
+            {unusedCards.map(({ card, originalIndex, isWild }, displayIndex) => (
+              <PlayingCard
+                key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
+                card={card}
+                size={unusedCardSize}
+                isDimmed={true}
+                isWild={false}
+                className="-ml-4 first:ml-0"
+                style={{ 
+                  opacity: 0.4,
+                  transform: 'scale(0.85)',
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Special round 3 display with unused cards dimmed but all together (old inline style)
+  if (isRound3With7Cards && !unusedCardsBelow) {
     // Combine all cards: unused (dimmed) first, then used cards
     const allCardsOrdered = [...unusedCards, ...usedCards];
     
