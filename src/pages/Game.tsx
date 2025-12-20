@@ -2110,20 +2110,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     gameId
   ]);
 
-  // Auto-execute pre-fold/pre-stay when it becomes player's turn in Holm games
+  // Auto-execute pre-fold/pre-stay OR auto-fold when it becomes player's turn in Holm games
+  const instantAutoFoldKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (game?.game_type !== 'holm-game') return;
     if (game?.status !== 'in_progress') return;
     if (!currentRound || currentRound.status !== 'betting') return;
     if (game?.is_paused) return;
-    
+
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
     if (currentPlayer.current_decision || currentPlayer.decision_locked) return; // Already decided
-    
+
     const isMyTurn = currentRound.current_turn_position === currentPlayer.position;
     if (!isMyTurn) return;
-    
+
+    // Auto-fold enabled: fold immediately as soon as it's your turn (no countdown)
+    if (currentPlayer.auto_fold && !currentPlayer.is_bot && !currentPlayer.sitting_out) {
+      const key = `${currentRound.id}:${currentRound.current_turn_position}`;
+      if (instantAutoFoldKeyRef.current === key) return;
+
+      console.log('[AUTO_FOLD] Auto-fold enabled - folding immediately on your turn', {
+        playerId: currentPlayer.id,
+        position: currentPlayer.position,
+        roundId: currentRound.id,
+      });
+
+      instantAutoFoldKeyRef.current = key;
+
+      // Clear any queued pre-decisions
+      setHolmPreFold(false);
+      setHolmPreStay(false);
+
+      // Stop showing the local countdown immediately; realtime/fetch will sync the next turn.
+      setTimeLeft(null);
+      setDecisionDeadline(null);
+
+      handleFold();
+      return;
+    }
+
     // Check for pre-decisions and execute immediately
     if (holmPreFold) {
       console.log('[PRE-DECISION] Executing pre-FOLD for player');
@@ -2145,10 +2171,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.is_paused,
     currentRound?.status,
     currentRound?.current_turn_position,
+    currentRound?.id,
     holmPreFold,
     holmPreStay,
     players,
-    user?.id
+    user?.id,
   ]);
 
   // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
