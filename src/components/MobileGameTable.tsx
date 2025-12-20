@@ -1873,44 +1873,51 @@ export const MobileGameTable = ({
           {isTheirTurn && playerDecision !== 'stay' && (
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
           )}
-          <div className={`
-            relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
-            ${chipBgColor}
-            ${playerDecision === 'fold' ? 'opacity-50' : ''}
-            ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
-            ${isClickable ? 'active:scale-95' : ''}
-          `}>
-            {/* Show emoticon overlay OR chipstack value */}
-            {emoticonOverlays[player.id] ? (
-              <span 
-                className="text-xl animate-in fade-in zoom-in duration-200"
-                style={{
-                  animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500 
-                    ? 'fadeOutEmoticon 0.5s ease-out forwards' 
-                    : undefined
-                }}
-              >
-                {emoticonOverlays[player.id].emoticon}
-              </span>
-            ) : (
-              <span className={`text-sm font-bold leading-none ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-                ${formatChipValue(Math.round(displayedChips[player.id] ?? player.chips))}
-              </span>
+          <div className="relative w-12 h-12">
+            {/* Background chip circle - dimmed when folded */}
+            <div className={`
+              absolute inset-0 w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
+              ${chipBgColor}
+              ${playerDecision === 'fold' ? 'opacity-50' : ''}
+              ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
+              ${isClickable ? 'active:scale-95' : ''}
+            `}>
+              {/* Show chip value when no emoticon */}
+              {!emoticonOverlays[player.id] && (
+                <span className={`text-sm font-bold leading-none ${(displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                  ${formatChipValue(Math.round(displayedChips[player.id] ?? player.chips))}
+                </span>
+              )}
+              {/* Flash for legs received */}
+              <ValueChangeFlash 
+                value={0}
+                prefix="+L"
+                position="top-right"
+                manualTrigger={winnerLegsFlashTrigger?.playerId === player.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+              />
+              {/* Flash for pot received */}
+              <ValueChangeFlash 
+                value={0}
+                prefix="+$"
+                position="top-left"
+                manualTrigger={winnerPotFlashTrigger?.playerId === player.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+              />
+            </div>
+            {/* Emoticon overlay - NOT affected by fold dimming */}
+            {emoticonOverlays[player.id] && (
+              <div className="absolute inset-0 w-12 h-12 rounded-full flex items-center justify-center z-10">
+                <span 
+                  className="text-xl animate-in fade-in zoom-in duration-200"
+                  style={{
+                    animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500 
+                      ? 'fadeOutEmoticon 0.5s ease-out forwards' 
+                      : undefined
+                  }}
+                >
+                  {emoticonOverlays[player.id].emoticon}
+                </span>
+              </div>
             )}
-            {/* Flash for legs received */}
-            <ValueChangeFlash 
-              value={0}
-              prefix="+L"
-              position="top-right"
-              manualTrigger={winnerLegsFlashTrigger?.playerId === player.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-            />
-            {/* Flash for pot received */}
-            <ValueChangeFlash 
-              value={0}
-              prefix="+$"
-              position="top-left"
-              manualTrigger={winnerPotFlashTrigger?.playerId === player.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
-            />
           </div>
         </div>
       </div>;
