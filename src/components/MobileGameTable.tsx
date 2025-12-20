@@ -1726,8 +1726,10 @@ export const MobileGameTable = ({
           hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
           gameType={gameType}
           currentRound={currentRound}
-          showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
+          showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7 && !is357MultiPlayerShowdown}
           tightOverlap={isHolmMultiPlayerShowdown}
+          unusedCardsBelow={is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3)}
+          isRightSide={isRightSideSlot}
         />
       </div>
     ) : (
