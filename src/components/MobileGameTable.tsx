@@ -189,8 +189,8 @@ interface MobileGameTableProps {
   onPlayerClick?: (player: Player) => void;
   // Chat props
   chatBubbles?: ChatBubbleData[];
-  allMessages?: { id: string; user_id: string; message: string; username?: string }[];
-  onSendChat?: (message: string) => void;
+  allMessages?: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }[];
+  onSendChat?: (message: string, imageFile?: File) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
   // Observer leave game prop

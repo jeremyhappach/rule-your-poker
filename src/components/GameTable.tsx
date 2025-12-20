@@ -92,7 +92,7 @@ interface GameTableProps {
   dealerSetupMessage?: string | null; // Yellow announcement when another player is configuring game
   // Chat props
   chatBubbles?: ChatBubbleData[];
-  onSendChat?: (message: string) => void;
+  onSendChat?: (message: string, imageFile?: File) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
   onStay: () => void;

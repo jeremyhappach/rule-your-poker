@@ -79,7 +79,7 @@ interface WaitingForPlayersTableProps {
   isMobile: boolean;
   chatBubbles?: ChatBubble[];
   allMessages?: ChatMessage[];
-  onSendChat?: (message: string) => void;
+  onSendChat?: (message: string, imageFile?: File) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
   onLeaveGameNow?: () => void;
