@@ -713,6 +713,9 @@ export const MobileGameTable = ({
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
+  // NEW: 357 exposed layout mode - active during ANY 357 multiplayer showdown (all rounds)
+  const is357ExposedLayout = gameType !== 'holm-game' && allDecisionsIn && stayedPlayersCount >= 2;
+  
   // HOLM: Detect solo player vs Chucky showdown (1 player stayed)
   // Keep tabled cards visible through win animation + until next hand to avoid flicker.
   const isSoloVsChuckyRaw = gameType === 'holm-game' && 
@@ -1536,24 +1539,38 @@ export const MobileGameTable = ({
     // Either: player has exposed cards in cache, OR we're showing announcement for a stayed player
     // OR: in 3-5-7, this player won the final leg (keep their cards visible during animation)
     // OR: 3-5-7 "secret reveal" in rounds 1-2 for players who stayed (only visible to other stayed players)
+    // OR: 3-5-7 exposed layout is active and player stayed
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
     const isInAnnouncementShowdown = isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
     const is357WinningLegPlayer = gameType !== 'holm-game' && winningLegPlayerId === player.id && cards.length > 0;
     const is357Round3Showdown = is357Round3MultiPlayerShowdown && hasExposedCards;
     // Secret reveal: show cards of OTHER players who stayed (rounds 1-2, revealAtShowdown enabled)
     const is357SecretRevealShowdown = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
-    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer || is357Round3Showdown || is357SecretRevealShowdown;
+    // 357 exposed layout: player stayed and we're in multiplayer showdown
+    const is357ExposedShowdown = is357ExposedLayout && playerDecision === 'stay';
+    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer || is357Round3Showdown || is357SecretRevealShowdown || is357ExposedShowdown;
     
     // During showdown/announcement, hide chip stack to make room for bigger cards
     // EXCEPTION: During Holm win animation, keep winner's chipstack visible (cards are "tabled" below Chucky)
     // EXCEPTION: During solo vs Chucky, keep solo player's chipstack visible (only their cards are tabled)
     // CRITICAL: For Holm, hide chips during MULTI-PLAYER showdown (2+ stayed) for ALL positions except home position
     // This gives room for cards to display without overlap
+    // NEW: For 3-5-7 exposed layout, also hide chips to make room for cards
     const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
     const isSoloVsChuckyPlayerForChip = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
     // For Holm: hide chips for all players in showdown (gives room for exposed cards)
-    // For 3-5-7: never hide chips (their showdown layout is different)
-    const hideChipForShowdown = gameType === 'holm-game' && isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
+    // For 3-5-7: hide chips during exposed layout for stayed players
+    const hideChipForShowdown = (gameType === 'holm-game' && isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip) ||
+      (is357ExposedShowdown);
+    
+    // Determine position side for exposed layout (for unused card placement)
+    const getPositionSide = (): 'left' | 'right' | 'top' | 'bottom' => {
+      if (effectiveSlotIndex === 1) return 'left';
+      if (effectiveSlotIndex === 4) return 'right';
+      if (effectiveSlotIndex === 2 || effectiveSlotIndex === 3) return 'top';
+      return 'bottom';
+    };
+    const positionSide = getPositionSide();
     
     const isDealer = dealerPosition === player.position;
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
@@ -1677,7 +1694,12 @@ export const MobileGameTable = ({
         </div>
       </div>;
     
-    const nameElement = (
+    // Compact name element for 357 exposed layout
+    const nameElement = is357ExposedShowdown ? (
+      <span className="text-[8px] truncate max-w-[50px] leading-none font-bold text-amber-100">
+        {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+      </span>
+    ) : (
       <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
         {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
         {player.is_bot && player.profiles?.aggression_level && (
@@ -1708,18 +1730,25 @@ export const MobileGameTable = ({
     // In REGULAR mode (not showdown), upper corners should show name below chipstack for readability
     const showNameBelowChipstack = isUpperCorner && !hideChipForShowdown;
     
+    // Determine if this player's cards should be hidden (show backs) in 357 exposed layout
+    // Cards are hidden if: we're in 357 exposed layout, but cards aren't cached/exposed yet
+    const is357CardsHidden = is357ExposedShowdown && !hasExposedCards && !is357Round3Showdown && !is357SecretRevealShowdown;
+    
     const cardsElement = isShowdown && !shouldHideForTabling ? (
       <div className={`flex scale-100 origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-2' : ''}`}>
         <PlayerHand 
           cards={cards} 
-          isHidden={false}
+          isHidden={is357CardsHidden}
+          expectedCardCount={expectedCardCount}
           highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
           kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
           hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
           gameType={gameType}
           currentRound={currentRound}
           showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
-          tightOverlap={isHolmMultiPlayerShowdown}
+          tightOverlap={isHolmMultiPlayerShowdown || is357ExposedShowdown}
+          exposedLayout={is357ExposedShowdown}
+          positionSide={positionSide}
         />
       </div>
     ) : (
@@ -1737,6 +1766,50 @@ export const MobileGameTable = ({
         </div>
       )
     );
+    
+    // For 357 exposed layout, show compact layout with green ring
+    if (is357ExposedShowdown && !shouldHideForTabling) {
+      return (
+        <div key={player.id} className="flex flex-col items-center gap-0 relative">
+          {/* Name above for bottom positions */}
+          {isBottomPosition && nameElement}
+          {/* Cards with green stay ring */}
+          <div className="relative ring-1 ring-green-500 rounded p-0.5">
+            {cardsElement}
+          </div>
+          {/* Compact leg indicator */}
+          {displayLegs > 0 && (
+            <div className="flex -mt-0.5">
+              {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className="w-3 h-3 rounded-full bg-white border border-amber-500 flex items-center justify-center"
+                  style={{ marginLeft: i > 0 ? '-4px' : '0', zIndex: legsToWin - i }}
+                >
+                  <span className="text-slate-800 font-bold text-[6px]">L</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Name below for non-bottom positions */}
+          {!isBottomPosition && nameElement}
+        </div>
+      );
+    }
+    
+    // For folded players during 357 exposed layout, show minimal display
+    if (is357ExposedLayout && playerDecision === 'fold') {
+      return (
+        <div key={player.id} className="flex flex-col items-center opacity-40">
+          <div className="bg-poker-felt-dark/60 rounded px-1 py-0.5 border border-amber-800/30">
+            <p className="text-[7px] text-amber-300/60 font-medium truncate max-w-[40px]">
+              {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+            </p>
+            <p className="text-[6px] text-red-400/60">Out</p>
+          </div>
+        </div>
+      );
+    }
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
         {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
