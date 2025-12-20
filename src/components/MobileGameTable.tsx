@@ -712,6 +712,8 @@ export const MobileGameTable = ({
   // Count players who stayed for multi-player showdown detection
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
+  // Combined check for any 3-5-7 multi-player showdown (rounds 2 or 3) - used to hide dealer button and shrink UI
+  const is357MultiPlayerShowdown = gameType !== 'holm-game' && (currentRound === 2 || currentRound === 3) && allDecisionsIn && stayedPlayersCount >= 2;
   
   // HOLM: Detect solo player vs Chucky showdown (1 player stayed)
   // Keep tabled cards visible through win animation + until next hand to avoid flicker.
@@ -1623,8 +1625,8 @@ export const MobileGameTable = ({
         )}
         
         {/* Dealer button - positioned OUTSIDE (away from table center), barely overlapping chip stack */}
-        {/* Hide during 3-5-7 round 3 multi-player showdown to reduce clutter */}
-        {isDealer && !is357Round3MultiPlayerShowdown && (
+        {/* Hide during 3-5-7 multi-player showdown (rounds 2-3) to reduce clutter */}
+        {isDealer && !is357MultiPlayerShowdown && (
           <div className="absolute z-30" style={{
             ...(isRightSideSlot 
               ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(75%)' }
@@ -1720,7 +1722,7 @@ export const MobileGameTable = ({
           gameType={gameType}
           currentRound={currentRound}
           showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
-          tightOverlap={isHolmMultiPlayerShowdown}
+          tightOverlap={isHolmMultiPlayerShowdown || is357MultiPlayerShowdown}
         />
       </div>
     ) : (
@@ -2163,10 +2165,10 @@ export const MobileGameTable = ({
               }}
             >
               <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
-                gameType === 'holm-game' ? 'px-5 py-1.5' : is357Round3MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
+                gameType === 'holm-game' ? 'px-5 py-1.5' : is357MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
               }`}>
                 <span className={`text-poker-gold font-bold ${
-                  gameType === 'holm-game' ? 'text-xl' : is357Round3MultiPlayerShowdown ? 'text-base' : 'text-3xl'
+                  gameType === 'holm-game' ? 'text-xl' : is357MultiPlayerShowdown ? 'text-base' : 'text-3xl'
                 }`}>${formatChipValue(Math.round(
                   // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
