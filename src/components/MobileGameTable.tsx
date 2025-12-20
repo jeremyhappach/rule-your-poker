@@ -218,6 +218,9 @@ interface MobileGameTableProps {
   onHolmPreStayChange?: (checked: boolean) => void;
   // Holm rabbit hunt enabled
   rabbitHunt?: boolean;
+  // Mobile tab state (lifted to parent to persist across remounts)
+  activeTab?: 'cards' | 'chat' | 'lobby';
+  onActiveTabChange?: (tab: 'cards' | 'chat' | 'lobby') => void;
 }
 export const MobileGameTable = ({
   players,
@@ -316,6 +319,8 @@ export const MobileGameTable = ({
   onHolmPreFoldChange,
   onHolmPreStayChange,
   rabbitHunt = false,
+  activeTab: externalActiveTab,
+  onActiveTabChange,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -327,8 +332,10 @@ export const MobileGameTable = ({
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
 
-  // Tab state for bottom section: 'cards' | 'chat' | 'lobby'
-  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
+  // Tab state - use external if provided, otherwise internal
+  const [internalActiveTab, setInternalActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
+  const activeTab = externalActiveTab ?? internalActiveTab;
+  const setActiveTab = onActiveTabChange ?? setInternalActiveTab;
   
   // Flash the cards tab icon when new cards are dealt
   const [cardsTabFlashing, setCardsTabFlashing] = useState(false);
