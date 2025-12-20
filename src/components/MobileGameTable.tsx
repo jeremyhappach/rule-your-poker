@@ -613,38 +613,60 @@ export const MobileGameTable = ({
   const prevRoundForCacheClearRef = useRef<number | null>(null);
   const prevGameTypeForCacheClearRef = useRef<string | null | undefined>(gameType);
   
-  // Clear showdown cache when starting a NEW game:
+  // Clear showdown/community/Chucky caches when starting a NEW game:
   // 1. Round goes from 2/3 back to 1
   // 2. Game type changes (e.g., holm → 357)
-  // This prevents stale cards from previous game flashing at start of new game
+  // This prevents stale Holm cards flashing at the start of a new 3-5-7 game.
   useEffect(() => {
     const prevRound = prevRoundForCacheClearRef.current;
     const prevGameType = prevGameTypeForCacheClearRef.current;
-    
+
     let shouldClear = false;
     let reason = '';
-    
+
     // If round dropped back to 1 from a higher round, it's a new game
     if (currentRound === 1 && prevRound !== null && prevRound > 1) {
       shouldClear = true;
       reason = `round went from ${prevRound} to 1`;
     }
-    
+
     // If game type changed, it's definitely a new game
     if (prevGameType !== undefined && prevGameType !== gameType) {
       shouldClear = true;
       reason = `game type changed from ${prevGameType} to ${gameType}`;
     }
-    
+
     if (shouldClear) {
-      console.log('[SHOWDOWN_CACHE] Clearing cache - new game detected:', reason);
+      console.log('[NEW_GAME_CACHE_RESET] Clearing mobile caches - new game detected:', reason);
+
+      // Showdown exposure cache
       showdownRoundRef.current = null;
       showdownCardsCache.current = new Map();
+
+      // Community UI cache
+      setApprovedCommunityCards(null);
+      setApprovedRoundForDisplay(null);
+      setIsDelayingCommunityCards(false);
+      setStaggeredCardCount(0);
+      lastDetectedRoundRef.current = null;
+      if (communityCardsDelayRef.current) {
+        clearTimeout(communityCardsDelayRef.current);
+        communityCardsDelayRef.current = null;
+      }
+
+      // Reset both internal/external community ref cache
+      communityCardsCache.current = { cards: null, round: null, show: gameType !== 'holm-game' };
+      setShowCommunityCards(gameType !== 'holm-game');
+
+      // Chucky UI cache
+      setCachedChuckyCards(null);
+      setCachedChuckyActive(false);
+      setCachedChuckyCardsRevealed(0);
     }
-    
+
     prevRoundForCacheClearRef.current = currentRound;
     prevGameTypeForCacheClearRef.current = gameType;
-  }, [currentRound, gameType, showdownRoundRef, showdownCardsCache]);
+  }, [currentRound, gameType, showdownRoundRef, showdownCardsCache, communityCardsCache]);
 
   // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
