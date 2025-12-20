@@ -542,7 +542,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const prevType = prevGameTypeRef.current;
     const currentType = game?.game_type ?? null;
 
-    if (prevType !== null && currentType !== null && prevType !== currentType) {
+    // NOTE: currentType can temporarily be null during new-game setup; treat that as a type change.
+    if (prevType !== null && prevType !== currentType) {
       console.log('[CACHE_GUARD] Game type changed, clearing caches (layout)', { prevType, currentType });
       clearLiftedCardCaches('GAME TYPE CHANGED', { prevType, currentType });
       setCachedRoundData(null);
@@ -4688,7 +4689,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.current_round || 1}
+              currentRound={game.current_round ?? 0}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               timeLeft={timeLeft}
@@ -4802,7 +4803,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
-              currentRound={game.current_round || 1}
+              currentRound={game.current_round ?? 0}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
               authoritativeCardCount={cardStateContext?.cardsDealt}
