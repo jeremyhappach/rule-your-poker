@@ -1533,7 +1533,7 @@ export const GameTable = ({
                                 
                                 {/* Chip balance (center) with status indicator */}
                                 <div className={`flex items-center justify-center px-1.5 py-0.5 rounded ${
-                                  player.sitting_out ? '' : player.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
+                                  (player.sitting_out || player.auto_fold) ? 'bg-red-400/50 ring-1 ring-red-400/40' : player.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
                                 }`}>
                                   <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                                     ${formatChipValue(player.chips)}
@@ -1579,7 +1579,7 @@ export const GameTable = ({
                                 // Status-based background: light red for sitting out, yellow for waiting, 
                                 // green for stayed, white for active (not stayed)
                                 const getChipBgClass = () => {
-                                  if (player?.sitting_out) return 'bg-red-400/50 ring-1 ring-red-400/40';
+                                  if (player?.sitting_out || player?.auto_fold) return 'bg-red-400/50 ring-1 ring-red-400/40';
                                   if (player?.waiting) return 'bg-yellow-500/20 ring-1 ring-yellow-500/40';
                                   if (playerDecision === 'stay') return 'bg-green-400/50 ring-1 ring-green-500/40';
                                   return 'bg-white/30 ring-1 ring-white/40'; // Active but not stayed

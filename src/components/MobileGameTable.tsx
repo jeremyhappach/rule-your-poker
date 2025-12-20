@@ -1721,8 +1721,8 @@ export const MobileGameTable = ({
     if (player.waiting) {
       return 'bg-yellow-300';
     }
-    // Light red for sitting out (and not waiting) - pale enough to see negative chip values
-    if (player.sitting_out) {
+    // Light red for sitting out OR auto_fold (and not waiting) - pale enough to see negative chip values
+    if (player.sitting_out || player.auto_fold) {
       return 'bg-red-400';
     }
     // Green background for players who stayed (replaces the glow ring)
@@ -1947,9 +1947,6 @@ export const MobileGameTable = ({
     const nameElement = (
       <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
         {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
-        {player.auto_fold && !player.is_bot && (
-          <span className="text-amber-400 ml-0.5">(folding)</span>
-        )}
         {player.is_bot && player.profiles?.aggression_level && (
           <span className="text-purple-300 ml-0.5">
             ({getAggressionAbbreviation(player.profiles.aggression_level)})
@@ -3387,7 +3384,7 @@ export const MobileGameTable = ({
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
-                  {currentPlayer.auto_fold && !currentPlayer.sitting_out ? <span className="ml-1 text-amber-400 font-bold">(folding)</span> : currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
+                  {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
                 <div className="relative">
                   {/* Show emoticon overlay OR chipstack value */}
