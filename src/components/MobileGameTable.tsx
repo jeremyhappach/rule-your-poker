@@ -3067,7 +3067,7 @@ export const MobileGameTable = ({
                   activeTab === 'cards' 
                     ? 'bg-primary/20 text-foreground' 
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
-                } ${cardsTabFlashing || isYourTurnNotOnCardsTab ? 'animate-pulse' : ''}`}
+                } ${cardsTabFlashing ? 'animate-pulse ring-2 ring-green-500' : ''} ${isYourTurnNotOnCardsTab && !cardsTabFlashing ? 'animate-pulse ring-2 ring-red-500' : ''}`}
               >
                 <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${cardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
               </button>
