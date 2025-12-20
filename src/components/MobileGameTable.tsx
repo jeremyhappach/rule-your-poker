@@ -39,7 +39,7 @@ import React, {
   useMemo,
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { MessageSquare, User, Spade } from "lucide-react";
 
 // Custom hook for swipe detection
 const useSwipeGesture = (onSwipeUp: () => void, onSwipeDown: () => void) => {
@@ -327,13 +327,13 @@ export const MobileGameTable = ({
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
 
-  // Collapsible card section state
-  const [isCardSectionExpanded, setIsCardSectionExpanded] = useState(true);
+  // Tab state for bottom section: 'cards' | 'chat' | 'lobby'
+  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
   
-  // Swipe gesture handlers
-  const swipeHandlers = useSwipeGesture(() => setIsCardSectionExpanded(true),
-  // Swipe up = expand
-  () => setIsCardSectionExpanded(false) // Swipe down = collapse
+  // Swipe gesture handlers for tab switching
+  const swipeHandlers = useSwipeGesture(
+    () => {}, // Swipe up - no action
+    () => {}  // Swipe down - no action
   );
 
   // Chopped animation state
@@ -3003,108 +3003,60 @@ export const MobileGameTable = ({
         )}
         
         
-        {/* Collapse toggle */}
-        <button onClick={() => setIsCardSectionExpanded(!isCardSectionExpanded)} className="w-full flex items-center justify-center py-0.5 text-muted-foreground hover:text-foreground transition-colors">
-          {isCardSectionExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
-        </button>
+        {/* Tab navigation bar */}
+        <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
+          <button 
+            onClick={() => setActiveTab('cards')}
+            className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+              activeTab === 'cards' 
+                ? 'bg-primary/20 text-foreground' 
+                : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''}`} />
+          </button>
+          <button 
+            onClick={() => setActiveTab('chat')}
+            className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+              activeTab === 'chat' 
+                ? 'bg-primary/20 text-foreground' 
+                : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => setActiveTab('lobby')}
+            className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+              activeTab === 'lobby' 
+                ? 'bg-primary/20 text-foreground' 
+                : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <User className="w-5 h-5" />
+          </button>
+        </div>
         
-        {/* Collapsed view - Game Lobby with all players */}
-        {!isCardSectionExpanded && <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>
-                </span>
-              </div>
+        {/* Progress bar timer - ALWAYS visible regardless of tab */}
+        {currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime && (
+          <div key={`timer-${currentRound}-${currentTurnPosition}`} className="px-4 py-2">
+            <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
+              <div 
+                className={`h-full transition-[width] duration-1000 ease-linear ${
+                  timeLeft <= 3 ? 'bg-red-500' : 
+                  timeLeft <= 5 ? 'bg-yellow-500' : 
+                  'bg-green-500'
+                }`}
+                style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
+              />
             </div>
-            
-            {/* Scrollable player list - sorted by chips descending */}
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
-              {[...players].sort((a, b) => b.chips - a.chips).map(player => {
-                const isCurrentUser = player.user_id === currentUserId;
-                const isDealing = player.position === dealerPosition;
-                const hasBuck = player.position === buckPosition;
-                return (
-                  <div key={player.id} className={`
-                    flex items-center justify-between py-1.5 px-2 rounded-md
-                    ${isCurrentUser ? 'bg-primary/10' : 'bg-transparent'}
-                    ${player.sitting_out ? 'opacity-50' : ''}
-                  `}>
-                    {/* Left: Name with badges inline */}
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
-                        {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
-                      </span>
-                      {isDealing && !is357MultiPlayerShowdown && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
-                      {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
-                      {player.is_bot && <span className="text-[9px] text-muted-foreground">(Bot)</span>}
-                      {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
-                    </div>
-                    
-                    {/* Right: Chips and Legs */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* Leg indicator for 3-5-7 */}
-                      {gameType !== 'holm-game' && player.legs > 0 && (
-                        <div className="flex">
-                          {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
-                            <div 
-                              key={i} 
-                              className="w-4 h-4 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm" 
-                              style={{ marginLeft: i > 0 ? '-4px' : '0', zIndex: Math.min(player.legs, legsToWin) - i }}
-                            >
-                              <span className="text-slate-800 font-bold text-[8px]">L</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {/* Chip stack - prioritize locked ref > displayedChips state > actual chips */}
-                      <div className={`text-right min-w-[45px] font-bold text-sm ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                        ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Chat panel - fixed at bottom */}
-            {onSendChat && (
-              <div className="flex-shrink-0 mt-2 pt-2 border-t border-border">
-                <MobileChatPanel
-                  messages={allMessages}
-                  onSend={onSendChat}
-                  isSending={isChatSending}
-                />
-              </div>
-            )}
-          </div>}
+          </div>
+        )}
         
-        {/* Expanded view - show cards large */}
-        {isCardSectionExpanded && currentPlayer && <div className="px-2 flex flex-col">
-            {/* Progress bar timer - shows when it's player's turn */}
-            {isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime && (
-              <div key={`timer-${currentRound}-${currentTurnPosition}`} className="mb-2 px-2">
-                <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
-                  <div 
-                    className={`h-full transition-[width] duration-1000 ease-linear ${
-                      timeLeft <= 3 ? 'bg-red-500' : 
-                      timeLeft <= 5 ? 'bg-yellow-500' : 
-                      'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            
+        {/* CARDS TAB - Player cards, buttons, name, chipstack */}
+        {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1">
             {/* Action buttons - ABOVE cards */}
-            {canDecide && <div className="flex gap-2 justify-center mb-1">
+            {canDecide && <div className="flex gap-2 justify-center mb-1 mt-2">
                 <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
                   {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                 </Button>
@@ -3136,18 +3088,13 @@ export const MobileGameTable = ({
               </div>
             )}
             
-            {/* Cards display - moved up, less padding */}
-            {/* Dim current player's cards if they lost (winner exists and it's not them) */}
-            {/* For 357 winner during animation: */}
-            {/*   - Round 3: Cards are tabled above pot, show "Show Cards" button here */}
-            {/*   - Rounds 1-2: Keep cards visible here with "Show Cards" button above them */}
+            {/* Cards display */}
             {(() => {
               const isWinner357InAnimation = gameType !== 'holm-game' && 
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
               
               if (isWinner357InAnimation) {
-                // Round 3: Cards are tabled above pot - show only the button here
                 if (currentRound === 3) {
                   return (
                     <div className="flex flex-col items-center justify-center gap-3">
@@ -3167,10 +3114,8 @@ export const MobileGameTable = ({
                   );
                 }
                 
-                // Rounds 1-2: Keep cards visible here with "Show Cards" button above
                 return (
                   <div className="flex flex-col items-center justify-center gap-2">
-                    {/* Show Cards button above the cards - if clicked, cards table face-up */}
                     {!winner357ShowCards ? (
                       <Button 
                         variant="outline"
@@ -3184,7 +3129,6 @@ export const MobileGameTable = ({
                       <div className="text-sm text-green-400 font-medium">Cards Tabled</div>
                     )}
                     
-                    {/* Winner's cards - stay visible until they choose to show */}
                     {!winner357ShowCards && currentPlayerCards.length > 0 && (
                       <div className="transform scale-[2.2] origin-top">
                         <PlayerHand 
@@ -3200,27 +3144,14 @@ export const MobileGameTable = ({
                 );
               }
               
-              // Normal card display
-              // Show pre-decision checkboxes for Holm games when stay/fold buttons aren't visible but player hasn't decided
               const showPreDecisionCheckboxes = gameType === 'holm-game' && 
-                !canDecide &&  // stay/fold buttons NOT visible
-                !hasDecided &&  // hasn't made a decision yet
+                !canDecide && 
+                !hasDecided && 
                 roundStatus === 'betting' && 
                 currentPlayerCards.length > 0;
               
-              console.log('[PRE-DECISION UI] Checkbox visibility:', {
-                gameType,
-                isPlayerTurn,
-                hasDecided,
-                roundStatus,
-                isPaused,
-                hasCards: currentPlayerCards.length > 0,
-                showPreDecisionCheckboxes
-              });
-              
               return (
                 <div className="flex flex-col items-center justify-center gap-3 w-full">
-                  {/* Pre-decision checkboxes - ABOVE cards (cards are scaled up and can push left content off-screen) */}
                   {showPreDecisionCheckboxes && (
                     <div className="flex items-center justify-center gap-6">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -3250,8 +3181,6 @@ export const MobileGameTable = ({
                     </div>
                   )}
 
-                  {/* Cards - current player normally sees their own cards in the bottom section */}
-                  {/* EXCEPTION: solo-vs-Chucky -> keep cards tabled on the felt through win animation */}
                   {isCurrentPlayerSoloVsChucky ? (
                     <div className="text-sm text-muted-foreground">Cards tabled on the felt</div>
                   ) : currentPlayerCards.length > 0 ? (
@@ -3277,27 +3206,23 @@ export const MobileGameTable = ({
               );
             })()}
             
-            {/* Player info and chat - below cards */}
+            {/* Player info - below cards */}
             <div className="flex flex-col gap-2 mt-16">
-              {/* Name, chips, dealer badge, and hand eval in a row */}
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
                   {currentPlayer.sitting_out && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
-                {/* Chip stack - prioritize locked ref > displayedChips state > actual chips */}
                 <div className="relative">
                   <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
                     ${formatChipValue(Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips))}
                   </span>
-                  {/* Flash for legs received */}
                   <ValueChangeFlash 
                     value={0}
                     prefix="+L"
                     position="top-right"
                     manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
                   />
-                  {/* Flash for pot received */}
                   <ValueChangeFlash 
                     value={0}
                     prefix="+$"
@@ -3305,28 +3230,15 @@ export const MobileGameTable = ({
                     manualTrigger={winnerPotFlashTrigger?.playerId === currentPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
                   />
                 </div>
-                {/* Hand evaluation for Holm only when Chucky is active */}
                 {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
                     {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
                   </Badge>}
               </div>
-              
-              {/* Chat panel - always visible */}
-              {onSendChat && (
-                <div className="w-full">
-                  <MobileChatPanel
-                    messages={allMessages}
-                    onSend={onSendChat}
-                    isSending={isChatSending}
-                  />
-                </div>
-              )}
             </div>
           </div>}
         
-        {/* No player state - only for observers */}
-        {isCardSectionExpanded && !currentPlayer && <div className="px-4 pb-4">
-            {/* Header with gear for observers */}
+        {/* CARDS TAB - Observer state */}
+        {activeTab === 'cards' && !currentPlayer && <div className="px-4 pb-4 flex-1">
             <div className="flex items-center justify-between mb-3">
               {onLeaveGameNow && (
                 <PlayerOptionsMenu
@@ -3349,15 +3261,88 @@ export const MobileGameTable = ({
             <p className="text-muted-foreground text-sm text-center mb-3">
               You are observing this game
             </p>
+          </div>}
+        
+        {/* CHAT TAB - Dedicated chat section */}
+        {activeTab === 'chat' && (
+          <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-2 flex-shrink-0">
+              <h3 className="text-sm font-bold text-foreground">Chat</h3>
+              <span className="text-xs text-muted-foreground">{allMessages.length} messages</span>
+            </div>
             
-            {/* Chat panel for observers - always visible */}
-            {onSendChat && (
-              <MobileChatPanel
-                messages={allMessages}
-                onSend={onSendChat}
-                isSending={isChatSending}
-              />
+            {onSendChat ? (
+              <div className="flex-1 min-h-0">
+                <MobileChatPanel
+                  messages={allMessages}
+                  onSend={onSendChat}
+                  isSending={isChatSending}
+                />
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm text-center">Chat not available</p>
             )}
+          </div>
+        )}
+        
+        {/* LOBBY TAB - Player list */}
+        {activeTab === 'lobby' && <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-2 flex-shrink-0">
+              <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
+              {[...players].sort((a, b) => b.chips - a.chips).map(player => {
+                const isCurrentUser = player.user_id === currentUserId;
+                const isDealing = player.position === dealerPosition;
+                const hasBuck = player.position === buckPosition;
+                return (
+                  <div key={player.id} className={`
+                    flex items-center justify-between py-1.5 px-2 rounded-md
+                    ${isCurrentUser ? 'bg-primary/10' : 'bg-transparent'}
+                    ${player.sitting_out ? 'opacity-50' : ''}
+                  `}>
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
+                        {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
+                      </span>
+                      {isDealing && !is357MultiPlayerShowdown && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
+                      {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
+                      {player.is_bot && <span className="text-[9px] text-muted-foreground">(Bot)</span>}
+                      {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {gameType !== 'holm-game' && player.legs > 0 && (
+                        <div className="flex">
+                          {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
+                            <div 
+                              key={i} 
+                              className="w-4 h-4 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm" 
+                              style={{ marginLeft: i > 0 ? '-4px' : '0', zIndex: Math.min(player.legs, legsToWin) - i }}
+                            >
+                              <span className="text-slate-800 font-bold text-[8px]">L</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className={`text-right min-w-[45px] font-bold text-sm ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                        ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>}
       </div>
     </div>;
