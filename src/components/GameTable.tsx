@@ -1578,7 +1578,7 @@ export const GameTable = ({
                                 // Status-based background: light red for sitting out, yellow for waiting, 
                                 // green for stayed, white for active (not stayed)
                                 const getChipBgClass = () => {
-                                  if (player?.sitting_out) return 'bg-red-200/50 ring-1 ring-red-300/40';
+                                  if (player?.sitting_out) return 'bg-red-400/50 ring-1 ring-red-400/40';
                                   if (player?.waiting) return 'bg-yellow-500/20 ring-1 ring-yellow-500/40';
                                   if (playerDecision === 'stay') return 'bg-green-400/50 ring-1 ring-green-500/40';
                                   return 'bg-white/30 ring-1 ring-white/40'; // Active but not stayed
