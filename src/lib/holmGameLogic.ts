@@ -1179,19 +1179,22 @@ async function handleChuckyShowdown(
     // No delay here - the pot-to-player animation provides time for players to see results
     // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
     // Dealer cannot pass to a bot or a sitting_out player
+    // NOTE: waiting=true players ARE eligible since they will become active next hand
     const { data: eligibleDealers } = await supabase
       .from('players')
-      .select('position, is_bot, sitting_out')
+      .select('position, is_bot, sitting_out, waiting')
       .eq('game_id', gameId)
-      .eq('sitting_out', false)
       .eq('is_bot', false)
       .order('position', { ascending: true });
+    
+    // Filter: either not sitting_out, OR waiting=true (will become active next hand)
+    const filteredDealers = (eligibleDealers || []).filter(p => !p.sitting_out || p.waiting);
     
     const currentDealerPosition = game.dealer_position || 1;
     let nextDealerPosition = currentDealerPosition; // Default: keep current dealer
     
-    if (eligibleDealers && eligibleDealers.length > 0) {
-      const eligiblePositions = eligibleDealers.map(p => p.position);
+    if (filteredDealers.length > 0) {
+      const eligiblePositions = filteredDealers.map(p => p.position);
       const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);
       
       if (currentDealerIndex === -1) {
@@ -1207,7 +1210,7 @@ async function handleChuckyShowdown(
     
     console.log('[HOLM SHOWDOWN] Dealer rotation:', {
       current: currentDealerPosition,
-      eligiblePositions: eligibleDealers?.map(p => p.position) || [],
+      eligiblePositions: filteredDealers.map(p => p.position),
       nextDealer: nextDealerPosition
     });
     
@@ -1850,19 +1853,22 @@ async function handleMultiPlayerShowdown(
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
+      // NOTE: waiting=true players ARE eligible since they will become active next hand
       const { data: eligibleDealers } = await supabase
         .from('players')
-        .select('position, is_bot, sitting_out')
+        .select('position, is_bot, sitting_out, waiting')
         .eq('game_id', gameId)
-        .eq('sitting_out', false)
         .eq('is_bot', false)
         .order('position', { ascending: true });
+      
+      // Filter: either not sitting_out, OR waiting=true (will become active next hand)
+      const filteredDealers = (eligibleDealers || []).filter(p => !p.sitting_out || p.waiting);
       
       const currentDealerPosition = game.dealer_position || 1;
       let nextDealerPosition = currentDealerPosition;
       
-      if (eligibleDealers && eligibleDealers.length > 0) {
-        const eligiblePositions = eligibleDealers.map(p => p.position);
+      if (filteredDealers.length > 0) {
+        const eligiblePositions = filteredDealers.map(p => p.position);
         const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);
         
         if (currentDealerIndex === -1) {

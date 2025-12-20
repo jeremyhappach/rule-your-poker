@@ -1703,7 +1703,7 @@ export const MobileGameTable = ({
     }
     // Light red for sitting out (and not waiting) - pale enough to see negative chip values
     if (player.sitting_out) {
-      return 'bg-red-200';
+      return 'bg-red-400';
     }
     // Green background for players who stayed (replaces the glow ring)
     if (playerDecision === 'stay') {
