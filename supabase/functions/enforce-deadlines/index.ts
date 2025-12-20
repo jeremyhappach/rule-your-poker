@@ -479,7 +479,11 @@ serve(async (req) => {
     // If a Holm round is stuck in 'showdown' or 'processing' status for too long,
     // the endHolmRound function likely failed mid-execution. Auto-recover by
     // setting awaiting_next_round and allowing progression.
-    if (game.status === 'in_progress' && game.game_type === 'holm-game') {
+    // CRITICAL: Only trigger if game.awaiting_next_round is FALSE and all_decisions_in is TRUE.
+    // If awaiting_next_round is already set, the client is handling progression.
+    // If all_decisions_in is false, players are still deciding - not stuck.
+    if (game.status === 'in_progress' && game.game_type === 'holm-game' && 
+        game.awaiting_next_round !== true && game.all_decisions_in === true) {
       const { data: stuckRounds } = await supabase
         .from('rounds')
         .select('*')
@@ -490,12 +494,14 @@ serve(async (req) => {
       
       const stuckRound = stuckRounds?.[0];
       if (stuckRound) {
-        const roundCreatedAt = new Date(stuckRound.created_at);
-        const stuckDuration = now.getTime() - roundCreatedAt.getTime();
+        // Use game.updated_at as proxy for when we entered this state (more accurate than round.created_at)
+        const gameUpdatedAt = new Date(game.updated_at);
+        const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
         
-        // If stuck for more than 30 seconds (generous buffer for normal processing)
-        if (stuckDuration > 30000) {
-          console.log('[ENFORCE] ⚠️ Holm round stuck in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 'seconds - auto-recovering');
+        // Only recover if stuck for more than 45 seconds AND no awaiting_next_round flag
+        // This gives ample time for normal client-side progression
+        if (stuckDuration > 45000) {
+          console.log('[ENFORCE] ⚠️ Holm round stuck in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 'seconds (game unchanged) - auto-recovering');
           
           // Mark round as completed and trigger next round
           await supabase
@@ -504,20 +510,13 @@ serve(async (req) => {
             .eq('id', stuckRound.id);
           
           // Set awaiting_next_round to trigger client-side progression
-          // If we already have a result message, don't overwrite it.
-          // IMPORTANT: This is a recovery path for stalled Holm rounds (not a player decision timeout).
-          const gameUpdates: Record<string, unknown> = {
-            awaiting_next_round: true,
-            all_decisions_in: true, // Ensure cards are visible if showdown
-          };
-
-          if (!game.last_round_result) {
-            gameUpdates.last_round_result = 'Recovering stalled round - proceeding...';
-          }
-
+          // NEVER set last_round_result here - let the normal result from endHolmRound stand
           await supabase
             .from('games')
-            .update(gameUpdates)
+            .update({ 
+              awaiting_next_round: true,
+              all_decisions_in: true,
+            })
             .eq('id', gameId);
           
           actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round`);
