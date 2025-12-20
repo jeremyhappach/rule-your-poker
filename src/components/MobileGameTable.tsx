@@ -1558,8 +1558,9 @@ export const MobileGameTable = ({
     const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
     const isSoloVsChuckyPlayerForChip = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
     // For Holm: hide chips for all players in showdown (gives room for exposed cards)
-    // For 3-5-7: never hide chips (their showdown layout is different)
-    const hideChipForShowdown = gameType === 'holm-game' && isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
+    // For 3-5-7: also hide chips during round 2 and 3 multi-player showdowns
+    const hideChipForShowdown = (gameType === 'holm-game' && isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip) ||
+      (is357MultiPlayerShowdown && isShowdown);
     
     const isDealer = dealerPosition === player.position;
     const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
