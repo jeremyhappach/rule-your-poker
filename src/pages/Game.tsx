@@ -4214,10 +4214,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             return;
           }
           
-          toast({
-            title: "Welcome Back!",
-            description: `Returned to seat #${position} with $${formatChipValue(existingPlayer.chips)} chips.`,
-          });
+          // Toast removed per user request
         } else {
           // User is a new observer - insert them as a new player
           // Fetch user's profile to get their deck_color_mode preference
@@ -4253,13 +4250,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             return;
           }
           
-          // Only show toast for seat reservation during active game, not during waiting phase
-          if (gameInProgress) {
-            toast({
-              title: "Seat Reserved",
-              description: `You'll join the game at seat #${position} when the next round starts.`,
-            });
-          }
+          // Toast removed per user request
         }
       } else {
         // Existing player changing seats
@@ -4282,10 +4273,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           return;
         }
         
-        toast({
-          title: "Seat Changed",
-          description: `Moved to seat #${position}`,
-        });
+        // Toast removed per user request
       }
       
       // Refetch to update UI
