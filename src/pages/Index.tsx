@@ -300,6 +300,9 @@ const Index = () => {
           
           <ScrollArea className="max-h-[60vh] pr-4">
             <div className="space-y-6">
+              {/* Visual Preferences Section - First */}
+              {user && <VisualPreferences userId={user.id} />}
+
               {/* Username Section */}
               <div className="space-y-3">
                 <div className="pb-2 border-b">
@@ -313,6 +316,7 @@ const Index = () => {
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
                     placeholder="Enter new username"
+                    autoFocus={false}
                   />
                 </div>
                 <Button 
@@ -337,6 +341,7 @@ const Index = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
+                    autoFocus={false}
                   />
                 </div>
                 <div className="space-y-2">
@@ -347,6 +352,7 @@ const Index = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
+                    autoFocus={false}
                   />
                 </div>
                 <Button 
@@ -357,9 +363,6 @@ const Index = () => {
                   Update Password
                 </Button>
               </div>
-
-              {/* Visual Preferences Section */}
-              {user && <VisualPreferences userId={user.id} />}
 
               {/* Superuser Admin Section */}
               {isSuperuser && (
