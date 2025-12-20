@@ -902,13 +902,18 @@ export const MobileGameTable = ({
     const update = () => {
       const containerEl = tableContainerRef.current;
       const cardsEl = communityCardsWrapperRef.current;
-      if (!containerEl || !cardsEl) return;
+
+      if (!containerEl || !cardsEl) {
+        setRabbitHuntLabelTop(null);
+        return;
+      }
 
       const containerRect = containerEl.getBoundingClientRect();
       const cardsRect = cardsEl.getBoundingClientRect();
 
-      // Slight padding below the *visual* bottom edge (cards are scaled + animated)
-      const paddingPx = 14;
+      // NOTE: getBoundingClientRect does NOT include box-shadow, and these cards have a strong shadow.
+      // Add extra padding so the label clears the *visual* bottom edge.
+      const paddingPx = 28;
       const nextTop = Math.round(cardsRect.bottom - containerRect.top + paddingPx);
       setRabbitHuntLabelTop(nextTop);
     };
