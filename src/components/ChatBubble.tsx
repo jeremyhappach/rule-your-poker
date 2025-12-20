@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 interface ChatBubbleProps {
   username: string;
   message: string;
+  imageUrl?: string | null;
   expiresAt: number;
 }
 
-export const ChatBubble = ({ username, message, expiresAt }: ChatBubbleProps) => {
+export const ChatBubble = ({ username, message, imageUrl, expiresAt }: ChatBubbleProps) => {
   const [opacity, setOpacity] = useState(1);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -49,9 +50,18 @@ export const ChatBubble = ({ username, message, expiresAt }: ChatBubbleProps) =>
       <div className="text-xs font-semibold text-primary mb-0.5 truncate">
         {username}
       </div>
-      <div className="text-sm break-words">
-        {message}
-      </div>
+      {imageUrl && (
+        <img 
+          src={imageUrl} 
+          alt="Chat image" 
+          className="w-full max-h-32 object-cover rounded mb-1"
+        />
+      )}
+      {message && (
+        <div className="text-sm break-words">
+          {message}
+        </div>
+      )}
     </div>
   );
 };
