@@ -4423,6 +4423,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable key={gameId ?? 'unknown-game'}
+                    gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
@@ -4543,6 +4544,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                    gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
                     pot={game.pot || 0}
@@ -4626,6 +4628,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             {/* Show table during ante decisions */}
             {isMobile ? (
               <MobileGameTable key={gameId ?? 'unknown-game'}
+                gameId={gameId}
                 players={players}
                 currentUserId={user?.id}
                 pot={game.pot || 0}
@@ -4772,6 +4775,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const hasActiveRound = Boolean(currentRound?.id);
           return isMobile ? (
             <MobileGameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
+              gameId={gameId}
               players={players}
               currentUserId={user?.id}
               pot={game.pot || 0}
