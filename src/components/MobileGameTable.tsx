@@ -1069,12 +1069,12 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (!gameId) return;
 
-    const enabled =
-      typeof window !== "undefined" &&
-      (new URLSearchParams(window.location.search).get("botEmoteTest") === "1" ||
-        window.localStorage.getItem("botEmoteTest") === "1");
+    // Auto-enabled in dev for testing (remove later)
+    const enabled = import.meta.env.DEV;
 
     if (!enabled || !isHost) return;
+
+    console.log("[BOT_EMOTE_TEST] enabled (every 15s)", { gameId });
 
     const tick = async () => {
       try {
