@@ -2372,8 +2372,8 @@ export const MobileGameTable = ({
           if (!shouldShow) return null;
           
           return (
-            <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
-              <div className="scale-[1.8]">
+            <>
+              <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
                 <CommunityCards 
                   cards={approvedCommunityCards!} 
                   revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
@@ -2383,16 +2383,17 @@ export const MobileGameTable = ({
                   tightOverlap={isHolmMultiPlayerShowdown}
                 />
               </div>
-              {/* Rabbit Hunt label - show when everyone folded and hidden community cards are being revealed */}
-              {/* Don't show if lastRoundResult indicates a player won (beat Chucky, wins pot, etc.) */}
-              {/* Use mt-8 to account for 1.8x scale of community cards above */}
-              {rabbitHunt && stayedPlayersCount === 0 && (communityCardsRevealed || 0) > 2 && 
-               !lastRoundResult?.includes('beat') && !lastRoundResult?.includes('wins') && !lastRoundResult?.includes('won') && (
-                <div className="mt-8 text-center">
-                  <span className="text-xs text-amber-400/80 italic">Rabbit Hunting...</span>
+
+              {/* Rabbit Hunt label (separate element so scaling doesn't affect placement) */}
+              {rabbitHunt && stayedPlayersCount === 0 && (communityCardsRevealed || 0) > 2 && !lastRoundResult && (
+                <div
+                  className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
+                  style={{ top: isHolmMultiPlayerShowdown ? 'calc(62% + 120px)' : 'calc(50% + 120px)' }}
+                >
+                  <span className="text-[11px] text-poker-gold/80 italic">Rabbit Hunting...</span>
                 </div>
               )}
-            </div>
+            </>
           );
         })()}
         
