@@ -30,7 +30,14 @@ import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
@@ -549,6 +556,10 @@ export const MobileGameTable = ({
     isDealerConfigPhase ? null : (externalCommunityCardsCache?.current?.round || null)
   ); // Track which round we've detected (to prevent re-triggering)
 
+  // Refs/state for positioning the Rabbit Hunt label directly under the rendered community cards
+  const communityCardsWrapperRef = useRef<HTMLDivElement | null>(null);
+  const [rabbitHuntLabelTop, setRabbitHuntLabelTop] = useState<number | null>(null);
+
   // Never let effect cleanups cancel the 1s community-cards approval timer mid-flight.
   // Only clear timers on explicit state transitions (buck passed) or on unmount.
   useEffect(() => {
@@ -859,6 +870,63 @@ export const MobileGameTable = ({
   // 1. A new round number is detected (but NOT during game_over - keep cards visible for animations)
   // 2. We're back in an early betting phase (new hand started)
   const isInGameOverStatus = gameStatus === 'game_over' || isGameOver;
+
+  // Rabbit hunt label should sit directly under CommunityCards (regardless of scale/viewport).
+  const shouldShowHolmCommunityCards =
+    gameType === "holm-game" &&
+    !!approvedCommunityCards &&
+    (approvedCommunityCards?.length ?? 0) > 0 &&
+    showCommunityCards &&
+    (isInGameOverStatus || currentRound === approvedRoundForDisplay);
+
+  const revealedForRabbitUi = isDelayingCommunityCards
+    ? staggeredCardCount
+    : (communityCardsRevealed ?? 0);
+
+  const hasWinResult =
+    typeof lastRoundResult === "string" && /(beat|wins|won)/i.test(lastRoundResult);
+
+  const shouldShowRabbitHuntLabel =
+    shouldShowHolmCommunityCards &&
+    rabbitHunt &&
+    stayedPlayersCount === 0 &&
+    revealedForRabbitUi > 2 &&
+    !hasWinResult;
+
+  useLayoutEffect(() => {
+    if (!shouldShowRabbitHuntLabel) {
+      setRabbitHuntLabelTop(null);
+      return;
+    }
+
+    const update = () => {
+      const containerEl = tableContainerRef.current;
+      const cardsEl = communityCardsWrapperRef.current;
+      if (!containerEl || !cardsEl) return;
+
+      const containerRect = containerEl.getBoundingClientRect();
+      const cardsRect = cardsEl.getBoundingClientRect();
+
+      const paddingPx = 10;
+      const nextTop = Math.round(cardsRect.bottom - containerRect.top + paddingPx);
+      setRabbitHuntLabelTop(nextTop);
+    };
+
+    const raf = requestAnimationFrame(update);
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+    };
+  }, [
+    shouldShowRabbitHuntLabel,
+    isDelayingCommunityCards,
+    staggeredCardCount,
+    communityCardsRevealed,
+    isHolmMultiPlayerShowdown,
+    approvedCommunityCards,
+    showCommunityCards,
+  ]);
   
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound && !isInGameOverStatus) {
     showdownRoundRef.current = null;
@@ -2388,6 +2456,7 @@ export const MobileGameTable = ({
           return (
             <>
               <div
+                ref={communityCardsWrapperRef}
                 className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${
                   isHolmMultiPlayerShowdown
                     ? "top-[62%] -translate-y-1/2"
@@ -2408,15 +2477,11 @@ export const MobileGameTable = ({
                 />
               </div>
 
-              {/* Rabbit Hunt label (separate element so scaling doesn't affect placement) */}
-              {rabbitHunt && stayedPlayersCount === 0 && revealedForUi > 2 && !hasWinResult && (
+              {/* Rabbit Hunt label - pinned directly under CommunityCards bottom edge */}
+              {shouldShowRabbitHuntLabel && rabbitHuntLabelTop !== null && (
                 <div
                   className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
-                  style={{
-                    top: isHolmMultiPlayerShowdown
-                      ? "calc(62% + 170px)"
-                      : "calc(50% + 170px)",
-                  }}
+                  style={{ top: rabbitHuntLabelTop }}
                 >
                   <span className="text-[11px] text-poker-gold/80 italic">
                     Rabbit Hunting...
