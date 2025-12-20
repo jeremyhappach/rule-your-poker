@@ -451,17 +451,7 @@ serve(async (req) => {
               }
             }
             
-            // CRITICAL: After decision, advance turn to next player
-            const activePlayers = players?.filter(p => p.status === 'active' && !p.sitting_out) || [];
-            const positions = activePlayers.map(p => p.position).sort((a, b) => a - b);
-            const currentPos = currentRound.current_turn_position;
-            
-            // Find next position clockwise
-            const higherPositions = positions.filter(p => p > currentPos);
-            const nextPosition = higherPositions.length > 0 
-              ? Math.min(...higherPositions) 
-              : Math.min(...positions);
-            
+            // CRITICAL: After decision, advance turn to next UNDECIDED player
             // Re-fetch players to get updated decisions
             const { data: freshPlayers } = await supabase
               .from('players')
@@ -474,6 +464,10 @@ serve(async (req) => {
             // Not just whether they have a current_decision, because players whose turn hasn't come
             // will have null current_decision but should NOT be considered "decided"
             const undecidedActivePlayers = freshActivePlayers.filter(p => !p.decision_locked);
+            const currentPos = currentRound.current_turn_position;
+            
+            console.log('[ENFORCE] Active players:', freshActivePlayers.map(p => ({ pos: p.position, locked: p.decision_locked, decision: p.current_decision })));
+            console.log('[ENFORCE] Undecided players:', undecidedActivePlayers.map(p => p.position));
             
             if (undecidedActivePlayers.length === 0) {
               // All players decided - use ATOMIC guard to prevent race conditions
@@ -490,62 +484,38 @@ serve(async (req) => {
               } else {
                 actionsTaken.push('All players decided - all_decisions_in set to true (atomic lock acquired)');
               }
-            } else if (nextPosition !== currentPos) {
-              // Advance turn to next undecided player
-              const { data: gameDefaults } = await supabase
-                .from('game_defaults')
-                .select('decision_timer_seconds')
-                .eq('game_type', 'holm')
-                .maybeSingle();
+            } else {
+              // CRITICAL FIX: Only advance to UNDECIDED players
+              // Filter positions to only those who haven't locked their decision yet
+              const undecidedPositions = undecidedActivePlayers.map(p => p.position).sort((a, b) => a - b);
               
-              const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
-              const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+              // Find next undecided position clockwise
+              const higherUndecidedPositions = undecidedPositions.filter(p => p > currentPos);
+              const nextPosition = higherUndecidedPositions.length > 0 
+                ? Math.min(...higherUndecidedPositions) 
+                : Math.min(...undecidedPositions);
               
-              await supabase
-                .from('rounds')
-                .update({ 
-                  current_turn_position: nextPosition,
-                  decision_deadline: newDeadline
-                })
-                .eq('id', currentRound.id);
-              
-              actionsTaken.push(`Advanced turn from position ${currentPos} to ${nextPosition}`);
-            }
-          } else if (game.game_type === '3-5-7-game' || game.game_type === '3-5-7') {
-            // 3-5-7: Auto-fold all undecided players
-            const { data: players } = await supabase
-              .from('players')
-              .select('*')
-              .eq('game_id', gameId);
-            
-            const undecidedPlayers = players?.filter(p => 
-              !p.sitting_out && 
-              !p.current_decision &&
-              p.ante_decision === 'ante_up'
-            ) || [];
-            
-            if (undecidedPlayers.length > 0) {
-              // Separate bots from humans - only set auto_fold for humans
-              const undecidedHumans = undecidedPlayers.filter(p => !p.is_bot);
-              const undecidedBots = undecidedPlayers.filter(p => p.is_bot);
-              
-              // Auto-fold bots without setting auto_fold flag
-              if (undecidedBots.length > 0) {
+              if (nextPosition !== currentPos) {
+                // Advance turn to next undecided player
+                const { data: gameDefaults } = await supabase
+                  .from('game_defaults')
+                  .select('decision_timer_seconds')
+                  .eq('game_type', 'holm')
+                  .maybeSingle();
+                
+                const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
+                const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+                
                 await supabase
-                  .from('players')
-                  .update({ current_decision: 'fold', decision_locked: true })
-                  .in('id', undecidedBots.map(p => p.id));
+                  .from('rounds')
+                  .update({ 
+                    current_turn_position: nextPosition,
+                    decision_deadline: newDeadline
+                  })
+                  .eq('id', currentRound.id);
+                
+                actionsTaken.push(`Advanced turn from position ${currentPos} to UNDECIDED position ${nextPosition}`);
               }
-              
-              // Auto-fold humans AND set auto_fold flag for future hands
-              if (undecidedHumans.length > 0) {
-                await supabase
-                  .from('players')
-                  .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
-                  .in('id', undecidedHumans.map(p => p.id));
-              }
-              
-              actionsTaken.push(`Decision timeout: Auto-folded ${undecidedPlayers.length} undecided players in 3-5-7 (${undecidedHumans.length} humans set to auto_fold)`);
             }
           }
         }
