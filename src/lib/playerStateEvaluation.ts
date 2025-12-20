@@ -22,21 +22,22 @@ interface Player {
  */
 export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   activePlayerCount: number;
+  activeHumanCount: number;
   eligibleDealerCount: number;
-  playersRemoved: string[];
+  playersStoodUp: string[];
 }> {
   console.log('[PLAYER EVAL] ========== Evaluating player states for game:', gameId, '==========');
   
   // Fetch all players for this game
   const { data: players, error } = await supabase
     .from('players')
-    .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot')
+    .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, status')
     .eq('game_id', gameId)
     .order('position');
   
   if (error || !players) {
     console.error('[PLAYER EVAL] Error fetching players:', error);
-    return { activePlayerCount: 0, eligibleDealerCount: 0, playersRemoved: [] };
+    return { activePlayerCount: 0, activeHumanCount: 0, eligibleDealerCount: 0, playersStoodUp: [] };
   }
   
   console.log('[PLAYER EVAL] Players to evaluate:', players.map(p => ({
@@ -47,27 +48,33 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     sit_out: p.sit_out_next_hand
   })));
   
-  const playersRemoved: string[] = [];
+  const playersStoodUp: string[] = [];
   
   for (const player of players) {
     console.log('[PLAYER EVAL] Evaluating player at position', player.position);
     
     // Check in order - stop on first match
     
-    // 1. stand_up_next_hand = true → become observer (delete player record)
+    // 1. stand_up_next_hand = true → become observer (release seat, keep record)
     if (player.stand_up_next_hand) {
-      console.log('[PLAYER EVAL] Player', player.position, 'standing up - removing from game');
+      console.log('[PLAYER EVAL] Player', player.position, 'standing up - becoming observer');
       
-      // Delete the player record (they become an observer)
-      const { error: deleteError } = await supabase
+      // Set player as observer with no seat
+      const { error: updateError } = await supabase
         .from('players')
-        .delete()
+        .update({
+          sitting_out: true,
+          position: null,
+          status: 'observer',
+          stand_up_next_hand: false,
+          waiting: false
+        })
         .eq('id', player.id);
       
-      if (deleteError) {
-        console.error('[PLAYER EVAL] Error removing player:', deleteError);
+      if (updateError) {
+        console.error('[PLAYER EVAL] Error updating player to observer:', updateError);
       } else {
-        playersRemoved.push(player.id);
+        playersStoodUp.push(player.id);
       }
       continue; // Move to next player
     }
@@ -118,17 +125,20 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   // So we're counting post-evaluation state
   const { data: remainingPlayers, error: countError } = await supabase
     .from('players')
-    .select('id, sitting_out, is_bot, waiting')
+    .select('id, sitting_out, is_bot, waiting, status')
     .eq('game_id', gameId);
   
   if (countError || !remainingPlayers) {
     console.error('[PLAYER EVAL] Error counting remaining players:', countError);
-    return { activePlayerCount: 0, eligibleDealerCount: 0, playersRemoved };
+    return { activePlayerCount: 0, activeHumanCount: 0, eligibleDealerCount: 0, playersStoodUp };
   }
   
-  // Count active players (not sitting_out) - includes bots
+  // Count active players (not sitting_out AND not observer) - includes bots
   // NOTE: Players who had waiting=true are now sitting_out=false after evaluation above
-  const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out).length;
+  const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer').length;
+  
+  // Count active human players (not sitting_out, not observer, not bot)
+  const activeHumanCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && !p.is_bot).length;
   
   // Fetch allow_bot_dealers setting
   const { data: gameDefaults } = await supabase
@@ -139,21 +149,22 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   
   const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
   
-  // Count eligible dealers (non-sitting-out AND non-bot humans, unless bots are allowed as dealers)
+  // Count eligible dealers (non-sitting-out, non-observer, AND non-bot humans unless bots are allowed as dealers)
   // NOTE: After evaluation, waiting players are now eligible (sitting_out=false, waiting=false)
   const eligibleDealerCount = remainingPlayers.filter(p => 
-    !p.sitting_out && (allowBotDealers || !p.is_bot)
+    !p.sitting_out && p.status !== 'observer' && (allowBotDealers || !p.is_bot)
   ).length;
   
-  console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Eligible dealers:', eligibleDealerCount, 'Removed:', playersRemoved.length, 'allowBotDealers:', allowBotDealers);
+  console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount, 'Stood up:', playersStoodUp.length, 'allowBotDealers:', allowBotDealers);
   console.log('[PLAYER EVAL] Remaining players detail:', remainingPlayers.map(p => ({
     id: p.id.slice(0, 8),
     sitting_out: p.sitting_out,
     is_bot: p.is_bot,
-    waiting: p.waiting
+    waiting: p.waiting,
+    status: p.status
   })));
   
-  return { activePlayerCount, eligibleDealerCount, playersRemoved };
+  return { activePlayerCount, activeHumanCount, eligibleDealerCount, playersStoodUp };
 }
 
 /**

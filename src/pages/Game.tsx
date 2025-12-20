@@ -3090,17 +3090,41 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // STEP 1: Evaluate player states BEFORE dealer rotation
     console.log('[GAME OVER] Evaluating player states end-of-game');
-    const { activePlayerCount, eligibleDealerCount, playersRemoved } = await evaluatePlayerStatesEndOfGame(gameId);
+    const { activePlayerCount, activeHumanCount, eligibleDealerCount, playersStoodUp } = await evaluatePlayerStatesEndOfGame(gameId);
     
-    console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'eligible dealers:', eligibleDealerCount, 'removed:', playersRemoved.length);
+    console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount, 'stood up:', playersStoodUp.length);
 
     // STEP 2: Check if we have enough players to continue
-    // Need: 1+ eligible dealer (non-sitting-out, non-bot) AND 2+ active players (including bots)
-    if (eligibleDealerCount < 1 || activePlayerCount < 2) {
-      console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount);
+    // Priority 1: If no active human players, END SESSION completely
+    if (activeHumanCount < 1) {
+      console.log('[GAME OVER] No active human players! Ending session.');
       gameOverTransitionRef.current = false;
-      setShowNotEnoughPlayers(true);
-      return; // The countdown component will handle session end
+      // End session immediately
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          pending_session_end: true,
+          session_ended_at: new Date().toISOString()
+        })
+        .eq('id', gameId);
+      return;
+    }
+    
+    // Priority 2: Need 1+ eligible dealer AND 2+ active players to continue, otherwise revert to waiting
+    if (eligibleDealerCount < 1 || activePlayerCount < 2) {
+      console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount, '- reverting to waiting');
+      gameOverTransitionRef.current = false;
+      // Revert to waiting status
+      await supabase
+        .from('games')
+        .update({
+          status: 'waiting',
+          awaiting_next_round: false,
+          last_round_result: null
+        })
+        .eq('id', gameId);
+      return;
     }
 
     // STEP 3: Rotate dealer to next eligible position
@@ -3728,11 +3752,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         
         if (latestPlayers) {
           // Evaluate player states and determine if session should end or continue
-          const { activePlayerCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
+          const { activePlayerCount, activeHumanCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
           
-          console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Eligible dealers:', eligibleDealerCount);
+          console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount);
           
-          // Need at least 1 eligible dealer AND 2+ active players to continue
+          // Priority 1: If no active human players, END SESSION completely
+          if (activeHumanCount < 1) {
+            console.log('[ANTE] No active human players! Ending session.');
+            await supabase
+              .from('games')
+              .update({
+                status: 'game_over',
+                pending_session_end: true,
+                session_ended_at: new Date().toISOString()
+              })
+              .eq('id', gameId);
+            anteProcessingRef.current = false;
+            fetchGameData();
+            return;
+          }
+          
+          // Priority 2: Need at least 1 eligible dealer AND 2+ active players to continue
           if (eligibleDealerCount >= 1 && activePlayerCount >= 2) {
             // Rotate dealer and start new game selection
             const currentDealerPos = game?.dealer_position || 1;
@@ -3747,13 +3787,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               })
               .eq('id', gameId);
           } else {
-            // Start session end countdown
-            setShowNotEnoughPlayers(true);
+            // Revert to waiting status
+            console.log('[ANTE] Not enough players - reverting to waiting');
             await supabase
               .from('games')
               .update({ 
-                pending_session_end: true,
-                game_over_at: new Date(Date.now() + 30000).toISOString()
+                status: 'waiting',
+                awaiting_next_round: false,
+                last_round_result: null
               })
               .eq('id', gameId);
           }
