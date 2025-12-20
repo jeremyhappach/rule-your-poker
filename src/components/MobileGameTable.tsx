@@ -2385,9 +2385,10 @@ export const MobileGameTable = ({
               </div>
               {/* Rabbit Hunt label - show when everyone folded and hidden community cards are being revealed */}
               {/* Don't show if lastRoundResult indicates a player won (beat Chucky, wins pot, etc.) */}
+              {/* Use mt-8 to account for 1.8x scale of community cards above */}
               {rabbitHunt && stayedPlayersCount === 0 && (communityCardsRevealed || 0) > 2 && 
                !lastRoundResult?.includes('beat') && !lastRoundResult?.includes('wins') && !lastRoundResult?.includes('won') && (
-                <div className="mt-2 text-center">
+                <div className="mt-8 text-center">
                   <span className="text-xs text-amber-400/80 italic">Rabbit Hunting...</span>
                 </div>
               )}
