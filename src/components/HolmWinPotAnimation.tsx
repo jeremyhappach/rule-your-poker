@@ -71,7 +71,46 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
     }
   };
 
+  // Absolute position coords for observers (positions 1-7 around the table)
+  // CRITICAL: Must match MobileGameTable.tsx observer rendering layout:
+  // Position 1: Top-left, Position 2: Left, Position 3: Bottom-left
+  // Position 4: Bottom-center, Position 5: Bottom-right, Position 6: Right, Position 7: Top-right
+  const getAbsolutePositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+    const chipRadius = 20;
+    const tailwindBottom2 = 8;
+    const tailwindTop2 = 8;
+    const tailwindLeft10 = 40;
+    const tailwindRight10 = 40;
+    
+    switch (position) {
+      case 1: // Top-left (matches top-4 left-10)
+        return { x: tailwindLeft10 + chipRadius, y: tailwindTop2 + chipRadius };
+      case 2: // Left (matches left-0 top-1/2)
+        return { x: chipRadius, y: rect.height / 2 };
+      case 3: // Bottom-left (matches bottom-2 left-10)
+        return { x: tailwindLeft10 + chipRadius, y: rect.height - tailwindBottom2 - chipRadius };
+      case 4: // Bottom-center (matches bottom-2 left-1/2)
+        return { x: rect.width / 2, y: rect.height - tailwindBottom2 - chipRadius };
+      case 5: // Bottom-right (matches bottom-2 right-10)
+        return { x: rect.width - tailwindRight10 - chipRadius, y: rect.height - tailwindBottom2 - chipRadius };
+      case 6: // Right (matches right-0 top-1/2)
+        return { x: rect.width - chipRadius, y: rect.height / 2 };
+      case 7: // Top-right (matches right-10 top-4)
+        return { x: rect.width - tailwindRight10 - chipRadius, y: tailwindTop2 + chipRadius };
+      default:
+        return { x: rect.width / 2, y: rect.height / 2 };
+    }
+  };
+
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+    const isObserver = currentPlayerPosition === null;
+    
+    if (isObserver) {
+      // Observer: use absolute positions
+      return getAbsolutePositionCoords(position, rect);
+    }
+    
+    // Seated player: use relative slot positions
     const isCurrentPlayer = currentPlayerPosition === position;
     const clockwiseDist = getClockwiseDistance(position);
     const slotIndex = isCurrentPlayer ? -1 : clockwiseDist - 1;
