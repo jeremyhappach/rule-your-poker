@@ -90,6 +90,7 @@ export type Database = {
       }
       game_defaults: {
         Row: {
+          allow_bot_dealers: boolean
           ante_amount: number
           bot_decision_delay_seconds: number
           bot_fold_probability: number
@@ -113,6 +114,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number
@@ -136,6 +138,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_bot_dealers?: boolean
           ante_amount?: number
           bot_decision_delay_seconds?: number
           bot_fold_probability?: number

@@ -130,11 +130,22 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   // NOTE: Players who had waiting=true are now sitting_out=false after evaluation above
   const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out).length;
   
-  // Count eligible dealers (non-sitting-out AND non-bot humans)
-  // NOTE: After evaluation, waiting players are now eligible (sitting_out=false, waiting=false)
-  const eligibleDealerCount = remainingPlayers.filter(p => !p.sitting_out && !p.is_bot).length;
+  // Fetch allow_bot_dealers setting
+  const { data: gameDefaults } = await supabase
+    .from('game_defaults')
+    .select('allow_bot_dealers')
+    .eq('game_type', 'holm')
+    .single();
   
-  console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Eligible dealers:', eligibleDealerCount, 'Removed:', playersRemoved.length);
+  const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
+  
+  // Count eligible dealers (non-sitting-out AND non-bot humans, unless bots are allowed as dealers)
+  // NOTE: After evaluation, waiting players are now eligible (sitting_out=false, waiting=false)
+  const eligibleDealerCount = remainingPlayers.filter(p => 
+    !p.sitting_out && (allowBotDealers || !p.is_bot)
+  ).length;
+  
+  console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Eligible dealers:', eligibleDealerCount, 'Removed:', playersRemoved.length, 'allowBotDealers:', allowBotDealers);
   console.log('[PLAYER EVAL] Remaining players detail:', remainingPlayers.map(p => ({
     id: p.id.slice(0, 8),
     sitting_out: p.sitting_out,
@@ -146,11 +157,21 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
 }
 
 /**
- * Rotate dealer to next eligible player (non-sitting-out, non-bot)
+ * Rotate dealer to next eligible player (non-sitting-out, and non-bot unless bots are allowed as dealers)
  */
 export async function rotateDealerPosition(gameId: string, currentDealerPosition: number): Promise<number> {
   console.log('[DEALER ROTATE] ========== Starting dealer rotation ==========');
   console.log('[DEALER ROTATE] Current dealer position:', currentDealerPosition);
+  
+  // Fetch allow_bot_dealers setting
+  const { data: gameDefaults } = await supabase
+    .from('game_defaults')
+    .select('allow_bot_dealers')
+    .eq('game_type', 'holm')
+    .single();
+  
+  const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
+  console.log('[DEALER ROTATE] Allow bot dealers:', allowBotDealers);
   
   // Get ALL players for debugging
   const { data: allPlayers } = await supabase
@@ -165,19 +186,24 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
     sitting_out: p.sitting_out
   })));
   
-  // Get eligible dealers (non-sitting-out, non-bot humans)
-  const { data: eligiblePlayers, error } = await supabase
+  // Build query for eligible dealers
+  let query = supabase
     .from('players')
     .select('position, is_bot, sitting_out, user_id')
     .eq('game_id', gameId)
-    .eq('sitting_out', false)
-    .eq('is_bot', false)
-    .order('position', { ascending: true });
+    .eq('sitting_out', false);
+  
+  // Only filter out bots if bot dealers are NOT allowed
+  if (!allowBotDealers) {
+    query = query.eq('is_bot', false);
+  }
+  
+  const { data: eligiblePlayers, error } = await query.order('position', { ascending: true });
   
   console.log('[DEALER ROTATE] Eligible players:', eligiblePlayers?.map(p => p.position), 'error:', error);
   
   if (error || !eligiblePlayers || eligiblePlayers.length === 0) {
-    console.log('[DEALER ROTATE] No eligible human players, keeping current position');
+    console.log('[DEALER ROTATE] No eligible players, keeping current position');
     return currentDealerPosition;
   }
   

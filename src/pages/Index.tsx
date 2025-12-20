@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, Trash2, ShieldAlert, History } from "lucide-react";
@@ -48,6 +49,8 @@ const Index = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showRulesDialog, setShowRulesDialog] = useState(false);
+  const [allowBotDealers, setAllowBotDealers] = useState(false);
+  const [loadingBotDealersSetting, setLoadingBotDealersSetting] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -97,6 +100,50 @@ const Index = () => {
     if (data) {
       setCurrentUsername(data.username);
       setIsSuperuser(data.is_superuser || false);
+      
+      // Fetch bot dealers setting if superuser
+      if (data.is_superuser) {
+        fetchBotDealersSetting();
+      }
+    }
+  };
+
+  const fetchBotDealersSetting = async () => {
+    setLoadingBotDealersSetting(true);
+    const { data } = await supabase
+      .from('game_defaults')
+      .select('allow_bot_dealers')
+      .eq('game_type', 'holm')
+      .single();
+    
+    if (data) {
+      setAllowBotDealers((data as any).allow_bot_dealers ?? false);
+    }
+    setLoadingBotDealersSetting(false);
+  };
+
+  const handleToggleBotDealers = async (enabled: boolean) => {
+    setAllowBotDealers(enabled);
+    
+    // Update both game types
+    const { error } = await supabase
+      .from('game_defaults')
+      .update({ allow_bot_dealers: enabled } as any)
+      .in('game_type', ['holm', '3-5-7']);
+    
+    if (error) {
+      console.error('[ADMIN] Error updating bot dealers setting:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update setting",
+        variant: "destructive",
+      });
+      setAllowBotDealers(!enabled); // Revert
+    } else {
+      toast({
+        title: "Success",
+        description: enabled ? "Bot dealers enabled" : "Bot dealers disabled",
+      });
     }
   };
 
@@ -372,6 +419,22 @@ const Index = () => {
                     <h3 className="font-semibold text-destructive">Admin Controls</h3>
                   </div>
                   
+                  {/* Allow Bot Dealers Toggle */}
+                  <div className="flex items-center justify-between py-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="allow-bot-dealers">Allow Bot Dealers</Label>
+                      <p className="text-xs text-muted-foreground">
+                        When enabled, bots can be dealers and will auto-configure games
+                      </p>
+                    </div>
+                    <Switch
+                      id="allow-bot-dealers"
+                      checked={allowBotDealers}
+                      onCheckedChange={handleToggleBotDealers}
+                      disabled={loadingBotDealersSetting}
+                    />
+                  </div>
+
                   {/* Custom Game Names */}
                   <CustomGameNamesManager />
 
