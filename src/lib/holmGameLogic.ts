@@ -1176,46 +1176,14 @@ async function handleChuckyShowdown(
       })
       .eq('id', gameId);
     
-    // No delay here - the pot-to-player animation provides time for players to see results
-    // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
-    // Dealer cannot pass to a bot or a sitting_out player
-    // NOTE: waiting=true players ARE eligible since they will become active next hand
-    const { data: eligibleDealers } = await supabase
-      .from('players')
-      .select('position, is_bot, sitting_out, waiting')
-      .eq('game_id', gameId)
-      .eq('is_bot', false)
-      .order('position', { ascending: true });
-    
-    // Filter: either not sitting_out, OR waiting=true (will become active next hand)
-    const filteredDealers = (eligibleDealers || []).filter(p => !p.sitting_out || p.waiting);
-    
-    const currentDealerPosition = game.dealer_position || 1;
-    let nextDealerPosition = currentDealerPosition; // Default: keep current dealer
-    
-    if (filteredDealers.length > 0) {
-      const eligiblePositions = filteredDealers.map(p => p.position);
-      const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);
-      
-      if (currentDealerIndex === -1) {
-        // Current dealer not in eligible list, pick first eligible
-        nextDealerPosition = eligiblePositions[0];
-      } else if (eligiblePositions.length > 1) {
-        // Rotate to next eligible position
-        const nextDealerIndex = (currentDealerIndex + 1) % eligiblePositions.length;
-        nextDealerPosition = eligiblePositions[nextDealerIndex];
-      }
-      // If only 1 eligible dealer, keep them as dealer
-    }
-    
-    console.log('[HOLM SHOWDOWN] Dealer rotation:', {
-      current: currentDealerPosition,
-      eligiblePositions: filteredDealers.map(p => p.position),
-      nextDealer: nextDealerPosition
-    });
+    // NOTE: Dealer rotation is NOT done here - it's done in handleGameOverComplete
+    // AFTER evaluating player states (waiting → active, sit_out_next_hand → sitting_out, etc.)
+    // This ensures the new dealer is selected based on post-evaluation player states
+    console.log('[HOLM SHOWDOWN] NOT rotating dealer here - will be done in handleGameOverComplete after player state evaluation');
     
     // Set game_over status WITHOUT game_over_at - frontend will show celebration first
     // Then set game_over_at after celebration completes to auto-proceed
+    // NOTE: dealer_position is NOT changed here - rotation happens in handleGameOverComplete
     const { error: gameOverError } = await supabase
       .from('games')
       .update({
@@ -1223,7 +1191,7 @@ async function handleChuckyShowdown(
         game_over_at: null, // NULL - frontend celebration will set this after completing
         pot: 0,
         awaiting_next_round: false,
-        dealer_position: nextDealerPosition,
+        // dealer_position is NOT updated here - rotation happens after player state evaluation
         buck_position: null,
         total_hands: (game.total_hands || 0) + 1
       })
@@ -1232,7 +1200,7 @@ async function handleChuckyShowdown(
     if (gameOverError) {
       console.error('[HOLM SHOWDOWN] ERROR setting game_over status:', gameOverError);
     } else {
-      console.log('[HOLM SHOWDOWN] Successfully set game_over status with new dealer:', nextDealerPosition);
+      console.log('[HOLM SHOWDOWN] Successfully set game_over status (dealer rotation deferred to handleGameOverComplete)');
     }
   } else {
     // Check if it's a tie (player equals Chucky) vs Chucky actually winning
@@ -1852,41 +1820,19 @@ async function handleMultiPlayerShowdown(
       console.log('[HOLM TIE] Pausing 2 seconds for announcement...');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Calculate next dealer position (rotate clockwise to next HUMAN, non-sitting-out player)
-      // NOTE: waiting=true players ARE eligible since they will become active next hand
-      const { data: eligibleDealers } = await supabase
-        .from('players')
-        .select('position, is_bot, sitting_out, waiting')
-        .eq('game_id', gameId)
-        .eq('is_bot', false)
-        .order('position', { ascending: true });
-      
-      // Filter: either not sitting_out, OR waiting=true (will become active next hand)
-      const filteredDealers = (eligibleDealers || []).filter(p => !p.sitting_out || p.waiting);
-      
-      const currentDealerPosition = game.dealer_position || 1;
-      let nextDealerPosition = currentDealerPosition;
-      
-      if (filteredDealers.length > 0) {
-        const eligiblePositions = filteredDealers.map(p => p.position);
-        const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);
-        
-        if (currentDealerIndex === -1) {
-          nextDealerPosition = eligiblePositions[0];
-        } else {
-          const nextDealerIndex = (currentDealerIndex + 1) % eligiblePositions.length;
-          nextDealerPosition = eligiblePositions[nextDealerIndex];
-        }
-      }
+      // NOTE: Dealer rotation is NOT done here - it's done in handleGameOverComplete
+      // AFTER evaluating player states (waiting → active, sit_out_next_hand → sitting_out, etc.)
+      console.log('[HOLM TIE] NOT rotating dealer here - will be done in handleGameOverComplete after player state evaluation');
       
       // Game ends - players beat Chucky
       // Set game_over_at to null so frontend celebration shows first
+      // NOTE: dealer_position is NOT changed here - rotation happens in handleGameOverComplete
       await supabase
         .from('games')
         .update({
           status: 'game_over',
           game_over_at: null, // NULL - frontend celebration will set this after completing
-          dealer_position: nextDealerPosition,
+          // dealer_position is NOT updated here - rotation happens after player state evaluation
           buck_position: null,
           total_hands: 0,
           pot: 0,
@@ -1894,7 +1840,7 @@ async function handleMultiPlayerShowdown(
         })
         .eq('id', gameId);
       
-      console.log('[HOLM TIE] Game over - Chucky was beaten by tied players');
+      console.log('[HOLM TIE] Game over - Chucky was beaten by tied players (dealer rotation deferred)');
       return; // Early return - game is over
     }
   }
