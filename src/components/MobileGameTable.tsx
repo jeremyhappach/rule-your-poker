@@ -41,6 +41,7 @@ import React, {
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
+import { supabase } from "@/integrations/supabase/client";
 import { MessageSquare, User, Spade } from "lucide-react";
 
 // Custom hook for swipe detection
@@ -1062,6 +1063,39 @@ export const MobileGameTable = ({
   const handleQuickEmoticon = useCallback((emoticon: string) => {
     sendEmoticon(emoticon);
   }, [sendEmoticon]);
+
+  // DEBUG/TEST (remove later): Auto-fire bot emoticons every 15s.
+  // Enable with ?botEmoteTest=1 or localStorage.botEmoteTest="1" (host only).
+  useEffect(() => {
+    if (!gameId) return;
+
+    const enabled =
+      typeof window !== "undefined" &&
+      (new URLSearchParams(window.location.search).get("botEmoteTest") === "1" ||
+        window.localStorage.getItem("botEmoteTest") === "1");
+
+    if (!enabled || !isHost) return;
+
+    const tick = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("debug-bot-emoticons", {
+          body: { gameId },
+        });
+
+        if (error) {
+          console.error("[BOT_EMOTE_TEST] invoke error", error);
+        } else {
+          console.log("[BOT_EMOTE_TEST] inserted", data);
+        }
+      } catch (err) {
+        console.error("[BOT_EMOTE_TEST] unexpected error", err);
+      }
+    };
+
+    tick();
+    const interval = window.setInterval(tick, 15000);
+    return () => window.clearInterval(interval);
+  }, [gameId, isHost]);
 
   // Detect when cards are dealt and trigger flash (only when not on cards tab)
   useEffect(() => {
