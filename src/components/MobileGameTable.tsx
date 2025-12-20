@@ -2383,8 +2383,8 @@ export const MobileGameTable = ({
                   tightOverlap={isHolmMultiPlayerShowdown}
                 />
               </div>
-              {/* Rabbit Hunt label - show when everyone folded and rabbit hunt is enabled */}
-              {rabbitHunt && stayedPlayersCount === 0 && cachedChuckyActive && (
+              {/* Rabbit Hunt label - show when everyone folded and hidden community cards are being revealed */}
+              {rabbitHunt && stayedPlayersCount === 0 && (communityCardsRevealed || 0) > 2 && (
                 <div className="mt-2 text-center">
                   <span className="text-xs text-amber-400/80 italic">Rabbit Hunting...</span>
                 </div>
