@@ -330,6 +330,10 @@ export const MobileGameTable = ({
   // Tab state for bottom section: 'cards' | 'chat' | 'lobby'
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
   
+  // Flash the cards tab icon when new cards are dealt
+  const [cardsTabFlashing, setCardsTabFlashing] = useState(false);
+  const prevCardCountRef = useRef<number>(0);
+  
   // Swipe gesture handlers for tab switching
   const swipeHandlers = useSwipeGesture(
     () => {}, // Swipe up - no action
@@ -1011,6 +1015,20 @@ export const MobileGameTable = ({
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerCards = currentPlayer ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] : [];
+
+  // Detect when cards are dealt and trigger flash (only when not on cards tab)
+  useEffect(() => {
+    const currentCardCount = currentPlayerCards.length;
+    
+    if (currentCardCount > prevCardCountRef.current && activeTab !== 'cards') {
+      setCardsTabFlashing(true);
+      const timeout = setTimeout(() => setCardsTabFlashing(false), 1500);
+      prevCardCountRef.current = currentCardCount;
+      return () => clearTimeout(timeout);
+    }
+    
+    prevCardCountRef.current = currentCardCount;
+  }, [currentPlayerCards.length, activeTab]);
 
   // Calculate lose amount
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
@@ -3011,9 +3029,9 @@ export const MobileGameTable = ({
               activeTab === 'cards' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
+            } ${cardsTabFlashing ? 'animate-pulse' : ''}`}
           >
-            <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''}`} />
+            <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${cardsTabFlashing ? 'text-poker-gold animate-ping' : ''}`} />
           </button>
           <button 
             onClick={() => setActiveTab('chat')}
