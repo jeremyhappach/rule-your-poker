@@ -6,6 +6,7 @@ interface ChatMessage {
   game_id: string;
   user_id: string;
   message: string;
+  image_url?: string | null;
   created_at: string;
   username?: string;
 }
@@ -65,21 +66,50 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     return player?.position;
   }, [players]);
 
+  // Upload image to storage
+  const uploadImage = async (file: File, userId: string): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('chat-images')
+      .upload(fileName, file);
+    
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError);
+      return null;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('chat-images')
+      .getPublicUrl(fileName);
+    
+    return publicUrl;
+  };
+
   // Send a chat message
-  const sendMessage = useCallback(async (message: string) => {
-    if (!gameId || !message.trim() || isSending) return;
+  const sendMessage = useCallback(async (message: string, imageFile?: File) => {
+    if (!gameId || (!message.trim() && !imageFile) || isSending) return;
 
     setIsSending(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      let imageUrl: string | null = null;
+      
+      // Upload image if provided
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile, user.id);
+      }
+
       const { error } = await supabase
         .from('chat_messages')
         .insert({
           game_id: gameId,
           user_id: user.id,
-          message: message.trim()
+          message: message.trim(),
+          image_url: imageUrl
         });
 
       if (error) {
@@ -116,7 +146,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     const bubble: ChatBubble = {
       ...msg,
       username,
-      expiresAt: Date.now() + 5000 // 5 seconds
+      expiresAt: Date.now() + (msg.image_url ? 8000 : 5000) // 8 seconds for images, 5 for text
     };
 
     setChatBubbles(prev => {

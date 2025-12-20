@@ -4,6 +4,7 @@ interface ChatBubbleData {
   id: string;
   user_id: string;
   message: string;
+  image_url?: string | null;
   username?: string;
   expiresAt: number;
 }
@@ -36,6 +37,7 @@ export const PlayerChatBubbles = ({
           key={bubble.id}
           username={bubble.username || 'Unknown'}
           message={bubble.message}
+          imageUrl={bubble.image_url}
           expiresAt={bubble.expiresAt}
         />
       ))}
