@@ -1261,13 +1261,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [anteTimeLeft, game?.is_paused]);
 
   // Trigger bot ante decisions - INSTANT for bots
+  // SKIP if game is paused
   useEffect(() => {
+    if (game?.is_paused) {
+      console.log('[ANTE PHASE] Skipping bot ante decisions - game is paused');
+      return;
+    }
     if (game?.status === 'ante_decision') {
       console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions IMMEDIATELY');
       // Call immediately - no delay needed for bots
       makeBotAnteDecisions(gameId!);
     }
-  }, [game?.status, gameId]);
+  }, [game?.status, game?.is_paused, gameId]);
 
   // CRITICAL: Aggressive polling fallback for realtime reliability issues
   // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
@@ -1628,11 +1633,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       anteProcessingRef.current = false;
       return;
     }
+    
+    // CRITICAL: Skip ante processing if game is paused
+    if (game?.is_paused) {
+      console.log('[ANTE CHECK] Game is paused, skipping ante check');
+      return;
+    }
 
     const checkAnteDecisions = async () => {
       // Skip if already processing
       if (anteProcessingRef.current) {
         console.log('[ANTE CHECK] Already processing, skipping');
+        return;
+      }
+      
+      // Check pause state from database (in case local state is stale)
+      const { data: freshGamePause } = await supabase
+        .from('games')
+        .select('is_paused')
+        .eq('id', gameId)
+        .single();
+      
+      if (freshGamePause?.is_paused) {
+        console.log('[ANTE CHECK] Game is paused (from DB), skipping');
         return;
       }
       
@@ -1710,7 +1733,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }, 1000);
 
     return () => clearInterval(pollInterval);
-  }, [game?.status, gameId]);
+  }, [game?.status, game?.is_paused, gameId]);
 
   // Extract current round info - use cached data during game_over to preserve community cards
   // CRITICAL: For Holm games, always use the LATEST round by round_number (not game.current_round which can be stale)
@@ -1953,9 +1976,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Auto-trigger bot decisions when appropriate
   // Use a ref to track if we're already processing a bot decision to avoid duplicates
+  // SKIP if game is paused
   const botProcessingRef = useRef(false);
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
+    
+    // CRITICAL: Skip bot decisions if game is paused
+    if (game?.is_paused) {
+      console.log('[BOT TRIGGER] Game is paused, skipping bot decisions');
+      return;
+    }
     
     console.log('[BOT TRIGGER EFFECT] Running', {
       status: game?.status,
@@ -1963,7 +1993,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       game_type: game?.game_type,
       current_turn: currentRound?.current_turn_position,
       round_id: currentRound?.id,
-      isProcessing: botProcessingRef.current
+      isProcessing: botProcessingRef.current,
+      is_paused: game?.is_paused
     });
     
     // Skip if already processing
@@ -2014,6 +2045,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [
     game?.status, 
     game?.all_decisions_in, 
+    game?.is_paused,
     // Watch turn position for Holm games (turn-based)
     // Watch round id to catch new rounds (since current_round isn't updated for Holm)
     currentRound?.current_turn_position,
@@ -2270,11 +2302,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[AUTO_PROCEED_EFFECT] Running', {
       awaiting: currentAwaiting,
       status: game?.status,
+      is_paused: game?.is_paused,
       hasTimer: awaitingTimerRef.current !== null,
       gameId: gameId,
       gameType: game?.game_type,
       savedState: gameStateAtTimerStart.current
     });
+    
+    // CRITICAL: Don't auto-proceed if game is paused
+    if (game?.is_paused) {
+      console.log('[AUTO_PROCEED_EFFECT] Game is paused, skipping auto-proceed');
+      return;
+    }
     
     // If awaiting state changed to true and we don't have a timer yet
     if (currentAwaiting && 
@@ -2542,7 +2581,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Don't clear timer on cleanup during normal re-renders
       // Timer will persist across re-renders
     };
-  }, [game?.awaiting_next_round, gameId, game?.status, game?.game_type, game?.last_round_result]);
+  }, [game?.awaiting_next_round, gameId, game?.status, game?.is_paused, game?.game_type, game?.last_round_result]);
 
   // Clear timer when results are shown
   useEffect(() => {
@@ -3553,6 +3592,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
+      anteProcessingRef.current = false;
+      return;
+    }
+    
+    // CRITICAL: Don't start round if game is paused
+    if (game?.is_paused) {
+      console.log('[ANTE] Game is paused, skipping ante processing');
       anteProcessingRef.current = false;
       return;
     }

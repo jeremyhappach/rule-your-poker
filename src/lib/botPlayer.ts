@@ -313,12 +313,18 @@ export async function addBotPlayerSittingOut(gameId: string) {
 export async function makeBotDecisions(gameId: string, passedTurnPosition?: number | null) {
   console.log('[BOT DECISIONS] Making decisions for game:', gameId, 'turnPosition:', passedTurnPosition);
   
-  // Get current round and game type
+  // Get current round and game type, and check pause state
   const { data: gameData } = await supabase
     .from('games')
-    .select('game_type, current_round')
+    .select('game_type, current_round, is_paused')
     .eq('id', gameId)
     .single();
+  
+  // CRITICAL: Skip bot decisions if game is paused
+  if (gameData?.is_paused) {
+    console.log('[BOT DECISIONS] Game is paused, skipping bot decisions');
+    return false;
+  }
   
   const isHolmGame = gameData?.game_type === 'holm-game' || gameData?.game_type === 'holm';
   const roundNumber = gameData?.current_round || 1;
@@ -484,6 +490,18 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 
 export async function makeBotAnteDecisions(gameId: string) {
   console.log('[BOT ANTE] Making ante decisions for bots in game:', gameId);
+  
+  // Check if game is paused before processing bot ante decisions
+  const { data: gameData } = await supabase
+    .from('games')
+    .select('is_paused')
+    .eq('id', gameId)
+    .single();
+  
+  if (gameData?.is_paused) {
+    console.log('[BOT ANTE] Game is paused, skipping bot ante decisions');
+    return;
+  }
   
   // Get bot players who haven't made ante decision yet AND are not sitting out
   // CRITICAL: Respect sitting_out status - don't force bots back into the game if they're set to sit out
