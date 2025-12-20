@@ -12,8 +12,9 @@ interface PlayerHandProps {
   currentRound?: number;          // Current round for wild card determination
   showSeparated?: boolean;        // For round 3, show unused cards separated to left
   tightOverlap?: boolean;         // Use tighter spacing for multi-player showdown
-  unusedCardsBelow?: boolean;     // For 3-5-7 showdown: render unused cards in row below used cards
+  unusedCardsBelow?: boolean;     // For 3-5-7 showdown: render unused cards in separate row
   isRightSide?: boolean;          // For positioning unused cards on outer edge (right side of table)
+  isBottomPosition?: boolean;     // For bottom positions, unused cards go above instead of below
 }
 
 // Get wild rank based on round (3-5-7 game only)
@@ -38,7 +39,8 @@ export const PlayerHand = ({
   showSeparated = false,
   tightOverlap = false,
   unusedCardsBelow = false,
-  isRightSide = false
+  isRightSide = false,
+  isBottomPosition = false
 }: PlayerHandProps) => {
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -173,55 +175,71 @@ export const PlayerHand = ({
     );
   }
 
-  // 3-5-7 showdown display with unused cards in row below used cards (on outer edge)
+  // 3-5-7 showdown display with unused cards in separate row (on outer edge)
   if ((isRound2With5Cards || isRound3WithUnusedBelow) && unusedCardsBelow) {
     const usedCardSize = getCardSize(5); // Size for 5 used cards
     const unusedCardSize = getCardSize(7); // Smaller size for unused cards
     
+    // Unused cards element
+    const unusedCardsElement = unusedCards.length > 0 && (
+      <div className={`flex items-center ${isRightSide ? 'self-end' : 'self-start'}`}>
+        {unusedCards.map(({ card, originalIndex }, displayIndex) => (
+          <PlayingCard
+            key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
+            card={card}
+            size={unusedCardSize}
+            isDimmed={true}
+            isWild={false}
+            className="-ml-4 first:ml-0"
+            style={{ 
+              opacity: 0.4,
+              transform: 'scale(0.85)',
+            }}
+          />
+        ))}
+      </div>
+    );
+    
+    // Used cards element
+    const usedCardsElement = (
+      <div className="flex items-end">
+        {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
+          const isHighlighted = highlightedIndices.includes(originalIndex);
+          const isKicker = kickerIndices.includes(originalIndex);
+          const isDimmed = hasHighlights && !isHighlighted && !isKicker;
+          
+          return (
+            <PlayingCard
+              key={`used-${card.rank}-${card.suit}-${originalIndex}`}
+              card={card}
+              size={usedCardSize}
+              isHighlighted={isHighlighted}
+              isKicker={isKicker}
+              isDimmed={isDimmed}
+              isWild={isWild}
+              className="-ml-3 first:ml-0"
+              style={{ 
+                transform: `rotate(${displayIndex * 2 - (usedCards.length - 1)}deg)`,
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+    
     return (
-      <div className="flex flex-col items-center gap-0.5">
-        {/* Used cards row */}
-        <div className="flex items-end">
-          {usedCards.map(({ card, originalIndex, isWild }, displayIndex) => {
-            const isHighlighted = highlightedIndices.includes(originalIndex);
-            const isKicker = kickerIndices.includes(originalIndex);
-            const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-            
-            return (
-              <PlayingCard
-                key={`used-${card.rank}-${card.suit}-${originalIndex}`}
-                card={card}
-                size={usedCardSize}
-                isHighlighted={isHighlighted}
-                isKicker={isKicker}
-                isDimmed={isDimmed}
-                isWild={isWild}
-                className="-ml-3 first:ml-0"
-                style={{ 
-                  transform: `rotate(${displayIndex * 2 - (usedCards.length - 1)}deg)`,
-                }}
-              />
-            );
-          })}
-        </div>
-        {/* Unused cards row - positioned on outer edge */}
-        {unusedCards.length > 0 && (
-          <div className={`flex items-center ${isRightSide ? 'justify-end' : 'justify-start'}`}>
-            {unusedCards.map(({ card, originalIndex, isWild }, displayIndex) => (
-              <PlayingCard
-                key={`unused-${card.rank}-${card.suit}-${originalIndex}`}
-                card={card}
-                size={unusedCardSize}
-                isDimmed={true}
-                isWild={false}
-                className="-ml-4 first:ml-0"
-                style={{ 
-                  opacity: 0.4,
-                  transform: 'scale(0.85)',
-                }}
-              />
-            ))}
-          </div>
+      <div className="flex flex-col gap-0.5">
+        {/* For bottom positions: unused above, used below. For others: used above, unused below */}
+        {isBottomPosition ? (
+          <>
+            {unusedCardsElement}
+            {usedCardsElement}
+          </>
+        ) : (
+          <>
+            {usedCardsElement}
+            {unusedCardsElement}
+          </>
         )}
       </div>
     );
