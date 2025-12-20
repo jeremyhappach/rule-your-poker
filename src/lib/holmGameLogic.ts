@@ -185,7 +185,7 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   
   console.log('[HOLM TURN] Using latest round:', round.round_number, '(game.current_round was:', game.current_round, ')');
   
-  const { data: players } = await supabase
+  const { data: allPlayers } = await supabase
     .from('players')
     .select('*')
     .eq('game_id', gameId)
@@ -193,12 +193,25 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     .eq('sitting_out', false)
     .order('position');
     
-  if (!players || players.length === 0) {
+  if (!allPlayers || allPlayers.length === 0) {
     console.error('[HOLM TURN] ERROR: No active players found');
     return;
   }
   
-  const positions = players.map(p => p.position).sort((a, b) => a - b);
+  // CRITICAL FIX: Only consider players who have NOT yet made their decision
+  // Players with decision_locked=true have already acted (stayed or folded)
+  // We should NOT advance the turn to them - skip them entirely
+  const undecidedPlayers = allPlayers.filter(p => !p.decision_locked);
+  
+  console.log('[HOLM TURN] All active players:', allPlayers.map(p => ({ pos: p.position, locked: p.decision_locked, decision: p.current_decision })));
+  console.log('[HOLM TURN] Undecided players:', undecidedPlayers.map(p => p.position));
+  
+  if (undecidedPlayers.length === 0) {
+    console.log('[HOLM TURN] No undecided players left - should trigger round completion');
+    return;
+  }
+  
+  const positions = undecidedPlayers.map(p => p.position).sort((a, b) => a - b);
   const currentIndex = positions.indexOf(round.current_turn_position);
   
   // CRITICAL: Turn order should be CLOCKWISE from buck, which means:
