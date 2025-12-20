@@ -2496,9 +2496,7 @@ export const MobileGameTable = ({
                   className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
                   style={{ top: rabbitHuntLabelTop }}
                 >
-                  <span className="text-[11px] text-poker-gold/80 italic">
-                    Rabbit Hunting...
-                  </span>
+                  <span className="text-xl">🐰</span>
                 </div>
               )}
             </>
