@@ -394,11 +394,11 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
     case 'straight-flush': {
       // For straight flush, find actual straight high card, not just highest card
       const straightHigh = findStraightHighCard(cards, useWildCards);
-      // Ace-high straight flush is a "Royale with Cheese"
+      // Ace-high straight flush is "Royale with Chz"
       if (straightHigh === 14) {
-        result = 'Royale with Cheese';
+        result = 'Royale with Chz';
       } else {
-        result = `Straight Flush, ${valueToRankName(straightHigh)} high`;
+        result = `Straight Frush, ${valueToRankName(straightHigh)} high`;
       }
       break;
     }
@@ -411,9 +411,9 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
       const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0];
       const pairRank = rankGroups.find(([r, count]) => count >= 2 && r !== tripRank)?.[0];
       if (tripRank && pairRank) {
-        result = `Full House, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} full of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+        result = `Boat, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} full of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
       } else {
-        result = 'Full House';
+        result = 'Boat';
       }
       break;
     }
@@ -424,7 +424,7 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
       const flushSuit = (Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0]) as Suit;
       const flushCards = cards.filter(c => c.suit === flushSuit).sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
       const highCard = valueToRankName(RANK_VALUES[flushCards[0]?.rank || sortedCards[0].rank]);
-      result = `Flush, ${highCard} high`;
+      result = `Frush, ${highCard} high`;
       break;
     }
     case 'straight': {
@@ -436,7 +436,7 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
     case 'three-of-a-kind': {
       const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0] || sortedCards[0]?.rank;
       // Don't show kickers by default - only relevant for tie-breaking comparison
-      result = `Three of a Kind, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
+      result = `Trips, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
       break;
     }
     case 'two-pair': {
@@ -449,9 +449,9 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
         const highPair = rankNamePlural(RANK_VALUES[truePairs[0][0] as Rank]);
         const lowPair = rankNamePlural(RANK_VALUES[truePairs[1][0] as Rank]);
         // Don't show kickers by default - only relevant for tie-breaking comparison
-        result = `Two Pair, ${highPair} and ${lowPair}`;
+        result = `Two Prrr, ${highPair} and ${lowPair}`;
       } else {
-        result = 'Two Pair';
+        result = 'Two Prrr';
       }
       break;
     }
