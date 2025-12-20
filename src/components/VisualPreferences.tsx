@@ -20,9 +20,10 @@ const TEAM_LOGOS: Record<string, string> = {
 interface VisualPreferencesProps {
   userId: string;
   onSave?: () => void;
+  disabled?: boolean;
 }
 
-export function VisualPreferences({ userId, onSave }: VisualPreferencesProps) {
+export function VisualPreferences({ userId, onSave, disabled = false }: VisualPreferencesProps) {
   const [tableLayout, setTableLayout] = useState('classic');
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');

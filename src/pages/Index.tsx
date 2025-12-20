@@ -27,12 +27,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert, History } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, History, Wrench } from "lucide-react";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
 import { MyGameHistory } from "@/components/MyGameHistory";
 import { GameRules } from "@/components/GameRules";
 import { CustomGameNamesManager } from "@/components/CustomGameNamesManager";
+import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -51,6 +52,8 @@ const Index = () => {
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [allowBotDealers, setAllowBotDealers] = useState(false);
   const [loadingBotDealersSetting, setLoadingBotDealersSetting] = useState(true);
+  const { isMaintenanceMode, loading: maintenanceLoading, toggleMaintenanceMode } = useMaintenanceMode();
+  const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -347,8 +350,18 @@ const Index = () => {
           
           <ScrollArea className="max-h-[60vh] pr-4">
             <div className="space-y-6">
+              {/* Maintenance Mode Warning for non-admins */}
+              {isMaintenanceMode && !isSuperuser && (
+                <div className="bg-amber-900/40 border border-amber-600/60 rounded-lg p-3 flex items-center gap-2">
+                  <Wrench className="h-5 w-5 text-amber-400 flex-shrink-0" />
+                  <p className="text-sm text-amber-200">
+                    Profile changes are disabled during maintenance.
+                  </p>
+                </div>
+              )}
+
               {/* Visual Preferences Section - First */}
-              {user && <VisualPreferences userId={user.id} />}
+              {user && <VisualPreferences userId={user.id} disabled={isMaintenanceMode && !isSuperuser} />}
 
               {/* Username Section */}
               <div className="space-y-3">
@@ -364,11 +377,12 @@ const Index = () => {
                     onChange={(e) => setNewUsername(e.target.value)}
                     placeholder="Enter new username"
                     autoFocus={false}
+                    disabled={isMaintenanceMode && !isSuperuser}
                   />
                 </div>
                 <Button 
                   onClick={handleUpdateUsername} 
-                  disabled={isUpdating || !newUsername.trim()}
+                  disabled={isUpdating || !newUsername.trim() || (isMaintenanceMode && !isSuperuser)}
                   className="w-full"
                 >
                   Update Username
@@ -389,6 +403,7 @@ const Index = () => {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
                     autoFocus={false}
+                    disabled={isMaintenanceMode && !isSuperuser}
                   />
                 </div>
                 <div className="space-y-2">
@@ -400,11 +415,12 @@ const Index = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
                     autoFocus={false}
+                    disabled={isMaintenanceMode && !isSuperuser}
                   />
                 </div>
                 <Button 
                   onClick={handleUpdatePassword} 
-                  disabled={isUpdating || !newPassword || !confirmPassword}
+                  disabled={isUpdating || !newPassword || !confirmPassword || (isMaintenanceMode && !isSuperuser)}
                   className="w-full"
                 >
                   Update Password
@@ -419,6 +435,42 @@ const Index = () => {
                     <h3 className="font-semibold text-destructive">Admin Controls</h3>
                   </div>
                   
+                  {/* Under Maintenance Toggle */}
+                  <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="maintenance-mode" className="flex items-center gap-2">
+                        <Wrench className="h-4 w-4 text-amber-500" />
+                        Under Maintenance
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Blocks all non-admin users and ends active sessions immediately
+                      </p>
+                    </div>
+                    <Switch
+                      id="maintenance-mode"
+                      checked={isMaintenanceMode}
+                      onCheckedChange={async (enabled) => {
+                        setIsTogglingMaintenance(true);
+                        const success = await toggleMaintenanceMode(enabled);
+                        setIsTogglingMaintenance(false);
+                        if (success) {
+                          toast({
+                            title: enabled ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
+                            description: enabled ? "All active sessions have been ended" : "Users can now access the app",
+                          });
+                        } else {
+                          toast({
+                            title: "Error",
+                            description: "Failed to toggle maintenance mode",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      disabled={maintenanceLoading || isTogglingMaintenance}
+                      className="data-[state=checked]:bg-amber-600"
+                    />
+                  </div>
+
                   {/* Allow Bot Dealers Toggle */}
                   <div className="flex items-center justify-between py-2">
                     <div className="space-y-0.5">
