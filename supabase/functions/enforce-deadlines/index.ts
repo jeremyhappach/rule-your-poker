@@ -475,7 +475,51 @@ serve(async (req) => {
       }
     }
 
-    // 4. ENFORCE AWAITING_NEXT_ROUND TIMEOUT (stuck game watchdog)
+    // 4. ENFORCE STUCK SHOWDOWN/PROCESSING ROUNDS (Holm game specific)
+    // If a Holm round is stuck in 'showdown' or 'processing' status for too long,
+    // the endHolmRound function likely failed mid-execution. Auto-recover by
+    // setting awaiting_next_round and allowing progression.
+    if (game.status === 'in_progress' && game.game_type === 'holm-game') {
+      const { data: stuckRounds } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .in('status', ['showdown', 'processing'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      const stuckRound = stuckRounds?.[0];
+      if (stuckRound) {
+        const roundCreatedAt = new Date(stuckRound.created_at);
+        const stuckDuration = now.getTime() - roundCreatedAt.getTime();
+        
+        // If stuck for more than 30 seconds (generous buffer for normal processing)
+        if (stuckDuration > 30000) {
+          console.log('[ENFORCE] ⚠️ Holm round stuck in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 'seconds - auto-recovering');
+          
+          // Mark round as completed and trigger next round
+          await supabase
+            .from('rounds')
+            .update({ status: 'completed' })
+            .eq('id', stuckRound.id);
+          
+          // Set awaiting_next_round to trigger client-side progression
+          // The next round number should be current + 1 (but Holm uses hand count, so just use 1)
+          await supabase
+            .from('games')
+            .update({ 
+              awaiting_next_round: true,
+              all_decisions_in: true, // Ensure cards are visible if showdown
+              last_round_result: 'Round timed out - proceeding...'
+            })
+            .eq('id', gameId);
+          
+          actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round`);
+        }
+      }
+    }
+
+    // 5. ENFORCE AWAITING_NEXT_ROUND TIMEOUT (stuck game watchdog)
     // If a game has been stuck in awaiting_next_round=true for too long (>10 seconds),
     // it means client-side proceedToNextRound never fired. Auto-proceed server-side.
     if (game.status === 'in_progress' && game.awaiting_next_round === true && game.next_round_number) {
@@ -581,7 +625,7 @@ serve(async (req) => {
       }
     }
 
-    // 5. ENFORCE GAME OVER COUNTDOWN (session ending after game)
+    // 6. ENFORCE GAME OVER COUNTDOWN (session ending after game)
     if (game.status === 'game_over' && game.game_over_at) {
       const gameOverAt = new Date(game.game_over_at);
       const gameOverDeadline = new Date(gameOverAt.getTime() + 8000); // 8 seconds countdown
