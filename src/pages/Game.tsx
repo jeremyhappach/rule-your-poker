@@ -236,6 +236,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmPreFold, setHolmPreFold] = useState(false);
   const [holmPreStay, setHolmPreStay] = useState(false);
   
+  // LIFTED mobile tab state - persists across MobileGameTable remounts
+  const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
@@ -246,7 +248,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Children use this to avoid writing stale local state back into the external cache.
   const [communityCacheEpoch, setCommunityCacheEpoch] = useState(0);
 
-  const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players);
+  const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players, user?.id);
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
   useDeadlineEnforcer(gameId, game?.status);
@@ -4420,6 +4422,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     winner357ShowCards={winner357ShowCards}
                     onWinner357ShowCards={handleWinner357ShowCards}
                     rabbitHunt={game.rabbit_hunt ?? false}
+                    activeTab={mobileActiveTab}
+                    onActiveTabChange={setMobileActiveTab}
                   />
                 ) : (
                   <>
@@ -4506,6 +4510,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isChatSending={isChatSending}
                     getPositionForUserId={getPositionForUserId}
                     onLeaveGameNow={handleLeaveGameNow}
+                    activeTab={mobileActiveTab}
+                    onActiveTabChange={setMobileActiveTab}
                   />
                 ) : (
                   <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
@@ -4592,6 +4598,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 isChatSending={isChatSending}
                 getPositionForUserId={getPositionForUserId}
                 onLeaveGameNow={handleLeaveGameNow}
+                activeTab={mobileActiveTab}
+                onActiveTabChange={setMobileActiveTab}
               />
             ) : (
               <GameTable key={gameId ?? 'unknown-game'}
@@ -4811,6 +4819,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onHolmPreFoldChange={setHolmPreFold}
               onHolmPreStayChange={setHolmPreStay}
               rabbitHunt={game.rabbit_hunt ?? false}
+              activeTab={mobileActiveTab}
+              onActiveTabChange={setMobileActiveTab}
             />
           ) : (
             <GameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}

@@ -14,16 +14,50 @@ interface ChatBubble extends ChatMessage {
   expiresAt: number;
 }
 
-export const useGameChat = (gameId: string | undefined, players: any[]) => {
+export const useGameChat = (gameId: string | undefined, players: any[], currentUserId?: string) => {
   const [chatBubbles, setChatBubbles] = useState<ChatBubble[]>([]);
   const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<{ username: string } | null>(null);
 
-  // Get username for a user_id from players list
+  // Fetch current user's profile for observers
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!currentUserId) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', currentUserId)
+        .single();
+      
+      if (data) {
+        setCurrentUserProfile(data);
+      }
+    };
+    
+    fetchProfile();
+  }, [currentUserId]);
+
+  // Check if a user is an observer (not in players list)
+  const isObserver = useCallback((userId: string): boolean => {
+    return !players.some(p => p.user_id === userId);
+  }, [players]);
+
+  // Get username for a user_id from players list or current user profile
   const getUsernameForUserId = useCallback((userId: string): string => {
     const player = players.find(p => p.user_id === userId);
-    return player?.profiles?.username || 'Unknown';
-  }, [players]);
+    if (player?.profiles?.username) {
+      return player.profiles.username;
+    }
+    
+    // Check if it's the current user (observer)
+    if (userId === currentUserId && currentUserProfile?.username) {
+      return `${currentUserProfile.username} (observer)`;
+    }
+    
+    return 'Unknown';
+  }, [players, currentUserId, currentUserProfile]);
 
   // Get position for a user_id from players list
   const getPositionForUserId = useCallback((userId: string): number | undefined => {
@@ -59,10 +93,29 @@ export const useGameChat = (gameId: string | undefined, players: any[]) => {
   }, [gameId, isSending]);
 
   // Add a new bubble with expiration
-  const addBubble = useCallback((msg: ChatMessage) => {
+  const addBubble = useCallback(async (msg: ChatMessage) => {
+    // Check if user is a player or observer
+    const player = players.find(p => p.user_id === msg.user_id);
+    let username: string;
+    
+    if (player?.profiles?.username) {
+      username = player.profiles.username;
+    } else {
+      // User is an observer - fetch their profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', msg.user_id)
+        .single();
+      
+      username = profile?.username 
+        ? `${profile.username} (observer)` 
+        : 'Unknown';
+    }
+    
     const bubble: ChatBubble = {
       ...msg,
-      username: getUsernameForUserId(msg.user_id),
+      username,
       expiresAt: Date.now() + 5000 // 5 seconds
     };
 
@@ -74,12 +127,12 @@ export const useGameChat = (gameId: string | undefined, players: any[]) => {
 
     // Also add to allMessages
     setAllMessages(prev => {
-      const msgWithUsername = { ...msg, username: getUsernameForUserId(msg.user_id) };
+      const msgWithUsername = { ...msg, username };
       // Avoid duplicates
       if (prev.some(m => m.id === msg.id)) return prev;
       return [...prev, msgWithUsername];
     });
-  }, [getUsernameForUserId]);
+  }, [players]);
 
   // Clean up expired bubbles
   useEffect(() => {
@@ -102,16 +155,34 @@ export const useGameChat = (gameId: string | undefined, players: any[]) => {
         .order('created_at', { ascending: true });
 
       if (!error && data) {
-        const messagesWithUsernames = data.map(msg => ({
-          ...msg,
-          username: getUsernameForUserId(msg.user_id)
+        // For each message, check if user is a player or observer
+        const messagesWithUsernames = await Promise.all(data.map(async (msg) => {
+          const player = players.find(p => p.user_id === msg.user_id);
+          
+          if (player?.profiles?.username) {
+            return { ...msg, username: player.profiles.username };
+          }
+          
+          // User is an observer - fetch their profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', msg.user_id)
+            .single();
+          
+          const username = profile?.username 
+            ? `${profile.username} (observer)` 
+            : 'Unknown';
+          
+          return { ...msg, username };
         }));
+        
         setAllMessages(messagesWithUsernames);
       }
     };
 
     fetchMessages();
-  }, [gameId, getUsernameForUserId]);
+  }, [gameId, players]);
 
   // Subscribe to realtime chat messages
   useEffect(() => {
