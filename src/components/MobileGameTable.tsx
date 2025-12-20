@@ -2354,10 +2354,14 @@ export const MobileGameTable = ({
         })()}
         
         {(() => {
-          const shouldShow = gameType === 'holm-game' && approvedCommunityCards && approvedCommunityCards.length > 0 && showCommunityCards && 
-           (isInGameOverStatus || currentRound === approvedRoundForDisplay);
-          
-          console.log('🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:', {
+          const shouldShow =
+            gameType === "holm-game" &&
+            approvedCommunityCards &&
+            approvedCommunityCards.length > 0 &&
+            showCommunityCards &&
+            (isInGameOverStatus || currentRound === approvedRoundForDisplay);
+
+          console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
             shouldShow,
             gameType,
             hasApprovedCards: !!approvedCommunityCards,
@@ -2366,17 +2370,37 @@ export const MobileGameTable = ({
             isInGameOverStatus,
             currentRound,
             approvedRoundForDisplay,
-            roundMatch: currentRound === approvedRoundForDisplay
+            roundMatch: currentRound === approvedRoundForDisplay,
           });
-          
+
           if (!shouldShow) return null;
-          
+
+          // Keep rabbit-hunt label visibility in sync with whatever reveal counter
+          // CommunityCards is currently using (staggered vs live).
+          const revealedForUi = isDelayingCommunityCards
+            ? staggeredCardCount
+            : (communityCardsRevealed ?? 0);
+
+          const totalCommunity = approvedCommunityCards?.length ?? 0;
+          const hasWinResult =
+            typeof lastRoundResult === "string" && /(beat|wins|won)/i.test(lastRoundResult);
+
           return (
             <>
-              <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[62%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'}`}>
-                <CommunityCards 
-                  cards={approvedCommunityCards!} 
-                  revealed={isDelayingCommunityCards ? staggeredCardCount : (communityCardsRevealed || 2)} 
+              <div
+                className={`absolute left-1/2 transform -translate-x-1/2 z-10 scale-[1.8] transition-all duration-300 ${
+                  isHolmMultiPlayerShowdown
+                    ? "top-[62%] -translate-y-1/2"
+                    : "top-1/2 -translate-y-1/2"
+                }`}
+              >
+                <CommunityCards
+                  cards={approvedCommunityCards!}
+                  revealed={
+                    isDelayingCommunityCards
+                      ? staggeredCardCount
+                      : (communityCardsRevealed || 2)
+                  }
                   highlightedIndices={winningCardHighlights.communityIndices}
                   kickerIndices={winningCardHighlights.kickerCommunityIndices}
                   hasHighlights={winningCardHighlights.hasHighlights}
@@ -2385,18 +2409,28 @@ export const MobileGameTable = ({
               </div>
 
               {/* Rabbit Hunt label (separate element so scaling doesn't affect placement) */}
-              {rabbitHunt && stayedPlayersCount === 0 && (communityCardsRevealed || 0) > 2 && !lastRoundResult && (
-                <div
-                  className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
-                  style={{ top: isHolmMultiPlayerShowdown ? 'calc(62% + 120px)' : 'calc(50% + 120px)' }}
-                >
-                  <span className="text-[11px] text-poker-gold/80 italic">Rabbit Hunting...</span>
-                </div>
-              )}
+              {rabbitHunt &&
+                stayedPlayersCount === 0 &&
+                revealedForUi > 2 &&
+                revealedForUi < totalCommunity &&
+                !hasWinResult && (
+                  <div
+                    className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
+                    style={{
+                      top: isHolmMultiPlayerShowdown
+                        ? "calc(62% + 190px)"
+                        : "calc(50% + 190px)",
+                    }}
+                  >
+                    <span className="text-[11px] text-poker-gold/80 italic">
+                      Rabbit Hunting...
+                    </span>
+                  </div>
+                )}
             </>
           );
         })()}
-        
+
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
