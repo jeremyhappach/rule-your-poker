@@ -1722,7 +1722,7 @@ export const MobileGameTable = ({
           gameType={gameType}
           currentRound={currentRound}
           showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
-          tightOverlap={isHolmMultiPlayerShowdown || is357MultiPlayerShowdown}
+          tightOverlap={isHolmMultiPlayerShowdown}
         />
       </div>
     ) : (
