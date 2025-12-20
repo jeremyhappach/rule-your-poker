@@ -31,6 +31,7 @@ import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
 import { MyGameHistory } from "@/components/MyGameHistory";
 import { GameRules } from "@/components/GameRules";
+import { CustomGameNamesManager } from "@/components/CustomGameNamesManager";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -368,6 +369,9 @@ const Index = () => {
                     <h3 className="font-semibold text-destructive">Admin Controls</h3>
                   </div>
                   
+                  {/* Custom Game Names */}
+                  <CustomGameNamesManager />
+
                   {/* Player Management */}
                   {user && <PlayerManagement currentUserId={user.id} />}
                   <p className="text-sm text-muted-foreground">
