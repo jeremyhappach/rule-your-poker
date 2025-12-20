@@ -37,6 +37,7 @@ interface Player {
   sitting_out_hands?: number;
   waiting?: boolean;
   created_at?: string;
+  auto_fold?: boolean;
   profiles?: {
     username: string;
     aggression_level?: string;

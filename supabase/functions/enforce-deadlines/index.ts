@@ -441,13 +441,13 @@ serve(async (req) => {
                 
                 actionsTaken.push(`Bot timeout: Made decision '${botDecision}' for bot at position ${currentTurnPlayer.position}`);
               } else {
-                // Human player - auto-fold
+                // Human player - auto-fold AND set auto_fold flag for future hands
                 await supabase
                   .from('players')
-                  .update({ current_decision: 'fold', decision_locked: true })
+                  .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
                   .eq('id', currentTurnPlayer.id);
                 
-                actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`);
+                actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position} and set auto_fold=true`);
               }
             }
             
@@ -525,14 +525,27 @@ serve(async (req) => {
             ) || [];
             
             if (undecidedPlayers.length > 0) {
-              const undecidedIds = undecidedPlayers.map(p => p.id);
+              // Separate bots from humans - only set auto_fold for humans
+              const undecidedHumans = undecidedPlayers.filter(p => !p.is_bot);
+              const undecidedBots = undecidedPlayers.filter(p => p.is_bot);
               
-              await supabase
-                .from('players')
-                .update({ current_decision: 'fold', decision_locked: true })
-                .in('id', undecidedIds);
+              // Auto-fold bots without setting auto_fold flag
+              if (undecidedBots.length > 0) {
+                await supabase
+                  .from('players')
+                  .update({ current_decision: 'fold', decision_locked: true })
+                  .in('id', undecidedBots.map(p => p.id));
+              }
               
-              actionsTaken.push(`Decision timeout: Auto-folded ${undecidedIds.length} undecided players in 3-5-7`);
+              // Auto-fold humans AND set auto_fold flag for future hands
+              if (undecidedHumans.length > 0) {
+                await supabase
+                  .from('players')
+                  .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
+                  .in('id', undecidedHumans.map(p => p.id));
+              }
+              
+              actionsTaken.push(`Decision timeout: Auto-folded ${undecidedPlayers.length} undecided players in 3-5-7 (${undecidedHumans.length} humans set to auto_fold)`);
             }
           }
         }

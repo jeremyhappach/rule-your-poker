@@ -9,6 +9,7 @@ interface Player {
   stand_up_next_hand: boolean;
   sit_out_next_hand: boolean;
   is_bot: boolean;
+  auto_fold: boolean;
 }
 
 /**
@@ -31,7 +32,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   // Fetch all players for this game
   const { data: players, error } = await supabase
     .from('players')
-    .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, status')
+    .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, status, auto_fold')
     .eq('game_id', gameId)
     .order('position');
   
@@ -45,7 +46,8 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     sitting_out: p.sitting_out,
     waiting: p.waiting,
     stand_up: p.stand_up_next_hand,
-    sit_out: p.sit_out_next_hand
+    sit_out: p.sit_out_next_hand,
+    auto_fold: p.auto_fold
   })));
   
   const playersStoodUp: string[] = [];
@@ -98,7 +100,25 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
       continue; // Move to next player
     }
     
-    // 3. waiting = true → sitting_out = false, waiting = false (player now active)
+    // 3. auto_fold = true → sitting_out = true (player timed out and is auto-folding)
+    if (player.auto_fold) {
+      console.log('[PLAYER EVAL] Player', player.position, 'has auto_fold=true - sitting out');
+      
+      const { error: updateError } = await supabase
+        .from('players')
+        .update({
+          sitting_out: true,
+          waiting: false
+        })
+        .eq('id', player.id);
+      
+      if (updateError) {
+        console.error('[PLAYER EVAL] Error updating auto_fold player:', updateError);
+      }
+      continue; // Move to next player
+    }
+    
+    // 4. waiting = true → sitting_out = false, waiting = false (player now active)
     if (player.waiting) {
       console.log('[PLAYER EVAL] Player', player.position, 'was waiting - now active');
       
