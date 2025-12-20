@@ -88,39 +88,44 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   };
 
   // Send a chat message
-  const sendMessage = useCallback(async (message: string, imageFile?: File) => {
-    if (!gameId || (!message.trim() && !imageFile) || isSending) return;
+  const sendMessage = useCallback(
+    async (message: string, imageFile?: File) => {
+      if (!gameId || (!message.trim() && !imageFile) || isSending) return;
 
-    setIsSending(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      setIsSending(true);
+      try {
+        // IMPORTANT: Avoid supabase.auth.getUser() here.
+        // getUser() hits the auth API and can clear an otherwise-valid local session,
+        // which then triggers onAuthStateChange and redirects to /auth.
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = currentUserId ?? sessionData.session?.user?.id;
+        if (!userId) return;
 
-      let imageUrl: string | null = null;
-      
-      // Upload image if provided
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile, user.id);
-      }
+        let imageUrl: string | null = null;
 
-      const { error } = await supabase
-        .from('chat_messages')
-        .insert({
+        // Upload image if provided
+        if (imageFile) {
+          imageUrl = await uploadImage(imageFile, userId);
+        }
+
+        const { error } = await supabase.from('chat_messages').insert({
           game_id: gameId,
-          user_id: user.id,
+          user_id: userId,
           message: message.trim(),
-          image_url: imageUrl
+          image_url: imageUrl,
         });
 
-      if (error) {
+        if (error) {
+          console.error('Error sending chat message:', error);
+        }
+      } catch (error) {
         console.error('Error sending chat message:', error);
+      } finally {
+        setIsSending(false);
       }
-    } catch (error) {
-      console.error('Error sending chat message:', error);
-    } finally {
-      setIsSending(false);
-    }
-  }, [gameId, isSending]);
+    },
+    [gameId, isSending, currentUserId]
+  );
 
   // Add a new bubble with expiration
   const addBubble = useCallback(async (msg: ChatMessage) => {
