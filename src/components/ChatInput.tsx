@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, Smile, Image } from 'lucide-react';
+import { MessageCircle, Send, X, Smile, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -132,6 +132,18 @@ export const ChatInput = ({ onSend, isSending, isMobile = false }: ChatInputProp
       )}
       
       <div className="flex items-center gap-1">
+        {/* Message input */}
+        <Input
+          ref={inputRef}
+          value={message}
+          onChange={(e) => setMessage(e.target.value.slice(0, 100))}
+          onKeyDown={handleKeyDown}
+          placeholder="Type..."
+          className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 h-9 min-w-0"
+          maxLength={100}
+          disabled={isSending}
+        />
+
         {/* Emoticon picker */}
         <Popover open={showEmoticons} onOpenChange={setShowEmoticons}>
           <PopoverTrigger asChild>
@@ -147,7 +159,7 @@ export const ChatInput = ({ onSend, isSending, isMobile = false }: ChatInputProp
           <PopoverContent 
             className="w-64 p-2 bg-black/95 border-white/20" 
             side="top"
-            align="start"
+            align="end"
           >
             <div className="grid grid-cols-8 gap-1">
               {EMOTICONS.map((emoticon) => (
@@ -179,20 +191,8 @@ export const ChatInput = ({ onSend, isSending, isMobile = false }: ChatInputProp
           title="Attach image"
           disabled={isSending}
         >
-          <Image className="h-4 w-4" />
+          <Paperclip className="h-4 w-4" />
         </Button>
-
-        {/* Message input */}
-        <Input
-          ref={inputRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value.slice(0, 100))}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message..."
-          className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 h-9 min-w-0"
-          maxLength={100}
-          disabled={isSending}
-        />
 
         {/* Send button */}
         <Button
