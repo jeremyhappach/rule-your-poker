@@ -224,6 +224,9 @@ interface MobileGameTableProps {
   // Unread messages state (lifted to parent to persist across remounts)
   hasUnreadMessages?: boolean;
   onHasUnreadMessagesChange?: (hasUnread: boolean) => void;
+  // Chat input state (lifted to parent to persist across remounts)
+  chatInputValue?: string;
+  onChatInputChange?: (value: string) => void;
 }
 export const MobileGameTable = ({
   players,
@@ -326,6 +329,8 @@ export const MobileGameTable = ({
   onActiveTabChange,
   hasUnreadMessages: externalHasUnreadMessages,
   onHasUnreadMessagesChange,
+  chatInputValue: externalChatInputValue,
+  onChatInputChange: externalOnChatInputChange,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -3050,38 +3055,45 @@ export const MobileGameTable = ({
         
         
         {/* Tab navigation bar */}
-        <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
-          <button 
-            onClick={() => setActiveTab('cards')}
-            className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-              activeTab === 'cards' 
-                ? 'bg-primary/20 text-foreground' 
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            } ${cardsTabFlashing ? 'animate-pulse' : ''}`}
-          >
-            <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${cardsTabFlashing ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('chat')}
-            className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-              activeTab === 'chat' 
-                ? 'bg-primary/20 text-foreground' 
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            } ${chatTabFlashing ? 'animate-pulse' : ''}`}
-          >
-            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500 fill-red-500' : ''}`} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('lobby')}
-            className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-              activeTab === 'lobby' 
-                ? 'bg-primary/20 text-foreground' 
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
-          >
-            <User className="w-5 h-5" />
-          </button>
-        </div>
+        {(() => {
+          // Determine if we should pulse the cards tab (it's your turn and you're not on cards tab)
+          const isYourTurnNotOnCardsTab = isPlayerTurn && !hasDecided && activeTab !== 'cards' && roundStatus === 'betting';
+          
+          return (
+            <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
+              <button 
+                onClick={() => setActiveTab('cards')}
+                className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+                  activeTab === 'cards' 
+                    ? 'bg-primary/20 text-foreground' 
+                    : 'text-muted-foreground/50 hover:text-muted-foreground'
+                } ${cardsTabFlashing || isYourTurnNotOnCardsTab ? 'animate-pulse' : ''}`}
+              >
+                <Spade className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${cardsTabFlashing ? 'text-red-500 fill-red-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
+              </button>
+              <button 
+                onClick={() => setActiveTab('chat')}
+                className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+                  activeTab === 'chat' 
+                    ? 'bg-primary/20 text-foreground' 
+                    : 'text-muted-foreground/50 hover:text-muted-foreground'
+                } ${chatTabFlashing ? 'animate-pulse' : ''}`}
+              >
+                <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500 fill-red-500' : ''}`} />
+              </button>
+              <button 
+                onClick={() => setActiveTab('lobby')}
+                className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+                  activeTab === 'lobby' 
+                    ? 'bg-primary/20 text-foreground' 
+                    : 'text-muted-foreground/50 hover:text-muted-foreground'
+                }`}
+              >
+                <User className="w-5 h-5" />
+              </button>
+            </div>
+          );
+        })()}
         
         {/* Progress bar timer - ALWAYS visible regardless of tab */}
         {currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime && (
@@ -3318,6 +3330,8 @@ export const MobileGameTable = ({
                   messages={allMessages}
                   onSend={onSendChat}
                   isSending={isChatSending}
+                  chatInputValue={externalChatInputValue}
+                  onChatInputChange={externalOnChatInputChange}
                 />
               </div>
             ) : (
