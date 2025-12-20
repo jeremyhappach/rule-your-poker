@@ -54,15 +54,18 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   };
 
   // Absolute position mapping for observers (positions 1-7 around the table)
+  // CRITICAL: Must match MobileGameTable.tsx observer rendering layout:
+  // Position 1: Top-left, Position 2: Left, Position 3: Bottom-left
+  // Position 4: Bottom-center, Position 5: Bottom-right, Position 6: Right, Position 7: Top-right
   const getAbsolutePositionPercent = (position: number): { top: number; left: number } => {
     const positions: Record<number, { top: number; left: number }> = {
-      1: { top: 92, left: 50 },   // Bottom center
-      2: { top: 50, left: 2 },    // Middle-left
-      3: { top: 2, left: 10 },    // Top-left
-      4: { top: 2, left: 50 },    // Top center
-      5: { top: 2, left: 90 },    // Top-right
-      6: { top: 50, left: 98 },   // Middle-right
-      7: { top: 92, left: 90 },   // Bottom-right
+      1: { top: 2, left: 10 },    // Top-left (matches top-4 left-10)
+      2: { top: 50, left: 2 },    // Left (matches left-0 top-1/2)
+      3: { top: 92, left: 10 },   // Bottom-left (matches bottom-2 left-10)
+      4: { top: 92, left: 50 },   // Bottom-center (matches bottom-2 left-1/2)
+      5: { top: 92, left: 90 },   // Bottom-right (matches bottom-2 right-10)
+      6: { top: 50, left: 98 },   // Right (matches right-0 top-1/2)
+      7: { top: 2, left: 90 },    // Top-right (matches right-10 top-4)
     };
     return positions[position] || { top: 50, left: 50 };
   };

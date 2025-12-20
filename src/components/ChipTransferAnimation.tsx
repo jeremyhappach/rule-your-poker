@@ -77,6 +77,9 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
   };
 
   // Absolute position coords for observers (positions 1-7 around the table)
+  // CRITICAL: Must match MobileGameTable.tsx observer rendering layout:
+  // Position 1: Top-left, Position 2: Left, Position 3: Bottom-left
+  // Position 4: Bottom-center, Position 5: Bottom-right, Position 6: Right, Position 7: Top-right
   const getAbsolutePositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
     const chipRadius = 20;
     const tailwindBottom2 = 8;
@@ -85,20 +88,20 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     const tailwindRight10 = 40;
     
     switch (position) {
-      case 1: // Bottom center
-        return { x: rect.width / 2, y: rect.height - tailwindBottom2 - chipRadius };
-      case 2: // Middle-left
-        return { x: chipRadius, y: rect.height / 2 };
-      case 3: // Top-left
+      case 1: // Top-left (matches top-4 left-10)
         return { x: tailwindLeft10 + chipRadius, y: tailwindTop2 + chipRadius };
-      case 4: // Top center
-        return { x: rect.width / 2, y: tailwindTop2 + chipRadius };
-      case 5: // Top-right
-        return { x: rect.width - tailwindRight10 - chipRadius, y: tailwindTop2 + chipRadius };
-      case 6: // Middle-right
-        return { x: rect.width - chipRadius, y: rect.height / 2 };
-      case 7: // Bottom-right
+      case 2: // Left (matches left-0 top-1/2)
+        return { x: chipRadius, y: rect.height / 2 };
+      case 3: // Bottom-left (matches bottom-2 left-10)
+        return { x: tailwindLeft10 + chipRadius, y: rect.height - tailwindBottom2 - chipRadius };
+      case 4: // Bottom-center (matches bottom-2 left-1/2)
+        return { x: rect.width / 2, y: rect.height - tailwindBottom2 - chipRadius };
+      case 5: // Bottom-right (matches bottom-2 right-10)
         return { x: rect.width - tailwindRight10 - chipRadius, y: rect.height - tailwindBottom2 - chipRadius };
+      case 6: // Right (matches right-0 top-1/2)
+        return { x: rect.width - chipRadius, y: rect.height / 2 };
+      case 7: // Top-right (matches right-10 top-4)
+        return { x: rect.width - tailwindRight10 - chipRadius, y: tailwindTop2 + chipRadius };
       default:
         return { x: rect.width / 2, y: rect.height / 2 };
     }
