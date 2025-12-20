@@ -1695,17 +1695,22 @@ export const MobileGameTable = ({
   const expectedCardCount = getExpectedCardCount(currentRound);
 
   // Get player status chip background color based on status
-  const getPlayerChipBgColor = (player: Player) => {
+  // NOTE: "stayed" color is handled separately via playerDecision in renderPlayerChip
+  const getPlayerChipBgColor = (player: Player, playerDecision: string | null) => {
     // Yellow for waiting (regardless of sitting_out)
     if (player.waiting) {
       return 'bg-yellow-300';
     }
-    // White for sitting out (and not waiting)
+    // Light red for sitting out (and not waiting) - pale enough to see negative chip values
     if (player.sitting_out) {
-      return 'bg-white';
+      return 'bg-red-200';
     }
-    // Green for active
-    return 'bg-green-400';
+    // Green background for players who stayed (replaces the glow ring)
+    if (playerDecision === 'stay') {
+      return 'bg-green-400';
+    }
+    // White for active players who haven't acted yet
+    return 'bg-white';
   };
 
   // Render player chip - chipstack in center, name below (or above for bottom positions)
@@ -1759,8 +1764,8 @@ export const MobileGameTable = ({
     const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && !hasFolded;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
 
-    // Status chip background color
-    const chipBgColor = getPlayerChipBgColor(player);
+    // Status chip background color - includes "stayed" green background
+    const chipBgColor = getPlayerChipBgColor(player, playerDecision);
 
     // Check if this player's chip stack is clickable by host (any player except self)
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
@@ -1865,10 +1870,7 @@ export const MobileGameTable = ({
           className={`relative ${isClickable ? 'cursor-pointer' : ''}`}
           onClick={isClickable ? () => onPlayerClick(player) : undefined}
         >
-          {/* Pulsing green ring for stayed players - separate element so inner circle doesn't pulse */}
-          {playerDecision === 'stay' && (
-            <div className="absolute inset-0 rounded-full ring-4 ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.7)] animate-pulse" />
-          )}
+          {/* Green background now used for stayed players instead of ring - see getPlayerChipBgColor */}
           {/* Yellow ring for current turn (no pulse on ring, pulse on circle) */}
           {isTheirTurn && playerDecision !== 'stay' && (
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />

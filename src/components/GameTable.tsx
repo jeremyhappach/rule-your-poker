@@ -1277,7 +1277,6 @@ export const GameTable = ({
                     ${isCurrentUser ? "border-poker-gold border-3 shadow-xl shadow-poker-gold/50" : "border-amber-800 border-2"} 
                     ${hasPlayerDecided ? "ring-2 ring-green-500 ring-offset-1 ring-offset-poker-felt" : ""}
                     ${playerDecision === 'fold' ? "opacity-40 brightness-50" : ""}
-                    ${playerDecision === 'stay' ? "ring-[6px] ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)] brightness-110" : ""}
                     ${player.sitting_out ? "opacity-50 grayscale" : ""}
                     bg-gradient-to-br from-amber-900 to-amber-950 backdrop-blur-sm
                     transition-all duration-500
@@ -1291,9 +1290,7 @@ export const GameTable = ({
                      !hasPlayerDecided && (
                       <div className="absolute inset-0 rounded-lg border-[6px] border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.9)] animate-pulse pointer-events-none" />
                     )}
-                    {playerDecision === 'stay' && (
-                      <div className="absolute inset-0 rounded-lg border-4 sm:border-[6px] border-green-500 animate-[pulse_3s_ease-in-out_infinite] pointer-events-none" />
-                    )}
+                    {/* Green glow ring removed - now using chip balance background color for stayed status */}
                   <CardContent className="p-1 sm:p-1.5 md:p-2 lg:p-3 text-center min-w-[70px] sm:min-w-[90px] md:min-w-[110px] lg:min-w-[130px] xl:min-w-[140px] max-w-[110px] sm:max-w-[130px] md:max-w-none">
                     <div className="space-y-0.5 sm:space-y-1 md:space-y-1.5">
                       <div className="flex items-center justify-center gap-0.5 sm:gap-1 md:gap-1.5 relative">
@@ -1578,11 +1575,17 @@ export const GameTable = ({
                               {/* Chip balance (center) with status indicator - clickable for host */}
                               {(() => {
                                 const isClickable = isHost && onPlayerClick && player && player.user_id !== currentUserId;
+                                // Status-based background: light red for sitting out, yellow for waiting, 
+                                // green for stayed, white for active (not stayed)
+                                const getChipBgClass = () => {
+                                  if (player?.sitting_out) return 'bg-red-200/50 ring-1 ring-red-300/40';
+                                  if (player?.waiting) return 'bg-yellow-500/20 ring-1 ring-yellow-500/40';
+                                  if (playerDecision === 'stay') return 'bg-green-400/50 ring-1 ring-green-500/40';
+                                  return 'bg-white/30 ring-1 ring-white/40'; // Active but not stayed
+                                };
                                 return (
                                   <div 
-                                    className={`flex items-center justify-center px-1.5 py-0.5 rounded ${
-                                      player?.sitting_out ? '' : player?.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
-                                    } ${isClickable ? 'cursor-pointer hover:ring-2 hover:ring-amber-400 active:scale-95' : ''}`}
+                                    className={`flex items-center justify-center px-1.5 py-0.5 rounded ${getChipBgClass()} ${isClickable ? 'cursor-pointer hover:ring-2 hover:ring-amber-400 active:scale-95' : ''}`}
                                     onClick={isClickable ? () => onPlayerClick(player) : undefined}
                                   >
                                     <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player?.chips && player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
