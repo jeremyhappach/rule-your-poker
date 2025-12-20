@@ -3235,16 +3235,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         await supabase.from('games').delete().eq('id', gameId);
         navigate('/');
       } else {
-        // Has game history - end session normally
+        // Has game history - end session normally with game_over_at set
+        // CRITICAL: Must set game_over_at so GameOverCountdown can complete and transition to session_ended
         console.log('[GAME OVER] Has game history, ending session');
         await supabase
           .from('games')
           .update({
-            status: 'game_over',
-            pending_session_end: true,
-            session_ended_at: new Date().toISOString()
+            status: 'session_ended',
+            session_ended_at: new Date().toISOString(),
+            pending_session_end: false,
+            game_over_at: new Date().toISOString()
           })
           .eq('id', gameId);
+        
+        // Navigate after brief delay
+        setTimeout(() => navigate('/'), 2000);
       }
       return;
     }
