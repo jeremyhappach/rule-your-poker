@@ -449,7 +449,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             </Card>
           ) : (
             activeGames.map((game) => {
-              const isInProgress = ['dealer_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress'].includes(game.status);
+              const isInProgress = ['dealer_selection', 'game_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress', 'game_over'].includes(game.status);
               const activePlayers = game.players?.filter(p => !p.sitting_out) || [];
               
               return (

@@ -1266,7 +1266,9 @@ export const GameTable = ({
             // Players who stayed get a compact layout: cards move to chipstack area, no buttons, name beside cards
             const playerStayedIn357 = playerDecision === 'stay' && is357ExposedLayout;
             const playerFoldedIn357 = playerDecision === 'fold' && is357ExposedLayout;
-            const shouldUseExposedLayout = playerStayedIn357 && (cards.length > 0 || shouldShowCardBacks);
+            // SIMPLIFIED: Always use exposed layout for players who stayed during 357 showdown
+            // The PlayerHand component will show card backs if actual cards aren't available
+            const shouldUseExposedLayout = playerStayedIn357;
             
             // For folded players during 357 exposed layout, show minimized display
             if (playerFoldedIn357) {
@@ -1306,19 +1308,19 @@ export const GameTable = ({
                   className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
                   style={{ left: `${x}%`, top: `${adjustedY}%` }}
                 >
-                  <div className="relative flex flex-col items-center">
-                    {/* Name ABOVE cards for bottom positions */}
+                  <div className="relative flex flex-col items-center gap-0">
+                    {/* Name ABOVE cards for bottom positions - tighter spacing */}
                     {isBottomPosition && (
-                      <p className="text-[8px] text-amber-100 font-bold mb-0.5 truncate max-w-[60px]">
+                      <p className="text-[6px] text-amber-100 font-bold truncate max-w-[50px] leading-none">
                         {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
-                        {isCurrentUser && <span className="text-poker-gold ml-1">You</span>}
+                        {isCurrentUser && <span className="text-poker-gold ml-0.5">You</span>}
                       </p>
                     )}
                     
                     {/* Cards with optional name beside for non-bottom positions */}
-                    <div className={`flex items-end gap-1 ${!isBottomPosition ? 'flex-row' : ''}`}>
+                    <div className={`flex items-center gap-0.5 ${!isBottomPosition ? 'flex-row' : ''}`}>
                       {/* Cards */}
-                      <div className={`relative ${playerDecision === 'stay' ? 'ring-2 ring-green-500 rounded p-0.5' : ''}`}>
+                      <div className={`relative ${playerDecision === 'stay' ? 'ring-1 ring-green-500 rounded' : ''}`}>
                         <PlayerHand 
                           cards={cards} 
                           expectedCardCount={expectedCardCount}
@@ -1337,13 +1339,13 @@ export const GameTable = ({
                         />
                       </div>
                       
-                      {/* Name BESIDE cards (right side) for non-bottom positions */}
+                      {/* Name BESIDE cards (right side) for non-bottom positions - tighter */}
                       {!isBottomPosition && (
-                        <div className="flex flex-col items-start ml-0.5">
-                          <p className="text-[7px] text-amber-100 font-bold truncate max-w-[50px] whitespace-nowrap">
+                        <div className="flex flex-col items-start leading-none">
+                          <p className="text-[6px] text-amber-100 font-bold truncate max-w-[40px] whitespace-nowrap leading-none">
                             {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
                           </p>
-                          {isCurrentUser && <span className="text-[6px] text-poker-gold">You</span>}
+                          {isCurrentUser && <span className="text-[5px] text-poker-gold leading-none">You</span>}
                           <LegIndicator 
                             legs={player.legs} 
                             maxLegs={legsToWin} 
@@ -1352,14 +1354,12 @@ export const GameTable = ({
                       )}
                     </div>
                     
-                    {/* Leg indicator for bottom positions */}
+                    {/* Leg indicator for bottom positions - no margin */}
                     {isBottomPosition && (
-                      <div className="mt-0.5">
-                        <LegIndicator 
-                          legs={player.legs} 
-                          maxLegs={legsToWin} 
-                        />
-                      </div>
+                      <LegIndicator 
+                        legs={player.legs} 
+                        maxLegs={legsToWin} 
+                      />
                     )}
                   </div>
                 </div>
