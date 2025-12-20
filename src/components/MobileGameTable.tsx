@@ -2163,10 +2163,10 @@ export const MobileGameTable = ({
               }}
             >
               <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
-                gameType === 'holm-game' ? 'px-5 py-1.5' : 'px-8 py-3'
+                gameType === 'holm-game' ? 'px-5 py-1.5' : is357Round3MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
               }`}>
                 <span className={`text-poker-gold font-bold ${
-                  gameType === 'holm-game' ? 'text-xl' : 'text-3xl'
+                  gameType === 'holm-game' ? 'text-xl' : is357Round3MultiPlayerShowdown ? 'text-base' : 'text-3xl'
                 }`}>${formatChipValue(Math.round(
                   // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
