@@ -13,7 +13,7 @@ const TEAM_LOGOS: Record<string, string> = {
   hawks: hawksLogo,
 };
 
-export type CardSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface PlayingCardProps {
   card?: CardType;
@@ -31,11 +31,6 @@ interface PlayingCardProps {
 }
 
 const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
-  xs: {
-    container: 'w-5 h-7 sm:w-6 sm:h-8',
-    rank: 'text-xs sm:text-sm font-black',
-    suit: 'text-sm sm:text-base',
-  },
   sm: {
     container: 'w-7 h-10 sm:w-8 sm:h-11',
     rank: 'text-base sm:text-lg font-black',
