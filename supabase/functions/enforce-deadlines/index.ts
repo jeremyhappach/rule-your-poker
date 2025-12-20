@@ -475,7 +475,113 @@ serve(async (req) => {
       }
     }
 
-    // 4. ENFORCE GAME OVER COUNTDOWN (session ending after game)
+    // 4. ENFORCE AWAITING_NEXT_ROUND TIMEOUT (stuck game watchdog)
+    // If a game has been stuck in awaiting_next_round=true for too long (>10 seconds),
+    // it means client-side proceedToNextRound never fired. Auto-proceed server-side.
+    if (game.status === 'in_progress' && game.awaiting_next_round === true && game.next_round_number) {
+      // Check how long the game has been in this state by looking at updated_at
+      const gameUpdatedAt = new Date(game.updated_at);
+      const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
+      
+      // If stuck for more than 10 seconds (giving client 4s + buffer)
+      if (stuckDuration > 10000) {
+        console.log('[ENFORCE] ⚠️ Game stuck in awaiting_next_round for', Math.round(stuckDuration/1000), 'seconds - auto-proceeding');
+        
+        // Clear result and reset awaiting flag atomically (same as client-side proceedToNextRound)
+        const { data: updateResult, error: updateError } = await supabase
+          .from('games')
+          .update({ 
+            awaiting_next_round: false,
+            next_round_number: null,
+            last_round_result: null,
+            all_decisions_in: false, // Reset for next round
+          })
+          .eq('id', gameId)
+          .eq('awaiting_next_round', true)  // Only update if still awaiting (atomic guard)
+          .select();
+        
+        if (updateError || !updateResult || updateResult.length === 0) {
+          console.log('[ENFORCE] awaiting_next_round already cleared by another process');
+          actionsTaken.push('awaiting_next_round watchdog: Another process already handled it');
+        } else {
+          const nextRoundNum = game.next_round_number;
+          console.log('[ENFORCE] Cleared awaiting state, now starting round', nextRoundNum);
+          
+          // Get fresh player data for starting the round
+          const { data: freshPlayers } = await supabase
+            .from('players')
+            .select('*')
+            .eq('game_id', gameId);
+          
+          const isHolmGame = game.game_type === 'holm-game';
+          
+          if (isHolmGame) {
+            // For Holm games: Let the client handle round start via realtime
+            // We just cleared the awaiting flag - client will detect and start the round
+            actionsTaken.push(`awaiting_next_round watchdog: Cleared awaiting state for Holm round ${nextRoundNum}`);
+          } else {
+            // For 3-5-7: Start the round directly server-side
+            // This matches what client's proceedToNextRound -> startRound does
+            
+            // Get active players (anted up and not sitting out)
+            const activePlayers = freshPlayers?.filter(p => 
+              p.ante_decision === 'ante_up' && !p.sitting_out
+            ) || [];
+            
+            if (activePlayers.length >= 2) {
+              // Get game defaults for timer
+              const { data: gameDefaults } = await supabase
+                .from('game_defaults')
+                .select('decision_timer_seconds')
+                .eq('game_type', '3-5-7')
+                .maybeSingle();
+              
+              const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
+              const decisionDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+              
+              // Create the round
+              const cardsForRound = nextRoundNum === 1 ? 3 : nextRoundNum === 2 ? 5 : 7;
+              
+              await supabase
+                .from('rounds')
+                .insert({
+                  game_id: gameId,
+                  round_number: nextRoundNum,
+                  cards_dealt: cardsForRound,
+                  pot: game.pot || 0,
+                  status: 'betting',
+                  decision_deadline: decisionDeadline,
+                });
+              
+              // Update game current_round
+              await supabase
+                .from('games')
+                .update({ current_round: nextRoundNum })
+                .eq('id', gameId);
+              
+              // Reset player decisions for new round
+              await supabase
+                .from('players')
+                .update({ current_decision: null, decision_locked: false })
+                .eq('game_id', gameId)
+                .eq('ante_decision', 'ante_up');
+              
+              // Deal cards (simplified - just create records, client will fetch)
+              // Note: For a more complete implementation, we'd generate cards here
+              // For now, let client-side logic handle card generation on next fetch
+              
+              actionsTaken.push(`awaiting_next_round watchdog: Started 3-5-7 round ${nextRoundNum} with ${activePlayers.length} players`);
+            } else {
+              actionsTaken.push('awaiting_next_round watchdog: Not enough players to start round');
+            }
+          }
+        }
+      } else {
+        console.log('[ENFORCE] Game awaiting_next_round for', Math.round(stuckDuration/1000), 's (waiting for client, threshold: 10s)');
+      }
+    }
+
+    // 5. ENFORCE GAME OVER COUNTDOWN (session ending after game)
     if (game.status === 'game_over' && game.game_over_at) {
       const gameOverAt = new Date(game.game_over_at);
       const gameOverDeadline = new Date(gameOverAt.getTime() + 8000); // 8 seconds countdown
