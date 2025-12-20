@@ -713,7 +713,11 @@ export const MobileGameTable = ({
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   // Combined check for any 3-5-7 multi-player showdown (rounds 2 or 3) - used to hide dealer button and shrink UI
-  const is357MultiPlayerShowdown = gameType !== 'holm-game' && (currentRound === 2 || currentRound === 3) && allDecisionsIn && stayedPlayersCount >= 2;
+  // Use allDecisionsIn OR awaitingNextRound to catch showdown state even when allDecisionsIn resets
+  const is357MultiPlayerShowdown = gameType !== 'holm-game' && 
+    (currentRound === 2 || currentRound === 3) && 
+    stayedPlayersCount >= 2 && 
+    (allDecisionsIn || awaitingNextRound);
   
   // HOLM: Detect solo player vs Chucky showdown (1 player stayed)
   // Keep tabled cards visible through win animation + until next hand to avoid flicker.
@@ -2852,7 +2856,7 @@ export const MobileGameTable = ({
                       <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
                         {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
                       </span>
-                      {isDealing && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
+                      {isDealing && !is357MultiPlayerShowdown && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
                       {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
                       {player.is_bot && <span className="text-[9px] text-muted-foreground">(Bot)</span>}
                       {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
