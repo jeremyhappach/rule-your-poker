@@ -190,7 +190,7 @@ export const PlayerHand = ({
             size={unusedCardSize}
             isDimmed={true}
             isWild={false}
-            className="-ml-4 first:ml-0"
+            className="-ml-2 first:ml-0"
             style={{ 
               opacity: 0.4,
               transform: 'scale(0.85)',
