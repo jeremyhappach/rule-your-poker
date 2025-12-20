@@ -12,10 +12,11 @@ import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
-import { Settings, Info } from "lucide-react";
+import { Settings, Info, Wrench } from "lucide-react";
 import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +86,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [realMoney, setRealMoney] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
+  const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceMode();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -350,8 +352,25 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     return <div className="text-center">Loading games...</div>;
   }
 
+  // Check if user is blocked (maintenance mode + not superuser)
+  const isBlocked = isMaintenanceMode && !isSuperuser;
+
   return (
     <div className="space-y-6">
+      {/* Maintenance Mode Banner */}
+      {isMaintenanceMode && (
+        <div className="bg-amber-900/40 border-2 border-amber-600/60 rounded-xl p-4 flex items-center gap-3">
+          <Wrench className="h-6 w-6 text-amber-400 flex-shrink-0" />
+          <div>
+            <h3 className="font-bold text-amber-300">Under Maintenance</h3>
+            <p className="text-sm text-amber-200/80">
+              {isSuperuser 
+                ? "Maintenance mode is active. Other users are blocked from all actions."
+                : "The app is currently under maintenance. Please check back later."}
+            </p>
+          </div>
+        </div>
+      )}
       {/* Header with Peoria Skyline Backdrop */}
       <div className="relative overflow-hidden rounded-xl border border-amber-700/30 h-[200px] sm:min-h-[240px] md:min-h-[280px]">
         {/* Skyline Background - Desktop */}
@@ -411,7 +430,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             <Button 
               onClick={() => setShowCreateDialog(true)} 
               size="sm"
-              className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm"
+              disabled={isBlocked}
+              className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create New Game
             </Button>
@@ -477,11 +497,11 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           <Button
                             size="sm"
                             onClick={() => joinGame(game.id)}
-                            disabled={game.player_count >= 7 && !game.is_player}
+                            disabled={(game.player_count >= 7 && !game.is_player) || isBlocked}
                             className={`w-1/2 sm:w-auto text-xs sm:text-sm ${game.is_player 
                               ? 'bg-blue-600 hover:bg-blue-500 text-white'
                               : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold'
-                            }`}
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
                             {game.is_player ? 'Re-Join' : 'Join'}
                           </Button>

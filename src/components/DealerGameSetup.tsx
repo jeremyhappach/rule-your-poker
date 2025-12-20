@@ -71,6 +71,8 @@ export const DealerGameSetup = ({
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
   const [timeLeft, setTimeLeft] = useState(30);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeletingEmptySession, setShowDeletingEmptySession] = useState(false);
+  const [deleteCountdown, setDeleteCountdown] = useState(5);
   const hasSubmittedRef = useRef(false);
   
   // Config state - use strings for free text input with validation on save
