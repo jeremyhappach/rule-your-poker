@@ -14,14 +14,23 @@ interface MobileChatPanelProps {
   messages: ChatMessage[];
   onSend: (message: string) => void;
   isSending: boolean;
+  // Lifted chat input state (persists across remounts)
+  chatInputValue?: string;
+  onChatInputChange?: (value: string) => void;
 }
 
 export const MobileChatPanel = ({ 
   messages, 
   onSend, 
-  isSending
+  isSending,
+  chatInputValue,
+  onChatInputChange,
 }: MobileChatPanelProps) => {
-  const [inputMessage, setInputMessage] = useState('');
+  // Use external state if provided, otherwise internal
+  const [internalInputMessage, setInternalInputMessage] = useState('');
+  const inputMessage = chatInputValue ?? internalInputMessage;
+  const setInputMessage = onChatInputChange ?? setInternalInputMessage;
+  
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
