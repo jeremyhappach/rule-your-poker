@@ -1,5 +1,5 @@
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
-import { PlayingCard, getCardSize } from "@/components/PlayingCard";
+import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 
 interface PlayerHandProps {
   cards: CardType[];
@@ -177,8 +177,8 @@ export const PlayerHand = ({
 
   // 3-5-7 showdown display with unused cards in separate row (on outer edge)
   if ((isRound2With5Cards || isRound3WithUnusedBelow) && unusedCardsBelow) {
-    const usedCardSize = getCardSize(5); // Size for 5 used cards
-    const unusedCardSize = getCardSize(7); // Smaller size for unused cards
+    const usedCardSize: CardSize = 'lg'; // Larger size for used cards during showdown
+    const unusedCardSize: CardSize = 'sm'; // Small size for dimmed unused cards
     
     // Unused cards element
     const unusedCardsElement = unusedCards.length > 0 && (
