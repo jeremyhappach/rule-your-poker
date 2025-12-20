@@ -504,14 +504,20 @@ serve(async (req) => {
             .eq('id', stuckRound.id);
           
           // Set awaiting_next_round to trigger client-side progression
-          // The next round number should be current + 1 (but Holm uses hand count, so just use 1)
+          // If we already have a result message, don't overwrite it.
+          // IMPORTANT: This is a recovery path for stalled Holm rounds (not a player decision timeout).
+          const gameUpdates: Record<string, unknown> = {
+            awaiting_next_round: true,
+            all_decisions_in: true, // Ensure cards are visible if showdown
+          };
+
+          if (!game.last_round_result) {
+            gameUpdates.last_round_result = 'Recovering stalled round - proceeding...';
+          }
+
           await supabase
             .from('games')
-            .update({ 
-              awaiting_next_round: true,
-              all_decisions_in: true, // Ensure cards are visible if showdown
-              last_round_result: 'Round timed out - proceeding...'
-            })
+            .update(gameUpdates)
             .eq('id', gameId);
           
           actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round`);
