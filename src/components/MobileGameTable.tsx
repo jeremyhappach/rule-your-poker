@@ -913,7 +913,7 @@ export const MobileGameTable = ({
 
       // NOTE: getBoundingClientRect does NOT include box-shadow, and these cards have a strong shadow.
       // Add extra padding so the label clears the *visual* bottom edge.
-      const paddingPx = 28;
+      const paddingPx = 52;
       const nextTop = Math.round(cardsRect.bottom - containerRect.top + paddingPx);
       setRabbitHuntLabelTop(nextTop);
     };
