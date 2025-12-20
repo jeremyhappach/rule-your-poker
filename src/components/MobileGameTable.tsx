@@ -1730,6 +1730,7 @@ export const MobileGameTable = ({
           tightOverlap={isHolmMultiPlayerShowdown}
           unusedCardsBelow={is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3)}
           isRightSide={isRightSideSlot}
+          isBottomPosition={isBottomPosition}
         />
       </div>
     ) : (
