@@ -3198,7 +3198,7 @@ export const MobileGameTable = ({
             {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
             {currentPlayer.auto_fold && !currentPlayer.sitting_out && (
               <div className="flex justify-center mb-1 mt-2 px-4">
-                <label className="flex items-center gap-3 cursor-pointer bg-amber-900/30 rounded-lg px-4 py-2 border border-amber-600/50">
+                <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
                   <input
                     type="checkbox"
                     checked={true}
@@ -3207,9 +3207,9 @@ export const MobileGameTable = ({
                         onAutoFoldChange(currentPlayer.id, false);
                       }
                     }}
-                    className="w-5 h-5 rounded border-2 border-amber-500 accent-amber-500"
+                    className="w-5 h-5 rounded border-2 border-border accent-primary"
                   />
-                  <span className="text-sm font-medium text-amber-400">Auto-fold (will sit out next hand)</span>
+                  <span className="text-sm font-medium text-foreground">Auto-fold (will sit out next hand)</span>
                 </label>
               </div>
             )}
