@@ -2220,9 +2220,9 @@ export const MobileGameTable = ({
           
           return (
             <div 
-              className={`absolute left-1/2 transform -translate-x-1/2 z-20 ${
+              className={`absolute left-1/2 transform -translate-x-1/2 z-20 transition-all duration-300 ${
                 gameType === 'holm-game' 
-                  ? 'top-[35%] -translate-y-full' 
+                  ? (isAnyPlayerInShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
                   : 'top-1/2 -translate-y-1/2'
               }`}
               style={{ 
