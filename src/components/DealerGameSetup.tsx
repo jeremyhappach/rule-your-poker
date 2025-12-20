@@ -204,17 +204,38 @@ export const DealerGameSetup = ({
     
     console.log('[DEALER SETUP] After timeout evaluation - active:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount);
     
-    // Priority 1: If no active human players, END SESSION completely
+    // Priority 1: If no active human players, END SESSION or DELETE if empty
     if (activeHumanCount < 1) {
-      console.log('[DEALER SETUP] No active human players, ending session');
-      await supabase
+      console.log('[DEALER SETUP] No active human players');
+      
+      // Check if any hands were played in this session
+      const { data: gameData } = await supabase
         .from('games')
-        .update({
-          status: 'game_over',
-          pending_session_end: true,
-          session_ended_at: new Date().toISOString()
-        })
-        .eq('id', gameId);
+        .select('total_hands')
+        .eq('id', gameId)
+        .single();
+      
+      const totalHands = gameData?.total_hands || 0;
+      
+      if (totalHands === 0) {
+        // No hands played - DELETE the empty session instead of marking completed
+        console.log('[DEALER SETUP] No hands played, deleting empty session');
+        await supabase.from('rounds').delete().eq('game_id', gameId);
+        await supabase.from('player_cards').delete().eq('round_id', gameId);
+        await supabase.from('players').delete().eq('game_id', gameId);
+        await supabase.from('games').delete().eq('id', gameId);
+      } else {
+        // Has game history - end session normally
+        console.log('[DEALER SETUP] Has game history, ending session');
+        await supabase
+          .from('games')
+          .update({
+            status: 'game_over',
+            pending_session_end: true,
+            session_ended_at: new Date().toISOString()
+          })
+          .eq('id', gameId);
+      }
       
       onSessionEnd();
       return;

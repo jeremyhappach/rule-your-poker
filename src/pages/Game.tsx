@@ -3095,19 +3095,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount, 'stood up:', playersStoodUp.length);
 
     // STEP 2: Check if we have enough players to continue
-    // Priority 1: If no active human players, END SESSION completely
+    // Priority 1: If no active human players, END SESSION or DELETE if empty
     if (activeHumanCount < 1) {
-      console.log('[GAME OVER] No active human players! Ending session.');
+      console.log('[GAME OVER] No active human players!');
       gameOverTransitionRef.current = false;
-      // End session immediately
-      await supabase
+      
+      // Check if any hands were played in this session
+      const { data: gameData } = await supabase
         .from('games')
-        .update({
-          status: 'game_over',
-          pending_session_end: true,
-          session_ended_at: new Date().toISOString()
-        })
-        .eq('id', gameId);
+        .select('total_hands')
+        .eq('id', gameId)
+        .single();
+      
+      const totalHands = gameData?.total_hands || 0;
+      
+      if (totalHands === 0) {
+        // No hands played - DELETE the empty session instead of marking completed
+        console.log('[GAME OVER] No hands played, deleting empty session');
+        await supabase.from('rounds').delete().eq('game_id', gameId);
+        await supabase.from('player_cards').delete().eq('round_id', gameId);
+        await supabase.from('players').delete().eq('game_id', gameId);
+        await supabase.from('games').delete().eq('id', gameId);
+        navigate('/');
+      } else {
+        // Has game history - end session normally
+        console.log('[GAME OVER] Has game history, ending session');
+        await supabase
+          .from('games')
+          .update({
+            status: 'game_over',
+            pending_session_end: true,
+            session_ended_at: new Date().toISOString()
+          })
+          .eq('id', gameId);
+      }
       return;
     }
     
