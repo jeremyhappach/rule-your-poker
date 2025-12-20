@@ -190,57 +190,93 @@ export const DealerGameSetup = ({
   const handleDealerTimeout = async () => {
     if (hasSubmittedRef.current) return;
     hasSubmittedRef.current = true;
-    
+
     console.log('[DEALER SETUP] Dealer timed out, marking as sitting out');
-    
+
     // Mark dealer as sitting out
     await supabase
       .from('players')
       .update({ sitting_out: true, waiting: false })
       .eq('id', dealerPlayerId);
-    
+
     // Evaluate all player states
     const { activePlayerCount, activeHumanCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
-    
+
     console.log('[DEALER SETUP] After timeout evaluation - active:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount);
-    
+
+    const deleteEmptySession = async () => {
+      console.log('[DEALER SETUP] Deleting empty session (no hands played)');
+
+      // Delete in FK-safe order
+      const { data: roundRows } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId);
+
+      const roundIds = (roundRows ?? []).map((r: any) => r.id).filter(Boolean);
+
+      if (roundIds.length > 0) {
+        await supabase.from('player_cards').delete().in('round_id', roundIds);
+      }
+
+      await supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId);
+      await supabase.from('chat_messages').delete().eq('game_id', gameId);
+      await supabase.from('rounds').delete().eq('game_id', gameId);
+      await supabase.from('players').delete().eq('game_id', gameId);
+      await supabase.from('games').delete().eq('id', gameId);
+    };
+
     // Priority 1: If no active human players, END SESSION or DELETE if empty
     if (activeHumanCount < 1) {
       console.log('[DEALER SETUP] No active human players');
-      
-      // Check if any hands were played in this session
+
       const { data: gameData } = await supabase
         .from('games')
         .select('total_hands')
         .eq('id', gameId)
-        .single();
-      
+        .maybeSingle();
+
       const totalHands = gameData?.total_hands || 0;
-      
+
       if (totalHands === 0) {
-        // No hands played - DELETE the empty session instead of marking completed
-        console.log('[DEALER SETUP] No hands played, deleting empty session');
-        await supabase.from('rounds').delete().eq('game_id', gameId);
-        await supabase.from('player_cards').delete().eq('round_id', gameId);
-        await supabase.from('players').delete().eq('game_id', gameId);
-        await supabase.from('games').delete().eq('id', gameId);
-      } else {
-        // Has game history - end session normally
-        console.log('[DEALER SETUP] Has game history, ending session');
-        await supabase
-          .from('games')
-          .update({
-            status: 'game_over',
-            pending_session_end: true,
-            session_ended_at: new Date().toISOString()
-          })
-          .eq('id', gameId);
+        // No hands played - show 5s message then delete
+        setShowDeletingEmptySession(true);
+        setDeleteCountdown(5);
+
+        const interval = setInterval(() => {
+          setDeleteCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        // Give UI time to show message before deletion
+        setTimeout(async () => {
+          await deleteEmptySession();
+          onSessionEnd();
+        }, 5000);
+
+        return;
       }
-      
+
+      // Has game history - end session normally
+      console.log('[DEALER SETUP] Has game history, ending session');
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          pending_session_end: true,
+          session_ended_at: new Date().toISOString(),
+        })
+        .eq('id', gameId);
+
       onSessionEnd();
       return;
     }
-    
+
     // Priority 2: Check if we can continue (need 1+ eligible dealer AND 2+ active players)
     if (activePlayerCount < 2 || eligibleDealerCount < 1) {
       console.log('[DEALER SETUP] Not enough players, reverting to waiting');
@@ -250,26 +286,26 @@ export const DealerGameSetup = ({
         .update({
           status: 'waiting',
           awaiting_next_round: false,
-          last_round_result: null
+          last_round_result: null,
         })
         .eq('id', gameId);
       return;
     }
-    
+
     // Rotate dealer to next eligible player
     const newDealerPosition = await rotateDealerPosition(gameId, dealerPosition);
-    
+
     console.log('[DEALER SETUP] Rotating dealer from', dealerPosition, 'to', newDealerPosition);
-    
+
     // Update game with new dealer and reset config_complete to trigger new dealer setup
     await supabase
       .from('games')
       .update({
         dealer_position: newDealerPosition,
-        config_complete: false
+        config_complete: false,
       })
       .eq('id', gameId);
-    
+
     // The game state change will trigger re-render with new dealer
     onConfigComplete();
   };
