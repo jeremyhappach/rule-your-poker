@@ -3052,7 +3052,7 @@ export const MobileGameTable = ({
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
             } ${chatTabFlashing ? 'animate-pulse' : ''}`}
           >
-            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-poker-gold animate-ping' : ''}`} />
+            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''}`} />
           </button>
           <button 
             onClick={() => setActiveTab('lobby')}
