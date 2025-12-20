@@ -2913,11 +2913,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[DEALER SELECT] Selected dealer at position:', dealerPosition);
 
+    // CRITICAL: Set config_deadline ATOMICALLY with status change to prevent race condition
+    // where enforce-deadlines fires before DealerGameSetup component can set the deadline
+    const configDeadline = new Date(Date.now() + 35000).toISOString(); // 35 seconds (5 sec buffer for component mount)
+    
     const { error } = await supabase
       .from('games')
       .update({ 
         status: 'game_selection',
-        dealer_position: dealerPosition 
+        dealer_position: dealerPosition,
+        config_deadline: configDeadline
       })
       .eq('id', gameId);
 
@@ -3159,12 +3164,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       })
       .eq('game_id', gameId);
 
+    // CRITICAL: Set config_deadline ATOMICALLY with status change to prevent race condition
+    // where enforce-deadlines fires before DealerGameSetup component can set the deadline
+    const configDeadline = new Date(Date.now() + 35000).toISOString(); // 35 seconds (5 sec buffer for component mount)
+    
     // Skip dealer_announcement, go directly to game_selection
     const { error } = await supabase
       .from('games')
       .update({ 
         status: 'game_selection',
         config_complete: false,
+        config_deadline: configDeadline, // Set deadline atomically!
         last_round_result: null,
         current_round: null,
         awaiting_next_round: false,

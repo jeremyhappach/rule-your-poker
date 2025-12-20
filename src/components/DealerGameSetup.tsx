@@ -239,20 +239,37 @@ export const DealerGameSetup = ({
     onConfigComplete();
   };
 
-  // Set config_deadline in database when component mounts (for server-side enforcement)
+  // Sync with existing config_deadline in database (set atomically when transitioning to game_selection)
+  // Instead of setting our own deadline, we read the server's deadline and sync our timer
   useEffect(() => {
     if (isBot || loadingDefaults) return;
     
-    const setConfigDeadline = async () => {
-      const deadline = new Date(Date.now() + 30000).toISOString(); // 30 seconds from now
-      await supabase
+    const syncWithServerDeadline = async () => {
+      // Fetch current game to get the server-set deadline
+      const { data: gameData } = await supabase
         .from('games')
-        .update({ config_deadline: deadline })
-        .eq('id', gameId);
-      console.log('[DEALER SETUP] Set config_deadline to', deadline);
+        .select('config_deadline')
+        .eq('id', gameId)
+        .maybeSingle();
+      
+      if (gameData?.config_deadline) {
+        const deadline = new Date(gameData.config_deadline);
+        const remaining = Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000));
+        console.log('[DEALER SETUP] Synced with server deadline, remaining:', remaining, 's');
+        setTimeLeft(remaining > 0 ? remaining : 30); // Fallback to 30 if deadline passed
+      } else {
+        // No deadline set yet - set one now (fallback for edge cases)
+        const deadline = new Date(Date.now() + 30000).toISOString();
+        await supabase
+          .from('games')
+          .update({ config_deadline: deadline })
+          .eq('id', gameId);
+        console.log('[DEALER SETUP] No server deadline found, set fallback deadline');
+        setTimeLeft(30);
+      }
     };
     
-    setConfigDeadline();
+    syncWithServerDeadline();
   }, [gameId, isBot, loadingDefaults]);
 
   // Countdown timer - now synced with server deadline
