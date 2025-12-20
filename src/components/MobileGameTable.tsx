@@ -341,6 +341,10 @@ export const MobileGameTable = ({
   const [cardsTabFlashing, setCardsTabFlashing] = useState(false);
   const prevCardCountRef = useRef<number>(0);
   
+  // Flash the chat tab icon when new messages arrive
+  const [chatTabFlashing, setChatTabFlashing] = useState(false);
+  const prevMessageCountRef = useRef<number>(allMessages.length);
+  
   // Swipe gesture handlers for tab switching
   const swipeHandlers = useSwipeGesture(
     () => {}, // Swipe up - no action
@@ -1036,6 +1040,20 @@ export const MobileGameTable = ({
     
     prevCardCountRef.current = currentCardCount;
   }, [currentPlayerCards.length, activeTab]);
+  
+  // Detect when new chat messages arrive and trigger flash (only when not on chat tab)
+  useEffect(() => {
+    const currentMessageCount = allMessages.length;
+    
+    if (currentMessageCount > prevMessageCountRef.current && activeTab !== 'chat') {
+      setChatTabFlashing(true);
+      const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
+      prevMessageCountRef.current = currentMessageCount;
+      return () => clearTimeout(timeout);
+    }
+    
+    prevMessageCountRef.current = currentMessageCount;
+  }, [allMessages.length, activeTab]);
 
   // Calculate lose amount
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
@@ -1781,21 +1799,7 @@ export const MobileGameTable = ({
         {/* Leg indicators - positioned inside toward table center */}
         {legIndicator}
         
-        {/* Chat bubbles above player */}
-        {getPositionForUserId && chatBubbles.length > 0 && (
-          <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1">
-            {chatBubbles
-              .filter(b => getPositionForUserId(b.user_id) === player.position)
-              .map((bubble) => (
-                <ChatBubble
-                  key={bubble.id}
-                  username={bubble.username || 'Unknown'}
-                  message={bubble.message}
-                  expiresAt={bubble.expiresAt}
-                />
-              ))}
-          </div>
-        )}
+        {/* Chat bubbles removed - now using flashing chat tab icon instead */}
         
         {/* Dealer button - positioned OUTSIDE (away from table center), barely overlapping chip stack */}
         {/* Hide during 3-5-7 multi-player showdown (rounds 2-3) to reduce clutter */}
@@ -3046,9 +3050,9 @@ export const MobileGameTable = ({
               activeTab === 'chat' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
+            } ${chatTabFlashing ? 'animate-pulse' : ''}`}
           >
-            <MessageSquare className="w-5 h-5" />
+            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-poker-gold animate-ping' : ''}`} />
           </button>
           <button 
             onClick={() => setActiveTab('lobby')}
