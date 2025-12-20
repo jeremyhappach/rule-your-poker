@@ -16,7 +16,7 @@ import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
 
 
-import { DealerSettingUpGame } from "@/components/DealerSettingUpGame";
+
 import { DealerSelection } from "@/components/DealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
@@ -4524,6 +4524,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onHasUnreadMessagesChange={setMobileHasUnreadMessages}
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
+                    dealerSetupMessage={!isDealer ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)} is configuring the next game` : undefined}
                   />
                 ) : (
                   <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
@@ -4547,9 +4548,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onSelectSeat={handleSelectSeat}
                     gameStatus={game.status}
                     handContextId={null}
+                    dealerSetupMessage={!isDealer ? `${dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)} is configuring the next game` : undefined}
                   />
                 )}
-                {(isDealer || dealerPlayer?.is_bot) ? (
+                {(isDealer || dealerPlayer?.is_bot) && (
                   <DealerGameSetup
                     gameId={gameId!}
                     dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)}
@@ -4561,11 +4563,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     sessionGameConfigs={sessionGameConfigs}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
-                  />
-                ) : (
-                  // Non-dealer waiting message - show for all non-dealers
-                  <DealerSettingUpGame 
-                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || `Seat ${game.dealer_position}`)}
                   />
                 )}
               </div>

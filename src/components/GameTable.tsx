@@ -89,6 +89,7 @@ interface GameTableProps {
   isHost?: boolean; // Host can control players
   gameStatus?: string; // Game status for detecting new game start
   handContextId?: string | null; // Authoritative round id to hard-reset UI caches (prevents stale community/Chucky cards)
+  dealerSetupMessage?: string | null; // Yellow announcement when another player is configuring game
   // Chat props
   chatBubbles?: ChatBubbleData[];
   onSendChat?: (message: string) => void;
@@ -148,6 +149,7 @@ export const GameTable = ({
   isHost,
   gameStatus,
   handContextId,
+  dealerSetupMessage,
   chatBubbles = [],
   onSendChat,
   isChatSending = false,
@@ -1638,6 +1640,17 @@ export const GameTable = ({
           </div>
         );
       })()}
+      
+      {/* Dealer Setup Message - shown as yellow announcement when another player is configuring */}
+      {dealerSetupMessage && (
+        <div className="mt-4 flex justify-center">
+          <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-6 shadow-2xl border-4 border-amber-900 max-w-2xl">
+            <p className="text-slate-900 font-black text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center drop-shadow-lg animate-pulse">
+              {dealerSetupMessage}
+            </p>
+          </div>
+        </div>
+      )}
       
       {/* Debug Panel - Outside game table, below */}
       {/* TEMPORARILY DISABLED - set SHOW_DEBUG_PANEL to true to re-enable */}

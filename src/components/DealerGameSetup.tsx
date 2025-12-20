@@ -293,13 +293,50 @@ export const DealerGameSetup = ({
     return () => clearInterval(timer);
   }, [isBot, loadingDefaults]);
 
-  // Auto-submit for bots
+  // Auto-submit for bots - with 5 second delay and 80/20 run-it-back logic
   useEffect(() => {
     if (isBot && !loadingDefaults && !hasSubmittedRef.current) {
-      hasSubmittedRef.current = true;
-      handleSubmit();
+      // Determine if bot should change game type (20% chance) or run it back (80%)
+      const shouldChangeGame = Math.random() < 0.2;
+      
+      if (shouldChangeGame && previousGameType) {
+        // Change to the OTHER game type
+        const newGameType = previousGameType === 'holm-game' ? '3-5-7' : 'holm-game';
+        console.log('[BOT DEALER] Changing game type from', previousGameType, 'to', newGameType);
+        setSelectedGameType(newGameType);
+        
+        // Load session config or defaults for the new game type
+        const sessionConfig = sessionGameConfigs?.[newGameType];
+        if (sessionConfig) {
+          setAnteAmount(String(sessionConfig.ante_amount));
+          setLegValue(String(sessionConfig.leg_value));
+          setLegsToWin(String(sessionConfig.legs_to_win));
+          setPussyTaxEnabled(sessionConfig.pussy_tax_enabled);
+          setPussyTaxValue(String(sessionConfig.pussy_tax_value));
+          setPotMaxEnabled(sessionConfig.pot_max_enabled);
+          setPotMaxValue(String(sessionConfig.pot_max_value));
+          setChuckyCards(String(sessionConfig.chucky_cards));
+          setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
+          setRevealAtShowdown(sessionConfig.reveal_at_showdown ?? false);
+        } else {
+          const defaults = newGameType === 'holm-game' ? holmDefaults : threeFiveSevenDefaults;
+          if (defaults) applyDefaults(defaults);
+        }
+      } else {
+        console.log('[BOT DEALER] Running it back with same config');
+      }
+      
+      // Wait 5 seconds before submitting to simulate dealer thinking
+      const timer = setTimeout(() => {
+        if (!hasSubmittedRef.current) {
+          hasSubmittedRef.current = true;
+          handleSubmit();
+        }
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [isBot, loadingDefaults]);
+  }, [isBot, loadingDefaults, previousGameType, sessionGameConfigs, holmDefaults, threeFiveSevenDefaults]);
 
   const handleSubmit = async () => {
     if (isSubmitting || hasSubmittedRef.current) return;
@@ -403,19 +440,9 @@ export const DealerGameSetup = ({
     onConfigComplete();
   };
 
+  // Bots don't show any UI - the announcement is handled by the parent
   if (isBot) {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <Card className="max-w-md mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-          <CardContent className="pt-8 pb-8 space-y-4 text-center">
-            <h2 className="text-2xl font-bold text-poker-gold">{dealerUsername} is Dealer</h2>
-            <p className="text-amber-100">
-              {loadingDefaults ? 'Loading defaults...' : 'Configuring game with default settings...'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   if (loadingDefaults) {
