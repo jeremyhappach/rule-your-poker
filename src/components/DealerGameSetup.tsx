@@ -200,14 +200,13 @@ export const DealerGameSetup = ({
       .eq('id', dealerPlayerId);
     
     // Evaluate all player states
-    const { activePlayerCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
+    const { activePlayerCount, activeHumanCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
     
-    console.log('[DEALER SETUP] After timeout evaluation - active:', activePlayerCount, 'eligible dealers:', eligibleDealerCount);
+    console.log('[DEALER SETUP] After timeout evaluation - active:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount);
     
-    // Check if we can continue
-    if (activePlayerCount < 2 || eligibleDealerCount < 1) {
-      console.log('[DEALER SETUP] Not enough players, ending session');
-      // End session
+    // Priority 1: If no active human players, END SESSION completely
+    if (activeHumanCount < 1) {
+      console.log('[DEALER SETUP] No active human players, ending session');
       await supabase
         .from('games')
         .update({
@@ -218,6 +217,21 @@ export const DealerGameSetup = ({
         .eq('id', gameId);
       
       onSessionEnd();
+      return;
+    }
+    
+    // Priority 2: Check if we can continue (need 1+ eligible dealer AND 2+ active players)
+    if (activePlayerCount < 2 || eligibleDealerCount < 1) {
+      console.log('[DEALER SETUP] Not enough players, reverting to waiting');
+      // Revert to waiting status
+      await supabase
+        .from('games')
+        .update({
+          status: 'waiting',
+          awaiting_next_round: false,
+          last_round_result: null
+        })
+        .eq('id', gameId);
       return;
     }
     
