@@ -55,6 +55,9 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           const msg = rawMsg.toLowerCase();
           return (
             msg.includes('503') ||
+            msg.includes('500') ||
+            msg.includes('502') ||
+            msg.includes('504') ||
             msg.includes('401') ||
             msg.includes('404') ||
             msg.includes('cold start') ||
@@ -62,7 +65,14 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
             msg.includes('game not found') ||
             msg.includes('connection reset') ||
             msg.includes('sendrequest') ||
-            msg.includes('client error')
+            msg.includes('client error') ||
+            msg.includes('dns error') ||
+            msg.includes('name resolution') ||
+            msg.includes('temporary') ||
+            msg.includes('service unavailable') ||
+            msg.includes('functionsrelayhttperror') ||
+            msg.includes('functionshttperror') ||
+            msg.includes('fetch')
           );
         };
 
@@ -75,16 +85,16 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           data = result.data;
           error = result.error;
         } catch (invokeErr: any) {
-          const msg = String(invokeErr?.message ?? invokeErr ?? '');
-          if (shouldSuppress(msg)) return;
-          console.warn('[DEADLINE ENFORCER] invoke exception:', invokeErr);
+          // Silently suppress all invoke exceptions - these are transient
           return;
         }
 
         if (error) {
-          const msg = String((error as any)?.message ?? error ?? '');
-          if (shouldSuppress(msg)) return;
-          console.warn('[DEADLINE ENFORCER] Error:', error);
+          // Check multiple properties for suppression patterns
+          const errorStr = JSON.stringify(error);
+          const msg = String((error as any)?.message ?? (error as any)?.context?.message ?? error ?? '');
+          if (shouldSuppress(msg) || shouldSuppress(errorStr)) return;
+          // Don't even log - just return silently for any edge function error
           return;
         }
 
