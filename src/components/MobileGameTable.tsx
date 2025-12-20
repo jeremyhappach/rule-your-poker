@@ -907,15 +907,23 @@ export const MobileGameTable = ({
       const containerRect = containerEl.getBoundingClientRect();
       const cardsRect = cardsEl.getBoundingClientRect();
 
-      const paddingPx = 10;
+      // Slight padding below the *visual* bottom edge (cards are scaled + animated)
+      const paddingPx = 14;
       const nextTop = Math.round(cardsRect.bottom - containerRect.top + paddingPx);
       setRabbitHuntLabelTop(nextTop);
     };
 
+    // Measure now + across the 300ms transition window so the label follows the moving cards.
+    update();
     const raf = requestAnimationFrame(update);
+    const t1 = window.setTimeout(update, 160);
+    const t2 = window.setTimeout(update, 320);
+
     window.addEventListener("resize", update);
     return () => {
       cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
       window.removeEventListener("resize", update);
     };
   }, [
