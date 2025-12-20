@@ -238,6 +238,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // LIFTED mobile tab state - persists across MobileGameTable remounts
   const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
+  // LIFTED unread chat messages state - persists across MobileGameTable remounts
+  const [mobileHasUnreadMessages, setMobileHasUnreadMessages] = useState(false);
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
   const showdownCardsCacheRef = useRef<Map<string, CardType[]>>(new Map());
   const showdownRoundNumberRef = useRef<number | null>(null);
@@ -4424,6 +4426,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     rabbitHunt={game.rabbit_hunt ?? false}
                     activeTab={mobileActiveTab}
                     onActiveTabChange={setMobileActiveTab}
+                    hasUnreadMessages={mobileHasUnreadMessages}
+                    onHasUnreadMessagesChange={setMobileHasUnreadMessages}
                   />
                 ) : (
                   <>
@@ -4512,6 +4516,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onLeaveGameNow={handleLeaveGameNow}
                     activeTab={mobileActiveTab}
                     onActiveTabChange={setMobileActiveTab}
+                    hasUnreadMessages={mobileHasUnreadMessages}
+                    onHasUnreadMessagesChange={setMobileHasUnreadMessages}
                   />
                 ) : (
                   <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
@@ -4600,6 +4606,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onLeaveGameNow={handleLeaveGameNow}
                 activeTab={mobileActiveTab}
                 onActiveTabChange={setMobileActiveTab}
+                hasUnreadMessages={mobileHasUnreadMessages}
+                onHasUnreadMessagesChange={setMobileHasUnreadMessages}
               />
             ) : (
               <GameTable key={gameId ?? 'unknown-game'}
@@ -4821,6 +4829,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               rabbitHunt={game.rabbit_hunt ?? false}
               activeTab={mobileActiveTab}
               onActiveTabChange={setMobileActiveTab}
+              hasUnreadMessages={mobileHasUnreadMessages}
+              onHasUnreadMessagesChange={setMobileHasUnreadMessages}
             />
           ) : (
             <GameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
