@@ -654,10 +654,12 @@ export async function autoFoldUndecided(gameId: string) {
   for (const player of undecidedPlayers) {
     const { error: foldError } = await supabase
       .from('players')
-      .update({ 
+      .update({
         current_decision: 'fold',
         decision_locked: true,
-        ...(isHolmGame ? {} : { status: 'folded' })
+        // This function is only called for timer-expiry; mark humans as auto_fold.
+        auto_fold: player.is_bot ? false : true,
+        ...(isHolmGame ? {} : { status: 'folded' }),
       })
       .eq('id', player.id);
     
