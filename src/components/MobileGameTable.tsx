@@ -3265,14 +3265,9 @@ export const MobileGameTable = ({
         
         {/* CHAT TAB - Dedicated chat section */}
         {activeTab === 'chat' && (
-          <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <h3 className="text-sm font-bold text-foreground">Chat</h3>
-              <span className="text-xs text-muted-foreground">{allMessages.length} messages</span>
-            </div>
-            
+          <div className="px-3 pb-3 flex-1 flex flex-col overflow-hidden min-h-0">
             {onSendChat ? (
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <MobileChatPanel
                   messages={allMessages}
                   onSend={onSendChat}

@@ -47,7 +47,7 @@ export const MobileChatPanel = ({
   };
 
   return (
-    <div className="bg-black/90 rounded-lg border border-white/20 overflow-hidden h-20 flex flex-col">
+    <div className="bg-black/90 rounded-lg border border-white/20 overflow-hidden h-full flex flex-col">
       {/* Input row - no border */}
       <div className="flex items-center gap-1 px-2 py-1 flex-shrink-0">
         <Input
