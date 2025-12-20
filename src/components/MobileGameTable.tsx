@@ -609,23 +609,42 @@ export const MobileGameTable = ({
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
   
-  // Track previous round to detect new game start (round going from 3 back to 1)
+  // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
+  const prevGameTypeForCacheClearRef = useRef<string | null | undefined>(gameType);
   
-  // Clear showdown cache when starting a NEW game (round goes from 2/3 back to 1)
+  // Clear showdown cache when starting a NEW game:
+  // 1. Round goes from 2/3 back to 1
+  // 2. Game type changes (e.g., holm → 357)
   // This prevents stale cards from previous game flashing at start of new game
   useEffect(() => {
     const prevRound = prevRoundForCacheClearRef.current;
+    const prevGameType = prevGameTypeForCacheClearRef.current;
     
-    // If round dropped back to 1 from a higher round, it's a new game - clear cache immediately
+    let shouldClear = false;
+    let reason = '';
+    
+    // If round dropped back to 1 from a higher round, it's a new game
     if (currentRound === 1 && prevRound !== null && prevRound > 1) {
-      console.log('[SHOWDOWN_CACHE] Clearing cache - new game detected (round went from', prevRound, 'to 1)');
+      shouldClear = true;
+      reason = `round went from ${prevRound} to 1`;
+    }
+    
+    // If game type changed, it's definitely a new game
+    if (prevGameType !== undefined && prevGameType !== gameType) {
+      shouldClear = true;
+      reason = `game type changed from ${prevGameType} to ${gameType}`;
+    }
+    
+    if (shouldClear) {
+      console.log('[SHOWDOWN_CACHE] Clearing cache - new game detected:', reason);
       showdownRoundRef.current = null;
       showdownCardsCache.current = new Map();
     }
     
     prevRoundForCacheClearRef.current = currentRound;
-  }, [currentRound, showdownRoundRef, showdownCardsCache]);
+    prevGameTypeForCacheClearRef.current = gameType;
+  }, [currentRound, gameType, showdownRoundRef, showdownCardsCache]);
 
   // AGGRESSIVE: When your player-hand round changes, hard-reset community + Chucky UI caches.
   // Symptom: player hand updates, but community/Chucky stay stuck on previous hand.
