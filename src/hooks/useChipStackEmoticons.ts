@@ -137,50 +137,25 @@ export const useChipStackEmoticons = (
     };
   }, [gameId, processEmoticon]);
 
-  // Cleanup expired overlays
+  // Cleanup expired overlays using interval for reliability
   useEffect(() => {
-    const overlayEntries = Object.entries(emoticonOverlays);
-    if (overlayEntries.length === 0) return;
-    
-    // Find the next expiration time
-    const now = Date.now();
-    let nextExpiry = Infinity;
-    const expiredPlayerIds: string[] = [];
-    
-    overlayEntries.forEach(([playerId, overlay]) => {
-      if (overlay.expiresAt <= now) {
-        expiredPlayerIds.push(playerId);
-      } else if (overlay.expiresAt < nextExpiry) {
-        nextExpiry = overlay.expiresAt;
-      }
-    });
-    
-    // Remove expired overlays immediately
-    if (expiredPlayerIds.length > 0) {
+    // Check every 500ms for expired overlays
+    const interval = setInterval(() => {
       setEmoticonOverlays(prev => {
-        const updated = { ...prev };
-        expiredPlayerIds.forEach(id => delete updated[id]);
-        return updated;
+        const now = Date.now();
+        const entries = Object.entries(prev);
+        const activeEntries = entries.filter(([, overlay]) => overlay.expiresAt > now);
+        
+        // Only update if something was removed
+        if (activeEntries.length !== entries.length) {
+          return Object.fromEntries(activeEntries);
+        }
+        return prev;
       });
-    }
+    }, 500);
     
-    // Set timer for next expiration
-    if (nextExpiry !== Infinity) {
-      const timer = setTimeout(() => {
-        setEmoticonOverlays(prev => {
-          const updated = { ...prev };
-          Object.entries(updated).forEach(([playerId, overlay]) => {
-            if (overlay.expiresAt <= Date.now()) {
-              delete updated[playerId];
-            }
-          });
-          return updated;
-        });
-      }, nextExpiry - now);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [emoticonOverlays]);
+    return () => clearInterval(interval);
+  }, []);
 
   return {
     emoticonOverlays,
