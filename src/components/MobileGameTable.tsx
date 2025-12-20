@@ -1623,7 +1623,8 @@ export const MobileGameTable = ({
         )}
         
         {/* Dealer button - positioned OUTSIDE (away from table center), barely overlapping chip stack */}
-        {isDealer && (
+        {/* Hide during 3-5-7 round 3 multi-player showdown to reduce clutter */}
+        {isDealer && !is357Round3MultiPlayerShowdown && (
           <div className="absolute z-30" style={{
             ...(isRightSideSlot 
               ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(75%)' }
@@ -1719,7 +1720,7 @@ export const MobileGameTable = ({
           gameType={gameType}
           currentRound={currentRound}
           showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7}
-          tightOverlap={isHolmMultiPlayerShowdown}
+          tightOverlap={isHolmMultiPlayerShowdown || is357Round3MultiPlayerShowdown}
         />
       </div>
     ) : (
