@@ -482,7 +482,16 @@ serve(async (req) => {
               if (lockError || !lockResult || lockResult.length === 0) {
                 actionsTaken.push('All players decided - but another process already claimed the lock, skipping');
               } else {
-                actionsTaken.push('All players decided - all_decisions_in set to true (atomic lock acquired)');
+                // CRITICAL FIX: Also update round status to 'showdown' so client-side
+                // processing can detect the state change. Without this, the round stays
+                // in 'betting' status and the client never triggers endHolmRound.
+                await supabase
+                  .from('rounds')
+                  .update({ status: 'showdown' })
+                  .eq('id', currentRound.id)
+                  .eq('status', 'betting'); // Only update if still in betting status
+                
+                actionsTaken.push('All players decided - all_decisions_in set to true, round status set to showdown (atomic lock acquired)');
               }
             } else {
               // CRITICAL FIX: Only advance to UNDECIDED players
