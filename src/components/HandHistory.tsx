@@ -48,13 +48,15 @@ interface HandHistoryProps {
   currentUserId?: string;
   currentPlayerId?: string;
   currentPlayerChips?: number;
+  gameType?: string | null;
 }
 
 export const HandHistory = ({ 
   gameId, 
   currentUserId, 
   currentPlayerId,
-  currentPlayerChips
+  currentPlayerChips,
+  gameType
 }: HandHistoryProps) => {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -66,53 +68,6 @@ export const HandHistory = ({
 
   useEffect(() => {
     fetchHistoryData();
-
-    // Subscribe to realtime updates for game_results
-    const resultsChannel = supabase
-      .channel(`hand-history-results-${gameId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'game_results',
-          filter: `game_id=eq.${gameId}`
-        },
-        (payload) => {
-          console.log('[HandHistory] New game result:', payload);
-          const newResult = {
-            ...payload.new,
-            player_chip_changes: (payload.new as any).player_chip_changes || {}
-          } as GameResult;
-          setGameResults(prev => [newResult, ...prev]);
-          // Clear in-progress when result comes in
-          setInProgressGame(null);
-        }
-      )
-      .subscribe();
-
-    // Subscribe to realtime updates for rounds (to track in-progress game)
-    const roundsChannel = supabase
-      .channel(`hand-history-rounds-${gameId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rounds',
-          filter: `game_id=eq.${gameId}`
-        },
-        () => {
-          // Refetch rounds when they change
-          fetchRoundsAndActions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(resultsChannel);
-      supabase.removeChannel(roundsChannel);
-    };
   }, [gameId]);
 
   // Update in-progress game when chips/rounds/results change
@@ -272,9 +227,27 @@ export const HandHistory = ({
     );
   }
 
+  // Format game type for display
+  const formatGameType = (type: string | null | undefined): string => {
+    if (!type) return 'Unknown';
+    switch (type) {
+      case 'holm-game': return 'Holm';
+      case '357': return '357';
+      default: return type;
+    }
+  };
+
   return (
     <ScrollArea className="h-full max-h-[400px]">
       <div className="space-y-2 p-2">
+        {/* Game Type Header */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-foreground">Game History</span>
+          <Badge variant="outline" className="text-xs">
+            {formatGameType(gameType)}
+          </Badge>
+        </div>
+
         <Accordion 
           type="single" 
           collapsible 
