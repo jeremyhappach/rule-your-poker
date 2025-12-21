@@ -319,24 +319,69 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const deleteGame = async (gameId: string) => {
-    const { error } = await supabase
-      .from('games')
-      .delete()
-      .eq('id', gameId);
+    // Check if game has any history (rounds played)
+    const { data: rounds, error: roundsError } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId)
+      .limit(1);
 
-    if (error) {
+    if (roundsError) {
+      console.error('Error checking game history:', roundsError);
       toast({
         title: "Error",
-        description: "Failed to delete game",
+        description: "Failed to check game history",
         variant: "destructive",
       });
       return;
     }
 
-    toast({
-      title: "Success",
-      description: "Game deleted",
-    });
+    const hasHistory = rounds && rounds.length > 0;
+
+    if (hasHistory) {
+      // Move to completed status instead of deleting
+      const { error: updateError } = await supabase
+        .from('games')
+        .update({
+          status: 'completed',
+          session_ended_at: new Date().toISOString()
+        })
+        .eq('id', gameId);
+
+      if (updateError) {
+        toast({
+          title: "Error",
+          description: "Failed to end game session",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Session Ended",
+        description: "Game moved to completed (history preserved)",
+      });
+    } else {
+      // No history, safe to delete
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', gameId);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete game",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Game deleted",
+      });
+    }
 
     setDeleteGameId(null);
     fetchGames();
