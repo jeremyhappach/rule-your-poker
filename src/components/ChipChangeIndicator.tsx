@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { formatChipValue } from "@/lib/utils";
 
 interface ChipChangeIndicatorProps {
   currentChips: number;
@@ -52,7 +53,7 @@ export const ChipChangeIndicator = ({ currentChips, playerId }: ChipChangeIndica
         animation: "fadeOut 2.5s ease-out forwards"
       }}
     >
-      {isPositive ? "+" : ""}${chipChange}
+      {isPositive ? "+" : "-"}${formatChipValue(Math.abs(chipChange))}
     </div>
   );
 };
