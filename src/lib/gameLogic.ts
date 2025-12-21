@@ -2,6 +2,48 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, has357Hand } from "./cardUtils";
 import { getBotAlias } from "./botAlias";
 
+/**
+ * Record a game result for hand history tracking
+ */
+export async function recordGameResult(
+  gameId: string,
+  handNumber: number,
+  winnerPlayerId: string | null,
+  winnerUsername: string,
+  winningHandDescription: string | null,
+  potWon: number,
+  playerChipChanges: Record<string, number>,
+  isChopped: boolean = false
+) {
+  console.log('[GAME RESULT] Recording game result:', {
+    gameId,
+    handNumber,
+    winnerUsername,
+    winningHandDescription,
+    potWon,
+    isChopped
+  });
+  
+  const { error } = await supabase
+    .from('game_results')
+    .insert({
+      game_id: gameId,
+      hand_number: handNumber,
+      winner_player_id: winnerPlayerId,
+      winner_username: winnerUsername,
+      winning_hand_description: winningHandDescription,
+      pot_won: potWon,
+      player_chip_changes: playerChipChanges,
+      is_chopped: isChopped
+    });
+  
+  if (error) {
+    console.error('[GAME RESULT] Error recording game result:', error);
+  } else {
+    console.log('[GAME RESULT] Successfully recorded game result');
+  }
+}
+
 export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
   
@@ -247,6 +289,31 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // Create round with configured deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
+  
+  // Get current hand_number for this session
+  // For round 1, use total_hands + 1 (new game starting)
+  // For rounds 2-3, use the same hand_number as round 1
+  let handNumber = 1;
+  if (roundNumber === 1) {
+    // New game starting - use total_hands + 1
+    const { data: gameForHand } = await supabase
+      .from('games')
+      .select('total_hands')
+      .eq('id', gameId)
+      .single();
+    handNumber = (gameForHand?.total_hands || 0) + 1;
+  } else {
+    // Continuing game - use same hand_number as existing rounds
+    const { data: existingRound } = await supabase
+      .from('rounds')
+      .select('hand_number')
+      .eq('game_id', gameId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    handNumber = existingRound?.hand_number || 1;
+  }
+  
   const { data: round, error: roundError } = await supabase
     .from('rounds')
     .insert({
@@ -255,7 +322,8 @@ export async function startRound(gameId: string, roundNumber: number) {
       cards_dealt: cardsToDeal,
       status: 'betting',
       pot: initialPot,
-      decision_deadline: deadline.toISOString()
+      decision_deadline: deadline.toISOString(),
+      hand_number: handNumber
     })
     .select()
     .single();
@@ -707,6 +775,29 @@ async function handleGameOver(
   const totalPrize = currentPot + totalLegValue;
   
   console.log('[HANDLE GAME OVER] Awarding prize:', { currentPot, totalLegValue, totalPrize });
+  
+  // Calculate chip changes for all players (for game result tracking)
+  const playerChipChanges: Record<string, number> = {};
+  for (const player of allPlayers) {
+    if (player.id === winnerId) {
+      playerChipChanges[player.id] = totalPrize; // Winner gains the total prize
+    } else {
+      // Other players lost their leg value (if they had legs)
+      playerChipChanges[player.id] = -(player.legs * legValue);
+    }
+  }
+  
+  // Record game result for hand history
+  await recordGameResult(
+    gameId,
+    newTotalHands,
+    winnerId,
+    winnerUsername,
+    `${winnerLegs} legs`,
+    totalPrize,
+    playerChipChanges,
+    false
+  );
   
   // Award the winner
   await supabase
