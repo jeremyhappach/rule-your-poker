@@ -1871,9 +1871,19 @@ async function handleMultiPlayerShowdown(
           buck_position: null,
           total_hands: 0,
           pot: 0,
-          awaiting_next_round: true
+          awaiting_next_round: false // Set to false since game is over, not awaiting next round
         })
         .eq('id', gameId);
+      
+      // CRITICAL FIX: Mark round as completed before returning
+      // Without this, round stays in 'showdown' status and game appears frozen
+      await supabase
+        .from('rounds')
+        .update({ 
+          status: 'completed',
+          chucky_active: false
+        })
+        .eq('id', roundId);
       
       console.log('[HOLM TIE] Game over - Chucky was beaten by tied players (dealer rotation deferred)');
       return; // Early return - game is over
