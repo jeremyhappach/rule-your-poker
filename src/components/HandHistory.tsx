@@ -72,11 +72,11 @@ export const HandHistory = ({
     fetchHistoryData();
   }, [gameId]);
 
-  // Refetch rounds when current round changes (to pick up newly completed rounds)
+  // When the table advances to a new round/hand, refresh history so newly completed
+  // hands show up immediately (without waiting for the full game to end).
   useEffect(() => {
     if (currentRound !== undefined && currentRound !== null) {
-      // Round changed, refetch to get latest completed rounds
-      fetchRoundsAndActions();
+      fetchHistoryData({ showLoading: false });
     }
   }, [currentRound]);
 
@@ -85,40 +85,46 @@ export const HandHistory = ({
     updateInProgressGame();
   }, [currentPlayerChips, rounds, gameResults, gameBuyIn, currentPlayerId]);
 
-  const fetchHistoryData = async () => {
-    setLoading(true);
-    
-    // Fetch game buy_in
-    const { data: gameData, error: gameError } = await supabase
-      .from('games')
-      .select('buy_in')
-      .eq('id', gameId)
-      .maybeSingle();
-    
-    if (gameError) {
-      console.error('[HandHistory] Error fetching game:', gameError);
-    } else if (gameData) {
-      setGameBuyIn(gameData.buy_in);
-    }
-    
-    // Fetch game results
-    const { data: results, error: resultsError } = await supabase
-      .from('game_results')
-      .select('*')
-      .eq('game_id', gameId)
-      .order('hand_number', { ascending: false });
-    
-    if (resultsError) {
-      console.error('[HandHistory] Error fetching game results:', resultsError);
-    } else {
-      setGameResults((results || []).map(r => ({
-        ...r,
-        player_chip_changes: (r.player_chip_changes as Record<string, number>) || {}
-      })));
-    }
+  const fetchHistoryData = async (options?: { showLoading?: boolean }) => {
+    const showLoading = options?.showLoading ?? true;
+    if (showLoading) setLoading(true);
 
-    await fetchRoundsAndActions();
-    setLoading(false);
+    try {
+      // Fetch game buy_in once (needed for in-progress chip-change calc)
+      if (gameBuyIn === null) {
+        const { data: gameData, error: gameError } = await supabase
+          .from('games')
+          .select('buy_in')
+          .eq('id', gameId)
+          .maybeSingle();
+
+        if (gameError) {
+          console.error('[HandHistory] Error fetching game:', gameError);
+        } else if (gameData) {
+          setGameBuyIn(gameData.buy_in);
+        }
+      }
+
+      // Fetch game results (completed hands) — should update as hands finish
+      const { data: results, error: resultsError } = await supabase
+        .from('game_results')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('hand_number', { ascending: false });
+
+      if (resultsError) {
+        console.error('[HandHistory] Error fetching game results:', resultsError);
+      } else {
+        setGameResults((results || []).map((r) => ({
+          ...r,
+          player_chip_changes: (r.player_chip_changes as Record<string, number>) || {},
+        })));
+      }
+
+      await fetchRoundsAndActions();
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   };
 
   const fetchRoundsAndActions = async () => {
