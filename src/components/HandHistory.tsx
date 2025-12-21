@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Clock, Loader2 } from "lucide-react";
+import { Trophy, Clock } from "lucide-react";
 import { cn, formatChipValue } from "@/lib/utils";
 
 interface GameResult {
@@ -229,7 +229,7 @@ export const HandHistory = ({
 
   // Format game type for display
   const formatGameType = (type: string | null | undefined): string => {
-    if (!type) return 'Unknown';
+    if (!type) return '';
     switch (type) {
       case 'holm-game': return 'Holm';
       case '357': return '357';
@@ -237,15 +237,24 @@ export const HandHistory = ({
     }
   };
 
+  // Calculate display game number (Game 1 = first played, highest = most recent)
+  // Since results are sorted by hand_number DESC, we need to reverse the numbering
+  const totalGames = gameResults.length + (inProgressGame ? 1 : 0);
+  const getDisplayGameNumber = (index: number, isInProgress: boolean): number => {
+    // In-progress is always the highest number (most recent)
+    if (isInProgress) return totalGames;
+    // For completed games (already sorted DESC), index 0 is most recent completed
+    // If there's an in-progress game, completed games are numbered totalGames-1, totalGames-2, etc.
+    // If no in-progress game, they're numbered totalGames, totalGames-1, etc.
+    return totalGames - (inProgressGame ? 1 : 0) - index;
+  };
+
   return (
     <ScrollArea className="h-full max-h-[400px]">
       <div className="space-y-2 p-2">
-        {/* Game Type Header */}
+        {/* Session Header */}
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-foreground">Game History</span>
-          <Badge variant="outline" className="text-xs">
-            {formatGameType(gameType)}
-          </Badge>
         </div>
 
         <Accordion 
@@ -254,7 +263,7 @@ export const HandHistory = ({
           value={expandedGame ?? undefined}
           onValueChange={(value) => setExpandedGame(value)}
         >
-          {/* In-Progress Game */}
+          {/* In-Progress Game - always on top as it's the most recent */}
           {inProgressGame && (
             <AccordionItem 
               value="in-progress"
@@ -263,9 +272,9 @@ export const HandHistory = ({
               <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
                 <div className="flex items-center justify-between w-full pr-2">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
                     <span className="text-sm font-medium">
-                      Game #{inProgressGame.hand_number}
+                      Game #{getDisplayGameNumber(0, true)}
+                      {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
                     </span>
                     <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
                       In Progress
@@ -332,11 +341,12 @@ export const HandHistory = ({
             </AccordionItem>
           )}
 
-          {/* Completed Games */}
-          {gameResults.map((result) => {
+          {/* Completed Games - sorted by hand_number DESC (most recent first) */}
+          {gameResults.map((result, index) => {
             const userChipChange = getUserChipChange(result);
             const isWinner = currentPlayerId && result.winner_player_id === currentPlayerId;
             const handRounds = getRoundsForHand(result.hand_number);
+            const displayGameNumber = getDisplayGameNumber(index, false);
 
             return (
               <AccordionItem 
@@ -349,7 +359,8 @@ export const HandHistory = ({
                     <div className="flex items-center gap-2">
                       {isWinner && <Trophy className="w-4 h-4 text-poker-gold" />}
                       <span className="text-sm font-medium">
-                        Game #{result.hand_number}
+                        Game #{displayGameNumber}
+                        {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {result.is_chopped ? 'Chopped' : result.winner_username || 'Unknown'}
