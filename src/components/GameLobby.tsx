@@ -800,6 +800,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         <SessionResults
           open={showSessionResults}
           onOpenChange={setShowSessionResults}
+          currentUserId={userId}
           session={{
             id: selectedSession.id,
             created_at: selectedSession.created_at,
