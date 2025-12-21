@@ -807,6 +807,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             session_ended_at: selectedSession.session_ended_at || selectedSession.created_at,
             total_hands: selectedSession.total_hands || 0,
             host_username: selectedSession.host_username || 'Unknown',
+            game_type: selectedSession.game_type,
             players: selectedSession.players || [],
           }}
         />

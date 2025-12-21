@@ -22,6 +22,7 @@ interface SessionResultsProps {
     total_hands: number;
     host_username: string;
     real_money?: boolean;
+    game_type?: string | null;
     players: Array<{
       id?: string;
       username: string;
@@ -71,6 +72,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
               gameId={session.id}
               currentUserId={currentUserId}
               currentPlayerId={currentPlayerId}
+              gameType={session.game_type}
             />
           </div>
         ) : (

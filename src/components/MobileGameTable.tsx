@@ -3572,17 +3572,12 @@ export const MobileGameTable = ({
         {/* HISTORY TAB - Hand history */}
         {activeTab === 'history' && gameId && (
           <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <h3 className="text-sm font-bold text-foreground">Game History</h3>
-              <Badge variant="outline" className="text-xs">
-                {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
-              </Badge>
-            </div>
             <HandHistory 
               gameId={gameId} 
               currentUserId={currentUserId}
               currentPlayerId={currentPlayer?.id}
               currentPlayerChips={currentPlayer?.chips}
+              gameType={gameType}
             />
           </div>
         )}
