@@ -3578,6 +3578,7 @@ export const MobileGameTable = ({
               currentPlayerId={currentPlayer?.id}
               currentPlayerChips={currentPlayer?.chips}
               gameType={gameType}
+              currentRound={currentRound}
             />
           </div>
         )}

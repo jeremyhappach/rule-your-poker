@@ -49,6 +49,7 @@ interface HandHistoryProps {
   currentPlayerId?: string;
   currentPlayerChips?: number;
   gameType?: string | null;
+  currentRound?: number | null; // Used to trigger refresh when round changes
 }
 
 export const HandHistory = ({ 
@@ -56,7 +57,8 @@ export const HandHistory = ({
   currentUserId, 
   currentPlayerId,
   currentPlayerChips,
-  gameType
+  gameType,
+  currentRound
 }: HandHistoryProps) => {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -69,6 +71,14 @@ export const HandHistory = ({
   useEffect(() => {
     fetchHistoryData();
   }, [gameId]);
+
+  // Refetch rounds when current round changes (to pick up newly completed rounds)
+  useEffect(() => {
+    if (currentRound !== undefined && currentRound !== null) {
+      // Round changed, refetch to get latest completed rounds
+      fetchRoundsAndActions();
+    }
+  }, [currentRound]);
 
   // Update in-progress game when chips/rounds/results change
   useEffect(() => {
@@ -293,49 +303,53 @@ export const HandHistory = ({
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
                 <div className="space-y-2 pt-2">
-                  {inProgressGame.rounds.length > 0 ? (
-                    <div className="space-y-1">
-                      {inProgressGame.rounds.map((round) => {
-                        const roundActions = getActionsForRound(round.id);
-                        
-                        return (
-                          <div key={round.id} className="bg-muted/20 rounded p-2">
-                            <div className="flex items-center justify-between text-xs font-medium mb-1">
-                              <span>Round {round.round_number}</span>
-                              {round.status === 'betting' && (
-                                <Badge variant="outline" className="text-[9px] py-0 h-4 border-amber-500/50 text-amber-500">
-                                  Active
-                                </Badge>
+                  {(() => {
+                    // Only show COMPLETED rounds (not active/betting ones)
+                    const completedRounds = inProgressGame.rounds.filter(r => r.status === 'completed');
+                    
+                    if (completedRounds.length === 0) {
+                      return (
+                        <div className="text-xs text-muted-foreground">
+                          No completed rounds yet
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="space-y-1">
+                        {completedRounds.map((round) => {
+                          const roundActions = getActionsForRound(round.id);
+                          
+                          return (
+                            <div key={round.id} className="bg-muted/20 rounded p-2">
+                              <div className="text-xs font-medium mb-1">
+                                Round {round.round_number}
+                              </div>
+                              {roundActions.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {roundActions.map((action) => (
+                                    <Badge 
+                                      key={action.id}
+                                      variant="secondary"
+                                      className={cn(
+                                        "text-[10px] py-0",
+                                        action.action_type === 'fold' && "bg-red-500/20 text-red-400",
+                                        action.action_type === 'stay' && "bg-green-500/20 text-green-400"
+                                      )}
+                                    >
+                                      {formatAction(action.action_type)}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No actions recorded</span>
                               )}
                             </div>
-                            {roundActions.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {roundActions.map((action) => (
-                                  <Badge 
-                                    key={action.id}
-                                    variant="secondary"
-                                    className={cn(
-                                      "text-[10px] py-0",
-                                      action.action_type === 'fold' && "bg-red-500/20 text-red-400",
-                                      action.action_type === 'stay' && "bg-green-500/20 text-green-400"
-                                    )}
-                                  >
-                                    {formatAction(action.action_type)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Awaiting decisions...</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">
-                      No rounds started yet
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </AccordionContent>
             </AccordionItem>
