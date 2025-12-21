@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, ChevronDown, Clock } from "lucide-react";
+import { Trophy, Clock, Loader2 } from "lucide-react";
 import { cn, formatChipValue } from "@/lib/utils";
 
 interface GameResult {
@@ -37,25 +37,39 @@ interface PlayerAction {
   created_at: string;
 }
 
+interface InProgressGame {
+  hand_number: number;
+  currentChipChange: number;
+  rounds: Round[];
+}
+
 interface HandHistoryProps {
   gameId: string;
   currentUserId?: string;
   currentPlayerId?: string;
+  currentPlayerChips?: number;
 }
 
-export const HandHistory = ({ gameId, currentUserId, currentPlayerId }: HandHistoryProps) => {
+export const HandHistory = ({ 
+  gameId, 
+  currentUserId, 
+  currentPlayerId,
+  currentPlayerChips
+}: HandHistoryProps) => {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [playerActions, setPlayerActions] = useState<PlayerAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
+  const [inProgressGame, setInProgressGame] = useState<InProgressGame | null>(null);
+  const [gameBuyIn, setGameBuyIn] = useState<number | null>(null);
 
   useEffect(() => {
     fetchHistoryData();
 
     // Subscribe to realtime updates for game_results
-    const channel = supabase
-      .channel(`hand-history-${gameId}`)
+    const resultsChannel = supabase
+      .channel(`hand-history-results-${gameId}`)
       .on(
         'postgres_changes',
         {
@@ -71,17 +85,56 @@ export const HandHistory = ({ gameId, currentUserId, currentPlayerId }: HandHist
             player_chip_changes: (payload.new as any).player_chip_changes || {}
           } as GameResult;
           setGameResults(prev => [newResult, ...prev]);
+          // Clear in-progress when result comes in
+          setInProgressGame(null);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to realtime updates for rounds (to track in-progress game)
+    const roundsChannel = supabase
+      .channel(`hand-history-rounds-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rounds',
+          filter: `game_id=eq.${gameId}`
+        },
+        () => {
+          // Refetch rounds when they change
+          fetchRoundsAndActions();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(resultsChannel);
+      supabase.removeChannel(roundsChannel);
     };
   }, [gameId]);
 
+  // Update in-progress game when chips/rounds/results change
+  useEffect(() => {
+    updateInProgressGame();
+  }, [currentPlayerChips, rounds, gameResults, gameBuyIn, currentPlayerId]);
+
   const fetchHistoryData = async () => {
     setLoading(true);
+    
+    // Fetch game buy_in
+    const { data: gameData, error: gameError } = await supabase
+      .from('games')
+      .select('buy_in')
+      .eq('id', gameId)
+      .maybeSingle();
+    
+    if (gameError) {
+      console.error('[HandHistory] Error fetching game:', gameError);
+    } else if (gameData) {
+      setGameBuyIn(gameData.buy_in);
+    }
     
     // Fetch game results
     const { data: results, error: resultsError } = await supabase
@@ -93,14 +146,18 @@ export const HandHistory = ({ gameId, currentUserId, currentPlayerId }: HandHist
     if (resultsError) {
       console.error('[HandHistory] Error fetching game results:', resultsError);
     } else {
-      // Cast to handle JSONB type from Supabase
       setGameResults((results || []).map(r => ({
         ...r,
         player_chip_changes: (r.player_chip_changes as Record<string, number>) || {}
       })));
     }
 
-    // Fetch all rounds for this game (for detailed view)
+    await fetchRoundsAndActions();
+    setLoading(false);
+  };
+
+  const fetchRoundsAndActions = async () => {
+    // Fetch all rounds for this game
     const { data: roundsData, error: roundsError } = await supabase
       .from('rounds')
       .select('*')
@@ -128,8 +185,45 @@ export const HandHistory = ({ gameId, currentUserId, currentPlayerId }: HandHist
         setPlayerActions(actions || []);
       }
     }
+  };
 
-    setLoading(false);
+  const updateInProgressGame = () => {
+    if (rounds.length === 0) {
+      setInProgressGame(null);
+      return;
+    }
+
+    // Find the highest hand_number in rounds
+    const maxHandNumber = Math.max(...rounds.map(r => r.hand_number || 0));
+    
+    // Check if this hand already has a result
+    const hasResult = gameResults.some(gr => gr.hand_number === maxHandNumber);
+    
+    if (hasResult || maxHandNumber === 0) {
+      setInProgressGame(null);
+      return;
+    }
+
+    // Get rounds for the current hand
+    const currentHandRounds = rounds.filter(r => r.hand_number === maxHandNumber);
+    
+    // Calculate chip change for current game:
+    // Current chips - (buyIn + sum of all previous chip changes)
+    let chipChange = 0;
+    if (currentPlayerChips !== undefined && gameBuyIn !== null && currentPlayerId) {
+      const totalPreviousChanges = gameResults.reduce((sum, result) => {
+        const playerChange = result.player_chip_changes[currentPlayerId] ?? 0;
+        return sum + playerChange;
+      }, 0);
+      const startingChipsThisHand = gameBuyIn + totalPreviousChanges;
+      chipChange = currentPlayerChips - startingChipsThisHand;
+    }
+
+    setInProgressGame({
+      hand_number: maxHandNumber,
+      currentChipChange: chipChange,
+      rounds: currentHandRounds
+    });
   };
 
   // Get user's chip change for a game result
@@ -166,12 +260,14 @@ export const HandHistory = ({ gameId, currentUserId, currentPlayerId }: HandHist
     );
   }
 
-  if (gameResults.length === 0) {
+  const hasNoHistory = gameResults.length === 0 && !inProgressGame;
+
+  if (hasNoHistory) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <Clock className="w-8 h-8 mb-2 opacity-50" />
-        <p>No games completed yet</p>
-        <p className="text-xs mt-1">Game history will appear here after games end</p>
+        <p>No games yet</p>
+        <p className="text-xs mt-1">Game history will appear here</p>
       </div>
     );
   }
@@ -185,6 +281,85 @@ export const HandHistory = ({ gameId, currentUserId, currentPlayerId }: HandHist
           value={expandedGame ?? undefined}
           onValueChange={(value) => setExpandedGame(value)}
         >
+          {/* In-Progress Game */}
+          {inProgressGame && (
+            <AccordionItem 
+              value="in-progress"
+              className="border border-amber-500/50 rounded-lg mb-2 overflow-hidden bg-amber-500/10"
+            >
+              <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
+                <div className="flex items-center justify-between w-full pr-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+                    <span className="text-sm font-medium">
+                      Game #{inProgressGame.hand_number}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
+                      In Progress
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-sm font-bold min-w-[60px] text-right",
+                      inProgressGame.currentChipChange > 0 ? "text-green-500" : 
+                      inProgressGame.currentChipChange < 0 ? "text-red-500" : "text-muted-foreground"
+                    )}>
+                      {inProgressGame.currentChipChange > 0 ? '+' : ''}{formatChipValue(inProgressGame.currentChipChange)}
+                    </span>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-3 pb-3">
+                <div className="space-y-2 pt-2">
+                  {inProgressGame.rounds.length > 0 ? (
+                    <div className="space-y-1">
+                      {inProgressGame.rounds.map((round) => {
+                        const roundActions = getActionsForRound(round.id);
+                        
+                        return (
+                          <div key={round.id} className="bg-muted/20 rounded p-2">
+                            <div className="flex items-center justify-between text-xs font-medium mb-1">
+                              <span>Round {round.round_number}</span>
+                              {round.status === 'betting' && (
+                                <Badge variant="outline" className="text-[9px] py-0 h-4 border-amber-500/50 text-amber-500">
+                                  Active
+                                </Badge>
+                              )}
+                            </div>
+                            {roundActions.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {roundActions.map((action) => (
+                                  <Badge 
+                                    key={action.id}
+                                    variant="secondary"
+                                    className={cn(
+                                      "text-[10px] py-0",
+                                      action.action_type === 'fold' && "bg-red-500/20 text-red-400",
+                                      action.action_type === 'stay' && "bg-green-500/20 text-green-400"
+                                    )}
+                                  >
+                                    {formatAction(action.action_type)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Awaiting decisions...</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      No rounds started yet
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+
+          {/* Completed Games */}
           {gameResults.map((result) => {
             const userChipChange = getUserChipChange(result);
             const isWinner = currentPlayerId && result.winner_player_id === currentPlayerId;
