@@ -208,6 +208,60 @@ export type Database = {
         }
         Relationships: []
       }
+      game_results: {
+        Row: {
+          created_at: string
+          game_id: string
+          hand_number: number
+          id: string
+          is_chopped: boolean
+          player_chip_changes: Json
+          pot_won: number
+          winner_player_id: string | null
+          winner_username: string | null
+          winning_hand_description: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          hand_number: number
+          id?: string
+          is_chopped?: boolean
+          player_chip_changes?: Json
+          pot_won?: number
+          winner_player_id?: string | null
+          winner_username?: string | null
+          winning_hand_description?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          hand_number?: number
+          id?: string
+          is_chopped?: boolean
+          player_chip_changes?: Json
+          pot_won?: number
+          winner_player_id?: string | null
+          winner_username?: string | null
+          winning_hand_description?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_results_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_results_winner_player_id_fkey"
+            columns: ["winner_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           all_decisions_in: boolean | null
@@ -551,6 +605,7 @@ export type Database = {
           current_turn_position: number | null
           decision_deadline: string | null
           game_id: string
+          hand_number: number | null
           id: string
           pot: number | null
           round_number: number
@@ -568,6 +623,7 @@ export type Database = {
           current_turn_position?: number | null
           decision_deadline?: string | null
           game_id: string
+          hand_number?: number | null
           id?: string
           pot?: number | null
           round_number: number
@@ -585,6 +641,7 @@ export type Database = {
           current_turn_position?: number | null
           decision_deadline?: string | null
           game_id?: string
+          hand_number?: number | null
           id?: string
           pot?: number | null
           round_number?: number

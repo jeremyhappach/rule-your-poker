@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 import { getDisplayName } from "./botAlias";
+import { recordGameResult } from "./gameLogic";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -488,6 +489,10 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     deck[cardIndex++]
   ];
 
+  // Get hand_number for this game
+  // In Holm, each hand is one game cycle until someone beats Chucky or Chucky wins
+  const handNumber = gameConfig.total_hands || 1;
+
   // Always create a new round for each hand - unique round_id prevents stale card fetching
   const { data: round, error: roundError } = await supabase
     .from('rounds')
@@ -501,7 +506,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       community_cards_revealed: 2,
       community_cards: communityCards as any,
       chucky_active: false,
-      current_turn_position: buckPosition
+      current_turn_position: buckPosition,
+      hand_number: handNumber
     })
     .select()
     .single();
@@ -1157,6 +1163,22 @@ async function handleChuckyShowdown(
     console.log('[HOLM SHOWDOWN] Player wins! Pot:', roundPot);
     // Player beats Chucky - award pot, GAME OVER (Holm game ends when you beat Chucky)
     // Note: Holm game doesn't use legs system
+    
+    // Record game result for hand history
+    const playerChipChanges: Record<string, number> = {};
+    playerChipChanges[player.id] = roundPot;
+    
+    await recordGameResult(
+      gameId,
+      (game.total_hands || 0) + 1,
+      player.id,
+      playerUsername,
+      playerHandDesc,
+      roundPot,
+      playerChipChanges,
+      false
+    );
+    
     await supabase
       .from('players')
       .update({ 
