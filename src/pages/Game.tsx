@@ -240,7 +240,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmPreStay, setHolmPreStay] = useState(false);
   
   // LIFTED mobile tab state - persists across MobileGameTable remounts
-  const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
+  const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   // LIFTED unread chat messages state - persists across MobileGameTable remounts
   const [mobileHasUnreadMessages, setMobileHasUnreadMessages] = useState(false);
   // LIFTED chat input state - persists across MobileGameTable remounts

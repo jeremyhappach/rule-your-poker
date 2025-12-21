@@ -41,7 +41,8 @@ import React, {
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
-import { MessageSquare, User } from "lucide-react";
+import { MessageSquare, User, Clock } from "lucide-react";
+import { HandHistory } from "./HandHistory";
 
 // Custom Spade icon with pronounced stem (Lucide's looks like upside-down heart)
 const SpadeIcon = ({ className }: { className?: string }) => (
@@ -239,8 +240,8 @@ interface MobileGameTableProps {
   // Holm rabbit hunt enabled
   rabbitHunt?: boolean;
   // Mobile tab state (lifted to parent to persist across remounts)
-  activeTab?: 'cards' | 'chat' | 'lobby';
-  onActiveTabChange?: (tab: 'cards' | 'chat' | 'lobby') => void;
+  activeTab?: 'cards' | 'chat' | 'lobby' | 'history';
+  onActiveTabChange?: (tab: 'cards' | 'chat' | 'lobby' | 'history') => void;
   // Unread messages state (lifted to parent to persist across remounts)
   hasUnreadMessages?: boolean;
   onHasUnreadMessagesChange?: (hasUnread: boolean) => void;
@@ -370,7 +371,7 @@ export const MobileGameTable = ({
   const deckColorMode = getEffectiveDeckColorMode();
 
   // Tab state - use external if provided, otherwise internal
-  const [internalActiveTab, setInternalActiveTab] = useState<'cards' | 'chat' | 'lobby'>('cards');
+  const [internalActiveTab, setInternalActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   const activeTab = externalActiveTab ?? internalActiveTab;
   const setActiveTab = onActiveTabChange ?? setInternalActiveTab;
   
@@ -3156,9 +3157,11 @@ export const MobileGameTable = ({
           
           return (
             <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
+              {/* Cards tab - 35% width */}
               <button 
                 onClick={() => setActiveTab('cards')}
-                className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+                style={{ flex: '0 0 35%' }}
+                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
                   activeTab === 'cards' 
                     ? 'bg-primary/20 text-foreground' 
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
@@ -3166,9 +3169,11 @@ export const MobileGameTable = ({
               >
                 <SpadeIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
               </button>
+              {/* Chat tab - 35% width */}
               <button 
                 onClick={() => setActiveTab('chat')}
-                className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+                style={{ flex: '0 0 35%' }}
+                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
                   activeTab === 'chat' 
                     ? 'bg-primary/20 text-foreground' 
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
@@ -3176,15 +3181,29 @@ export const MobileGameTable = ({
               >
                 <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500 fill-red-500' : ''}`} />
               </button>
+              {/* Lobby tab - 15% width */}
               <button 
                 onClick={() => setActiveTab('lobby')}
-                className={`flex-1 flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+                style={{ flex: '0 0 15%' }}
+                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
                   activeTab === 'lobby' 
                     ? 'bg-primary/20 text-foreground' 
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
                 }`}
               >
                 <User className="w-5 h-5" />
+              </button>
+              {/* History tab - 15% width */}
+              <button 
+                onClick={() => setActiveTab('history')}
+                style={{ flex: '0 0 15%' }}
+                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+                  activeTab === 'history' 
+                    ? 'bg-primary/20 text-foreground' 
+                    : 'text-muted-foreground/50 hover:text-muted-foreground'
+                }`}
+              >
+                <Clock className="w-5 h-5" />
               </button>
             </div>
           );
@@ -3549,6 +3568,23 @@ export const MobileGameTable = ({
               })}
             </div>
           </div>}
+        
+        {/* HISTORY TAB - Hand history */}
+        {activeTab === 'history' && gameId && (
+          <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-2 flex-shrink-0">
+              <h3 className="text-sm font-bold text-foreground">Game History</h3>
+              <Badge variant="outline" className="text-xs">
+                {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+              </Badge>
+            </div>
+            <HandHistory 
+              gameId={gameId} 
+              currentUserId={currentUserId}
+              currentPlayerId={currentPlayer?.id}
+            />
+          </div>
+        )}
       </div>
     </div>;
 };
