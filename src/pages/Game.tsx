@@ -21,6 +21,7 @@ import { DealerSelection } from "@/components/DealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
+import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
@@ -258,6 +259,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
   useDeadlineEnforcer(gameId, game?.status);
+  
 
   // If an empty session was deleted (no longer exists in DB), leave the game route.
   const missingGameHandledRef = useRef(false);
@@ -1920,6 +1922,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  // Bot decision enforcement - polls every 2 seconds to detect and fix stuck bot decisions
+  useBotDecisionEnforcer({
+    gameId,
+    gameStatus: game?.status,
+    isPaused: game?.is_paused,
+    allDecisionsIn: game?.all_decisions_in,
+    gameType: game?.game_type,
+    currentTurnPosition: currentRound?.current_turn_position,
+    roundId: currentRound?.id,
+  });
 
   // DEBUG: show a "Round: X" toast whenever round number/id changes
 
