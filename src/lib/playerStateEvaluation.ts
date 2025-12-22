@@ -204,25 +204,33 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
   const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
   console.log('[DEALER ROTATE] Allow bot dealers:', allowBotDealers);
   
-  // Get ALL players for debugging
+  // Get ALL players for debugging - use fresh query with timestamp to avoid caching
   const { data: allPlayers } = await supabase
     .from('players')
-    .select('position, is_bot, sitting_out, user_id')
+    .select('position, is_bot, sitting_out, user_id, status, waiting')
     .eq('game_id', gameId)
     .order('position', { ascending: true });
   
   console.log('[DEALER ROTATE] All players:', allPlayers?.map(p => ({
     pos: p.position,
     is_bot: p.is_bot,
-    sitting_out: p.sitting_out
+    sitting_out: p.sitting_out,
+    status: p.status,
+    waiting: p.waiting
   })));
   
-  // Build query for eligible dealers
+  // Build query for eligible dealers:
+  // - Must have a valid position (not null - excludes observers who stood up)
+  // - Must not be sitting_out
+  // - Must not be a bot (unless bots are allowed as dealers)
+  // - Must not be in 'observer' status
   let query = supabase
     .from('players')
-    .select('position, is_bot, sitting_out, user_id')
+    .select('position, is_bot, sitting_out, user_id, status')
     .eq('game_id', gameId)
-    .eq('sitting_out', false);
+    .eq('sitting_out', false)
+    .not('position', 'is', null)
+    .neq('status', 'observer');
   
   // Only filter out bots if bot dealers are NOT allowed
   if (!allowBotDealers) {
@@ -231,14 +239,21 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
   
   const { data: eligiblePlayers, error } = await query.order('position', { ascending: true });
   
-  console.log('[DEALER ROTATE] Eligible players:', eligiblePlayers?.map(p => p.position), 'error:', error);
+  console.log('[DEALER ROTATE] Eligible players:', eligiblePlayers?.map(p => ({ pos: p.position, sitting_out: p.sitting_out, status: p.status })), 'error:', error);
   
   if (error || !eligiblePlayers || eligiblePlayers.length === 0) {
     console.log('[DEALER ROTATE] No eligible players, keeping current position');
     return currentDealerPosition;
   }
   
-  const eligiblePositions = eligiblePlayers.map(p => p.position);
+  // Filter out any players with null positions (extra safety check)
+  const validPlayers = eligiblePlayers.filter(p => p.position !== null);
+  if (validPlayers.length === 0) {
+    console.log('[DEALER ROTATE] No valid players with positions, keeping current position');
+    return currentDealerPosition;
+  }
+  
+  const eligiblePositions = validPlayers.map(p => p.position as number);
   console.log('[DEALER ROTATE] Eligible positions:', eligiblePositions);
   
   const currentDealerIndex = eligiblePositions.indexOf(currentDealerPosition);

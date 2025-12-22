@@ -10,6 +10,7 @@ interface Player {
     username: string;
   };
   is_bot: boolean;
+  sitting_out?: boolean;
 }
 
 interface DealerSelectionProps {
@@ -28,16 +29,22 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
   const currentPlayer = sortedPlayers[currentIndex];
 
   useEffect(() => {
-    // Filter to only human players
-    const humanPlayers = sortedPlayers.filter(p => !p.is_bot);
+    // Filter to only human players who are NOT sitting out
+    const humanPlayers = sortedPlayers.filter(p => !p.is_bot && !p.sitting_out);
     
     if (humanPlayers.length === 0) {
-      // Fallback: if all are bots, just pick the first one
-      onComplete(sortedPlayers[0]?.position || 1);
+      // Fallback: if all humans are sitting out, try any non-sitting-out player
+      const activePlayers = sortedPlayers.filter(p => !p.sitting_out);
+      if (activePlayers.length === 0) {
+        // Ultimate fallback: just pick the first player
+        onComplete(sortedPlayers[0]?.position || 1);
+      } else {
+        onComplete(activePlayers[0]?.position || 1);
+      }
       return;
     }
     
-    // Randomly select final dealer from human players only
+    // Randomly select final dealer from eligible human players only
     const randomIndex = Math.floor(Math.random() * humanPlayers.length);
     const selectedPlayer = humanPlayers[randomIndex];
     const selectedPosition = selectedPlayer.position;
