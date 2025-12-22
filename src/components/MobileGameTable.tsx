@@ -468,26 +468,80 @@ export const MobileGameTable = ({
   // Delayed pot display - only update when chips arrive at pot box
   const [displayedPot, setDisplayedPot] = useState(pot);
   const isAnteAnimatingRef = useRef(false);
-  
+
   // CRITICAL: Use a REF for locked chip values during animation
   // State updates can be batched/delayed by React, but refs update synchronously
   const lockedChipsRef = useRef<Record<string, number> | null>(null);
-  
+
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
-  
-  
+
+  // Keep latest pot in a ref so delayed sync always uses freshest value
+  const potRef = useRef(pot);
+  useEffect(() => {
+    potRef.current = pot;
+  }, [pot]);
+
+  // CRITICAL: Debounce pot syncing to avoid "post-update -> pre-update -> post-update" flashes
+  // when a pot-in animation trigger arrives slightly after the backend pot update.
+  const potSyncTimeoutRef = useRef<number | null>(null);
+
   // Sync displayedPot to actual pot when NOT animating (handles DB updates)
   // Also don't sync during 3-5-7 win animation - use cached pot value instead
-  // CRITICAL: Also don't sync if there's a pending ante animation trigger - prevents flash where
-  // pot shows post-ante value, then reverts to pre-ante, then animates to post-ante
-  const hasPending357WinForPot = threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0;
-  const hasPendingAnteAnimation = !!anteAnimationTriggerId;
+  const hasPending357WinForPot = !!(threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0);
+
+  // Any animation that moves chips INTO the pot should block immediate pot syncing.
+  // (ante, pussy tax, Holm chucky loss, Holm showdown losers-to-pot)
+  const hasPendingPotInAnimation = !!(
+    anteAnimationTriggerId ||
+    chuckyLossTriggerId ||
+    (holmShowdownPhase === 'losers-to-pot' && phase2TriggerId)
+  );
+
+  const potSyncGuardsRef = useRef({
+    hasPending357WinForPot,
+    hasPendingPotInAnimation,
+  });
+  potSyncGuardsRef.current.hasPending357WinForPot = hasPending357WinForPot;
+  potSyncGuardsRef.current.hasPendingPotInAnimation = hasPendingPotInAnimation;
+
   useEffect(() => {
-    if (!isAnteAnimatingRef.current && !hasPending357WinForPot && threeFiveSevenWinPhase === 'idle' && !hasPendingAnteAnimation) {
-      setDisplayedPot(pot);
+    if (potSyncTimeoutRef.current) {
+      window.clearTimeout(potSyncTimeoutRef.current);
+      potSyncTimeoutRef.current = null;
     }
-  }, [pot, hasPending357WinForPot, threeFiveSevenWinPhase, hasPendingAnteAnimation]);
+
+    // If we're in (or about to enter) an animation state, do not sync.
+    if (
+      isAnteAnimatingRef.current ||
+      potSyncGuardsRef.current.hasPending357WinForPot ||
+      threeFiveSevenWinPhaseRef.current !== 'idle' ||
+      potSyncGuardsRef.current.hasPendingPotInAnimation
+    ) {
+      return;
+    }
+
+    // Delay just enough to let the animation trigger land in state.
+    // (This prevents the brief "new pot" paint before we freeze to pre-ante/pre-tax.)
+    potSyncTimeoutRef.current = window.setTimeout(() => {
+      if (
+        isAnteAnimatingRef.current ||
+        potSyncGuardsRef.current.hasPending357WinForPot ||
+        threeFiveSevenWinPhaseRef.current !== 'idle' ||
+        potSyncGuardsRef.current.hasPendingPotInAnimation
+      ) {
+        return;
+      }
+      setDisplayedPot(potRef.current);
+    }, 250);
+
+    return () => {
+      if (potSyncTimeoutRef.current) {
+        window.clearTimeout(potSyncTimeoutRef.current);
+        potSyncTimeoutRef.current = null;
+      }
+    };
+  }, [pot, hasPending357WinForPot, hasPendingPotInAnimation]);
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
   // This ensures we never flash wrong values during the sync period
