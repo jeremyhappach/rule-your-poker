@@ -513,6 +513,17 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     .single();
 
   if (roundError || !round) {
+    const code = (roundError as any)?.code;
+    if (code === '23505') {
+      // Another client likely created this same (game_id, round_number) already.
+      // Don't throw here — it would freeze the table UI waiting for a round transition.
+      console.warn('[HOLM] Duplicate round insert blocked by DB (23505). Skipping startHolmRound.', {
+        gameId,
+        nextRoundNumber,
+      });
+      return;
+    }
+
     throw new Error(`Failed to create round: ${roundError?.message}`);
   }
   
@@ -1919,22 +1930,16 @@ export async function proceedToNextHolmRound(gameId: string) {
 
   console.log('[HOLM NEXT] Current game state - pot:', game.pot, 'awaiting:', game.awaiting_next_round, 'total_hands:', game.total_hands);
 
-  // CRITICAL FIX: Mark ALL existing rounds as 'completed' before starting new hand
-  // This prevents stale betting rounds from blocking new round creation or causing current_round to decrease
-  console.log('[HOLM NEXT] Marking all existing rounds as completed');
-  await supabase
-    .from('rounds')
-    .update({ status: 'completed' })
-    .eq('game_id', gameId)
-    .neq('status', 'completed');
+  // Guard: only proceed when the game is actually awaiting the next hand
+  if (!game.awaiting_next_round) {
+    console.log('[HOLM NEXT] Not awaiting next round, skipping');
+    return;
+  }
 
-  // Increment total_hands counter (this prevents re-anting on subsequent hands)
-  const newTotalHands = (game.total_hands || 0) + 1;
-  
-  // Rotate buck position clockwise to next active player
+  // Compute next buck position (clockwise)
   const { data: players } = await supabase
     .from('players')
-    .select('position, is_bot')
+    .select('position')
     .eq('game_id', gameId)
     .eq('status', 'active')
     .eq('sitting_out', false)
@@ -1945,35 +1950,45 @@ export async function proceedToNextHolmRound(gameId: string) {
     return;
   }
 
-  // Get sorted positions of active players
-  const positions = players.map(p => p.position).sort((a, b) => a - b);
+  const positions = players.map((p) => p.position).sort((a, b) => a - b);
   const currentBuckIndex = positions.indexOf(game.buck_position);
   const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
   const newBuckPosition = positions[nextBuckIndex];
 
+  const newTotalHands = (game.total_hands || 0) + 1;
+
   console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
 
-  // Update buck position and increment total_hands (DO NOT touch pot here)
-  await supabase
+  // CRITICAL: Atomic guard so only ONE client proceeds (prevents duplicate round inserts)
+  const { data: updateResult, error: updateError } = await supabase
     .from('games')
     .update({
+      awaiting_next_round: false,
       buck_position: newBuckPosition,
       last_round_result: null,
-      total_hands: newTotalHands
+      total_hands: newTotalHands,
     })
-    .eq('id', gameId);
-  
+    .eq('id', gameId)
+    .eq('awaiting_next_round', true)
+    .select();
+
+  if (updateError || !updateResult || updateResult.length === 0) {
+    console.log('[HOLM NEXT] Another client already proceeding, skipping');
+    return;
+  }
+
+  // Mark all existing rounds as completed before starting a new hand
+  console.log('[HOLM NEXT] Marking all existing rounds as completed');
+  await supabase
+    .from('rounds')
+    .update({ status: 'completed' })
+    .eq('game_id', gameId)
+    .neq('status', 'completed');
+
   console.log('[HOLM NEXT] Updated total_hands to', newTotalHands);
 
-  // Start new hand - NOT first hand, so preserve pot from showdown
-  // CRITICAL: Pass the new buck position explicitly to avoid race conditions
+  // Start new hand (preserve pot), passing the buck explicitly
   await startHolmRound(gameId, false, newBuckPosition);
-  
-  // Clear awaiting flag
-  await supabase
-    .from('games')
-    .update({ awaiting_next_round: false })
-    .eq('id', gameId);
 
   console.log('[HOLM NEXT] Next hand ready');
 }

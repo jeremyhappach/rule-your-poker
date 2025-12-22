@@ -646,8 +646,24 @@ serve(async (req) => {
               
               // Create the round
               const cardsForRound = nextRoundNum === 1 ? 3 : nextRoundNum === 2 ? 5 : 7;
-              
-              await supabase
+
+              // IMPORTANT: rounds has a unique constraint on (game_id, round_number).
+              // Before inserting, delete any existing round with the same round_number.
+              // Without this, the watchdog can error and the game will appear "frozen".
+              const { data: existingRound } = await supabase
+                .from('rounds')
+                .select('id')
+                .eq('game_id', gameId)
+                .eq('round_number', nextRoundNum)
+                .maybeSingle();
+
+              if (existingRound?.id) {
+                await supabase.from('player_cards').delete().eq('round_id', existingRound.id);
+                await supabase.from('player_actions').delete().eq('round_id', existingRound.id);
+                await supabase.from('rounds').delete().eq('id', existingRound.id);
+              }
+
+              const { error: roundInsertError } = await supabase
                 .from('rounds')
                 .insert({
                   game_id: gameId,
@@ -657,12 +673,21 @@ serve(async (req) => {
                   status: 'betting',
                   decision_deadline: decisionDeadline,
                 });
-              
-              // Update game current_round
-              await supabase
-                .from('games')
-                .update({ current_round: nextRoundNum })
-                .eq('id', gameId);
+
+              if (roundInsertError) {
+                console.error('[ENFORCE] Failed to insert watchdog round:', {
+                  gameId,
+                  nextRoundNum,
+                  error: roundInsertError,
+                });
+                actionsTaken.push(`awaiting_next_round watchdog: Failed to insert round ${nextRoundNum} (${roundInsertError.message})`);
+              } else {
+                // Update game current_round
+                await supabase
+                  .from('games')
+                  .update({ current_round: nextRoundNum })
+                  .eq('id', gameId);
+              }
               
               // Reset player decisions for new round
               await supabase
