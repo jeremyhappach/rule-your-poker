@@ -19,8 +19,8 @@ interface GameOverCountdownProps {
 }
 
 export const GameOverCountdown = ({ winnerMessage, nextDealer, onComplete, gameOverAt, isSessionEnded = false, pendingSessionEnd = false }: GameOverCountdownProps) => {
-  const COUNTDOWN_DURATION = 8; // seconds
-  const MIN_DISPLAY_TIME = 4; // minimum seconds to show countdown even if server time elapsed
+  const COUNTDOWN_DURATION = 5; // seconds (was 8, shortened per user request)
+  const MIN_DISPLAY_TIME = 2; // minimum seconds to show countdown even if server time elapsed
   const hasCompletedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   const gameOverAtRef = useRef(gameOverAt); // Capture initial gameOverAt to prevent restarts
