@@ -479,12 +479,15 @@ export const MobileGameTable = ({
   
   // Sync displayedPot to actual pot when NOT animating (handles DB updates)
   // Also don't sync during 3-5-7 win animation - use cached pot value instead
+  // CRITICAL: Also don't sync if there's a pending ante animation trigger - prevents flash where
+  // pot shows post-ante value, then reverts to pre-ante, then animates to post-ante
   const hasPending357WinForPot = threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0;
+  const hasPendingAnteAnimation = !!anteAnimationTriggerId;
   useEffect(() => {
-    if (!isAnteAnimatingRef.current && !hasPending357WinForPot && threeFiveSevenWinPhase === 'idle') {
+    if (!isAnteAnimatingRef.current && !hasPending357WinForPot && threeFiveSevenWinPhase === 'idle' && !hasPendingAnteAnimation) {
       setDisplayedPot(pot);
     }
-  }, [pot, hasPending357WinForPot, threeFiveSevenWinPhase]);
+  }, [pot, hasPending357WinForPot, threeFiveSevenWinPhase, hasPendingAnteAnimation]);
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
   // This ensures we never flash wrong values during the sync period

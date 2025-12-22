@@ -52,6 +52,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // Track what we've animated for to prevent re-triggers
   const lastAnimatedPotRef = useRef<number | null>(null);
   const lastTriggerIdRef = useRef<string | null>(null);
+  // CRITICAL: Use a ref to track animation in progress - state updates are async and can miss rapid re-triggers
+  const animationInProgressRef = useRef(false);
 
   // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
   // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
@@ -133,6 +135,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     if (isWaitingPhase) {
       lastAnimatedPotRef.current = null;
       lastTriggerIdRef.current = null;
+      animationInProgressRef.current = false;
     }
   }, [isWaitingPhase]);
 
@@ -142,11 +145,13 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     }
 
     // Only animate via triggerId - lastTriggerIdRef prevents duplicate animations from same trigger
-    // CRITICAL: Also check if we already have animations running to prevent double-fire
-    if (!triggerId || triggerId === lastTriggerIdRef.current || animations.length > 0) {
+    // CRITICAL: Use ref for immediate blocking - state updates are async and animations.length can be stale
+    if (!triggerId || triggerId === lastTriggerIdRef.current || animationInProgressRef.current) {
       return;
     }
     
+    // IMMEDIATELY mark animation as in progress (ref updates synchronously, prevents race conditions)
+    animationInProgressRef.current = true;
     lastTriggerIdRef.current = triggerId;
     
     // Lock the display amount BEFORE calling onAnimationStart (which clears the trigger)
@@ -212,6 +217,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     
     setTimeout(() => {
       setAnimations([]);
+      animationInProgressRef.current = false; // Clear the ref guard when animation completes
     }, 1200); // Cleanup after animation completes
   }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, gameStatus, triggerId, anteAmount, onAnimationStart, onChipsArrived]);
 
