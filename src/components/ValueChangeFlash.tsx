@@ -51,10 +51,16 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
     }
   }, [manualTrigger]);
 
+  // Track if this component is in "manual trigger only" mode
+  // CRITICAL: If manualTrigger prop is ever provided (even as null), we're in manual mode
+  // and should NEVER auto-detect. This prevents pot flash on reante.
+  const isManualModeRef = useRef(manualTrigger !== undefined);
+  
   // Auto-detect mode (when not using manual trigger)
   useEffect(() => {
-    // Skip if using manual trigger
-    if (manualTrigger !== undefined) {
+    // CRITICAL: Skip if we're in manual trigger mode (prop was provided, even if null)
+    // This prevents auto-detecting pot changes during reante when anteFlashTrigger is null
+    if (isManualModeRef.current) {
       prevValueRef.current = value;
       return;
     }
@@ -88,7 +94,7 @@ export const ValueChangeFlash: React.FC<ValueChangeFlashProps> = ({
     }
 
     prevValueRef.current = value;
-  }, [value, disabled, manualTrigger]);
+  }, [value, disabled]);
 
   const positionClasses: Record<string, string> = {
     'top-right': '-top-2 right-0',
