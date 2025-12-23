@@ -3775,7 +3775,8 @@ export const MobileGameTable = ({
               ) : null}
             </div>
             
-            {/* Cards display */}
+            {/* Cards display - slight gap from action buttons */}
+            <div className="mt-1" />
             {(() => {
               const isWinner357InAnimation = gameType !== 'holm-game' && 
                 threeFiveSevenWinnerId === currentPlayer?.id && 
