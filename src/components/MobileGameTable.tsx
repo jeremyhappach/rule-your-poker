@@ -621,15 +621,18 @@ export const MobileGameTable = ({
   const [potOutAnimationActive, setPotOutAnimationActive] = useState(false);
 
   // Reliable per-player amount for POT-IN animations.
-  // IMPORTANT: Never default to a tiny fallback (like 1/2) when the parent has provided
-  // pre/post chip snapshots—derive the amount from those snapshots instead.
+  // IMPORTANT: For normal antes, the configured anteAmount prop is authoritative.
+  // Snapshots are still useful as a fallback, but they can be wrong if any upstream value is scaled.
   const getPotInPerPlayerAmount = useCallback(() => {
     if (!anteAnimationTriggerId) return anteAmount;
 
     const isPussyTaxTrigger = anteAnimationTriggerId.startsWith('pussy-tax-');
-    if (isPussyTaxTrigger) return pussyTaxValue;
+    if (isPussyTaxTrigger) return pussyTaxValue ?? 0;
 
-    // Prefer explicit snapshots from parent (most reliable during races).
+    // Normal ante: trust the game-configured ante amount.
+    if (typeof anteAmount === 'number' && anteAmount > 0) return anteAmount;
+
+    // Fallback: derive from snapshots (should be rare).
     if (preAnteChips && expectedPostAnteChips) {
       const activePlayers = players.filter((p) => !p.sitting_out);
       for (const p of activePlayers) {
@@ -642,7 +645,7 @@ export const MobileGameTable = ({
       }
     }
 
-    return anteAmount;
+    return 0;
   }, [anteAnimationTriggerId, anteAmount, expectedPostAnteChips, players, preAnteChips, pussyTaxValue]);
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
@@ -2673,19 +2676,44 @@ export const MobileGameTable = ({
               willUseExpectedPostAnteChips: !!expectedPostAnteChips,
             });
 
-            // CRITICAL: Use expectedPostAnteChips directly if available - this is computed in Game.tsx
-            // BEFORE any backend updates, so it's guaranteed to be correct
-            if (expectedPostAnteChips) {
+            // Prefer expectedPostAnteChips only if it is consistent with our per-player amount.
+            const expectedChipsConsistent = (() => {
+              if (!expectedPostAnteChips || !preAnteChips) return false;
+              for (const p of activePlayers) {
+                const pre = preAnteChips[p.id];
+                const post = expectedPostAnteChips[p.id];
+                if (typeof pre === 'number' && typeof post === 'number') {
+                  return pre - post === perPlayerAmount;
+                }
+              }
+              return false;
+            })();
+
+            if (expectedPostAnteChips && expectedChipsConsistent) {
               console.log('[ANTE_ANIM_DEBUG] Using expectedPostAnteChips for display', expectedPostAnteChips);
               lockedChipsRef.current = { ...expectedPostAnteChips };
               setDisplayedChips({ ...expectedPostAnteChips });
             } else {
-              // Fallback: compute from preAnteChips or current chips
+              if (expectedPostAnteChips && !expectedChipsConsistent) {
+                console.warn('[ANTE_ANIM_DEBUG] Ignoring expectedPostAnteChips (inconsistent with perPlayerAmount)', {
+                  perPlayerAmount,
+                  expectedPostAnteChips,
+                  preAnteChips,
+                });
+              }
+
+              // Fallback: compute based on a trusted perPlayerAmount.
               const newLockedChips: Record<string, number> = {};
-              activePlayers.forEach(p => {
-                const chipsBefore = preAnteChips?.[p.id] ?? p.chips;
+              activePlayers.forEach((p) => {
+                const preFromSnapshot = preAnteChips?.[p.id];
+                const snapshotLooksValid =
+                  typeof preFromSnapshot === 'number' &&
+                  Math.abs((preFromSnapshot - p.chips) - perPlayerAmount) <= 1;
+
+                const chipsBefore = snapshotLooksValid ? preFromSnapshot : p.chips;
                 newLockedChips[p.id] = chipsBefore - perPlayerAmount;
               });
+
               console.log('[ANTE_ANIM_DEBUG] Fallback computed chips', { newLockedChips, preAnteChips });
               lockedChipsRef.current = newLockedChips;
               setDisplayedChips(newLockedChips);
