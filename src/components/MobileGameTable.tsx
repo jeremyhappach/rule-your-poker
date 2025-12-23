@@ -1549,15 +1549,22 @@ export const MobileGameTable = ({
 
   // HOLM: If the current player is the solo-vs-Chucky player, keep their cards "tabled" on the felt
   // through the win/payout sequence (hide from bottom section to prevent the "snap back" effect).
+  // CRITICAL: Also check holmWinPotTriggerId - if pot animation is active, keep cards tabled for the winner
+  // to prevent brief re-population during win celebration.
   const isCurrentPlayerSoloVsChucky =
     gameType === 'holm-game' &&
-    isSoloVsChucky &&
     !!currentPlayer &&
-    (soloVsChuckyPlayerIdLocked
-      ? soloVsChuckyPlayerIdLocked === currentPlayer.id
-      : winnerPlayerId
-        ? winnerPlayerId === currentPlayer.id
-        : currentPlayer.current_decision === 'stay');
+    (
+      // Case 1: Normal solo-vs-Chucky flow
+      (isSoloVsChucky &&
+        (soloVsChuckyPlayerIdLocked
+          ? soloVsChuckyPlayerIdLocked === currentPlayer.id
+          : winnerPlayerId
+            ? winnerPlayerId === currentPlayer.id
+            : currentPlayer.current_decision === 'stay')) ||
+      // Case 2: During pot-to-player animation, keep winner's cards tabled even if isSoloVsChucky briefly flickers
+      (holmWinPotTriggerId && winnerPlayerId === currentPlayer.id)
+    );
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
