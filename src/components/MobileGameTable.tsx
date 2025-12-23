@@ -3586,86 +3586,49 @@ export const MobileGameTable = ({
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
-        {/* Reserved announcement area (prevents cards shifting when badges/messages appear) */}
-        <div className="relative shrink-0">
-          {/* Always reserve vertical space so tabs/cards never hop when messages appear */}
-          <div className="h-28" aria-hidden="true" />
-
-          <div className="absolute inset-x-0 top-0 space-y-2 pt-2 pointer-events-none">
-            {/* Status badges */}
-            {(pendingSessionEnd || isPaused) && (
-              <div className="px-4">
-                <div className="flex items-center justify-center gap-2">
-                  {pendingSessionEnd && (
-                    <Badge variant="destructive" className="text-xs px-2 py-0.5">
-                      LAST HAND
-                    </Badge>
-                  )}
-                  {isPaused && (
-                    <Badge
-                      variant="outline"
-                      className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500"
-                    >
-                      ⏸ PAUSED
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Game Over state - result message (includes beat Chucky results now) */}
-            {/* Hide all announcements during 3-5-7 win animation - the animation itself is the announcement */}
-            {isGameOver &&
-              lastRoundResult &&
-              !(
-                gameType !== "holm-game" &&
-                (threeFiveSevenWinTriggerId ||
-                  threeFiveSevenWinPhase !== "idle" ||
-                  lastRoundResult.includes("won the game"))
-              ) && (
-                <div className="px-4">
-                  <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
-                    <p className="text-slate-900 font-bold text-base text-center">
-                      {lastRoundResult.split("|||")[0]}
-                    </p>
-                  </div>
-                </div>
+        {/* Fixed-height announcement area - always reserved to prevent layout shift */}
+        <div className="h-7 flex items-center justify-center px-2 shrink-0">
+          {/* Status badges (LAST HAND / PAUSED) */}
+          {(pendingSessionEnd || isPaused) ? (
+            <div className="flex items-center justify-center gap-2">
+              {pendingSessionEnd && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                  LAST HAND
+                </Badge>
               )}
-
-            {/* Result message - in bottom section (non-game-over, hide for 357 sweep, hide "won a leg" for 3-5-7 final leg win) */}
-            {!isGameOver &&
-              lastRoundResult &&
-              !lastRoundResult.startsWith("357_SWEEP:") &&
-              !(
-                gameType !== "holm-game" &&
-                threeFiveSevenWinTriggerId &&
-                lastRoundResult.includes("won a leg")
-              ) &&
-              (awaitingNextRound ||
-                roundStatus === "completed" ||
-                roundStatus === "showdown" ||
-                allDecisionsIn ||
-                chuckyActive) && (
-                <div className="px-4">
-                  <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
-                    <p className="text-slate-900 font-bold text-sm text-center">
-                      {lastRoundResult.split("|||")[0]}
-                    </p>
-                  </div>
-                </div>
+              {isPaused && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-yellow-500 text-yellow-500">
+                  ⏸ PAUSED
+                </Badge>
               )}
-
-            {/* Dealer setup message - shown as yellow announcement when another player is configuring */}
-            {dealerSetupMessage && (
-              <div className="px-4">
-                <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-sm text-center animate-pulse">
-                    {dealerSetupMessage}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : /* Game Over result */
+          isGameOver && lastRoundResult && !(
+            gameType !== "holm-game" &&
+            (threeFiveSevenWinTriggerId || threeFiveSevenWinPhase !== "idle" || lastRoundResult.includes("won the game"))
+          ) ? (
+            <div className="bg-poker-gold/95 rounded px-2 py-0.5 border border-amber-900 max-w-full">
+              <p className="text-slate-900 font-bold text-xs text-center truncate">
+                {lastRoundResult.split("|||")[0]}
+              </p>
+            </div>
+          ) : /* Normal result message */
+          !isGameOver && lastRoundResult && !lastRoundResult.startsWith("357_SWEEP:") &&
+          !(gameType !== "holm-game" && threeFiveSevenWinTriggerId && lastRoundResult.includes("won a leg")) &&
+          (awaitingNextRound || roundStatus === "completed" || roundStatus === "showdown" || allDecisionsIn || chuckyActive) ? (
+            <div className="bg-poker-gold/95 rounded px-2 py-0.5 border border-amber-900 max-w-full">
+              <p className="text-slate-900 font-bold text-xs text-center truncate">
+                {lastRoundResult.split("|||")[0]}
+              </p>
+            </div>
+          ) : /* Dealer setup message */
+          dealerSetupMessage ? (
+            <div className="bg-poker-gold/95 rounded px-2 py-0.5 border border-amber-900 max-w-full">
+              <p className="text-slate-900 font-bold text-xs text-center truncate animate-pulse">
+                {dealerSetupMessage}
+              </p>
+            </div>
+          ) : null}
         </div>
         
         {/* Tab navigation bar */}
@@ -3915,11 +3878,11 @@ export const MobileGameTable = ({
               })();
 
               return (
-                <div className="relative w-full h-[240px] shrink-0">
-                  <div className="absolute inset-x-0 top-0 flex items-center justify-center min-h-12">
+                <div className="relative w-full h-[200px] shrink-0">
+                  <div className="absolute inset-x-0 top-0 flex items-center justify-center min-h-10">
                     {topRow}
                   </div>
-                  <div className="absolute inset-x-0 top-12 flex items-start justify-center">
+                  <div className="absolute inset-x-0 top-8 flex items-start justify-center">
                     {mainContent}
                   </div>
                 </div>
@@ -3927,7 +3890,7 @@ export const MobileGameTable = ({
             })()}
             
             {/* Player info - below cards */}
-            <div className="flex flex-col gap-1 mt-16">
+            <div className="flex flex-col gap-1 -mt-4">
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
