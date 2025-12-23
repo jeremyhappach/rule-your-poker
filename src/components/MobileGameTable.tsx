@@ -44,6 +44,10 @@ import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { MessageSquare, User, Clock } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 
+// Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
+// otherwise resets state and reintroduces the pot flash).
+const displayedPotMemoryByGameId = new Map<string, number>();
+
 // Custom Spade icon with pronounced stem (Lucide's looks like upside-down heart)
 const SpadeIcon = ({ className }: { className?: string }) => (
   <svg
@@ -466,7 +470,14 @@ export const MobileGameTable = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   
   // Delayed pot display - only update when chips arrive at pot box
-  const [displayedPot, setDisplayedPot] = useState(pot);
+  const potMemoryKey = gameId ?? 'unknown-game';
+  const [displayedPot, setDisplayedPot] = useState(() => {
+    return displayedPotMemoryByGameId.get(potMemoryKey) ?? pot;
+  });
+  useEffect(() => {
+    displayedPotMemoryByGameId.set(potMemoryKey, displayedPot);
+  }, [potMemoryKey, displayedPot]);
+
   const isAnteAnimatingRef = useRef(false);
 
   // CRITICAL: Use a REF for locked chip values during animation
@@ -539,8 +550,15 @@ export const MobileGameTable = ({
 
     potLockTriggerRef.current = pending.lockId;
     potLockRef.current = true;
+    console.log('[POT_LOCK] lock(pre-paint)', {
+      gameId: potMemoryKey,
+      lockId: pending.lockId,
+      prePot: pending.prePot,
+      postPot: pending.postPot,
+      backendPot: pot,
+    });
     setDisplayedPot(pending.prePot);
-  }, [getPendingPotInAnimation]);
+  }, [getPendingPotInAnimation, pot, potMemoryKey]);
 
   // Sync displayedPot to backend pot when NOT locked/animating.
   // (This still handles normal DB updates, but never overrides our pre-animation freeze.)
@@ -2227,6 +2245,7 @@ export const MobileGameTable = ({
 
             // Unlock pot syncing after chips arrive
             potLockRef.current = false;
+            console.log('[POT_LOCK] unlock(chips-arrived)', { gameId: potMemoryKey, backendPot: pot });
 
             // Keep locked values active - the useEffect watching players will clear
             // them automatically when backend values match expected values
@@ -2305,6 +2324,7 @@ export const MobileGameTable = ({
             // Chips arrived at pot - show the post-loss pot and unlock syncing
             setDisplayedPot(pot);
             potLockRef.current = false;
+            console.log('[POT_LOCK] unlock(chucky-loss)', { gameId: potMemoryKey, backendPot: pot });
 
             // Chips arrived at pot - clear override so actual (post-loss) values show
             setDisplayedChips({});
@@ -2390,6 +2410,7 @@ export const MobileGameTable = ({
               // Chips arrived at pot - show post-loss pot and unlock
               setDisplayedPot(pot);
               potLockRef.current = false;
+              console.log('[POT_LOCK] unlock(showdown-losers)', { gameId: potMemoryKey, backendPot: pot });
 
               setDisplayedChips({});
               // Trigger pot flash with NET change (losers paid - winner took)
