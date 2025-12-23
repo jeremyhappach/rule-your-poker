@@ -3212,6 +3212,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // CRITICAL (3-5-7): while the 357 win animation sequence is playing, do not allow ANY other
+    // timers/callbacks to transition the game. The animation completion callback will flip this
+    // flag off and then call this function.
+    if (is357WinAnimationActiveRef.current) {
+      console.log('[GAME OVER COMPLETE] Blocked: 357 win animation is active');
+      return;
+    }
+
     // GUARD: Prevent multiple clients from racing to transition the game state
     if (gameOverTransitionRef.current) {
       console.log('[GAME OVER COMPLETE] Already processing transition, skipping duplicate call');
@@ -3221,10 +3229,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
 
-    // IMPORTANT: Do NOT clear card state here!
-    // Cards should persist during the transition until the game status actually changes.
-    // Card state will be cleared in the status change effect when transitioning to game_selection/configuring.
-    // Clearing here causes the tabled cards and highlights to disappear during the brief transition window.
+    try {
+      // IMPORTANT: Do NOT clear card state here!
+      // Cards should persist during the transition until the game status actually changes.
+      // Card state will be cleared in the status change effect when transitioning to game_selection/configuring.
+      // Clearing here causes the tabled cards and highlights to disappear during the brief transition window.
 
     // Check if session should end AND verify game is still in game_over status (not already transitioned by another client)
     const { data: gameData, error: fetchError } = await supabase
@@ -3425,7 +3434,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Manual refetch to update UI
     // Bot dealers will be handled automatically by DealerGameSetup component
     await fetchGameData();
-  }, [gameId, navigate, players, game]);
+  } catch (error: any) {
+    // If anything throws above, the previous code would leave gameOverTransitionRef stuck true,
+    // permanently blocking progression. This catch + finally makes the flow resilient.
+    console.error('[GAME OVER COMPLETE] Unhandled error during transition:', error);
+    toast({
+      title: 'Error',
+      description: error?.message || 'Failed to start next game. Please try again.',
+      variant: 'destructive',
+    });
+
+    // Best-effort resync.
+    try {
+      await fetchGameData();
+    } catch (e) {
+      console.error('[GAME OVER COMPLETE] fetchGameData failed during recovery:', e);
+    }
+  } finally {
+    gameOverTransitionRef.current = false;
+  }
+  }, [gameId, navigate, players, game, fetchGameData, toast]);
 
   // Dealer confirms to skip countdown and go directly to game selection
   const handleDealerConfirmGameOver = useCallback(async () => {
