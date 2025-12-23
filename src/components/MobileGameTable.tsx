@@ -545,6 +545,12 @@ export const MobileGameTable = ({
   // Safety: if the pot gets locked but the corresponding animation never fires (rare ref/timing race),
   // auto-unlock so the pot doesn't get stuck at the pre-animation value (often 0).
   const potLockSafetyTimeoutRef = useRef<number | null>(null);
+
+  // INITIAL ANTE GUARD:
+  // On the very first ante of a session, there is a short window where the backend pot can briefly
+  // report 0 while the first hand/round record is being created. That transient 0 must NOT overwrite
+  // the correct post-ante displayed pot.
+  const initialAntePotGuardRef = useRef<{ expectedPot: number; expiresAt: number } | null>(null);
   
   // Track if a POT-OUT animation is active (pot → player)
   const [potOutAnimationActive, setPotOutAnimationActive] = useState(false);
@@ -659,6 +665,28 @@ export const MobileGameTable = ({
       return;
     }
 
+    // Clear initial-ante guard as soon as backend catches up, round exists, or it expires.
+    const guard = initialAntePotGuardRef.current;
+    if (guard) {
+      const now = Date.now();
+      const expired = now >= guard.expiresAt;
+      const backendCaughtUp = pot >= guard.expectedPot;
+      const roundExists = !!handContextId;
+
+      if (expired || backendCaughtUp || roundExists) {
+        initialAntePotGuardRef.current = null;
+      } else if (pot < displayedPot) {
+        // This is the bug: pot temporarily reports 0 (or lower) during initial ante.
+        console.log('[POT_SYNC] BLOCKED decrease (initial-ante guard)', {
+          displayedPot,
+          backendPot: pot,
+          expectedPot: guard.expectedPot,
+          msLeft: guard.expiresAt - now,
+        });
+        return;
+      }
+    }
+
     // 357 win phases:
     // - waiting / legs-to-player: game is still resolving the win (block pot sync to avoid flicker)
     // - pot-to-player / delay: chips are leaving pot or +$x is flashing; pot should be FREE to sync
@@ -752,7 +780,17 @@ export const MobileGameTable = ({
         potIncreaseSyncTimeoutRef.current = null;
       }
     };
-  }, [pot, displayedPot, hasPending357WinForPot, potMemoryKey, threeFiveSevenWinTriggerId, holmWinPotTriggerId, anteAnimationTriggerId]);
+  }, [
+    pot,
+    displayedPot,
+    hasPending357WinForPot,
+    potMemoryKey,
+    threeFiveSevenWinTriggerId,
+    holmWinPotTriggerId,
+    anteAnimationTriggerId,
+    handContextId,
+  ]);
+
 
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
@@ -2424,11 +2462,32 @@ export const MobileGameTable = ({
             const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
             const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
             const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
-            
+
+            // Update pot display when chips arrive.
+            // IMPORTANT: For the very first ante (handContextId is null), the backend pot can briefly
+            // report 0; we must guard against that transient decrease.
             if (anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined) {
               setDisplayedPot(anteAnimationExpectedPot);
+
+              if (!isPussyTaxTrigger && !handContextId) {
+                initialAntePotGuardRef.current = {
+                  expectedPot: anteAnimationExpectedPot,
+                  expiresAt: Date.now() + 8000,
+                };
+              }
             } else {
-              setDisplayedPot(prev => prev + totalAmount);
+              setDisplayedPot(prev => {
+                const next = prev + totalAmount;
+
+                if (!isPussyTaxTrigger && !handContextId) {
+                  initialAntePotGuardRef.current = {
+                    expectedPot: next,
+                    expiresAt: Date.now() + 8000,
+                  };
+                }
+
+                return next;
+              });
             }
 
             // Unlock pot syncing after chips arrive (POT-IN complete)
