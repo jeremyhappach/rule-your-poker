@@ -3750,6 +3750,34 @@ export const MobileGameTable = ({
                 >
                   ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
                 </Badge>
+              ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold ? (
+                /* Holm pre-decision checkboxes - render in same spot as action buttons */
+                <div className="flex items-center justify-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={holmPreFold}
+                      onChange={(e) => {
+                        onHolmPreFoldChange?.(e.target.checked);
+                        if (e.target.checked) onHolmPreStayChange?.(false);
+                      }}
+                      className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
+                    />
+                    <span className="text-sm font-medium text-red-500">Fold</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={holmPreStay}
+                      onChange={(e) => {
+                        onHolmPreStayChange?.(e.target.checked);
+                        if (e.target.checked) onHolmPreFoldChange?.(false);
+                      }}
+                      className="w-5 h-5 rounded border-2 border-green-500 accent-green-500"
+                    />
+                    <span className="text-sm font-medium text-green-500">Stay</span>
+                  </label>
+                </div>
               ) : currentPlayerCards.length === 0 && roundStatus === 'betting' ? (
                 /* Placeholder while waiting for cards - maintains layout stability */
                 <div className="flex gap-2 justify-center opacity-0 pointer-events-none">
@@ -3770,16 +3798,9 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
-              const showPreDecisionCheckboxes = gameType === 'holm-game' && 
-                !canDecide && 
-                !hasDecided && 
-                roundStatus === 'betting' && 
-                currentPlayerCards.length > 0 &&
-                !currentPlayer?.auto_fold; // Hide when auto_fold is active
-
               return (
                 <div className="flex flex-col items-center gap-2">
-                  {/* Pre-decision checkboxes or show cards button */}
+                  {/* Show cards button for 3-5-7 winner */}
                   {isWinner357InAnimation ? (
                     (() => {
                       const isFinalRound = currentRound === 3;
@@ -3801,33 +3822,6 @@ export const MobileGameTable = ({
                         </div>
                       );
                     })()
-                  ) : showPreDecisionCheckboxes ? (
-                    <div className="flex items-center justify-center gap-6">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={holmPreFold}
-                          onChange={(e) => {
-                            onHolmPreFoldChange?.(e.target.checked);
-                            if (e.target.checked) onHolmPreStayChange?.(false);
-                          }}
-                          className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
-                        />
-                        <span className="text-sm font-medium text-red-500">Fold</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={holmPreStay}
-                          onChange={(e) => {
-                            onHolmPreStayChange?.(e.target.checked);
-                            if (e.target.checked) onHolmPreFoldChange?.(false);
-                          }}
-                          className="w-5 h-5 rounded border-2 border-green-500 accent-green-500"
-                        />
-                        <span className="text-sm font-medium text-green-500">Stay</span>
-                      </label>
-                    </div>
                   ) : null}
 
                   {/* Cards */}
