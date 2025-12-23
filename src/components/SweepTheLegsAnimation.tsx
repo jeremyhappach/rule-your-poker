@@ -21,7 +21,7 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
       const timer = setTimeout(() => {
         setVisible(false);
         onCompleteRef.current?.();
-      }, 3000); // 3 seconds display
+      }, 4000); // 4 seconds display
       return () => clearTimeout(timer);
     } else if (!show) {
       hasShownRef.current = false;
