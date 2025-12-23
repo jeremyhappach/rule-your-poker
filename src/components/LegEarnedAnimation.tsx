@@ -21,8 +21,8 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
   // Default target if not provided
   const finalTarget = targetPosition || { top: '85%', left: '65%' };
 
-  // Animation duration - longer for winning leg
-  const animationDuration = isWinningLeg ? 2500 : 1500;
+  // Animation duration - slightly shorter for winning leg to allow faster transition to legs-to-player
+  const animationDuration = isWinningLeg ? 1800 : 1500;
 
   // Format leg value for display
   const formattedValue = legValue > 0 ? `$${legValue}` : 'L';
@@ -54,7 +54,7 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
 
       {/* Flying L chip - positioned to land at player's leg indicator position */}
       <div 
-        className={`absolute z-50 pointer-events-none ${isWinningLeg ? 'animate-[flyToTargetWinning_2.5s_ease-out_forwards]' : 'animate-[flyToTarget_1.5s_ease-out_forwards]'}`}
+        className={`absolute z-50 pointer-events-none ${isWinningLeg ? 'animate-[flyToTargetWinning_1.8s_ease-out_forwards]' : 'animate-[flyToTarget_1.5s_ease-out_forwards]'}`}
         style={{
           // Start position - will animate to target
           top: '40%',
