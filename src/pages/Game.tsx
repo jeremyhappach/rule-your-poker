@@ -3817,6 +3817,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Reset 3-5-7 win state when starting a new game or when game ends (to prepare for next game)
   useEffect(() => {
+    // CRITICAL: Never clear 357 win state while the client-side win animation sequence is still playing.
+    // If we clear early, MobileGameTable will unmount PotToPlayerAnimation mid-flight.
+    if (is357WinAnimationActiveRef.current) {
+      console.log('[357 WIN RESET] Deferring reset because win animation is still active', {
+        status: game?.status,
+        currentRound: game?.current_round,
+      });
+      return;
+    }
+
     // Reset on new game start (round 1)
     if (game?.status === 'in_progress' && game?.current_round === 1) {
       console.log('[357 WIN RESET] Resetting win state for new game');
@@ -3875,16 +3885,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
-    if (game?.status !== 'game_over' || game?.game_type === 'holm-game' || !gameId) {
+    if (game?.game_type === 'holm-game' || !gameId) {
       return;
     }
-    console.log('[357 WIN] Animation complete, clearing active flag and proceeding to next game');
-    
-    // Clear animation active flag - allows any future countdown to proceed
+
+    console.log('[357 WIN] Animation complete, clearing active flag', {
+      currentStatus: game?.status,
+    });
+
+    // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);
     is357WinAnimationActiveRef.current = false;
-    
-    // Proceed directly to next game without countdown
+
+    // If the dealer (or another client) already transitioned the game state, just clear local win state.
+    if (game?.status !== 'game_over') {
+      console.log('[357 WIN] Game already transitioned, clearing local 357 win state only:', game?.status);
+      threeFiveSevenWinProcessedRef.current = null;
+      setThreeFiveSevenWinTriggerId(null);
+      setThreeFiveSevenWinnerId(null);
+      setThreeFiveSevenWinPotAmount(0);
+      setThreeFiveSevenWinnerCards([]);
+      cachedPotFor357WinRef.current = 0;
+      setCachedLegPositions([]);
+      return;
+    }
+
+    console.log('[357 WIN] Proceeding to next game');
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, gameId, handleGameOverComplete]);
 
