@@ -286,7 +286,7 @@ export const MobileGameTable = ({
   roundStatus,
   pendingDecision,
   isPaused,
-  anteAmount = 1,
+  anteAmount = 0,
   pussyTaxValue = 1,
   gameStatus,
   handContextId,
@@ -584,15 +584,54 @@ export const MobileGameTable = ({
   // Track if a POT-OUT animation is active (pot → player)
   const [potOutAnimationActive, setPotOutAnimationActive] = useState(false);
 
+  // Reliable per-player amount for POT-IN animations.
+  // IMPORTANT: Never default to a tiny fallback (like 1/2) when the parent has provided
+  // pre/post chip snapshots—derive the amount from those snapshots instead.
+  const getPotInPerPlayerAmount = useCallback(() => {
+    if (!anteAnimationTriggerId) return anteAmount;
+
+    const isPussyTaxTrigger = anteAnimationTriggerId.startsWith('pussy-tax-');
+    if (isPussyTaxTrigger) return pussyTaxValue;
+
+    // Prefer explicit snapshots from parent (most reliable during races).
+    if (preAnteChips && expectedPostAnteChips) {
+      const activePlayers = players.filter((p) => !p.sitting_out);
+      for (const p of activePlayers) {
+        const pre = preAnteChips[p.id];
+        const post = expectedPostAnteChips[p.id];
+        if (typeof pre === 'number' && typeof post === 'number') {
+          const diff = pre - post;
+          if (diff > 0) return diff;
+        }
+      }
+    }
+
+    return anteAmount;
+  }, [anteAnimationTriggerId, anteAmount, expectedPostAnteChips, players, preAnteChips, pussyTaxValue]);
+
+  const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
 
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot) - POT-IN
     if (anteAnimationTriggerId) {
       const isPussyTaxTrigger = anteAnimationTriggerId.startsWith('pussy-tax-');
-      const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
-      const activeCount = players.filter(p => !p.sitting_out).length;
+      const perPlayerAmount = getPotInPerPlayerAmount();
+      const activePlayers = players.filter((p) => !p.sitting_out);
+      const activeCount = activePlayers.length;
+
+      if (perPlayerAmount <= 0 || activeCount <= 0) {
+        console.warn('[POT_IN] Skipping pot-in lock (invalid amount/count)', {
+          triggerId: anteAnimationTriggerId,
+          perPlayerAmount,
+          activeCount,
+        });
+        return null;
+      }
+
       const totalAmount = perPlayerAmount * activeCount;
-      const postPot = (anteAnimationExpectedPot ?? pot);
+      const postPotFromProps = anteAnimationExpectedPot ?? pot;
+      // For a fresh-hand ante, the post pot should be at least the ante total.
+      const postPot = isPussyTaxTrigger ? postPotFromProps : Math.max(postPotFromProps, totalAmount);
 
       // IMPORTANT: Ante happens at the start of a fresh hand, so the pre-ante pot should be 0.
       // We intentionally do NOT show any transient/stale backend pot value here.
@@ -620,9 +659,8 @@ export const MobileGameTable = ({
   }, [
     pot,
     players,
-    anteAmount,
-    pussyTaxValue,
     anteAnimationTriggerId,
+    getPotInPerPlayerAmount,
     anteAnimationExpectedPot,
     chuckyLossTriggerId,
     chuckyLossAmount,
@@ -2505,8 +2543,8 @@ export const MobileGameTable = ({
         {/* Ante Up Animation */}
         <AnteUpAnimation
           pot={pot}
-          anteAmount={anteAmount}
-          chipAmount={anteAnimationTriggerId?.startsWith('pussy-tax-') ? pussyTaxValue : anteAmount}
+          anteAmount={potInPerPlayerAmount}
+          chipAmount={potInPerPlayerAmount}
           activePlayers={players.filter(p => !p.sitting_out)}
           currentPlayerPosition={currentPlayer?.position ?? null}
           getClockwiseDistance={getClockwiseDistance}
@@ -2519,18 +2557,32 @@ export const MobileGameTable = ({
           onAnimationStart={() => {
             // CRITICAL: Set animating flag FIRST to prevent sync useEffect from resetting
             isAnteAnimatingRef.current = true;
-            
+
             // CRITICAL: Capture expected pot and total BEFORE parent clears them
             // (parent clears props in onAnteAnimationStarted, but we need values 800ms later in onChipsArrived)
             const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
-            const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
-            const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
-            const postPot = (anteAnimationExpectedPot ?? pot);
-            
+            const perPlayerAmount = getPotInPerPlayerAmount();
+            const activePlayers = players.filter((p) => !p.sitting_out);
+
+            if (perPlayerAmount <= 0 || activePlayers.length <= 0) {
+              console.warn('[ANTE_ANIM] Invalid perPlayerAmount/activeCount at animation start - clearing trigger', {
+                triggerId: anteAnimationTriggerId,
+                perPlayerAmount,
+                activeCount: activePlayers.length,
+              });
+              onAnteAnimationStarted?.();
+              isAnteAnimatingRef.current = false;
+              return;
+            }
+
+            const totalAmount = perPlayerAmount * activePlayers.length;
+            const postPotFromProps = anteAnimationExpectedPot ?? pot;
+            const postPot = isPussyTaxTrigger ? postPotFromProps : Math.max(postPotFromProps, totalAmount);
+
             // Lock these values in refs so onChipsArrived can use them
             lockedAnteExpectedPotRef.current = postPot;
             lockedAnteTotalRef.current = totalAmount;
-            
+
             // CRITICAL: Use expectedPostAnteChips directly if available - this is computed in Game.tsx
             // BEFORE any backend updates, so it's guaranteed to be correct
             if (expectedPostAnteChips) {
@@ -2539,14 +2591,14 @@ export const MobileGameTable = ({
             } else {
               // Fallback: compute from preAnteChips or current chips
               const newLockedChips: Record<string, number> = {};
-              players.filter(p => !p.sitting_out).forEach(p => {
+              activePlayers.forEach(p => {
                 const chipsBefore = preAnteChips?.[p.id] ?? p.chips;
                 newLockedChips[p.id] = chipsBefore - perPlayerAmount;
               });
               lockedChipsRef.current = newLockedChips;
               setDisplayedChips(newLockedChips);
             }
-            
+
             // Clear the trigger so it doesn't fire again on status change
             onAnteAnimationStarted?.();
 
