@@ -3719,9 +3719,9 @@ export const MobileGameTable = ({
         </div>
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
-        {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1 min-h-0">
-            {/* Fixed-height action area to prevent cards from hopping vertically */}
-            <div className="h-12 flex items-center justify-center shrink-0">
+        {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1">
+            {/* Action area */}
+            <div className="flex items-center justify-center">
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                 <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
@@ -3762,13 +3762,10 @@ export const MobileGameTable = ({
                 >
                   ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
                 </Badge>
-              ) : (
-                /* Empty spacer to maintain consistent height */
-                <div className="h-9" />
-              )}
+              ) : null}
             </div>
             
-            {/* Cards display (vertically anchored so it doesn't hop) */}
+            {/* Cards display */}
             {(() => {
               const isWinner357InAnimation = gameType !== 'holm-game' && 
                 threeFiveSevenWinnerId === currentPlayer?.id && 
@@ -3781,30 +3778,31 @@ export const MobileGameTable = ({
                 currentPlayerCards.length > 0 &&
                 !currentPlayer?.auto_fold; // Hide when auto_fold is active
 
-              const topRow = (() => {
-                if (isWinner357InAnimation) {
-                  const isFinalRound = currentRound === 3;
-                  return !winner357ShowCards ? (
-                    <Button 
-                      variant="outline"
-                      size={isFinalRound ? "lg" : "default"}
-                      onClick={() => onWinner357ShowCards?.()}
-                      className={cn(
-                        "bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold",
-                        isFinalRound ? "px-6 py-3 text-base" : "px-4 py-2 text-sm",
-                      )}
-                    >
-                      Show Cards
-                    </Button>
-                  ) : (
-                    <div className="text-sm text-green-400 font-medium">
-                      {isFinalRound ? 'Cards Shown' : 'Cards Tabled'}
-                    </div>
-                  );
-                }
-
-                if (showPreDecisionCheckboxes) {
-                  return (
+              return (
+                <div className="flex flex-col items-center gap-2">
+                  {/* Pre-decision checkboxes or show cards button */}
+                  {isWinner357InAnimation ? (
+                    (() => {
+                      const isFinalRound = currentRound === 3;
+                      return !winner357ShowCards ? (
+                        <Button 
+                          variant="outline"
+                          size={isFinalRound ? "lg" : "default"}
+                          onClick={() => onWinner357ShowCards?.()}
+                          className={cn(
+                            "bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold",
+                            isFinalRound ? "px-6 py-3 text-base" : "px-4 py-2 text-sm",
+                          )}
+                        >
+                          Show Cards
+                        </Button>
+                      ) : (
+                        <div className="text-sm text-green-400 font-medium">
+                          {isFinalRound ? 'Cards Shown' : 'Cards Tabled'}
+                        </div>
+                      );
+                    })()
+                  ) : showPreDecisionCheckboxes ? (
                     <div className="flex items-center justify-center gap-6">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -3831,36 +3829,29 @@ export const MobileGameTable = ({
                         <span className="text-sm font-medium text-green-500">Stay</span>
                       </label>
                     </div>
-                  );
-                }
+                  ) : null}
 
-                return null;
-              })();
+                  {/* Cards */}
+                  {isWinner357InAnimation ? (
+                    (() => {
+                      // Round 3 winner doesn't show cards here; they're tabled on the felt.
+                      if (currentRound === 3) return null;
 
-              const mainContent = (() => {
-                if (isWinner357InAnimation) {
-                  // Round 3 winner doesn't show cards here; they're tabled on the felt.
-                  if (currentRound === 3) return null;
-
-                  return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                    <div className="transform scale-[2.2] origin-top">
-                      <PlayerHand 
-                        cards={currentPlayerCards} 
-                        isHidden={false} 
-                        gameType={gameType}
-                        currentRound={currentRound}
-                        showSeparated={currentRound === 3}
-                      />
-                    </div>
-                  ) : null;
-                }
-
-                if (isCurrentPlayerSoloVsChucky) {
-                  return <div className="text-sm text-muted-foreground">Cards tabled on the felt</div>;
-                }
-
-                if (currentPlayerCards.length > 0) {
-                  return (
+                      return !winner357ShowCards && currentPlayerCards.length > 0 ? (
+                        <div className="transform scale-[2.2] origin-top">
+                          <PlayerHand 
+                            cards={currentPlayerCards} 
+                            isHidden={false} 
+                            gameType={gameType}
+                            currentRound={currentRound}
+                            showSeparated={currentRound === 3}
+                          />
+                        </div>
+                      ) : null;
+                    })()
+                  ) : isCurrentPlayerSoloVsChucky ? (
+                    <div className="text-sm text-muted-foreground">Cards tabled on the felt</div>
+                  ) : currentPlayerCards.length > 0 ? (
                     <div
                       className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                     >
@@ -3876,26 +3867,15 @@ export const MobileGameTable = ({
                         tightOverlap={isHolmMultiPlayerShowdown}
                       />
                     </div>
-                  );
-                }
-
-                return <div className="text-sm text-muted-foreground">Waiting for cards...</div>;
-              })();
-
-              return (
-                <div className="relative w-full h-[240px] shrink-0">
-                  <div className="absolute inset-x-0 top-0 flex items-center justify-center min-h-12">
-                    {topRow}
-                  </div>
-                  <div className="absolute inset-x-0 top-12 flex items-start justify-center">
-                    {mainContent}
-                  </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Waiting for cards...</div>
+                  )}
                 </div>
               );
             })()}
             
             {/* Player info - below cards */}
-            <div className="flex flex-col gap-1 mt-16">
+            <div className="flex flex-col gap-1 mt-auto pt-4">
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
