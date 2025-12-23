@@ -2160,9 +2160,9 @@ export const MobileGameTable = ({
     // During 3-5-7 win animation (before legs-to-player), use CACHED leg count since backend may have reset them
     const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
     // Hide legs during win animation phases AND when legs have been swept (backend resets them to 0 after animation)
-    // Also hide during 'waiting' phase since we're about to animate them away
+    // IMPORTANT: Keep legs visible during 'waiting' phase - that's when the LegEarnedAnimation is playing
+    // Only hide once legs-to-player actually starts (that's when they visually fly away)
     const hideLegsForWinAnimation = gameType !== 'holm-game' && (
-      threeFiveSevenWinPhase === 'waiting' || 
       threeFiveSevenWinPhase === 'legs-to-player' || 
       threeFiveSevenWinPhase === 'pot-to-player' || 
       threeFiveSevenWinPhase === 'delay'
@@ -3411,10 +3411,10 @@ export const MobileGameTable = ({
         {/* FIX: Use threeFiveSevenCachedLegPositions prop during game_over - it's pre-cached before backend resets */}
         {/* FIX: Also hide legs during legs-to-player phase (same as other players) */}
         {gameType !== 'holm-game' && currentPlayer && (() => {
-          // During all win animation phases, hide ALL leg indicators since they've animated (or will animate) to winner
-          // Also hide after animation completes since legs have been swept
-          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'waiting' || 
-            threeFiveSevenWinPhase === 'legs-to-player' || 
+          // During legs-to-player and later phases, hide ALL leg indicators since they've animated to winner
+          // IMPORTANT: Keep legs visible during 'waiting' phase - that's when LegEarnedAnimation is playing
+          // Only hide once legs-to-player actually starts (that's when they visually fly away)
+          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'legs-to-player' || 
             threeFiveSevenWinPhase === 'pot-to-player' || 
             threeFiveSevenWinPhase === 'delay';
           // Also hide if we've completed a 357 win animation this session (legs have been swept)
