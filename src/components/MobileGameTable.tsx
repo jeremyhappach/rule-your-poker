@@ -626,28 +626,29 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Determine if we're in "pot-to-player" phase (pot is visually emptying)
-    const isPotToPlayerPhase = threeFiveSevenWinPhaseRef.current === 'pot-to-player';
+    // Determine if we're in a phase where pot is visually empty (chips have flown to winner)
+    // Once pot-to-player starts, the pot should show 0 and stay at 0 through delay phase
+    const isPotVisuallyEmpty = threeFiveSevenWinPhaseRef.current === 'pot-to-player' || 
+                                threeFiveSevenWinPhaseRef.current === 'delay';
     
-    // Block pot INCREASES during win animations, but ALLOW DECREASES during pot-to-player phase
-    // because that's when the pot visually empties as chips fly to the winner
+    // Block pot INCREASES during win animations
     const shouldBlockIncrease = (
       potLockRef.current ||
       isAnteAnimatingRef.current ||
       hasPending357WinForPot ||
-      (threeFiveSevenWinPhaseRef.current !== 'idle' && !isPotToPlayerPhase) ||
+      threeFiveSevenWinPhaseRef.current !== 'idle' ||
       !!threeFiveSevenWinTriggerId ||
       !!holmWinPotTriggerId
     );
     
-    // For decreases: block EXCEPT during pot-to-player phase (when pot should show 0)
+    // For decreases: block EXCEPT when pot is visually empty (pot-to-player or delay phase)
     const shouldBlockDecrease = (
       potLockRef.current ||
       isAnteAnimatingRef.current ||
-      // Block during waiting/legs-to-player phases, but NOT pot-to-player
-      (threeFiveSevenWinPhaseRef.current !== 'idle' && !isPotToPlayerPhase) ||
+      // Block during waiting/legs-to-player phases, but NOT pot-to-player/delay
+      (threeFiveSevenWinPhaseRef.current !== 'idle' && !isPotVisuallyEmpty) ||
       // Block if trigger exists but pot-to-player hasn't started yet
-      (!!threeFiveSevenWinTriggerId && !isPotToPlayerPhase) ||
+      (!!threeFiveSevenWinTriggerId && !isPotVisuallyEmpty) ||
       !!holmWinPotTriggerId
     );
 
@@ -682,15 +683,15 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Decreases (or same) - allow during pot-to-player phase, block during other phases
+    // Decreases (or same) - allow when pot is visually empty, block during other phases
     if (shouldBlockDecrease) {
-      console.log('[POT_SYNC] BLOCKED decrease (win animation active)', { displayedPot, backendPot: pot, phase: threeFiveSevenWinPhaseRef.current, isPotToPlayerPhase });
+      console.log('[POT_SYNC] BLOCKED decrease (win animation active)', { displayedPot, backendPot: pot, phase: threeFiveSevenWinPhaseRef.current, isPotVisuallyEmpty });
       return;
     }
     
-    // ALLOW decrease during pot-to-player phase - pot should show 0 as chips fly to winner
-    if (isPotToPlayerPhase) {
-      console.log('[POT_SYNC] ALLOW decrease during pot-to-player', { displayedPot, backendPot: pot });
+    // ALLOW decrease during pot-to-player/delay phases - pot should show 0
+    if (isPotVisuallyEmpty) {
+      console.log('[POT_SYNC] ALLOW decrease (pot visually empty)', { displayedPot, backendPot: pot, phase: threeFiveSevenWinPhaseRef.current });
     }
     console.log('[POT_SYNC] apply-immediate', { gameId: potMemoryKey, displayedPot, backendPot: pot });
     console.log('[POT_SYNC] apply-immediate', { gameId: potMemoryKey, displayedPot, backendPot: pot });
