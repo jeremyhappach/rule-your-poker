@@ -2191,19 +2191,27 @@ export const MobileGameTable = ({
         )
       }}>
         <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
-          {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => (
-            <div 
-              key={i} 
-              className="w-5 h-5 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
-              style={{
-                marginLeft: !isRightSideSlot && i > 0 ? '-8px' : '0',
-                marginRight: isRightSideSlot && i > 0 ? '-8px' : '0',
-                zIndex: Math.min(displayLegs, legsToWin) - i
-              }}
-            >
-              <span className="text-slate-800 font-bold text-[10px]">L</span>
-            </div>
-          ))}
+          {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => {
+            // Show dollar value during 3-5-7 win animation phases (waiting = leg earned animation playing)
+            const showLegValue = isIn357WinAnimation && legValue > 0;
+            const legDisplayText = showLegValue ? `$${legValue}` : 'L';
+            const chipSize = showLegValue ? 'w-6 h-6' : 'w-5 h-5';
+            const textSize = showLegValue ? 'text-[8px]' : 'text-[10px]';
+            
+            return (
+              <div 
+                key={i} 
+                className={`${chipSize} rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg`}
+                style={{
+                  marginLeft: !isRightSideSlot && i > 0 ? '-8px' : '0',
+                  marginRight: isRightSideSlot && i > 0 ? '-8px' : '0',
+                  zIndex: Math.min(displayLegs, legsToWin) - i
+                }}
+              >
+                <span className={`text-slate-800 font-bold ${textSize}`}>{legDisplayText}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
