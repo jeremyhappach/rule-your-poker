@@ -3990,62 +3990,84 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Start first round - let the round start functions handle the status change
     try {
-      const isHolmGame = game?.game_type === 'holm-game';
-      if (isHolmGame) {
-        // IMMEDIATELY trigger ante animation BEFORE any DB operations start
-        // For first ante, pot starts at 0
-        const activePlayers = players.filter(p => !p.sitting_out);
-        const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
-        // Capture chips and compute expected post-ante values
-        const chipSnapshot: Record<string, number> = {};
-        const expectedChips: Record<string, number> = {};
-        const perPlayerAmount = game?.ante_amount || 2;
-        activePlayers.forEach(p => { 
-          chipSnapshot[p.id] = p.chips;
-          expectedChips[p.id] = p.chips - perPlayerAmount;
-        });
-        setPreAnteChips(chipSnapshot);
-        setExpectedPostAnteChips(expectedChips);
-        setAnteAnimationExpectedPot(anteTotal);
-        // Guard against duplicate triggers (first hand Holm)
-        const holmFirstAnteTriggerKey = `holm-first-ante-${anteTotal}`;
-        if (anteAnimationFiredRef.current !== holmFirstAnteTriggerKey) {
-          anteAnimationFiredRef.current = holmFirstAnteTriggerKey;
-          setAnteAnimationTriggerId(`ante-${Date.now()}`);
-        }
-        
-        // For Holm game, let startHolmRound handle everything including status
-        await startHolmRound(gameId, true); // First hand - collect antes
-      } else {
-        // IMMEDIATELY trigger ante animation BEFORE any DB operations start
-        // For first ante, pot starts at 0
-        const activePlayers = players.filter(p => !p.sitting_out);
-        const anteTotal = (game?.ante_amount || 2) * activePlayers.length;
-        // Capture chips and compute expected post-ante values
-        const chipSnapshot: Record<string, number> = {};
-        const expectedChips: Record<string, number> = {};
-        const perPlayerAmount = game?.ante_amount || 2;
-        activePlayers.forEach(p => { 
-          chipSnapshot[p.id] = p.chips;
-          expectedChips[p.id] = p.chips - perPlayerAmount;
-        });
-        setPreAnteChips(chipSnapshot);
-        setExpectedPostAnteChips(expectedChips);
-        setAnteAnimationExpectedPot(anteTotal);
-        // Guard against duplicate triggers (first hand 3-5-7)
-        const firstAnteTriggerKey = `357-first-ante-${anteTotal}`;
-        if (anteAnimationFiredRef.current !== firstAnteTriggerKey) {
-          anteAnimationFiredRef.current = firstAnteTriggerKey;
-          setAnteAnimationTriggerId(`ante-${Date.now()}`);
-        }
-        
-        // For 3-5-7, update status first then start round
-        await supabase
-          .from('games')
-          .update({ status: 'in_progress' })
-          .eq('id', gameId);
-        await startRound(gameId, 1);
-      }
+          const isHolmGame = game?.game_type === 'holm-game';
+          if (isHolmGame) {
+            // IMMEDIATELY trigger ante animation BEFORE any DB operations start
+            // For first ante, pot starts at 0
+            const activePlayers = players.filter(p => !p.sitting_out);
+            const perPlayerAmount = typeof game?.ante_amount === 'number' ? game.ante_amount : 0;
+            if (perPlayerAmount <= 0) {
+              console.warn('[ANTE] Missing/invalid ante_amount during first ante; deferring animation', {
+                gameId,
+                ante_amount: game?.ante_amount,
+                activePlayers: activePlayers.length,
+              });
+              anteProcessingRef.current = false;
+              fetchGameData();
+              return;
+            }
+
+            const anteTotal = perPlayerAmount * activePlayers.length;
+            // Capture chips and compute expected post-ante values
+            const chipSnapshot: Record<string, number> = {};
+            const expectedChips: Record<string, number> = {};
+            activePlayers.forEach(p => {
+              chipSnapshot[p.id] = p.chips;
+              expectedChips[p.id] = p.chips - perPlayerAmount;
+            });
+            setPreAnteChips(chipSnapshot);
+            setExpectedPostAnteChips(expectedChips);
+            setAnteAnimationExpectedPot(anteTotal);
+            // Guard against duplicate triggers (first hand Holm)
+            const holmFirstAnteTriggerKey = `holm-first-ante-${anteTotal}`;
+            if (anteAnimationFiredRef.current !== holmFirstAnteTriggerKey) {
+              anteAnimationFiredRef.current = holmFirstAnteTriggerKey;
+              setAnteAnimationTriggerId(`ante-${Date.now()}`);
+            }
+
+            // For Holm game, let startHolmRound handle everything including status
+            await startHolmRound(gameId, true); // First hand - collect antes
+          } else {
+            // IMMEDIATELY trigger ante animation BEFORE any DB operations start
+            // For first ante, pot starts at 0
+            const activePlayers = players.filter(p => !p.sitting_out);
+            const perPlayerAmount = typeof game?.ante_amount === 'number' ? game.ante_amount : 0;
+            if (perPlayerAmount <= 0) {
+              console.warn('[ANTE] Missing/invalid ante_amount during first ante; deferring animation', {
+                gameId,
+                ante_amount: game?.ante_amount,
+                activePlayers: activePlayers.length,
+              });
+              anteProcessingRef.current = false;
+              fetchGameData();
+              return;
+            }
+
+            const anteTotal = perPlayerAmount * activePlayers.length;
+            // Capture chips and compute expected post-ante values
+            const chipSnapshot: Record<string, number> = {};
+            const expectedChips: Record<string, number> = {};
+            activePlayers.forEach(p => {
+              chipSnapshot[p.id] = p.chips;
+              expectedChips[p.id] = p.chips - perPlayerAmount;
+            });
+            setPreAnteChips(chipSnapshot);
+            setExpectedPostAnteChips(expectedChips);
+            setAnteAnimationExpectedPot(anteTotal);
+            // Guard against duplicate triggers (first hand 3-5-7)
+            const firstAnteTriggerKey = `357-first-ante-${anteTotal}`;
+            if (anteAnimationFiredRef.current !== firstAnteTriggerKey) {
+              anteAnimationFiredRef.current = firstAnteTriggerKey;
+              setAnteAnimationTriggerId(`ante-${Date.now()}`);
+            }
+
+            // For 3-5-7, update status first then start round
+            await supabase
+              .from('games')
+              .update({ status: 'in_progress' })
+              .eq('id', gameId);
+            await startRound(gameId, 1);
+          }
       // CRITICAL: Reset processing ref AFTER successful round start
       // Without this, future ante processing in the same session would be blocked!
       anteProcessingRef.current = false;
