@@ -727,6 +727,23 @@ export const MobileGameTable = ({
     const isPotVisuallyEmpty = phase357 === 'pot-to-player' || phase357 === 'delay';
     const isPrePotToPlayer357Phase = phase357 === 'waiting' || phase357 === 'legs-to-player';
 
+    // HARD RULE: during normal play, the pot should not move backwards.
+    // We only allow decreases when the pot is visually empty (chips leaving the pot).
+    // This prevents the post → pre/0 → post flicker when the backend briefly emits an older pot value.
+    if (pot < displayedPot && !isPotVisuallyEmpty) {
+      console.error('[POT_SYNC] BLOCKED unexpected decrease', {
+        gameId: potMemoryKey,
+        displayedPot,
+        backendPot: pot,
+        phase: phase357,
+        triggerId357: threeFiveSevenWinTriggerId,
+        triggerIdHolm: holmWinPotTriggerId,
+        anteTrigger: anteAnimationTriggerId,
+        handContextId,
+      });
+      return;
+    }
+
     // Block pot INCREASES only during true lock / chip-flight phases.
     // IMPORTANT: Do NOT block increases during 'delay' (+$x flash) — next hand may already be starting.
     const shouldBlockIncrease =
