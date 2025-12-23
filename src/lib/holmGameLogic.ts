@@ -349,7 +349,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 
   console.log('[HOLM] Game config - pot:', gameConfig.pot, 'buck_position:', gameConfig.buck_position);
 
-  const anteAmount = gameConfig.ante_amount || 2;
+  const anteAmount = gameConfig.ante_amount || 1;
   const dealerPosition = gameConfig.dealer_position || 1;
   
   // CRITICAL: Use passed buck position if provided, otherwise use existing or calculate

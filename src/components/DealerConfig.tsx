@@ -39,7 +39,7 @@ export const DealerConfig = ({
   currentChuckyCards,
   onConfigComplete 
 }: DealerConfigProps) => {
-  const [anteAmount, setAnteAmount] = useState(currentAnteAmount || 2);
+  const [anteAmount, setAnteAmount] = useState(currentAnteAmount || 1);
   const [legValue, setLegValue] = useState(currentLegValue || 1);
   const [pussyTaxEnabled, setPussyTaxEnabled] = useState(currentPussyTaxEnabled ?? true);
   const [pussyTaxValue, setPussyTaxValue] = useState(currentPussyTaxValue || 1);

@@ -60,7 +60,7 @@ export async function startRound(gameId: string, roundNumber: number) {
     return;
   }
   
-  const anteAmount = gameConfig?.ante_amount || 2;
+  const anteAmount = gameConfig?.ante_amount || 1;
   const legValue = gameConfig?.leg_value || 1;
   const betAmount = legValue; // Bet amount per round equals leg value
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
