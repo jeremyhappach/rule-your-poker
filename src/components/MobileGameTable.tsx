@@ -1897,6 +1897,9 @@ export const MobileGameTable = ({
   // mid-sequence and the parent trigger may already have been cleared.
   const threeFiveSevenCachedLegPositionsRef = useRef(threeFiveSevenCachedLegPositions);
   threeFiveSevenCachedLegPositionsRef.current = threeFiveSevenCachedLegPositions;
+
+  // Stable snapshot used during the 3-5-7 win transition (prevents leg flicker if backend resets legs mid-view).
+  const threeFiveSevenLegsSnapshotRef = useRef<{ playerId: string; position: number; legCount: number }[]>([]);
   
   useEffect(() => {
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
@@ -3451,89 +3454,80 @@ export const MobileGameTable = ({
       })()}
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
-        {/* FIX: Use threeFiveSevenCachedLegPositions prop during game_over - it's pre-cached before backend resets */}
-        {/* FIX: Also hide legs during legs-to-player phase (same as other players) */}
+        {/* Use a stable snapshot during the win transition so legs don't disappear/reappear mid-sequence */}
         {gameType !== 'holm-game' && currentPlayer && (() => {
-          // During legs-to-player and later phases, hide ALL leg indicators since they've animated to winner
-          // IMPORTANT: Keep legs visible during 'waiting' phase - that's when LegEarnedAnimation is playing
-          // Only hide once legs-to-player actually starts (that's when they visually fly away)
-          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'legs-to-player' || 
-            threeFiveSevenWinPhase === 'pot-to-player' || 
+          const hideLegsForWinAnimation =
+            threeFiveSevenWinPhase === 'legs-to-player' ||
+            threeFiveSevenWinPhase === 'pot-to-player' ||
             threeFiveSevenWinPhase === 'delay';
-          // Also hide if we've completed a 357 win animation this session (legs have been swept)
-          const legsWereSweptThisSession = lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
-          
-          if (hideLegsForWinAnimation || legsWereSweptThisSession) {
-            return false;
-          }
-          
-          // Get cached legs from the prop if available and in game_over
-          const cachedLegData = threeFiveSevenCachedLegPositions?.find(
-            p => p.playerId === currentPlayer.id
+
+          const legsWereSweptThisSession =
+            lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
+
+          if (hideLegsForWinAnimation || legsWereSweptThisSession) return null;
+
+          const useStableSnapshot =
+            !!threeFiveSevenWinTriggerId ||
+            threeFiveSevenWinPhase !== 'idle' ||
+            lastThreeFiveSevenTriggerRef.current !== null;
+
+          const legsSource =
+            useStableSnapshot && threeFiveSevenLegsSnapshotRef.current.length
+              ? threeFiveSevenLegsSnapshotRef.current
+              : threeFiveSevenCachedLegPositions;
+
+          const cachedLegData = legsSource?.find((p) => p.playerId === currentPlayer.id);
+
+          const shouldPreferCached = isInGameOverStatus || useStableSnapshot;
+
+          const effectiveLegs =
+            shouldPreferCached && cachedLegData && cachedLegData.legCount > 0
+              ? cachedLegData.legCount
+              : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
+
+          const isAnimatingCurrentPlayer =
+            showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
+
+          // While the flying leg is in the air, don't show it in the felt stack yet.
+          const displayCount = Math.min(
+            Math.max(0, isAnimatingCurrentPlayer ? effectiveLegs - 1 : effectiveLegs),
+            legsToWin,
           );
-          
-          // Use cached value during game_over, otherwise use live value
-          const effectiveLegs = isInGameOverStatus && cachedLegData && cachedLegData.legCount > 0 
-            ? cachedLegData.legCount 
-            : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
-          
-          const isAnimatingCurrentPlayer = showLegEarned && legEarnedPlayerPosition === currentPlayer.position;
-          const displayLegs = isAnimatingCurrentPlayer ? effectiveLegs - 1 : effectiveLegs;
-          return displayLegs > 0;
-        })() && (
-          <div 
-            className="absolute z-20"
-            style={{
-              bottom: '8px',
-              left: '55%',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            <div className="flex">
-              {Array.from({ length: (() => {
-                // Same caching logic for the array length
-                const cachedLegData = threeFiveSevenCachedLegPositions?.find(
-                  p => p.playerId === currentPlayer.id
-                );
-                const effectiveLegs = isInGameOverStatus && cachedLegData && cachedLegData.legCount > 0 
-                  ? cachedLegData.legCount 
-                  : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
-                const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
-                  ? effectiveLegs - 1 
-                  : effectiveLegs;
-                return Math.min(displayCount, legsToWin);
-              })() }).map((_, i) => {
-                const cachedLegData = threeFiveSevenCachedLegPositions?.find(
-                  p => p.playerId === currentPlayer.id
-                );
-                const effectiveLegs = isInGameOverStatus && cachedLegData && cachedLegData.legCount > 0 
-                  ? cachedLegData.legCount 
-                  : (cachedCurrentPlayerLegs > 0 && isInGameOverStatus ? cachedCurrentPlayerLegs : currentPlayer.legs);
-                const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
-                  ? effectiveLegs - 1 
-                  : effectiveLegs;
-                // Always show dollar value on legs if legValue is set
-                const showLegDollarValue = legValue > 0;
-                const legDisplayText = showLegDollarValue ? `$${legValue}` : 'L';
-                const chipSize = showLegDollarValue ? 'w-8 h-8' : 'w-7 h-7';
-                const textSize = showLegDollarValue ? 'text-[9px]' : 'text-xs';
-                
-                return (
-                <div 
-                  key={i}
-                  className={`${chipSize} rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg`}
-                  style={{
-                    marginLeft: i > 0 ? '-10px' : '0',
-                    zIndex: Math.min(displayCount, legsToWin) - i
-                  }}
-                >
-                  <span className={`text-slate-800 font-bold ${textSize}`}>{legDisplayText}</span>
-                </div>
-                );
-              })}
+
+          if (displayCount <= 0) return null;
+
+          const showLegDollarValue = legValue > 0;
+          const legDisplayText = showLegDollarValue ? `$${legValue}` : 'L';
+          const chipSize = showLegDollarValue ? 'w-8 h-8' : 'w-7 h-7';
+          const textSize = showLegDollarValue ? 'text-[9px]' : 'text-xs';
+
+          return (
+            <div
+              className="absolute z-20"
+              style={{
+                bottom: '8px',
+                left: '55%',
+                transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
+              <div className="flex">
+                {Array.from({ length: displayCount }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`${chipSize} rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg`}
+                    style={{
+                      marginLeft: i > 0 ? '-10px' : '0',
+                      zIndex: displayCount - i,
+                    }}
+                  >
+                    <span className={`text-slate-800 font-bold ${textSize}`}>{legDisplayText}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
+
         
         {/* Dealer button on felt for current player - hide during 3-5-7 multi-player showdown */}
         {currentPlayer && dealerPosition === currentPlayer.position && !is357MultiPlayerShowdown && (
@@ -3618,6 +3612,7 @@ export const MobileGameTable = ({
         
         {/* Result message - in bottom section (non-game-over, hide for 357 sweep, hide "won a leg" for 3-5-7 final leg win) */}
         {!isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && 
+         !(gameType !== 'holm-game' && lastRoundResult.includes('won the game')) &&
          !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
          (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) && (
           <div className="px-4 py-2">
