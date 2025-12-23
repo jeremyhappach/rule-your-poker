@@ -4874,7 +4874,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               roundStatus={isInProgress ? currentRound?.status : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
-              anteAmount={game.ante_amount}
+              anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
               pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
               anteAnimationTriggerId={anteAnimationTriggerId}
