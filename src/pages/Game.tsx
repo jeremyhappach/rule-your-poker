@@ -2659,29 +2659,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             if (freshGame?.next_round_number === 1 && !is357Sweep && !is357WinAnimationActiveRef.current) {
               // Small delay to ensure UI has updated from proceedToNextRound
               await new Promise(resolve => setTimeout(resolve, 200));
-              // Calculate expected pot: the pot has already been updated with antes by startRound
-              const { data: updatedGame } = await supabase
-                .from('games')
-                .select('pot')
-                .eq('id', gameId)
-                .single();
-              // Capture chips and compute expected post-ante values
-              const activePlayers = players.filter(p => !p.sitting_out);
-              const chipSnapshot: Record<string, number> = {};
-              const expectedChips: Record<string, number> = {};
-              const perPlayerAmount = game?.ante_amount || 2;
-              activePlayers.forEach(p => { 
-                chipSnapshot[p.id] = p.chips;
-                expectedChips[p.id] = p.chips - perPlayerAmount;
-              });
-              setPreAnteChips(chipSnapshot);
-              setExpectedPostAnteChips(expectedChips);
-              setAnteAnimationExpectedPot(updatedGame?.pot || 0);
-              // Guard against duplicate triggers
-              const anteTriggerKey = `ante-round1-${updatedGame?.pot}`;
-              if (anteAnimationFiredRef.current !== anteTriggerKey) {
-                anteAnimationFiredRef.current = anteTriggerKey;
-                setAnteAnimationTriggerId(`ante-${Date.now()}`);
+
+              // IMPORTANT: At this point startRound() has already run, so the backend has already:
+              // - deducted chips
+              // - updated the pot
+              // To animate correctly we must reconstruct the PRE-ante chip snapshot.
+
+              const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
+              if (perPlayerAmount <= 0) {
+                console.warn('[ANTE_ANIM_ROUND1] Skipping ante animation (invalid ante_amount)', { gameId, ante_amount: freshGame?.ante_amount });
+              } else {
+                const [{ data: updatedGame }, { data: freshPlayersAfterAnte }] = await Promise.all([
+                  supabase.from('games').select('pot').eq('id', gameId).single(),
+                  supabase
+                    .from('players')
+                    .select('id, chips, sitting_out')
+                    .eq('game_id', gameId)
+                ]);
+
+                const activePlayers = (freshPlayersAfterAnte || []).filter(p => !p.sitting_out);
+
+                // PRE snapshot = post chips + ante (because backend already deducted)
+                const chipSnapshot: Record<string, number> = {};
+                const expectedChips: Record<string, number> = {};
+                activePlayers.forEach(p => {
+                  chipSnapshot[p.id] = p.chips + perPlayerAmount;
+                  expectedChips[p.id] = p.chips;
+                });
+
+                const computedPot = perPlayerAmount * activePlayers.length;
+                const expectedPot = Math.max(updatedGame?.pot || 0, computedPot);
+
+                console.log('[ANTE_ANIM_ROUND1] Triggering (post-backend) ante animation', {
+                  perPlayerAmount,
+                  activePlayers: activePlayers.length,
+                  computedPot,
+                  backendPot: updatedGame?.pot,
+                  expectedPot,
+                });
+
+                setPreAnteChips(chipSnapshot);
+                setExpectedPostAnteChips(expectedChips);
+                setAnteAnimationExpectedPot(expectedPot);
+
+                // Guard against duplicate triggers
+                const anteTriggerKey = `ante-round1-${expectedPot}`;
+                if (anteAnimationFiredRef.current !== anteTriggerKey) {
+                  anteAnimationFiredRef.current = anteTriggerKey;
+                  setAnteAnimationTriggerId(`ante-${Date.now()}`);
+                }
               }
             }
           }
