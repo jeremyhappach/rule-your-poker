@@ -517,6 +517,41 @@ export const MobileGameTable = ({
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
 
+  // ========== ANTE ESTIMATION DEBUG OVERLAY ==========
+  type AnteEstimationDebugSnapshot = {
+    triggerId: string | null;
+    isPussyTaxTrigger: boolean;
+    perPlayerAmount: number;
+    activeCount: number;
+    totalAmount: number;
+    potDb: number;
+    displayedPotAtStart: number;
+    postPotFromProps: number;
+    computedPrePot: number;
+    computedPostPot: number;
+    anteAmountProp: number;
+    pussyTaxValueProp: number;
+    preAnteChips: Record<string, number> | null;
+    expectedPostAnteChips: Record<string, number> | null;
+    players: {
+      id: string;
+      username: string;
+      sittingOut: boolean;
+      dbChips: number;
+      displayedChips: number | null;
+      preAnteChips: number | null;
+      expectedPostAnteChips: number | null;
+    }[];
+  };
+
+  const [anteEstimationDebug, setAnteEstimationDebug] = useState<AnteEstimationDebugSnapshot | null>(null);
+
+  useEffect(() => {
+    if (!anteEstimationDebug) return;
+    const t = window.setTimeout(() => setAnteEstimationDebug(null), 15_000);
+    return () => window.clearTimeout(t);
+  }, [anteEstimationDebug?.triggerId]);
+
   // ========== POT ANIMATION CLASSIFICATION ==========
   // There are TWO types of animations that affect the pot:
   // 1. POT-IN (player → pot): ante, pussy tax, chucky loss, losers-to-pot
@@ -2665,6 +2700,33 @@ export const MobileGameTable = ({
             // IMPORTANT: Ante is always a fresh-hand action, so the pre-ante pot should be 0.
             // Pussy tax is mid-session, so it must use postPot-totalAmount.
             const preAntePot = isPussyTaxTrigger ? Math.max(0, postPot - totalAmount) : 0;
+
+            // Store snapshot for debug overlay
+            setAnteEstimationDebug({
+              triggerId: anteAnimationTriggerId ?? null,
+              isPussyTaxTrigger: !!isPussyTaxTrigger,
+              perPlayerAmount,
+              activeCount: activePlayers.length,
+              totalAmount,
+              potDb: pot,
+              displayedPotAtStart: displayedPot,
+              postPotFromProps,
+              computedPrePot: preAntePot,
+              computedPostPot: postPot,
+              anteAmountProp: anteAmount,
+              pussyTaxValueProp: pussyTaxValue,
+              preAnteChips: preAnteChips ?? null,
+              expectedPostAnteChips: expectedPostAnteChips ?? null,
+              players: players.map((p) => ({
+                id: p.id,
+                username: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
+                sittingOut: !!p.sitting_out,
+                dbChips: p.chips,
+                displayedChips: typeof displayedChips[p.id] === 'number' ? displayedChips[p.id] : null,
+                preAnteChips: typeof preAnteChips?.[p.id] === 'number' ? preAnteChips[p.id] : null,
+                expectedPostAnteChips: typeof expectedPostAnteChips?.[p.id] === 'number' ? expectedPostAnteChips[p.id] : null,
+              })),
+            });
 
             console.log('[ANTE_ANIM_DEBUG] Setting displayedPot', { preAntePot, displayedPot, postPot });
             if (displayedPot < postPot) {
