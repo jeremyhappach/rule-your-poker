@@ -3,13 +3,14 @@ import { useEffect, useState, useRef } from "react";
 interface LegEarnedAnimationProps {
   show: boolean;
   playerName: string;
+  legValue?: number; // Dollar value of the leg
   targetPosition?: { top: string; left: string }; // Target coordinates for the leg indicator
   isWinningLeg?: boolean; // Is this the final leg that wins the game?
   suppressWinnerOverlay?: boolean; // Don't show "WINNER!" text (used for 3-5-7 games with separate win animation)
   onComplete?: () => void;
 }
 
-export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, onComplete }: LegEarnedAnimationProps) => {
+export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
@@ -22,6 +23,9 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinning
 
   // Animation duration - longer for winning leg
   const animationDuration = isWinningLeg ? 2500 : 1500;
+
+  // Format leg value for display
+  const formattedValue = legValue > 0 ? `$${legValue}` : 'L';
 
   useEffect(() => {
     if (show && !hasShownRef.current) {
@@ -47,6 +51,15 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinning
 
   return (
     <>
+      {/* Leg value announcement banner */}
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-[announceSlideIn_0.4s_ease-out_forwards]">
+        <div className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 px-4 py-2 rounded-lg shadow-lg border-2 border-yellow-300">
+          <span className="text-white font-bold text-sm sm:text-base drop-shadow-md whitespace-nowrap">
+            {playerName} wins a leg{legValue > 0 ? ` ($${legValue})` : ''}!
+          </span>
+        </div>
+      </div>
+
       {/* Flying L chip - positioned to land at player's leg indicator position */}
       <div 
         className={`absolute z-50 pointer-events-none ${isWinningLeg ? 'animate-[flyToTargetWinning_2.5s_ease-out_forwards]' : 'animate-[flyToTarget_1.5s_ease-out_forwards]'}`}
@@ -72,13 +85,15 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinning
           </>
         )}
         
-        {/* L chip - bigger for winning leg */}
+        {/* L chip - bigger for winning leg, shows value if available */}
         <div className={`relative rounded-full bg-white flex items-center justify-center ${
           isWinningLeg 
             ? 'w-14 h-14 border-4 border-yellow-500 shadow-[0_0_40px_rgba(234,179,8,0.9)]' 
             : 'w-10 h-10 border-3 border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.8)]'
         }`}>
-          <span className={`text-slate-800 font-black ${isWinningLeg ? 'text-2xl' : 'text-xl'}`}>L</span>
+          <span className={`text-slate-800 font-black ${isWinningLeg ? (legValue > 0 ? 'text-lg' : 'text-2xl') : (legValue > 0 ? 'text-xs' : 'text-xl')}`}>
+            {formattedValue}
+          </span>
         </div>
         
         {/* Sparkles during flight - more for winning leg */}
@@ -157,6 +172,17 @@ export const LegEarnedAnimation = ({ show, playerName, targetPosition, isWinning
           100% {
             opacity: 1;
             transform: scale(1);
+          }
+        }
+        
+        @keyframes announceSlideIn {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
           }
         }
       `}</style>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
 
 interface LegChipAnimation {
   id: string;
@@ -17,6 +18,7 @@ interface LegsToPlayerAnimationProps {
   getClockwiseDistance: (position: number) => number;
   containerRef: React.RefObject<HTMLDivElement>;
   legsToWin: number;
+  legValue?: number; // Dollar value of each leg
   onAnimationComplete?: () => void;
 }
 
@@ -28,9 +30,11 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   getClockwiseDistance,
   containerRef,
   legsToWin,
+  legValue = 0,
   onAnimationComplete,
 }) => {
   const [animations, setAnimations] = useState<LegChipAnimation[]>([]);
+  const [showSweepOverlay, setShowSweepOverlay] = useState(false);
   const lastTriggerIdRef = useRef<string | null>(null);
   const completedRef = useRef(false); // Guard against double completion
 
@@ -157,6 +161,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     });
 
     setAnimations(newAnimations);
+    setShowSweepOverlay(true); // Show "Sweep the Legs" overlay
     console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
     // Animation duration: 1.2s per chip + stagger delays + buffer
@@ -171,10 +176,19 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     }, totalDuration);
   }, [triggerId, legPositions, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, legsToWin, onAnimationComplete]);
 
-  if (animations.length === 0) return null;
+  // Format leg value for display
+  const displayValue = legValue > 0 ? `$${legValue}` : 'L';
+
+  if (animations.length === 0 && !showSweepOverlay) return null;
 
   return (
     <>
+      {/* "Sweep the Legs" overlay - non-blocking, runs in parallel */}
+      <SweepTheLegsAnimation 
+        show={showSweepOverlay} 
+        onComplete={() => setShowSweepOverlay(false)} 
+      />
+      
       {animations.map((anim) => {
         const deltaX = anim.toX - anim.fromX;
         const deltaY = anim.toY - anim.fromY;
@@ -191,12 +205,16 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
             }}
           >
             <div
-              className="w-6 h-6 rounded-full bg-white border-2 border-amber-500 shadow-lg flex items-center justify-center"
+              className={`rounded-full bg-white border-2 border-amber-500 shadow-lg flex items-center justify-center ${
+                legValue > 0 ? 'w-8 h-8' : 'w-6 h-6'
+              }`}
               style={{
                 animation: `${uniqueKeyframeName} 1.2s ease-in-out ${anim.delay}ms forwards`,
               }}
             >
-              <span className="text-slate-800 font-bold text-[10px]">L</span>
+              <span className={`text-slate-800 font-bold ${legValue > 0 ? 'text-[8px]' : 'text-[10px]'}`}>
+                {displayValue}
+              </span>
             </div>
             <style>{`
               @keyframes ${uniqueKeyframeName} {
