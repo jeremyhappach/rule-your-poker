@@ -2341,10 +2341,16 @@ export const MobileGameTable = ({
       // ALSO hide card backs during 3-5-7 win animation phases for non-winner players
       // (avoids showing card backs briefly before legs-to-player animation starts)
       (() => {
-        const hideDuring357Win = gameType !== 'holm-game' && 
-          threeFiveSevenWinPhase !== 'idle' && 
-          player.id !== threeFiveSevenWinnerId;
-        
+        // Hide opponent card backs as soon as the FINAL leg is detected, even if the 357
+        // win animation sequence hasn't started yet (there can be a brief gap before we
+        // enter a stable game_over view / phase machine).
+        const winnerIdFor357Hide = threeFiveSevenWinnerId ?? winningLegPlayerId;
+        const is357WinContextActive =
+          gameType !== 'holm-game' && (threeFiveSevenWinPhase !== 'idle' || !!winningLegPlayerId);
+
+        const hideDuring357Win =
+          is357WinContextActive && !!winnerIdFor357Hide && player.id !== winnerIdFor357Hide;
+
         return !shouldHideForTabling && !hideDuring357Win && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
           <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
             {Array.from({
