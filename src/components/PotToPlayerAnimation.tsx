@@ -112,15 +112,15 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       toY: winnerCoords.y,
     });
 
-    // Animation ends at ~1.8s, notify parent so winner's chips increment
+    // Animation ends at ~3.0s (extended to match slower legs-to-player), notify parent so winner's chips increment
     setTimeout(() => {
       onAnimationEnd?.();
-    }, 1800);
+    }, 3000);
 
     // Clear animation after it completes
     setTimeout(() => {
       setAnimation(null);
-    }, 2200);
+    }, 3500);
   }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationStart, onAnimationEnd]);
 
   if (!animation) return null;
@@ -137,7 +137,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       <div
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
-          animation: 'potToPlayer 2s ease-in-out forwards',
+          animation: 'potToPlayer 3.2s ease-in-out forwards',
         }}
       >
         <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
