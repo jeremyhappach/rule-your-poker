@@ -3465,7 +3465,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         game?.game_type !== 'holm-game' && 
         !game?.game_over_at && 
         game?.last_round_result?.includes('won the game')) {
-      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed in 12s');
+      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed in 18s');
       
       const timer = setTimeout(async () => {
         // Fetch FRESH game state from DB - React state may be stale
@@ -3477,14 +3477,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         
         // Only proceed if we're STILL stuck (fresh DB check)
         if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
-          console.log('[357 SAFETY FALLBACK] Still stuck after 12s (verified via DB), auto-proceeding to next game');
+          console.log('[357 SAFETY FALLBACK] Still stuck after 18s (verified via DB), auto-proceeding to next game');
           setIs357WinAnimationActive(false); // Clear flag before proceeding
           is357WinAnimationActiveRef.current = false;
           await handleGameOverComplete();
         } else {
           console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame?.status, freshGame?.game_over_at);
         }
-      }, 12000); // 12 second fallback (enough time for full animation sequence: 2.6s wait + legs animation + pot animation + 3s delay)
+      }, 18000); // 18 second fallback (accounts for longer legs sweep + pot animation + delay)
       
       return () => clearTimeout(timer);
     }
@@ -4839,9 +4839,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </Card>
         )}
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress') && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && is357WinAnimationActive)) && (() => {
           const isInProgress = game.status === 'in_progress';
-          const hasActiveRound = isInProgress && Boolean(currentRound?.id);
+          const is357WinView = game.status === 'game_over' && is357WinAnimationActive;
+          const hasActiveRound = (isInProgress || is357WinView) && Boolean(currentRound?.id);
 
           return isMobile ? (
             <MobileGameTable
