@@ -3957,6 +3957,10 @@ export const MobileGameTable = ({
                   {currentPlayer.profiles?.username || 'You'}
                   {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
+                {/* Round indicator for debugging */}
+                <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400 px-1.5 py-0">
+                  R{currentRound}
+                </Badge>
                 <div className="relative">
                   {/* Show emoticon overlay OR chipstack value */}
                   {emoticonOverlays[currentPlayer.id] ? (
