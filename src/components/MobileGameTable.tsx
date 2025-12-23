@@ -3875,7 +3875,7 @@ export const MobileGameTable = ({
             })()}
             
             {/* Player info - below cards */}
-            <div className="flex flex-col gap-1 mt-auto pt-4">
+            <div className="flex flex-col gap-1 mt-auto pt-28">
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
