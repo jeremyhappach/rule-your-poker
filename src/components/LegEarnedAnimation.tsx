@@ -51,14 +51,6 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
 
   return (
     <>
-      {/* Leg value announcement banner */}
-      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-[announceSlideIn_0.4s_ease-out_forwards]">
-        <div className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 px-4 py-2 rounded-lg shadow-lg border-2 border-yellow-300">
-          <span className="text-white font-bold text-sm sm:text-base drop-shadow-md whitespace-nowrap">
-            {playerName} wins a leg{legValue > 0 ? ` ($${legValue})` : ''}!
-          </span>
-        </div>
-      </div>
 
       {/* Flying L chip - positioned to land at player's leg indicator position */}
       <div 
