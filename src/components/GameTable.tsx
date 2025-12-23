@@ -1321,6 +1321,11 @@ export const GameTable = ({
                         {isCurrentUser && !player.is_bot && (
                           <Badge variant="secondary" className="text-[7px] sm:text-[8px] md:text-[10px] bg-poker-gold text-black border-0 px-0.5 py-0">You</Badge>
                         )}
+                        {isCurrentUser && (
+                          <Badge variant="outline" className="text-[7px] sm:text-[8px] md:text-[10px] border-amber-200/40 text-amber-100/80 px-0.5 py-0">
+                            R{currentRound}
+                          </Badge>
+                        )}
                         {player.is_bot && (
                           <Badge className="text-[7px] sm:text-[8px] md:text-[10px] bg-purple-500 text-white border-0 px-0.5 py-0">🤖</Badge>
                         )}
