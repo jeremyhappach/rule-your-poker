@@ -2575,6 +2575,20 @@ export const MobileGameTable = ({
             const perPlayerAmount = getPotInPerPlayerAmount();
             const activePlayers = players.filter((p) => !p.sitting_out);
 
+            // DEBUG: Log all values used in estimation
+            console.log('[ANTE_ANIM_DEBUG] Animation starting', {
+              triggerId: anteAnimationTriggerId,
+              anteAmountProp: anteAmount,
+              pussyTaxValueProp: pussyTaxValue,
+              potInPerPlayerAmount,
+              perPlayerAmountComputed: perPlayerAmount,
+              activeCount: activePlayers.length,
+              preAnteChips,
+              expectedPostAnteChips,
+              anteAnimationExpectedPot,
+              pot,
+            });
+
             if (perPlayerAmount <= 0 || activePlayers.length <= 0) {
               console.warn('[ANTE_ANIM] Invalid perPlayerAmount/activeCount at animation start - clearing trigger', {
                 triggerId: anteAnimationTriggerId,
@@ -2594,9 +2608,17 @@ export const MobileGameTable = ({
             lockedAnteExpectedPotRef.current = postPot;
             lockedAnteTotalRef.current = totalAmount;
 
+            console.log('[ANTE_ANIM_DEBUG] Computed values', {
+              totalAmount,
+              postPotFromProps,
+              postPot,
+              willUseExpectedPostAnteChips: !!expectedPostAnteChips,
+            });
+
             // CRITICAL: Use expectedPostAnteChips directly if available - this is computed in Game.tsx
             // BEFORE any backend updates, so it's guaranteed to be correct
             if (expectedPostAnteChips) {
+              console.log('[ANTE_ANIM_DEBUG] Using expectedPostAnteChips for display', expectedPostAnteChips);
               lockedChipsRef.current = { ...expectedPostAnteChips };
               setDisplayedChips({ ...expectedPostAnteChips });
             } else {
@@ -2606,6 +2628,7 @@ export const MobileGameTable = ({
                 const chipsBefore = preAnteChips?.[p.id] ?? p.chips;
                 newLockedChips[p.id] = chipsBefore - perPlayerAmount;
               });
+              console.log('[ANTE_ANIM_DEBUG] Fallback computed chips', { newLockedChips, preAnteChips });
               lockedChipsRef.current = newLockedChips;
               setDisplayedChips(newLockedChips);
             }
@@ -2620,6 +2643,7 @@ export const MobileGameTable = ({
             // Pussy tax is mid-session, so it must use postPot-totalAmount.
             const preAntePot = isPussyTaxTrigger ? Math.max(0, postPot - totalAmount) : 0;
 
+            console.log('[ANTE_ANIM_DEBUG] Setting displayedPot', { preAntePot, displayedPot, postPot });
             if (displayedPot < postPot) {
               setDisplayedPot(preAntePot);
             }
