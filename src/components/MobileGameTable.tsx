@@ -2973,7 +2973,8 @@ export const MobileGameTable = ({
           onComplete={() => {
             setShowLegEarned(false);
             // For 3-5-7: When winning leg animation completes, immediately start the win animation sequence
-            if (gameType !== 'holm-game' && isWinningLegAnimation && threeFiveSevenWinnerId) {
+            // GUARD: Only start if not already in progress (prevents double-firing)
+            if (gameType !== 'holm-game' && isWinningLegAnimation && threeFiveSevenWinnerId && threeFiveSevenWinPhaseRef.current === 'idle') {
               console.log('[357 WIN] LegEarnedAnimation complete for winning leg, starting legs-to-player phase immediately');
               // Generate unique animation ID for this sequence
               const animationId = `anim-${Date.now()}`;
@@ -2984,7 +2985,7 @@ export const MobileGameTable = ({
               threeFiveSevenWinPhaseRef.current = 'legs-to-player';
               setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
             }
-          }} 
+          }}
         />
         
         {/* 3-5-7 Legs To Player Animation (all legs fly to winner's chip stack) */}
