@@ -2159,7 +2159,14 @@ export const MobileGameTable = ({
     // During legs-to-player phase AND pot-to-player phase, hide ALL leg indicators since they've already animated to winner
     // During 3-5-7 win animation (before legs-to-player), use CACHED leg count since backend may have reset them
     const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
-    const hideLegsForWinAnimation = gameType !== 'holm-game' && (threeFiveSevenWinPhase === 'legs-to-player' || threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay');
+    // Hide legs during win animation phases AND when legs have been swept (backend resets them to 0 after animation)
+    // Also hide during 'waiting' phase since we're about to animate them away
+    const hideLegsForWinAnimation = gameType !== 'holm-game' && (
+      threeFiveSevenWinPhase === 'waiting' || 
+      threeFiveSevenWinPhase === 'legs-to-player' || 
+      threeFiveSevenWinPhase === 'pot-to-player' || 
+      threeFiveSevenWinPhase === 'delay'
+    );
     
     // During win animation sequence, use cached leg count to display legs
     // Use cached values when: any animation phase is active (waiting, legs-to-player, pot-to-player, delay)
@@ -2167,8 +2174,14 @@ export const MobileGameTable = ({
     const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
     const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
     
+    // IMPORTANT: After animation completes (phase=idle), only show legs if backend hasn't reset them yet
+    // Once legs are swept, they're gone until next game awards new legs
+    // The "legsHaveBeenSwept" ref tracks when a 357 win animation has completed
+    const legsWereSweptThisSession = lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
     
-    const displayLegs = hideLegsForWinAnimation ? 0 : (isLegAnimatingForThisPlayer ? effectivePlayerLegs - 1 : effectivePlayerLegs);
+    const displayLegs = hideLegsForWinAnimation ? 0 : 
+      (legsWereSweptThisSession ? 0 : // Legs were swept - show 0 until next hand/game
+       (isLegAnimatingForThisPlayer ? effectivePlayerLegs - 1 : effectivePlayerLegs));
     const legIndicator = displayLegs > 0 && (
       <div className="absolute z-30" style={{
         // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
@@ -2325,18 +2338,26 @@ export const MobileGameTable = ({
       </div>
     ) : (
       // Also hide card backs when cards are tabled (solo vs Chucky)
-      !shouldHideForTabling && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
-        <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
-          {Array.from({
-            length: Math.min(cardCountToShow, 7)
-          }, (_, i) => <div key={i} className="w-3 h-5 rounded-[2px] border border-amber-600/50" style={{
-            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-            marginLeft: i > 0 ? '-5px' : '0', // Overlap card backs
-            zIndex: cardCountToShow - i,
-            animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
-          }} />)}
-        </div>
-      )
+      // ALSO hide card backs during 3-5-7 win animation phases for non-winner players
+      // (avoids showing card backs briefly before legs-to-player animation starts)
+      (() => {
+        const hideDuring357Win = gameType !== 'holm-game' && 
+          threeFiveSevenWinPhase !== 'idle' && 
+          player.id !== threeFiveSevenWinnerId;
+        
+        return !shouldHideForTabling && !hideDuring357Win && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
+          <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
+            {Array.from({
+              length: Math.min(cardCountToShow, 7)
+            }, (_, i) => <div key={i} className="w-3 h-5 rounded-[2px] border border-amber-600/50" style={{
+              background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+              marginLeft: i > 0 ? '-5px' : '0', // Overlap card backs
+              zIndex: cardCountToShow - i,
+              animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
+            }} />)}
+          </div>
+        );
+      })()
     );
     
     // Emoticon overlay element - shown when chip is hidden during showdown but player has an emoticon
@@ -3384,9 +3405,16 @@ export const MobileGameTable = ({
         {/* FIX: Use threeFiveSevenCachedLegPositions prop during game_over - it's pre-cached before backend resets */}
         {/* FIX: Also hide legs during legs-to-player phase (same as other players) */}
         {gameType !== 'holm-game' && currentPlayer && (() => {
-          // During legs-to-player phase AND pot-to-player/delay phases, hide ALL leg indicators since they've animated to winner
-          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'legs-to-player' || threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay';
-          if (hideLegsForWinAnimation) {
+          // During all win animation phases, hide ALL leg indicators since they've animated (or will animate) to winner
+          // Also hide after animation completes since legs have been swept
+          const hideLegsForWinAnimation = threeFiveSevenWinPhase === 'waiting' || 
+            threeFiveSevenWinPhase === 'legs-to-player' || 
+            threeFiveSevenWinPhase === 'pot-to-player' || 
+            threeFiveSevenWinPhase === 'delay';
+          // Also hide if we've completed a 357 win animation this session (legs have been swept)
+          const legsWereSweptThisSession = lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
+          
+          if (hideLegsForWinAnimation || legsWereSweptThisSession) {
             return false;
           }
           
