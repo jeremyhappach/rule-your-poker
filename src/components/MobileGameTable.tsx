@@ -1992,13 +1992,16 @@ export const MobileGameTable = ({
     
     // Capture leg positions at animation start (don't depend on prop changes during animation)
     const capturedLegPositions = threeFiveSevenCachedLegPositionsRef.current;
-    
+
+    // Lock a stable legs snapshot for the whole win sequence (prevents re-appearing legs if backend/state shifts).
+    threeFiveSevenLegsSnapshotRef.current = capturedLegPositions;
+
     console.log('[357 WIN] Starting win animation sequence (fallback trigger), animationId:', animationId);
     console.log('[357 WIN] Using leg positions from prop:', capturedLegPositions);
-    
+
     // Clear trigger in parent after starting
     onThreeFiveSevenWinAnimationStarted?.();
-    
+
     // IMMEDIATELY set phase to 'waiting' so display logic uses cached values
     // This prevents the 2.6s gap where trigger is null and phase is idle
     setThreeFiveSevenWinPhase('waiting');
@@ -2980,10 +2983,14 @@ export const MobileGameTable = ({
               threeFiveSevenWinnerId &&
               threeFiveSevenWinPhaseRef.current === 'idle'
             ) {
+              // Mark this win sequence as "handled" even if the legacy parent trigger is already cleared.
+              // This prevents legs from re-appearing when we return to idle.
+              lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId ?? `357-seq-${Date.now()}`;
+
+              // Lock stable legs snapshot for the whole sequence.
+              threeFiveSevenLegsSnapshotRef.current = threeFiveSevenCachedLegPositions;
+
               // IMPORTANT: Clear the parent trigger (if any) so the legacy trigger-based effect cannot start a 2nd sequence later.
-              if (threeFiveSevenWinTriggerId) {
-                lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
-              }
               onThreeFiveSevenWinAnimationStarted?.();
 
               console.log('[357 WIN] LegEarnedAnimation complete for winning leg, starting legs-to-player phase immediately');
