@@ -2192,11 +2192,11 @@ export const MobileGameTable = ({
       }}>
         <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
           {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => {
-            // Show dollar value during 3-5-7 win animation phases (waiting = leg earned animation playing)
-            const showLegValue = isIn357WinAnimation && legValue > 0;
-            const legDisplayText = showLegValue ? `$${legValue}` : 'L';
-            const chipSize = showLegValue ? 'w-6 h-6' : 'w-5 h-5';
-            const textSize = showLegValue ? 'text-[8px]' : 'text-[10px]';
+            // Always show dollar value on legs if legValue is set
+            const showLegDollarValue = legValue > 0;
+            const legDisplayText = showLegDollarValue ? `$${legValue}` : 'L';
+            const chipSize = showLegDollarValue ? 'w-6 h-6' : 'w-5 h-5';
+            const textSize = showLegDollarValue ? 'text-[8px]' : 'text-[10px]';
             
             return (
               <div 
@@ -3479,10 +3479,8 @@ export const MobileGameTable = ({
                 const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
                   ? effectiveLegs - 1 
                   : effectiveLegs;
-                // Check if we're in 3-5-7 win animation
-                const isIn357WinAnimationLocal = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
-                // Show dollar value during 3-5-7 win animation phases
-                const showLegDollarValue = isIn357WinAnimationLocal && legValue > 0;
+                // Always show dollar value on legs if legValue is set
+                const showLegDollarValue = legValue > 0;
                 const legDisplayText = showLegDollarValue ? `$${legValue}` : 'L';
                 const chipSize = showLegDollarValue ? 'w-8 h-8' : 'w-7 h-7';
                 const textSize = showLegDollarValue ? 'text-[9px]' : 'text-xs';
@@ -3686,9 +3684,10 @@ export const MobileGameTable = ({
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1">
-            {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
-            {currentPlayer.auto_fold && !currentPlayer.sitting_out && (
-              <div className="flex justify-center mb-1 mt-2 px-4">
+            {/* Fixed-height action area to prevent cards from hopping vertically */}
+            <div className="h-12 flex items-center justify-center shrink-0">
+              {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
+              {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                 <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
                   <input
                     type="checkbox"
@@ -3702,29 +3701,21 @@ export const MobileGameTable = ({
                   />
                   <span className="text-sm font-medium text-foreground">Auto-fold (will sit out next hand)</span>
                 </label>
-              </div>
-            )}
-            
-            {/* Action buttons - ABOVE cards (hide when auto_fold is true) */}
-            {canDecide && !currentPlayer.auto_fold && <div className="flex gap-2 justify-center mb-1 mt-2">
-                <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
-                  {gameType === 'holm-game' ? 'Fold' : 'Drop'}
-                </Button>
-                <Button size="default" onClick={onStay} className="flex-1 max-w-[120px] bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-sm font-bold h-9">
-                  Stay
-                </Button>
-              </div>}
-            
-            {/* Rejoin Next Hand button for sitting out players */}
-            {currentPlayer.sitting_out && !currentPlayer.waiting && (
-              <div className="flex justify-center mb-2 px-4">
+              ) : canDecide && !currentPlayer.auto_fold ? (
+                /* Action buttons */
+                <div className="flex gap-2 justify-center">
+                  <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
+                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
+                  </Button>
+                  <Button size="default" onClick={onStay} className="flex-1 max-w-[120px] bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-sm font-bold h-9">
+                    Stay
+                  </Button>
+                </div>
+              ) : currentPlayer.sitting_out && !currentPlayer.waiting ? (
+                /* Rejoin Next Hand button for sitting out players */
                 <RejoinNextHandButton playerId={currentPlayer.id} />
-              </div>
-            )}
-            
-            {/* Decision feedback - above cards */}
-            {hasDecided && (
-              <div className="flex justify-center mb-1">
+              ) : hasDecided ? (
+                /* Decision feedback */
                 <Badge
                   className={cn(
                     "text-sm px-3 py-0.5 border-transparent",
@@ -3735,8 +3726,11 @@ export const MobileGameTable = ({
                 >
                   ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
                 </Badge>
-              </div>
-            )}
+              ) : (
+                /* Empty spacer to maintain consistent height */
+                <div className="h-9" />
+              )}
+            </div>
             
             {/* Cards display */}
             {(() => {
