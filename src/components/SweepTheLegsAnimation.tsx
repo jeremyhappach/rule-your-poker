@@ -49,7 +49,18 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
         </div>
       </div>
       
-      {/* Graphic-only: no text overlay */}
+      {/* Text banner at the bottom */}
+      <div className="relative z-10 pb-6 animate-[textSlideUp_0.5s_ease-out_0.3s_forwards] opacity-0">
+        <div className="relative">
+          <div className="absolute -left-3 top-1/2 w-3 h-10 bg-gradient-to-b from-red-800 to-red-900 -translate-y-1/2 transform -skew-y-12" />
+          <div className="absolute -right-3 top-1/2 w-3 h-10 bg-gradient-to-b from-red-800 to-red-900 -translate-y-1/2 transform skew-y-12" />
+          <div className="bg-gradient-to-r from-red-900 via-red-800 to-red-900 px-6 py-3 border-y-4 border-yellow-500 shadow-[0_0_40px_rgba(220,38,38,0.6)]">
+            <span className="text-yellow-400 font-black text-xl sm:text-2xl md:text-3xl tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] uppercase animate-[textGlow_0.5s_ease-in-out_infinite_alternate]">
+              Sweep the Legs!
+            </span>
+          </div>
+        </div>
+      </div>
       
       {/* Action lines radiating from center */}
       <div className="absolute inset-0 pointer-events-none">
