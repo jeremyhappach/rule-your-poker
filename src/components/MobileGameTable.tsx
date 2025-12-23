@@ -1961,8 +1961,19 @@ export const MobileGameTable = ({
   // Stable snapshot used during the 3-5-7 win transition (prevents leg flicker if backend resets legs mid-view).
   const threeFiveSevenLegsSnapshotRef = useRef<{ playerId: string; position: number; legCount: number }[]>([]);
   
+  // Legacy 3-5-7 win animation trigger from parent (kept as fallback)
+  // NOTE: Primary trigger now comes from LegEarnedAnimation onComplete when isWinningLegAnimation is true
   useEffect(() => {
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
+      return;
+    }
+
+    // Skip if animation is already in progress (triggered by LegEarnedAnimation completion)
+    if (threeFiveSevenWinPhaseRef.current !== 'idle') {
+      console.log('[357 WIN] Trigger received but animation already in progress, phase:', threeFiveSevenWinPhaseRef.current);
+      // Still mark as handled and notify parent
+      lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
+      onThreeFiveSevenWinAnimationStarted?.();
       return;
     }
 
@@ -1982,7 +1993,7 @@ export const MobileGameTable = ({
     // Capture leg positions at animation start (don't depend on prop changes during animation)
     const capturedLegPositions = threeFiveSevenCachedLegPositionsRef.current;
     
-    console.log('[357 WIN] Starting win animation sequence, animationId:', animationId);
+    console.log('[357 WIN] Starting win animation sequence (fallback trigger), animationId:', animationId);
     console.log('[357 WIN] Using leg positions from prop:', capturedLegPositions);
     
     // Clear trigger in parent after starting
@@ -2959,7 +2970,21 @@ export const MobileGameTable = ({
           })()}
           isWinningLeg={isWinningLegAnimation}
           suppressWinnerOverlay={gameType !== 'holm-game'} // Suppress for 3-5-7 - has its own win animation
-          onComplete={() => setShowLegEarned(false)} 
+          onComplete={() => {
+            setShowLegEarned(false);
+            // For 3-5-7: When winning leg animation completes, immediately start the win animation sequence
+            if (gameType !== 'holm-game' && isWinningLegAnimation && threeFiveSevenWinnerId) {
+              console.log('[357 WIN] LegEarnedAnimation complete for winning leg, starting legs-to-player phase immediately');
+              // Generate unique animation ID for this sequence
+              const animationId = `anim-${Date.now()}`;
+              currentAnimationIdRef.current = animationId;
+              
+              // Set phase to legs-to-player to start the sweep animation
+              setThreeFiveSevenWinPhase('legs-to-player');
+              threeFiveSevenWinPhaseRef.current = 'legs-to-player';
+              setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
+            }
+          }} 
         />
         
         {/* 3-5-7 Legs To Player Animation (all legs fly to winner's chip stack) */}
