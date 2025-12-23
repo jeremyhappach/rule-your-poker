@@ -1581,7 +1581,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Check for "Running it Back" - same game type AND same config
       const isRunBack = previousGameConfig !== null && 
         previousGameConfig.game_type === game.game_type &&
-        previousGameConfig.ante_amount === (game.ante_amount || 2) &&
+        previousGameConfig.ante_amount === (game.ante_amount || 1) &&
         previousGameConfig.pussy_tax_enabled === (game.pussy_tax_enabled ?? true) &&
         previousGameConfig.pussy_tax_value === (game.pussy_tax_value || 1) &&
         previousGameConfig.pot_max_enabled === (game.pot_max_enabled ?? true) &&
@@ -3326,7 +3326,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game) {
       const gameConfig = {
         game_type: game.game_type || null,
-        ante_amount: game.ante_amount || 2,
+        ante_amount: game.ante_amount || 1,
         leg_value: game.leg_value || 1,
         legs_to_win: game.legs_to_win || 3,
         pussy_tax_enabled: game.pussy_tax_enabled ?? true,
