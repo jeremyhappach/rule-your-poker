@@ -487,6 +487,45 @@ export const MobileGameTable = ({
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
 
+  // ========== NEW: LOCK POT WHEN allDecisionsIn TRANSITIONS TO TRUE ==========
+  // This is the KEY fix: When all decisions are in, the backend pot will update shortly after.
+  // By locking the CURRENT displayedPot at this moment, we prevent the flash.
+  // We unlock when: animations complete OR game status transitions to a fresh state.
+  const allDecisionsLockRef = useRef<{ locked: boolean; lockedValue: number | null }>({ locked: false, lockedValue: null });
+  const prevAllDecisionsInRef = useRef(allDecisionsIn);
+  const prevGameStatusForPotRef = useRef(gameStatus);
+  
+  // Lock pot when allDecisionsIn transitions false -> true
+  useLayoutEffect(() => {
+    const wasAllIn = prevAllDecisionsInRef.current;
+    const isAllIn = allDecisionsIn;
+    
+    if (!wasAllIn && isAllIn) {
+      // LOCK: Capture current displayedPot - this is the pre-animation value
+      allDecisionsLockRef.current = { locked: true, lockedValue: displayedPot };
+      console.log('[POT_LOCK] allDecisionsIn lock at', displayedPot);
+    }
+    
+    prevAllDecisionsInRef.current = isAllIn;
+  }, [allDecisionsIn, displayedPot]);
+  
+  // Unlock when game status transitions to a fresh state
+  useEffect(() => {
+    const prev = prevGameStatusForPotRef.current;
+    const curr = gameStatus;
+    
+    // Fresh start statuses
+    const freshStatuses = ['ante_decision', 'configuring', 'game_selection', 'dealer_selection', 'waiting_for_players'];
+    if (prev && prev !== curr) {
+      if (freshStatuses.includes(curr || '') || (prev === 'game_over' && curr !== 'game_over')) {
+        allDecisionsLockRef.current = { locked: false, lockedValue: null };
+        console.log('[POT_LOCK] unlock on status transition:', prev, '->', curr);
+      }
+    }
+    
+    prevGameStatusForPotRef.current = curr;
+  }, [gameStatus]);
+
   // --- POT DISPLAY FREEZE (prevents pot flashing during chip-to-pot animations) ---
   // When the backend pot updates BEFORE the animation trigger paints, the UI can briefly show
   // the post-update pot, then we freeze to pre-update pot, then show post-update again.
@@ -543,6 +582,9 @@ export const MobileGameTable = ({
 
   // Freeze displayedPot BEFORE the first paint whenever a pot-in animation is pending.
   useLayoutEffect(() => {
+    // Skip if allDecisionsIn lock is active - that takes precedence
+    if (allDecisionsLockRef.current.locked) return;
+    
     const pending = getPendingPotInAnimation();
     if (!pending) return;
 
@@ -578,6 +620,12 @@ export const MobileGameTable = ({
       potIncreaseSyncTimeoutRef.current = null;
     }
 
+    // CRITICAL: If allDecisionsIn lock is active, BLOCK all pot updates
+    if (allDecisionsLockRef.current.locked) {
+      console.log('[POT_SYNC] BLOCKED (allDecisionsIn lock active)', { displayedPot, backendPot: pot });
+      return;
+    }
+
     if (
       potLockRef.current ||
       isAnteAnimatingRef.current ||
@@ -592,6 +640,11 @@ export const MobileGameTable = ({
       const delayMs = 1400;
       console.log('[POT_SYNC] delay-increase', { gameId: potMemoryKey, displayedPot, backendPot: pot, delayMs });
       potIncreaseSyncTimeoutRef.current = window.setTimeout(() => {
+        // Re-check lock inside timeout
+        if (allDecisionsLockRef.current.locked) {
+          console.log('[POT_SYNC] skipped-after-delay (allDecisionsIn lock)', { displayedPot, backendPot: pot });
+          return;
+        }
         if (
           potLockRef.current ||
           isAnteAnimatingRef.current ||
@@ -2292,6 +2345,8 @@ export const MobileGameTable = ({
 
             // Unlock pot syncing after chips arrive
             potLockRef.current = false;
+            // CRITICAL: Also unlock allDecisionsIn lock - animation complete
+            allDecisionsLockRef.current = { locked: false, lockedValue: null };
             console.log('[POT_LOCK] unlock(chips-arrived)', { gameId: potMemoryKey, backendPot: pot });
 
             // Keep locked values active - the useEffect watching players will clear
@@ -2375,6 +2430,7 @@ export const MobileGameTable = ({
             // Chips arrived at pot - show the post-loss pot and unlock syncing
             setDisplayedPot(pot);
             potLockRef.current = false;
+            allDecisionsLockRef.current = { locked: false, lockedValue: null };
             console.log('[POT_LOCK] unlock(chucky-loss)', { gameId: potMemoryKey, backendPot: pot });
 
             // Chips arrived at pot - clear override so actual (post-loss) values show
@@ -2465,6 +2521,7 @@ export const MobileGameTable = ({
               // Chips arrived at pot - show post-loss pot and unlock
               setDisplayedPot(pot);
               potLockRef.current = false;
+              allDecisionsLockRef.current = { locked: false, lockedValue: null };
               console.log('[POT_LOCK] unlock(showdown-losers)', { gameId: potMemoryKey, backendPot: pot });
 
               setDisplayedChips({});
