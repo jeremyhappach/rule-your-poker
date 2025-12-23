@@ -3900,7 +3900,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    console.log('[357 WIN] Animation complete, clearing active flag', {
+    console.log('[357SEQ][WIN_COMPLETE] Animation complete, clearing active flag', {
+      t: Date.now(),
       currentStatus: game?.status,
     });
 
@@ -3908,22 +3909,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setIs357WinAnimationActive(false);
     is357WinAnimationActiveRef.current = false;
 
-    // If the dealer (or another client) already transitioned the game state, just clear local win state.
+    // Clear local win state (we're done animating).
+    threeFiveSevenWinProcessedRef.current = null;
+    setThreeFiveSevenWinTriggerId(null);
+    setThreeFiveSevenWinnerId(null);
+    setThreeFiveSevenWinPotAmount(0);
+    setThreeFiveSevenWinnerCards([]);
+    cachedPotFor357WinRef.current = 0;
+    setCachedLegPositions([]);
+
+    // If another client already transitioned the game state, just refetch to sync UI.
     if (game?.status !== 'game_over') {
-      console.log('[357 WIN] Game already transitioned, clearing local 357 win state only:', game?.status);
-      threeFiveSevenWinProcessedRef.current = null;
-      setThreeFiveSevenWinTriggerId(null);
-      setThreeFiveSevenWinnerId(null);
-      setThreeFiveSevenWinPotAmount(0);
-      setThreeFiveSevenWinnerCards([]);
-      cachedPotFor357WinRef.current = 0;
-      setCachedLegPositions([]);
+      console.log('[357SEQ][WIN_COMPLETE] Game already transitioned, refetching:', game?.status);
+      await fetchGameData();
       return;
     }
 
-    console.log('[357 WIN] Proceeding to next game');
+    console.log('[357SEQ][WIN_COMPLETE] Proceeding to next game');
     await handleGameOverComplete();
-  }, [game?.status, game?.game_type, gameId, handleGameOverComplete]);
+  }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
