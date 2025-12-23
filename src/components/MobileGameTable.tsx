@@ -1787,9 +1787,10 @@ export const MobileGameTable = ({
     threeFiveSevenWinPhaseRef.current = threeFiveSevenWinPhase;
   }, [threeFiveSevenWinPhase]);
   
-  // 3-5-7 win animation sequence: triggered by parent when player wins final leg
-  // CRITICAL: Only start animation when gameStatus === 'game_over' to ensure component doesn't unmount mid-animation
-  // CRITICAL: Capture leg positions at start in a ref to avoid dependency array issues that cause stale animation detection
+  // 3-5-7 win animation sequence: triggered by parent when player wins final leg.
+  // IMPORTANT: Only run the full animation sequence when we're in a stable "game over" view.
+  // Game.tsx swaps layouts on status transitions; if we start during in_progress we can get unmounted
+  // mid-sequence and the parent trigger may already have been cleared.
   const threeFiveSevenCachedLegPositionsRef = useRef(threeFiveSevenCachedLegPositions);
   threeFiveSevenCachedLegPositionsRef.current = threeFiveSevenCachedLegPositions;
   
@@ -1797,13 +1798,14 @@ export const MobileGameTable = ({
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
       return;
     }
-    
-    // Don't start animation until we're in game_over status (component won't unmount)
-    if (gameStatus !== 'game_over') {
-      console.log('[357 WIN] Trigger received but waiting for game_over status, current:', gameStatus);
+
+    const isStableGameOver = gameStatus === 'game_over' || !!isGameOver;
+    if (!isStableGameOver) {
+      console.log('[357 WIN] Trigger received but not in stable game over view yet. Waiting...', { gameStatus, isGameOver });
       return;
     }
-    
+
+    // Mark as handled for this component instance.
     lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
     
     // Generate unique animation ID to track this specific sequence
@@ -1841,7 +1843,7 @@ export const MobileGameTable = ({
     }, 2600); // Slightly after leg earned animation completes
     // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
     // to prevent dependency changes during animation from invalidating the animation sequence
-  }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus]);
+  }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver]);
 
   const handleLegsToPlayerComplete = useCallback(() => {
     // Use ref to get current phase (avoids stale closure)
