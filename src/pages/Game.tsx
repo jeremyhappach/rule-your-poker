@@ -252,6 +252,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const threeFiveSevenWinProcessedRef = useRef<string | null>(null);
   // Track if 357 win animation is actively playing (blocks GameOverCountdown)
   const [is357WinAnimationActive, setIs357WinAnimationActive] = useState(false);
+  const is357WinAnimationActiveRef = useRef(false); // Ref for closure access in timeouts
   
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
@@ -2470,9 +2471,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       
       // Check if this is a pussy tax scenario and trigger animation
+      // CRITICAL: Skip if 357 win animation is active - we're showing legs/pot going to winner
+      // Use ref for closure access (state would be stale in setTimeout)
       const lastResult = game?.last_round_result || '';
       const isPussyTax = lastResult.toLowerCase().includes('pussy tax');
-      if (isPussyTax) {
+      if (isPussyTax && !is357WinAnimationActiveRef.current) {
         // Trigger ante animation for pussy tax using pussy_tax_value
         const activePlayers = players.filter(p => !p.sitting_out);
         const pussyTaxTotal = (game?.pussy_tax_value || 1) * activePlayers.length;
@@ -2651,8 +2654,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // THEN trigger ante animation when proceeding to round 1 (new antes collected)
             // This happens AFTER the result has been cleared
             // BUT skip if this is a 357 sweep (game is over, no new antes)
+            // ALSO skip if 357 win animation is currently active (use ref for closure access)
             const is357Sweep = freshGame?.last_round_result?.startsWith('357_SWEEP');
-            if (freshGame?.next_round_number === 1 && !is357Sweep) {
+            if (freshGame?.next_round_number === 1 && !is357Sweep && !is357WinAnimationActiveRef.current) {
               // Small delay to ensure UI has updated from proceedToNextRound
               await new Promise(resolve => setTimeout(resolve, 200));
               // Calculate expected pot: the pot has already been updated with antes by startRound
@@ -3470,6 +3474,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
           console.log('[357 SAFETY FALLBACK] Still stuck after 12s (verified via DB), auto-proceeding to next game');
           setIs357WinAnimationActive(false); // Clear flag before proceeding
+          is357WinAnimationActiveRef.current = false;
           await handleGameOverComplete();
         } else {
           console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame?.status, freshGame?.game_over_at);
@@ -3735,8 +3740,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'messageType:', isGameWinMessage ? 'game_win' : 'leg_win');
     
-    // Mark animation as active - this blocks GameOverCountdown until animation completes
+    // Mark animation as active - this blocks GameOverCountdown and ante animations until animation completes
     setIs357WinAnimationActive(true);
+    is357WinAnimationActiveRef.current = true;
     
     setThreeFiveSevenWinPotAmount(potAmount);
     setThreeFiveSevenWinnerId(winnerPlayer.id);
@@ -3757,6 +3763,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
+      is357WinAnimationActiveRef.current = false;
     }
     // Also reset when transitioning from game_over to dealer_selection (next game starting)
     if (game?.status === 'dealer_selection' || game?.status === 'configuring') {
@@ -3769,6 +3776,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
       setIs357WinAnimationActive(false);
+      is357WinAnimationActiveRef.current = false;
     }
   }, [game?.status, game?.current_round]);
 
@@ -3809,6 +3817,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Clear animation active flag - allows any future countdown to proceed
     setIs357WinAnimationActive(false);
+    is357WinAnimationActiveRef.current = false;
     
     // Proceed directly to next game without countdown
     await handleGameOverComplete();
