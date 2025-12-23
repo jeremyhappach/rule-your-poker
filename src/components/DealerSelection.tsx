@@ -23,16 +23,23 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
   const [isSpinning, setIsSpinning] = useState(true);
   const [finalPosition, setFinalPosition] = useState<number | null>(null);
   const hasStoppedRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   // Sort players by position for consistent cycling
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
+  
+  // Filter to only human players who are NOT sitting out (eligible dealers)
+  const eligibleDealers = sortedPlayers.filter(p => !p.is_bot && !p.sitting_out);
+  
   const currentPlayer = sortedPlayers[currentIndex];
 
   useEffect(() => {
-    // Filter to only human players who are NOT sitting out
-    const humanPlayers = sortedPlayers.filter(p => !p.is_bot && !p.sitting_out);
+    // Prevent re-initialization
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
     
-    if (humanPlayers.length === 0) {
+    // Handle edge cases first
+    if (eligibleDealers.length === 0) {
       // Fallback: if all humans are sitting out, try any non-sitting-out player
       const activePlayers = sortedPlayers.filter(p => !p.sitting_out);
       if (activePlayers.length === 0) {
@@ -44,9 +51,20 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
       return;
     }
     
-    // Randomly select final dealer from eligible human players only
-    const randomIndex = Math.floor(Math.random() * humanPlayers.length);
-    const selectedPlayer = humanPlayers[randomIndex];
+    // SINGLE ELIGIBLE DEALER: Bypass selection entirely
+    if (eligibleDealers.length === 1) {
+      console.log('[DEALER SELECTION] Only one eligible dealer, bypassing selection');
+      // Immediate callback - no animation needed
+      onComplete(eligibleDealers[0].position);
+      return;
+    }
+    
+    // MULTIPLE ELIGIBLE DEALERS: Run the spinning selection animation
+    console.log('[DEALER SELECTION] Multiple eligible dealers, running selection animation');
+    
+    // Randomly select final dealer from eligible human players
+    const randomIndex = Math.floor(Math.random() * eligibleDealers.length);
+    const selectedPlayer = eligibleDealers[randomIndex];
     const selectedPosition = selectedPlayer.position;
     setFinalPosition(selectedPosition);
     hasStoppedRef.current = false;
@@ -98,33 +116,46 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
     };
   }, [players.length]);
 
+  // If single eligible dealer, don't render anything (immediate bypass)
+  if (eligibleDealers.length <= 1) {
+    return null;
+  }
+
+  const getPlayerName = (player: Player) => {
+    if (player.is_bot) {
+      return getBotAlias(sortedPlayers, player.user_id);
+    }
+    return player.profiles?.username || `Seat ${player.position}`;
+  };
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-xl p-4 sm:p-8 border-4 border-poker-gold shadow-2xl animate-scale-in max-w-[90vw]">
-        <div className="text-center space-y-4 sm:space-y-6">
-          <div className="relative mx-auto w-fit">
-            <div className="w-20 h-20 sm:w-32 sm:h-32 rounded-full bg-poker-gold flex items-center justify-center border-4 sm:border-8 border-amber-900 shadow-2xl animate-pulse">
-              <span className="text-black font-black text-4xl sm:text-6xl">D</span>
+    <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+      {/* Yellow announcement banner - matches dealer setup message style */}
+      <div className="bg-poker-gold/95 backdrop-blur-sm rounded-xl px-6 py-4 shadow-2xl border-4 border-amber-900 animate-scale-in max-w-[85vw]">
+        <div className="text-center space-y-3">
+          {/* Header */}
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-amber-900 flex items-center justify-center border-2 border-amber-700 shadow-lg">
+              <span className="text-poker-gold font-black text-lg">D</span>
             </div>
-            <div className="absolute -bottom-3 sm:-bottom-4 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[15px] sm:border-l-[20px] border-r-[15px] sm:border-r-[20px] border-t-[22px] sm:border-t-[30px] border-l-transparent border-r-transparent border-t-poker-gold"></div>
+            <h2 className="text-slate-900 font-bold text-lg sm:text-xl">
+              {isSpinning ? 'Selecting Dealer...' : 'Dealer Selected!'}
+            </h2>
           </div>
           
-          <div className="space-y-2">
-            <h2 className="text-xl sm:text-3xl font-bold text-poker-gold">Selecting Dealer...</h2>
-            <div className="bg-poker-gold/20 backdrop-blur-sm rounded-lg p-3 sm:p-4 border-2 border-poker-gold/40">
-              <p className="text-lg sm:text-2xl font-bold text-white truncate max-w-[200px] sm:max-w-none mx-auto">
-                {currentPlayer?.is_bot 
-                  ? getBotAlias(sortedPlayers, currentPlayer.user_id) 
-                  : (currentPlayer?.profiles?.username || `Seat ${currentPlayer?.position}`)}
-                {currentPlayer?.is_bot && ' 🤖'}
-              </p>
-            </div>
+          {/* Player name cycling display */}
+          <div className="bg-amber-900/80 rounded-lg px-4 py-2 border border-amber-700">
+            <p className={`text-poker-gold font-bold text-base sm:text-lg truncate max-w-[200px] sm:max-w-[300px] mx-auto ${isSpinning ? 'animate-pulse' : ''}`}>
+              {getPlayerName(currentPlayer)}
+              {currentPlayer?.is_bot && ' 🤖'}
+            </p>
           </div>
           
+          {/* Confirmation message when stopped */}
           {!isSpinning && finalPosition && (
             <div className="animate-fade-in">
-              <p className="text-lg sm:text-xl text-poker-gold font-semibold">
-                ✨ Dealer Selected! ✨
+              <p className="text-slate-900 font-semibold text-sm">
+                ✨ Shuffle up and deal! ✨
               </p>
             </div>
           )}
