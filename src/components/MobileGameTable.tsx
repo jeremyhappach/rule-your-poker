@@ -472,11 +472,35 @@ export const MobileGameTable = ({
   // Delayed pot display - only update when chips arrive at pot box
   const potMemoryKey = gameId ?? 'unknown-game';
   const [displayedPot, setDisplayedPot] = useState(() => {
-    return displayedPotMemoryByGameId.get(potMemoryKey) ?? pot;
+    const memoryValue = displayedPotMemoryByGameId.get(potMemoryKey);
+    const initialValue = memoryValue ?? pot;
+    console.log('[POT_INIT] displayedPot initialized:', { 
+      memoryValue, 
+      potProp: pot, 
+      initialValue,
+      gameId: potMemoryKey 
+    });
+    return initialValue;
   });
   useLayoutEffect(() => {
     displayedPotMemoryByGameId.set(potMemoryKey, displayedPot);
   }, [potMemoryKey, displayedPot]);
+  
+  // Clear stale pot memory when starting a fresh hand (pot resets to antes only)
+  const prevHandContextRef = useRef(handContextId);
+  useEffect(() => {
+    if (handContextId && handContextId !== prevHandContextRef.current) {
+      // New hand started - clear any stale memory to use fresh pot value
+      console.log('[POT_MEMORY] New hand detected, clearing stale memory:', {
+        prevHand: prevHandContextRef.current,
+        newHand: handContextId,
+        currentMemory: displayedPotMemoryByGameId.get(potMemoryKey),
+        newPotProp: pot
+      });
+      displayedPotMemoryByGameId.delete(potMemoryKey);
+      prevHandContextRef.current = handContextId;
+    }
+  }, [handContextId, potMemoryKey, pot]);
 
   const isAnteAnimatingRef = useRef(false);
 
