@@ -555,6 +555,36 @@ export const MobileGameTable = ({
   // Track if a POT-OUT animation is active (pot → player)
   const [potOutAnimationActive, setPotOutAnimationActive] = useState(false);
 
+  // AGGRESSIVE POT DEBUG: if pot prop ever becomes 0 while chip stacks already moved, we want to know.
+  const showPotDebug = !!isHost;
+  useEffect(() => {
+    if (!showPotDebug) return;
+
+    if (pot === 0 && displayedPot > 0 && !potOutAnimationActive) {
+      console.error('[POT_DEBUG] pot prop is 0 while displayedPot > 0 (likely pot=null -> 0 somewhere upstream)', {
+        potProp: pot,
+        displayedPot,
+        gameStatus,
+        roundStatus,
+        handContextId,
+        anteAnimationTriggerId,
+        anteAnimationExpectedPot,
+        lock: potLockRef.current,
+        guard: initialAntePotGuardRef.current,
+      });
+    }
+  }, [
+    showPotDebug,
+    pot,
+    displayedPot,
+    potOutAnimationActive,
+    gameStatus,
+    roundStatus,
+    handContextId,
+    anteAnimationTriggerId,
+    anteAnimationExpectedPot,
+  ]);
+
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot) - POT-IN
     if (anteAnimationTriggerId) {
@@ -566,7 +596,6 @@ export const MobileGameTable = ({
       const prePot = Math.max(0, postPot - totalAmount);
       return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
-
     // 2) Holm Chucky loss (specific players pay into pot) - POT-IN
     if (chuckyLossTriggerId && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
       const totalAmount = chuckyLossAmount * chuckyLossPlayerIds.length;
@@ -2377,6 +2406,27 @@ export const MobileGameTable = ({
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }} />
+
+        {showPotDebug && (
+          <aside className="absolute right-2 top-2 z-[200] w-[min(360px,92vw)] rounded-lg border border-border bg-card/90 p-2 text-xs text-foreground shadow-lg">
+            <div className="font-medium">Pot Debug</div>
+            <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap leading-snug">
+{JSON.stringify({
+  potProp: pot,
+  displayedPot,
+  gameStatus,
+  roundStatus,
+  handContextId,
+  anteTrigger: anteAnimationTriggerId,
+  anteExpectedPot: anteAnimationExpectedPot,
+  potLock: potLockRef.current,
+  potOutActive: potOutAnimationActive,
+  guard: initialAntePotGuardRef.current,
+}, null, 2)}
+            </pre>
+          </aside>
+        )}
+
 
         
         {/* Game name on felt */}
