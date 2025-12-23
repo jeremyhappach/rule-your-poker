@@ -3725,12 +3725,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         potAmount = parseInt(potMatch[1], 10);
       }
     }
-    // Fallback to cached or live pot
+    // Fallback to cached or live pot (use potForDisplay which never flashes to 0)
      if (potAmount === 0) {
-       // Try round.pot first (usually persists longer), then cached max, then game.pot
+       // Try round.pot first (usually persists longer), then cached max, then stable pot
        const liveRound = game?.rounds?.find((r: any) => r.round_number === game.current_round);
        const liveRoundPot = liveRound?.pot || 0;
-       potAmount = Math.max(liveRoundPot, cachedPotFor357WinRef.current, game.pot || 0);
+       potAmount = Math.max(liveRoundPot, cachedPotFor357WinRef.current, potForDisplay);
      }
     
     console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'messageType:', isGameWinMessage ? 'game_win' : 'leg_win');
