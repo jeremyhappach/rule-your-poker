@@ -535,11 +535,12 @@ serve(async (req) => {
     // If a Holm round is stuck in 'showdown' or 'processing' status for too long,
     // the endHolmRound function likely failed mid-execution. Auto-recover by
     // setting awaiting_next_round and allowing progression.
-    // CRITICAL: Only trigger if game.awaiting_next_round is FALSE and all_decisions_in is TRUE.
+    // CRITICAL: Only trigger if game.awaiting_next_round is FALSE.
     // If awaiting_next_round is already set, the client is handling progression.
-    // If all_decisions_in is false, players are still deciding - not stuck.
+    // NOTE: We removed the all_decisions_in check because showdown can occur with
+    // all_decisions_in=false if endHolmRound failed before updating the flag.
     if (game.status === 'in_progress' && game.game_type === 'holm-game' && 
-        game.awaiting_next_round !== true && game.all_decisions_in === true) {
+        game.awaiting_next_round !== true) {
       const { data: stuckRounds } = await supabase
         .from('rounds')
         .select('*')
@@ -550,14 +551,16 @@ serve(async (req) => {
       
       const stuckRound = stuckRounds?.[0];
       if (stuckRound) {
-        // Use game.updated_at as proxy for when we entered this state (more accurate than round.created_at)
-        const gameUpdatedAt = new Date(game.updated_at);
-        const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
+        // Use round.created_at as proxy for when showdown started
+        const roundCreatedAt = new Date(stuckRound.created_at);
+        const stuckDuration = now.getTime() - roundCreatedAt.getTime();
         
-        // Only recover if stuck for more than 45 seconds AND no awaiting_next_round flag
-        // This gives ample time for normal client-side progression
-        if (stuckDuration > 45000) {
-          console.log('[ENFORCE] ⚠️ Holm round stuck in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 'seconds (game unchanged) - auto-recovering');
+        // Only recover if round has been in showdown/processing for more than 15 seconds
+        // This is enough time for normal client-side progression
+        // Using 15s instead of 45s because showdown should resolve quickly
+        if (stuckDuration > 15000) {
+          console.log('[ENFORCE] ⚠️ Holm round stuck in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 'seconds - auto-recovering');
+          console.log('[ENFORCE] Game state:', { awaiting_next_round: game.awaiting_next_round, all_decisions_in: game.all_decisions_in });
           
           // Mark round as completed and trigger next round
           await supabase
@@ -576,6 +579,8 @@ serve(async (req) => {
             .eq('id', gameId);
           
           actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round`);
+        } else {
+          console.log('[ENFORCE] Round in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 's (waiting, threshold: 15s)');
         }
       }
     }
