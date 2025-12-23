@@ -626,12 +626,22 @@ export const MobileGameTable = ({
       return;
     }
 
+    // Also block during 357 win trigger or active animation phase
     if (
       potLockRef.current ||
       isAnteAnimatingRef.current ||
       hasPending357WinForPot ||
-      threeFiveSevenWinPhaseRef.current !== 'idle'
+      threeFiveSevenWinPhaseRef.current !== 'idle' ||
+      // CRITICAL: Block when 357 win trigger exists, even if phase hasn't started yet
+      !!threeFiveSevenWinTriggerId
     ) {
+      console.log('[POT_SYNC] BLOCKED (animation/trigger active)', { 
+        potLock: potLockRef.current,
+        anteAnimating: isAnteAnimatingRef.current,
+        hasPending357Win: hasPending357WinForPot,
+        phase: threeFiveSevenWinPhaseRef.current,
+        triggerId: threeFiveSevenWinTriggerId
+      });
       return;
     }
 
@@ -660,7 +670,12 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Decreases (or same) can sync immediately.
+    // Decreases (or same) can sync immediately - BUT NOT during 357 win animation!
+    // (We already returned above if 357 win is active, but double-check here for safety)
+    if (threeFiveSevenWinTriggerId || threeFiveSevenWinPhaseRef.current !== 'idle') {
+      console.log('[POT_SYNC] BLOCKED decrease (357 win active)', { displayedPot, backendPot: pot, triggerId: threeFiveSevenWinTriggerId, phase: threeFiveSevenWinPhaseRef.current });
+      return;
+    }
     console.log('[POT_SYNC] apply-immediate', { gameId: potMemoryKey, displayedPot, backendPot: pot });
     setDisplayedPot(pot);
 
@@ -670,7 +685,7 @@ export const MobileGameTable = ({
         potIncreaseSyncTimeoutRef.current = null;
       }
     };
-  }, [pot, displayedPot, hasPending357WinForPot, potMemoryKey]);
+  }, [pot, displayedPot, hasPending357WinForPot, potMemoryKey, threeFiveSevenWinTriggerId]);
 
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
