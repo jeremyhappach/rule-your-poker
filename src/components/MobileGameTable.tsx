@@ -1846,11 +1846,14 @@ export const MobileGameTable = ({
       });
     }
     
-    console.log('[357 WIN] Phase 2: pot-to-player');
+    console.log('[357 WIN] Phase 2: pot-to-player - zeroing displayed pot NOW');
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
     setThreeFiveSevenPotHiddenUntilReset(true);
+    // CRITICAL: Explicitly set displayed pot to 0 when pot-to-player animation begins
+    // This ensures the pot visually empties as the chips fly to the winner
+    setDisplayedPot(0);
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
   }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId]);
 

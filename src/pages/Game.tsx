@@ -231,6 +231,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [threeFiveSevenWinnerId, setThreeFiveSevenWinnerId] = useState<string | null>(null);
   const [threeFiveSevenWinnerCards, setThreeFiveSevenWinnerCards] = useState<CardType[]>([]);
   const threeFiveSevenWinProcessedRef = useRef<string | null>(null);
+  // Track if 357 win animation is actively playing (blocks GameOverCountdown)
+  const [is357WinAnimationActive, setIs357WinAnimationActive] = useState(false);
   
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
@@ -3435,7 +3437,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         game?.game_type !== 'holm-game' && 
         !game?.game_over_at && 
         game?.last_round_result?.includes('won the game')) {
-      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed in 8s');
+      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed in 12s');
       
       const timer = setTimeout(async () => {
         // Fetch FRESH game state from DB - React state may be stale
@@ -3447,12 +3449,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         
         // Only proceed if we're STILL stuck (fresh DB check)
         if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
-          console.log('[357 SAFETY FALLBACK] Still stuck after 8s (verified via DB), auto-proceeding to next game');
+          console.log('[357 SAFETY FALLBACK] Still stuck after 12s (verified via DB), auto-proceeding to next game');
+          setIs357WinAnimationActive(false); // Clear flag before proceeding
           await handleGameOverComplete();
         } else {
           console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame?.status, freshGame?.game_over_at);
         }
-      }, 8000); // 8 second fallback (enough time for full animation sequence: 2.6s + 1.8s + 3s = 7.4s)
+      }, 12000); // 12 second fallback (enough time for full animation sequence: 2.6s wait + legs animation + pot animation + 3s delay)
       
       return () => clearTimeout(timer);
     }
@@ -3713,6 +3716,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'messageType:', isGameWinMessage ? 'game_win' : 'leg_win');
     
+    // Mark animation as active - this blocks GameOverCountdown until animation completes
+    setIs357WinAnimationActive(true);
+    
     setThreeFiveSevenWinPotAmount(potAmount);
     setThreeFiveSevenWinnerId(winnerPlayer.id);
     setThreeFiveSevenWinnerCards(winnerCards);
@@ -3731,6 +3737,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinnerCards([]);
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
+      setIs357WinAnimationActive(false);
     }
     // Also reset when transitioning from game_over to dealer_selection (next game starting)
     if (game?.status === 'dealer_selection' || game?.status === 'configuring') {
@@ -3742,6 +3749,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setThreeFiveSevenWinnerCards([]);
       cachedPotFor357WinRef.current = 0;
       setCachedLegPositions([]);
+      setIs357WinAnimationActive(false);
     }
   }, [game?.status, game?.current_round]);
 
@@ -3778,7 +3786,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== 'game_over' || game?.game_type === 'holm-game' || !gameId) {
       return;
     }
-    console.log('[357 WIN] Animation complete, proceeding directly to next game');
+    console.log('[357 WIN] Animation complete, clearing active flag and proceeding to next game');
+    
+    // Clear animation active flag - allows any future countdown to proceed
+    setIs357WinAnimationActive(false);
     
     // Proceed directly to next game without countdown
     await handleGameOverComplete();
@@ -4657,7 +4668,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       gameStatus={game.status}
                       handContextId={handContextKey}
                     />
-                    {game.game_over_at && (
+                    {/* Desktop game over countdown - BLOCKED during 357 win animation */}
+                    {game.game_over_at && !is357WinAnimationActive && (
                       <GameOverCountdown
                         winnerMessage={game.last_round_result}
                         nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
@@ -4669,8 +4681,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     )}
                   </>
                 )}
-                {/* Mobile game over countdown */}
-                {isMobile && game.game_over_at && (
+                {/* Mobile game over countdown - BLOCKED during 357 win animation */}
+                {isMobile && game.game_over_at && !is357WinAnimationActive && (
                   <GameOverCountdown
                     winnerMessage={game.last_round_result}
                     nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
