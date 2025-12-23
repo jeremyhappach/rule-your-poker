@@ -2387,6 +2387,11 @@ export const MobileGameTable = ({
             ({getAggressionAbbreviation(player.profiles.aggression_level)})
           </span>
         )}
+        {isCurrentUser && (
+          <span className="ml-1 text-[10px] font-medium text-white/70">
+            R{currentRound}
+          </span>
+        )}
       </span>
     );
     
