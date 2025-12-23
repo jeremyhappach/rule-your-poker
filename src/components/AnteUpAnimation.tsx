@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { formatChipValue } from '@/lib/utils';
 
 interface ChipAnimation {
   id: string;
@@ -55,21 +56,22 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // CRITICAL: Use a ref to track animation in progress - state updates are async and can miss rapid re-triggers
   const animationInProgressRef = useRef(false);
 
-  // TEMP DEBUG: slow the visual ante chip travel so amounts are readable.
-  // Revert to ~1200ms total once done debugging.
-  const ANTE_TRAVEL_MS = 10_000;
+  // Animation timing
+  const ANTE_TRAVEL_MS = 1000;
+  const ANTE_ARRIVE_MS = 800;
+  const ANTE_CLEANUP_MS = 1200;
 
   // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
   // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
     if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
     const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 92, left: 10 },   // Bottom-left: bottom-2 left-10
-      1: { top: 50, left: 2 },    // Middle-left: left-0 top-1/2
-      2: { top: 2, left: 10 },    // Top-left: top-2 left-10
-      3: { top: 2, left: 90 },    // Top-right: top-2 right-10
-      4: { top: 50, left: 98 },   // Middle-right: right-0 top-1/2
-      5: { top: 92, left: 90 },   // Bottom-right: bottom-2 right-10
+      0: { top: 92, left: 10 }, // Bottom-left: bottom-2 left-10
+      1: { top: 50, left: 2 }, // Middle-left: left-0 top-1/2
+      2: { top: 2, left: 10 }, // Top-left: top-2 left-10
+      3: { top: 2, left: 90 }, // Top-right: top-2 right-10
+      4: { top: 50, left: 98 }, // Middle-right: right-0 top-1/2
+      5: { top: 92, left: 90 }, // Bottom-right: bottom-2 right-10
     };
     return slots[slotIndex] || { top: 50, left: 50 };
   };
@@ -81,13 +83,13 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     // 1: Top-left, 2: Middle-left, 3: Bottom-left, 4: Bottom-center
     // 5: Bottom-right, 6: Middle-right, 7: Top-right
     const absoluteSlots: Record<number, { top: number; left: number }> = {
-      1: { top: 2, left: 10 },    // Top-left
-      2: { top: 50, left: 2 },    // Middle-left
-      3: { top: 92, left: 10 },   // Bottom-left
-      4: { top: 92, left: 50 },   // Bottom-center
-      5: { top: 92, left: 90 },   // Bottom-right
-      6: { top: 50, left: 98 },   // Middle-right
-      7: { top: 2, left: 90 },    // Top-right
+      1: { top: 2, left: 10 }, // Top-left
+      2: { top: 50, left: 2 }, // Middle-left
+      3: { top: 92, left: 10 }, // Bottom-left
+      4: { top: 92, left: 50 }, // Bottom-center
+      5: { top: 92, left: 90 }, // Bottom-right
+      6: { top: 50, left: 98 }, // Middle-right
+      7: { top: 2, left: 90 }, // Top-right
     };
     return absoluteSlots[position] || { top: 50, left: 50 };
   };
@@ -97,37 +99,37 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // We calculate center and then offset to the nearest edge based on where the player chip starts
   const getPotBoxTarget = (slotIndex: number, rect: DOMRect, isHolm: boolean): { x: number; y: number } => {
     const centerX = rect.width / 2;
-    
+
     // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm, px-8 py-3 for 3-5-7)
     // Holm: ~90px wide, ~32px tall
     // 3-5-7: ~130px wide, ~56px tall
     const potHalfWidth = isHolm ? 50 : 70; // Add buffer to stop at visible border
     const potHalfHeight = isHolm ? 20 : 32;
-    
+
     // Calculate pot center Y based on CSS positioning
     // Holm: "top-[35%] -translate-y-full" means bottom edge at 35%, so center = 35% - halfHeight
     // 3-5-7: "top-1/2 -translate-y-1/2" means center at 50%
-    const potBottomY = isHolm ? rect.height * 0.35 : rect.height * 0.50 + potHalfHeight;
+    const potBottomY = isHolm ? rect.height * 0.35 : rect.height * 0.5 + potHalfHeight;
     const potTopY = potBottomY - potHalfHeight * 2;
     const potCenterY = (potTopY + potBottomY) / 2;
-    
+
     // Target the closest edge based on VISUAL slot position (relative to current player)
     // Add a small offset (5px) so chips stop just before the pot border
     const edgeBuffer = -3; // Negative = travel INTO pot area slightly
     switch (slotIndex) {
       case -1: // Current player (bottom) - target bottom edge
         return { x: centerX, y: potBottomY + edgeBuffer };
-      case 0:  // Bottom-left - target bottom-left corner area
+      case 0: // Bottom-left - target bottom-left corner area
         return { x: centerX - potHalfWidth * 0.5, y: potBottomY + edgeBuffer };
-      case 5:  // Bottom-right - target bottom-right corner area
+      case 5: // Bottom-right - target bottom-right corner area
         return { x: centerX + potHalfWidth * 0.5, y: potBottomY + edgeBuffer };
-      case 2:  // Top-left - target top-left corner area
+      case 2: // Top-left - target top-left corner area
         return { x: centerX - potHalfWidth * 0.5, y: potTopY - edgeBuffer };
-      case 3:  // Top-right - target top-right corner area
+      case 3: // Top-right - target top-right corner area
         return { x: centerX + potHalfWidth * 0.5, y: potTopY - edgeBuffer };
-      case 1:  // Middle-left - target left edge
+      case 1: // Middle-left - target left edge
         return { x: centerX - potHalfWidth - edgeBuffer, y: potCenterY };
-      case 4:  // Middle-right - target right edge
+      case 4: // Middle-right - target right edge
         return { x: centerX + potHalfWidth + edgeBuffer, y: potCenterY };
       default:
         return { x: centerX, y: potCenterY };
@@ -153,36 +155,34 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     if (!triggerId || triggerId === lastTriggerIdRef.current || animationInProgressRef.current) {
       return;
     }
-    
+
     // IMMEDIATELY mark animation as in progress (ref updates synchronously, prevents race conditions)
     animationInProgressRef.current = true;
     lastTriggerIdRef.current = triggerId;
-    
+
     // Lock the display amount BEFORE calling onAnimationStart (which clears the trigger)
     lockedDisplayAmountRef.current = displayAmount;
-    
+
     const isHolm = gameType === 'holm-game';
 
     // Start animation immediately
-    if (onAnimationStart) {
-      onAnimationStart();
-    }
-    
+    onAnimationStart?.();
+
     const rect = containerRef.current.getBoundingClientRect();
 
     // Filter to specific players if provided, otherwise all active players
-    const playersToAnimate = specificPlayerIds 
-      ? activePlayers.filter(p => p.id && specificPlayerIds.includes(p.id))
+    const playersToAnimate = specificPlayerIds
+      ? activePlayers.filter((p) => p.id && specificPlayerIds.includes(p.id))
       : activePlayers;
 
     // CRITICAL: For observers (currentPlayerPosition is null), use ABSOLUTE position mapping
     // For seated players, use RELATIVE slots based on clockwise distance
     const isObserver = currentPlayerPosition === null;
-    
-    const newAnims: ChipAnimation[] = playersToAnimate.map(player => {
+
+    const newAnims: ChipAnimation[] = playersToAnimate.map((player) => {
       let slot: { top: number; left: number };
       let slotIndexForTarget: number;
-      
+
       if (isObserver) {
         // Observer mode: use absolute position directly
         slot = getAbsolutePositionPercent(player.position);
@@ -197,9 +197,9 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
         slotIndexForTarget = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
         slot = getSlotPercent(slotIndexForTarget);
       }
-      
+
       const target = getPotBoxTarget(slotIndexForTarget, rect, isHolm);
-      
+
       return {
         id: `chip-${animIdRef.current++}`,
         fromX: (slot.left / 100) * rect.width,
@@ -211,19 +211,36 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
 
     setAnimations(newAnims);
     lastAnimatedPotRef.current = pot;
-    
-    // Trigger callback when chips arrive at pot (at end of travel animation)
+
+    // Trigger callback when chips arrive at pot (near end of travel)
     if (onChipsArrived) {
       setTimeout(() => {
         onChipsArrived();
-      }, ANTE_TRAVEL_MS);
+      }, ANTE_ARRIVE_MS);
     }
 
+    // Cleanup after animation completes
     setTimeout(() => {
       setAnimations([]);
       animationInProgressRef.current = false; // Clear the ref guard when animation completes
-    }, ANTE_TRAVEL_MS + 200);
-  }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, gameStatus, triggerId, anteAmount, onAnimationStart, onChipsArrived]);
+    }, ANTE_CLEANUP_MS);
+  }, [
+    pot,
+    currentRound,
+    activePlayers,
+    currentPlayerPosition,
+    getClockwiseDistance,
+    isWaitingPhase,
+    containerRef,
+    gameType,
+    gameStatus,
+    triggerId,
+    anteAmount,
+    displayAmount,
+    specificPlayerIds,
+    onAnimationStart,
+    onChipsArrived,
+  ]);
 
   if (animations.length === 0) return null;
 
@@ -242,10 +259,10 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
           <div
             className="w-7 h-7 rounded-full bg-sky-400 border-2 border-white shadow-lg flex items-center justify-center"
             style={{
-              animation: `anteChipMove${i} ${ANTE_TRAVEL_MS}ms linear forwards`,
+              animation: `anteChipMove${i} ${ANTE_TRAVEL_MS}ms ease-out forwards`,
             }}
           >
-            <span className="text-black text-[10px] font-bold">${lockedDisplayAmountRef.current}</span>
+            <span className="text-black text-[10px] font-bold">${formatChipValue(lockedDisplayAmountRef.current)}</span>
           </div>
           <style>{`
             @keyframes anteChipMove${i} {
@@ -253,9 +270,17 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
                 transform: translate(0, 0) scale(1);
                 opacity: 1;
               }
-              100% {
+              70% {
                 transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(1);
                 opacity: 1;
+              }
+              85% {
+                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(1.1);
+                opacity: 1;
+              }
+              100% {
+                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(0);
+                opacity: 0;
               }
             }
           `}</style>
