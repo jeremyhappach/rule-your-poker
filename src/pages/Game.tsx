@@ -3425,7 +3425,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    console.log('[GAME OVER] Successfully transitioned to game_selection');
+    console.log('[GAME OVER] Successfully transitioned to game_selection, new dealer:', newDealerPosition);
 
     // Reset transition guard and ante animation guard for next game
     gameOverTransitionRef.current = false;
@@ -3433,7 +3433,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Manual refetch to update UI
     // Bot dealers will be handled automatically by DealerGameSetup component
+    console.log('[GAME OVER] Calling fetchGameData to sync UI');
     await fetchGameData();
+    console.log('[GAME OVER] fetchGameData completed');
   } catch (error: any) {
     // If anything throws above, the previous code would leave gameOverTransitionRef stuck true,
     // permanently blocking progression. This catch + finally makes the flow resilient.
@@ -3925,12 +3927,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
     if (game?.game_type === 'holm-game' || !gameId) {
+      console.log('[357SEQ][WIN_COMPLETE] Skipping: holm-game or no gameId');
       return;
     }
 
     console.log('[357SEQ][WIN_COMPLETE] Animation complete, clearing active flag', {
       t: Date.now(),
       currentStatus: game?.status,
+      gameOverTransitionRef: gameOverTransitionRef.current,
     });
 
     // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
@@ -3946,15 +3950,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     cachedPotFor357WinRef.current = 0;
     setCachedLegPositions([]);
 
+    // CRITICAL: Fetch fresh game status from DB - React state may be stale
+    const { data: freshGame, error: fetchError } = await supabase
+      .from('games')
+      .select('status')
+      .eq('id', gameId)
+      .single();
+
+    console.log('[357SEQ][WIN_COMPLETE] Fresh game status:', freshGame?.status, 'error:', fetchError);
+
     // If another client already transitioned the game state, just refetch to sync UI.
-    if (game?.status !== 'game_over') {
-      console.log('[357SEQ][WIN_COMPLETE] Game already transitioned, refetching:', game?.status);
+    if (freshGame?.status !== 'game_over') {
+      console.log('[357SEQ][WIN_COMPLETE] Game already transitioned to:', freshGame?.status);
       await fetchGameData();
       return;
     }
 
-    console.log('[357SEQ][WIN_COMPLETE] Proceeding to next game');
+    console.log('[357SEQ][WIN_COMPLETE] Still in game_over, calling handleGameOverComplete');
     await handleGameOverComplete();
+    console.log('[357SEQ][WIN_COMPLETE] handleGameOverComplete finished');
   }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData]);
 
   const handleAllAnteDecisionsIn = async () => {
