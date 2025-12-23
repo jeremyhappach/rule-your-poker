@@ -2510,9 +2510,11 @@ export const MobileGameTable = ({
         {hideChipForShowdown && isBottomPosition && nameElement}
         {/* Hide chip stack during showdown to make room for cards */}
         {!hideChipForShowdown && (
-          <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
-            {chipElement}
-          </MobilePlayerTimer>
+          <div data-seat-chip-position={player.position} className="relative">
+            <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
+              {chipElement}
+            </MobilePlayerTimer>
+          </div>
         )}
         {/* Emoticon overlay when chip is hidden during showdown */}
         {emoticonOverlayElement}
