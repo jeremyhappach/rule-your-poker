@@ -626,37 +626,46 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Determine if we're in a phase where pot is visually empty (chips have flown to winner)
-    // Once pot-to-player starts, the pot should show 0 and stay at 0 through delay phase
-    const isPotVisuallyEmpty = threeFiveSevenWinPhaseRef.current === 'pot-to-player' || 
-                                threeFiveSevenWinPhaseRef.current === 'delay';
-    
-    // Block pot INCREASES during win animations
-    const shouldBlockIncrease = (
+    // 357 win phases:
+    // - waiting / legs-to-player: game is still resolving the win (block pot sync to avoid flicker)
+    // - pot-to-player / delay: chips are leaving pot or +$x is flashing; pot should be FREE to sync
+    //   (especially for next-hand ante/bets). This is the key fix.
+    const phase357 = threeFiveSevenWinPhaseRef.current;
+
+    // Once pot-to-player starts, pot is visually empty and should be allowed to sync (incl. increases)
+    // even while the later +$x flash happens (delay).
+    const isPotVisuallyEmpty = phase357 === 'pot-to-player' || phase357 === 'delay';
+    const isPrePotToPlayer357Phase = phase357 === 'waiting' || phase357 === 'legs-to-player';
+
+    // Block pot INCREASES only during true lock / chip-flight phases.
+    // IMPORTANT: Do NOT block increases during 'delay' (+$x flash) — next hand may already be starting.
+    const shouldBlockIncrease =
       potLockRef.current ||
       isAnteAnimatingRef.current ||
-      hasPending357WinForPot ||
-      threeFiveSevenWinPhaseRef.current !== 'idle' ||
-      !!threeFiveSevenWinTriggerId ||
-      !!holmWinPotTriggerId
-    );
-    
+      isPrePotToPlayer357Phase ||
+      // If a 357 win trigger exists but we haven't reached pot-to-player yet, keep increases blocked.
+      // Once pot-to-player (or delay) starts, allow increases.
+      ((hasPending357WinForPot || !!threeFiveSevenWinTriggerId) && !isPotVisuallyEmpty) ||
+      !!holmWinPotTriggerId;
+
     // For decreases: block EXCEPT when pot is visually empty (pot-to-player or delay phase)
-    const shouldBlockDecrease = (
+    const shouldBlockDecrease =
       potLockRef.current ||
       isAnteAnimatingRef.current ||
       // Block during waiting/legs-to-player phases, but NOT pot-to-player/delay
-      (threeFiveSevenWinPhaseRef.current !== 'idle' && !isPotVisuallyEmpty) ||
+      (phase357 !== 'idle' && !isPotVisuallyEmpty) ||
       // Block if trigger exists but pot-to-player hasn't started yet
       (!!threeFiveSevenWinTriggerId && !isPotVisuallyEmpty) ||
-      !!holmWinPotTriggerId
-    );
+      !!holmWinPotTriggerId;
 
     // If backend pot increased, delay the visual sync long enough for animation trigger to lock.
     if (pot > displayedPot) {
       if (shouldBlockIncrease) {
-        console.log('[POT_SYNC] BLOCKED increase (animation active)', { 
-          phase: threeFiveSevenWinPhaseRef.current, triggerId357: threeFiveSevenWinTriggerId, triggerIdHolm: holmWinPotTriggerId 
+        console.log('[POT_SYNC] BLOCKED increase (animation active)', {
+          phase: phase357,
+          triggerId357: threeFiveSevenWinTriggerId,
+          triggerIdHolm: holmWinPotTriggerId,
+          isPotVisuallyEmpty,
         });
         return;
       }
@@ -668,11 +677,16 @@ export const MobileGameTable = ({
           console.log('[POT_SYNC] skipped-after-delay (allDecisionsIn lock)', { displayedPot, backendPot: pot });
           return;
         }
+
+        const phaseNow357 = threeFiveSevenWinPhaseRef.current;
+        const isPotVisuallyEmptyNow = phaseNow357 === 'pot-to-player' || phaseNow357 === 'delay';
+        const isPrePotToPlayer357PhaseNow = phaseNow357 === 'waiting' || phaseNow357 === 'legs-to-player';
+
         if (
           potLockRef.current ||
           isAnteAnimatingRef.current ||
-          hasPending357WinForPot ||
-          threeFiveSevenWinPhaseRef.current !== 'idle'
+          isPrePotToPlayer357PhaseNow ||
+          ((hasPending357WinForPot || !!threeFiveSevenWinTriggerId) && !isPotVisuallyEmptyNow)
         ) {
           console.log('[POT_SYNC] skipped-after-delay (locked/animating)', { gameId: potMemoryKey, displayedPot, backendPot: pot });
           return;
@@ -685,15 +699,15 @@ export const MobileGameTable = ({
 
     // Decreases (or same) - allow when pot is visually empty, block during other phases
     if (shouldBlockDecrease) {
-      console.log('[POT_SYNC] BLOCKED decrease (win animation active)', { displayedPot, backendPot: pot, phase: threeFiveSevenWinPhaseRef.current, isPotVisuallyEmpty });
+      console.log('[POT_SYNC] BLOCKED decrease (win animation active)', {
+        displayedPot,
+        backendPot: pot,
+        phase: phase357,
+        isPotVisuallyEmpty,
+      });
       return;
     }
-    
-    // ALLOW decrease during pot-to-player/delay phases - pot should show 0
-    if (isPotVisuallyEmpty) {
-      console.log('[POT_SYNC] ALLOW decrease (pot visually empty)', { displayedPot, backendPot: pot, phase: threeFiveSevenWinPhaseRef.current });
-    }
-    console.log('[POT_SYNC] apply-immediate', { gameId: potMemoryKey, displayedPot, backendPot: pot });
+
     console.log('[POT_SYNC] apply-immediate', { gameId: potMemoryKey, displayedPot, backendPot: pot });
     setDisplayedPot(pot);
 
