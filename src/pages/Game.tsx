@@ -4925,13 +4925,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               holmWinPotAmount={isInProgress ? holmWinPotAmount : undefined}
               holmWinWinnerPosition={isInProgress ? holmWinWinnerPosition : undefined}
               onHolmWinPotAnimationComplete={isInProgress ? handleHolmWinPotAnimationComplete : undefined}
-              threeFiveSevenWinTriggerId={isInProgress ? threeFiveSevenWinTriggerId : null}
-              threeFiveSevenWinPotAmount={isInProgress ? threeFiveSevenWinPotAmount : undefined}
-              threeFiveSevenWinnerId={isInProgress ? threeFiveSevenWinnerId : null}
-              threeFiveSevenWinnerCards={isInProgress ? threeFiveSevenWinnerCards : undefined}
-              threeFiveSevenCachedLegPositions={isInProgress ? cachedLegPositions : undefined}
-              onThreeFiveSevenWinAnimationStarted={isInProgress ? handleThreeFiveSevenWinAnimationStarted : undefined}
-              onThreeFiveSevenWinAnimationComplete={isInProgress ? handleThreeFiveSevenWinAnimationComplete : undefined}
+              threeFiveSevenWinTriggerId={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinTriggerId : null}
+              threeFiveSevenWinPotAmount={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinPotAmount : undefined}
+              threeFiveSevenWinnerId={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinnerId : null}
+              threeFiveSevenWinnerCards={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinnerCards : undefined}
+              threeFiveSevenCachedLegPositions={(isInProgress || is357WinAnimationActive) ? cachedLegPositions : undefined}
+              onThreeFiveSevenWinAnimationStarted={(isInProgress || is357WinAnimationActive) ? handleThreeFiveSevenWinAnimationStarted : undefined}
+              onThreeFiveSevenWinAnimationComplete={(isInProgress || is357WinAnimationActive) ? handleThreeFiveSevenWinAnimationComplete : undefined}
               onStay={isInProgress ? handleStay : () => {}}
               onFold={isInProgress ? handleFold : () => {}}
               onSelectSeat={handleSelectSeat}
