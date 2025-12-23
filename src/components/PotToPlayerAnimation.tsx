@@ -112,15 +112,16 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       toY: winnerCoords.y,
     });
 
-    // Animation ends at ~3.0s (extended to match slower legs-to-player), notify parent so winner's chips increment
+    // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
+    // (MobileGameTable switches phase immediately on onAnimationEnd.)
     setTimeout(() => {
       onAnimationEnd?.();
-    }, 3000);
+    }, 3300);
 
     // Clear animation after it completes
     setTimeout(() => {
       setAnimation(null);
-    }, 3500);
+    }, 3700);
   }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationStart, onAnimationEnd]);
 
   if (!animation) return null;
