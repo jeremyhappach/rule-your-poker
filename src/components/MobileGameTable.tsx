@@ -1933,7 +1933,7 @@ export const MobileGameTable = ({
     setPotToPlayerTriggerId357(null);
     
     // Wait for leg earned animation to complete (it runs for 2.5s for winning leg)
-    // Then start legs-to-player animation
+    // Then start legs-to-player animation - reduced delay for tighter transition
     setTimeout(() => {
       // Only proceed if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
@@ -1944,7 +1944,7 @@ export const MobileGameTable = ({
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
-    }, 2600); // Slightly after leg earned animation completes
+    }, 1800); // Tighter timing - start legs-to-player just after leg lands
     // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
     // to prevent dependency changes during animation from invalidating the animation sequence
   }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver]);
@@ -2200,16 +2200,18 @@ export const MobileGameTable = ({
     // Use cached values when: any animation phase is active (waiting, legs-to-player, pot-to-player, delay)
     const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
     const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
+    // During 'waiting' phase, use cached legs (already includes the just-won leg from parent)
+    // This prevents the leg from flickering away when backend resets
     const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
     
-    // IMPORTANT: After animation completes (phase=idle), only show legs if backend hasn't reset them yet
-    // Once legs are swept, they're gone until next game awards new legs
-    // The "legsHaveBeenSwept" ref tracks when a 357 win animation has completed
+    // During 'waiting' phase (LegEarnedAnimation playing), show full legs minus 1 for the animating player
+    // During legs-to-player/pot-to-player/delay, legs are hidden by hideLegsForWinAnimation
+    // After animation completes (idle with trigger set), show 0 since legs were swept to winner
     const legsWereSweptThisSession = lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
     
     const displayLegs = hideLegsForWinAnimation ? 0 : 
       (legsWereSweptThisSession ? 0 : // Legs were swept - show 0 until next hand/game
-       (isLegAnimatingForThisPlayer ? effectivePlayerLegs - 1 : effectivePlayerLegs));
+       (isLegAnimatingForThisPlayer ? Math.max(0, effectivePlayerLegs - 1) : effectivePlayerLegs));
     const legIndicator = displayLegs > 0 && (
       <div className="absolute z-30" style={{
         // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
@@ -3595,12 +3597,14 @@ export const MobileGameTable = ({
           </div>}
         
         {/* Game Over state - result message (includes beat Chucky results now) */}
-        {/* Hide all announcements during 3-5-7 win animation - the animation itself is the announcement */}
+        {/* Hide all announcements during 3-5-7 game win - the animation itself is the announcement */}
+        {/* For 3-5-7 games, never show "won the game" announcement - sweep animation is sufficient */}
         {isGameOver && lastRoundResult && !(
           gameType !== 'holm-game' && (
             threeFiveSevenWinTriggerId || 
             threeFiveSevenWinPhase !== 'idle' ||
-            lastRoundResult.includes('won the game')
+            lastRoundResult.includes('won the game') ||
+            lastThreeFiveSevenTriggerRef.current !== null // Also hide after animation completes
           )
         ) && (
           <div className="px-4 py-3">
