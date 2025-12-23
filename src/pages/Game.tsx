@@ -4670,7 +4670,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onComplete={selectDealer}
               />
             )}
-            {(game.status === 'game_over' || game.status === 'session_ended') && game.last_round_result && !game.last_round_result.includes('Chucky beat') ? (
+            {((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game')) && game.last_round_result && !game.last_round_result.includes('Chucky beat')) ? (
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable key={gameId ?? 'unknown-game'}
@@ -4699,7 +4699,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
                     chuckyActive={currentRound?.chucky_active}
                     gameType={game.game_type}
-                    gameStatus={game.status}
+                    gameStatus={(is357WinAnimationActive && game.game_type !== 'holm-game') ? 'game_over' : game.status}
                     roundStatus={currentRound?.status}
                     isGameOver={!!game.game_over_at}
                     isDealer={isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false}
@@ -4792,7 +4792,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   />
                 )}
               </div>
-            ) : (game.status === 'game_selection' || game.status === 'configuring') ? (
+            ) : (!is357WinAnimationActive && (game.status === 'game_selection' || game.status === 'configuring')) ? (
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
@@ -4925,10 +4925,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </Card>
         )}
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && is357WinAnimationActive)) && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress') && (() => {
           const isInProgress = game.status === 'in_progress';
-          const is357WinView = game.status === 'game_over' && is357WinAnimationActive;
-          const hasActiveRound = (isInProgress || is357WinView) && Boolean(currentRound?.id);
+          const hasActiveRound = isInProgress && Boolean(currentRound?.id);
 
           return isMobile ? (
             <MobileGameTable
@@ -5012,13 +5011,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               holmWinPotAmount={isInProgress ? holmWinPotAmount : undefined}
               holmWinWinnerPosition={isInProgress ? holmWinWinnerPosition : undefined}
               onHolmWinPotAnimationComplete={isInProgress ? handleHolmWinPotAnimationComplete : undefined}
-              threeFiveSevenWinTriggerId={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinTriggerId : null}
-              threeFiveSevenWinPotAmount={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinPotAmount : undefined}
-              threeFiveSevenWinnerId={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinnerId : null}
-              threeFiveSevenWinnerCards={(isInProgress || is357WinAnimationActive) ? threeFiveSevenWinnerCards : undefined}
-              threeFiveSevenCachedLegPositions={(isInProgress || is357WinAnimationActive) ? cachedLegPositions : undefined}
-              onThreeFiveSevenWinAnimationStarted={(isInProgress || is357WinAnimationActive) ? handleThreeFiveSevenWinAnimationStarted : undefined}
-              onThreeFiveSevenWinAnimationComplete={(isInProgress || is357WinAnimationActive) ? handleThreeFiveSevenWinAnimationComplete : undefined}
+              threeFiveSevenWinTriggerId={isInProgress ? threeFiveSevenWinTriggerId : null}
+              threeFiveSevenWinPotAmount={isInProgress ? threeFiveSevenWinPotAmount : undefined}
+              threeFiveSevenWinnerId={isInProgress ? threeFiveSevenWinnerId : null}
+              threeFiveSevenWinnerCards={isInProgress ? threeFiveSevenWinnerCards : undefined}
+              threeFiveSevenCachedLegPositions={isInProgress ? cachedLegPositions : undefined}
+              onThreeFiveSevenWinAnimationStarted={isInProgress ? handleThreeFiveSevenWinAnimationStarted : undefined}
+              onThreeFiveSevenWinAnimationComplete={isInProgress ? handleThreeFiveSevenWinAnimationComplete : undefined}
               onStay={isInProgress ? handleStay : () => {}}
               onFold={isInProgress ? handleFold : () => {}}
               onSelectSeat={handleSelectSeat}
