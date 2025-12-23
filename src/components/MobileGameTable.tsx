@@ -3479,16 +3479,24 @@ export const MobileGameTable = ({
                 const displayCount = (showLegEarned && legEarnedPlayerPosition === currentPlayer.position) 
                   ? effectiveLegs - 1 
                   : effectiveLegs;
+                // Check if we're in 3-5-7 win animation
+                const isIn357WinAnimationLocal = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
+                // Show dollar value during 3-5-7 win animation phases
+                const showLegDollarValue = isIn357WinAnimationLocal && legValue > 0;
+                const legDisplayText = showLegDollarValue ? `$${legValue}` : 'L';
+                const chipSize = showLegDollarValue ? 'w-8 h-8' : 'w-7 h-7';
+                const textSize = showLegDollarValue ? 'text-[9px]' : 'text-xs';
+                
                 return (
                 <div 
                   key={i}
-                  className="w-7 h-7 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg"
+                  className={`${chipSize} rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg`}
                   style={{
                     marginLeft: i > 0 ? '-10px' : '0',
                     zIndex: Math.min(displayCount, legsToWin) - i
                   }}
                 >
-                  <span className="text-slate-800 font-bold text-xs">L</span>
+                  <span className={`text-slate-800 font-bold ${textSize}`}>{legDisplayText}</span>
                 </div>
                 );
               })}
