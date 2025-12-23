@@ -588,7 +588,11 @@ export const MobileGameTable = ({
       const activeCount = players.filter(p => !p.sitting_out).length;
       const totalAmount = perPlayerAmount * activeCount;
       const postPot = (anteAnimationExpectedPot ?? pot);
-      const prePot = Math.max(0, postPot - totalAmount);
+
+      // IMPORTANT: Ante happens at the start of a fresh hand, so the pre-ante pot should be 0.
+      // We intentionally do NOT show any transient/stale backend pot value here.
+      const prePot = isPussyTaxTrigger ? Math.max(0, postPot - totalAmount) : 0;
+
       return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
     // 2) Holm Chucky loss (specific players pay into pot) - POT-IN
@@ -2529,7 +2533,10 @@ export const MobileGameTable = ({
             const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
             const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
             const postPot = (anteAnimationExpectedPot ?? pot);
-            const preAntePot = Math.max(0, postPot - totalAmount);
+
+            // IMPORTANT: Ante is always a fresh-hand action, so the pre-ante pot should be 0.
+            // Pussy tax is mid-session, so it must use postPot-totalAmount.
+            const preAntePot = isPussyTaxTrigger ? Math.max(0, postPot - totalAmount) : 0;
 
             if (displayedPot < postPot) {
               setDisplayedPot(preAntePot);
