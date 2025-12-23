@@ -665,15 +665,14 @@ export const MobileGameTable = ({
       return;
     }
 
-    // Clear initial-ante guard as soon as backend catches up, round exists, or it expires.
+    // Clear initial-ante guard as soon as backend catches up or it expires.
     const guard = initialAntePotGuardRef.current;
     if (guard) {
       const now = Date.now();
       const expired = now >= guard.expiresAt;
       const backendCaughtUp = pot >= guard.expectedPot;
-      const roundExists = !!handContextId;
 
-      if (expired || backendCaughtUp || roundExists) {
+      if (expired || backendCaughtUp) {
         initialAntePotGuardRef.current = null;
       } else if (pot < displayedPot) {
         // This is the bug: pot temporarily reports 0 (or lower) during initial ante.
@@ -686,6 +685,7 @@ export const MobileGameTable = ({
         return;
       }
     }
+
 
     // 357 win phases:
     // - waiting / legs-to-player: game is still resolving the win (block pot sync to avoid flicker)
@@ -2469,7 +2469,7 @@ export const MobileGameTable = ({
             if (anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined) {
               setDisplayedPot(anteAnimationExpectedPot);
 
-              if (!isPussyTaxTrigger && !handContextId) {
+              if (!isPussyTaxTrigger) {
                 initialAntePotGuardRef.current = {
                   expectedPot: anteAnimationExpectedPot,
                   expiresAt: Date.now() + 8000,
@@ -2479,7 +2479,7 @@ export const MobileGameTable = ({
               setDisplayedPot(prev => {
                 const next = prev + totalAmount;
 
-                if (!isPussyTaxTrigger && !handContextId) {
+                if (!isPussyTaxTrigger) {
                   initialAntePotGuardRef.current = {
                     expectedPot: next,
                     expiresAt: Date.now() + 8000,
@@ -2489,6 +2489,7 @@ export const MobileGameTable = ({
                 return next;
               });
             }
+
 
             // Unlock pot syncing after chips arrive (POT-IN complete)
             potLockRef.current = false;
