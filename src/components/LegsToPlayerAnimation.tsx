@@ -164,8 +164,8 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     setShowSweepOverlay(true); // Show "Sweep the Legs" overlay
     console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
-    // Animation duration: 1.2s per chip + stagger delays + buffer
-    const totalDuration = 1500 + (newAnimations.length * 100);
+    // Animation duration: (was ~1.2s) + 2.0s slow-down, plus stagger delays + buffer
+    const totalDuration = 3500 + (newAnimations.length * 100);
     
     setTimeout(() => {
       setAnimations([]);
@@ -209,7 +209,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
                 legValue > 0 ? 'w-8 h-8' : 'w-6 h-6'
               }`}
               style={{
-                animation: `${uniqueKeyframeName} 1.2s ease-in-out ${anim.delay}ms forwards`,
+                animation: `${uniqueKeyframeName} 3.2s ease-in-out ${anim.delay}ms forwards`,
               }}
             >
               <span className={`text-slate-800 font-bold ${legValue > 0 ? 'text-[8px]' : 'text-[10px]'}`}>
