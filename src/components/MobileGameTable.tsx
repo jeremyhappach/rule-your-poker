@@ -494,6 +494,7 @@ export const MobileGameTable = ({
   // animation trigger is pending.
   const potLockRef = useRef(false);
   const potLockTriggerRef = useRef<string | null>(null);
+  const potIncreaseSyncTimeoutRef = useRef<number | null>(null);
 
   const getPendingPotInAnimation = useCallback(() => {
     // 1) Ante / Pussy tax (chips -> pot)
@@ -561,9 +562,16 @@ export const MobileGameTable = ({
   }, [getPendingPotInAnimation, pot, potMemoryKey]);
 
   // Sync displayedPot to backend pot when NOT locked/animating.
-  // (This still handles normal DB updates, but never overrides our pre-animation freeze.)
+  // IMPORTANT: Never apply pot INCREASES immediately, because the backend pot often updates
+  // before the chip-to-pot animation trigger is detected. Immediate increases cause the
+  // "post → pre → post" flash.
   const hasPending357WinForPot = !!(threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0);
   useEffect(() => {
+    if (potIncreaseSyncTimeoutRef.current) {
+      window.clearTimeout(potIncreaseSyncTimeoutRef.current);
+      potIncreaseSyncTimeoutRef.current = null;
+    }
+
     if (
       potLockRef.current ||
       isAnteAnimatingRef.current ||
@@ -572,8 +580,38 @@ export const MobileGameTable = ({
     ) {
       return;
     }
+
+    // If backend pot increased, delay the visual sync long enough for animation trigger to lock.
+    if (pot > displayedPot) {
+      const delayMs = 1400;
+      console.log('[POT_SYNC] delay-increase', { gameId: potMemoryKey, displayedPot, backendPot: pot, delayMs });
+      potIncreaseSyncTimeoutRef.current = window.setTimeout(() => {
+        if (
+          potLockRef.current ||
+          isAnteAnimatingRef.current ||
+          hasPending357WinForPot ||
+          threeFiveSevenWinPhaseRef.current !== 'idle'
+        ) {
+          console.log('[POT_SYNC] skipped-after-delay (locked/animating)', { gameId: potMemoryKey, displayedPot, backendPot: pot });
+          return;
+        }
+        console.log('[POT_SYNC] apply-after-delay', { gameId: potMemoryKey, backendPot: pot });
+        setDisplayedPot(pot);
+      }, delayMs);
+      return;
+    }
+
+    // Decreases (or same) can sync immediately.
+    console.log('[POT_SYNC] apply-immediate', { gameId: potMemoryKey, displayedPot, backendPot: pot });
     setDisplayedPot(pot);
-  }, [pot, hasPending357WinForPot]);
+
+    return () => {
+      if (potIncreaseSyncTimeoutRef.current) {
+        window.clearTimeout(potIncreaseSyncTimeoutRef.current);
+        potIncreaseSyncTimeoutRef.current = null;
+      }
+    };
+  }, [pot, displayedPot, hasPending357WinForPot, potMemoryKey]);
 
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
