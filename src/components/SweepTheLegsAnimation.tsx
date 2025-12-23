@@ -21,7 +21,7 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
       const timer = setTimeout(() => {
         setVisible(false);
         onCompleteRef.current?.();
-      }, 2000); // 2 seconds display
+      }, 3000); // 3 seconds display
       return () => clearTimeout(timer);
     } else if (!show) {
       hasShownRef.current = false;
@@ -59,7 +59,7 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
           
           <div className="bg-gradient-to-r from-red-900 via-red-800 to-red-900 px-6 py-3 border-y-4 border-yellow-500 shadow-[0_0_40px_rgba(220,38,38,0.6)]">
             <span className="text-yellow-400 font-black text-xl sm:text-2xl md:text-3xl tracking-widest drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] uppercase animate-[textGlow_0.5s_ease-in-out_infinite_alternate]">
-              "Sweep the Leg"
+              "Sweep the Legs"
             </span>
           </div>
         </div>
