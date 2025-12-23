@@ -664,6 +664,8 @@ export const MobileGameTable = ({
     const shouldBlockDecrease =
       potLockRef.current ||
       isAnteAnimatingRef.current ||
+      // Block when ante trigger exists (animation about to start) - prevents 0-flash before lock
+      !!anteAnimationTriggerId ||
       // Block during waiting/legs-to-player phases, but NOT pot-to-player/delay
       (phase357 !== 'idle' && !isPotVisuallyEmpty) ||
       // Block if trigger exists but pot-to-player hasn't started yet
@@ -729,7 +731,7 @@ export const MobileGameTable = ({
         potIncreaseSyncTimeoutRef.current = null;
       }
     };
-  }, [pot, displayedPot, hasPending357WinForPot, potMemoryKey, threeFiveSevenWinTriggerId, holmWinPotTriggerId]);
+  }, [pot, displayedPot, hasPending357WinForPot, potMemoryKey, threeFiveSevenWinTriggerId, holmWinPotTriggerId, anteAnimationTriggerId]);
 
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
