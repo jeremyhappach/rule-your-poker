@@ -3720,8 +3720,8 @@ export const MobileGameTable = ({
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1">
-            {/* Action area */}
-            <div className="flex items-center justify-center">
+            {/* Action area - fixed height to prevent layout shift */}
+            <div className="flex items-center justify-center min-h-[36px]">
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                 <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
@@ -3762,6 +3762,16 @@ export const MobileGameTable = ({
                 >
                   ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
                 </Badge>
+              ) : currentPlayerCards.length === 0 && roundStatus === 'betting' ? (
+                /* Placeholder while waiting for cards - maintains layout stability */
+                <div className="flex gap-2 justify-center opacity-0 pointer-events-none">
+                  <Button variant="destructive" size="default" className="flex-1 max-w-[120px] text-sm font-bold h-9">
+                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
+                  </Button>
+                  <Button size="default" className="flex-1 max-w-[120px] bg-poker-chip-green text-white text-sm font-bold h-9">
+                    Stay
+                  </Button>
+                </div>
               ) : null}
             </div>
             
@@ -3868,7 +3878,14 @@ export const MobileGameTable = ({
                       />
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">Waiting for cards...</div>
+                    /* Invisible placeholder matching card height to prevent layout shift */
+                    <div className="transform scale-[2.2] origin-top opacity-0 pointer-events-none">
+                      <PlayerHand 
+                        cards={[]}
+                        isHidden={true}
+                        expectedCardCount={gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)}
+                      />
+                    </div>
                   )}
                 </div>
               );
