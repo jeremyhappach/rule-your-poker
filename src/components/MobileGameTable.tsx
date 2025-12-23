@@ -2974,12 +2974,24 @@ export const MobileGameTable = ({
             setShowLegEarned(false);
             // For 3-5-7: When winning leg animation completes, immediately start the win animation sequence
             // GUARD: Only start if not already in progress (prevents double-firing)
-            if (gameType !== 'holm-game' && isWinningLegAnimation && threeFiveSevenWinnerId && threeFiveSevenWinPhaseRef.current === 'idle') {
+            if (
+              gameType !== 'holm-game' &&
+              isWinningLegAnimation &&
+              threeFiveSevenWinnerId &&
+              threeFiveSevenWinPhaseRef.current === 'idle'
+            ) {
+              // IMPORTANT: Clear the parent trigger (if any) so the legacy trigger-based effect cannot start a 2nd sequence later.
+              if (threeFiveSevenWinTriggerId) {
+                lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
+              }
+              onThreeFiveSevenWinAnimationStarted?.();
+
               console.log('[357 WIN] LegEarnedAnimation complete for winning leg, starting legs-to-player phase immediately');
+
               // Generate unique animation ID for this sequence
               const animationId = `anim-${Date.now()}`;
               currentAnimationIdRef.current = animationId;
-              
+
               // Set phase to legs-to-player to start the sweep animation
               setThreeFiveSevenWinPhase('legs-to-player');
               threeFiveSevenWinPhaseRef.current = 'legs-to-player';
