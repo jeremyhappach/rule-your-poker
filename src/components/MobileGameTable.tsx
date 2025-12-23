@@ -1950,6 +1950,38 @@ export const MobileGameTable = ({
   useEffect(() => {
     threeFiveSevenWinPhaseRef.current = threeFiveSevenWinPhase;
   }, [threeFiveSevenWinPhase]);
+
+  // DEBUG: Loud phase/timing trace for 357 win sequence
+  useEffect(() => {
+    console.log('[357SEQ][PHASE]', {
+      t: Date.now(),
+      gameId,
+      gameStatus,
+      isGameOver,
+      phase: threeFiveSevenWinPhase,
+      threeFiveSevenWinTriggerId,
+      legsToPlayerTriggerId,
+      potToPlayerTriggerId357,
+      currentAnimationId: currentAnimationIdRef.current,
+      lastThreeFiveSevenTrigger: lastThreeFiveSevenTriggerRef.current,
+      winnerId: threeFiveSevenWinnerId,
+      winnerPosition: players.find((p) => p.id === threeFiveSevenWinnerId)?.position,
+      potAmount: threeFiveSevenWinPotAmount,
+      cachedLegPositionsLen: threeFiveSevenCachedLegPositions?.length,
+    });
+  }, [
+    threeFiveSevenWinPhase,
+    gameId,
+    gameStatus,
+    isGameOver,
+    threeFiveSevenWinTriggerId,
+    legsToPlayerTriggerId,
+    potToPlayerTriggerId357,
+    threeFiveSevenWinnerId,
+    threeFiveSevenWinPotAmount,
+    threeFiveSevenCachedLegPositions,
+    players,
+  ]);
   
   // 3-5-7 win animation sequence: triggered by parent when player wins final leg.
   // IMPORTANT: Only run the full animation sequence when we're in a stable "game over" view.
@@ -2029,10 +2061,15 @@ export const MobileGameTable = ({
   const handleLegsToPlayerComplete = useCallback(() => {
     // Use ref to get current phase (avoids stale closure)
     if (threeFiveSevenWinPhaseRef.current !== 'legs-to-player') {
-      console.log('[357 WIN] handleLegsToPlayerComplete called but not in legs-to-player phase, ignoring. Current phase:', threeFiveSevenWinPhaseRef.current);
+      console.log('[357SEQ][LEGS_DONE] Ignored (wrong phase)', {
+        t: Date.now(),
+        phase: threeFiveSevenWinPhaseRef.current,
+        currentAnimationId: currentAnimationIdRef.current,
+        lastThreeFiveSevenTrigger: lastThreeFiveSevenTriggerRef.current,
+      });
       return;
     }
-    
+
     // Trigger "+XL" flash on winner's chipstack
     const totalLegs = threeFiveSevenCachedLegPositions.reduce((sum, p) => sum + p.legCount, 0);
     if (threeFiveSevenWinnerId && totalLegs > 0) {
@@ -2042,8 +2079,18 @@ export const MobileGameTable = ({
         playerId: threeFiveSevenWinnerId
       });
     }
-    
-    console.log('[357 WIN] Phase 2: pot-to-player - using snapped pot:', allDecisionsSnappedPotRef.current);
+
+    console.log('[357SEQ][LEGS_DONE] -> pot-to-player', {
+      t: Date.now(),
+      snappedPot: allDecisionsSnappedPotRef.current,
+      potAmount: threeFiveSevenWinPotAmount,
+      winnerId: threeFiveSevenWinnerId,
+      winnerPosition: players.find((p) => p.id === threeFiveSevenWinnerId)?.position,
+      currentAnimationId: currentAnimationIdRef.current,
+      legsToPlayerTriggerId,
+      nextPotTrigger: `pot-to-player-357-${Date.now()}`,
+    });
+
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
@@ -2052,18 +2099,29 @@ export const MobileGameTable = ({
     setPotOutAnimationActive(true);
     setDisplayedPot(0);
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
-  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId]);
+  }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId]);
 
   // Handle pot-to-player animation complete -> 3 second delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
-    console.log('[357 WIN] handlePotToPlayerComplete357 called, phase:', threeFiveSevenWinPhaseRef.current);
-    
+    console.log('[357SEQ][POT_DONE] Callback fired', {
+      t: Date.now(),
+      phase: threeFiveSevenWinPhaseRef.current,
+      potTriggerId: potToPlayerTriggerId357,
+      currentAnimationId: currentAnimationIdRef.current,
+      lastThreeFiveSevenTrigger: lastThreeFiveSevenTriggerRef.current,
+      winnerId: threeFiveSevenWinnerId,
+      potAmount: threeFiveSevenWinPotAmount,
+    });
+
     // Use ref to get current phase (avoids stale closure)
     if (threeFiveSevenWinPhaseRef.current !== 'pot-to-player') {
-      console.log('[357 WIN] handlePotToPlayerComplete357 called but not in pot-to-player phase, ignoring. Current phase:', threeFiveSevenWinPhaseRef.current);
+      console.log('[357SEQ][POT_DONE] Ignored (wrong phase)', {
+        t: Date.now(),
+        phase: threeFiveSevenWinPhaseRef.current,
+      });
       return;
     }
-    
+
     // Trigger "+$X" flash on winner's chipstack
     if (threeFiveSevenWinnerId && threeFiveSevenWinPotAmount > 0) {
       setWinnerPotFlashTrigger({
@@ -2072,37 +2130,44 @@ export const MobileGameTable = ({
         playerId: threeFiveSevenWinnerId
       });
     }
-    
-    console.log('[357 WIN] Phase 3: delay before next game');
+
+    console.log('[357SEQ][POT_DONE] -> delay', { t: Date.now(), currentAnimationId: currentAnimationIdRef.current });
     setThreeFiveSevenWinPhase('delay');
     threeFiveSevenWinPhaseRef.current = 'delay';
-    
+
     // Capture current animation ID
     const animationId = currentAnimationIdRef.current;
-    console.log('[357 WIN] Captured animationId for completion check:', animationId);
-    
+
     // 3 second delay before proceeding to next game
     setTimeout(() => {
-      console.log('[357 WIN] 3s delay complete, checking animationId. Current:', currentAnimationIdRef.current, 'Expected:', animationId);
+      console.log('[357SEQ][DELAY_DONE] Checking animationId', {
+        t: Date.now(),
+        current: currentAnimationIdRef.current,
+        expected: animationId,
+      });
+
       // Only complete if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
-        console.log('[357 WIN] Stale animation, skipping completion');
+        console.log('[357SEQ][DELAY_DONE] Stale animation, skipping completion');
         return;
       }
-      console.log('[357 WIN] Animation sequence complete, calling onThreeFiveSevenWinAnimationComplete. Callback exists:', !!onThreeFiveSevenWinAnimationComplete);
+
+      console.log('[357SEQ][COMPLETE] Sequence complete -> parent onComplete', {
+        t: Date.now(),
+        hasCallback: !!onThreeFiveSevenWinAnimationComplete,
+      });
+
       setThreeFiveSevenWinPhase('idle');
       threeFiveSevenWinPhaseRef.current = 'idle';
       setPotOutAnimationActive(false); // Clear POT-OUT flag
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
+
       if (onThreeFiveSevenWinAnimationComplete) {
-        console.log('[357 WIN] Invoking parent callback now');
         onThreeFiveSevenWinAnimationComplete();
-      } else {
-        console.error('[357 WIN] ERROR: onThreeFiveSevenWinAnimationComplete is undefined!');
       }
     }, 3000);
-  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount]);
+  }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357]);
 
   // Map other players to visual slots based on clockwise position from current player
   // Visual slots layout (clockwise from current player at bottom center):
@@ -3035,10 +3100,26 @@ export const MobileGameTable = ({
             containerRef={tableContainerRef}
             gameType={gameType}
             onAnimationStart={() => {
+              console.log('[357SEQ][POT_START]', {
+                t: Date.now(),
+                phase: threeFiveSevenWinPhaseRef.current,
+                potTriggerId: potToPlayerTriggerId357,
+                winnerId: threeFiveSevenWinnerId,
+                winnerPosition: players.find((p) => p.id === threeFiveSevenWinnerId)?.position,
+                currentPlayerPosition: currentPlayer?.position ?? null,
+                containerExists: !!tableContainerRef.current,
+              });
               // Pot goes to 0 visually
               setAnteFlashTrigger({ id: `357-win-pot-out-${Date.now()}`, amount: -threeFiveSevenWinPotAmount });
             }}
-            onAnimationEnd={handlePotToPlayerComplete357}
+            onAnimationEnd={() => {
+              console.log('[357SEQ][POT_END_SIGNAL]', {
+                t: Date.now(),
+                phase: threeFiveSevenWinPhaseRef.current,
+                potTriggerId: potToPlayerTriggerId357,
+              });
+              handlePotToPlayerComplete357();
+            }}
           />
         )}
         

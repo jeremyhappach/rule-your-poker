@@ -253,6 +253,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Track if 357 win animation is actively playing (blocks GameOverCountdown)
   const [is357WinAnimationActive, setIs357WinAnimationActive] = useState(false);
   const is357WinAnimationActiveRef = useRef(false); // Ref for closure access in timeouts
+
+  // DEBUG: log when 357 active flag flips, since it controls which layout renders.
+  useEffect(() => {
+    console.log('[357SEQ][GAME_ACTIVE_FLAG]', {
+      t: Date.now(),
+      gameId,
+      status: game?.status,
+      gameType: game?.game_type,
+      is357WinAnimationActive,
+    });
+  }, [gameId, game?.status, game?.game_type, is357WinAnimationActive]);
   
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
@@ -4662,7 +4673,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           />
         )}
 
-        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended') && (
+        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive) && (
           <>
             {game.status === 'dealer_selection' && (
               <DealerSelection 
