@@ -546,6 +546,12 @@ export const MobileGameTable = ({
     const pending = getPendingPotInAnimation();
     if (!pending) return;
 
+    // If we've already shown the post-pot value, never "rewind" to pre-pot.
+    // This avoids the post → pre → post flash when triggers arrive late.
+    if (displayedPot >= pending.postPot) {
+      return;
+    }
+
     // Only lock once per trigger id (prevents re-locking after we intentionally set post pot).
     if (potLockTriggerRef.current === pending.lockId) return;
 
@@ -559,7 +565,7 @@ export const MobileGameTable = ({
       backendPot: pot,
     });
     setDisplayedPot(pending.prePot);
-  }, [getPendingPotInAnimation, pot, potMemoryKey]);
+  }, [getPendingPotInAnimation, pot, potMemoryKey, displayedPot]);
 
   // Sync displayedPot to backend pot when NOT locked/animating.
   // IMPORTANT: Never apply pot INCREASES immediately, because the backend pot often updates
@@ -2260,14 +2266,17 @@ export const MobileGameTable = ({
             // Lock pot display at PRE-ANTE value for the duration of the chip travel
             potLockRef.current = true;
 
-            // Freeze displayed pot at PRE-ANTE value when animation starts
+            // Freeze displayed pot at PRE-ANTE value when animation starts.
+            // If we've already shown the post-ante pot (late trigger), never "rewind".
             const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
             const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
             const totalAmount = perPlayerAmount * players.filter(p => !p.sitting_out).length;
-            const preAntePot = anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined
-              ? anteAnimationExpectedPot - totalAmount
-              : pot - totalAmount;
-            setDisplayedPot(Math.max(0, preAntePot));
+            const postPot = (anteAnimationExpectedPot ?? pot);
+            const preAntePot = Math.max(0, postPot - totalAmount);
+
+            if (displayedPot < postPot) {
+              setDisplayedPot(preAntePot);
+            }
           }}
           onChipsArrived={() => {
             // Determine amount based on trigger type (pussy tax vs ante)
@@ -2340,11 +2349,15 @@ export const MobileGameTable = ({
           gameType={gameType}
           triggerId={chuckyLossTriggerId}
           specificPlayerIds={chuckyLossPlayerIds}
-          onAnimationStart={() => {
-            // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
-            const totalLoss = chuckyLossAmount * chuckyLossPlayerIds.length;
-            potLockRef.current = true;
-            setDisplayedPot(Math.max(0, pot - totalLoss));
+           onAnimationStart={() => {
+             // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
+             const totalLoss = chuckyLossAmount * chuckyLossPlayerIds.length;
+             potLockRef.current = true;
+
+             // If we've already shown the post-loss pot (late trigger), never "rewind".
+             if (displayedPot < pot) {
+               setDisplayedPot(Math.max(0, pot - totalLoss));
+             }
 
             // Backend ALREADY deducted chips. Show pre-loss values, then let actual values appear.
             const newDisplayedChips: Record<string, number> = {};
@@ -2427,11 +2440,15 @@ export const MobileGameTable = ({
             gameType={gameType}
             triggerId={phase2TriggerId}
             specificPlayerIds={holmShowdownLoserIds}
-            onAnimationStart={() => {
-              // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
-              const totalLoserPay = holmShowdownMatchAmount * holmShowdownLoserIds.length;
-              potLockRef.current = true;
-              setDisplayedPot(Math.max(0, pot - totalLoserPay));
+             onAnimationStart={() => {
+               // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
+               const totalLoserPay = holmShowdownMatchAmount * holmShowdownLoserIds.length;
+               potLockRef.current = true;
+
+               // If we've already shown the post-loss pot (late trigger), never "rewind".
+               if (displayedPot < pot) {
+                 setDisplayedPot(Math.max(0, pot - totalLoserPay));
+               }
 
               // Backend ALREADY deducted chips. Show pre-loss values.
               const newDisplayedChips: Record<string, number> = {};

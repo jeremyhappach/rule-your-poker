@@ -3559,10 +3559,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     if (game?.game_type === 'holm-game') return;
     
-    // Cache pot whenever non-zero
-    if (game?.pot && game.pot > 0) {
+    // Cache pot whenever it grows (never overwrite with a smaller/reset pot)
+    if (game?.pot && game.pot > cachedPotFor357WinRef.current) {
+      const prev = cachedPotFor357WinRef.current;
       cachedPotFor357WinRef.current = game.pot;
-      console.log('[357 CACHE] Cached pot:', game.pot);
+      console.log('[357 CACHE] Cached pot (max):', { prev, next: game.pot });
     }
     
     // Cache leg positions whenever any player has legs (before they get reset)
@@ -3703,11 +3704,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
     // Fallback to cached or live pot
-    if (potAmount === 0) {
-      // Try round.pot first (usually persists longer), then cached, then game.pot
-      const liveRound = game?.rounds?.find((r: any) => r.round_number === game.current_round);
-      potAmount = liveRound?.pot || cachedPotFor357WinRef.current || game.pot || 0;
-    }
+     if (potAmount === 0) {
+       // Try round.pot first (usually persists longer), then cached max, then game.pot
+       const liveRound = game?.rounds?.find((r: any) => r.round_number === game.current_round);
+       const liveRoundPot = liveRound?.pot || 0;
+       potAmount = Math.max(liveRoundPot, cachedPotFor357WinRef.current, game.pot || 0);
+     }
     
     console.log('[357 WIN] Triggering win animation for:', winnerName, 'pot:', potAmount, 'messageType:', isGameWinMessage ? 'game_win' : 'leg_win');
     
