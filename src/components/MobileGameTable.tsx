@@ -476,72 +476,87 @@ export const MobileGameTable = ({
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
 
-  // Keep latest pot in a ref so delayed sync always uses freshest value
-  const potRef = useRef(pot);
-  useEffect(() => {
-    potRef.current = pot;
-  }, [pot]);
+  // --- POT DISPLAY FREEZE (prevents pot flashing during chip-to-pot animations) ---
+  // When the backend pot updates BEFORE the animation trigger paints, the UI can briefly show
+  // the post-update pot, then we freeze to pre-update pot, then show post-update again.
+  // We fix this by locking displayedPot in a layout-effect (before paint) whenever a pot-in
+  // animation trigger is pending.
+  const potLockRef = useRef(false);
+  const potLockTriggerRef = useRef<string | null>(null);
 
-  // CRITICAL: Debounce pot syncing to avoid "post-update -> pre-update -> post-update" flashes
-  // when a pot-in animation trigger arrives slightly after the backend pot update.
-  const potSyncTimeoutRef = useRef<number | null>(null);
-
-  // Sync displayedPot to actual pot when NOT animating (handles DB updates)
-  // Also don't sync during 3-5-7 win animation - use cached pot value instead
-  const hasPending357WinForPot = !!(threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0);
-
-  // Any animation that moves chips INTO the pot should block immediate pot syncing.
-  // (ante, pussy tax, Holm chucky loss, Holm showdown losers-to-pot)
-  const hasPendingPotInAnimation = !!(
-    anteAnimationTriggerId ||
-    chuckyLossTriggerId ||
-    (holmShowdownPhase === 'losers-to-pot' && phase2TriggerId)
-  );
-
-  const potSyncGuardsRef = useRef({
-    hasPending357WinForPot,
-    hasPendingPotInAnimation,
-  });
-  potSyncGuardsRef.current.hasPending357WinForPot = hasPending357WinForPot;
-  potSyncGuardsRef.current.hasPendingPotInAnimation = hasPendingPotInAnimation;
-
-  useEffect(() => {
-    if (potSyncTimeoutRef.current) {
-      window.clearTimeout(potSyncTimeoutRef.current);
-      potSyncTimeoutRef.current = null;
+  const getPendingPotInAnimation = useCallback(() => {
+    // 1) Ante / Pussy tax (chips -> pot)
+    if (anteAnimationTriggerId) {
+      const isPussyTaxTrigger = anteAnimationTriggerId.startsWith('pussy-tax-');
+      const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
+      const activeCount = players.filter(p => !p.sitting_out).length;
+      const totalAmount = perPlayerAmount * activeCount;
+      const postPot = (anteAnimationExpectedPot ?? pot);
+      const prePot = Math.max(0, postPot - totalAmount);
+      return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount };
     }
 
-    // If we're in (or about to enter) an animation state, do not sync.
+    // 2) Holm Chucky loss (specific players pay into pot)
+    if (chuckyLossTriggerId && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
+      const totalAmount = chuckyLossAmount * chuckyLossPlayerIds.length;
+      const postPot = pot;
+      const prePot = Math.max(0, postPot - totalAmount);
+      return { lockId: chuckyLossTriggerId, prePot, postPot, totalAmount };
+    }
+
+    // 3) Holm showdown losers-to-pot (losers pay match amount into pot)
+    if (holmShowdownPhase === 'losers-to-pot' && phase2TriggerId && holmShowdownLoserIds.length > 0 && holmShowdownMatchAmount > 0) {
+      const totalAmount = holmShowdownMatchAmount * holmShowdownLoserIds.length;
+      const postPot = pot;
+      const prePot = Math.max(0, postPot - totalAmount);
+      return { lockId: phase2TriggerId, prePot, postPot, totalAmount };
+    }
+
+    return null;
+  }, [
+    pot,
+    players,
+    anteAmount,
+    pussyTaxValue,
+    anteAnimationTriggerId,
+    anteAnimationExpectedPot,
+    chuckyLossTriggerId,
+    chuckyLossAmount,
+    chuckyLossPlayerIds,
+    holmShowdownPhase,
+    phase2TriggerId,
+    holmShowdownLoserIds,
+    holmShowdownMatchAmount,
+  ]);
+
+  // Freeze displayedPot BEFORE the first paint whenever a pot-in animation is pending.
+  useLayoutEffect(() => {
+    const pending = getPendingPotInAnimation();
+    if (!pending) return;
+
+    // Only lock once per trigger id (prevents re-locking after we intentionally set post pot).
+    if (potLockTriggerRef.current === pending.lockId) return;
+
+    potLockTriggerRef.current = pending.lockId;
+    potLockRef.current = true;
+    setDisplayedPot(pending.prePot);
+  }, [getPendingPotInAnimation]);
+
+  // Sync displayedPot to backend pot when NOT locked/animating.
+  // (This still handles normal DB updates, but never overrides our pre-animation freeze.)
+  const hasPending357WinForPot = !!(threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0);
+  useEffect(() => {
     if (
+      potLockRef.current ||
       isAnteAnimatingRef.current ||
-      potSyncGuardsRef.current.hasPending357WinForPot ||
-      threeFiveSevenWinPhaseRef.current !== 'idle' ||
-      potSyncGuardsRef.current.hasPendingPotInAnimation
+      hasPending357WinForPot ||
+      threeFiveSevenWinPhaseRef.current !== 'idle'
     ) {
       return;
     }
+    setDisplayedPot(pot);
+  }, [pot, hasPending357WinForPot]);
 
-    // Delay just enough to let the animation trigger land in state.
-    // (This prevents the brief "new pot" paint before we freeze to pre-ante/pre-tax.)
-    potSyncTimeoutRef.current = window.setTimeout(() => {
-      if (
-        isAnteAnimatingRef.current ||
-        potSyncGuardsRef.current.hasPending357WinForPot ||
-        threeFiveSevenWinPhaseRef.current !== 'idle' ||
-        potSyncGuardsRef.current.hasPendingPotInAnimation
-      ) {
-        return;
-      }
-      setDisplayedPot(potRef.current);
-    }, 250);
-
-    return () => {
-      if (potSyncTimeoutRef.current) {
-        window.clearTimeout(potSyncTimeoutRef.current);
-        potSyncTimeoutRef.current = null;
-      }
-    };
-  }, [pot, hasPending357WinForPot, hasPendingPotInAnimation]);
   
   // CRITICAL: Clear locked chips ONLY when backend values match expected values
   // This ensures we never flash wrong values during the sync period
@@ -2185,7 +2200,10 @@ export const MobileGameTable = ({
             
             // Clear the trigger so it doesn't fire again on status change
             onAnteAnimationStarted?.();
-            
+
+            // Lock pot display at PRE-ANTE value for the duration of the chip travel
+            potLockRef.current = true;
+
             // Freeze displayed pot at PRE-ANTE value when animation starts
             const isPussyTaxTrigger = anteAnimationTriggerId?.startsWith('pussy-tax-');
             const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
@@ -2206,7 +2224,10 @@ export const MobileGameTable = ({
             } else {
               setDisplayedPot(prev => prev + totalAmount);
             }
-            
+
+            // Unlock pot syncing after chips arrive
+            potLockRef.current = false;
+
             // Keep locked values active - the useEffect watching players will clear
             // them automatically when backend values match expected values
             isAnteAnimatingRef.current = false;
@@ -2263,6 +2284,11 @@ export const MobileGameTable = ({
           triggerId={chuckyLossTriggerId}
           specificPlayerIds={chuckyLossPlayerIds}
           onAnimationStart={() => {
+            // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
+            const totalLoss = chuckyLossAmount * chuckyLossPlayerIds.length;
+            potLockRef.current = true;
+            setDisplayedPot(Math.max(0, pot - totalLoss));
+
             // Backend ALREADY deducted chips. Show pre-loss values, then let actual values appear.
             const newDisplayedChips: Record<string, number> = {};
             chuckyLossPlayerIds.forEach(loserId => {
@@ -2276,6 +2302,10 @@ export const MobileGameTable = ({
             onChuckyLossStarted?.();
           }}
           onChipsArrived={() => {
+            // Chips arrived at pot - show the post-loss pot and unlock syncing
+            setDisplayedPot(pot);
+            potLockRef.current = false;
+
             // Chips arrived at pot - clear override so actual (post-loss) values show
             setDisplayedChips({});
             // Trigger pot flash
@@ -2340,6 +2370,11 @@ export const MobileGameTable = ({
             triggerId={phase2TriggerId}
             specificPlayerIds={holmShowdownLoserIds}
             onAnimationStart={() => {
+              // Freeze pot at PRE-loss value (backend pot is already post-loss by the time we animate)
+              const totalLoserPay = holmShowdownMatchAmount * holmShowdownLoserIds.length;
+              potLockRef.current = true;
+              setDisplayedPot(Math.max(0, pot - totalLoserPay));
+
               // Backend ALREADY deducted chips. Show pre-loss values.
               const newDisplayedChips: Record<string, number> = {};
               holmShowdownLoserIds.forEach(loserId => {
@@ -2352,6 +2387,10 @@ export const MobileGameTable = ({
               onHolmShowdownLosersStarted?.();
             }}
             onChipsArrived={() => {
+              // Chips arrived at pot - show post-loss pot and unlock
+              setDisplayedPot(pot);
+              potLockRef.current = false;
+
               setDisplayedChips({});
               // Trigger pot flash with NET change (losers paid - winner took)
               // Since winner already took pot, new pot = losers' match total
