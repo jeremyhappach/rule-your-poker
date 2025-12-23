@@ -542,6 +542,9 @@ export const MobileGameTable = ({
   const potLockRef = useRef(false);
   const potLockTriggerRef = useRef<string | null>(null);
   const potIncreaseSyncTimeoutRef = useRef<number | null>(null);
+  // Safety: if the pot gets locked but the corresponding animation never fires (rare ref/timing race),
+  // auto-unlock so the pot doesn't get stuck at the pre-animation value (often 0).
+  const potLockSafetyTimeoutRef = useRef<number | null>(null);
   
   // Track if a POT-OUT animation is active (pot → player)
   const [potOutAnimationActive, setPotOutAnimationActive] = useState(false);
@@ -595,7 +598,7 @@ export const MobileGameTable = ({
   useLayoutEffect(() => {
     // Skip if a POT-OUT animation is active (pot → player) - those control pot directly
     if (potOutAnimationActive) return;
-    
+
     const pending = getPendingPotInAnimation();
     if (!pending) return;
 
@@ -608,6 +611,12 @@ export const MobileGameTable = ({
     // Only lock once per trigger id (prevents re-locking after we intentionally set post pot).
     if (potLockTriggerRef.current === pending.lockId) return;
 
+    // Clear any prior safety unlock.
+    if (potLockSafetyTimeoutRef.current) {
+      window.clearTimeout(potLockSafetyTimeoutRef.current);
+      potLockSafetyTimeoutRef.current = null;
+    }
+
     potLockTriggerRef.current = pending.lockId;
     potLockRef.current = true;
     console.log('[POT_LOCK] lock(pre-paint)', {
@@ -618,6 +627,18 @@ export const MobileGameTable = ({
       backendPot: pot,
     });
     setDisplayedPot(pending.prePot);
+
+    // SAFETY: if chips never "arrive" (e.g. animation didn't mount in time), unlock after a short delay.
+    const lockId = pending.lockId;
+    const postPot = pending.postPot;
+    potLockSafetyTimeoutRef.current = window.setTimeout(() => {
+      if (potLockRef.current && potLockTriggerRef.current === lockId) {
+        console.warn('[POT_LOCK] safety-unlock (no animation completion observed)', { gameId: potMemoryKey, lockId, postPot, backendPot: pot });
+        potLockRef.current = false;
+        setDisplayedPot(postPot);
+      }
+      potLockSafetyTimeoutRef.current = null;
+    }, 2200);
   }, [getPendingPotInAnimation, pot, potMemoryKey, displayedPot, potOutAnimationActive]);
 
   // Sync displayedPot to backend pot when NOT locked/animating.
@@ -2412,8 +2433,11 @@ export const MobileGameTable = ({
 
             // Unlock pot syncing after chips arrive (POT-IN complete)
             potLockRef.current = false;
+            if (potLockSafetyTimeoutRef.current) {
+              window.clearTimeout(potLockSafetyTimeoutRef.current);
+              potLockSafetyTimeoutRef.current = null;
+            }
             console.log('[POT_LOCK] unlock(chips-arrived)', { gameId: potMemoryKey, backendPot: pot });
-
             // Keep locked values active - the useEffect watching players will clear
             // them automatically when backend values match expected values
             isAnteAnimatingRef.current = false;
@@ -2495,8 +2519,11 @@ export const MobileGameTable = ({
             // Chips arrived at pot - show the post-loss pot and unlock syncing (POT-IN complete)
             setDisplayedPot(pot);
             potLockRef.current = false;
+            if (potLockSafetyTimeoutRef.current) {
+              window.clearTimeout(potLockSafetyTimeoutRef.current);
+              potLockSafetyTimeoutRef.current = null;
+            }
             console.log('[POT_LOCK] unlock(chucky-loss)', { gameId: potMemoryKey, backendPot: pot });
-
             // Chips arrived at pot - clear override so actual (post-loss) values show
             setDisplayedChips({});
             // Trigger pot flash
@@ -2591,8 +2618,11 @@ export const MobileGameTable = ({
               // Chips arrived at pot - show post-loss pot and unlock (POT-IN complete)
               setDisplayedPot(pot);
               potLockRef.current = false;
+              if (potLockSafetyTimeoutRef.current) {
+                window.clearTimeout(potLockSafetyTimeoutRef.current);
+                potLockSafetyTimeoutRef.current = null;
+              }
               console.log('[POT_LOCK] unlock(showdown-losers)', { gameId: potMemoryKey, backendPot: pot });
-
               setDisplayedChips({});
               // Trigger pot flash with NET change (losers paid - winner took)
               // Since winner already took pot, new pot = losers' match total
