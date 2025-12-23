@@ -143,6 +143,25 @@ const Game = () => {
   const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
   const [game, setGame] = useState<GameData | null>(null);
+
+  // POT STABILITY:
+  // Backend updates can briefly emit pot=null during hand/round transitions (frontend was coercing null -> 0).
+  // Keep last non-null pot so the UI never flashes back to $0 while chip stacks are already updated.
+  const lastNonNullPotRef = useRef<number>(0);
+  useEffect(() => {
+    if (game?.pot !== null && game?.pot !== undefined) {
+      lastNonNullPotRef.current = game.pot;
+    } else if (game && lastNonNullPotRef.current > 0) {
+      console.error('[POT_NULL] backend pot is null; using last known pot', {
+        gameId,
+        status: game.status,
+        lastPot: lastNonNullPotRef.current,
+      });
+    }
+  }, [game?.pot, game?.status, gameId]);
+
+  const potForDisplay = game?.pot ?? lastNonNullPotRef.current ?? 0;
+
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
   const [cardStateContext, setCardStateContext] = useState<CardStateContext | null>(null); // Authoritative card count
@@ -4578,7 +4597,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
-                    pot={game.pot || 0}
+                    pot={potForDisplay}
                     currentRound={game.current_round || 0}
                     allDecisionsIn={true}
                     playerCards={playerCards}
@@ -4642,7 +4661,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     <GameTable key={gameId ?? 'unknown-game'}
                       players={players}
                       currentUserId={user?.id}
-                      pot={game.pot || 0}
+                      pot={potForDisplay}
                       currentRound={game.current_round || 0}
                       allDecisionsIn={true}
                       playerCards={playerCards}
@@ -4700,7 +4719,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
-                    pot={game.pot || 0}
+                    pot={potForDisplay}
                     currentRound={0}
                     allDecisionsIn={false}
                     playerCards={[]}
@@ -4736,7 +4755,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     players={players}
                     currentUserId={user?.id}
-                    pot={game.pot || 0}
+                    pot={potForDisplay}
                     currentRound={0}
                     allDecisionsIn={false}
                     playerCards={[]}
@@ -4784,7 +4803,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 gameId={gameId}
                 players={players}
                 currentUserId={user?.id}
-                pot={game.pot || 0}
+                pot={potForDisplay}
                 currentRound={0}
                 allDecisionsIn={false}
                 playerCards={[]}
@@ -4825,7 +4844,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <GameTable key={gameId ?? 'unknown-game'}
                 players={players}
                 currentUserId={user?.id}
-                pot={game.pot || 0}
+                pot={potForDisplay}
                 currentRound={0}
                 allDecisionsIn={false}
                 playerCards={[]}
@@ -4931,7 +4950,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameId={gameId}
               players={players}
               currentUserId={user?.id}
-              pot={game.pot || 0}
+              pot={potForDisplay}
               currentRound={game.current_round ?? 0}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
@@ -5053,7 +5072,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameId={gameId}
               players={players}
               currentUserId={user?.id}
-              pot={game.pot || 0}
+              pot={potForDisplay}
               currentRound={game.current_round ?? 0}
               allDecisionsIn={game.all_decisions_in || false}
               playerCards={playerCards}
