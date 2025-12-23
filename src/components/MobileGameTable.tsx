@@ -3878,11 +3878,11 @@ export const MobileGameTable = ({
               })();
 
               return (
-                <div className="relative w-full h-[200px] shrink-0">
+                <div className="relative w-full h-[220px] shrink-0">
                   <div className="absolute inset-x-0 top-0 flex items-center justify-center min-h-10">
                     {topRow}
                   </div>
-                  <div className="absolute inset-x-0 top-8 flex items-start justify-center">
+                  <div className="absolute inset-x-0 top-10 flex items-start justify-center">
                     {mainContent}
                   </div>
                 </div>
@@ -3890,7 +3890,7 @@ export const MobileGameTable = ({
             })()}
             
             {/* Player info - below cards */}
-            <div className="flex flex-col gap-1 -mt-4">
+            <div className="flex flex-col gap-1">
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
