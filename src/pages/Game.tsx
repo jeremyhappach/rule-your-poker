@@ -4927,7 +4927,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           });
           const hasActiveRound = Boolean(currentRound?.id);
           return isMobile ? (
-            <MobileGameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
+            <MobileGameTable key={gameId ?? 'unknown-game'}
               gameId={gameId}
               players={players}
               currentUserId={user?.id}
@@ -5049,7 +5049,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onAutoFoldChange={handleAutoFoldChange}
             />
           ) : (
-            <GameTable key={`${gameId ?? 'unknown-game'}:${currentRound?.id ?? 'no-round'}`}
+            <GameTable key={gameId ?? 'unknown-game'}
               gameId={gameId}
               players={players}
               currentUserId={user?.id}

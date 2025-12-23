@@ -474,7 +474,7 @@ export const MobileGameTable = ({
   const [displayedPot, setDisplayedPot] = useState(() => {
     return displayedPotMemoryByGameId.get(potMemoryKey) ?? pot;
   });
-  useEffect(() => {
+  useLayoutEffect(() => {
     displayedPotMemoryByGameId.set(potMemoryKey, displayedPot);
   }, [potMemoryKey, displayedPot]);
 
