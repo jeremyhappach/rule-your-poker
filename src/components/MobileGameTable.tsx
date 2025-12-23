@@ -706,8 +706,14 @@ export const MobileGameTable = ({
     setDisplayedPot(pending.prePot);
 
     // SAFETY: if chips never "arrive" (e.g. animation didn't mount in time), unlock after a short delay.
+    // NOTE: When we intentionally slow the ante travel (debugging), keep safety > travel time.
     const lockId = pending.lockId;
     const postPot = pending.postPot;
+    const isSlowDebugAnteLock =
+      lockId === anteAnimationTriggerId &&
+      !lockId.startsWith('pussy-tax-');
+    const safetyMs = isSlowDebugAnteLock ? 12_000 : 2200;
+
     potLockSafetyTimeoutRef.current = window.setTimeout(() => {
       if (potLockRef.current && potLockTriggerRef.current === lockId) {
         console.warn('[POT_LOCK] safety-unlock (no animation completion observed)', { gameId: potMemoryKey, lockId, postPot, backendPot: pot });
@@ -715,8 +721,8 @@ export const MobileGameTable = ({
         setDisplayedPot(postPot);
       }
       potLockSafetyTimeoutRef.current = null;
-    }, 2200);
-  }, [getPendingPotInAnimation, pot, potMemoryKey, displayedPot, potOutAnimationActive]);
+    }, safetyMs);
+  }, [getPendingPotInAnimation, pot, potMemoryKey, displayedPot, potOutAnimationActive, anteAnimationTriggerId]);
 
   // Sync displayedPot to backend pot when NOT locked/animating.
   // KEY RULES:
@@ -3967,6 +3973,10 @@ export const MobileGameTable = ({
                 {/* Round indicator for debugging */}
                 <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400 px-1.5 py-0">
                   R{currentRound}
+                </Badge>
+                {/* DB chipstack value (raw player.chips from backend) */}
+                <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-300 px-1.5 py-0">
+                  DB ${formatChipValue(Math.round(currentPlayer.chips))}
                 </Badge>
                 <div className="relative">
                   {/* Show emoticon overlay OR chipstack value */}

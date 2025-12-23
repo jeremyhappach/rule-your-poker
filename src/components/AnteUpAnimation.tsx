@@ -55,6 +55,10 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // CRITICAL: Use a ref to track animation in progress - state updates are async and can miss rapid re-triggers
   const animationInProgressRef = useRef(false);
 
+  // TEMP DEBUG: slow the visual ante chip travel so amounts are readable.
+  // Revert to ~1200ms total once done debugging.
+  const ANTE_TRAVEL_MS = 10_000;
+
   // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
   // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
   const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
@@ -212,13 +216,13 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     if (onChipsArrived) {
       setTimeout(() => {
         onChipsArrived();
-      }, 800); // Faster callback - chips arrive at 70% of 1s = 700ms
+      }, ANTE_TRAVEL_MS);
     }
-    
+
     setTimeout(() => {
       setAnimations([]);
       animationInProgressRef.current = false; // Clear the ref guard when animation completes
-    }, 1200); // Cleanup after animation completes
+    }, ANTE_TRAVEL_MS + 200);
   }, [pot, currentRound, activePlayers, currentPlayerPosition, getClockwiseDistance, isWaitingPhase, containerRef, gameType, gameStatus, triggerId, anteAmount, onAnimationStart, onChipsArrived]);
 
   if (animations.length === 0) return null;
@@ -238,7 +242,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
           <div
             className="w-7 h-7 rounded-full bg-sky-400 border-2 border-white shadow-lg flex items-center justify-center"
             style={{
-              animation: `anteChipMove${i} 1s ease-out forwards`,
+              animation: `anteChipMove${i} ${ANTE_TRAVEL_MS}ms linear forwards`,
             }}
           >
             <span className="text-black text-[10px] font-bold">${lockedDisplayAmountRef.current}</span>
@@ -249,17 +253,9 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
                 transform: translate(0, 0) scale(1);
                 opacity: 1;
               }
-              70% {
+              100% {
                 transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(1);
                 opacity: 1;
-              }
-              85% {
-                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(1.1);
-                opacity: 1;
-              }
-              100% {
-                transform: translate(${anim.toX - anim.fromX}px, ${anim.toY - anim.fromY}px) scale(0);
-                opacity: 0;
               }
             }
           `}</style>
