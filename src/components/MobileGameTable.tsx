@@ -43,6 +43,7 @@ import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { MessageSquare, User, Clock } from "lucide-react";
 import { HandHistory } from "./HandHistory";
+import { DevDebugOverlay } from "./DevDebugOverlay";
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
 // otherwise resets state and reintroduces the pot flash).
@@ -2512,6 +2513,28 @@ export const MobileGameTable = ({
   };
   return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
       {/* Status badges moved to bottom section */}
+
+      {anteEstimationDebug && (
+        <DevDebugOverlay
+          title="Ante estimation"
+          items={[
+            { label: 'perPlayerAmount (assumed)', value: anteEstimationDebug.perPlayerAmount },
+            { label: 'activeCount', value: anteEstimationDebug.activeCount },
+            { label: 'totalAmount', value: anteEstimationDebug.totalAmount },
+            { label: 'pot (db)', value: anteEstimationDebug.potDb },
+            { label: 'displayedPot (start)', value: anteEstimationDebug.displayedPotAtStart },
+            { label: 'postPotFromProps', value: anteEstimationDebug.postPotFromProps },
+            { label: 'computedPrePot', value: anteEstimationDebug.computedPrePot },
+            { label: 'computedPostPot', value: anteEstimationDebug.computedPostPot },
+            { label: 'anteAmountProp', value: anteEstimationDebug.anteAmountProp },
+            { label: 'pussyTaxValueProp', value: anteEstimationDebug.pussyTaxValueProp },
+            { label: 'triggerId', value: anteEstimationDebug.triggerId },
+            { label: 'isPussyTaxTrigger', value: anteEstimationDebug.isPussyTaxTrigger },
+            { label: 'players (db/pre/expected/displayed)', value: anteEstimationDebug.players },
+          ]}
+          className="max-w-[96vw]"
+        />
+      )}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{
