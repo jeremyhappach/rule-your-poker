@@ -57,10 +57,9 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   const animationInProgressRef = useRef(false);
 
   // Animation timing
-  // Slower travel to make it easier to screen-record/snippet.
-  const ANTE_TRAVEL_MS = 3200;
-  const ANTE_ARRIVE_MS = Math.max(0, ANTE_TRAVEL_MS - 300);
-  const ANTE_CLEANUP_MS = ANTE_TRAVEL_MS + 400;
+  const ANTE_TRAVEL_MS = 1000;
+  const ANTE_ARRIVE_MS = 800;
+  const ANTE_CLEANUP_MS = 1200;
 
   // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
   // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
