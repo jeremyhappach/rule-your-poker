@@ -3974,10 +3974,6 @@ export const MobileGameTable = ({
                 <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400 px-1.5 py-0">
                   R{currentRound}
                 </Badge>
-                {/* DB chipstack value (raw player.chips from backend) */}
-                <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-300 px-1.5 py-0">
-                  DB ${formatChipValue(Math.round(currentPlayer.chips))}
-                </Badge>
                 <div className="relative">
                   {/* Show emoticon overlay OR chipstack value */}
                   {emoticonOverlays[currentPlayer.id] ? (
