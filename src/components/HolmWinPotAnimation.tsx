@@ -10,6 +10,7 @@ interface HolmWinPotAnimationProps {
   isCurrentPlayerWinner: boolean; // Only show confetti for the winner
   getClockwiseDistance: (position: number) => number;
   containerRef: React.RefObject<HTMLDivElement>;
+  onAnimationStart?: () => void;
   onAnimationComplete?: () => void;
 }
 
@@ -21,6 +22,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   isCurrentPlayerWinner,
   getClockwiseDistance,
   containerRef,
+  onAnimationStart,
   onAnimationComplete,
 }) => {
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
@@ -137,6 +139,9 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
     const rect = containerRef.current.getBoundingClientRect();
     const potCoords = getPotCenter(rect);
     const winnerCoords = getPositionCoords(winnerPosition, rect);
+
+    // Call onAnimationStart when POT-OUT animation begins
+    onAnimationStart?.();
 
     setAnimation({
       fromX: potCoords.x,

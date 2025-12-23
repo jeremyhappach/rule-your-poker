@@ -487,29 +487,40 @@ export const MobileGameTable = ({
   // Delayed chip display - decrement immediately on animation start, sync after
   const [displayedChips, setDisplayedChips] = useState<Record<string, number>>({});
 
-  // ========== NEW: LOCK POT WHEN allDecisionsIn TRANSITIONS TO TRUE ==========
-  // This is the KEY fix: When all decisions are in, the backend pot will update shortly after.
-  // By locking the CURRENT displayedPot at this moment, we prevent the flash.
-  // We unlock when: animations complete OR game status transitions to a fresh state.
-  const allDecisionsLockRef = useRef<{ locked: boolean; lockedValue: number | null }>({ locked: false, lockedValue: null });
+  // ========== POT ANIMATION CLASSIFICATION ==========
+  // There are TWO types of animations that affect the pot:
+  // 1. POT-IN (player → pot): ante, pussy tax, chucky loss, losers-to-pot
+  //    - These ADD chips to the pot
+  //    - Display should show pre-animation pot, then increment after chips arrive
+  // 2. POT-OUT (pot → player): 357 win, Holm win, showdown pot-to-winner
+  //    - These DEDUCT chips from the pot
+  //    - Display should show the allDecisionsIn snapped pot, then go to 0 when animation BEGINS
+  //
+  // The KEY insight: For POT-OUT animations, we use the pot value captured when allDecisionsIn
+  // became true. This ensures the displayed pot is correct during the entire animation sequence.
+
+  // ========== SNAPSHOT POT WHEN allDecisionsIn TRANSITIONS TO TRUE ==========
+  // This captures the pot value at the moment all decisions are locked in.
+  // This value is used by POT-OUT animations (pot-to-player).
+  const allDecisionsSnappedPotRef = useRef<number | null>(null);
   const prevAllDecisionsInRef = useRef(allDecisionsIn);
   const prevGameStatusForPotRef = useRef(gameStatus);
   
-  // Lock pot when allDecisionsIn transitions false -> true
+  // Snapshot pot when allDecisionsIn transitions false -> true
   useLayoutEffect(() => {
     const wasAllIn = prevAllDecisionsInRef.current;
     const isAllIn = allDecisionsIn;
     
     if (!wasAllIn && isAllIn) {
-      // LOCK: Capture current displayedPot - this is the pre-animation value
-      allDecisionsLockRef.current = { locked: true, lockedValue: displayedPot };
-      console.log('[POT_LOCK] allDecisionsIn lock at', displayedPot);
+      // SNAPSHOT: Capture current displayedPot - this is the value for POT-OUT animations
+      allDecisionsSnappedPotRef.current = displayedPot;
+      console.log('[POT_SNAPSHOT] allDecisionsIn snapped pot at', displayedPot);
     }
     
     prevAllDecisionsInRef.current = isAllIn;
   }, [allDecisionsIn, displayedPot]);
   
-  // Unlock when game status transitions to a fresh state
+  // Clear snapshot when game transitions to a fresh state
   useEffect(() => {
     const prev = prevGameStatusForPotRef.current;
     const curr = gameStatus;
@@ -518,25 +529,25 @@ export const MobileGameTable = ({
     const freshStatuses = ['ante_decision', 'configuring', 'game_selection', 'dealer_selection', 'waiting_for_players'];
     if (prev && prev !== curr) {
       if (freshStatuses.includes(curr || '') || (prev === 'game_over' && curr !== 'game_over')) {
-        allDecisionsLockRef.current = { locked: false, lockedValue: null };
-        console.log('[POT_LOCK] unlock on status transition:', prev, '->', curr);
+        allDecisionsSnappedPotRef.current = null;
+        console.log('[POT_SNAPSHOT] cleared on status transition:', prev, '->', curr);
       }
     }
     
     prevGameStatusForPotRef.current = curr;
   }, [gameStatus]);
 
-  // --- POT DISPLAY FREEZE (prevents pot flashing during chip-to-pot animations) ---
-  // When the backend pot updates BEFORE the animation trigger paints, the UI can briefly show
-  // the post-update pot, then we freeze to pre-update pot, then show post-update again.
-  // We fix this by locking displayedPot in a layout-effect (before paint) whenever a pot-in
-  // animation trigger is pending.
+  // ========== POT-IN ANIMATION DETECTION ==========
+  // These are animations where chips move FROM players TO the pot
   const potLockRef = useRef(false);
   const potLockTriggerRef = useRef<string | null>(null);
   const potIncreaseSyncTimeoutRef = useRef<number | null>(null);
+  
+  // Track if a POT-OUT animation is active (pot → player)
+  const [potOutAnimationActive, setPotOutAnimationActive] = useState(false);
 
   const getPendingPotInAnimation = useCallback(() => {
-    // 1) Ante / Pussy tax (chips -> pot)
+    // 1) Ante / Pussy tax (chips -> pot) - POT-IN
     if (anteAnimationTriggerId) {
       const isPussyTaxTrigger = anteAnimationTriggerId.startsWith('pussy-tax-');
       const perPlayerAmount = isPussyTaxTrigger ? pussyTaxValue : anteAmount;
@@ -544,23 +555,23 @@ export const MobileGameTable = ({
       const totalAmount = perPlayerAmount * activeCount;
       const postPot = (anteAnimationExpectedPot ?? pot);
       const prePot = Math.max(0, postPot - totalAmount);
-      return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount };
+      return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
 
-    // 2) Holm Chucky loss (specific players pay into pot)
+    // 2) Holm Chucky loss (specific players pay into pot) - POT-IN
     if (chuckyLossTriggerId && chuckyLossPlayerIds.length > 0 && chuckyLossAmount > 0) {
       const totalAmount = chuckyLossAmount * chuckyLossPlayerIds.length;
       const postPot = pot;
       const prePot = Math.max(0, postPot - totalAmount);
-      return { lockId: chuckyLossTriggerId, prePot, postPot, totalAmount };
+      return { lockId: chuckyLossTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
 
-    // 3) Holm showdown losers-to-pot (losers pay match amount into pot)
+    // 3) Holm showdown losers-to-pot (losers pay match amount into pot) - POT-IN
     if (holmShowdownPhase === 'losers-to-pot' && phase2TriggerId && holmShowdownLoserIds.length > 0 && holmShowdownMatchAmount > 0) {
       const totalAmount = holmShowdownMatchAmount * holmShowdownLoserIds.length;
       const postPot = pot;
       const prePot = Math.max(0, postPot - totalAmount);
-      return { lockId: phase2TriggerId, prePot, postPot, totalAmount };
+      return { lockId: phase2TriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
 
     return null;
@@ -582,8 +593,8 @@ export const MobileGameTable = ({
 
   // Freeze displayedPot BEFORE the first paint whenever a pot-in animation is pending.
   useLayoutEffect(() => {
-    // Skip if allDecisionsIn lock is active - that takes precedence
-    if (allDecisionsLockRef.current.locked) return;
+    // Skip if a POT-OUT animation is active (pot → player) - those control pot directly
+    if (potOutAnimationActive) return;
     
     const pending = getPendingPotInAnimation();
     if (!pending) return;
@@ -607,12 +618,12 @@ export const MobileGameTable = ({
       backendPot: pot,
     });
     setDisplayedPot(pending.prePot);
-  }, [getPendingPotInAnimation, pot, potMemoryKey, displayedPot]);
+  }, [getPendingPotInAnimation, pot, potMemoryKey, displayedPot, potOutAnimationActive]);
 
   // Sync displayedPot to backend pot when NOT locked/animating.
-  // IMPORTANT: Never apply pot INCREASES immediately, because the backend pot often updates
-  // before the chip-to-pot animation trigger is detected. Immediate increases cause the
-  // "post → pre → post" flash.
+  // KEY RULES:
+  // - POT-IN animations (player → pot): Block increases until chips arrive
+  // - POT-OUT animations (pot → player): Use allDecisionsSnappedPot, set to 0 when animation begins
   const hasPending357WinForPot = !!(threeFiveSevenWinTriggerId && threeFiveSevenWinPotAmount > 0);
   useEffect(() => {
     if (potIncreaseSyncTimeoutRef.current) {
@@ -620,9 +631,10 @@ export const MobileGameTable = ({
       potIncreaseSyncTimeoutRef.current = null;
     }
 
-    // CRITICAL: If allDecisionsIn lock is active, BLOCK all pot updates
-    if (allDecisionsLockRef.current.locked) {
-      console.log('[POT_SYNC] BLOCKED (allDecisionsIn lock active)', { displayedPot, backendPot: pot });
+    // CRITICAL: If a POT-OUT animation is active, the pot display is controlled directly
+    // by the animation handlers (showing snapped pot → 0). Skip all sync logic.
+    if (potOutAnimationActive) {
+      console.log('[POT_SYNC] BLOCKED (POT-OUT animation active)', { displayedPot, backendPot: pot });
       return;
     }
 
@@ -672,9 +684,9 @@ export const MobileGameTable = ({
       const delayMs = 1400;
       console.log('[POT_SYNC] delay-increase', { gameId: potMemoryKey, displayedPot, backendPot: pot, delayMs });
       potIncreaseSyncTimeoutRef.current = window.setTimeout(() => {
-        // Re-check lock inside timeout
-        if (allDecisionsLockRef.current.locked) {
-          console.log('[POT_SYNC] skipped-after-delay (allDecisionsIn lock)', { displayedPot, backendPot: pot });
+        // Re-check if POT-OUT animation started
+        if (potOutAnimationActive) {
+          console.log('[POT_SYNC] skipped-after-delay (POT-OUT active)', { displayedPot, backendPot: pot });
           return;
         }
 
@@ -1846,13 +1858,13 @@ export const MobileGameTable = ({
       });
     }
     
-    console.log('[357 WIN] Phase 2: pot-to-player - zeroing displayed pot NOW');
+    console.log('[357 WIN] Phase 2: pot-to-player - using snapped pot:', allDecisionsSnappedPotRef.current);
     setThreeFiveSevenWinPhase('pot-to-player');
     threeFiveSevenWinPhaseRef.current = 'pot-to-player';
     // FIX: Set pot hidden flag NOW so pot stays hidden after animation completes
     setThreeFiveSevenPotHiddenUntilReset(true);
-    // CRITICAL: Explicitly set displayed pot to 0 when pot-to-player animation begins
-    // This ensures the pot visually empties as the chips fly to the winner
+    // CRITICAL: Mark POT-OUT animation as active and set pot to 0 when animation begins
+    setPotOutAnimationActive(true);
     setDisplayedPot(0);
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
   }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId]);
@@ -1895,6 +1907,7 @@ export const MobileGameTable = ({
       console.log('[357 WIN] Animation sequence complete, calling onThreeFiveSevenWinAnimationComplete. Callback exists:', !!onThreeFiveSevenWinAnimationComplete);
       setThreeFiveSevenWinPhase('idle');
       threeFiveSevenWinPhaseRef.current = 'idle';
+      setPotOutAnimationActive(false); // Clear POT-OUT flag
       setLegsToPlayerTriggerId(null);
       setPotToPlayerTriggerId357(null);
       if (onThreeFiveSevenWinAnimationComplete) {
@@ -2393,10 +2406,8 @@ export const MobileGameTable = ({
               setDisplayedPot(prev => prev + totalAmount);
             }
 
-            // Unlock pot syncing after chips arrive
+            // Unlock pot syncing after chips arrive (POT-IN complete)
             potLockRef.current = false;
-            // CRITICAL: Also unlock allDecisionsIn lock - animation complete
-            allDecisionsLockRef.current = { locked: false, lockedValue: null };
             console.log('[POT_LOCK] unlock(chips-arrived)', { gameId: potMemoryKey, backendPot: pot });
 
             // Keep locked values active - the useEffect watching players will clear
@@ -2477,10 +2488,9 @@ export const MobileGameTable = ({
             onChuckyLossStarted?.();
           }}
           onChipsArrived={() => {
-            // Chips arrived at pot - show the post-loss pot and unlock syncing
+            // Chips arrived at pot - show the post-loss pot and unlock syncing (POT-IN complete)
             setDisplayedPot(pot);
             potLockRef.current = false;
-            allDecisionsLockRef.current = { locked: false, lockedValue: null };
             console.log('[POT_LOCK] unlock(chucky-loss)', { gameId: potMemoryKey, backendPot: pot });
 
             // Chips arrived at pot - clear override so actual (post-loss) values show
@@ -2524,10 +2534,17 @@ export const MobileGameTable = ({
             isCurrentPlayerWinner={currentPlayer?.position === holmWinWinnerPosition}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
+            onAnimationStart={() => {
+              // POT-OUT animation starting - mark active and use snapped pot
+              setPotOutAnimationActive(true);
+              setDisplayedPot(0);
+              console.log('[HOLM WIN] POT-OUT animation started, snapped pot was:', allDecisionsSnappedPotRef.current);
+            }}
             onAnimationComplete={() => {
               // FIX: Mark animation as completed to keep pot hidden
               console.log('[HOLM WIN] Animation complete - setting holmWinPotHiddenUntilReset=true');
               setHolmWinPotHiddenUntilReset(true);
+              setPotOutAnimationActive(false); // Clear POT-OUT flag
               onHolmWinPotAnimationComplete?.();
             }}
           />
@@ -2565,13 +2582,11 @@ export const MobileGameTable = ({
                 }
               });
               setDisplayedChips(newDisplayedChips);
-              onHolmShowdownLosersStarted?.();
             }}
             onChipsArrived={() => {
-              // Chips arrived at pot - show post-loss pot and unlock
+              // Chips arrived at pot - show post-loss pot and unlock (POT-IN complete)
               setDisplayedPot(pot);
               potLockRef.current = false;
-              allDecisionsLockRef.current = { locked: false, lockedValue: null };
               console.log('[POT_LOCK] unlock(showdown-losers)', { gameId: potMemoryKey, backendPot: pot });
 
               setDisplayedChips({});
