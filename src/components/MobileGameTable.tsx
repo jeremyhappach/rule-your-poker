@@ -2744,7 +2744,8 @@ export const MobileGameTable = ({
         {/* Leg Earned Animation (3-5-7 only) */}
         <LegEarnedAnimation 
           show={showLegEarned} 
-          playerName={legEarnedPlayerName} 
+          playerName={legEarnedPlayerName}
+          legValue={legValue}
           targetPosition={(() => {
             // Calculate target based on leg-earning player's position
             // Target should be where the NEXT leg indicator will appear (inside toward table center)
@@ -2792,6 +2793,7 @@ export const MobileGameTable = ({
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
             legsToWin={legsToWin}
+            legValue={legValue}
             onAnimationComplete={handleLegsToPlayerComplete}
           />
         )}
