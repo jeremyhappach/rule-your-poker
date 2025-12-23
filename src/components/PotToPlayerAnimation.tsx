@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatChipValue } from '@/lib/utils';
 
 interface PotToPlayerAnimationProps {
@@ -27,6 +27,13 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const lockedAmountRef = useRef<number>(amount);
   const lastTriggerIdRef = useRef<string | null>(null);
+  const endTimeoutRef = useRef<number | null>(null);
+  const clearTimeoutRef = useRef<number | null>(null);
+
+  const animationName = useMemo(() => {
+    const safe = (triggerId ?? 'no_trigger').replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `potToPlayer_${safe}`;
+  }, [triggerId]);
 
   // Pot center position - different for Holm vs 3-5-7
   const getPotCenter = (rect: DOMRect): { x: number; y: number } => {
@@ -70,9 +77,31 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     return positions[position] || { top: 50, left: 50 };
   };
 
+  const getChipCenterFromDom = (position: number): { x: number; y: number } | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+
+    const el = container.querySelector(
+      `[data-seat-chip-position="${position}"]`
+    ) as HTMLElement | null;
+    if (!el) return null;
+
+    const containerRect = container.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+
+    return {
+      x: r.left - containerRect.left + r.width / 2,
+      y: r.top - containerRect.top + r.height / 2,
+    };
+  };
+
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+    // Prefer real DOM-measured chipstack center when available (more accurate than % mapping).
+    const dom = getChipCenterFromDom(position);
+    if (dom) return dom;
+
     const isObserver = currentPlayerPosition === null;
-    
+
     let slot: { top: number; left: number };
     if (isObserver) {
       // Observer: use absolute positions
@@ -83,7 +112,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
       slot = getSlotPercent(slotIndex);
     }
-    
+
     return {
       x: (slot.left / 100) * rect.width,
       y: (slot.top / 100) * rect.height,
@@ -93,6 +122,16 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   useEffect(() => {
     if (!triggerId || triggerId === lastTriggerIdRef.current || !containerRef.current) {
       return;
+    }
+
+    // Clear any previous timers so older animations can't end this one early.
+    if (endTimeoutRef.current) {
+      window.clearTimeout(endTimeoutRef.current);
+      endTimeoutRef.current = null;
+    }
+    if (clearTimeoutRef.current) {
+      window.clearTimeout(clearTimeoutRef.current);
+      clearTimeoutRef.current = null;
     }
 
     lastTriggerIdRef.current = triggerId;
@@ -113,16 +152,27 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     });
 
     // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
-    // (MobileGameTable switches phase immediately on onAnimationEnd.)
-    setTimeout(() => {
-      onAnimationEnd?.();
+    endTimeoutRef.current = window.setTimeout(() => {
+      // Guard: only end the animation we started for this trigger.
+      if (lastTriggerIdRef.current === triggerId) {
+        onAnimationEnd?.();
+      }
     }, 3300);
 
     // Clear animation after it completes
-    setTimeout(() => {
-      setAnimation(null);
+    clearTimeoutRef.current = window.setTimeout(() => {
+      if (lastTriggerIdRef.current === triggerId) {
+        setAnimation(null);
+      }
     }, 3700);
-  }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationStart, onAnimationEnd]);
+
+    return () => {
+      if (endTimeoutRef.current) window.clearTimeout(endTimeoutRef.current);
+      if (clearTimeoutRef.current) window.clearTimeout(clearTimeoutRef.current);
+      endTimeoutRef.current = null;
+      clearTimeoutRef.current = null;
+    };
+  }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationStart, onAnimationEnd, animationName]);
 
   if (!animation) return null;
 
@@ -138,13 +188,13 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       <div
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
-          animation: 'potToPlayer 3.2s ease-in-out forwards',
+          animation: `${animationName} 3.2s ease-in-out forwards`,
         }}
       >
         <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
       </div>
       <style>{`
-        @keyframes potToPlayer {
+        @keyframes ${animationName} {
           0% {
             transform: translate(0, 0) scale(1);
             opacity: 1;
