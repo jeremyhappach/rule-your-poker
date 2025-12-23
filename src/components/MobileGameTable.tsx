@@ -2992,7 +2992,12 @@ export const MobileGameTable = ({
         {(() => {
           const shouldHidePot = !!(isWaitingPhase || holmWinPotTriggerId || holmWinPotHiddenUntilReset ||
             threeFiveSevenWinPhase === 'pot-to-player' || threeFiveSevenWinPhase === 'delay' || threeFiveSevenPotHiddenUntilReset);
-          
+
+          // IMPORTANT: During the initial ante animation we must never briefly show a stale pre-ante pot
+          // (e.g. "$4") before the locked pre-ante pot is applied. For initial ante, the pre-ante pot
+          // is always 0. Keep pussy-tax behavior unchanged.
+          const isInitialAntePending = !!(anteAnimationTriggerId && !anteAnimationTriggerId.startsWith('pussy-tax-'));
+
           return (
             <div 
               className={`absolute left-1/2 transform -translate-x-1/2 z-20 transition-all duration-300 ${
@@ -3015,7 +3020,9 @@ export const MobileGameTable = ({
                   // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
                     ? threeFiveSevenWinPotAmount 
-                    : displayedPot
+                    : isInitialAntePending
+                      ? 0
+                      : displayedPot
                 ))}</span>
                 <ValueChangeFlash 
                   value={pot}
@@ -3027,7 +3034,7 @@ export const MobileGameTable = ({
             </div>
           );
         })()}
-        
+
         {/* Solo player's Tabled Cards - shown above pot during solo-vs-Chucky showdown/win */}
         {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}
         {gameType === 'holm-game' && isSoloVsChucky && (() => {
