@@ -3517,20 +3517,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
-  // SAFETY FALLBACK: Auto-proceed for 3-5-7 games if stuck in game_over without game_over_at
-  // This prevents the game from getting stuck if the win animation callback doesn't fire.
-  // IMPORTANT: Delay MUST cover the FULL win animation sequence (leg earned + legs sweep + pot-to-player + post delay),
-  // which scales with legs_to_win and player count.
+  // Unmount cleanup for 357 timers (don't rely on effect cleanups that run on every re-render)
   useEffect(() => {
-    const is357StuckGameOver =
-      game?.status === 'game_over' &&
-      game?.game_type !== 'holm-game' &&
-      !game?.game_over_at &&
-      game?.last_round_result?.includes('won the game');
-
-    if (!is357StuckGameOver) {
-      // Clear any scheduled fallback if we leave the stuck state
-      safety357FallbackKeyRef.current = null;
+    return () => {
       if (safety357FallbackTimerRef.current) {
         window.clearTimeout(safety357FallbackTimerRef.current);
         safety357FallbackTimerRef.current = null;
@@ -3539,15 +3528,54 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         window.clearTimeout(safety357FallbackExtendTimerRef.current);
         safety357FallbackExtendTimerRef.current = null;
       }
+      if (poll357IntervalRef.current) {
+        window.clearInterval(poll357IntervalRef.current);
+        poll357IntervalRef.current = null;
+      }
+      if (poll357StopTimerRef.current) {
+        window.clearTimeout(poll357StopTimerRef.current);
+        poll357StopTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // SAFETY FALLBACK (357): Auto-proceed if stuck in game_over without game_over_at.
+  // IMPORTANT: We do NOT return a cleanup here, because React would run it on every re-render
+  // and repeatedly cancel the timer before it can fire.
+  useEffect(() => {
+    const is357StuckGameOver =
+      game?.status === 'game_over' &&
+      game?.game_type !== 'holm-game' &&
+      !game?.game_over_at &&
+      game?.last_round_result?.includes('won the game');
+
+    const clearFallbackTimers = () => {
+      if (safety357FallbackTimerRef.current) {
+        window.clearTimeout(safety357FallbackTimerRef.current);
+        safety357FallbackTimerRef.current = null;
+      }
+      if (safety357FallbackExtendTimerRef.current) {
+        window.clearTimeout(safety357FallbackExtendTimerRef.current);
+        safety357FallbackExtendTimerRef.current = null;
+      }
+    };
+
+    if (!is357StuckGameOver) {
+      safety357FallbackKeyRef.current = null;
+      clearFallbackTimers();
       return;
     }
 
-    // Keyed by (gameId + message) so we schedule once for this specific win instance.
     const key = `${gameId}|${game?.last_round_result}`;
+
+    // If we've already scheduled for this exact win instance, keep the existing timer alive.
     if (safety357FallbackKeyRef.current === key && safety357FallbackTimerRef.current) {
-      console.log('[357 SAFETY FALLBACK] Already scheduled for this game over instance, skipping reschedule');
       return;
     }
+
+    // New win instance (or lost timer) -> clear and reschedule.
+    clearFallbackTimers();
+    safety357FallbackKeyRef.current = key;
 
     const legsToWin = game?.legs_to_win || 3;
     const legsToAnimate = (cachedLegPositionsRef.current || []).reduce((sum, p) => {
@@ -3567,20 +3595,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const computedMs = 2500 + legsToPlayerMs + 3700 + 3000 + 2000;
     const fallbackMs = Math.min(60_000, Math.max(18_000, computedMs));
 
-    safety357FallbackKeyRef.current = key;
-
-    console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed', {
+    console.log('[357 SAFETY FALLBACK] Scheduling auto-proceed (stable timer)', {
       fallbackMs,
       legsToWin,
       legsToAnimate,
       legsToPlayerMs,
       key,
     });
-
-    // Clear any previous timers (defensive)
-    if (safety357FallbackTimerRef.current) window.clearTimeout(safety357FallbackTimerRef.current);
-    if (safety357FallbackExtendTimerRef.current) window.clearTimeout(safety357FallbackExtendTimerRef.current);
-    safety357FallbackExtendTimerRef.current = null;
 
     safety357FallbackTimerRef.current = window.setTimeout(async () => {
       // If the win animation is still active, do NOT cut it off.
@@ -3594,49 +3615,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .single();
 
           if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
-            console.log('[357 SAFETY FALLBACK] Still stuck after extension (verified via DB), auto-proceeding to next game');
+            console.log('[357 SAFETY FALLBACK] Still stuck after extension (verified via DB), forcing transition');
             setIs357WinAnimationActive(false);
             is357WinAnimationActiveRef.current = false;
             await handleGameOverComplete();
           } else {
-            console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame?.status, freshGame?.game_over_at);
+            console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame);
           }
         }, 8000);
         return;
       }
 
-      // Fetch FRESH game state from DB - React state may be stale
       const { data: freshGame } = await supabase
         .from('games')
         .select('status, game_over_at')
         .eq('id', gameId)
         .single();
 
-      // Only proceed if we're STILL stuck (fresh DB check)
       if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
-        console.log('[357 SAFETY FALLBACK] Still stuck (verified via DB), auto-proceeding to next game');
-        setIs357WinAnimationActive(false); // Clear flag before proceeding
+        console.log('[357 SAFETY FALLBACK] Still stuck (verified via DB), forcing transition');
+        setIs357WinAnimationActive(false);
         is357WinAnimationActiveRef.current = false;
         await handleGameOverComplete();
       } else {
-        console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame?.status, freshGame?.game_over_at);
+        console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame);
       }
     }, fallbackMs);
-
-    return () => {
-      if (safety357FallbackTimerRef.current) {
-        window.clearTimeout(safety357FallbackTimerRef.current);
-        safety357FallbackTimerRef.current = null;
-      }
-      if (safety357FallbackExtendTimerRef.current) {
-        window.clearTimeout(safety357FallbackExtendTimerRef.current);
-        safety357FallbackExtendTimerRef.current = null;
-      }
-    };
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.legs_to_win, gameId, handleGameOverComplete]);
 
   // POLLING (357): Once the win animation is finished, poll until the game transitions.
-  // This is intentionally dumb + reliable.
+  // IMPORTANT: We do NOT return a cleanup here either (same reason: avoid cancel-on-rerender).
   useEffect(() => {
     const is357GameOverNeedingProgress =
       game?.status === 'game_over' &&
@@ -3644,9 +3652,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       !game?.game_over_at &&
       !!game?.last_round_result?.includes('won the game');
 
-    // Only start polling AFTER the win animation is done.
-    if (!is357GameOverNeedingProgress || is357WinAnimationActiveRef.current) {
-      poll357KeyRef.current = null;
+    const clearPollTimers = () => {
       if (poll357IntervalRef.current) {
         window.clearInterval(poll357IntervalRef.current);
         poll357IntervalRef.current = null;
@@ -3655,25 +3661,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         window.clearTimeout(poll357StopTimerRef.current);
         poll357StopTimerRef.current = null;
       }
+    };
+
+    // Only start polling AFTER the win animation is done.
+    if (!is357GameOverNeedingProgress || is357WinAnimationActiveRef.current) {
+      poll357KeyRef.current = null;
+      clearPollTimers();
       return;
     }
 
     const key = `${gameId}|${game?.last_round_result}`;
+
     if (poll357KeyRef.current === key && poll357IntervalRef.current) {
       return;
     }
 
+    // New key (or lost interval) -> clear and start.
+    clearPollTimers();
     poll357KeyRef.current = key;
 
-    console.log('[357 POLL] Starting post-animation polling', {
+    console.log('[357 POLL] Starting post-animation polling (stable interval)', {
       key,
       status: game?.status,
       gameOverAt: game?.game_over_at,
     });
-
-    // Clear any existing timers
-    if (poll357IntervalRef.current) window.clearInterval(poll357IntervalRef.current);
-    if (poll357StopTimerRef.current) window.clearTimeout(poll357StopTimerRef.current);
 
     poll357IntervalRef.current = window.setInterval(async () => {
       // If animation becomes active again, pause polling.
@@ -3690,44 +3701,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Stop polling once we leave game_over OR game_over_at becomes set (countdown path).
       if (freshGame.status !== 'game_over' || !!freshGame.game_over_at) {
         console.log('[357 POLL] Game progressed, stopping polling', freshGame);
-        if (poll357IntervalRef.current) {
-          window.clearInterval(poll357IntervalRef.current);
-          poll357IntervalRef.current = null;
-        }
-        if (poll357StopTimerRef.current) {
-          window.clearTimeout(poll357StopTimerRef.current);
-          poll357StopTimerRef.current = null;
-        }
+        clearPollTimers();
         return;
       }
 
-      // Still stuck -> force progression.
       console.log('[357 POLL] Still stuck in game_over (no game_over_at) -> forcing handleGameOverComplete');
       await handleGameOverComplete();
     }, 1200);
 
-    // Hard stop to avoid runaway polling.
     poll357StopTimerRef.current = window.setTimeout(() => {
       console.log('[357 POLL] Hard stop reached, stopping polling');
-      if (poll357IntervalRef.current) {
-        window.clearInterval(poll357IntervalRef.current);
-        poll357IntervalRef.current = null;
-      }
-      poll357StopTimerRef.current = null;
+      clearPollTimers();
       poll357KeyRef.current = null;
     }, 25_000);
-
-    return () => {
-      if (poll357IntervalRef.current) {
-        window.clearInterval(poll357IntervalRef.current);
-        poll357IntervalRef.current = null;
-      }
-      if (poll357StopTimerRef.current) {
-        window.clearTimeout(poll357StopTimerRef.current);
-        poll357StopTimerRef.current = null;
-      }
-    };
   }, [game?.status, game?.game_type, game?.game_over_at, game?.last_round_result, gameId, handleGameOverComplete]);
+
 
   useEffect(() => {
     if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
