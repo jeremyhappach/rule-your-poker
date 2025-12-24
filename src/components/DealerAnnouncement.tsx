@@ -35,23 +35,16 @@ export const DealerAnnouncement = ({ newDealerPlayer, onComplete }: DealerAnnoun
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-lg p-2.5 border-2 border-poker-gold shadow-2xl animate-scale-in max-w-xl">
-        <div className="text-center space-y-1">
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-poker-gold flex items-center justify-center border-2 border-amber-900 shadow-lg animate-pulse mx-auto">
-              <span className="text-black font-black text-base">D</span>
-            </div>
+      <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded p-1.5 border border-poker-gold shadow-xl animate-scale-in">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-poker-gold flex items-center justify-center border border-amber-900 shadow animate-pulse">
+            <span className="text-black font-black text-sm">D</span>
           </div>
-          
-          <div className="space-y-0.5">
-            <h2 className="text-sm font-bold text-poker-gold">New Game Starting!</h2>
-            <div className="bg-poker-gold/20 backdrop-blur-sm rounded px-2 py-1 border border-poker-gold/40">
-              <p className="text-sm font-bold text-white">
-                {dealerName}
-                {newDealerPlayer.is_bot && ' 🤖'}
-              </p>
-              <p className="text-[10px] text-amber-300">is now the dealer</p>
-            </div>
+          <div>
+            <p className="text-xs font-bold text-white leading-tight">
+              {dealerName}{newDealerPlayer.is_bot && ' 🤖'}
+            </p>
+            <p className="text-[9px] text-amber-300 leading-tight">is now the dealer</p>
           </div>
         </div>
       </div>
