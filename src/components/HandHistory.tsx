@@ -264,6 +264,7 @@ export const HandHistory = ({
       const round = handRounds[0];
       const actions = getActionsForRound(round.id);
       const stayedPlayers = actions.filter(a => a.action_type === 'stay');
+      const foldedPlayers = actions.filter(a => a.action_type === 'fold');
       const communityCards = round.community_cards || [];
 
       if (stayedPlayers.length === 0 && actions.length === 0) {
@@ -275,18 +276,37 @@ export const HandHistory = ({
           {communityCards.length > 0 && (
             <HandHistoryCards cards={communityCards} label="Community cards:" />
           )}
-          <div className="space-y-1">
-            {stayedPlayers.map((action) => (
-              <div key={action.id} className="text-xs">
-                <span className="text-green-500">✓</span> {getPlayerUsername(action.player_id)} stayed
-              </div>
-            ))}
-            {actions.filter(a => a.action_type === 'fold').map((action) => (
-              <div key={action.id} className="text-xs text-muted-foreground">
-                ✗ {getPlayerUsername(action.player_id)} folded
-              </div>
-            ))}
-          </div>
+          
+          {/* Show stayed players with their cards */}
+          {stayedPlayers.length > 0 && (
+            <div className="space-y-2">
+              {stayedPlayers.map((action) => {
+                const playerCardData = getCardsForRound(round.id, action.player_id);
+                const username = getPlayerUsername(action.player_id);
+                
+                return (
+                  <div key={action.id} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-500 text-xs">✓</span>
+                      <span className="text-xs font-medium">{username}</span>
+                    </div>
+                    {playerCardData && playerCardData.length > 0 ? (
+                      <HandHistoryCards cards={playerCardData} size="sm" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground ml-4">(cards not available)</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Show who folded (no cards) */}
+          {foldedPlayers.length > 0 && (
+            <div className="text-xs text-muted-foreground mt-2">
+              Folded: {foldedPlayers.map(a => getPlayerUsername(a.player_id)).join(', ')}
+            </div>
+          )}
         </div>
       );
     }
