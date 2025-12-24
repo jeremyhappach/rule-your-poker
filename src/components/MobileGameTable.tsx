@@ -4086,7 +4086,7 @@ export const MobileGameTable = ({
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[2.05]"
+                      ? "scale-[2.2]"
                       : currentRound === 2
                         ? "scale-[2.0]"
                         : "scale-[1.9]")
