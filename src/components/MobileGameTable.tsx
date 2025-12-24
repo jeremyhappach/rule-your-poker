@@ -4097,7 +4097,7 @@ export const MobileGameTable = ({
                 gameType === "holm-game" 
                   ? "min-h-[90px]" 
                   : (currentRound === 1 
-                      ? "min-h-[110px]" 
+                      ? "min-h-[100px]" 
                       : currentRound === 2 
                         ? "min-h-[85px]" 
                         : "min-h-[75px]");
