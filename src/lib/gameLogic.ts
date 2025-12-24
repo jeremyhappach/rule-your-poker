@@ -13,7 +13,8 @@ export async function recordGameResult(
   winningHandDescription: string | null,
   potWon: number,
   playerChipChanges: Record<string, number>,
-  isChopped: boolean = false
+  isChopped: boolean = false,
+  gameType: string | null = null
 ) {
   console.log('[GAME RESULT] Recording game result:', {
     gameId,
@@ -21,7 +22,8 @@ export async function recordGameResult(
     winnerUsername,
     winningHandDescription,
     potWon,
-    isChopped
+    isChopped,
+    gameType
   });
   
   const { error } = await supabase
@@ -34,7 +36,8 @@ export async function recordGameResult(
       winning_hand_description: winningHandDescription,
       pot_won: potWon,
       player_chip_changes: playerChipChanges,
-      is_chopped: isChopped
+      is_chopped: isChopped,
+      game_type: gameType
     });
   
   if (error) {
@@ -756,14 +759,15 @@ async function handleGameOver(
 ) {
   console.log('[HANDLE GAME OVER] Starting game over handler', { winnerId, winnerUsername, winnerLegs });
   
-  // Get current total_hands to increment it
+  // Get current total_hands and game_type to increment it
   const { data: currentGameData } = await supabase
     .from('games')
-    .select('total_hands')
+    .select('total_hands, game_type')
     .eq('id', gameId)
     .single();
   
   const newTotalHands = (currentGameData?.total_hands || 0) + 1;
+  const gameType = currentGameData?.game_type || null;
   
   // Calculate total leg value from all players
   const totalLegValue = allPlayers.reduce((sum, p) => {
@@ -796,7 +800,8 @@ async function handleGameOver(
     `${winnerLegs} legs`,
     totalPrize,
     playerChipChanges,
-    false
+    false,
+    gameType
   );
   
   // Award the winner

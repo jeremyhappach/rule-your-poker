@@ -1187,7 +1187,8 @@ async function handleChuckyShowdown(
       playerHandDesc,
       roundPot,
       playerChipChanges,
-      false
+      false,
+      game.game_type || 'holm-game'
     );
     
     await supabase
