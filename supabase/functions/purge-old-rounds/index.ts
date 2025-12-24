@@ -27,78 +27,112 @@ serve(async (req) => {
     
     console.log('[PURGE] Cutoff date:', cutoffDate);
     
-    // Find rounds older than 30 days that are NOT final rounds
-    const { data: roundsToPurge, error: findError } = await supabase
+    // Step 1: Find the most recent round (by created_at) for each game
+    // These are the "final" rounds we want to keep
+    const { data: allRounds, error: fetchError } = await supabase
       .from('rounds')
-      .select('id, game_id, round_number, hand_number, is_final_round, created_at')
+      .select('id, game_id, created_at')
       .lt('created_at', cutoffDate)
-      .eq('is_final_round', false);
+      .order('created_at', { ascending: false });
     
-    if (findError) {
-      console.error('[PURGE] Error finding rounds to purge:', findError);
-      throw findError;
+    if (fetchError) {
+      console.error('[PURGE] Error fetching rounds:', fetchError);
+      throw fetchError;
     }
     
-    if (!roundsToPurge || roundsToPurge.length === 0) {
-      console.log('[PURGE] No rounds to purge');
+    if (!allRounds || allRounds.length === 0) {
+      console.log('[PURGE] No old rounds found');
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: 'No rounds to purge',
+          message: 'No old rounds to process',
           purgedCount: 0 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log('[PURGE] Found', roundsToPurge.length, 'rounds to purge');
+    console.log('[PURGE] Found', allRounds.length, 'rounds older than 30 days');
     
-    const roundIds = roundsToPurge.map(r => r.id);
+    // Group rounds by game_id and find the most recent for each game
+    const gameLatestRound = new Map<string, string>();
+    for (const round of allRounds) {
+      if (!gameLatestRound.has(round.game_id)) {
+        // First one we see is the most recent (sorted desc)
+        gameLatestRound.set(round.game_id, round.id);
+      }
+    }
+    
+    console.log('[PURGE] Found', gameLatestRound.size, 'unique games with old rounds');
+    
+    // Get IDs to keep (most recent per game)
+    const idsToKeep = new Set(gameLatestRound.values());
+    
+    // Get IDs to purge (all except the most recent per game)
+    const idsToPurge = allRounds
+      .map(r => r.id)
+      .filter(id => !idsToKeep.has(id));
+    
+    if (idsToPurge.length === 0) {
+      console.log('[PURGE] No rounds to purge (all are final rounds)');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'No non-final rounds to purge',
+          purgedCount: 0,
+          keptCount: idsToKeep.size
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('[PURGE] Will purge', idsToPurge.length, 'rounds, keeping', idsToKeep.size, 'final rounds');
     
     // Delete player_cards for these rounds first (foreign key constraint)
     const { error: cardsDeleteError } = await supabase
       .from('player_cards')
       .delete()
-      .in('round_id', roundIds);
+      .in('round_id', idsToPurge);
     
     if (cardsDeleteError) {
       console.error('[PURGE] Error deleting player_cards:', cardsDeleteError);
       throw cardsDeleteError;
     }
     
-    console.log('[PURGE] Deleted player_cards for', roundIds.length, 'rounds');
+    console.log('[PURGE] Deleted player_cards for', idsToPurge.length, 'rounds');
     
     // Delete player_actions for these rounds
     const { error: actionsDeleteError } = await supabase
       .from('player_actions')
       .delete()
-      .in('round_id', roundIds);
+      .in('round_id', idsToPurge);
     
     if (actionsDeleteError) {
       console.error('[PURGE] Error deleting player_actions:', actionsDeleteError);
       throw actionsDeleteError;
     }
     
-    console.log('[PURGE] Deleted player_actions for', roundIds.length, 'rounds');
+    console.log('[PURGE] Deleted player_actions for', idsToPurge.length, 'rounds');
     
     // Delete the rounds
     const { error: roundsDeleteError } = await supabase
       .from('rounds')
       .delete()
-      .in('id', roundIds);
+      .in('id', idsToPurge);
     
     if (roundsDeleteError) {
       console.error('[PURGE] Error deleting rounds:', roundsDeleteError);
       throw roundsDeleteError;
     }
     
-    console.log('[PURGE] Successfully purged', roundsToPurge.length, 'old non-final rounds');
+    console.log('[PURGE] Successfully purged', idsToPurge.length, 'old non-final rounds');
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Purged ${roundsToPurge.length} old rounds`,
-        purgedCount: roundsToPurge.length,
+        message: `Purged ${idsToPurge.length} old rounds, kept ${idsToKeep.size} final rounds`,
+        purgedCount: idsToPurge.length,
+        keptCount: idsToKeep.size,
         cutoffDate: cutoffDate
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

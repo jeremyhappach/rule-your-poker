@@ -46,29 +46,6 @@ export async function recordGameResult(
   } else {
     console.log('[GAME RESULT] Successfully recorded game result');
   }
-  
-  // Mark the most recent round for this game as the final round (for history preservation)
-  // This is the round that was active when the game ended
-  const { data: mostRecentRound } = await supabase
-    .from('rounds')
-    .select('id')
-    .eq('game_id', gameId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  
-  if (mostRecentRound) {
-    const { error: finalRoundError } = await supabase
-      .from('rounds')
-      .update({ is_final_round: true })
-      .eq('id', mostRecentRound.id);
-    
-    if (finalRoundError) {
-      console.error('[GAME RESULT] Error marking final round:', finalRoundError);
-    } else {
-      console.log('[GAME RESULT] Marked round', mostRecentRound.id, 'as final round');
-    }
-  }
 }
 
 export async function startRound(gameId: string, roundNumber: number) {
