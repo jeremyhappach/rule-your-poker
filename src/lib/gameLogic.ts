@@ -568,6 +568,16 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     console.log('[MAKE DECISION] Fold decision locked in database');
   }
 
+  // Record the action in player_actions for history tracking
+  await supabase
+    .from('player_actions')
+    .insert({
+      round_id: currentRound.id,
+      player_id: playerId,
+      action_type: decision
+    });
+  console.log('[MAKE DECISION] Action recorded in player_actions');
+
   console.log('[MAKE DECISION] Is Holm game?', isHolmGame);
   
   if (isHolmGame) {
@@ -642,11 +652,19 @@ export async function autoFoldUndecided(gameId: string) {
   // Get game type first
   const { data: game } = await supabase
     .from('games')
-    .select('game_type')
+    .select('game_type, current_round')
     .eq('id', gameId)
     .single();
   
   const isHolmGame = game?.game_type === 'holm-game';
+  
+  // Get current round for recording actions
+  const { data: currentRound } = await supabase
+    .from('rounds')
+    .select('id')
+    .eq('game_id', gameId)
+    .eq('round_number', game?.current_round ?? 0)
+    .maybeSingle();
   
   // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers, error: fetchError } = await supabase
@@ -686,6 +704,17 @@ export async function autoFoldUndecided(gameId: string) {
     
     if (foldError) {
       console.error('[AUTO-FOLD] Error folding player:', player.id, foldError);
+    }
+    
+    // Record the auto-fold action in player_actions for history
+    if (currentRound) {
+      await supabase
+        .from('player_actions')
+        .insert({
+          round_id: currentRound.id,
+          player_id: player.id,
+          action_type: 'fold'
+        });
     }
   }
 
