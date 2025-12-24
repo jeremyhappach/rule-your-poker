@@ -4082,19 +4082,19 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
-              // Maximum card size without overlap - aggressive scaling
+              // Card scaling balanced to prevent overlap with player info below
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[2.3]"
+                      ? "scale-[2.0]"
                       : currentRound === 2
-                        ? "scale-[2.1]"
-                        : "scale-[2.0]")
-                  : "scale-[2.5]";
+                        ? "scale-[1.7]"
+                        : "scale-[1.5]")
+                  : "scale-[2.0]";
 
-              // Tight reserve - just enough to prevent overlap with player info
+              // Reserve space to prevent overlap with player info
               const currentPlayerHandReserveClass =
-                gameType === "holm-game" ? "min-h-[95px]" : "min-h-[70px]";
+                gameType === "holm-game" ? "min-h-[90px]" : "min-h-[85px]";
 
               return (
                 <div className={cn(
