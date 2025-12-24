@@ -1564,15 +1564,6 @@ export const MobileGameTable = ({
     }
   }, [isAnyPlayerInShowdownRaw, showdownModeLocked]);
   
-  // CRITICAL FIX: Also reset showdown mode lock when we're clearly in a fresh betting round
-  // This handles edge cases where the deferred reset never fires (e.g., game state transitions)
-  useEffect(() => {
-    if (showdownModeLocked && roundStatus === 'betting' && !isAnyPlayerInShowdownRaw && !awaitingNextRound && !lastRoundResult) {
-      console.log('[SHOWDOWN_LOCK] Resetting showdown lock - fresh betting round detected');
-      setShowdownModeLocked(false);
-    }
-  }, [showdownModeLocked, roundStatus, isAnyPlayerInShowdownRaw, awaitingNextRound, lastRoundResult]);
-  
   // Use locked state to prevent snap-back (cards stay narrow after announcement clears)
   const isAnyPlayerInShowdown = isAnyPlayerInShowdownRaw || showdownModeLocked;
 
