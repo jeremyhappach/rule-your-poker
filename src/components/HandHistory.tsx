@@ -263,11 +263,18 @@ export const HandHistory = ({
     if (isHolmGame(gameType)) {
       const round = handRounds[0];
       const actions = getActionsForRound(round.id);
-      const stayedPlayers = actions.filter(a => a.action_type === 'stay');
-      const foldedPlayers = actions.filter(a => a.action_type === 'fold');
+      const foldedPlayerIds = new Set(actions.filter(a => a.action_type === 'fold').map(a => a.player_id));
       const communityCards = round.community_cards || [];
+      
+      // Get all players who have cards for this round (they participated)
+      const allPlayerCardsForRound = playerCards.filter(pc => pc.round_id === round.id);
+      
+      // Stayed players = players with cards who didn't fold
+      const stayedPlayerCards = allPlayerCardsForRound.filter(pc => !foldedPlayerIds.has(pc.player_id));
+      // Folded players = players with cards who did fold
+      const foldedPlayerCards = allPlayerCardsForRound.filter(pc => foldedPlayerIds.has(pc.player_id));
 
-      if (stayedPlayers.length === 0 && actions.length === 0) {
+      if (stayedPlayerCards.length === 0 && foldedPlayerCards.length === 0) {
         return <div className="text-xs text-muted-foreground">Betting in progress...</div>;
       }
 
@@ -278,20 +285,20 @@ export const HandHistory = ({
           )}
           
           {/* Show stayed players with their cards */}
-          {stayedPlayers.length > 0 && (
+          {stayedPlayerCards.length > 0 && (
             <div className="space-y-2">
-              {stayedPlayers.map((action) => {
-                const playerCardData = getCardsForRound(round.id, action.player_id);
-                const username = getPlayerUsername(action.player_id);
+              {stayedPlayerCards.map((pc) => {
+                const username = getPlayerUsername(pc.player_id);
+                const cards = pc.cards as unknown as CardType[];
                 
                 return (
-                  <div key={action.id} className="space-y-1">
+                  <div key={pc.id} className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-green-500 text-xs">✓</span>
                       <span className="text-xs font-medium">{username}</span>
                     </div>
-                    {playerCardData && playerCardData.length > 0 ? (
-                      <HandHistoryCards cards={playerCardData} size="sm" />
+                    {cards && cards.length > 0 ? (
+                      <HandHistoryCards cards={cards} size="sm" />
                     ) : (
                       <span className="text-xs text-muted-foreground ml-4">(cards not available)</span>
                     )}
@@ -301,10 +308,10 @@ export const HandHistory = ({
             </div>
           )}
 
-          {/* Show who folded (no cards) */}
-          {foldedPlayers.length > 0 && (
+          {/* Show who folded (no cards shown) */}
+          {foldedPlayerCards.length > 0 && (
             <div className="text-xs text-muted-foreground mt-2">
-              Folded: {foldedPlayers.map(a => getPlayerUsername(a.player_id)).join(', ')}
+              Folded: {foldedPlayerCards.map(pc => getPlayerUsername(pc.player_id)).join(', ')}
             </div>
           )}
         </div>
