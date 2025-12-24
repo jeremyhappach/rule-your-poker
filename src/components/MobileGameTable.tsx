@@ -4082,25 +4082,25 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
-              // Card scaling balanced to prevent overlap with player info below
+              // Card scaling - maximize use of vertical space
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
                       ? "scale-[2.0]"
                       : currentRound === 2
-                        ? "scale-[1.7]"
-                        : "scale-[1.5]")
+                        ? "scale-[1.85]"
+                        : "scale-[1.75]")
                   : "scale-[2.0]";
 
-              // Reserve space scales with card size - more reserve for larger cards
+              // Reserve space scales with card size
               const currentPlayerHandReserveClass =
                 gameType === "holm-game" 
                   ? "min-h-[90px]" 
                   : (currentRound === 1 
                       ? "min-h-[105px]" 
                       : currentRound === 2 
-                        ? "min-h-[90px]" 
-                        : "min-h-[80px]");
+                        ? "min-h-[100px]" 
+                        : "min-h-[95px]");
 
               return (
                 <div className={cn(
