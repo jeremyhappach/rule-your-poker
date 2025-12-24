@@ -3079,9 +3079,12 @@ export const MobileGameTable = ({
 
               console.log('[357 WIN] LegEarnedAnimation complete for winning leg, starting legs-to-player phase immediately');
 
-              // Generate unique animation ID for this sequence
-              const animationId = `anim-${Date.now()}`;
-              currentAnimationIdRef.current = animationId;
+              // CRITICAL: Only set animation ID if not already set by the trigger-based effect (Path A).
+              // If we overwrite it here, the delay timer's animationId check will fail and skip completion.
+              if (!currentAnimationIdRef.current) {
+                const animationId = `anim-${Date.now()}`;
+                currentAnimationIdRef.current = animationId;
+              }
 
               // Set phase to legs-to-player to start the sweep animation
               setThreeFiveSevenWinPhase('legs-to-player');
