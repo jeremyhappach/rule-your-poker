@@ -2009,11 +2009,8 @@ export const MobileGameTable = ({
       return;
     }
 
-    const isStableGameOver = gameStatus === 'game_over' || !!isGameOver;
-    if (!isStableGameOver) {
-      console.log('[357 WIN] Trigger received but not in stable game over view yet. Waiting...', { gameStatus, isGameOver });
-      return;
-    }
+    // NOTE: Removed game_over check - the animation should run for all players regardless of local game status.
+    // The parent (Game.tsx) triggers this only when appropriate.
 
     // If the normal "leg gained" detector missed (common when legs_to_win=1 and backend resets fast),
     // force the leg-earned banner so the win moment still feels right.
