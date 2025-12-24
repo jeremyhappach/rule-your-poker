@@ -169,7 +169,7 @@ export const HandHistory = ({
     // Find the highest hand_number in rounds
     const maxHandNumber = Math.max(...rounds.map(r => r.hand_number || 0));
     
-    // Check if this hand already has a result
+    // Check if this hand already has a result (game is fully complete)
     const hasResult = gameResults.some(gr => gr.hand_number === maxHandNumber);
     
     if (hasResult || maxHandNumber === 0) {
@@ -177,8 +177,9 @@ export const HandHistory = ({
       return;
     }
 
-    // Get rounds for the current hand
-    const currentHandRounds = rounds.filter(r => r.hand_number === maxHandNumber);
+    // Get ALL rounds for the game session (not just current hand)
+    // This shows the full progression of the game including all completed rounds
+    const allSessionRounds = rounds.sort((a, b) => a.round_number - b.round_number);
     
     // Calculate chip change for current game:
     // Current chips - (buyIn + sum of all previous chip changes)
@@ -195,7 +196,7 @@ export const HandHistory = ({
     setInProgressGame({
       hand_number: maxHandNumber,
       currentChipChange: chipChange,
-      rounds: currentHandRounds
+      rounds: allSessionRounds
     });
   };
 
