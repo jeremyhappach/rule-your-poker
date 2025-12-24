@@ -2434,6 +2434,7 @@ export const MobileGameTable = ({
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
           )}
           <div className="relative w-12 h-12">
+            <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
             {/* Background chip circle - dimmed when folded */}
             <div className={`
               absolute inset-0 w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
@@ -3730,7 +3731,7 @@ export const MobileGameTable = ({
         }
         // else: isCurrentPlayerBuck - use default bottom center position
         
-        return <div className="absolute z-20" style={positionStyle}>
+        return <div className="absolute z-30" style={positionStyle}>
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
                 <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 animate-bounce flex items-center justify-center w-7 h-7">
@@ -4188,22 +4189,32 @@ export const MobileGameTable = ({
                   {currentPlayer.profiles?.username || 'You'}
                   {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
-                <div className="relative">
+                <div className="relative pr-6">
+                  <BuckIndicator show={gameType === 'holm-game' && buckPosition === currentPlayer.position} />
                   {/* Show emoticon overlay OR chipstack value */}
                   {emoticonOverlays[currentPlayer.id] ? (
-                    <span 
+                    <span
                       className="text-2xl animate-in fade-in zoom-in duration-200"
                       style={{
-                        animation: emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500 
-                          ? 'fadeOutEmoticon 0.5s ease-out forwards' 
-                          : undefined
+                        animation:
+                          emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500
+                            ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                            : undefined,
                       }}
                     >
                       {emoticonOverlays[currentPlayer.id].emoticon}
                     </span>
                   ) : (
-                    <span className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                      ${formatChipValue(Math.round(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips))}
+                    <span
+                      className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}
+                    >
+                      ${formatChipValue(
+                        Math.round(
+                          lockedChipsRef.current?.[currentPlayer.id] ??
+                            displayedChips[currentPlayer.id] ??
+                            currentPlayer.chips,
+                        ),
+                      )}
                     </span>
                   )}
                   <ValueChangeFlash 
