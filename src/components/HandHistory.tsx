@@ -236,7 +236,91 @@ export const HandHistory = ({
     );
   }
 
-  if (gameResults.length === 0) {
+  // Get in-progress hands (rounds that have been completed but don't have a game_result yet)
+  const getInProgressHands = () => {
+    // Find hand numbers that have completed rounds but no game_result
+    const completedRoundHandNumbers = [...new Set(
+      rounds.filter(r => r.status === 'completed' && r.hand_number !== null)
+        .map(r => r.hand_number!)
+    )];
+    const resultHandNumbers = gameResults.map(gr => gr.hand_number);
+    
+    // Return hands that have completed rounds but no result
+    return completedRoundHandNumbers.filter(hn => !resultHandNumbers.includes(hn)).sort((a, b) => b - a);
+  };
+
+  const inProgressHands = getInProgressHands();
+
+  // Render in-progress hand details
+  const renderInProgressHandDetails = (handNumber: number) => {
+    const handRounds = getRoundsForHand(handNumber);
+    
+    if (handRounds.length === 0) {
+      return <div className="text-xs text-muted-foreground">No completed rounds yet</div>;
+    }
+
+    // For Holm, just show the last completed round
+    if (isHolmGame(gameType)) {
+      const round = handRounds[0];
+      const actions = getActionsForRound(round.id);
+      const stayedPlayers = actions.filter(a => a.action_type === 'stay');
+      const communityCards = round.community_cards || [];
+
+      if (stayedPlayers.length === 0 && actions.length === 0) {
+        return <div className="text-xs text-muted-foreground">Betting in progress...</div>;
+      }
+
+      return (
+        <div className="space-y-2 py-2">
+          {communityCards.length > 0 && (
+            <HandHistoryCards cards={communityCards} label="Community cards:" />
+          )}
+          <div className="space-y-1">
+            {stayedPlayers.map((action) => (
+              <div key={action.id} className="text-xs">
+                <span className="text-green-500">✓</span> {getPlayerUsername(action.player_id)} stayed
+              </div>
+            ))}
+            {actions.filter(a => a.action_type === 'fold').map((action) => (
+              <div key={action.id} className="text-xs text-muted-foreground">
+                ✗ {getPlayerUsername(action.player_id)} folded
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // For 357, show each completed round
+    return (
+      <div className="space-y-2 py-2">
+        {handRounds.map((round) => {
+          const actions = getActionsForRound(round.id);
+          const stayedPlayers = actions.filter(a => a.action_type === 'stay');
+          const cardCount = round.round_number === 1 ? 3 : round.round_number === 2 ? 5 : 7;
+
+          return (
+            <div key={round.id} className="bg-muted/20 rounded p-2">
+              <div className="text-xs font-medium mb-1">
+                Round {round.round_number} ({cardCount} cards)
+              </div>
+              {stayedPlayers.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No one stayed</div>
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  {stayedPlayers.length} player(s) stayed
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const hasNoHistory = gameResults.length === 0 && inProgressHands.length === 0;
+
+  if (hasNoHistory) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <Clock className="w-8 h-8 mb-2 opacity-50" />
@@ -422,6 +506,41 @@ export const HandHistory = ({
           value={expandedGame ?? undefined}
           onValueChange={setExpandedGame}
         >
+          {/* In-progress hands - show at top */}
+          {inProgressHands.map((handNumber) => {
+            const handRounds = getRoundsForHand(handNumber);
+            const currentPot = handRounds.length > 0 ? (handRounds[handRounds.length - 1].pot || 0) : 0;
+
+            return (
+              <AccordionItem 
+                key={`in-progress-${handNumber}`} 
+                value={`in-progress-${handNumber}`}
+                className="border border-amber-500/50 rounded-lg mb-2 overflow-hidden bg-amber-500/10"
+              >
+                <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
+                  <div className="flex items-center justify-between w-full pr-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        Hand #{handNumber}
+                        {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
+                        In Progress
+                      </Badge>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      Pot: ${formatChipValue(currentPot)}
+                    </span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-3 pb-3">
+                  {renderInProgressHandDetails(handNumber)}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+
+          {/* Completed games */}
           {gameResults.map((result, index) => {
             const userChipChange = getUserChipChange(result);
             const isWinner = currentPlayerId && result.winner_player_id === currentPlayerId;
