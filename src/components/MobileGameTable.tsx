@@ -4086,21 +4086,21 @@ export const MobileGameTable = ({
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[2.0]"
+                      ? "scale-[2.2]"
                       : currentRound === 2
-                        ? "scale-[1.85]"
-                        : "scale-[1.75]")
+                        ? "scale-[2.0]"
+                        : "scale-[1.9]")
                   : "scale-[2.0]";
 
-              // Reserve space scales with card size
+              // Reserve space - minimal padding below cards
               const currentPlayerHandReserveClass =
                 gameType === "holm-game" 
                   ? "min-h-[90px]" 
                   : (currentRound === 1 
-                      ? "min-h-[105px]" 
+                      ? "min-h-[100px]" 
                       : currentRound === 2 
-                        ? "min-h-[100px]" 
-                        : "min-h-[95px]");
+                        ? "min-h-[85px]" 
+                        : "min-h-[75px]");
 
               return (
                 <div className={cn(
