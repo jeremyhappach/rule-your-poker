@@ -4092,9 +4092,15 @@ export const MobileGameTable = ({
                         : "scale-[1.5]")
                   : "scale-[2.0]";
 
-              // Reserve space to prevent overlap with player info
+              // Reserve space scales with card size - more reserve for larger cards
               const currentPlayerHandReserveClass =
-                gameType === "holm-game" ? "min-h-[90px]" : "min-h-[85px]";
+                gameType === "holm-game" 
+                  ? "min-h-[90px]" 
+                  : (currentRound === 1 
+                      ? "min-h-[105px]" 
+                      : currentRound === 2 
+                        ? "min-h-[90px]" 
+                        : "min-h-[80px]");
 
               return (
                 <div className={cn(
