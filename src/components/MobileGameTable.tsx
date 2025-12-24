@@ -4081,11 +4081,11 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
-              // Scale down cards for 3-5-7 to ensure player info is always visible
+              // Keep cards big, but small enough that the player name + stack stay visible on shorter screens
               const currentPlayerHandScaleClass =
-                gameType !== "holm-game" 
-                  ? (currentRound === 1 ? "scale-[2.0]" : currentRound === 2 ? "scale-[1.8]" : "scale-[1.6]")
-                  : "scale-[2.4]";
+                gameType !== "holm-game"
+                  ? (currentRound === 1 ? "scale-[1.6]" : currentRound === 2 ? "scale-[1.45]" : "scale-[1.35]")
+                  : "scale-[2.0]";
 
               return (
                 <div className={cn(
@@ -4167,12 +4167,7 @@ export const MobileGameTable = ({
             })()}
             
             {/* Player info - below cards */}
-            <div className={cn(
-              "flex flex-col gap-1 mt-auto",
-              gameType !== "holm-game" 
-                ? (currentRound === 1 ? "pt-14" : currentRound === 2 ? "pt-12" : "pt-10")
-                : "pt-28",
-            )}>
+            <div className={cn("flex flex-col gap-1 mt-2 pb-2")}>
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
