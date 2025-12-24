@@ -4084,8 +4084,17 @@ export const MobileGameTable = ({
               // Keep cards big, but small enough that the player name + stack stay visible on shorter screens
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
-                  ? (currentRound === 1 ? "scale-[1.6]" : currentRound === 2 ? "scale-[1.45]" : "scale-[1.35]")
-                  : "scale-[2.0]";
+                  ? (currentRound === 1
+                      ? "scale-[1.6]"
+                      : currentRound === 2
+                        ? "scale-[1.45]"
+                        : "scale-[1.35]")
+                  : "scale-[1.6]";
+
+              // NOTE: transform scale does not affect layout size, so reserve vertical space to prevent
+              // the name/chip stack from visually overlapping the scaled cards.
+              const currentPlayerHandReserveClass =
+                gameType === "holm-game" ? "min-h-[110px]" : "min-h-[90px]";
 
               return (
                 <div className={cn(
@@ -4123,43 +4132,49 @@ export const MobileGameTable = ({
                       if (currentRound === 3) return null;
 
                       return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                        <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
-                          <PlayerHand 
-                            cards={currentPlayerCards} 
-                            isHidden={false} 
-                            gameType={gameType}
-                            currentRound={currentRound}
-                            showSeparated={currentRound === 3}
-                          />
+                        <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                          <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
+                            <PlayerHand 
+                              cards={currentPlayerCards} 
+                              isHidden={false} 
+                              gameType={gameType}
+                              currentRound={currentRound}
+                              showSeparated={currentRound === 3}
+                            />
+                          </div>
                         </div>
                       ) : null;
                     })()
                   ) : isCurrentPlayerSoloVsChucky ? (
                     <div className="text-sm text-muted-foreground">Cards tabled on the felt</div>
                   ) : currentPlayerCards.length > 0 ? (
-                    <div
-                      className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
-                    >
-                      <PlayerHand 
-                        cards={currentPlayerCards} 
-                        isHidden={false} 
-                        highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                        kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                        hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                        gameType={gameType}
-                        currentRound={currentRound}
-                        showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
-                        tightOverlap={isHolmMultiPlayerShowdown}
-                      />
+                    <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                      <div
+                        className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
+                      >
+                        <PlayerHand 
+                          cards={currentPlayerCards} 
+                          isHidden={false} 
+                          highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                          kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                          hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                          gameType={gameType}
+                          currentRound={currentRound}
+                          showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
+                          tightOverlap={isHolmMultiPlayerShowdown}
+                        />
+                      </div>
                     </div>
                   ) : (
                     /* Invisible placeholder matching card height to prevent layout shift */
-                    <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
-                      <PlayerHand 
-                        cards={[]}
-                        isHidden={true}
-                        expectedCardCount={gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)}
-                      />
+                    <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                      <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
+                        <PlayerHand 
+                          cards={[]}
+                          isHidden={true}
+                          expectedCardCount={gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
