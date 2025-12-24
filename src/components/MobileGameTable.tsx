@@ -4088,8 +4088,14 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
+              const currentPlayerHandScaleClass =
+                gameType !== "holm-game" && currentRound === 3 ? "scale-[1.55]" : "scale-[2.2]";
+
               return (
-                <div className="flex flex-col items-center gap-2">
+                <div className={cn(
+                  "flex flex-col items-center",
+                  gameType !== "holm-game" && currentRound === 3 ? "gap-1" : "gap-2",
+                )}>
                   {/* Show cards button for 3-5-7 winner */}
                   {isWinner357InAnimation ? (
                     (() => {
@@ -4121,7 +4127,7 @@ export const MobileGameTable = ({
                       if (currentRound === 3) return null;
 
                       return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                        <div className="transform scale-[2.2] origin-top">
+                        <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
                           <PlayerHand 
                             cards={currentPlayerCards} 
                             isHidden={false} 
@@ -4136,7 +4142,7 @@ export const MobileGameTable = ({
                     <div className="text-sm text-muted-foreground">Cards tabled on the felt</div>
                   ) : currentPlayerCards.length > 0 ? (
                     <div
-                      className={`transform scale-[2.2] origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
+                      className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                     >
                       <PlayerHand 
                         cards={currentPlayerCards} 
@@ -4152,7 +4158,7 @@ export const MobileGameTable = ({
                     </div>
                   ) : (
                     /* Invisible placeholder matching card height to prevent layout shift */
-                    <div className="transform scale-[2.2] origin-top opacity-0 pointer-events-none">
+                    <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
                       <PlayerHand 
                         cards={[]}
                         isHidden={true}
@@ -4165,7 +4171,10 @@ export const MobileGameTable = ({
             })()}
             
             {/* Player info - below cards */}
-            <div className="flex flex-col gap-1 mt-auto pt-28">
+            <div className={cn(
+              "flex flex-col gap-1 mt-auto",
+              gameType !== "holm-game" && currentRound === 3 ? "pt-16" : "pt-28",
+            )}>
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
