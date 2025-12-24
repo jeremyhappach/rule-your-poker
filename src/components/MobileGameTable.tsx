@@ -4087,8 +4087,8 @@ export const MobileGameTable = ({
               // Scale down cards for 3-5-7 to ensure player info is always visible
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game" 
-                  ? (currentRound === 1 ? "scale-[1.8]" : currentRound === 2 ? "scale-[1.6]" : "scale-[1.4]")
-                  : "scale-[2.2]";
+                  ? (currentRound === 1 ? "scale-[2.0]" : currentRound === 2 ? "scale-[1.8]" : "scale-[1.6]")
+                  : "scale-[2.4]";
 
               return (
                 <div className={cn(
