@@ -3872,10 +3872,27 @@ export const MobileGameTable = ({
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
-        {/* FIXED HEIGHT announcement area - prevents layout shift when announcements appear/disappear */}
+        {/* FIXED HEIGHT announcement/timer area - prevents layout shift when announcements appear/disappear */}
         <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
-          {/* Status badges */}
-          {(pendingSessionEnd || isPaused) ? (
+          {/* Player timer bar - shown when it's player's turn to decide (mutually exclusive with announcements) */}
+          {currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
+            <div key={`timer-${currentRound}-${currentTurnPosition}`} className="w-full">
+              <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
+                <div 
+                  className={`h-full transition-[width] duration-1000 ease-linear ${
+                    timeLeft <= 3 ? 'bg-red-500' : 
+                    timeLeft <= 5 ? 'bg-yellow-500' : 
+                    'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-center text-muted-foreground mt-0.5">
+                {timeLeft}s remaining
+              </p>
+            </div>
+          ) : (pendingSessionEnd || isPaused) ? (
+            /* Status badges */
             <div className="flex items-center justify-center gap-2">
               {pendingSessionEnd && <Badge variant="destructive" className="text-xs px-2 py-0.5">LAST HAND</Badge>}
               {isPaused && <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>}
@@ -3974,27 +3991,6 @@ export const MobileGameTable = ({
             </div>
           );
         })()}
-        
-        {/* Progress bar timer - reserve space so layout doesn't jump */}
-        <div className="px-4 py-2 min-h-[28px] shrink-0">
-          {currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
-            <div key={`timer-${currentRound}-${currentTurnPosition}`}>
-              <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
-                <div 
-                  className={`h-full transition-[width] duration-1000 ease-linear ${
-                    timeLeft <= 3 ? 'bg-red-500' : 
-                    timeLeft <= 5 ? 'bg-yellow-500' : 
-                    'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            // Invisible spacer matching the bar height
-            <div className="h-3" aria-hidden="true" />
-          )}
-        </div>
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1">
