@@ -4086,16 +4086,17 @@ export const MobileGameTable = ({
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[1.6]"
+                      ? "scale-[1.8]"
                       : currentRound === 2
-                        ? "scale-[1.45]"
-                        : "scale-[1.35]")
-                  : "scale-[1.6]";
+                        ? "scale-[1.7]"
+                        : "scale-[1.6]")
+                  : "scale-[1.9]";
 
               // NOTE: transform scale does not affect layout size, so reserve vertical space to prevent
               // the name/chip stack from visually overlapping the scaled cards.
+              // Use tighter reserve to reduce excess padding
               const currentPlayerHandReserveClass =
-                gameType === "holm-game" ? "min-h-[110px]" : "min-h-[90px]";
+                gameType === "holm-game" ? "min-h-[100px]" : "min-h-[80px]";
 
               return (
                 <div className={cn(
