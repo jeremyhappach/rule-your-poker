@@ -3255,8 +3255,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME OVER COMPLETE] Game data:', gameData, 'error:', fetchError);
 
-    // GUARD: If game is no longer in game_over, another client already handled the transition
-    if (gameData?.status !== 'game_over') {
+    // If we can't fetch fresh state (transient/network/auth), don't silently skip.
+    // We continue best-effort and let the subsequent updates succeed/fail explicitly.
+    if (fetchError || !gameData) {
+      console.warn('[GAME OVER COMPLETE] Could not fetch fresh game state; continuing best-effort', {
+        fetchError,
+      });
+    } else if (gameData.status !== 'game_over') {
+      // GUARD: If game is no longer in game_over, another client already handled the transition
       console.log('[GAME OVER COMPLETE] Game already transitioned to', gameData?.status, '- skipping');
       gameOverTransitionRef.current = false;
       return;
@@ -3609,13 +3615,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (is357WinAnimationActiveRef.current) {
         console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 5s');
         safety357FallbackExtendTimerRef.current = window.setTimeout(async () => {
-          const { data: freshGame } = await supabase
+          const { data: freshGame, error: freshGameError } = await supabase
             .from('games')
             .select('status, game_over_at')
             .eq('id', gameId)
             .single();
 
-          if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
+          if (freshGameError || !freshGame) {
+            console.warn('[357 SAFETY FALLBACK] Failed to verify game state during extension; forcing transition best-effort', {
+              freshGameError,
+            });
+            setIs357WinAnimationActive(false);
+            is357WinAnimationActiveRef.current = false;
+            await handleGameOverComplete();
+            return;
+          }
+
+          if (freshGame.status === 'game_over' && !freshGame.game_over_at) {
             console.log('[357 SAFETY FALLBACK] Still stuck after extension (verified via DB), forcing transition');
             setIs357WinAnimationActive(false);
             is357WinAnimationActiveRef.current = false;
@@ -3627,13 +3643,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         return;
       }
 
-      const { data: freshGame } = await supabase
+      const { data: freshGame, error: freshGameError } = await supabase
         .from('games')
         .select('status, game_over_at')
         .eq('id', gameId)
         .single();
 
-      if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
+      if (freshGameError || !freshGame) {
+        console.warn('[357 SAFETY FALLBACK] Failed to verify game state; forcing transition best-effort', {
+          freshGameError,
+        });
+        setIs357WinAnimationActive(false);
+        is357WinAnimationActiveRef.current = false;
+        await handleGameOverComplete();
+        return;
+      }
+
+      if (freshGame.status === 'game_over' && !freshGame.game_over_at) {
         console.log('[357 SAFETY FALLBACK] Still stuck (verified via DB), forcing transition');
         setIs357WinAnimationActive(false);
         is357WinAnimationActiveRef.current = false;
@@ -3692,11 +3718,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // If animation becomes active again, pause polling.
       if (is357WinAnimationActiveRef.current) return;
 
-      const { data: freshGame } = await supabase
+      const { data: freshGame, error: pollFetchError } = await supabase
         .from('games')
         .select('status, game_over_at')
         .eq('id', gameId)
         .single();
+
+      if (pollFetchError) {
+        console.warn('[357 POLL] Failed to fetch game status; will retry', pollFetchError);
+        return;
+      }
 
       if (!freshGame) return;
 
@@ -4094,14 +4125,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[357SEQ][WIN_COMPLETE] Fresh game status:', freshGame?.status, 'error:', fetchError);
 
-    // If another client already transitioned the game state, just refetch to sync UI.
-    if (freshGame?.status !== 'game_over') {
+    // Only skip if we are POSITIVE another client already transitioned.
+    // If the fetch fails (auth/network/RLS), proceed best-effort so we don't get stuck.
+    if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
       console.log('[357SEQ][WIN_COMPLETE] Game already transitioned to:', freshGame?.status);
       await fetchGameData();
       return;
     }
 
-    console.log('[357SEQ][WIN_COMPLETE] Still in game_over, calling handleGameOverComplete');
+    console.log('[357SEQ][WIN_COMPLETE] Still in (or assumed) game_over, calling handleGameOverComplete');
     await handleGameOverComplete();
     console.log('[357SEQ][WIN_COMPLETE] handleGameOverComplete finished');
   }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData]);
