@@ -2698,7 +2698,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   expectedChips[p.id] = p.chips;
                 });
 
-                const expectedPot = perPlayerAmount * activeCount;
+                // CRITICAL: Expected pot = existing pot + new antes (for re-ante scenarios)
+                const existingPot = freshGame?.pot || 0;
+                const expectedPot = existingPot + (perPlayerAmount * activeCount);
 
                 setPreAnteChips(chipSnapshot);
                 setExpectedPostAnteChips(expectedChips);
@@ -3927,8 +3929,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       winnerName = winnerMatch ? winnerMatch[1] : '';
     }
     
-    // Find winner player
-    const winnerPlayer = players.find(p => p.profiles?.username === winnerName);
+    // Find winner player - check both profile username AND bot alias for bot players
+    const winnerPlayer = players.find(p => {
+      if (p.profiles?.username === winnerName) return true;
+      // For bots, check if the alias matches
+      if (p.is_bot && getBotAlias(players, p.user_id) === winnerName) return true;
+      return false;
+    });
     if (!winnerPlayer) {
       console.log('[357 WIN] Could not find winner player:', winnerName);
       return;
