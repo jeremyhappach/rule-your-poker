@@ -35,22 +35,22 @@ export const DealerAnnouncement = ({ newDealerPlayer, onComplete }: DealerAnnoun
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm">
-      <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-xl p-6 border-4 border-poker-gold shadow-2xl animate-scale-in max-w-2xl">
-        <div className="text-center space-y-3">
+      <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded-lg p-2.5 border-2 border-poker-gold shadow-2xl animate-scale-in max-w-xl">
+        <div className="text-center space-y-1">
           <div className="relative">
-            <div className="w-24 h-24 rounded-full bg-poker-gold flex items-center justify-center border-4 border-amber-900 shadow-2xl animate-pulse mx-auto">
-              <span className="text-black font-black text-4xl">D</span>
+            <div className="w-10 h-10 rounded-full bg-poker-gold flex items-center justify-center border-2 border-amber-900 shadow-lg animate-pulse mx-auto">
+              <span className="text-black font-black text-base">D</span>
             </div>
           </div>
           
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-poker-gold">New Game Starting!</h2>
-            <div className="bg-poker-gold/20 backdrop-blur-sm rounded-lg px-4 py-2 border-2 border-poker-gold/40">
-              <p className="text-xl font-bold text-white">
+          <div className="space-y-0.5">
+            <h2 className="text-sm font-bold text-poker-gold">New Game Starting!</h2>
+            <div className="bg-poker-gold/20 backdrop-blur-sm rounded px-2 py-1 border border-poker-gold/40">
+              <p className="text-sm font-bold text-white">
                 {dealerName}
                 {newDealerPlayer.is_bot && ' 🤖'}
               </p>
-              <p className="text-sm text-amber-300">is now the dealer</p>
+              <p className="text-[10px] text-amber-300">is now the dealer</p>
             </div>
           </div>
         </div>
