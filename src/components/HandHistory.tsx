@@ -17,6 +17,7 @@ interface GameResult {
   player_chip_changes: Record<string, number>;
   is_chopped: boolean;
   created_at: string;
+  game_type: string | null;
 }
 
 interface Round {
@@ -118,6 +119,7 @@ export const HandHistory = ({
         setGameResults((results || []).map((r) => ({
           ...r,
           player_chip_changes: (r.player_chip_changes as Record<string, number>) || {},
+          game_type: r.game_type || null,
         })));
       }
 
@@ -248,7 +250,8 @@ export const HandHistory = ({
     if (!type) return '';
     switch (type) {
       case 'holm-game': return 'Holm';
-      case '357': return '357';
+      case '357': 
+      case '3-5-7': return '3-5-7';
       default: return type;
     }
   };
@@ -365,7 +368,6 @@ export const HandHistory = ({
           {gameResults.map((result, index) => {
             const userChipChange = getUserChipChange(result);
             const isWinner = currentPlayerId && result.winner_player_id === currentPlayerId;
-            const handRounds = getRoundsForHand(result.hand_number);
             const displayGameNumber = getDisplayGameNumber(index, false);
 
             return (
@@ -380,7 +382,7 @@ export const HandHistory = ({
                       {isWinner && <Trophy className="w-4 h-4 text-poker-gold" />}
                       <span className="text-sm font-medium">
                         Game #{displayGameNumber}
-                        {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
+                        {result.game_type && <span className="text-muted-foreground font-normal"> ({formatGameType(result.game_type)})</span>}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {result.is_chopped ? 'Chopped' : result.winner_username || 'Unknown'}
@@ -409,45 +411,6 @@ export const HandHistory = ({
                     <div className="text-xs text-muted-foreground">
                       Pot: ${formatChipValue(result.pot_won)} • {new Date(result.created_at).toLocaleTimeString()}
                     </div>
-                    
-                    {handRounds.length > 0 ? (
-                      <div className="space-y-1">
-                        {handRounds.map((round) => {
-                          const roundActions = getActionsForRound(round.id);
-                          
-                          return (
-                            <div key={round.id} className="bg-muted/20 rounded p-2">
-                              <div className="text-xs font-medium mb-1">
-                                Round {round.round_number}
-                              </div>
-                              {roundActions.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {roundActions.map((action) => (
-                                    <Badge 
-                                      key={action.id}
-                                      variant="secondary"
-                                      className={cn(
-                                        "text-[10px] py-0",
-                                        action.action_type === 'fold' && "bg-red-500/20 text-red-400",
-                                        action.action_type === 'stay' && "bg-green-500/20 text-green-400"
-                                      )}
-                                    >
-                                      {formatAction(action.action_type)}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">No actions recorded</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-muted-foreground">
-                        Round details not available
-                      </div>
-                    )}
                   </div>
                 </AccordionContent>
               </AccordionItem>
