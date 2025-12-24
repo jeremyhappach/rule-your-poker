@@ -4082,21 +4082,19 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
-              // Keep cards big, but small enough that the player name + stack stay visible on shorter screens
+              // Maximum card size without overlap - aggressive scaling
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[1.8]"
+                      ? "scale-[2.3]"
                       : currentRound === 2
-                        ? "scale-[1.7]"
-                        : "scale-[1.6]")
-                  : "scale-[1.9]";
+                        ? "scale-[2.1]"
+                        : "scale-[2.0]")
+                  : "scale-[2.5]";
 
-              // NOTE: transform scale does not affect layout size, so reserve vertical space to prevent
-              // the name/chip stack from visually overlapping the scaled cards.
-              // Use tighter reserve to reduce excess padding
+              // Tight reserve - just enough to prevent overlap with player info
               const currentPlayerHandReserveClass =
-                gameType === "holm-game" ? "min-h-[100px]" : "min-h-[80px]";
+                gameType === "holm-game" ? "min-h-[95px]" : "min-h-[70px]";
 
               return (
                 <div className={cn(
