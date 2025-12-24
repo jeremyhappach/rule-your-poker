@@ -2434,7 +2434,7 @@ export const MobileGameTable = ({
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
           )}
           <div className="relative w-12 h-12">
-            {/* Buck indicator moved to felt - no longer on player chip */}
+            <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
             {/* Background chip circle - dimmed when folded */}
             <div className={`
               absolute inset-0 w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50

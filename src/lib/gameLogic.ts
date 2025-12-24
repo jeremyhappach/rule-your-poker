@@ -4,7 +4,6 @@ import { getBotAlias } from "./botAlias";
 
 /**
  * Record a game result for hand history tracking
- * Also marks the current round as is_final_round for history preservation
  */
 export async function recordGameResult(
   gameId: string,
@@ -14,8 +13,7 @@ export async function recordGameResult(
   winningHandDescription: string | null,
   potWon: number,
   playerChipChanges: Record<string, number>,
-  isChopped: boolean = false,
-  gameType: string | null = null
+  isChopped: boolean = false
 ) {
   console.log('[GAME RESULT] Recording game result:', {
     gameId,
@@ -23,8 +21,7 @@ export async function recordGameResult(
     winnerUsername,
     winningHandDescription,
     potWon,
-    isChopped,
-    gameType
+    isChopped
   });
   
   const { error } = await supabase
@@ -37,8 +34,7 @@ export async function recordGameResult(
       winning_hand_description: winningHandDescription,
       pot_won: potWon,
       player_chip_changes: playerChipChanges,
-      is_chopped: isChopped,
-      game_type: gameType
+      is_chopped: isChopped
     });
   
   if (error) {
@@ -69,17 +65,71 @@ export async function startRound(gameId: string, roundNumber: number) {
   const betAmount = legValue; // Bet amount per round equals leg value
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
 
-  // If starting round 1, mark any active rounds from previous hands as completed
-  // NOTE: We no longer DELETE rounds - they are preserved for hand history
+  // If starting round 1, ensure all old rounds are deleted
   if (roundNumber === 1) {
-    console.log('[START_ROUND] Marking any active rounds as completed (preserving history)');
+    console.log('[START_ROUND] Cleaning up old rounds for round 1');
     
-    // Mark any active rounds as completed
+    // First, mark any active rounds as completed
     await supabase
       .from('rounds')
       .update({ status: 'completed' })
       .eq('game_id', gameId)
       .neq('status', 'completed');
+    
+    // Delete all rounds for this game to start fresh
+    let retries = 0;
+    const maxRetries = 5;
+    
+    while (retries < maxRetries) {
+      const { data: oldRounds } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId);
+
+      if (!oldRounds || oldRounds.length === 0) {
+        console.log('[START_ROUND] No old rounds to delete');
+        break;
+      }
+
+      console.log('[START_ROUND] Deleting', oldRounds.length, 'old rounds');
+
+      // Delete player cards for old rounds
+      await supabase
+        .from('player_cards')
+        .delete()
+        .in('round_id', oldRounds.map(r => r.id));
+
+      // Delete old rounds
+      const { error: roundsDeleteError } = await supabase
+        .from('rounds')
+        .delete()
+        .eq('game_id', gameId);
+
+      if (roundsDeleteError) {
+        console.error('[START_ROUND] Error deleting rounds:', roundsDeleteError);
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 200 * retries));
+        continue;
+      }
+
+      // Verify deletion succeeded
+      const { data: checkRounds } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId);
+
+      if (!checkRounds || checkRounds.length === 0) {
+        console.log('[START_ROUND] Successfully deleted all rounds');
+        break;
+      }
+
+      retries++;
+      await new Promise(resolve => setTimeout(resolve, 200 * retries));
+    }
+
+    if (retries >= maxRetries) {
+      throw new Error('Failed to delete old rounds after multiple attempts');
+    }
   }
 
   // Reset all players to active for the new round (folding only applies to current round)
@@ -119,60 +169,18 @@ export async function startRound(gameId: string, roundNumber: number) {
   const activePlayers = players.filter(p => p.status === 'active' && !p.sitting_out);
   let initialPot = 0;
   
-  // Calculate hand_number EARLY since we need it for duplicate detection
-  // For round 1, use total_hands + 1 (new game starting)
-  // For rounds 2-3, use the same hand_number as the most recent non-completed round
-  let handNumber = 1;
-  if (roundNumber === 1) {
-    // New game starting - use total_hands + 1
-    const { data: gameForHand } = await supabase
-      .from('games')
-      .select('total_hands')
-      .eq('id', gameId)
-      .single();
-    handNumber = (gameForHand?.total_hands || 0) + 1;
-  } else {
-    // Continuing game - use same hand_number as existing non-completed rounds
-    const { data: existingRoundForHand } = await supabase
-      .from('rounds')
-      .select('hand_number')
-      .eq('game_id', gameId)
-      .neq('status', 'completed')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    if (existingRoundForHand) {
-      handNumber = existingRoundForHand.hand_number || 1;
-    } else {
-      // Fallback: get from most recent completed round
-      const { data: recentRound } = await supabase
-        .from('rounds')
-        .select('hand_number')
-        .eq('game_id', gameId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      handNumber = recentRound?.hand_number || 1;
-    }
-  }
-  
-  console.log('[START_ROUND] Calculated hand_number:', handNumber, 'for round:', roundNumber);
-  
   // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
-  // CRITICAL: Check if round 1 for THIS HAND already exists to prevent double-charging in race conditions
+  // CRITICAL: Check if any round already exists for this game to prevent double-charging in race conditions
   let skipPotUpdate = false;
   if (roundNumber === 1) {
-    const { data: existingRoundForHand } = await supabase
+    const { data: anyExistingRounds } = await supabase
       .from('rounds')
-      .select('id, round_number, hand_number')
+      .select('id, round_number')
       .eq('game_id', gameId)
-      .eq('hand_number', handNumber)
-      .eq('round_number', 1)
       .limit(1);
     
-    if (existingRoundForHand && existingRoundForHand.length > 0) {
-      console.log('[START_ROUND] ⚠️ Round 1 for hand', handNumber, 'already exists, skipping ante charge AND pot update to prevent double-charge');
+    if (anyExistingRounds && anyExistingRounds.length > 0) {
+      console.log('[START_ROUND] ⚠️ Round already exists for this game, skipping ante charge AND pot update to prevent double-charge');
       // Don't charge antes again, and DON'T update pot - it's already correct
       skipPotUpdate = true;
     } else {
@@ -193,19 +201,36 @@ export async function startRound(gameId: string, roundNumber: number) {
     }
   }
 
-  // Safety check: Check for duplicate round with same game_id + round_number + hand_number
-  // This handles race conditions where multiple clients try to create the same round
+  // Safety check: delete any existing round with same game_id and round_number to prevent duplicates
   const { data: existingRound } = await supabase
     .from('rounds')
     .select('id')
     .eq('game_id', gameId)
     .eq('round_number', roundNumber)
-    .eq('hand_number', handNumber)
     .maybeSingle();
   
   if (existingRound) {
-    console.log('[START_ROUND] ⚠️ Round', roundNumber, 'for hand', handNumber, 'already exists - skipping creation');
-    return; // Don't create duplicate, just return
+    console.log('[START_ROUND] Found existing round for game', gameId, 'round', roundNumber, '- deleting it');
+    
+    // Delete player_cards for this round
+    await supabase
+      .from('player_cards')
+      .delete()
+      .eq('round_id', existingRound.id);
+    
+    // Delete player_actions for this round
+    await supabase
+      .from('player_actions')
+      .delete()
+      .eq('round_id', existingRound.id);
+    
+    // Delete the round
+    await supabase
+      .from('rounds')
+      .delete()
+      .eq('id', existingRound.id);
+    
+    console.log('[START_ROUND] Deleted existing round');
   }
 
   // Fetch game_defaults for decision timer
@@ -265,7 +290,29 @@ export async function startRound(gameId: string, roundNumber: number) {
   // Create round with configured deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
   
-  // handNumber was already calculated earlier for duplicate detection
+  // Get current hand_number for this session
+  // For round 1, use total_hands + 1 (new game starting)
+  // For rounds 2-3, use the same hand_number as round 1
+  let handNumber = 1;
+  if (roundNumber === 1) {
+    // New game starting - use total_hands + 1
+    const { data: gameForHand } = await supabase
+      .from('games')
+      .select('total_hands')
+      .eq('id', gameId)
+      .single();
+    handNumber = (gameForHand?.total_hands || 0) + 1;
+  } else {
+    // Continuing game - use same hand_number as existing rounds
+    const { data: existingRound } = await supabase
+      .from('rounds')
+      .select('hand_number')
+      .eq('game_id', gameId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    handNumber = existingRound?.hand_number || 1;
+  }
   
   const { data: round, error: roundError } = await supabase
     .from('rounds')
@@ -568,16 +615,6 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     console.log('[MAKE DECISION] Fold decision locked in database');
   }
 
-  // Record the action in player_actions for history tracking
-  await supabase
-    .from('player_actions')
-    .insert({
-      round_id: currentRound.id,
-      player_id: playerId,
-      action_type: decision
-    });
-  console.log('[MAKE DECISION] Action recorded in player_actions');
-
   console.log('[MAKE DECISION] Is Holm game?', isHolmGame);
   
   if (isHolmGame) {
@@ -652,19 +689,11 @@ export async function autoFoldUndecided(gameId: string) {
   // Get game type first
   const { data: game } = await supabase
     .from('games')
-    .select('game_type, current_round')
+    .select('game_type')
     .eq('id', gameId)
     .single();
   
   const isHolmGame = game?.game_type === 'holm-game';
-  
-  // Get current round for recording actions
-  const { data: currentRound } = await supabase
-    .from('rounds')
-    .select('id')
-    .eq('game_id', gameId)
-    .eq('round_number', game?.current_round ?? 0)
-    .maybeSingle();
   
   // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers, error: fetchError } = await supabase
@@ -705,17 +734,6 @@ export async function autoFoldUndecided(gameId: string) {
     if (foldError) {
       console.error('[AUTO-FOLD] Error folding player:', player.id, foldError);
     }
-    
-    // Record the auto-fold action in player_actions for history
-    if (currentRound) {
-      await supabase
-        .from('player_actions')
-        .insert({
-          round_id: currentRound.id,
-          player_id: player.id,
-          action_type: 'fold'
-        });
-    }
   }
 
   console.log('[AUTO-FOLD] Checking all decisions after auto-fold');
@@ -738,15 +756,14 @@ async function handleGameOver(
 ) {
   console.log('[HANDLE GAME OVER] Starting game over handler', { winnerId, winnerUsername, winnerLegs });
   
-  // Get current total_hands and game_type to increment it
+  // Get current total_hands to increment it
   const { data: currentGameData } = await supabase
     .from('games')
-    .select('total_hands, game_type')
+    .select('total_hands')
     .eq('id', gameId)
     .single();
   
   const newTotalHands = (currentGameData?.total_hands || 0) + 1;
-  const gameType = currentGameData?.game_type || null;
   
   // Calculate total leg value from all players
   const totalLegValue = allPlayers.reduce((sum, p) => {
@@ -779,8 +796,7 @@ async function handleGameOver(
     `${winnerLegs} legs`,
     totalPrize,
     playerChipChanges,
-    false,
-    gameType
+    false
   );
   
   // Award the winner

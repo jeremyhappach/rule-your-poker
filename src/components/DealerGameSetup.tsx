@@ -479,10 +479,6 @@ export const DealerGameSetup = ({
       updateData.is_first_hand = true;
     } else {
       updateData.reveal_at_showdown = revealAtShowdown;
-      // CRITICAL FIX: For 3-5-7 games, clear current_round to prevent stale Holm round data
-      // from being used. The round will be set when startRound creates the new round.
-      updateData.current_round = null;
-      updateData.is_first_hand = true;
     }
 
     const { error } = await supabase

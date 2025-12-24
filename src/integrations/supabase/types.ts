@@ -212,7 +212,6 @@ export type Database = {
         Row: {
           created_at: string
           game_id: string
-          game_type: string | null
           hand_number: number
           id: string
           is_chopped: boolean
@@ -225,7 +224,6 @@ export type Database = {
         Insert: {
           created_at?: string
           game_id: string
-          game_type?: string | null
           hand_number: number
           id?: string
           is_chopped?: boolean
@@ -238,7 +236,6 @@ export type Database = {
         Update: {
           created_at?: string
           game_id?: string
-          game_type?: string | null
           hand_number?: number
           id?: string
           is_chopped?: boolean
