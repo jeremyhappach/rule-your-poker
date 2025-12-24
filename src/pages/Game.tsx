@@ -254,6 +254,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [is357WinAnimationActive, setIs357WinAnimationActive] = useState(false);
   const is357WinAnimationActiveRef = useRef(false); // Ref for closure access in timeouts
 
+  // SAFETY FALLBACK (357): don't keep rescheduling on every re-render/update; schedule once per "game over instance".
+  const safety357FallbackKeyRef = useRef<string | null>(null);
+  const safety357FallbackTimerRef = useRef<number | null>(null);
+  const safety357FallbackExtendTimerRef = useRef<number | null>(null);
+
   // DEBUG: log when 357 active flag flips, since it controls which layout renders.
   useEffect(() => {
     console.log('[357SEQ][GAME_ACTIVE_FLAG]', {
@@ -3511,84 +3516,117 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // IMPORTANT: Delay MUST cover the FULL win animation sequence (leg earned + legs sweep + pot-to-player + post delay),
   // which scales with legs_to_win and player count.
   useEffect(() => {
-    if (game?.status === 'game_over' &&
-        game?.game_type !== 'holm-game' &&
-        !game?.game_over_at &&
-        game?.last_round_result?.includes('won the game')) {
+    const is357StuckGameOver =
+      game?.status === 'game_over' &&
+      game?.game_type !== 'holm-game' &&
+      !game?.game_over_at &&
+      game?.last_round_result?.includes('won the game');
 
-      const legsToWin = game?.legs_to_win || 3;
-      const legsToAnimate = (cachedLegPositionsRef.current || []).reduce((sum, p) => {
-        const c = typeof p.legCount === 'number' ? p.legCount : 0;
-        return sum + Math.min(c, legsToWin);
-      }, 0);
-
-      // Match LegsToPlayerAnimation.tsx math: totalDuration = 3500 + (legCount * 100)
-      const legsToPlayerMs = 3500 + (legsToAnimate * 100);
-
-      // Approximate full sequence timing (conservative):
-      // - Winning leg earned animation ~2.5s
-      // - Legs-to-player: computed above
-      // - Pot-to-player: ~3.7s (visual 3.2s + cleanup)
-      // - Post-pot delay: 3.0s
-      // - Buffer: 2.0s
-      const computedMs = 2500 + legsToPlayerMs + 3700 + 3000 + 2000;
-      const fallbackMs = Math.min(60_000, Math.max(18_000, computedMs));
-
-      console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed', {
-        fallbackMs,
-        legsToWin,
-        legsToAnimate,
-        legsToPlayerMs,
-      });
-
-      let extendTimer: number | null = null;
-
-      const timer = window.setTimeout(async () => {
-        // If the win animation is still active, do NOT cut it off.
-        if (is357WinAnimationActiveRef.current) {
-          console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 8s');
-          extendTimer = window.setTimeout(async () => {
-            const { data: freshGame } = await supabase
-              .from('games')
-              .select('status, game_over_at')
-              .eq('id', gameId)
-              .single();
-
-            if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
-              console.log('[357 SAFETY FALLBACK] Still stuck after extension (verified via DB), auto-proceeding to next game');
-              setIs357WinAnimationActive(false);
-              is357WinAnimationActiveRef.current = false;
-              await handleGameOverComplete();
-            } else {
-              console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame?.status, freshGame?.game_over_at);
-            }
-          }, 8000);
-          return;
-        }
-
-        // Fetch FRESH game state from DB - React state may be stale
-        const { data: freshGame } = await supabase
-          .from('games')
-          .select('status, game_over_at')
-          .eq('id', gameId)
-          .single();
-
-        // Only proceed if we're STILL stuck (fresh DB check)
-        if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
-          console.log('[357 SAFETY FALLBACK] Still stuck (verified via DB), auto-proceeding to next game');
-          setIs357WinAnimationActive(false); // Clear flag before proceeding
-          is357WinAnimationActiveRef.current = false;
-          await handleGameOverComplete();
-        } else {
-          console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame?.status, freshGame?.game_over_at);
-        }
-      }, fallbackMs);
-
-      return () => {
-        window.clearTimeout(timer);
-        if (extendTimer) window.clearTimeout(extendTimer);
-      };
+    if (!is357StuckGameOver) {
+      // Clear any scheduled fallback if we leave the stuck state
+      safety357FallbackKeyRef.current = null;
+      if (safety357FallbackTimerRef.current) {
+        window.clearTimeout(safety357FallbackTimerRef.current);
+        safety357FallbackTimerRef.current = null;
+      }
+      if (safety357FallbackExtendTimerRef.current) {
+        window.clearTimeout(safety357FallbackExtendTimerRef.current);
+        safety357FallbackExtendTimerRef.current = null;
+      }
+      return;
     }
+
+    // Keyed by (gameId + message) so we schedule once for this specific win instance.
+    const key = `${gameId}|${game?.last_round_result}`;
+    if (safety357FallbackKeyRef.current === key && safety357FallbackTimerRef.current) {
+      console.log('[357 SAFETY FALLBACK] Already scheduled for this game over instance, skipping reschedule');
+      return;
+    }
+
+    const legsToWin = game?.legs_to_win || 3;
+    const legsToAnimate = (cachedLegPositionsRef.current || []).reduce((sum, p) => {
+      const c = typeof p.legCount === 'number' ? p.legCount : 0;
+      return sum + Math.min(c, legsToWin);
+    }, 0);
+
+    // Match LegsToPlayerAnimation.tsx math: totalDuration = 3500 + (legCount * 100)
+    const legsToPlayerMs = 3500 + (legsToAnimate * 100);
+
+    // Approximate full sequence timing (conservative):
+    // - Winning leg earned animation ~2.5s
+    // - Legs-to-player: computed above
+    // - Pot-to-player: ~3.7s (visual 3.2s + cleanup)
+    // - Post-pot delay: 3.0s
+    // - Buffer: 2.0s
+    const computedMs = 2500 + legsToPlayerMs + 3700 + 3000 + 2000;
+    const fallbackMs = Math.min(60_000, Math.max(18_000, computedMs));
+
+    safety357FallbackKeyRef.current = key;
+
+    console.log('[357 SAFETY FALLBACK] Detected stuck game_over state, scheduling auto-proceed', {
+      fallbackMs,
+      legsToWin,
+      legsToAnimate,
+      legsToPlayerMs,
+      key,
+    });
+
+    // Clear any previous timers (defensive)
+    if (safety357FallbackTimerRef.current) window.clearTimeout(safety357FallbackTimerRef.current);
+    if (safety357FallbackExtendTimerRef.current) window.clearTimeout(safety357FallbackExtendTimerRef.current);
+    safety357FallbackExtendTimerRef.current = null;
+
+    safety357FallbackTimerRef.current = window.setTimeout(async () => {
+      // If the win animation is still active, do NOT cut it off.
+      if (is357WinAnimationActiveRef.current) {
+        console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 8s');
+        safety357FallbackExtendTimerRef.current = window.setTimeout(async () => {
+          const { data: freshGame } = await supabase
+            .from('games')
+            .select('status, game_over_at')
+            .eq('id', gameId)
+            .single();
+
+          if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
+            console.log('[357 SAFETY FALLBACK] Still stuck after extension (verified via DB), auto-proceeding to next game');
+            setIs357WinAnimationActive(false);
+            is357WinAnimationActiveRef.current = false;
+            await handleGameOverComplete();
+          } else {
+            console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame?.status, freshGame?.game_over_at);
+          }
+        }, 8000);
+        return;
+      }
+
+      // Fetch FRESH game state from DB - React state may be stale
+      const { data: freshGame } = await supabase
+        .from('games')
+        .select('status, game_over_at')
+        .eq('id', gameId)
+        .single();
+
+      // Only proceed if we're STILL stuck (fresh DB check)
+      if (freshGame?.status === 'game_over' && !freshGame?.game_over_at) {
+        console.log('[357 SAFETY FALLBACK] Still stuck (verified via DB), auto-proceeding to next game');
+        setIs357WinAnimationActive(false); // Clear flag before proceeding
+        is357WinAnimationActiveRef.current = false;
+        await handleGameOverComplete();
+      } else {
+        console.log('[357 SAFETY FALLBACK] Game state changed, no action needed:', freshGame?.status, freshGame?.game_over_at);
+      }
+    }, fallbackMs);
+
+    return () => {
+      if (safety357FallbackTimerRef.current) {
+        window.clearTimeout(safety357FallbackTimerRef.current);
+        safety357FallbackTimerRef.current = null;
+      }
+      if (safety357FallbackExtendTimerRef.current) {
+        window.clearTimeout(safety357FallbackExtendTimerRef.current);
+        safety357FallbackExtendTimerRef.current = null;
+      }
+    };
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.legs_to_win, gameId, handleGameOverComplete]);
 
   useEffect(() => {

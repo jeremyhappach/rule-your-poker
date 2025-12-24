@@ -2015,13 +2015,30 @@ export const MobileGameTable = ({
       return;
     }
 
+    // If the normal "leg gained" detector missed (common when legs_to_win=1 and backend resets fast),
+    // force the leg-earned banner so the win moment still feels right.
+    if (!showLegEarned && threeFiveSevenWinnerId) {
+      const winner = players.find((p) => p.id === threeFiveSevenWinnerId);
+      if (winner) {
+        const winnerName = winner.is_bot
+          ? getBotAlias(players, winner.user_id)
+          : (winner.profiles?.username || `Player ${winner.position}`);
+        console.log('[LEG ANIMATION] Forcing LegEarnedAnimation from 357 trigger for winner:', winnerName);
+        setLegEarnedPlayerName(winnerName);
+        setLegEarnedPlayerPosition(winner.position);
+        setIsWinningLegAnimation(true);
+        setShowLegEarned(true);
+        setWinningLegPlayerId(winner.id);
+      }
+    }
+
     // Mark as handled for this component instance.
     lastThreeFiveSevenTriggerRef.current = threeFiveSevenWinTriggerId;
-    
+
     // Generate unique animation ID to track this specific sequence
     const animationId = `anim-${Date.now()}`;
     currentAnimationIdRef.current = animationId;
-    
+
     // Capture leg positions at animation start (don't depend on prop changes during animation)
     const capturedLegPositions = threeFiveSevenCachedLegPositionsRef.current;
 
@@ -2040,7 +2057,7 @@ export const MobileGameTable = ({
     threeFiveSevenWinPhaseRef.current = 'waiting';
     setLegsToPlayerTriggerId(null);
     setPotToPlayerTriggerId357(null);
-    
+
     // Wait for leg earned animation to complete (it runs for 2.5s for winning leg)
     // Then start legs-to-player animation - reduced delay for tighter transition
     setTimeout(() => {
