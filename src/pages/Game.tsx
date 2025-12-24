@@ -3593,7 +3593,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // - Post-pot delay: 3.0s
     // - Buffer: 2.0s
     const computedMs = 2500 + legsToPlayerMs + 3700 + 3000 + 2000;
-    const fallbackMs = Math.min(60_000, Math.max(18_000, computedMs));
+    // Reduce fallback max to 20s (instead of 60s) to force progression faster
+    const fallbackMs = Math.min(20_000, Math.max(12_000, computedMs));
 
     console.log('[357 SAFETY FALLBACK] Scheduling auto-proceed (stable timer)', {
       fallbackMs,
@@ -3606,7 +3607,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     safety357FallbackTimerRef.current = window.setTimeout(async () => {
       // If the win animation is still active, do NOT cut it off.
       if (is357WinAnimationActiveRef.current) {
-        console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 8s');
+        console.log('[357 SAFETY FALLBACK] Win animation still active at fallback time, extending by 5s');
         safety357FallbackExtendTimerRef.current = window.setTimeout(async () => {
           const { data: freshGame } = await supabase
             .from('games')
@@ -3622,7 +3623,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             console.log('[357 SAFETY FALLBACK] Game state changed during extension, no action needed:', freshGame);
           }
-        }, 8000);
+        }, 5000);
         return;
       }
 
@@ -3686,7 +3687,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       gameOverAt: game?.game_over_at,
     });
 
-    poll357IntervalRef.current = window.setInterval(async () => {
+    // Start polling immediately (first check) then every 800ms
+    const checkAndProceed = async () => {
       // If animation becomes active again, pause polling.
       if (is357WinAnimationActiveRef.current) return;
 
@@ -3707,13 +3709,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       console.log('[357 POLL] Still stuck in game_over (no game_over_at) -> forcing handleGameOverComplete');
       await handleGameOverComplete();
-    }, 1200);
+    };
 
+    // Execute immediately
+    checkAndProceed();
+
+    // Then poll every 800ms (more aggressive than previous 1200ms)
+    poll357IntervalRef.current = window.setInterval(checkAndProceed, 800);
+
+    // Hard stop after 15 seconds (reduced from 25s)
     poll357StopTimerRef.current = window.setTimeout(() => {
       console.log('[357 POLL] Hard stop reached, stopping polling');
       clearPollTimers();
       poll357KeyRef.current = null;
-    }, 25_000);
+    }, 15_000);
   }, [game?.status, game?.game_type, game?.game_over_at, game?.last_round_result, gameId, handleGameOverComplete]);
 
 
