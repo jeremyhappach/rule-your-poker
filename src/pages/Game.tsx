@@ -5235,13 +5235,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               holmWinPotAmount={isInProgress ? holmWinPotAmount : undefined}
               holmWinWinnerPosition={isInProgress ? holmWinWinnerPosition : undefined}
               onHolmWinPotAnimationComplete={isInProgress ? handleHolmWinPotAnimationComplete : undefined}
-              threeFiveSevenWinTriggerId={isInProgress ? threeFiveSevenWinTriggerId : null}
-              threeFiveSevenWinPotAmount={isInProgress ? threeFiveSevenWinPotAmount : undefined}
-              threeFiveSevenWinnerId={isInProgress ? threeFiveSevenWinnerId : null}
-              threeFiveSevenWinnerCards={isInProgress ? threeFiveSevenWinnerCards : undefined}
-              threeFiveSevenCachedLegPositions={isInProgress ? cachedLegPositions : undefined}
-              onThreeFiveSevenWinAnimationStarted={isInProgress ? handleThreeFiveSevenWinAnimationStarted : undefined}
-              onThreeFiveSevenWinAnimationComplete={isInProgress ? handleThreeFiveSevenWinAnimationComplete : undefined}
+              // 3-5-7 win animation props must be passed even when not "in_progress",
+              // because the win sequence is intended to run in a stable game_over view.
+              threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
+              threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
+              threeFiveSevenWinnerId={threeFiveSevenWinnerId}
+              threeFiveSevenWinnerCards={threeFiveSevenWinnerCards}
+              threeFiveSevenCachedLegPositions={cachedLegPositions}
+              onThreeFiveSevenWinAnimationStarted={handleThreeFiveSevenWinAnimationStarted}
+              onThreeFiveSevenWinAnimationComplete={handleThreeFiveSevenWinAnimationComplete}
               onStay={isInProgress ? handleStay : () => {}}
               onFold={isInProgress ? handleFold : () => {}}
               onSelectSeat={handleSelectSeat}
