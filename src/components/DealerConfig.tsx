@@ -110,6 +110,12 @@ export const DealerConfig = ({
         if (isHolmGame) {
           updateData.chucky_cards = chuckyCards;
           updateData.rabbit_hunt = rabbitHunt;
+          updateData.current_round = 1;
+          updateData.is_first_hand = true;
+        } else {
+          // CRITICAL FIX: For 3-5-7 games, clear current_round to prevent stale Holm round data
+          updateData.current_round = null;
+          updateData.is_first_hand = true;
         }
 
         const { error } = await supabase
@@ -186,6 +192,11 @@ export const DealerConfig = ({
       updateData.current_round = 1;
       updateData.is_first_hand = true;
       // Buck position will be calculated by startHolmRound
+    } else {
+      // CRITICAL FIX: For 3-5-7 games, clear current_round to prevent stale Holm round data
+      // from being used. The round will be set when startRound creates the new round.
+      updateData.current_round = null;
+      updateData.is_first_hand = true;
     }
 
     console.log('[DEALER CONFIG] Updating game with:', updateData);
