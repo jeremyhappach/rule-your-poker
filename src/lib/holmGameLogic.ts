@@ -284,56 +284,26 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     }
     console.log('[HOLM] ✅ Successfully acquired first-hand lock (is_first_hand -> false)');
 
-    // CRITICAL: Remove any old rounds/cards IMMEDIATELY while we are still in ante_decision,
-    // so no client can fetch and render a previous hand during the dealing window.
-    console.log('[HOLM] FIRST HAND - deleting any existing rounds/player_cards BEFORE dealing');
-    const { data: oldRounds } = await supabase
+    // Mark any existing rounds as completed for history preservation
+    // NOTE: We no longer DELETE rounds - they are preserved for hand history
+    console.log('[HOLM] FIRST HAND - marking any existing rounds as completed (preserving history)');
+    await supabase
       .from('rounds')
-      .select('id')
-      .eq('game_id', gameId);
-
-    if (oldRounds && oldRounds.length > 0) {
-      const oldRoundIds = oldRounds.map(r => r.id);
-      await supabase
-        .from('player_cards')
-        .delete()
-        .in('round_id', oldRoundIds);
-
-      await supabase
-        .from('rounds')
-        .delete()
-        .eq('game_id', gameId);
-
-      console.log('[HOLM] Deleted', oldRounds.length, 'old rounds before first hand');
-    }
-  }
-  
-  // CRITICAL FIX: Before creating any new round, mark ALL existing non-completed rounds as completed
-  // This prevents the "round misalignment" bug where multiple betting rounds exist simultaneously
-  // and hand evaluation uses community cards from the wrong round
-  // NOTE: Skip on first hand because we delete any old rounds above.
-  if (!isFirstHand) {
-    console.log('[HOLM] Cleaning up any non-completed rounds before creating new hand...');
-
-    const { data: nonCompletedRounds } = await supabase
-      .from('rounds')
-      .select('id, round_number, status')
+      .update({ status: 'completed' })
       .eq('game_id', gameId)
       .neq('status', 'completed');
+  }
+  
+  // Mark ALL existing non-completed rounds as completed
+  // This prevents the "round misalignment" bug where multiple betting rounds exist simultaneously
+  if (!isFirstHand) {
+    console.log('[HOLM] Marking any non-completed rounds as completed...');
 
-    if (nonCompletedRounds && nonCompletedRounds.length > 0) {
-      console.log('[HOLM] Found', nonCompletedRounds.length, 'non-completed rounds to clean up:',
-        nonCompletedRounds.map(r => ({ id: r.id, round: r.round_number, status: r.status })));
-
-      // Mark all non-completed rounds as completed
-      const roundIds = nonCompletedRounds.map(r => r.id);
-      await supabase
-        .from('rounds')
-        .update({ status: 'completed' })
-        .in('id', roundIds);
-
-      console.log('[HOLM] ✅ Marked', roundIds.length, 'rounds as completed');
-    }
+    await supabase
+      .from('rounds')
+      .update({ status: 'completed' })
+      .eq('game_id', gameId)
+      .neq('status', 'completed');
   }
   
   // Fetch game configuration
