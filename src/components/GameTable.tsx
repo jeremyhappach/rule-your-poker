@@ -1355,7 +1355,7 @@ export const GameTable = ({
                           <Badge variant="destructive" className="text-[8px] sm:text-[10px] px-0.5 sm:px-1 py-0">Out</Badge>
                         )}
                       </div>
-                      <div className="flex justify-center min-h-[35px] sm:min-h-[45px] md:min-h-[55px] lg:min-h-[60px] items-center gap-1">
+                      <div className="flex justify-center min-h-[45px] sm:min-h-[50px] md:min-h-[58px] lg:min-h-[65px] items-end gap-1 overflow-visible">
                         {/* Pre-decision checkboxes for Holm games - only for current user when not their turn */}
                         {(() => {
                           const buckIsAssignedCheck = buckPosition !== null && buckPosition !== undefined;
