@@ -4088,13 +4088,16 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
+              // Scale down cards for 3-5-7 to ensure player info is always visible
               const currentPlayerHandScaleClass =
-                gameType !== "holm-game" && currentRound === 3 ? "scale-[1.55]" : "scale-[2.2]";
+                gameType !== "holm-game" 
+                  ? (currentRound === 1 ? "scale-[1.8]" : currentRound === 2 ? "scale-[1.6]" : "scale-[1.4]")
+                  : "scale-[2.2]";
 
               return (
                 <div className={cn(
                   "flex flex-col items-center",
-                  gameType !== "holm-game" && currentRound === 3 ? "gap-1" : "gap-2",
+                  gameType !== "holm-game" ? "gap-0" : "gap-2",
                 )}>
                   {/* Show cards button for 3-5-7 winner */}
                   {isWinner357InAnimation ? (
@@ -4173,7 +4176,9 @@ export const MobileGameTable = ({
             {/* Player info - below cards */}
             <div className={cn(
               "flex flex-col gap-1 mt-auto",
-              gameType !== "holm-game" && currentRound === 3 ? "pt-16" : "pt-28",
+              gameType !== "holm-game" 
+                ? (currentRound === 1 ? "pt-14" : currentRound === 2 ? "pt-12" : "pt-10")
+                : "pt-28",
             )}>
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
