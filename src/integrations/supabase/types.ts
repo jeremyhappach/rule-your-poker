@@ -610,6 +610,7 @@ export type Database = {
           game_id: string
           hand_number: number | null
           id: string
+          is_final_round: boolean
           pot: number | null
           round_number: number
           status: string
@@ -628,6 +629,7 @@ export type Database = {
           game_id: string
           hand_number?: number | null
           id?: string
+          is_final_round?: boolean
           pot?: number | null
           round_number: number
           status?: string
@@ -646,6 +648,7 @@ export type Database = {
           game_id?: string
           hand_number?: number | null
           id?: string
+          is_final_round?: boolean
           pot?: number | null
           round_number?: number
           status?: string
