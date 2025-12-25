@@ -350,36 +350,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
   }, [gameId, user?.id, navigate, toast]);
 
-  // Handle session ended with no last_round_result (empty session or config timeout)
-  // This prevents blank screen when game_over/session_ended but nothing to display
-  const sessionEndedHandledRef = useRef(false);
-  useEffect(() => {
-    if (sessionEndedHandledRef.current) return;
-    if (!game) return;
-    
-    // Check if session has ended but there's no result to display
-    const isEnded = game.status === 'game_over' || game.status === 'session_ended';
-    const hasSessionEndedAt = !!game.session_ended_at;
-    const noResultToShow = !game.last_round_result;
-    
-    if (isEnded && hasSessionEndedAt && noResultToShow) {
-      console.log('[SESSION ENDED] Session ended with no result to display, navigating to lobby', {
-        status: game.status,
-        session_ended_at: game.session_ended_at,
-        last_round_result: game.last_round_result,
-        total_hands: game.total_hands,
-      });
-      sessionEndedHandledRef.current = true;
-      toast({
-        title: 'Session ended',
-        description: 'The game session has ended.',
-        duration: 3000,
-      });
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
-    }
-  }, [game?.status, game?.session_ended_at, game?.last_round_result, navigate, toast]);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
@@ -4956,7 +4926,90 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onComplete={selectDealer}
               />
             )}
-            {((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game')) && game.last_round_result && !game.last_round_result.includes('Chucky beat')) ? (
+            {(!is357WinAnimationActive && (
+              game.status === 'game_selection' ||
+              game.status === 'configuring' ||
+              ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
+            )) ? (
+              <div className="relative">
+                {isMobile ? (
+                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                    gameId={gameId}
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={potForDisplay}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value || 1}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                    gameStatus={game.status}
+                    handContextId={null}
+                    chatBubbles={chatBubbles}
+                    allMessages={allMessages}
+                    onSendChat={sendChatMessage}
+                    isChatSending={isChatSending}
+                    getPositionForUserId={getPositionForUserId}
+                    onLeaveGameNow={handleLeaveGameNow}
+                    activeTab={mobileActiveTab}
+                    onActiveTabChange={setMobileActiveTab}
+                    hasUnreadMessages={mobileHasUnreadMessages}
+                    onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                    chatInputValue={mobileChatInput}
+                    onChatInputChange={setMobileChatInput}
+                    dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
+                  />
+                ) : (
+                  <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={potForDisplay}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value || 1}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                    gameStatus={game.status}
+                    handContextId={null}
+                    dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
+                  />
+                )}
+                {(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
+                  <DealerGameSetup
+                    gameId={gameId!}
+                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
+                    isBot={dealerPlayer?.is_bot || false}
+                    dealerPlayerId={dealerPlayer?.id || ''}
+                    dealerPosition={game.dealer_position || 1}
+                    previousGameType={game.game_type || undefined}
+                    previousGameConfig={previousGameConfig}
+                    sessionGameConfigs={sessionGameConfigs}
+                    onConfigComplete={handleConfigComplete}
+                    onSessionEnd={() => fetchGameData()}
+                  />
+                )}
+              </div>
+            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game')) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable key={gameId ?? 'unknown-game'}
@@ -4968,7 +5021,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     allDecisionsIn={true}
                     playerCards={playerCards}
                     timeLeft={null}
-                    lastRoundResult={game.last_round_result}
+                    lastRoundResult={game.last_round_result ?? null}
                     dealerPosition={game.dealer_position}
                     legValue={game.leg_value || 1}
                     legsToWin={game.legs_to_win || 3}
@@ -4987,7 +5040,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameType={game.game_type}
                     gameStatus={(is357WinAnimationActive && game.game_type !== 'holm-game') ? 'game_over' : game.status}
                     roundStatus={currentRound?.status}
-                    isGameOver={!!game.game_over_at}
+                    isGameOver={game.status === 'game_over' || game.status === 'session_ended' || !!game.game_over_at}
                     isDealer={isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false}
                     onNextGame={handleDealerConfirmGameOver}
                     chatBubbles={chatBubbles}
@@ -5075,85 +5128,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameOverAt={game.game_over_at}
                     isSessionEnded={game.status === 'session_ended'}
                     pendingSessionEnd={game.pending_session_end || false}
-                  />
-                )}
-              </div>
-            ) : (!is357WinAnimationActive && (game.status === 'game_selection' || game.status === 'configuring')) ? (
-              <div className="relative">
-                {isMobile ? (
-                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
-                    gameId={gameId}
-                    players={players}
-                    currentUserId={user?.id}
-                    pot={potForDisplay}
-                    currentRound={0}
-                    allDecisionsIn={false}
-                    playerCards={[]}
-                    timeLeft={null}
-                    lastRoundResult={null}
-                    dealerPosition={game.dealer_position}
-                    legValue={game.leg_value || 1}
-                    legsToWin={game.legs_to_win || 3}
-                    potMaxEnabled={game.pot_max_enabled ?? true}
-                    potMaxValue={game.pot_max_value || 10}
-                    pendingSessionEnd={false}
-                    awaitingNextRound={false}
-                    onStay={() => {}}
-                    onFold={() => {}}
-                    onSelectSeat={handleSelectSeat}
-                    gameStatus={game.status}
-                    handContextId={null}
-                    chatBubbles={chatBubbles}
-                    allMessages={allMessages}
-                    onSendChat={sendChatMessage}
-                    isChatSending={isChatSending}
-                    getPositionForUserId={getPositionForUserId}
-                    onLeaveGameNow={handleLeaveGameNow}
-                    activeTab={mobileActiveTab}
-                    onActiveTabChange={setMobileActiveTab}
-                    hasUnreadMessages={mobileHasUnreadMessages}
-                    onHasUnreadMessagesChange={setMobileHasUnreadMessages}
-                    chatInputValue={mobileChatInput}
-                    onChatInputChange={setMobileChatInput}
-                    dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
-                  />
-                ) : (
-                  <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
-                    players={players}
-                    currentUserId={user?.id}
-                    pot={potForDisplay}
-                    currentRound={0}
-                    allDecisionsIn={false}
-                    playerCards={[]}
-                    timeLeft={null}
-                    lastRoundResult={null}
-                    dealerPosition={game.dealer_position}
-                    legValue={game.leg_value || 1}
-                    legsToWin={game.legs_to_win || 3}
-                    potMaxEnabled={game.pot_max_enabled ?? true}
-                    potMaxValue={game.pot_max_value || 10}
-                    pendingSessionEnd={false}
-                    awaitingNextRound={false}
-                    onStay={() => {}}
-                    onFold={() => {}}
-                    onSelectSeat={handleSelectSeat}
-                    gameStatus={game.status}
-                    handContextId={null}
-                    dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
-                  />
-                )}
-                {(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
-                  <DealerGameSetup
-                    gameId={gameId!}
-                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
-                    isBot={dealerPlayer?.is_bot || false}
-                    dealerPlayerId={dealerPlayer?.id || ''}
-                    dealerPosition={game.dealer_position || 1}
-                    previousGameType={game.game_type || undefined}
-                    previousGameConfig={previousGameConfig}
-                    sessionGameConfigs={sessionGameConfigs}
-                    onConfigComplete={handleConfigComplete}
-                    onSessionEnd={() => fetchGameData()}
                   />
                 )}
               </div>
