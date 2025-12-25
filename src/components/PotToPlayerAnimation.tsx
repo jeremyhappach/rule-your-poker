@@ -30,6 +30,20 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const endTimeoutRef = useRef<number | null>(null);
   const clearTimeoutRef = useRef<number | null>(null);
 
+  // IMPORTANT: parent often passes inline callbacks which change identity on re-render.
+  // If we include callbacks in the animation effect deps, React will run cleanup on re-render
+  // and cancel our timers. Use refs so the timers stay stable.
+  const onStartRef = useRef<(() => void) | undefined>(onAnimationStart);
+  const onEndRef = useRef<(() => void) | undefined>(onAnimationEnd);
+
+  useEffect(() => {
+    onStartRef.current = onAnimationStart;
+  }, [onAnimationStart]);
+
+  useEffect(() => {
+    onEndRef.current = onAnimationEnd;
+  }, [onAnimationEnd]);
+
   const animationName = useMemo(() => {
     const safe = (triggerId ?? 'no_trigger').replace(/[^a-zA-Z0-9_-]/g, '_');
     return `potToPlayer_${safe}`;
@@ -142,7 +156,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     const winnerCoords = getPositionCoords(winnerPosition, rect);
 
     // Notify start - pot should show 0 now
-    onAnimationStart?.();
+    onStartRef.current?.();
 
     setAnimation({
       fromX: potCoords.x,
@@ -155,7 +169,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     endTimeoutRef.current = window.setTimeout(() => {
       // Guard: only end the animation we started for this trigger.
       if (lastTriggerIdRef.current === triggerId) {
-        onAnimationEnd?.();
+        onEndRef.current?.();
       }
     }, 3300);
 
@@ -172,7 +186,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       endTimeoutRef.current = null;
       clearTimeoutRef.current = null;
     };
-  }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationStart, onAnimationEnd, animationName]);
+  }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, gameType, animationName]);
 
   if (!animation) return null;
 
