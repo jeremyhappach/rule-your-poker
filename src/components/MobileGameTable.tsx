@@ -25,7 +25,6 @@ import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
-import { BuckIndicator } from "./BuckIndicator";
 import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
@@ -2434,7 +2433,6 @@ export const MobileGameTable = ({
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
           )}
           <div className="relative w-12 h-12">
-            <BuckIndicator show={gameType === 'holm-game' && buckPosition === player.position} />
             {/* Background chip circle - dimmed when folded */}
             <div className={`
               absolute inset-0 w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
@@ -4196,7 +4194,6 @@ export const MobileGameTable = ({
                   {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
                 </p>
                 <div className="relative pr-6">
-                  <BuckIndicator show={gameType === 'holm-game' && buckPosition === currentPlayer.position} />
                   {/* Show emoticon overlay OR chipstack value */}
                   {emoticonOverlays[currentPlayer.id] ? (
                     <span
