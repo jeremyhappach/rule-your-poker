@@ -3315,15 +3315,6 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* LAST HAND warning badge - positioned in top-left corner of felt */}
-        {pendingSessionEnd && (
-          <div className="absolute top-2 left-2 z-30">
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 drop-shadow-lg">
-              ⚠️ LAST HAND
-            </Badge>
-          </div>
-        )}
-
         {/* Solo player's Tabled Cards - shown above pot during solo-vs-Chucky showdown/win */}
         {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}
         {gameType === 'holm-game' && isSoloVsChucky && (() => {
@@ -3973,10 +3964,11 @@ export const MobileGameTable = ({
                 {timeLeft}s remaining
               </p>
             </div>
-          ) : isPaused ? (
-            /* Paused badge only - LAST HAND moved to table felt overlay */
+          ) : (pendingSessionEnd || isPaused) ? (
+            /* Status badges */
             <div className="flex items-center justify-center gap-2">
-              <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
+              {pendingSessionEnd && <Badge variant="destructive" className="text-xs px-2 py-0.5">LAST HAND</Badge>}
+              {isPaused && <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>}
             </div>
           ) : isGameOver && lastRoundResult && !(
             gameType !== 'holm-game' && (
