@@ -239,8 +239,18 @@ export const DealerGameSetup = ({
         .maybeSingle();
 
       const totalHands = gameData?.total_hands || 0;
+      
+      // Also check game_results as backup - if any results exist, session has history
+      const { count: resultsCount } = await supabase
+        .from('game_results')
+        .select('id', { count: 'exact', head: true })
+        .eq('game_id', gameId);
+      
+      const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+      
+      console.log('[DEALER SETUP] Session history check:', { totalHands, resultsCount, hasHistory });
 
-      if (totalHands === 0) {
+      if (!hasHistory) {
         // No hands played - show 5s message then delete
         setShowDeletingEmptySession(true);
         setDeleteCountdown(5);
