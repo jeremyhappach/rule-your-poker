@@ -266,16 +266,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const poll357IntervalRef = useRef<number | null>(null);
   const poll357StopTimerRef = useRef<number | null>(null);
 
-  // DEBUG: log when 357 active flag flips, since it controls which layout renders.
-  useEffect(() => {
-    console.log('[357SEQ][GAME_ACTIVE_FLAG]', {
-      t: Date.now(),
-      gameId,
-      status: game?.status,
-      gameType: game?.game_type,
-      is357WinAnimationActive,
-    });
-  }, [gameId, game?.status, game?.game_type, is357WinAnimationActive]);
   
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
@@ -4137,15 +4127,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Handle 3-5-7 win animation complete - proceed directly to next game after delay
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
     if (game?.game_type === 'holm-game' || !gameId) {
-      console.log('[357SEQ][WIN_COMPLETE] Skipping: holm-game or no gameId');
       return;
     }
 
-    console.log('[357SEQ][WIN_COMPLETE] Animation complete, clearing active flag', {
-      t: Date.now(),
-      currentStatus: game?.status,
-      gameOverTransitionRef: gameOverTransitionRef.current,
-    });
 
     // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);
@@ -4169,19 +4153,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .eq('id', gameId)
       .single();
 
-    console.log('[357SEQ][WIN_COMPLETE] Fresh game status:', freshGame?.status, 'error:', fetchError);
+    
 
     // Only skip if we are POSITIVE another client already transitioned.
     // If the fetch fails (auth/network/RLS), proceed best-effort so we don't get stuck.
     if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
-      console.log('[357SEQ][WIN_COMPLETE] Game already transitioned to:', freshGame?.status);
+      
       await fetchGameData();
       return;
     }
 
-    console.log('[357SEQ][WIN_COMPLETE] Still in (or assumed) game_over, calling handleGameOverComplete');
     await handleGameOverComplete();
-    console.log('[357SEQ][WIN_COMPLETE] handleGameOverComplete finished');
   }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData]);
 
   const handleAllAnteDecisionsIn = async () => {
