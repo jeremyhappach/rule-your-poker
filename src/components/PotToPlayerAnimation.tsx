@@ -133,8 +133,31 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     };
   };
 
+  // Store position-related props in refs so the effect doesn't re-run when they change
+  const winnerPositionRef = useRef(winnerPosition);
+  const currentPlayerPositionRef = useRef(currentPlayerPosition);
+  const getClockwiseDistanceRef = useRef(getClockwiseDistance);
+  const containerRefRef = useRef(containerRef);
+  const gameTypeRef = useRef(gameType);
+  const amountRef = useRef(amount);
+
   useEffect(() => {
-    if (!triggerId || triggerId === lastTriggerIdRef.current || !containerRef.current) {
+    winnerPositionRef.current = winnerPosition;
+    currentPlayerPositionRef.current = currentPlayerPosition;
+    getClockwiseDistanceRef.current = getClockwiseDistance;
+    containerRefRef.current = containerRef;
+    gameTypeRef.current = gameType;
+    amountRef.current = amount;
+  });
+
+  // Main animation effect - ONLY depends on triggerId to prevent timer cancellation
+  useEffect(() => {
+    if (!triggerId || triggerId === lastTriggerIdRef.current) {
+      return;
+    }
+
+    const container = containerRefRef.current?.current;
+    if (!container) {
       return;
     }
 
@@ -149,11 +172,44 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     }
 
     lastTriggerIdRef.current = triggerId;
-    lockedAmountRef.current = amount;
+    lockedAmountRef.current = amountRef.current;
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const potCoords = getPotCenter(rect);
-    const winnerCoords = getPositionCoords(winnerPosition, rect);
+    // Compute positions using refs (won't cause re-runs)
+    const rect = container.getBoundingClientRect();
+    const yPercent = gameTypeRef.current === 'holm-game' ? 0.38 : 0.5;
+    const potCoords = { x: rect.width * 0.5, y: rect.height * yPercent };
+
+    // Try DOM first for winner position
+    const el = container.querySelector(`[data-seat-chip-position="${winnerPositionRef.current}"]`) as HTMLElement | null;
+    let winnerCoords: { x: number; y: number };
+    if (el) {
+      const containerRect = container.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      winnerCoords = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 };
+    } else {
+      const isObserver = currentPlayerPositionRef.current === null;
+      let slot: { top: number; left: number };
+      if (isObserver) {
+        const positions: Record<number, { top: number; left: number }> = {
+          1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
+          4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
+        };
+        slot = positions[winnerPositionRef.current] || { top: 50, left: 50 };
+      } else {
+        const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
+        const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
+        if (slotIndex === -1) {
+          slot = { top: 92, left: 50 };
+        } else {
+          const slots: Record<number, { top: number; left: number }> = {
+            0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
+            3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+          };
+          slot = slots[slotIndex] || { top: 50, left: 50 };
+        }
+      }
+      winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
+    }
 
     // Notify start - pot should show 0 now
     onStartRef.current?.();
@@ -180,13 +236,17 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       }
     }, 3700);
 
+    // NO cleanup that clears timers - we don't want deps changes to cancel timers
+    // Timers are only cleared when a NEW triggerId arrives (handled above)
+  }, [triggerId]); // ONLY triggerId - other values accessed via refs
+
+  // Cleanup on unmount only
+  useEffect(() => {
     return () => {
       if (endTimeoutRef.current) window.clearTimeout(endTimeoutRef.current);
       if (clearTimeoutRef.current) window.clearTimeout(clearTimeoutRef.current);
-      endTimeoutRef.current = null;
-      clearTimeoutRef.current = null;
     };
-  }, [triggerId, amount, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, gameType, animationName]);
+  }, []);
 
   if (!animation) return null;
 
