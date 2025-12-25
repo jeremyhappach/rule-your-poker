@@ -2114,7 +2114,7 @@ export const MobileGameTable = ({
     setPotToPlayerTriggerId357(`pot-to-player-357-${Date.now()}`);
   }, [threeFiveSevenCachedLegPositions, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, players, legsToPlayerTriggerId]);
 
-  // Handle pot-to-player animation complete -> 3 second delay -> next game
+  // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
     console.log('[357SEQ][POT_DONE] Callback fired', {
       t: Date.now(),
@@ -2151,7 +2151,7 @@ export const MobileGameTable = ({
     // Capture current animation ID
     const animationId = currentAnimationIdRef.current;
 
-    // 3 second delay before proceeding to next game
+    // 300ms delay before proceeding to next game
     setTimeout(() => {
       console.log('[357SEQ][DELAY_DONE] Checking animationId', {
         t: Date.now(),
