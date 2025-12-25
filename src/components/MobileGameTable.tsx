@@ -3964,11 +3964,10 @@ export const MobileGameTable = ({
                 {timeLeft}s remaining
               </p>
             </div>
-          ) : (pendingSessionEnd || isPaused) ? (
-            /* Status badges */
+          ) : isPaused ? (
+            /* Paused badge only - LAST HAND moved to page header */
             <div className="flex items-center justify-center gap-2">
-              {pendingSessionEnd && <Badge variant="destructive" className="text-xs px-2 py-0.5">LAST HAND</Badge>}
-              {isPaused && <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>}
+              <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
             </div>
           ) : isGameOver && lastRoundResult && !(
             gameType !== 'holm-game' && (
