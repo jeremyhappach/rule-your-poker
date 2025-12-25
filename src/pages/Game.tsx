@@ -2681,7 +2681,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // ALSO skip if 357 win animation is currently active (use ref for closure access)
             const is357Sweep = freshGame?.last_round_result?.startsWith('357_SWEEP');
             if (freshGame?.next_round_number === 1 && !is357Sweep && !is357WinAnimationActiveRef.current) {
-              // Fetch current players to compute the ante animation values
+              // CRITICAL: Fetch fresh game AND players AFTER proceedToNextRound completes
+              // because startRound already updated the pot in the database
+              const { data: freshGameAfterProceed } = await supabase
+                .from('games')
+                .select('pot, ante_amount')
+                .eq('id', gameId)
+                .single();
+              
               const { data: freshPlayersAfterAnte } = await supabase
                 .from('players')
                 .select('id, chips, sitting_out')
@@ -2689,7 +2696,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               const activePlayers = (freshPlayersAfterAnte || []).filter(p => !p.sitting_out);
               const activeCount = activePlayers.length;
-              const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
+              const perPlayerAmount = typeof freshGameAfterProceed?.ante_amount === 'number' ? freshGameAfterProceed.ante_amount : 0;
 
               if (perPlayerAmount > 0 && activeCount > 0) {
                 // PRE snapshot = post chips + ante (because backend already deducted)
@@ -2700,9 +2707,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   expectedChips[p.id] = p.chips;
                 });
 
-                // CRITICAL: Expected pot = existing pot + new antes (for re-ante scenarios)
-                const existingPot = freshGame?.pot || 0;
-                const expectedPot = existingPot + (perPlayerAmount * activeCount);
+                // CRITICAL: Use the FRESH pot from AFTER proceedToNextRound (backend already added antes)
+                // This is the authoritative post-ante pot value
+                const expectedPot = freshGameAfterProceed?.pot || 0;
 
                 setPreAnteChips(chipSnapshot);
                 setExpectedPostAnteChips(expectedChips);
