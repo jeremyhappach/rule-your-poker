@@ -3614,19 +3614,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return sum + Math.min(c, legsToWin);
     }, 0);
 
-    // Match LegsToPlayerAnimation.tsx timing:
-    // totalDuration = (legCount * LEG_STAGGER_MS) + LEG_FLIGHT_MS + LEG_END_BUFFER_MS
-    const legsToPlayerMs = 2200 + (legsToAnimate * 60);
+    // Match LegsToPlayerAnimation.tsx math: totalDuration = 3500 + (legCount * 100)
+    const legsToPlayerMs = 3500 + (legsToAnimate * 100);
 
     // Approximate full sequence timing - should match actual animation callbacks:
-    // - Initial wait for leg animation: 1.0s
-    // - Legs-to-player: computed above
+    // - Initial wait for leg animation: 1.8s
+    // - Legs-to-player: computed above (~3.5s base + 0.1s/leg)
     // - Pot-to-player: 3.3s (onAnimationEnd fires at 3300ms)
     // - Post-pot delay: 0.3s
     // - Buffer: 1.0s
-    const computedMs = 1000 + legsToPlayerMs + 3300 + 300 + 1000;
-    // Fallback should be slightly longer than expected - min 5s, max 10s
-    const fallbackMs = Math.min(10_000, Math.max(5_000, computedMs));
+    const computedMs = 1800 + legsToPlayerMs + 3300 + 300 + 1000;
+    // Fallback should be slightly longer than expected - min 6s, max 12s
+    const fallbackMs = Math.min(12_000, Math.max(6_000, computedMs));
 
     console.log('[357 SAFETY FALLBACK] Scheduling auto-proceed (stable timer)', {
       fallbackMs,
