@@ -5,7 +5,7 @@ import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
-
+import { DevDebugOverlay } from "./DevDebugOverlay";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";
@@ -437,6 +437,29 @@ export const MobileGameTable = ({
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
+  
+  // DEBUG: Track when phase changed for elapsed time in overlay
+  const phaseChangedAtRef = useRef<number>(Date.now());
+  const [debugElapsedMs, setDebugElapsedMs] = useState(0);
+  
+  // Update elapsed time every 100ms when not idle (for debug overlay)
+  useEffect(() => {
+    if (threeFiveSevenWinPhase === 'idle') {
+      phaseChangedAtRef.current = Date.now();
+      setDebugElapsedMs(0);
+      return;
+    }
+    
+    // Phase changed - reset timer
+    phaseChangedAtRef.current = Date.now();
+    setDebugElapsedMs(0);
+    
+    const interval = setInterval(() => {
+      setDebugElapsedMs(Date.now() - phaseChangedAtRef.current);
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, [threeFiveSevenWinPhase]);
   
   // FIX: Keep pot hidden after Holm win animation until game resets
   // NEW APPROACH: Use a "pot hidden until next game" flag that's set when Holm win starts
@@ -2609,6 +2632,26 @@ export const MobileGameTable = ({
       </div>;
   };
   return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
+      {/* 357 Win Animation Debug Overlay */}
+      {gameType !== 'holm-game' && (
+        <DevDebugOverlay
+          title="357 Win Debug"
+          items={[
+            { label: "phase", value: threeFiveSevenWinPhase },
+            { label: "elapsed", value: `${(debugElapsedMs / 1000).toFixed(1)}s` },
+            { label: "status", value: gameStatus },
+            { label: "isGameOver", value: isGameOver },
+            { label: "winTriggerId", value: threeFiveSevenWinTriggerId?.slice(-8) ?? "null" },
+            { label: "winnerId", value: threeFiveSevenWinnerId?.slice(-6) ?? "null" },
+            { label: "potTrigger", value: potToPlayerTriggerId357?.slice(-8) ?? "null" },
+            { label: "legsTrigger", value: legsToPlayerTriggerId?.slice(-8) ?? "null" },
+            { label: "cachedLegs", value: threeFiveSevenCachedLegPositions.length },
+            { label: "potAmount", value: threeFiveSevenWinPotAmount },
+            { label: "displayedPot", value: displayedPot },
+          ]}
+          className="z-[10000]"
+        />
+      )}
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
