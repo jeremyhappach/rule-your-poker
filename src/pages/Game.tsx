@@ -94,6 +94,7 @@ interface GameData {
   last_round_result?: string | null;
   pending_session_end?: boolean;
   game_over_at?: string | null;
+  session_ended_at?: string | null;
   created_at?: string;
   total_hands?: number | null;
   game_type?: string | null;
@@ -348,6 +349,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       window.clearInterval(interval);
     };
   }, [gameId, user?.id, navigate, toast]);
+
+  // Handle session ended with no last_round_result (empty session or config timeout)
+  // This prevents blank screen when game_over/session_ended but nothing to display
+  const sessionEndedHandledRef = useRef(false);
+  useEffect(() => {
+    if (sessionEndedHandledRef.current) return;
+    if (!game) return;
+    
+    // Check if session has ended but there's no result to display
+    const isEnded = game.status === 'game_over' || game.status === 'session_ended';
+    const hasSessionEndedAt = !!game.session_ended_at;
+    const noResultToShow = !game.last_round_result;
+    
+    if (isEnded && hasSessionEndedAt && noResultToShow) {
+      console.log('[SESSION ENDED] Session ended with no result to display, navigating to lobby', {
+        status: game.status,
+        session_ended_at: game.session_ended_at,
+        last_round_result: game.last_round_result,
+        total_hands: game.total_hands,
+      });
+      sessionEndedHandledRef.current = true;
+      toast({
+        title: 'Session ended',
+        description: 'The game session has ended.',
+        duration: 3000,
+      });
+      setTimeout(() => {
+        navigate('/');
+      }, 1500);
+    }
+  }, [game?.status, game?.session_ended_at, game?.last_round_result, navigate, toast]);
   
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
