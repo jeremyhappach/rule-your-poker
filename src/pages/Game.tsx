@@ -4899,6 +4899,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   }}
                 />
               )}
+              {/* Last Hand badge in header */}
+              {game.pending_session_end && (
+                <Badge variant="destructive" className="text-xs px-2 py-0.5">LAST HAND</Badge>
+              )}
             </div>
             <span className="text-xs text-muted-foreground">
               {gameName}
