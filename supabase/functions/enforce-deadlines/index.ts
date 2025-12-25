@@ -199,9 +199,26 @@ serve(async (req) => {
           );
 
           if (remainingActiveHumans.length < 1) {
-            const totalHands = (game.total_hands ?? 0) as number;
+            // Re-fetch game to get latest total_hands (avoid stale data race condition)
+            const { data: freshGame } = await supabase
+              .from('games')
+              .select('total_hands')
+              .eq('id', gameId)
+              .maybeSingle();
+            
+            const totalHands = (freshGame?.total_hands ?? 0) as number;
+            
+            // Also check game_results as backup - if any results exist, session has history
+            const { count: resultsCount } = await supabase
+              .from('game_results')
+              .select('id', { count: 'exact', head: true })
+              .eq('game_id', gameId);
+            
+            const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+            
+            console.log('[ENFORCE] Config timeout session check:', { totalHands, resultsCount, hasHistory });
 
-            if (totalHands === 0) {
+            if (!hasHistory) {
               // Delete empty session (FK-safe order)
               const { data: roundRows } = await supabase
                 .from('rounds')

@@ -3308,11 +3308,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       const totalHands = gameData?.total_hands || 0;
       
-      if (totalHands === 0) {
+      // Also check game_results as backup
+      const { count: resultsCount } = await supabase
+        .from('game_results')
+        .select('id', { count: 'exact', head: true })
+        .eq('game_id', gameId);
+      
+      const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+      
+      if (!hasHistory) {
         // No hands played - DELETE the empty session instead of marking completed
         console.log('[GAME OVER] No hands played, deleting empty session');
+        
+        // Get round IDs first for proper FK deletion
+        const { data: roundRows } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameId);
+        
+        const roundIds = (roundRows ?? []).map(r => r.id);
+        
+        if (roundIds.length > 0) {
+          await supabase.from('player_cards').delete().in('round_id', roundIds);
+          await supabase.from('player_actions').delete().in('round_id', roundIds);
+        }
+        
+        await supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId);
+        await supabase.from('chat_messages').delete().eq('game_id', gameId);
         await supabase.from('rounds').delete().eq('game_id', gameId);
-        await supabase.from('player_cards').delete().eq('round_id', gameId);
         await supabase.from('players').delete().eq('game_id', gameId);
         await supabase.from('games').delete().eq('id', gameId);
         navigate('/');
