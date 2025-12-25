@@ -142,11 +142,15 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     const newAnimations: LegChipAnimation[] = [];
     let animIndex = 0;
 
+    const LEG_FLIGHT_MS = 2000;
+    const LEG_STAGGER_MS = 60;
+    const LEG_END_BUFFER_MS = 200;
+
     legPositions.forEach((playerLeg) => {
       // Start from leg indicator position (offset from chipstack toward table center)
       const legCoords = getLegIndicatorCoords(playerLeg.position, rect);
       const legCount = Math.min(playerLeg.legCount, legsToWin);
-      
+
       for (let i = 0; i < legCount; i++) {
         newAnimations.push({
           id: `${playerLeg.playerId}-leg-${i}`,
@@ -154,7 +158,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
           fromY: legCoords.y,
           toX: winnerCoords.x,
           toY: winnerCoords.y,
-          delay: animIndex * 100, // Stagger each leg by 100ms
+          delay: animIndex * LEG_STAGGER_MS, // Faster stagger to reduce end-of-game delay
         });
         animIndex++;
       }
@@ -164,9 +168,9 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     setShowSweepOverlay(true); // Show "Sweep the Legs" overlay
     console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
-    // Animation duration: (was ~1.2s) + 2.0s slow-down, plus stagger delays + buffer
-    const totalDuration = 3500 + (newAnimations.length * 100);
-    
+    // Total duration must cover: last delay + flight + a small buffer.
+    const totalDuration = (newAnimations.length * LEG_STAGGER_MS) + LEG_FLIGHT_MS + LEG_END_BUFFER_MS;
+
     setTimeout(() => {
       setAnimations([]);
       if (!completedRef.current) {
@@ -209,7 +213,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
                 legValue > 0 ? 'w-8 h-8' : 'w-6 h-6'
               }`}
               style={{
-                animation: `${uniqueKeyframeName} 3.2s ease-in-out ${anim.delay}ms forwards`,
+                animation: `${uniqueKeyframeName} 2000ms ease-in-out ${anim.delay}ms forwards`,
               }}
             >
               <span className={`text-slate-800 font-bold ${legValue > 0 ? 'text-[8px]' : 'text-[10px]'}`}>

@@ -2066,7 +2066,7 @@ export const MobileGameTable = ({
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
-    }, 1800); // Tighter timing - start legs-to-player just after leg lands
+    }, 1000); // Tighter timing - start legs-to-player soon after leg lands
     // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
     // to prevent dependency changes during animation from invalidating the animation sequence
   }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver]);
