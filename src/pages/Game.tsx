@@ -3929,22 +3929,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       cachedPot: cachedPotFor357WinRef.current
     });
     
-    // Prevent duplicate processing - check if we already triggered for THIS game win sequence
-    if (threeFiveSevenWinProcessedRef.current === '357_WIN_TRIGGERED') {
-      console.log('[357 WIN] Already triggered, skipping duplicate detection');
+    // Prevent duplicate processing for the same backend result message within this game.
+    // IMPORTANT: We MUST NOT clear this marker until the game actually transitions away,
+    // otherwise the detection effect will immediately re-trigger while we are still on the
+    // game_over screen (which causes the full 357 win animation sequence to repeat).
+    const processedKey = `${game.id}:${resultMessage}`;
+
+    if (threeFiveSevenWinProcessedRef.current === processedKey) {
+      console.log('[357 WIN] Already triggered for this result message, skipping duplicate detection');
       return;
     }
-    
+
     // Also prevent re-trigger if we still have an active trigger
     if (threeFiveSevenWinTriggerId) {
       console.log('[357 WIN] Already have trigger, skipping duplicate detection');
       return;
     }
-    
+
     // Parse winner from message - handle both formats
     const displayPart = resultMessage.split('|||')[0];
     let winnerName = '';
-    
+
     if (isLegWinMessage) {
       const winnerMatch = displayPart.match(/^(.+?) won a leg/);
       winnerName = winnerMatch ? winnerMatch[1] : '';
@@ -3953,7 +3958,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const winnerMatch = displayPart.match(/🏆\s*(.+?)\s+won the game/);
       winnerName = winnerMatch ? winnerMatch[1] : '';
     }
-    
+
     // Find winner player - check both profile username AND bot alias for bot players
     const winnerPlayer = players.find(p => {
       if (p.profiles?.username === winnerName) return true;
@@ -3965,11 +3970,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[357 WIN] Could not find winner player:', winnerName);
       return;
     }
-    
+
     // For leg win messages, check if this is the FINAL leg (player has reached legsToWin)
     // For game win messages, we already know it's the final leg
     const legsToWin = game?.legs_to_win || 3;
-    
+
     console.log('[357 WIN DEBUG] Winner check:', {
       winnerName,
       winnerLegs: winnerPlayer.legs,
@@ -3977,15 +3982,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       isLegWinMessage,
       willProceed: isGameWinMessage || winnerPlayer.legs >= legsToWin
     });
-    
+
     if (isLegWinMessage && winnerPlayer.legs < legsToWin) {
       console.log('[357 WIN] Not final leg, player has', winnerPlayer.legs, 'of', legsToWin);
       return;
     }
-    
-    // Mark as processed - use a special marker to prevent re-triggering on message change
-    threeFiveSevenWinProcessedRef.current = '357_WIN_TRIGGERED';
-    
+
+    // Mark as processed for this exact result message (prevents repeat firing).
+    threeFiveSevenWinProcessedRef.current = processedKey;
+
     // CACHE LEG POSITIONS NOW before backend resets them
     // For game win message, player.legs may already be 0, so use legsToWin for winner
     // Also, for leg win message if player.legs is already reset, use legsToWin
@@ -4140,7 +4145,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     is357WinAnimationActiveRef.current = false;
 
     // Clear local win state (we're done animating).
-    threeFiveSevenWinProcessedRef.current = null;
+    // NOTE: Do NOT clear threeFiveSevenWinProcessedRef here; while we are still on the
+    // same game_over result message, clearing it can immediately re-trigger the whole
+    // win sequence again.
     setThreeFiveSevenWinTriggerId(null);
     setThreeFiveSevenWinnerId(null);
     setThreeFiveSevenWinPotAmount(0);
