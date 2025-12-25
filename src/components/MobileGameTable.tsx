@@ -4157,14 +4157,14 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
-              // Card scaling - maximize use of vertical space
+              // Card scaling - maximize use of vertical space (reduced R1 to prevent overlap)
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[2.2]"
+                      ? "scale-[1.9]"
                       : currentRound === 2
-                        ? "scale-[2.0]"
-                        : "scale-[1.9]")
+                        ? "scale-[1.8]"
+                        : "scale-[1.7]")
                   : "scale-[2.0]";
 
               // Reserve space - minimal padding below cards
