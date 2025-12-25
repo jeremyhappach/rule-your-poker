@@ -37,115 +37,126 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   const [showSweepOverlay, setShowSweepOverlay] = useState(false);
   const lastTriggerIdRef = useRef<string | null>(null);
   const completedRef = useRef(false); // Guard against double completion
+  const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Slot positions as percentages of container - MUST MATCH actual player chip positions in MobileGameTable
-  // Tailwind classes: bottom-2 (0.5rem≈8px≈2%), left-10 (2.5rem≈40px≈10%), top-1/2 (50%), left-0/right-0 (edge)
-  const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
-    if (slotIndex === -1) return { top: 92, left: 50 }; // Current player (bottom center)
-    const slots: Record<number, { top: number; left: number }> = {
-      0: { top: 92, left: 10 },   // Bottom-left: bottom-2 left-10
-      1: { top: 50, left: 2 },    // Middle-left: left-0 top-1/2
-      2: { top: 2, left: 10 },    // Top-left: top-2 left-10
-      3: { top: 2, left: 90 },    // Top-right: top-2 right-10
-      4: { top: 50, left: 98 },   // Middle-right: right-0 top-1/2
-      5: { top: 92, left: 90 },   // Bottom-right: bottom-2 right-10
-    };
-    return slots[slotIndex] || { top: 50, left: 50 };
-  };
+  // IMPORTANT: Store callback in ref to prevent effect re-runs when parent re-renders
+  const onCompleteRef = useRef<(() => void) | undefined>(onAnimationComplete);
+  useEffect(() => {
+    onCompleteRef.current = onAnimationComplete;
+  }, [onAnimationComplete]);
 
-  // Absolute position mapping for observers (positions 1-7 around the table)
-  // CRITICAL: Must match MobileGameTable.tsx observer rendering layout:
-  // Position 1: Top-left, Position 2: Left, Position 3: Bottom-left
-  // Position 4: Bottom-center, Position 5: Bottom-right, Position 6: Right, Position 7: Top-right
-  const getAbsolutePositionPercent = (position: number): { top: number; left: number } => {
-    const positions: Record<number, { top: number; left: number }> = {
-      1: { top: 2, left: 10 },    // Top-left (matches top-4 left-10)
-      2: { top: 50, left: 2 },    // Left (matches left-0 top-1/2)
-      3: { top: 92, left: 10 },   // Bottom-left (matches bottom-2 left-10)
-      4: { top: 92, left: 50 },   // Bottom-center (matches bottom-2 left-1/2)
-      5: { top: 92, left: 90 },   // Bottom-right (matches bottom-2 right-10)
-      6: { top: 50, left: 98 },   // Right (matches right-0 top-1/2)
-      7: { top: 2, left: 90 },    // Top-right (matches right-10 top-4)
-    };
-    return positions[position] || { top: 50, left: 50 };
-  };
-
-  // Get chipstack center position
-  const getChipstackCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
-    const isObserver = currentPlayerPosition === null;
-    
-    let slot: { top: number; left: number };
-    if (isObserver) {
-      // Observer: use absolute positions
-      slot = getAbsolutePositionPercent(position);
-    } else {
-      // Seated player: use relative slot positions
-      const isCurrentPlayer = currentPlayerPosition === position;
-      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
-      slot = getSlotPercent(slotIndex);
-    }
-    
-    return {
-      x: (slot.left / 100) * rect.width,
-      y: (slot.top / 100) * rect.height,
-    };
-  };
-
-  // Get leg indicator position (offset toward table center from chipstack)
-  const getLegIndicatorCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
-    const isObserver = currentPlayerPosition === null;
-    const chipCoords = getChipstackCoords(position, rect);
-    
-    // Leg indicators are offset toward table center by ~30px
-    // For observers: use absolute position to determine side
-    // For seated players: use slot index
-    let isRightSide: boolean;
-    if (isObserver) {
-      // Positions 5, 6, 7 are on the right side
-      isRightSide = position >= 5;
-    } else {
-      const isCurrentPlayer = currentPlayerPosition === position;
-      const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
-      isRightSide = slotIndex >= 3;
-    }
-    
-    const offsetX = isRightSide ? -30 : 30;
-    
-    return {
-      x: chipCoords.x + offsetX,
-      y: chipCoords.y,
-    };
-  };
+  // Store position-related props in refs to prevent effect re-runs
+  const legPositionsRef = useRef(legPositions);
+  const winnerPositionRef = useRef(winnerPosition);
+  const currentPlayerPositionRef = useRef(currentPlayerPosition);
+  const getClockwiseDistanceRef = useRef(getClockwiseDistance);
+  const containerRefRef = useRef(containerRef);
+  const legsToWinRef = useRef(legsToWin);
 
   useEffect(() => {
-    if (!triggerId || triggerId === lastTriggerIdRef.current || !containerRef.current) {
+    legPositionsRef.current = legPositions;
+    winnerPositionRef.current = winnerPosition;
+    currentPlayerPositionRef.current = currentPlayerPosition;
+    getClockwiseDistanceRef.current = getClockwiseDistance;
+    containerRefRef.current = containerRef;
+    legsToWinRef.current = legsToWin;
+  });
+
+  // Main animation effect - ONLY depends on triggerId to prevent multi-fire
+  useEffect(() => {
+    if (!triggerId || triggerId === lastTriggerIdRef.current) {
       return;
+    }
+
+    const container = containerRefRef.current?.current;
+    if (!container) {
+      return;
+    }
+
+    // Clear any existing timeout from previous animation
+    if (completionTimeoutRef.current) {
+      clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = null;
     }
 
     lastTriggerIdRef.current = triggerId;
     completedRef.current = false; // Reset for new animation
 
+    const positions = legPositionsRef.current;
+    const winner = winnerPositionRef.current;
+    const maxLegs = legsToWinRef.current;
+
     // If no legs to animate, immediately complete
-    if (legPositions.length === 0) {
+    if (positions.length === 0) {
       console.log('[LEGS TO PLAYER] No legs to sweep, skipping animation');
       if (!completedRef.current) {
         completedRef.current = true;
-        onAnimationComplete?.();
+        onCompleteRef.current?.();
       }
       return;
     }
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const winnerCoords = getChipstackCoords(winnerPosition, rect);
+    const rect = container.getBoundingClientRect();
+    
+    // Use refs for position calculations
+    const currentPos = currentPlayerPositionRef.current;
+    const getDistance = getClockwiseDistanceRef.current;
+
+    // Inline position calculation using refs
+    const getSlot = (slotIndex: number): { top: number; left: number } => {
+      if (slotIndex === -1) return { top: 92, left: 50 };
+      const slots: Record<number, { top: number; left: number }> = {
+        0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
+        3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+      };
+      return slots[slotIndex] || { top: 50, left: 50 };
+    };
+
+    const getAbsPos = (position: number): { top: number; left: number } => {
+      const positions: Record<number, { top: number; left: number }> = {
+        1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
+        4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
+      };
+      return positions[position] || { top: 50, left: 50 };
+    };
+
+    const getChipCoords = (position: number): { x: number; y: number } => {
+      const isObserver = currentPos === null;
+      let slot: { top: number; left: number };
+      if (isObserver) {
+        slot = getAbsPos(position);
+      } else {
+        const isCurrentPlayer = currentPos === position;
+        const slotIndex = isCurrentPlayer ? -1 : getDistance(position) - 1;
+        slot = getSlot(slotIndex);
+      }
+      return { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
+    };
+
+    const getLegCoords = (position: number): { x: number; y: number } => {
+      const chipCoords = getChipCoords(position);
+      const isObserver = currentPos === null;
+      let isRightSide: boolean;
+      if (isObserver) {
+        isRightSide = position >= 5;
+      } else {
+        const isCurrentPlayer = currentPos === position;
+        const slotIndex = isCurrentPlayer ? -1 : getDistance(position) - 1;
+        isRightSide = slotIndex >= 3;
+      }
+      const offsetX = isRightSide ? -30 : 30;
+      return { x: chipCoords.x + offsetX, y: chipCoords.y };
+    };
+
+    const winnerCoords = getChipCoords(winner);
 
     // Create animations for each leg from each player
     const newAnimations: LegChipAnimation[] = [];
     let animIndex = 0;
 
-    legPositions.forEach((playerLeg) => {
-      // Start from leg indicator position (offset from chipstack toward table center)
-      const legCoords = getLegIndicatorCoords(playerLeg.position, rect);
-      const legCount = Math.min(playerLeg.legCount, legsToWin);
+    positions.forEach((playerLeg) => {
+      const legCoords = getLegCoords(playerLeg.position);
+      const legCount = Math.min(playerLeg.legCount, maxLegs);
       
       for (let i = 0; i < legCount; i++) {
         newAnimations.push({
@@ -154,27 +165,36 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
           fromY: legCoords.y,
           toX: winnerCoords.x,
           toY: winnerCoords.y,
-          delay: animIndex * 100, // Stagger each leg by 100ms
+          delay: animIndex * 100,
         });
         animIndex++;
       }
     });
 
     setAnimations(newAnimations);
-    setShowSweepOverlay(true); // Show "Sweep the Legs" overlay
+    setShowSweepOverlay(true);
     console.log('[LEGS TO PLAYER] Animating', newAnimations.length, 'legs to winner');
 
-    // Animation duration: (was ~1.2s) + 2.0s slow-down, plus stagger delays + buffer
+    // Animation duration: 3.5s + stagger delays + buffer
     const totalDuration = 3500 + (newAnimations.length * 100);
     
-    setTimeout(() => {
+    completionTimeoutRef.current = setTimeout(() => {
       setAnimations([]);
       if (!completedRef.current) {
         completedRef.current = true;
-        onAnimationComplete?.();
+        onCompleteRef.current?.();
       }
     }, totalDuration);
-  }, [triggerId, legPositions, winnerPosition, currentPlayerPosition, getClockwiseDistance, containerRef, legsToWin, onAnimationComplete]);
+  }, [triggerId]); // ONLY triggerId - other values accessed via refs
+
+  // Cleanup on unmount only
+  useEffect(() => {
+    return () => {
+      if (completionTimeoutRef.current) {
+        clearTimeout(completionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Format leg value for display
   const displayValue = legValue > 0 ? `$${legValue}` : 'L';
