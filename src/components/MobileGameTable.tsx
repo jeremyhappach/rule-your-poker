@@ -437,6 +437,8 @@ export const MobileGameTable = ({
   const lastThreeFiveSevenTriggerRef = useRef<string | null>(null);
   const currentAnimationIdRef = useRef<string | null>(null); // Track current animation to ignore stale callbacks
   const threeFiveSevenWinPhaseRef = useRef<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle'); // Ref for callback access
+  const legsToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate legs-to-player completion
+  const potToPlayerCompletedRef = useRef<string | null>(null); // Guard against duplicate pot-to-player completion
   
   // DEBUG: Track when phase changed for elapsed time in overlay
   const phaseChangedAtRef = useRef<number>(Date.now());
@@ -2076,16 +2078,26 @@ export const MobileGameTable = ({
     threeFiveSevenWinPhaseRef.current = 'waiting';
     setLegsToPlayerTriggerId(null);
     setPotToPlayerTriggerId357(null);
+    
+    // Reset one-shot guards for this new animation
+    legsToPlayerCompletedRef.current = null;
+    potToPlayerCompletedRef.current = null;
 
     // Wait for leg earned animation to complete (it runs for 2.5s for winning leg)
     // Then start legs-to-player animation - reduced delay for tighter transition
+    // NOTE: This is a FALLBACK path - the LegEarnedAnimation onComplete callback is the primary path
     setTimeout(() => {
       // Only proceed if this is still the current animation
       if (currentAnimationIdRef.current !== animationId) {
-        console.log('[357 WIN] Stale animation, skipping Phase 1');
+        console.log('[357 WIN] Stale animation (ID mismatch), skipping Phase 1');
         return;
       }
-      console.log('[357 WIN] Phase 1: legs-to-player, using positions:', capturedLegPositions);
+      // Only proceed if still in 'waiting' phase (not already triggered by LegEarnedAnimation callback)
+      if (threeFiveSevenWinPhaseRef.current !== 'waiting') {
+        console.log('[357 WIN] Already past waiting phase (LegEarnedAnimation path won), skipping Phase 1');
+        return;
+      }
+      console.log('[357 WIN] Phase 1 (fallback path): legs-to-player, using positions:', capturedLegPositions);
       setThreeFiveSevenWinPhase('legs-to-player');
       threeFiveSevenWinPhaseRef.current = 'legs-to-player';
       setLegsToPlayerTriggerId(`legs-to-player-${Date.now()}`);
@@ -2095,16 +2107,27 @@ export const MobileGameTable = ({
   }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver]);
 
   const handleLegsToPlayerComplete = useCallback(() => {
+    const animId = currentAnimationIdRef.current;
+    
+    // One-shot guard: only fire once per animation sequence
+    if (legsToPlayerCompletedRef.current === animId) {
+      console.log('[357SEQ][LEGS_DONE] Already completed for this animation, ignoring duplicate');
+      return;
+    }
+    
     // Use ref to get current phase (avoids stale closure)
     if (threeFiveSevenWinPhaseRef.current !== 'legs-to-player') {
       console.log('[357SEQ][LEGS_DONE] Ignored (wrong phase)', {
         t: Date.now(),
         phase: threeFiveSevenWinPhaseRef.current,
-        currentAnimationId: currentAnimationIdRef.current,
+        currentAnimationId: animId,
         lastThreeFiveSevenTrigger: lastThreeFiveSevenTriggerRef.current,
       });
       return;
     }
+
+    // Mark as completed for this animation
+    legsToPlayerCompletedRef.current = animId;
 
     // Trigger "+XL" flash on winner's chipstack
     const totalLegs = threeFiveSevenCachedLegPositions.reduce((sum, p) => sum + p.legCount, 0);
@@ -2122,7 +2145,7 @@ export const MobileGameTable = ({
       potAmount: threeFiveSevenWinPotAmount,
       winnerId: threeFiveSevenWinnerId,
       winnerPosition: players.find((p) => p.id === threeFiveSevenWinnerId)?.position,
-      currentAnimationId: currentAnimationIdRef.current,
+      currentAnimationId: animId,
       legsToPlayerTriggerId,
       nextPotTrigger: `pot-to-player-357-${Date.now()}`,
     });
@@ -2139,15 +2162,23 @@ export const MobileGameTable = ({
 
   // Handle pot-to-player animation complete -> 300ms delay -> next game
   const handlePotToPlayerComplete357 = useCallback(() => {
+    const animId = currentAnimationIdRef.current;
+    
     console.log('[357SEQ][POT_DONE] Callback fired', {
       t: Date.now(),
       phase: threeFiveSevenWinPhaseRef.current,
       potTriggerId: potToPlayerTriggerId357,
-      currentAnimationId: currentAnimationIdRef.current,
+      currentAnimationId: animId,
       lastThreeFiveSevenTrigger: lastThreeFiveSevenTriggerRef.current,
       winnerId: threeFiveSevenWinnerId,
       potAmount: threeFiveSevenWinPotAmount,
     });
+
+    // One-shot guard: only fire once per animation sequence
+    if (potToPlayerCompletedRef.current === animId) {
+      console.log('[357SEQ][POT_DONE] Already completed for this animation, ignoring duplicate');
+      return;
+    }
 
     // Use ref to get current phase (avoids stale closure)
     if (threeFiveSevenWinPhaseRef.current !== 'pot-to-player') {
@@ -2157,6 +2188,9 @@ export const MobileGameTable = ({
       });
       return;
     }
+
+    // Mark as completed for this animation
+    potToPlayerCompletedRef.current = animId;
 
     // Trigger "+$X" flash on winner's chipstack
     if (threeFiveSevenWinnerId && threeFiveSevenWinPotAmount > 0) {
