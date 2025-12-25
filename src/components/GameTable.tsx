@@ -207,6 +207,8 @@ export const GameTable = ({
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
   const showdownRoundRef = useRef<string | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
+  // CRITICAL: Track the handContextId when cards were cached to prevent stale cards from previous hands
+  const showdownHandContextRef = useRef<string | null>(null);
   
   // Cache Chucky cards to persist through announcement phase
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
@@ -224,6 +226,7 @@ export const GameTable = ({
       setLocalPlayerCards([]);
       showdownCardsCache.current = new Map();
       showdownRoundRef.current = null;
+      showdownHandContextRef.current = null;
       prevGameTypeForClearRef.current = gameType;
     }
   }, [gameType]);
@@ -244,6 +247,7 @@ export const GameTable = ({
       setCachedChuckyCardsRevealed(0);
       showdownRoundRef.current = null;
       showdownCardsCache.current = new Map();
+      showdownHandContextRef.current = null;
       setLocalPlayerCards([]);
       lastFetchedRoundIdRef.current = null;
     }
@@ -281,20 +285,24 @@ export const GameTable = ({
   if (currentRoundId && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRoundId) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
   }
   
   if (showdownRoundRef.current !== null && (roundStatus === 'pending' || roundStatus === 'ante' || awaitingNextRound)) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
   }
   
   // If showdown is active, cache cards for players who stayed
-  if (isShowdownActive && currentRoundId) {
+  // CRITICAL: Also validate handContextId to prevent caching stale cards
+  if (isShowdownActive && currentRoundId && handContextId) {
     if (showdownRoundRef.current === null) {
       showdownRoundRef.current = currentRoundId;
+      showdownHandContextRef.current = handContextId;
     }
     // Cache cards for stayed players during this showdown
-    if (showdownRoundRef.current === currentRoundId) {
+    if (showdownRoundRef.current === currentRoundId && showdownHandContextRef.current === handContextId) {
       players
         .filter(p => p.current_decision === 'stay')
         .forEach(p => {

@@ -1108,6 +1108,10 @@ export const MobileGameTable = ({
   const showdownRoundRef = externalShowdownRoundNumber || internalShowdownRoundRef;
   const showdownCardsCache = externalShowdownCardsCache || internalShowdownCardsCache;
   
+  // CRITICAL: Track the handContextId when cards were cached to prevent stale cards from previous hands
+  // This fixes the bug where wrong cards are displayed during solo vs Chucky showdown
+  const showdownHandContextRef = useRef<string | null>(null);
+  
   // Cache Chucky cards to persist through announcement phase
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
@@ -1146,6 +1150,7 @@ export const MobileGameTable = ({
       // Showdown exposure cache
       showdownRoundRef.current = null;
       showdownCardsCache.current = new Map();
+      showdownHandContextRef.current = null;
 
       // Community UI cache
       setApprovedCommunityCards(null);
@@ -1203,6 +1208,7 @@ export const MobileGameTable = ({
     // Showdown exposure cache
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
 
     // Chucky UI cache
     setCachedChuckyCards(null);
@@ -1434,6 +1440,7 @@ export const MobileGameTable = ({
   if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound && !isInGameOverStatus) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
   }
   
   // Also clear if we're in early phase, no announcement, AND allDecisionsIn is false (truly new hand)
@@ -1441,15 +1448,31 @@ export const MobileGameTable = ({
   if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult && !allDecisionsIn && !isInGameOverStatus) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
+  }
+  
+  // CRITICAL: Also clear cache if handContextId changed (new hand started) - prevents stale cards
+  // This is the main fix for the bug where wrong cards are displayed during solo vs Chucky showdown
+  if (showdownHandContextRef.current !== null && handContextId && showdownHandContextRef.current !== handContextId && !isInGameOverStatus) {
+    console.log('[SHOWDOWN_CACHE] Clearing cache - handContextId changed:', {
+      prev: showdownHandContextRef.current,
+      next: handContextId,
+    });
+    showdownRoundRef.current = null;
+    showdownCardsCache.current = new Map();
+    showdownHandContextRef.current = null;
   }
   
   // If showdown is active, cache cards for players who stayed
-  if (isShowdownActive && currentRound) {
+  // CRITICAL: Only cache if handContextId matches (prevents caching stale cards from previous hand)
+  if (isShowdownActive && currentRound && handContextId) {
     if (showdownRoundRef.current === null) {
       showdownRoundRef.current = currentRound;
+      showdownHandContextRef.current = handContextId;
     }
     // Cache cards for stayed players during this showdown
-    if (showdownRoundRef.current === currentRound) {
+    // CRITICAL: Verify handContextId matches before caching to prevent stale card caching
+    if (showdownRoundRef.current === currentRound && showdownHandContextRef.current === handContextId) {
       players
         .filter(p => p.current_decision === 'stay')
         .forEach(p => {
@@ -1461,6 +1484,13 @@ export const MobileGameTable = ({
             }
           }
         });
+    } else if (showdownHandContextRef.current !== handContextId) {
+      // handContextId changed but cache wasn't cleared yet (race condition)
+      // Don't cache stale cards - wait for proper cache clear
+      console.warn('[SHOWDOWN_CACHE] Skipping cache - handContextId mismatch:', {
+        cached: showdownHandContextRef.current,
+        current: handContextId,
+      });
     }
   }
   
@@ -1469,16 +1499,20 @@ export const MobileGameTable = ({
     const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
     
     // CRITICAL: During game_over, ALWAYS use cached cards for pot animation visibility
+    // But ONLY if the cached handContext matches current (prevents stale cards from previous hand)
     if (isInGameOverStatus) {
       const cachedCards = showdownCardsCache.current.get(playerId);
       if (cachedCards && cachedCards.length > 0) {
+        // During game_over, trust the cache (it was validated at population time)
         return cachedCards;
       }
     }
     
-    // CRITICAL: Once cards are cached for this round, ALWAYS use cache
+    // CRITICAL: Once cards are cached for this round AND same hand context, ALWAYS use cache
     // This prevents flickering when isShowdownActive temporarily becomes false
-    if (showdownRoundRef.current === currentRound) {
+    // CRITICAL FIX: Also validate handContextId to prevent using stale cached cards
+    if (showdownRoundRef.current === currentRound && 
+        (showdownHandContextRef.current === handContextId || !handContextId)) {
       const cachedCards = showdownCardsCache.current.get(playerId);
       if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
@@ -1714,6 +1748,7 @@ export const MobileGameTable = ({
       // Clear showdown state - new hand starting
       showdownRoundRef.current = null;
       showdownCardsCache.current = new Map();
+      showdownHandContextRef.current = null;
       
       // Mark this round as shown and trigger animation
       bucksOnYouShownForRoundRef.current = currentRound;
