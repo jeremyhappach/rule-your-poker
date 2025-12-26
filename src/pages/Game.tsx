@@ -2159,9 +2159,53 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.game_type,
     gameId
   ]);
-
   // Auto-execute pre-fold/pre-stay OR auto-fold when it becomes player's turn in Holm games
+  // For 3-5-7, auto-fold immediately when round starts if player has auto_fold=true
   const instantAutoFoldKeyRef = useRef<string | null>(null);
+  const instant357AutoFoldKeyRef = useRef<string | null>(null);
+  
+  // 3-5-7 instant auto-fold: fold immediately when round starts if auto_fold=true
+  useEffect(() => {
+    if (game?.game_type === 'holm-game') return; // Only for 3-5-7
+    if (game?.status !== 'in_progress') return;
+    if (!currentRound || currentRound.status !== 'betting') return;
+    if (game?.is_paused) return;
+    if (game?.all_decisions_in) return; // Already done
+    
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    if (!currentPlayer) return;
+    if (currentPlayer.current_decision || currentPlayer.decision_locked) return; // Already decided
+    if (!currentPlayer.auto_fold) return; // Only if auto_fold is enabled
+    if (currentPlayer.is_bot || currentPlayer.sitting_out) return;
+    
+    const key = `${currentRound.id}:${currentPlayer.id}`;
+    if (instant357AutoFoldKeyRef.current === key) return;
+    
+    console.log('[AUTO_FOLD 3-5-7] Auto-fold enabled - folding immediately', {
+      playerId: currentPlayer.id,
+      position: currentPlayer.position,
+      roundId: currentRound.id,
+    });
+    
+    instant357AutoFoldKeyRef.current = key;
+    
+    // Stop showing timer immediately
+    setTimeLeft(null);
+    setDecisionDeadline(null);
+    
+    handleFold();
+  }, [
+    game?.game_type,
+    game?.status,
+    game?.is_paused,
+    game?.all_decisions_in,
+    currentRound?.id,
+    currentRound?.status,
+    players,
+    user?.id,
+  ]);
+  
+  // Holm instant auto-fold/pre-decision effect
   useEffect(() => {
     if (game?.game_type !== 'holm-game') return;
     if (game?.status !== 'in_progress') return;

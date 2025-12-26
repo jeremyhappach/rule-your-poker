@@ -544,6 +544,69 @@ serve(async (req) => {
               }
             }
           }
+          
+          // 3-5-7 games: simultaneous decisions - auto-fold ALL undecided players when deadline expires
+          else if (game.game_type !== 'holm-game') {
+            console.log('[ENFORCE] 3-5-7 decision deadline expired for game', gameId, 'round', currentRound.round_number);
+            
+            const { data: players } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', gameId);
+            
+            // Find all undecided active players
+            const undecidedPlayers = players?.filter(p => 
+              p.status === 'active' && 
+              !p.sitting_out && 
+              !p.decision_locked &&
+              p.ante_decision === 'ante_up'
+            ) || [];
+            
+            console.log('[ENFORCE] 3-5-7 undecided players:', undecidedPlayers.map(p => ({ pos: p.position, isBot: p.is_bot })));
+            
+            // Auto-fold all undecided players
+            for (const player of undecidedPlayers) {
+              if (player.is_bot) {
+                // Bot decision - 50% stay, 50% fold
+                const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
+                await supabase
+                  .from('players')
+                  .update({ current_decision: botDecision, decision_locked: true })
+                  .eq('id', player.id);
+                
+                actionsTaken.push(`3-5-7 Bot timeout: Made decision '${botDecision}' for bot at position ${player.position}`);
+              } else {
+                // Human player - auto-fold AND set auto_fold flag
+                await supabase
+                  .from('players')
+                  .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
+                  .eq('id', player.id);
+                
+                actionsTaken.push(`3-5-7 Decision timeout: Auto-folded player at position ${player.position} and set auto_fold=true`);
+              }
+            }
+            
+            // If we auto-folded anyone, set all_decisions_in and update round status
+            if (undecidedPlayers.length > 0) {
+              // Use atomic guard
+              const { data: lockResult, error: lockError } = await supabase
+                .from('games')
+                .update({ all_decisions_in: true })
+                .eq('id', gameId)
+                .eq('all_decisions_in', false)
+                .select();
+              
+              if (!lockError && lockResult && lockResult.length > 0) {
+                await supabase
+                  .from('rounds')
+                  .update({ status: 'showdown' })
+                  .eq('id', currentRound.id)
+                  .eq('status', 'betting');
+                
+                actionsTaken.push('3-5-7: All players decided - all_decisions_in set to true, round status set to showdown');
+              }
+            }
+          }
         }
       }
     }
