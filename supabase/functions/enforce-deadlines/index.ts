@@ -611,14 +611,14 @@ serve(async (req) => {
       }
     }
 
-    // 4. ENFORCE STUCK SHOWDOWN/PROCESSING ROUNDS (Holm game specific)
-    // If a Holm round is stuck in 'showdown' or 'processing' status for too long,
-    // the endHolmRound function likely failed mid-execution. Auto-recover by
+    // 4. ENFORCE STUCK SHOWDOWN/PROCESSING ROUNDS (Both Holm and 3-5-7 games)
+    // If a round is stuck in 'showdown' or 'processing' status for too long,
+    // the end-of-round function likely failed mid-execution. Auto-recover by
     // setting awaiting_next_round and allowing progression.
     // CRITICAL: Only trigger if game.awaiting_next_round is FALSE and all_decisions_in is TRUE.
     // If awaiting_next_round is already set, the client is handling progression.
     // If all_decisions_in is false, players are still deciding - not stuck.
-    if (game.status === 'in_progress' && game.game_type === 'holm-game' && 
+    if (game.status === 'in_progress' && 
         game.awaiting_next_round !== true && game.all_decisions_in === true) {
       const { data: stuckRounds } = await supabase
         .from('rounds')
@@ -634,10 +634,69 @@ serve(async (req) => {
         const gameUpdatedAt = new Date(game.updated_at);
         const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
         
-        // Only recover if stuck for more than 45 seconds AND no awaiting_next_round flag
-        // This gives ample time for normal client-side progression
-        if (stuckDuration > 45000) {
-          console.log('[ENFORCE] ⚠️ Holm round stuck in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 'seconds (game unchanged) - auto-recovering');
+        // Only recover if stuck for more than 15 seconds AND no awaiting_next_round flag
+        // Reduced from 45s to 15s for faster recovery - animations complete in <10s
+        if (stuckDuration > 15000) {
+          console.log('[ENFORCE] ⚠️ Round stuck in', stuckRound.status, 'for', Math.round(stuckDuration/1000), 'seconds (game unchanged) - auto-recovering');
+          
+          // For 3-5-7 games: Check if a single player stayed (they earn a leg)
+          // This handles the case where the client disconnected before awarding the leg
+          if (game.game_type === '3-5-7') {
+            const { data: players } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', gameId)
+              .eq('ante_decision', 'ante_up')
+              .eq('sitting_out', false);
+            
+            const stayedPlayers = players?.filter(p => p.current_decision === 'stay') || [];
+            
+            if (stayedPlayers.length === 1) {
+              // Single stayer wins a leg - award it server-side
+              const winner = stayedPlayers[0];
+              console.log('[ENFORCE] 3-5-7: Single stayer detected, awarding leg to player', winner.id);
+              
+              await supabase
+                .from('players')
+                .update({ legs: (winner.legs || 0) + 1 })
+                .eq('id', winner.id);
+              
+              // Check if they won the game
+              const newLegs = (winner.legs || 0) + 1;
+              if (newLegs >= game.legs_to_win) {
+                console.log('[ENFORCE] 3-5-7: Player reached legs_to_win, transitioning to game_over');
+                
+                // Transition to game_over
+                await supabase
+                  .from('games')
+                  .update({ 
+                    status: 'game_over',
+                    game_over_at: new Date().toISOString(),
+                    awaiting_next_round: false,
+                    all_decisions_in: true,
+                  })
+                  .eq('id', gameId);
+                
+                // Mark round as completed
+                await supabase
+                  .from('rounds')
+                  .update({ status: 'completed' })
+                  .eq('id', stuckRound.id);
+                
+                actionsTaken.push(`3-5-7 stuck recovery: Awarded leg to winner, game over (${newLegs} legs)`);
+                
+                // Return early - don't set awaiting_next_round since game is over
+                return new Response(JSON.stringify({
+                  success: true,
+                  actionsTaken,
+                  gameStatus: 'game_over',
+                  timestamp: now.toISOString(),
+                }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+              }
+              
+              actionsTaken.push(`3-5-7 stuck recovery: Awarded leg to single stayer (now has ${newLegs} legs)`);
+            }
+          }
           
           // Mark round as completed and trigger next round
           await supabase
@@ -645,17 +704,22 @@ serve(async (req) => {
             .update({ status: 'completed' })
             .eq('id', stuckRound.id);
           
+          // Calculate next round number for 3-5-7 (cycles 1->2->3->1)
+          const nextRoundNum = game.game_type === '3-5-7' 
+            ? (stuckRound.round_number % 3) + 1 
+            : (stuckRound.round_number || 1) + 1;
+          
           // Set awaiting_next_round to trigger client-side progression
-          // NEVER set last_round_result here - let the normal result from endHolmRound stand
           await supabase
             .from('games')
             .update({ 
               awaiting_next_round: true,
               all_decisions_in: true,
+              next_round_number: nextRoundNum,
             })
             .eq('id', gameId);
           
-          actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round`);
+          actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round for round ${nextRoundNum}`);
         }
       }
     }
