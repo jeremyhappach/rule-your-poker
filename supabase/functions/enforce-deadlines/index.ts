@@ -721,6 +721,47 @@ serve(async (req) => {
           
           actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round for round ${nextRoundNum}`);
         }
+    }
+
+    // 4B. ENFORCE POST-ROUND COMPLETION RECOVERY (3-5-7)
+    // If a round is already marked completed but the game never transitioned to awaiting_next_round,
+    // the session can freeze indefinitely. This can happen if the client disconnects at the wrong time.
+    if (
+      game.status === 'in_progress' &&
+      game.game_type === '3-5-7' &&
+      game.awaiting_next_round !== true &&
+      game.all_decisions_in === true
+    ) {
+      const { data: latestRounds } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const latestRound = latestRounds?.[0];
+
+      if (latestRound?.status === 'completed') {
+        const gameUpdatedAt = new Date(game.updated_at);
+        const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
+
+        // Give the client a moment to set awaiting_next_round; if it doesn't, recover.
+        if (stuckDuration > 10000) {
+          const nextRoundNum = (latestRound.round_number % 3) + 1;
+
+          await supabase
+            .from('games')
+            .update({
+              awaiting_next_round: true,
+              next_round_number: nextRoundNum,
+              all_decisions_in: true,
+            })
+            .eq('id', gameId);
+
+          actionsTaken.push(
+            `3-5-7 post-round recovery: latest round ${latestRound.round_number} completed but awaiting_next_round missing, set awaiting_next_round for round ${nextRoundNum}`
+          );
+        }
       }
     }
 
