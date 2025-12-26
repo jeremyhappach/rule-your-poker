@@ -1004,6 +1004,7 @@ export const MobileGameTable = ({
     setShowCommunityCards(false);
     setApprovedCommunityCards(null);
     setApprovedRoundForDisplay(null);
+    setApprovedHandContextId(null);
     setIsDelayingCommunityCards(false);
     setStaggeredCardCount(0);
     lastDetectedRoundRef.current = null;
@@ -1044,6 +1045,8 @@ export const MobileGameTable = ({
     if (isDealerConfigPhase) return null;
     return externalCommunityCardsCache?.current?.cards || null;
   });
+  // Track which handContextId the approved community cards belong to (prevents stale card flash)
+  const [approvedHandContextId, setApprovedHandContextId] = useState<string | null>(null);
   const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
   const lastDetectedRoundRef = useRef<number | null>(
     isDealerConfigPhase ? null : (externalCommunityCardsCache?.current?.round || null)
@@ -1158,6 +1161,7 @@ export const MobileGameTable = ({
       // Community UI cache
       setApprovedCommunityCards(null);
       setApprovedRoundForDisplay(null);
+      setApprovedHandContextId(null);
       setIsDelayingCommunityCards(false);
       setStaggeredCardCount(0);
       lastDetectedRoundRef.current = null;
@@ -1200,6 +1204,7 @@ export const MobileGameTable = ({
     setShowCommunityCards(false);
     setApprovedCommunityCards(null);
     setApprovedRoundForDisplay(null);
+    setApprovedHandContextId(null);
     setIsDelayingCommunityCards(false);
     setStaggeredCardCount(0);
     lastDetectedRoundRef.current = null;
@@ -1371,18 +1376,14 @@ export const MobileGameTable = ({
   const isInGameOverStatus = gameStatus === 'game_over' || isGameOver;
 
   // Rabbit hunt label should sit directly under CommunityCards (regardless of scale/viewport).
-  // CRITICAL: Detect stale approved cards by comparing first card with live communityCards.
+  // CRITICAL: Detect stale approved cards by checking if handContextId changed.
   // This prevents the "flash of previous cards" on new hand when approvedCommunityCards
-  // hasn't been cleared yet but the new communityCards prop has different cards.
-  const approvedCardsAreStale = useMemo(() => {
-    if (!approvedCommunityCards || approvedCommunityCards.length === 0) return false;
-    if (!communityCards || communityCards.length === 0) return false;
-    // Compare first card - if different, approved cards are stale
-    const approvedFirst = approvedCommunityCards[0];
-    const liveFirst = communityCards[0];
-    if (!approvedFirst || !liveFirst) return false;
-    return approvedFirst.suit !== liveFirst.suit || approvedFirst.rank !== liveFirst.rank;
-  }, [approvedCommunityCards, communityCards]);
+  // hasn't been cleared yet but handContextId indicates a new hand started.
+  const approvedCardsAreStale = !!(
+    handContextId &&
+    approvedHandContextId &&
+    handContextId !== approvedHandContextId
+  );
 
   const shouldShowHolmCommunityCards =
     gameType === "holm-game" &&
@@ -1800,6 +1801,7 @@ export const MobileGameTable = ({
         setShowCommunityCards(false);
         setApprovedCommunityCards(null);
         setApprovedRoundForDisplay(null);
+        setApprovedHandContextId(null);
         setIsDelayingCommunityCards(false);
         lastDetectedRoundRef.current = null;
         if (communityCardsDelayRef.current) {
@@ -1823,6 +1825,7 @@ export const MobileGameTable = ({
       setShowCommunityCards(false);
       setApprovedCommunityCards(null);
       setApprovedRoundForDisplay(null);
+      setApprovedHandContextId(null);
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
         clearTimeout(communityCardsDelayRef.current);
@@ -1873,10 +1876,12 @@ export const MobileGameTable = ({
       // Initial delay of 1 second, then reveal cards one at a time
       const cardCount = communityCardsRevealed || 2;
       console.log('🔥🔥 [MOBILE_COMMUNITY] Setting 1000ms timeout to approve round', currentRound, 'with', cardCount, 'cards');
+      const capturedHandContextId = handContextId; // Capture for closure
       communityCardsDelayRef.current = setTimeout(() => {
         console.log('🔥🔥🔥🔥🔥 [MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
         setApprovedRoundForDisplay(currentRound); // NOW we approve this round for display
         setApprovedCommunityCards(communityCards ? [...communityCards] : null); // Cache the cards at approval time
+        setApprovedHandContextId(capturedHandContextId ?? null); // Track which hand these cards belong to
         setShowCommunityCards(true);
         // Stagger each card with 150ms delay
         for (let i = 1; i <= cardCount; i++) {
@@ -1919,7 +1924,8 @@ export const MobileGameTable = ({
 
     setApprovedRoundForDisplay(currentRound);
     setApprovedCommunityCards([...(communityCards ?? [])]);
-  }, [gameType, currentRound, communityCards, approvedCommunityCards, approvedRoundForDisplay, isDelayingCommunityCards, showCommunityCards]);
+    setApprovedHandContextId(handContextId ?? null); // Track which hand these cards belong to
+  }, [gameType, currentRound, communityCards, approvedCommunityCards, approvedRoundForDisplay, isDelayingCommunityCards, showCommunityCards, handContextId]);
 
   // Cache Chucky cards when available, clear only when buck passes or new game starts
   useEffect(() => {
