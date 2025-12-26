@@ -339,7 +339,18 @@ export const DealerGameSetup = ({
         const deadline = new Date(gameData.config_deadline);
         const remaining = Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000));
         console.log('[DEALER SETUP] Synced with server deadline, remaining:', remaining, 's');
-        setTimeLeft(remaining > 0 ? remaining : 30); // Fallback to 30 if deadline passed
+        
+        if (remaining <= 0) {
+          // Deadline already passed - trigger timeout immediately
+          // The server-side enforcer should have handled this, but handle it client-side as backup
+          console.log('[DEALER SETUP] Deadline already expired on reconnect, triggering timeout');
+          if (!hasSubmittedRef.current) {
+            handleDealerTimeout();
+          }
+          return;
+        }
+        
+        setTimeLeft(remaining);
       } else {
         // No deadline set yet - set one now (fallback for edge cases)
         const deadline = new Date(Date.now() + 30000).toISOString();
