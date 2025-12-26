@@ -4175,8 +4175,10 @@ export const MobileGameTable = ({
                       ) : null;
                     })()
                   ) : isCurrentPlayerSoloVsChucky ? (
-                    // Cards are tabled on the table - no placeholder needed here
-                    null
+                    // Cards are tabled on the felt - show message instead
+                    <div className="flex items-center justify-center py-4">
+                      <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
+                    </div>
                   ) : currentPlayerCards.length > 0 ? (
                     <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
                       <div
