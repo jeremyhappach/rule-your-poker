@@ -721,6 +721,7 @@ serve(async (req) => {
           
           actionsTaken.push(`Stuck round recovery: Marked ${stuckRound.status} round ${stuckRound.round_number} as completed, set awaiting_next_round for round ${nextRoundNum}`);
         }
+      }
     }
 
     // 4B. ENFORCE POST-ROUND COMPLETION RECOVERY (3-5-7)
