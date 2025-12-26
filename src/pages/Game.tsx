@@ -219,6 +219,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [preAnteChips, setPreAnteChips] = useState<Record<string, number> | null>(null); // Capture chips BEFORE ante deduction to prevent race conditions
   const [expectedPostAnteChips, setExpectedPostAnteChips] = useState<Record<string, number> | null>(null); // Expected chip values AFTER ante deduction
   const anteAnimationFiredRef = useRef<string | null>(null); // Guard against duplicate ante animation triggers within same round
+  const [reAnteMessage, setReAnteMessage] = useState<string | null>(null); // "Re-Ante" message for 3-5-7 subsequent round 1s
   
   // Chip transfer animation state (for 3-5-7 showdowns)
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -2709,6 +2710,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 if (anteAnimationFiredRef.current !== anteTriggerKey) {
                   anteAnimationFiredRef.current = anteTriggerKey;
                   setAnteAnimationTriggerId(`ante-${Date.now()}`);
+                  // Show "Re-Ante" announcement during 3-5-7 subsequent round 1
+                  setReAnteMessage('Re-Ante');
+                  // Clear the message after animation completes (3 seconds)
+                  setTimeout(() => setReAnteMessage(null), 3000);
                 }
               }
             }
@@ -5312,6 +5317,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chatInputValue={mobileChatInput}
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
+              reAnteMessage={reAnteMessage}
             />
           ) : (
             <GameTable

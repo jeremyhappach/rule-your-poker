@@ -253,6 +253,8 @@ interface MobileGameTableProps {
   onChatInputChange?: (value: string) => void;
   // Dealer setup message - shown as yellow announcement when another player is configuring
   dealerSetupMessage?: string | null;
+  // Re-ante message - shown during 3-5-7 subsequent round 1 ante animations
+  reAnteMessage?: string | null;
   // Auto-fold callback for when player disables auto_fold
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
 }
@@ -361,6 +363,7 @@ export const MobileGameTable = ({
   chatInputValue: externalChatInputValue,
   onChatInputChange: externalOnChatInputChange,
   dealerSetupMessage,
+  reAnteMessage,
   onAutoFoldChange,
 }: MobileGameTableProps) => {
   const {
@@ -3940,6 +3943,13 @@ export const MobileGameTable = ({
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center truncate">
                 {lastRoundResult.split('|||')[0]}
+              </p>
+            </div>
+          ) : reAnteMessage ? (
+            /* Re-Ante message during 3-5-7 subsequent round 1 */
+            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center truncate animate-pulse">
+                {reAnteMessage}
               </p>
             </div>
           ) : dealerSetupMessage ? (
