@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import { Clock, ChevronLeft } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { supabase } from "@/integrations/supabase/client";
-import { DevDebugOverlay } from "@/components/DevDebugOverlay";
 
 // Format number with thousands separators
 const formatWithCommas = (num: number): string => {
@@ -320,26 +319,6 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
           </DialogTitle>
         </DialogHeader>
 
-        <DevDebugOverlay
-          title="Session snapshots"
-          items={[
-            { label: 'session.id', value: session.id },
-            { label: 'session.total_hands', value: session.total_hands },
-            { label: 'session.players.length', value: session.players.length },
-            { label: 'snapshots.error', value: snapshotDebug?.snapshotsError },
-            { label: 'snapshots.count', value: snapshotDebug?.snapshotCount },
-            { label: 'snapshots.uniqueParticipants', value: snapshotDebug?.uniqueParticipants },
-            { label: 'snapshots.uniqueHumans', value: snapshotDebug?.uniqueHumans },
-            { label: 'snapshots.uniqueBots', value: snapshotDebug?.uniqueBots },
-            { label: 'snapshots.handMin', value: snapshotDebug?.handMin },
-            { label: 'snapshots.handMax', value: snapshotDebug?.handMax },
-            { label: 'snapshots.latestCreatedAt', value: snapshotDebug?.latestCreatedAt },
-            { label: 'snapshots.earliestCreatedAt', value: snapshotDebug?.earliestCreatedAt },
-            { label: 'snapshots.usedSnapshots', value: snapshotDebug?.usedSnapshots },
-            { label: 'results.count', value: snapshotDebug?.resultsCount },
-            { label: 'latestByKey.sample', value: snapshotDebug?.latestByKeySample },
-          ]}
-        />
 
         {showHistory ? (
           <div className="min-h-[300px]">
