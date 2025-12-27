@@ -47,29 +47,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
   const [showHistory, setShowHistory] = useState(false);
   const [allPlayers, setAllPlayers] = useState<PlayerResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [snapshotDebug, setSnapshotDebug] = useState<{
-    snapshotsError: string | null;
-    snapshotCount: number;
-    uniqueHumans: number;
-    uniqueBots: number;
-    uniqueParticipants: number;
-    handMin: number | null;
-    handMax: number | null;
-    latestCreatedAt: string | null;
-    earliestCreatedAt: string | null;
-    latestByKeySample: Array<{
-      key: string;
-      player_id: string;
-      user_id: string;
-      username: string;
-      chips: number;
-      hand_number: number;
-      created_at: string | null;
-      is_bot: boolean;
-    }>;
-    usedSnapshots: boolean;
-    resultsCount: number;
-  } | null>(null);
+  const [actualHandCount, setActualHandCount] = useState<number | null>(null);
 
   // Find current user's player ID from the session players
   const currentPlayer = session.players.find(p => !p.is_bot);
@@ -93,31 +71,17 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       .eq('game_id', session.id)
       .order('created_at', { ascending: false });
 
-    // Build debug info (even if we end up falling back)
-    const snapshotCount = snapshots?.length || 0;
-    const humanUserIds = new Set<string>();
-    const botPlayerIds = new Set<string>();
-    let handMin: number | null = null;
+    // Calculate actual hand count from snapshots
     let handMax: number | null = null;
-    let latestCreatedAt: string | null = null;
-    let earliestCreatedAt: string | null = null;
-
     if (snapshots && snapshots.length > 0) {
-      latestCreatedAt = snapshots[0].created_at ?? null;
-      earliestCreatedAt = snapshots[snapshots.length - 1].created_at ?? null;
-
       for (const snap of snapshots) {
-        const isBot = snap.is_bot ?? false;
-        if (isBot) botPlayerIds.add(snap.player_id);
-        else humanUserIds.add(snap.user_id);
-
         const hn = typeof snap.hand_number === 'number' ? snap.hand_number : Number(snap.hand_number);
         if (Number.isFinite(hn)) {
-          handMin = handMin === null ? hn : Math.min(handMin, hn);
           handMax = handMax === null ? hn : Math.max(handMax, hn);
         }
       }
     }
+    setActualHandCount(handMax);
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
       // Use snapshots - get the latest snapshot per participant.
@@ -139,32 +103,6 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
         is_bot: snap.is_bot ?? false,
       }));
 
-      setSnapshotDebug({
-        snapshotsError: null,
-        snapshotCount,
-        uniqueHumans: humanUserIds.size,
-        uniqueBots: botPlayerIds.size,
-        uniqueParticipants: humanUserIds.size + botPlayerIds.size,
-        handMin,
-        handMax,
-        latestCreatedAt,
-        earliestCreatedAt,
-        latestByKeySample: Array.from(latestByKey.entries())
-          .slice(0, 12)
-          .map(([key, snap]) => ({
-            key,
-            player_id: snap.player_id,
-            user_id: snap.user_id,
-            username: snap.username,
-            chips: snap.chips,
-            hand_number: snap.hand_number,
-            created_at: snap.created_at ?? null,
-            is_bot: snap.is_bot ?? false,
-          })),
-        usedSnapshots: true,
-        resultsCount: results.length,
-      });
-
       if (results.length > 0) {
         setAllPlayers(results);
         setLoading(false);
@@ -172,20 +110,8 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       }
     }
 
-    setSnapshotDebug({
-      snapshotsError: (snapshotsError as any)?.message ?? null,
-      snapshotCount,
-      uniqueHumans: humanUserIds.size,
-      uniqueBots: botPlayerIds.size,
-      uniqueParticipants: humanUserIds.size + botPlayerIds.size,
-      handMin,
-      handMax,
-      latestCreatedAt,
-      earliestCreatedAt,
-      latestByKeySample: [],
-      usedSnapshots: false,
-      resultsCount: 0,
-    });
+    // Fallback to old method using game_results if no snapshots
+    console.log('[SessionResults] No snapshots found, falling back to game_results');
     
     const { data: gameResults, error: resultsError } = await supabase
       .from('game_results')
@@ -338,7 +264,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Hands</p>
-                <p className="font-medium">{session.total_hands}</p>
+                <p className="font-medium">{actualHandCount ?? session.total_hands}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Date</p>
