@@ -71,20 +71,23 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       .order('created_at', { ascending: false });
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
-      // Use snapshots - get the latest snapshot per user_id (by created_at, not hand_number)
-      const latestByUser = new Map<string, typeof snapshots[0]>();
-      snapshots.forEach(snap => {
-        if (!latestByUser.has(snap.user_id)) {
-          latestByUser.set(snap.user_id, snap);
+      // Use snapshots - get the latest snapshot per participant.
+      // Humans: group by user_id (in case they re-joined and got a new player_id)
+      // Bots: group by player_id (bots may share user_id)
+      const latestByKey = new Map<string, typeof snapshots[0]>();
+      snapshots.forEach((snap) => {
+        const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
+        if (!latestByKey.has(key)) {
+          latestByKey.set(key, snap);
         }
       });
 
-      const results: PlayerResult[] = Array.from(latestByUser.values()).map(snap => ({
+      const results: PlayerResult[] = Array.from(latestByKey.values()).map((snap) => ({
         id: snap.player_id,
         username: snap.username,
-        chips: snap.chips, // This is the final chip count (net change from buy-in)
+        chips: snap.chips, // Final chip count for that participant
         legs: 0,
-        is_bot: snap.is_bot ?? false
+        is_bot: snap.is_bot ?? false,
       }));
 
       if (results.length > 0) {
