@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import { Clock, ChevronLeft } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { supabase } from "@/integrations/supabase/client";
-import { getBotAlias } from "@/lib/botAlias";
 
 // Format number with thousands separators
 const formatWithCommas = (num: number): string => {
@@ -53,7 +52,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
   const currentPlayer = session.players.find(p => !p.is_bot);
   const currentPlayerId = currentPlayer?.id;
 
-  // Fetch all players who participated, including those who left
+  // Fetch all players who participated using snapshots
   useEffect(() => {
     if (open) {
       fetchAllParticipants();
@@ -63,13 +62,46 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
   const fetchAllParticipants = async () => {
     setLoading(true);
     
-    // Fetch game_results to get all player chip changes
+    // First try to get data from session_player_snapshots (new accurate method)
+    const { data: snapshots, error: snapshotsError } = await supabase
+      .from('session_player_snapshots')
+      .select('*')
+      .eq('game_id', session.id)
+      .order('hand_number', { ascending: false });
+
+    if (!snapshotsError && snapshots && snapshots.length > 0) {
+      // Use snapshots - get the latest snapshot per user_id
+      const latestByUser = new Map<string, typeof snapshots[0]>();
+      snapshots.forEach(snap => {
+        if (!latestByUser.has(snap.user_id)) {
+          latestByUser.set(snap.user_id, snap);
+        }
+      });
+
+      const results: PlayerResult[] = Array.from(latestByUser.values()).map(snap => ({
+        id: snap.player_id,
+        username: snap.username,
+        chips: snap.chips, // This is the final chip count
+        legs: 0,
+        is_bot: snap.is_bot
+      }));
+
+      if (results.length > 0) {
+        setAllPlayers(results);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Fallback to old method using game_results if no snapshots
+    console.log('[SessionResults] No snapshots found, falling back to game_results');
+    
     const { data: gameResults, error: resultsError } = await supabase
       .from('game_results')
-      .select('player_chip_changes')
+      .select('player_chip_changes, winner_player_id, winner_username')
       .eq('game_id', session.id);
 
-    if (resultsError) {
+    if (resultsError || !gameResults || gameResults.length === 0) {
       console.error('Error fetching game results:', resultsError);
       setAllPlayers(session.players);
       setLoading(false);
@@ -78,12 +110,18 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
 
     // Aggregate chip changes by player ID
     const chipChanges = new Map<string, number>();
-    gameResults?.forEach((result: any) => {
+    const winnerUsernameMap = new Map<string, string>();
+    
+    gameResults.forEach((result: any) => {
       const changes = result.player_chip_changes as Record<string, number>;
       if (changes) {
         Object.entries(changes).forEach(([playerId, change]) => {
           chipChanges.set(playerId, (chipChanges.get(playerId) || 0) + change);
         });
+      }
+      // Also track winner usernames
+      if (result.winner_player_id && result.winner_username) {
+        winnerUsernameMap.set(result.winner_player_id, result.winner_username.trim());
       }
     });
 
@@ -91,22 +129,21 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     const allPlayerIds = Array.from(chipChanges.keys());
     
     if (allPlayerIds.length === 0) {
-      // No game results, fall back to current players
       setAllPlayers(session.players);
       setLoading(false);
       return;
     }
 
     // Fetch player info for all participants
-    const { data: playersData, error: playersError } = await supabase
+    const { data: playersData } = await supabase
       .from('players')
-      .select('id, user_id, is_bot, legs, created_at')
+      .select('id, user_id, is_bot, legs')
       .in('id', allPlayerIds);
 
-    // Also try to find players by game_id in case some were re-added
+    // Also get current players in game
     const { data: currentGamePlayers } = await supabase
       .from('players')
-      .select('id, user_id, is_bot, legs, created_at')
+      .select('id, user_id, is_bot, legs')
       .eq('game_id', session.id);
 
     // Merge players data
@@ -114,27 +151,12 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     playersData?.forEach(p => playerMap.set(p.id, p));
     currentGamePlayers?.forEach(p => playerMap.set(p.id, p));
 
-    // Get all unique user_ids to fetch profiles
+    // Get profiles for usernames
     const userIds = new Set<string>();
     playerMap.forEach(p => {
       if (p.user_id) userIds.add(p.user_id);
     });
 
-    // Also get winner usernames from game_results for players who left
-    const { data: gameResultsWithWinners } = await supabase
-      .from('game_results')
-      .select('winner_player_id, winner_username')
-      .eq('game_id', session.id);
-    
-    // Build a map of player_id -> username from game results
-    const winnerUsernameMap = new Map<string, string>();
-    gameResultsWithWinners?.forEach((gr: any) => {
-      if (gr.winner_player_id && gr.winner_username) {
-        winnerUsernameMap.set(gr.winner_player_id, gr.winner_username.trim());
-      }
-    });
-
-    // Fetch profiles for usernames
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username')
@@ -145,19 +167,11 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
 
     // Build player results
     const results: PlayerResult[] = [];
-    const allPlayersForBotAlias = Array.from(playerMap.values()).map(p => ({
-      user_id: p.user_id,
-      is_bot: p.is_bot,
-      created_at: p.created_at
-    }));
 
     chipChanges.forEach((chips, playerId) => {
       const player = playerMap.get(playerId);
       if (player) {
-        const username = player.is_bot 
-          ? getBotAlias(allPlayersForBotAlias, player.user_id)
-          : (profileMap.get(player.user_id) || 'Unknown');
-        
+        const username = profileMap.get(player.user_id) || 'Unknown';
         results.push({
           id: playerId,
           username,
@@ -166,9 +180,8 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
           is_bot: player.is_bot
         });
       } else {
-        // Player record no longer exists - try to get username from game_results
+        // Player left - try to get username from winner records
         const usernameFromResults = winnerUsernameMap.get(playerId);
-        
         results.push({
           id: playerId,
           username: usernameFromResults || 'Former Player',
@@ -179,8 +192,6 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       }
     });
 
-    // If we found participants from game_results, use those
-    // Otherwise fall back to the current session players
     if (results.length > 0) {
       setAllPlayers(results);
     } else {

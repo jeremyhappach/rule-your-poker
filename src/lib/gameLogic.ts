@@ -3,6 +3,82 @@ import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, has35
 import { getBotAlias } from "./botAlias";
 
 /**
+ * Snapshot all players' chip counts after a hand completes.
+ * This is used for accurate session results and for restoring chips when departed players rejoin.
+ */
+export async function snapshotPlayerChips(gameId: string, handNumber: number) {
+  console.log('[SNAPSHOT] Snapshotting player chips for game:', gameId, 'hand:', handNumber);
+  
+  // Fetch all players with their profiles for username
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('id, user_id, chips, is_bot, created_at, profiles(username)')
+    .eq('game_id', gameId);
+  
+  if (playersError || !players) {
+    console.error('[SNAPSHOT] Error fetching players:', playersError);
+    return;
+  }
+  
+  // Build snapshot records
+  const snapshots = players.map(player => {
+    // Get username - for bots use alias, for humans use profile username
+    let username = 'Unknown';
+    if (player.is_bot) {
+      username = getBotAlias(players, player.user_id);
+    } else if (player.profiles && typeof player.profiles === 'object' && 'username' in player.profiles) {
+      username = (player.profiles as { username: string }).username || 'Unknown';
+    }
+    
+    return {
+      game_id: gameId,
+      player_id: player.id,
+      user_id: player.user_id,
+      username,
+      chips: player.chips,
+      is_bot: player.is_bot,
+      hand_number: handNumber
+    };
+  });
+  
+  if (snapshots.length === 0) {
+    console.log('[SNAPSHOT] No players to snapshot');
+    return;
+  }
+  
+  const { error: insertError } = await supabase
+    .from('session_player_snapshots')
+    .insert(snapshots);
+  
+  if (insertError) {
+    console.error('[SNAPSHOT] Error inserting snapshots:', insertError);
+  } else {
+    console.log('[SNAPSHOT] Successfully snapshotted', snapshots.length, 'players');
+  }
+}
+
+/**
+ * Get the last known chip count for a user in a session (for rejoining players)
+ */
+export async function getLastKnownChips(gameId: string, userId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('session_player_snapshots')
+    .select('chips')
+    .eq('game_id', gameId)
+    .eq('user_id', userId)
+    .order('hand_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('[SNAPSHOT] Error fetching last known chips:', error);
+    return null;
+  }
+  
+  return data?.chips ?? null;
+}
+
+/**
  * Record a game result for hand history tracking
  */
 export async function recordGameResult(
@@ -804,6 +880,9 @@ async function handleGameOver(
     .from('players')
     .update({ chips: allPlayers.find(p => p.id === winnerId)!.chips + totalPrize })
     .eq('id', winnerId);
+  
+  // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
+  await snapshotPlayerChips(gameId, newTotalHands);
   
   const gameWinMessage = `🏆 ${winnerUsername} won the game!`;
   
