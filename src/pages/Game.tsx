@@ -3325,8 +3325,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .update({
           status: 'session_ended',
           session_ended_at: new Date().toISOString(),
-          total_hands: gameData.current_round || 0,
-          pending_session_end: false
+          // NOTE: do NOT overwrite total_hands here; it tracks completed games and is updated elsewhere.
+          pending_session_end: false,
         })
         .eq('id', gameId);
 
