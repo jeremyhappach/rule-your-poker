@@ -175,6 +175,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         const { data: playersData } = await supabase
           .from('players')
           .select(`
+            id,
             user_id,
             position,
             chips,
@@ -186,6 +187,25 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           `)
           .eq('game_id', game.id)
           .order('position');
+
+        // For ended sessions, get participant count from snapshots (includes departed players)
+        let snapshotPlayerCount = 0;
+        if (game.status === 'session_ended') {
+          const { data: snapshots } = await supabase
+            .from('session_player_snapshots')
+            .select('user_id, player_id, is_bot')
+            .eq('game_id', game.id);
+          
+          if (snapshots && snapshots.length > 0) {
+            // De-dupe: humans by user_id, bots by player_id
+            const uniqueKeys = new Set<string>();
+            snapshots.forEach((snap) => {
+              const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
+              uniqueKeys.add(key);
+            });
+            snapshotPlayerCount = uniqueKeys.size;
+          }
+        }
 
         // Host is the first human player who joined (earliest created_at)
         const humanPlayers = playersData?.filter(p => !p.is_bot) || [];
@@ -201,14 +221,20 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         // Calculate duration
         const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
         
+        // Use snapshot count for ended sessions, current players otherwise
+        const playerCount = game.status === 'session_ended' && snapshotPlayerCount > 0
+          ? snapshotPlayerCount
+          : (playersData?.length || 0);
+        
         return {
           ...game,
-          player_count: playersData?.length || 0,
+          player_count: playerCount,
           is_creator: isCreator,
           is_player: isPlayer,
           host_username,
           duration_minutes: durationMinutes,
           players: playersData?.map(p => ({
+            id: p.id,
             username: p.is_bot 
               ? getBotAlias(playersData.map(pd => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })), p.user_id)
               : (p.profiles?.username || 'Unknown'),
