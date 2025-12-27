@@ -57,26 +57,42 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     
     // Check in order - stop on first match
     
-    // 1. stand_up_next_hand = true → become observer (release seat, keep record)
+    // 1. stand_up_next_hand = true → become observer (release seat)
+    // For bots: delete the player record entirely
+    // For humans: keep record but would need nullable position (currently not supported)
     if (player.stand_up_next_hand) {
-      console.log('[PLAYER EVAL] Player', player.position, 'standing up - becoming observer');
+      console.log('[PLAYER EVAL] Player', player.position, 'standing up - is_bot:', player.is_bot);
       
-      // Set player as observer with no seat
-      const { error: updateError } = await supabase
-        .from('players')
-        .update({
-          sitting_out: true,
-          position: null,
-          status: 'observer',
-          stand_up_next_hand: false,
-          waiting: false
-        })
-        .eq('id', player.id);
-      
-      if (updateError) {
-        console.error('[PLAYER EVAL] Error updating player to observer:', updateError);
+      if (player.is_bot) {
+        // Delete bot player record entirely
+        const { error: deleteError } = await supabase
+          .from('players')
+          .delete()
+          .eq('id', player.id);
+        
+        if (deleteError) {
+          console.error('[PLAYER EVAL] Error deleting bot player:', deleteError);
+        } else {
+          console.log('[PLAYER EVAL] Bot player deleted successfully');
+          playersStoodUp.push(player.id);
+        }
       } else {
-        playersStoodUp.push(player.id);
+        // For humans, set sitting_out=true and clear flags (they keep their seat for now)
+        // A proper observer system would require nullable position column
+        const { error: updateError } = await supabase
+          .from('players')
+          .update({
+            sitting_out: true,
+            stand_up_next_hand: false,
+            waiting: false
+          })
+          .eq('id', player.id);
+        
+        if (updateError) {
+          console.error('[PLAYER EVAL] Error updating player to sitting out:', updateError);
+        } else {
+          playersStoodUp.push(player.id);
+        }
       }
       continue; // Move to next player
     }
