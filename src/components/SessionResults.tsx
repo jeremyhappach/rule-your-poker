@@ -63,14 +63,15 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     setLoading(true);
     
     // First try to get data from session_player_snapshots (new accurate method)
+    // Order by created_at DESC to get the most recent snapshot per player
     const { data: snapshots, error: snapshotsError } = await supabase
       .from('session_player_snapshots')
       .select('*')
       .eq('game_id', session.id)
-      .order('hand_number', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
-      // Use snapshots - get the latest snapshot per user_id
+      // Use snapshots - get the latest snapshot per user_id (by created_at, not hand_number)
       const latestByUser = new Map<string, typeof snapshots[0]>();
       snapshots.forEach(snap => {
         if (!latestByUser.has(snap.user_id)) {
@@ -81,9 +82,9 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       const results: PlayerResult[] = Array.from(latestByUser.values()).map(snap => ({
         id: snap.player_id,
         username: snap.username,
-        chips: snap.chips, // This is the final chip count
+        chips: snap.chips, // This is the final chip count (net change from buy-in)
         legs: 0,
-        is_bot: snap.is_bot
+        is_bot: snap.is_bot ?? false
       }));
 
       if (results.length > 0) {
