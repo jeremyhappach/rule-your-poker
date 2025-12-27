@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 import { getDisplayName } from "./botAlias";
-import { recordGameResult } from "./gameLogic";
+import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -1196,6 +1196,9 @@ async function handleChuckyShowdown(
         chips: player.chips + roundPot
       })
       .eq('id', player.id);
+
+    // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
+    await snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
 
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up

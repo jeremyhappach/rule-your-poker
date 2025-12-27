@@ -23,7 +23,7 @@ import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
 
-import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound } from "@/lib/gameLogic";
+import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
@@ -4648,6 +4648,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Toast removed per user request
         } else {
           // User is a new observer - insert them as a new player
+          // Check if they have a previous chip count from an earlier departure
+          const lastKnownChips = await getLastKnownChips(gameId, user.id);
+          
           // Fetch user's profile to get their deck_color_mode preference
           const { data: userProfile } = await supabase
             .from('profiles')
@@ -4663,7 +4666,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .insert({
               game_id: gameId,
               user_id: user.id,
-              chips: 0,
+              chips: lastKnownChips ?? 0, // Restore previous chips if available
               position: position,
               sitting_out: gameInProgress,
               waiting: isWaitingForPlayers ? true : gameInProgress, // waiting: mark as waiting to play

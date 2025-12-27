@@ -660,6 +660,50 @@ export type Database = {
           },
         ]
       }
+      session_player_snapshots: {
+        Row: {
+          chips: number
+          created_at: string | null
+          game_id: string
+          hand_number: number
+          id: string
+          is_bot: boolean | null
+          player_id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          chips: number
+          created_at?: string | null
+          game_id: string
+          hand_number: number
+          id?: string
+          is_bot?: boolean | null
+          player_id: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          chips?: number
+          created_at?: string | null
+          game_id?: string
+          hand_number?: number
+          id?: string
+          is_bot?: boolean | null
+          player_id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_player_snapshots_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           id: string
