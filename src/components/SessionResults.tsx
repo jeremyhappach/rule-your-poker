@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { Clock, ChevronLeft } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { supabase } from "@/integrations/supabase/client";
+import { DevDebugOverlay } from "@/components/DevDebugOverlay";
 
 // Format number with thousands separators
 const formatWithCommas = (num: number): string => {
@@ -47,7 +48,30 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
   const [showHistory, setShowHistory] = useState(false);
   const [allPlayers, setAllPlayers] = useState<PlayerResult[]>([]);
   const [loading, setLoading] = useState(false);
-  
+  const [snapshotDebug, setSnapshotDebug] = useState<{
+    snapshotsError: string | null;
+    snapshotCount: number;
+    uniqueHumans: number;
+    uniqueBots: number;
+    uniqueParticipants: number;
+    handMin: number | null;
+    handMax: number | null;
+    latestCreatedAt: string | null;
+    earliestCreatedAt: string | null;
+    latestByKeySample: Array<{
+      key: string;
+      player_id: string;
+      user_id: string;
+      username: string;
+      chips: number;
+      hand_number: number;
+      created_at: string | null;
+      is_bot: boolean;
+    }>;
+    usedSnapshots: boolean;
+    resultsCount: number;
+  } | null>(null);
+
   // Find current user's player ID from the session players
   const currentPlayer = session.players.find(p => !p.is_bot);
   const currentPlayerId = currentPlayer?.id;
@@ -61,7 +85,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
 
   const fetchAllParticipants = async () => {
     setLoading(true);
-    
+
     // First try to get data from session_player_snapshots (new accurate method)
     // Order by created_at DESC to get the most recent snapshot per player
     const { data: snapshots, error: snapshotsError } = await supabase
@@ -69,6 +93,32 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       .select('*')
       .eq('game_id', session.id)
       .order('created_at', { ascending: false });
+
+    // Build debug info (even if we end up falling back)
+    const snapshotCount = snapshots?.length || 0;
+    const humanUserIds = new Set<string>();
+    const botPlayerIds = new Set<string>();
+    let handMin: number | null = null;
+    let handMax: number | null = null;
+    let latestCreatedAt: string | null = null;
+    let earliestCreatedAt: string | null = null;
+
+    if (snapshots && snapshots.length > 0) {
+      latestCreatedAt = snapshots[0].created_at ?? null;
+      earliestCreatedAt = snapshots[snapshots.length - 1].created_at ?? null;
+
+      for (const snap of snapshots) {
+        const isBot = snap.is_bot ?? false;
+        if (isBot) botPlayerIds.add(snap.player_id);
+        else humanUserIds.add(snap.user_id);
+
+        const hn = typeof snap.hand_number === 'number' ? snap.hand_number : Number(snap.hand_number);
+        if (Number.isFinite(hn)) {
+          handMin = handMin === null ? hn : Math.min(handMin, hn);
+          handMax = handMax === null ? hn : Math.max(handMax, hn);
+        }
+      }
+    }
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
       // Use snapshots - get the latest snapshot per participant.
@@ -85,10 +135,36 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       const results: PlayerResult[] = Array.from(latestByKey.values()).map((snap) => ({
         id: snap.player_id,
         username: snap.username,
-        chips: snap.chips, // Final chip count for that participant
+        chips: snap.chips,
         legs: 0,
         is_bot: snap.is_bot ?? false,
       }));
+
+      setSnapshotDebug({
+        snapshotsError: null,
+        snapshotCount,
+        uniqueHumans: humanUserIds.size,
+        uniqueBots: botPlayerIds.size,
+        uniqueParticipants: humanUserIds.size + botPlayerIds.size,
+        handMin,
+        handMax,
+        latestCreatedAt,
+        earliestCreatedAt,
+        latestByKeySample: Array.from(latestByKey.entries())
+          .slice(0, 12)
+          .map(([key, snap]) => ({
+            key,
+            player_id: snap.player_id,
+            user_id: snap.user_id,
+            username: snap.username,
+            chips: snap.chips,
+            hand_number: snap.hand_number,
+            created_at: snap.created_at ?? null,
+            is_bot: snap.is_bot ?? false,
+          })),
+        usedSnapshots: true,
+        resultsCount: results.length,
+      });
 
       if (results.length > 0) {
         setAllPlayers(results);
@@ -97,8 +173,20 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       }
     }
 
-    // Fallback to old method using game_results if no snapshots
-    console.log('[SessionResults] No snapshots found, falling back to game_results');
+    setSnapshotDebug({
+      snapshotsError: (snapshotsError as any)?.message ?? null,
+      snapshotCount,
+      uniqueHumans: humanUserIds.size,
+      uniqueBots: botPlayerIds.size,
+      uniqueParticipants: humanUserIds.size + botPlayerIds.size,
+      handMin,
+      handMax,
+      latestCreatedAt,
+      earliestCreatedAt,
+      latestByKeySample: [],
+      usedSnapshots: false,
+      resultsCount: 0,
+    });
     
     const { data: gameResults, error: resultsError } = await supabase
       .from('game_results')
@@ -218,9 +306,9 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             {showHistory && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-6 w-6 p-0"
                 onClick={() => setShowHistory(false)}
               >
@@ -231,7 +319,28 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
             {session.real_money && <span className="text-green-400 ml-1">$</span>}
           </DialogTitle>
         </DialogHeader>
-        
+
+        <DevDebugOverlay
+          title="Session snapshots"
+          items={[
+            { label: 'session.id', value: session.id },
+            { label: 'session.total_hands', value: session.total_hands },
+            { label: 'session.players.length', value: session.players.length },
+            { label: 'snapshots.error', value: snapshotDebug?.snapshotsError },
+            { label: 'snapshots.count', value: snapshotDebug?.snapshotCount },
+            { label: 'snapshots.uniqueParticipants', value: snapshotDebug?.uniqueParticipants },
+            { label: 'snapshots.uniqueHumans', value: snapshotDebug?.uniqueHumans },
+            { label: 'snapshots.uniqueBots', value: snapshotDebug?.uniqueBots },
+            { label: 'snapshots.handMin', value: snapshotDebug?.handMin },
+            { label: 'snapshots.handMax', value: snapshotDebug?.handMax },
+            { label: 'snapshots.latestCreatedAt', value: snapshotDebug?.latestCreatedAt },
+            { label: 'snapshots.earliestCreatedAt', value: snapshotDebug?.earliestCreatedAt },
+            { label: 'snapshots.usedSnapshots', value: snapshotDebug?.usedSnapshots },
+            { label: 'results.count', value: snapshotDebug?.resultsCount },
+            { label: 'latestByKey.sample', value: snapshotDebug?.latestByKeySample },
+          ]}
+        />
+
         {showHistory ? (
           <div className="min-h-[300px]">
             <HandHistory 
