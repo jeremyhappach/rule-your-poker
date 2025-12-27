@@ -120,6 +120,20 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       if (p.user_id) userIds.add(p.user_id);
     });
 
+    // Also get winner usernames from game_results for players who left
+    const { data: gameResultsWithWinners } = await supabase
+      .from('game_results')
+      .select('winner_player_id, winner_username')
+      .eq('game_id', session.id);
+    
+    // Build a map of player_id -> username from game results
+    const winnerUsernameMap = new Map<string, string>();
+    gameResultsWithWinners?.forEach((gr: any) => {
+      if (gr.winner_player_id && gr.winner_username) {
+        winnerUsernameMap.set(gr.winner_player_id, gr.winner_username.trim());
+      }
+    });
+
     // Fetch profiles for usernames
     const { data: profiles } = await supabase
       .from('profiles')
@@ -152,11 +166,12 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
           is_bot: player.is_bot
         });
       } else {
-        // Player record no longer exists, try to look them up by checking if the ID exists as a user_id
-        // This is a fallback - the player left the game completely
+        // Player record no longer exists - try to get username from game_results
+        const usernameFromResults = winnerUsernameMap.get(playerId);
+        
         results.push({
           id: playerId,
-          username: 'Former Player',
+          username: usernameFromResults || 'Former Player',
           chips,
           legs: 0,
           is_bot: false
