@@ -1516,21 +1516,29 @@ export const MobileGameTable = ({
   const getPlayerCards = (playerId: string): CardType[] => {
     const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
     
-    // CRITICAL: During game_over, ALWAYS use cached cards for pot animation visibility
+    // CRITICAL FIX: ALWAYS validate handContextId before using cached cards
+    // This prevents stale cards from a previous hand being displayed (the "card caching bug")
+    const isCacheValidForCurrentHand = 
+      showdownHandContextRef.current === handContextId || 
+      !handContextId || 
+      !showdownHandContextRef.current;
+    
+    // CRITICAL: During game_over, use cached cards for pot animation visibility
     // But ONLY if the cached handContext matches current (prevents stale cards from previous hand)
     if (isInGameOverStatus) {
       const cachedCards = showdownCardsCache.current.get(playerId);
-      if (cachedCards && cachedCards.length > 0) {
-        // During game_over, trust the cache (it was validated at population time)
+      if (cachedCards && cachedCards.length > 0 && isCacheValidForCurrentHand) {
         return cachedCards;
+      }
+      // If cache is stale but we have live cards, use those
+      if (liveCards.length > 0) {
+        return liveCards;
       }
     }
     
     // CRITICAL: Once cards are cached for this round AND same hand context, ALWAYS use cache
     // This prevents flickering when isShowdownActive temporarily becomes false
-    // CRITICAL FIX: Also validate handContextId to prevent using stale cached cards
-    if (showdownRoundRef.current === currentRound && 
-        (showdownHandContextRef.current === handContextId || !handContextId)) {
+    if (showdownRoundRef.current === currentRound && isCacheValidForCurrentHand) {
       const cachedCards = showdownCardsCache.current.get(playerId);
       if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
