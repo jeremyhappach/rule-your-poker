@@ -1471,10 +1471,14 @@ export const MobileGameTable = ({
   
   // CRITICAL: Also clear cache if handContextId changed (new hand started) - prevents stale cards
   // This is the main fix for the bug where wrong cards are displayed during solo vs Chucky showdown
-  if (showdownHandContextRef.current !== null && handContextId && showdownHandContextRef.current !== handContextId && !isInGameOverStatus) {
+  if (
+    showdownHandContextRef.current !== null &&
+    showdownHandContextRef.current !== (handContextId ?? null) &&
+    !isInGameOverStatus
+  ) {
     console.log('[SHOWDOWN_CACHE] Clearing cache - handContextId changed:', {
       prev: showdownHandContextRef.current,
-      next: handContextId,
+      next: handContextId ?? null,
     });
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
@@ -1512,38 +1516,53 @@ export const MobileGameTable = ({
     }
   }
   
+  const getCardsFingerprint = (cardsToPrint: CardType[]) =>
+    cardsToPrint.map(c => `${c.rank}${c.suit}`).join('|');
+
   // Function to get cards for a player (use cache during showdown)
   const getPlayerCards = (playerId: string): CardType[] => {
     const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
-    
-    // CRITICAL FIX: ALWAYS validate handContextId before using cached cards
-    // This prevents stale cards from a previous hand being displayed (the "card caching bug")
-    const isCacheValidForCurrentHand = 
-      showdownHandContextRef.current === handContextId || 
-      !handContextId || 
-      !showdownHandContextRef.current;
-    
-    // CRITICAL: During game_over, use cached cards for pot animation visibility
-    // But ONLY if the cached handContext matches current (prevents stale cards from previous hand)
+
+    // Cache validity rules:
+    // - Prefer strict handContextId match when available
+    // - If handContextId is temporarily missing, fall back to round match (NEVER blindly trust cache)
+    const isCacheValidForCurrentHand =
+      handContextId != null
+        ? showdownHandContextRef.current === handContextId
+        : showdownRoundRef.current !== null && showdownRoundRef.current === currentRound;
+
+    const cachedCards = showdownCardsCache.current.get(playerId);
+
+    // If we have both cached + live and they differ, the cache is stale.
+    // Prefer live cards and refresh the cache so exposed/tabled cards match the actual hand.
+    if (cachedCards && cachedCards.length > 0 && liveCards.length > 0) {
+      const cachedFp = getCardsFingerprint(cachedCards);
+      const liveFp = getCardsFingerprint(liveCards);
+      if (cachedFp !== liveFp) {
+        showdownCardsCache.current.set(playerId, [...liveCards]);
+        return liveCards;
+      }
+    }
+
+    // During game_over, use cached cards for pot animation visibility
+    // But ONLY if the cache is valid for this hand/round.
     if (isInGameOverStatus) {
-      const cachedCards = showdownCardsCache.current.get(playerId);
       if (cachedCards && cachedCards.length > 0 && isCacheValidForCurrentHand) {
         return cachedCards;
       }
-      // If cache is stale but we have live cards, use those
       if (liveCards.length > 0) {
         return liveCards;
       }
     }
-    
-    // CRITICAL: Once cards are cached for this round AND same hand context, ALWAYS use cache
+
+    // Once cards are cached for this round AND same hand context, ALWAYS use cache
     // This prevents flickering when isShowdownActive temporarily becomes false
     if (showdownRoundRef.current === currentRound && isCacheValidForCurrentHand) {
-      const cachedCards = showdownCardsCache.current.get(playerId);
       if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
       }
     }
+
     return liveCards;
   };
   
