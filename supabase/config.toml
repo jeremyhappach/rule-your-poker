@@ -2,3 +2,6 @@ project_id = "ehccrxumpibuoehfsmms"
 
 [functions.enforce-deadlines]
 verify_jwt = false
+
+[functions.enforce-all-deadlines]
+verify_jwt = false
