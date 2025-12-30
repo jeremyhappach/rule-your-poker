@@ -270,13 +270,12 @@ export const WaitingForPlayersTable = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      // Immediately blur and move focus to Start Game button
+                      e.currentTarget.blur();
+                      const startBtn = document.querySelector('[data-start-game-btn]') as HTMLButtonElement;
+                      if (startBtn) startBtn.focus();
                       handleAddBot();
-                      // Move focus to Start Game button after adding bot
-                      requestAnimationFrame(() => {
-                        const startBtn = document.querySelector('[data-start-game-btn]') as HTMLButtonElement;
-                        if (startBtn) startBtn.focus();
-                      });
                     }}
                     disabled={addingBot}
                     className="border-amber-600 text-amber-300 hover:bg-amber-600/20 focus:bg-amber-600/10 focus:text-amber-300 active:bg-amber-600/20 active:text-amber-300"

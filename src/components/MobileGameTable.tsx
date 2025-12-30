@@ -2721,26 +2721,6 @@ export const MobileGameTable = ({
       </div>;
   };
   return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
-      {/* 357 Win Animation Debug Overlay */}
-      {gameType !== 'holm-game' && (
-        <DevDebugOverlay
-          title="357 Win Debug"
-          items={[
-            { label: "phase", value: threeFiveSevenWinPhase },
-            { label: "elapsed", value: `${(debugElapsedMs / 1000).toFixed(1)}s` },
-            { label: "status", value: gameStatus },
-            { label: "isGameOver", value: isGameOver },
-            { label: "winTriggerId", value: threeFiveSevenWinTriggerId?.slice(-8) ?? "null" },
-            { label: "winnerId", value: threeFiveSevenWinnerId?.slice(-6) ?? "null" },
-            { label: "potTrigger", value: potToPlayerTriggerId357?.slice(-8) ?? "null" },
-            { label: "legsTrigger", value: legsToPlayerTriggerId?.slice(-8) ?? "null" },
-            { label: "cachedLegs", value: threeFiveSevenCachedLegPositions.length },
-            { label: "potAmount", value: threeFiveSevenWinPotAmount },
-            { label: "displayedPot", value: displayedPot },
-          ]}
-          className="z-[10000]"
-        />
-      )}
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
