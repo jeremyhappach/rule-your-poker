@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface TurnSpotlightProps {
-  /** The position of the player whose turn it is */
+  /** The position of the player whose turn it is (absolute 1-7) */
   currentTurnPosition: number | null;
   /** The position of the current user (for relative slot calculation) */
   currentPlayerPosition: number | null;
@@ -37,56 +37,62 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
       return;
     }
 
-    // Determine the slot/angle to point at
-    let targetSlot: number;
-    
+    let angle: number;
+
     if (isObserver) {
-      // Observer mode: use absolute positions
-      targetSlot = currentTurnPosition;
-    } else if (currentPlayerPosition === currentTurnPosition) {
-      // Current player's turn - point to bottom center (180 degrees)
-      targetSlot = -1;
+      // OBSERVER MODE: Use absolute positions (1-7)
+      // Map absolute player positions to angles (from center, 0deg = up)
+      // Position layout on table:
+      //   1 (top-left)        7 (top-right)
+      //   2 (left)            6 (right)
+      //   3 (bottom-left)  4 (bottom-center)  5 (bottom-right)
+      const observerAngles: Record<number, number> = {
+        1: -45,   // Top-left: point up-left
+        2: -90,   // Left: point left
+        3: -135,  // Bottom-left: point down-left
+        4: 180,   // Bottom center: point down
+        5: 135,   // Bottom-right: point down-right
+        6: 90,    // Right: point right
+        7: 45,    // Top-right: point up-right
+      };
+      angle = observerAngles[currentTurnPosition] ?? 0;
+      
+      console.log('[SPOTLIGHT] Observer mode - absolute pos:', currentTurnPosition, '-> angle:', angle);
     } else {
-      // Seated player mode: calculate relative slot (0-5)
-      targetSlot = getClockwiseDistance(currentTurnPosition) - 1;
+      // SEATED PLAYER MODE: Use relative slots based on clockwise distance
+      // Current player is always at bottom center (position doesn't matter for spotlight)
+      
+      if (currentPlayerPosition === currentTurnPosition) {
+        // Current player's turn - point to bottom center
+        angle = 180;
+        console.log('[SPOTLIGHT] Seated mode - MY TURN -> angle:', angle);
+      } else {
+        // Calculate relative slot using clockwise distance from current player
+        // getClockwiseDistance returns 1-6 (1 = next seat clockwise, 6 = previous seat)
+        const distance = getClockwiseDistance(currentTurnPosition);
+        const relativeSlot = distance - 1; // Convert to 0-5 for slot index
+        
+        // Slot layout for seated players (relative to current player at bottom center):
+        //   Slot 2 (top-left)      Slot 3 (top-right)
+        //   Slot 1 (left)          Slot 4 (right)
+        //   Slot 0 (bottom-left)   [ME]   Slot 5 (bottom-right)
+        const slotAngles: Record<number, number> = {
+          0: -135,  // Bottom-left (1 seat away clockwise)
+          1: -90,   // Left (2 seats away)
+          2: -45,   // Top-left (3 seats away)
+          3: 45,    // Top-right (4 seats away)
+          4: 90,    // Right (5 seats away)
+          5: 135,   // Bottom-right (6 seats away)
+        };
+        angle = slotAngles[relativeSlot] ?? 0;
+        
+        console.log('[SPOTLIGHT] Seated mode - turnPos:', currentTurnPosition, 
+          'myPos:', currentPlayerPosition, 'distance:', distance, 
+          'slot:', relativeSlot, '-> angle:', angle);
+      }
     }
 
-    // Map slot to rotation angle (degrees from top, clockwise)
-    // The spotlight originates from center and points outward
-    const getRotationFromSlot = (slot: number): number => {
-      if (slot === -1) {
-        // Current player at bottom center
-        return 180;
-      }
-
-      if (isObserver) {
-        // Observer absolute positions (1-7)
-        const observerAngles: Record<number, number> = {
-          1: -45,   // Top-left
-          2: -90,   // Left
-          3: -135,  // Bottom-left
-          4: 180,   // Bottom center
-          5: 135,   // Bottom-right
-          6: 90,    // Right
-          7: 45,    // Top-right
-        };
-        return observerAngles[slot] ?? 0;
-      }
-
-      // Seated player relative slots (0-5, clockwise from bottom-left)
-      const slotAngles: Record<number, number> = {
-        0: -135,  // Bottom-left (1 seat clockwise)
-        1: -90,   // Middle-left (2 seats clockwise)
-        2: -45,   // Top-left (3 seats clockwise)
-        3: 45,    // Top-right (4 seats clockwise)
-        4: 90,    // Middle-right (5 seats clockwise)
-        5: 135,   // Bottom-right (6 seats clockwise)
-      };
-      return slotAngles[slot] ?? 0;
-    };
-
-    const newRotation = getRotationFromSlot(targetSlot);
-    setRotation(newRotation);
+    setRotation(angle);
     setOpacity(1);
   }, [isVisible, currentTurnPosition, currentPlayerPosition, isObserver, getClockwiseDistance]);
 
