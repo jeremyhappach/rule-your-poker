@@ -109,15 +109,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
 
   return (
     <>
-      {/* Dim overlay on the entire table to make spotlight stand out */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-[2] transition-opacity duration-500"
-        style={{
-          background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.4) 100%)',
-          opacity: opacity * 0.8,
-        }}
-      />
-      
       {/* Spotlight container */}
       <div 
         className="absolute inset-0 pointer-events-none overflow-hidden z-[3]"
@@ -135,7 +126,7 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
             transformOrigin: 'center center',
           }}
         >
-          {/* The cone/triangle shape pointing upward (rotated to target) */}
+          {/* The cone/triangle shape - narrow at center, wide at player */}
           <div
             style={{
               width: 0,
@@ -153,13 +144,13 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
                 height: '200px',
                 background: `linear-gradient(
                   to top,
-                  hsla(45, 100%, 50%, 0.35) 0%,
-                  hsla(45, 90%, 55%, 0.25) 20%,
+                  transparent 0%,
+                  hsla(45, 70%, 50%, 0.04) 20%,
                   hsla(45, 80%, 50%, 0.12) 50%,
-                  hsla(45, 70%, 50%, 0.04) 80%,
-                  transparent 100%
+                  hsla(45, 90%, 55%, 0.25) 80%,
+                  hsla(45, 100%, 50%, 0.35) 100%
                 )`,
-                clipPath: 'polygon(50% 0%, 5% 100%, 95% 100%)',
+                clipPath: 'polygon(50% 100%, 5% 0%, 95% 0%)',
                 filter: 'blur(4px)',
               }}
             />
@@ -173,12 +164,12 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
                 height: '200px',
                 background: `linear-gradient(
                   to top,
-                  hsla(45, 100%, 60%, 0.4) 0%,
-                  hsla(45, 95%, 55%, 0.3) 25%,
-                  hsla(45, 85%, 50%, 0.15) 60%,
-                  transparent 100%
+                  transparent 0%,
+                  hsla(45, 85%, 50%, 0.15) 40%,
+                  hsla(45, 95%, 55%, 0.3) 75%,
+                  hsla(45, 100%, 60%, 0.4) 100%
                 )`,
-                clipPath: 'polygon(50% 0%, 10% 100%, 90% 100%)',
+                clipPath: 'polygon(50% 100%, 10% 0%, 90% 0%)',
               }}
             />
             {/* Inner bright core */}
@@ -191,12 +182,12 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
                 height: '200px',
                 background: `linear-gradient(
                   to top,
-                  hsla(45, 100%, 70%, 0.35) 0%,
-                  hsla(45, 100%, 60%, 0.2) 35%,
-                  hsla(45, 90%, 55%, 0.08) 70%,
-                  transparent 100%
+                  transparent 0%,
+                  hsla(45, 90%, 55%, 0.08) 30%,
+                  hsla(45, 100%, 60%, 0.2) 65%,
+                  hsla(45, 100%, 70%, 0.35) 100%
                 )`,
-                clipPath: 'polygon(50% 0%, 15% 100%, 85% 100%)',
+                clipPath: 'polygon(50% 100%, 15% 0%, 85% 0%)',
                 animation: 'spotlightPulse 2s ease-in-out infinite',
               }}
             />
