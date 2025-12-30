@@ -16,8 +16,8 @@ interface TurnSpotlightProps {
 }
 
 /**
- * A subtle animated spotlight effect that highlights whose turn it is in Holm games.
- * Draws attention from the pot to the current player's chip stack.
+ * A triangular spotlight beam that emanates from the table center
+ * and points toward the current turn player's chip stack.
  */
 export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   currentTurnPosition,
@@ -27,151 +27,152 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   containerRef,
   isVisible,
 }) => {
-  const [spotlightStyle, setSpotlightStyle] = useState<React.CSSProperties>({});
-  const animationRef = useRef<number | null>(null);
+  const [rotation, setRotation] = useState<number>(0);
+  const [opacity, setOpacity] = useState<number>(0);
 
-  // Calculate the position for the spotlight based on who has the turn
+  // Calculate the rotation angle to point at the target player
   useEffect(() => {
-    if (!isVisible || currentTurnPosition === null || !containerRef.current) {
-      setSpotlightStyle({ opacity: 0 });
+    if (!isVisible || currentTurnPosition === null) {
+      setOpacity(0);
       return;
     }
 
-    // Determine the slot/position to highlight
+    // Determine the slot/angle to point at
     let targetSlot: number;
     
     if (isObserver) {
       // Observer mode: use absolute positions
       targetSlot = currentTurnPosition;
     } else if (currentPlayerPosition === currentTurnPosition) {
-      // Current player's turn - highlight bottom center
-      targetSlot = -1; // Special value for current player
+      // Current player's turn - point to bottom center (180 degrees)
+      targetSlot = -1;
     } else {
-      // Seated player mode: calculate relative slot
+      // Seated player mode: calculate relative slot (0-5)
       targetSlot = getClockwiseDistance(currentTurnPosition) - 1;
     }
 
-    // Map slot to CSS positioning
-    const getPositionFromSlot = (slot: number): React.CSSProperties => {
+    // Map slot to rotation angle (degrees from top, clockwise)
+    // The spotlight originates from center and points outward
+    const getRotationFromSlot = (slot: number): number => {
       if (slot === -1) {
-        // Current player - bottom center
-        return {
-          bottom: '8px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-        };
+        // Current player at bottom center
+        return 180;
       }
 
       if (isObserver) {
-        // Observer absolute positions
-        const observerPositions: Record<number, React.CSSProperties> = {
-          1: { top: '24px', left: '60px' },
-          2: { top: '45%', left: '20px' },
-          3: { bottom: '24px', left: '60px' },
-          4: { bottom: '8px', left: '50%', transform: 'translateX(-50%)' },
-          5: { bottom: '24px', right: '60px' },
-          6: { top: '45%', right: '20px' },
-          7: { top: '24px', right: '60px' },
+        // Observer absolute positions (1-7)
+        const observerAngles: Record<number, number> = {
+          1: -45,   // Top-left
+          2: -90,   // Left
+          3: -135,  // Bottom-left
+          4: 180,   // Bottom center
+          5: 135,   // Bottom-right
+          6: 90,    // Right
+          7: 45,    // Top-right
         };
-        return observerPositions[slot] || observerPositions[1];
+        return observerAngles[slot] ?? 0;
       }
 
-      // Seated player relative slots
-      const slotPositions: Record<number, React.CSSProperties> = {
-        0: { bottom: '24px', left: '60px' },      // Bottom-left
-        1: { top: '45%', left: '20px' },          // Middle-left
-        2: { top: '24px', left: '60px' },         // Top-left
-        3: { top: '24px', right: '60px' },        // Top-right
-        4: { top: '45%', right: '20px' },         // Middle-right
-        5: { bottom: '24px', right: '60px' },     // Bottom-right
+      // Seated player relative slots (0-5, clockwise from bottom-left)
+      const slotAngles: Record<number, number> = {
+        0: -135,  // Bottom-left (1 seat clockwise)
+        1: -90,   // Middle-left (2 seats clockwise)
+        2: -45,   // Top-left (3 seats clockwise)
+        3: 45,    // Top-right (4 seats clockwise)
+        4: 90,    // Middle-right (5 seats clockwise)
+        5: 135,   // Bottom-right (6 seats clockwise)
       };
-      return slotPositions[slot] || slotPositions[0];
+      return slotAngles[slot] ?? 0;
     };
 
-    const position = getPositionFromSlot(targetSlot);
-    
-    setSpotlightStyle({
-      ...position,
-      opacity: 1,
-    });
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [isVisible, currentTurnPosition, currentPlayerPosition, isObserver, getClockwiseDistance, containerRef]);
+    const newRotation = getRotationFromSlot(targetSlot);
+    setRotation(newRotation);
+    setOpacity(1);
+  }, [isVisible, currentTurnPosition, currentPlayerPosition, isObserver, getClockwiseDistance]);
 
   if (!isVisible || currentTurnPosition === null) {
     return null;
   }
 
   return (
-    <>
-      {/* Pulsing glow effect at the turn player's position */}
+    <div 
+      className="absolute inset-0 pointer-events-none overflow-hidden z-[3]"
+      style={{
+        opacity,
+        transition: 'opacity 0.4s ease-out',
+      }}
+    >
+      {/* Triangular spotlight beam from center */}
       <div
-        className="absolute z-[5] pointer-events-none transition-all duration-500 ease-out"
-        style={spotlightStyle}
+        className="absolute left-1/2 top-1/2"
+        style={{
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+          transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          transformOrigin: 'center center',
+        }}
       >
-        {/* Outer glow ring */}
-        <div 
-          className="absolute w-20 h-20 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        {/* The cone/triangle shape pointing upward (will be rotated to target) */}
+        <div
           style={{
-            background: 'radial-gradient(circle, hsla(45, 100%, 50%, 0.25) 0%, hsla(45, 100%, 50%, 0.1) 40%, transparent 70%)',
-            animation: 'turnSpotlightPulse 2s ease-in-out infinite',
+            width: 0,
+            height: 0,
+            borderLeft: '50px solid transparent',
+            borderRight: '50px solid transparent',
+            borderBottom: '180px solid transparent',
+            position: 'relative',
           }}
-        />
-        {/* Inner bright ring */}
-        <div 
-          className="absolute w-14 h-14 -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{
-            background: 'radial-gradient(circle, hsla(45, 100%, 60%, 0.3) 0%, hsla(45, 100%, 50%, 0.15) 50%, transparent 70%)',
-            animation: 'turnSpotlightPulse 2s ease-in-out infinite 0.5s',
-          }}
-        />
+        >
+          {/* Gradient overlay for the spotlight effect */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '-50px',
+              bottom: '-180px',
+              width: '100px',
+              height: '180px',
+              background: `linear-gradient(
+                to top,
+                hsla(45, 80%, 60%, 0.25) 0%,
+                hsla(45, 70%, 55%, 0.18) 30%,
+                hsla(45, 60%, 50%, 0.08) 70%,
+                transparent 100%
+              )`,
+              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+              filter: 'blur(2px)',
+            }}
+          />
+          {/* Brighter inner beam */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '-30px',
+              bottom: '-180px',
+              width: '60px',
+              height: '180px',
+              background: `linear-gradient(
+                to top,
+                hsla(45, 90%, 65%, 0.2) 0%,
+                hsla(45, 80%, 60%, 0.12) 40%,
+                hsla(45, 70%, 55%, 0.04) 80%,
+                transparent 100%
+              )`,
+              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
+              animation: 'spotlightPulse 2.5s ease-in-out infinite',
+            }}
+          />
+        </div>
       </div>
 
-      {/* Animated beam from pot to player */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none z-[4]"
-        style={{ opacity: isVisible ? 1 : 0, transition: 'opacity 0.5s ease-out' }}
-      >
-        <defs>
-          <linearGradient id="spotlightBeam" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsla(45, 100%, 50%, 0)" />
-            <stop offset="30%" stopColor="hsla(45, 100%, 50%, 0.3)">
-              <animate
-                attributeName="offset"
-                values="0%;70%;0%"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </stop>
-            <stop offset="60%" stopColor="hsla(45, 100%, 50%, 0.15)">
-              <animate
-                attributeName="offset"
-                values="30%;100%;30%"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </stop>
-            <stop offset="100%" stopColor="hsla(45, 100%, 50%, 0)" />
-          </linearGradient>
-        </defs>
-      </svg>
-
       <style>{`
-        @keyframes turnSpotlightPulse {
+        @keyframes spotlightPulse {
           0%, 100% {
-            transform: translate(-50%, -50%) scale(1);
-            opacity: 0.6;
+            opacity: 0.8;
           }
           50% {
-            transform: translate(-50%, -50%) scale(1.15);
             opacity: 1;
           }
         }
       `}</style>
-    </>
+    </div>
   );
 };
