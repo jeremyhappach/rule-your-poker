@@ -5,7 +5,6 @@ import { PlayerHand } from "./PlayerHand";
 import { ChipStack } from "./ChipStack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
-import { DevDebugOverlay } from "./DevDebugOverlay";
 import { ChuckyHand } from "./ChuckyHand";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import { ChatBubble } from "./ChatBubble";

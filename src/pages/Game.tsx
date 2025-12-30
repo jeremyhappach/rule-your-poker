@@ -3948,7 +3948,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }));
       setCachedLegPositions(positions);
       cachedLegPositionsRef.current = positions;
-      console.log('[357 CACHE] Cached leg positions:', positions);
     }
   }, [game?.pot, game?.game_type, playerLegsString]);
   
@@ -3965,15 +3964,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     if (!isLegWinMessage && !isGameWinMessage) return;
     
-    // DEBUG: Log what we see at detection time
-    console.log('[357 WIN DEBUG] Detection triggered:', {
-      message: resultMessage,
-      isLegWin: isLegWinMessage,
-      isGameWin: isGameWinMessage,
-      playersLegs: players.map(p => ({ name: p.profiles?.username, legs: p.legs })),
-      gamePot: game.pot,
-      cachedPot: cachedPotFor357WinRef.current
-    });
     
     // Prevent duplicate processing for the same backend result message within this game.
     // IMPORTANT: We MUST NOT clear this marker until the game actually transitions away,
@@ -4021,13 +4011,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // For game win messages, we already know it's the final leg
     const legsToWin = game?.legs_to_win || 3;
 
-    console.log('[357 WIN DEBUG] Winner check:', {
-      winnerName,
-      winnerLegs: winnerPlayer.legs,
-      legsToWin,
-      isLegWinMessage,
-      willProceed: isGameWinMessage || winnerPlayer.legs >= legsToWin
-    });
 
     if (isLegWinMessage && winnerPlayer.legs < legsToWin) {
       console.log('[357 WIN] Not final leg, player has', winnerPlayer.legs, 'of', legsToWin);
