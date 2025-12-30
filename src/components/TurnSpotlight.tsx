@@ -107,8 +107,8 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     return null;
   }
 
-  // Calculate the angle span for the wider beam (35 degrees on each side = 70 degree cone)
-  const beamHalfAngle = 35;
+  // Calculate the angle span for the wider beam (40 degrees on each side = 80 degree cone)
+  const beamHalfAngle = 40;
 
   return (
     <>
@@ -126,7 +126,7 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
         <div
           className="absolute inset-0"
           style={{
-            background: 'rgba(0, 0, 0, 0.45)',
+            background: 'rgba(0, 0, 0, 0.55)',
             maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
             WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
             transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -158,15 +158,15 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
               position: 'relative',
             }}
           >
-            {/* Wider solid beam */}
+            {/* Wider solid beam - extends to table edge */}
             <div
               style={{
                 position: 'absolute',
-                left: '-90px',
+                left: '-120px',
                 bottom: '0px',
-                width: '180px',
-                height: '200px',
-                background: 'hsla(45, 80%, 55%, 0.2)',
+                width: '240px',
+                height: '300px',
+                background: 'hsla(45, 80%, 55%, 0.25)',
                 clipPath: 'polygon(50% 100%, 5% 0%, 95% 0%)',
               }}
             />
