@@ -242,15 +242,19 @@ serve(async (req) => {
               await supabase
                 .from('games')
                 .update({
-                  status: 'game_over',
-                  pending_session_end: true,
+                  // Terminal state: do NOT allow the session to continue when the only human dealer timed out
+                  status: 'session_ended',
+                  pending_session_end: false,
                   session_ended_at: nowIso,
+                  game_over_at: nowIso,
+                  // Clear any config/ante deadlines so clients can't "resume" countdowns
                   config_deadline: null,
+                  ante_decision_deadline: null,
                   config_complete: false,
                 })
                 .eq('id', gameId);
 
-              actionsTaken.push('Config timeout: No active humans, ended session (has history)');
+              actionsTaken.push('Config timeout: Only human dealer; session ended (has history)');
             }
 
             return new Response(JSON.stringify({
