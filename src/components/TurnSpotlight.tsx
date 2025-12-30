@@ -18,6 +18,7 @@ interface TurnSpotlightProps {
 /**
  * A triangular spotlight beam that emanates from the table center
  * and points toward the current turn player's chip stack.
+ * Also dims the rest of the table to draw attention to the active player.
  */
 export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   currentTurnPosition,
@@ -32,43 +33,49 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
 
   // Calculate the rotation angle to point at the target player
   useEffect(() => {
-    if (!isVisible || currentTurnPosition === null) {
+    // Must have valid turn position and visibility
+    if (!isVisible || currentTurnPosition === null || currentTurnPosition === undefined) {
+      console.log('[SPOTLIGHT] Hidden - isVisible:', isVisible, 'turnPos:', currentTurnPosition);
       setOpacity(0);
       return;
     }
 
     let angle: number;
 
+    console.log('[SPOTLIGHT] Calculating angle - isObserver:', isObserver, 
+      'turnPos:', currentTurnPosition, 'myPos:', currentPlayerPosition);
+
     if (isObserver) {
       // OBSERVER MODE: Use absolute positions (1-7)
-      // Map absolute player positions to angles (from center, 0deg = up)
-      // Position layout on table:
-      //   1 (top-left)        7 (top-right)
-      //   2 (left)            6 (right)
-      //   3 (bottom-left)  4 (bottom-center)  5 (bottom-right)
       const observerAngles: Record<number, number> = {
-        1: -45,   // Top-left: point up-left
-        2: -90,   // Left: point left
-        3: -135,  // Bottom-left: point down-left
-        4: 180,   // Bottom center: point down
-        5: 135,   // Bottom-right: point down-right
-        6: 90,    // Right: point right
-        7: 45,    // Top-right: point up-right
+        1: -45,   // Top-left
+        2: -90,   // Left
+        3: -135,  // Bottom-left
+        4: 180,   // Bottom center
+        5: 135,   // Bottom-right
+        6: 90,    // Right
+        7: 45,    // Top-right
       };
       angle = observerAngles[currentTurnPosition] ?? 0;
-      
-      console.log('[SPOTLIGHT] Observer mode - absolute pos:', currentTurnPosition, '-> angle:', angle);
+      console.log('[SPOTLIGHT] Observer mode - pos:', currentTurnPosition, '-> angle:', angle);
     } else {
       // SEATED PLAYER MODE: Use relative slots based on clockwise distance
-      // Current player is always at bottom center (position doesn't matter for spotlight)
+      // Require valid currentPlayerPosition for seated mode
+      if (currentPlayerPosition === null || currentPlayerPosition === undefined) {
+        console.log('[SPOTLIGHT] Seated mode but no player position, hiding');
+        setOpacity(0);
+        return;
+      }
+
+      // Check if it's the current player's turn (comparing absolute positions)
+      const isMyTurn = currentPlayerPosition === currentTurnPosition;
       
-      if (currentPlayerPosition === currentTurnPosition) {
+      if (isMyTurn) {
         // Current player's turn - point to bottom center
         angle = 180;
-        console.log('[SPOTLIGHT] Seated mode - MY TURN -> angle:', angle);
+        console.log('[SPOTLIGHT] Seated mode - MY TURN (pos', currentPlayerPosition, ') -> angle:', angle);
       } else {
         // Calculate relative slot using clockwise distance from current player
-        // getClockwiseDistance returns 1-6 (1 = next seat clockwise, 6 = previous seat)
         const distance = getClockwiseDistance(currentTurnPosition);
         const relativeSlot = distance - 1; // Convert to 0-5 for slot index
         
@@ -101,84 +108,112 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   }
 
   return (
-    <div 
-      className="absolute inset-0 pointer-events-none overflow-hidden z-[3]"
-      style={{
-        opacity,
-        transition: 'opacity 0.4s ease-out',
-      }}
-    >
-      {/* Triangular spotlight beam from center */}
-      <div
-        className="absolute left-1/2 top-1/2"
+    <>
+      {/* Dim overlay on the entire table to make spotlight stand out */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-[2] transition-opacity duration-500"
         style={{
-          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-          transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          transformOrigin: 'center center',
+          background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.4) 100%)',
+          opacity: opacity * 0.8,
+        }}
+      />
+      
+      {/* Spotlight container */}
+      <div 
+        className="absolute inset-0 pointer-events-none overflow-hidden z-[3]"
+        style={{
+          opacity,
+          transition: 'opacity 0.4s ease-out',
         }}
       >
-        {/* The cone/triangle shape pointing upward (will be rotated to target) */}
+        {/* Triangular spotlight beam from center */}
         <div
+          className="absolute left-1/2 top-1/2"
           style={{
-            width: 0,
-            height: 0,
-            borderLeft: '50px solid transparent',
-            borderRight: '50px solid transparent',
-            borderBottom: '180px solid transparent',
-            position: 'relative',
+            transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+            transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            transformOrigin: 'center center',
           }}
         >
-          {/* Gradient overlay for the spotlight effect */}
+          {/* The cone/triangle shape pointing upward (rotated to target) */}
           <div
             style={{
-              position: 'absolute',
-              left: '-50px',
-              bottom: '-180px',
-              width: '100px',
-              height: '180px',
-              background: `linear-gradient(
-                to top,
-                hsla(45, 80%, 60%, 0.25) 0%,
-                hsla(45, 70%, 55%, 0.18) 30%,
-                hsla(45, 60%, 50%, 0.08) 70%,
-                transparent 100%
-              )`,
-              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-              filter: 'blur(2px)',
+              width: 0,
+              height: 0,
+              position: 'relative',
             }}
-          />
-          {/* Brighter inner beam */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '-30px',
-              bottom: '-180px',
-              width: '60px',
-              height: '180px',
-              background: `linear-gradient(
-                to top,
-                hsla(45, 90%, 65%, 0.2) 0%,
-                hsla(45, 80%, 60%, 0.12) 40%,
-                hsla(45, 70%, 55%, 0.04) 80%,
-                transparent 100%
-              )`,
-              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-              animation: 'spotlightPulse 2.5s ease-in-out infinite',
-            }}
-          />
+          >
+            {/* Outer glow beam - wider and more diffuse */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '-70px',
+                bottom: '0px',
+                width: '140px',
+                height: '200px',
+                background: `linear-gradient(
+                  to top,
+                  hsla(45, 100%, 50%, 0.35) 0%,
+                  hsla(45, 90%, 55%, 0.25) 20%,
+                  hsla(45, 80%, 50%, 0.12) 50%,
+                  hsla(45, 70%, 50%, 0.04) 80%,
+                  transparent 100%
+                )`,
+                clipPath: 'polygon(50% 0%, 5% 100%, 95% 100%)',
+                filter: 'blur(4px)',
+              }}
+            />
+            {/* Main beam - brighter center */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '-50px',
+                bottom: '0px',
+                width: '100px',
+                height: '200px',
+                background: `linear-gradient(
+                  to top,
+                  hsla(45, 100%, 60%, 0.4) 0%,
+                  hsla(45, 95%, 55%, 0.3) 25%,
+                  hsla(45, 85%, 50%, 0.15) 60%,
+                  transparent 100%
+                )`,
+                clipPath: 'polygon(50% 0%, 10% 100%, 90% 100%)',
+              }}
+            />
+            {/* Inner bright core */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '-30px',
+                bottom: '0px',
+                width: '60px',
+                height: '200px',
+                background: `linear-gradient(
+                  to top,
+                  hsla(45, 100%, 70%, 0.35) 0%,
+                  hsla(45, 100%, 60%, 0.2) 35%,
+                  hsla(45, 90%, 55%, 0.08) 70%,
+                  transparent 100%
+                )`,
+                clipPath: 'polygon(50% 0%, 15% 100%, 85% 100%)',
+                animation: 'spotlightPulse 2s ease-in-out infinite',
+              }}
+            />
+          </div>
         </div>
       </div>
 
       <style>{`
         @keyframes spotlightPulse {
           0%, 100% {
-            opacity: 0.8;
+            opacity: 0.85;
           }
           50% {
             opacity: 1;
           }
         }
       `}</style>
-    </div>
+    </>
   );
 };
