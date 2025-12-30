@@ -271,11 +271,15 @@ export const WaitingForPlayersTable = ({
                     variant="outline"
                     size="sm"
                     onClick={(e) => {
-                      e.currentTarget.blur(); // Prevent focus styling issues
+                      // Immediately blur to prevent stuck focus state
+                      const btn = e.currentTarget;
+                      btn.blur();
+                      // Also blur after a tiny delay in case React re-renders
+                      requestAnimationFrame(() => btn.blur());
                       handleAddBot();
                     }}
                     disabled={addingBot}
-                    className="border-amber-600 text-amber-300 hover:bg-amber-600/20 focus:bg-transparent focus:text-amber-300"
+                    className="border-amber-600 text-amber-300 hover:bg-amber-600/20 focus:bg-amber-600/10 focus:text-amber-300 active:bg-amber-600/20 active:text-amber-300"
                   >
                     <Bot className="w-4 h-4 mr-2" />
                     {addingBot ? 'Adding...' : 'Add Bot'}
