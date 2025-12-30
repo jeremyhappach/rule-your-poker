@@ -2544,7 +2544,7 @@ export const MobileGameTable = ({
           {isTheirTurn && playerDecision !== 'stay' && (
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
           )}
-          <div className="relative w-12 h-12">
+          <div className="relative w-12 h-12" data-chip-center={player.position}>
             {/* Background chip circle - dimmed when folded */}
             <div className={`
               absolute inset-0 w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50

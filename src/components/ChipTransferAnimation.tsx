@@ -107,7 +107,38 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     }
   };
 
+  // Try to get chip center from DOM first (most accurate)
+  const getChipCenterFromDom = (position: number): { x: number; y: number } | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+
+    // First try to find the actual chip circle element (more accurate)
+    let el = container.querySelector(
+      `[data-chip-center="${position}"]`
+    ) as HTMLElement | null;
+    
+    // Fallback to the wrapper if chip circle not found
+    if (!el) {
+      el = container.querySelector(
+        `[data-seat-chip-position="${position}"]`
+      ) as HTMLElement | null;
+    }
+    if (!el) return null;
+
+    const containerRect = container.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+
+    return {
+      x: r.left - containerRect.left + r.width / 2,
+      y: r.top - containerRect.top + r.height / 2,
+    };
+  };
+
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+    // Prefer DOM-based targeting for accuracy
+    const domCoords = getChipCenterFromDom(position);
+    if (domCoords) return domCoords;
+
     const isObserver = currentPlayerPosition === null;
     
     if (isObserver) {

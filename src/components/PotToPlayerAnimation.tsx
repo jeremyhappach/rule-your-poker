@@ -95,9 +95,17 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     const container = containerRef.current;
     if (!container) return null;
 
-    const el = container.querySelector(
-      `[data-seat-chip-position="${position}"]`
+    // First try to find the actual chip circle element (more accurate)
+    let el = container.querySelector(
+      `[data-chip-center="${position}"]`
     ) as HTMLElement | null;
+    
+    // Fallback to the wrapper if chip circle not found
+    if (!el) {
+      el = container.querySelector(
+        `[data-seat-chip-position="${position}"]`
+      ) as HTMLElement | null;
+    }
     if (!el) return null;
 
     const containerRect = container.getBoundingClientRect();
@@ -179,8 +187,11 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     const yPercent = gameTypeRef.current === 'holm-game' ? 0.38 : 0.5;
     const potCoords = { x: rect.width * 0.5, y: rect.height * yPercent };
 
-    // Try DOM first for winner position
-    const el = container.querySelector(`[data-seat-chip-position="${winnerPositionRef.current}"]`) as HTMLElement | null;
+    // Try DOM first for winner position - prefer actual chip circle element
+    let el = container.querySelector(`[data-chip-center="${winnerPositionRef.current}"]`) as HTMLElement | null;
+    if (!el) {
+      el = container.querySelector(`[data-seat-chip-position="${winnerPositionRef.current}"]`) as HTMLElement | null;
+    }
     let winnerCoords: { x: number; y: number };
     if (el) {
       const containerRect = container.getBoundingClientRect();
