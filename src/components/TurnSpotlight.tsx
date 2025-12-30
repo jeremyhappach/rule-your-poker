@@ -109,15 +109,26 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
 
   return (
     <>
-      {/* Spotlight container */}
+      {/* Dim overlay with spotlight cutout using CSS mask */}
       <div 
-        className="absolute inset-0 pointer-events-none overflow-hidden z-[3]"
+        className="absolute inset-0 pointer-events-none z-[3]"
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
         }}
       >
-        {/* Triangular spotlight beam from center */}
+        {/* Dark overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'rgba(0, 0, 0, 0.5)',
+            maskImage: `conic-gradient(from ${rotation - 25}deg at 50% 50%, transparent 0deg, transparent 50deg, black 50deg, black 360deg)`,
+            WebkitMaskImage: `conic-gradient(from ${rotation - 25}deg at 50% 50%, transparent 0deg, transparent 50deg, black 50deg, black 360deg)`,
+            transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+        
+        {/* Solid spotlight beam */}
         <div
           className="absolute left-1/2 top-1/2"
           style={{
@@ -126,7 +137,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
             transformOrigin: 'center center',
           }}
         >
-          {/* The cone/triangle shape - narrow at center, wide at player */}
           <div
             style={{
               width: 0,
@@ -134,77 +144,21 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
               position: 'relative',
             }}
           >
-            {/* Outer glow beam - wider and more diffuse */}
+            {/* Solid beam - no gradient */}
             <div
               style={{
                 position: 'absolute',
-                left: '-70px',
+                left: '-60px',
                 bottom: '0px',
-                width: '140px',
+                width: '120px',
                 height: '200px',
-                background: `linear-gradient(
-                  to top,
-                  transparent 0%,
-                  hsla(45, 70%, 50%, 0.04) 20%,
-                  hsla(45, 80%, 50%, 0.12) 50%,
-                  hsla(45, 90%, 55%, 0.25) 80%,
-                  hsla(45, 100%, 50%, 0.35) 100%
-                )`,
-                clipPath: 'polygon(50% 100%, 5% 0%, 95% 0%)',
-                filter: 'blur(4px)',
-              }}
-            />
-            {/* Main beam - brighter center */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '-50px',
-                bottom: '0px',
-                width: '100px',
-                height: '200px',
-                background: `linear-gradient(
-                  to top,
-                  transparent 0%,
-                  hsla(45, 85%, 50%, 0.15) 40%,
-                  hsla(45, 95%, 55%, 0.3) 75%,
-                  hsla(45, 100%, 60%, 0.4) 100%
-                )`,
+                background: 'hsla(45, 80%, 55%, 0.25)',
                 clipPath: 'polygon(50% 100%, 10% 0%, 90% 0%)',
-              }}
-            />
-            {/* Inner bright core */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '-30px',
-                bottom: '0px',
-                width: '60px',
-                height: '200px',
-                background: `linear-gradient(
-                  to top,
-                  transparent 0%,
-                  hsla(45, 90%, 55%, 0.08) 30%,
-                  hsla(45, 100%, 60%, 0.2) 65%,
-                  hsla(45, 100%, 70%, 0.35) 100%
-                )`,
-                clipPath: 'polygon(50% 100%, 15% 0%, 85% 0%)',
-                animation: 'spotlightPulse 2s ease-in-out infinite',
               }}
             />
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spotlightPulse {
-          0%, 100% {
-            opacity: 0.85;
-          }
-          50% {
-            opacity: 1;
-          }
-        }
-      `}</style>
     </>
   );
 };
