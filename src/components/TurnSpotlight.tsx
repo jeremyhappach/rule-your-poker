@@ -107,28 +107,42 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     return null;
   }
 
+  // Calculate the angle span for the wider beam (35 degrees on each side = 70 degree cone)
+  const beamHalfAngle = 35;
+
   return (
     <>
-      {/* Dim overlay with spotlight cutout using CSS mask */}
+      {/* Dim overlay with spotlight cutout - clipped to ellipse table area */}
       <div 
         className="absolute inset-0 pointer-events-none z-[3]"
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
+          // Clip to ellipse shape matching the table felt
+          clipPath: 'ellipse(48% 42% at 50% 50%)',
         }}
       >
-        {/* Dark overlay */}
+        {/* Dark overlay with cone cutout */}
         <div
           className="absolute inset-0"
           style={{
-            background: 'rgba(0, 0, 0, 0.5)',
-            maskImage: `conic-gradient(from ${rotation - 25}deg at 50% 50%, transparent 0deg, transparent 50deg, black 50deg, black 360deg)`,
-            WebkitMaskImage: `conic-gradient(from ${rotation - 25}deg at 50% 50%, transparent 0deg, transparent 50deg, black 50deg, black 360deg)`,
+            background: 'rgba(0, 0, 0, 0.45)',
+            maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
+            WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
             transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
-        
-        {/* Solid spotlight beam */}
+      </div>
+      
+      {/* Solid spotlight beam - also clipped to table */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-[3]"
+        style={{
+          opacity,
+          transition: 'opacity 0.4s ease-out',
+          clipPath: 'ellipse(48% 42% at 50% 50%)',
+        }}
+      >
         <div
           className="absolute left-1/2 top-1/2"
           style={{
@@ -144,16 +158,16 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
               position: 'relative',
             }}
           >
-            {/* Solid beam - no gradient */}
+            {/* Wider solid beam */}
             <div
               style={{
                 position: 'absolute',
-                left: '-60px',
+                left: '-90px',
                 bottom: '0px',
-                width: '120px',
+                width: '180px',
                 height: '200px',
-                background: 'hsla(45, 80%, 55%, 0.25)',
-                clipPath: 'polygon(50% 100%, 10% 0%, 90% 0%)',
+                background: 'hsla(45, 80%, 55%, 0.2)',
+                clipPath: 'polygon(50% 100%, 5% 0%, 95% 0%)',
               }}
             />
           </div>
