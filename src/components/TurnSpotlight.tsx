@@ -122,56 +122,16 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
           clipPath: 'ellipse(50% 50% at 50% 50%)',
         }}
       >
-        {/* Dark overlay with cone cutout */}
+        {/* Dark overlay with cone cutout - the undimmed area IS the spotlight */}
         <div
           className="absolute inset-0"
           style={{
-            background: 'rgba(0, 0, 0, 0.7)',
+            background: 'rgba(0, 0, 0, 0.5)',
             maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
             WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
             transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
-      </div>
-      
-      {/* Solid spotlight beam - also clipped to table */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-[100]"
-        style={{
-          opacity,
-          transition: 'opacity 0.4s ease-out',
-          clipPath: 'ellipse(50% 50% at 50% 50%)',
-        }}
-      >
-        <div
-          className="absolute left-1/2 top-1/2"
-          style={{
-            transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
-            transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-            transformOrigin: 'center center',
-          }}
-        >
-          <div
-            style={{
-              width: 0,
-              height: 0,
-              position: 'relative',
-            }}
-          >
-            {/* Wider solid beam - extends to table edge */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '-150px',
-                bottom: '0px',
-                width: '300px',
-                height: '400px',
-                background: 'hsla(45, 80%, 55%, 0.25)',
-                clipPath: 'polygon(50% 100%, 5% 0%, 95% 0%)',
-              }}
-            />
-          </div>
-        </div>
       </div>
     </>
   );
