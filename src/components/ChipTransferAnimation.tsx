@@ -39,6 +39,7 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
   const lockedAmountRef = useRef<number>(amount);
   const lastTriggerIdRef = useRef<string | null>(null);
   const animIdRef = useRef(0);
+  const chipCenterCacheRef = useRef<Record<number, { xPct: number; yPct: number }>>({});
 
   // Get the CENTER of the chip stack at each slot position
   // ChipStack is w-10 h-10 (40x40px), so we need to find the center of that circle
@@ -107,6 +108,15 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     }
   };
 
+  const getCachedChipCenter = (position: number, rect: DOMRect): { x: number; y: number } | null => {
+    const cached = chipCenterCacheRef.current[position];
+    if (!cached) return null;
+    return {
+      x: cached.xPct * rect.width,
+      y: cached.yPct * rect.height,
+    };
+  };
+
   // Try to get chip center from DOM first (most accurate)
   const getChipCenterFromDom = (position: number): { x: number; y: number } | null => {
     const container = containerRef.current;
@@ -116,7 +126,7 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     let el = container.querySelector(
       `[data-chip-center="${position}"]`
     ) as HTMLElement | null;
-    
+
     // Fallback to the wrapper if chip circle not found
     if (!el) {
       el = container.querySelector(
@@ -128,10 +138,19 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     const containerRect = container.getBoundingClientRect();
     const r = el.getBoundingClientRect();
 
-    return {
+    const coords = {
       x: r.left - containerRect.left + r.width / 2,
       y: r.top - containerRect.top + r.height / 2,
     };
+
+    if (containerRect.width > 0 && containerRect.height > 0) {
+      chipCenterCacheRef.current[position] = {
+        xPct: coords.x / containerRect.width,
+        yPct: coords.y / containerRect.height,
+      };
+    }
+
+    return coords;
   };
 
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
@@ -139,8 +158,12 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     const domCoords = getChipCenterFromDom(position);
     if (domCoords) return domCoords;
 
+    // Use last-known DOM center if chip is temporarily not in DOM (e.g. showdown layout)
+    const cached = getCachedChipCenter(position, rect);
+    if (cached) return cached;
+
     const isObserver = currentPlayerPosition === null;
-    
+
     if (isObserver) {
       // Observer: use absolute positions
       return getAbsolutePositionCoords(position, rect);

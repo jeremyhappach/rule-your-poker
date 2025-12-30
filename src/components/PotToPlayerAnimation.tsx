@@ -29,6 +29,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const lastTriggerIdRef = useRef<string | null>(null);
   const endTimeoutRef = useRef<number | null>(null);
   const clearTimeoutRef = useRef<number | null>(null);
+  const chipCenterCacheRef = useRef<Record<number, { xPct: number; yPct: number }>>({});
 
   // IMPORTANT: parent often passes inline callbacks which change identity on re-render.
   // If we include callbacks in the animation effect deps, React will run cleanup on re-render
@@ -91,6 +92,15 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     return positions[position] || { top: 50, left: 50 };
   };
 
+  const getCachedChipCenter = (position: number, rect: DOMRect): { x: number; y: number } | null => {
+    const cached = chipCenterCacheRef.current[position];
+    if (!cached) return null;
+    return {
+      x: cached.xPct * rect.width,
+      y: cached.yPct * rect.height,
+    };
+  };
+
   const getChipCenterFromDom = (position: number): { x: number; y: number } | null => {
     const container = containerRef.current;
     if (!container) return null;
@@ -99,7 +109,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     let el = container.querySelector(
       `[data-chip-center="${position}"]`
     ) as HTMLElement | null;
-    
+
     // Fallback to the wrapper if chip circle not found
     if (!el) {
       el = container.querySelector(
@@ -111,16 +121,30 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     const containerRect = container.getBoundingClientRect();
     const r = el.getBoundingClientRect();
 
-    return {
+    const coords = {
       x: r.left - containerRect.left + r.width / 2,
       y: r.top - containerRect.top + r.height / 2,
     };
+
+    // Cache as % so we still have a good target if the chip DOM is temporarily hidden.
+    if (containerRect.width > 0 && containerRect.height > 0) {
+      chipCenterCacheRef.current[position] = {
+        xPct: coords.x / containerRect.width,
+        yPct: coords.y / containerRect.height,
+      };
+    }
+
+    return coords;
   };
 
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
     // Prefer real DOM-measured chipstack center when available (more accurate than % mapping).
     const dom = getChipCenterFromDom(position);
     if (dom) return dom;
+
+    // Use last-known DOM center if the chip stack is currently not in the DOM (e.g. showdown layout).
+    const cached = getCachedChipCenter(position, rect);
+    if (cached) return cached;
 
     const isObserver = currentPlayerPosition === null;
 
@@ -187,39 +211,41 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     const yPercent = gameTypeRef.current === 'holm-game' ? 0.38 : 0.5;
     const potCoords = { x: rect.width * 0.5, y: rect.height * yPercent };
 
-    // Try DOM first for winner position - prefer actual chip circle element
-    let el = container.querySelector(`[data-chip-center="${winnerPositionRef.current}"]`) as HTMLElement | null;
-    if (!el) {
-      el = container.querySelector(`[data-seat-chip-position="${winnerPositionRef.current}"]`) as HTMLElement | null;
-    }
+    // Winner target
     let winnerCoords: { x: number; y: number };
-    if (el) {
-      const containerRect = container.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
-      winnerCoords = { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top + r.height / 2 };
+
+    // Try live DOM first (best), then cached DOM %, then finally the % slot mapping fallback.
+    const domWinner = getChipCenterFromDom(winnerPositionRef.current);
+    if (domWinner) {
+      winnerCoords = domWinner;
     } else {
-      const isObserver = currentPlayerPositionRef.current === null;
-      let slot: { top: number; left: number };
-      if (isObserver) {
-        const positions: Record<number, { top: number; left: number }> = {
-          1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
-          4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
-        };
-        slot = positions[winnerPositionRef.current] || { top: 50, left: 50 };
+      const cachedWinner = getCachedChipCenter(winnerPositionRef.current, rect);
+      if (cachedWinner) {
+        winnerCoords = cachedWinner;
       } else {
-        const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
-        const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
-        if (slotIndex === -1) {
-          slot = { top: 92, left: 50 };
-        } else {
-          const slots: Record<number, { top: number; left: number }> = {
-            0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
-            3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+        const isObserver = currentPlayerPositionRef.current === null;
+        let slot: { top: number; left: number };
+        if (isObserver) {
+          const positions: Record<number, { top: number; left: number }> = {
+            1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
+            4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
           };
-          slot = slots[slotIndex] || { top: 50, left: 50 };
+          slot = positions[winnerPositionRef.current] || { top: 50, left: 50 };
+        } else {
+          const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
+          const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
+          if (slotIndex === -1) {
+            slot = { top: 92, left: 50 };
+          } else {
+            const slots: Record<number, { top: number; left: number }> = {
+              0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
+              3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+            };
+            slot = slots[slotIndex] || { top: 50, left: 50 };
+          }
         }
+        winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
       }
-      winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
     }
 
     // Notify start - pot should show 0 now

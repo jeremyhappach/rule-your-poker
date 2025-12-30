@@ -28,6 +28,7 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
   const [animation, setAnimation] = useState<{ fromX: number; fromY: number; toX: number; toY: number } | null>(null);
   const lockedAmountRef = useRef<number>(amount);
   const lastTriggerIdRef = useRef<string | null>(null);
+  const chipCenterCacheRef = useRef<Record<number, { xPct: number; yPct: number }>>({});
 
   // Pot center position
   const getPotCenter = (rect: DOMRect): { x: number; y: number } => {
@@ -104,27 +105,63 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
     }
   };
 
+  const getCachedChipCenter = (position: number, rect: DOMRect): { x: number; y: number } | null => {
+    const cached = chipCenterCacheRef.current[position];
+    if (!cached) return null;
+    return {
+      x: cached.xPct * rect.width,
+      y: cached.yPct * rect.height,
+    };
+  };
+
+  const getChipCenterFromDom = (position: number): { x: number; y: number } | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+
+    // Prefer the actual chip center marker when available.
+    let el = container.querySelector(`[data-chip-center="${position}"]`) as HTMLElement | null;
+    if (!el) {
+      el = container.querySelector(`[data-seat-chip-position="${position}"]`) as HTMLElement | null;
+    }
+    if (!el) return null;
+
+    const containerRect = container.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+
+    const coords = {
+      x: r.left - containerRect.left + r.width / 2,
+      y: r.top - containerRect.top + r.height / 2,
+    };
+
+    if (containerRect.width > 0 && containerRect.height > 0) {
+      chipCenterCacheRef.current[position] = {
+        xPct: coords.x / containerRect.width,
+        yPct: coords.y / containerRect.height,
+      };
+    }
+
+    return coords;
+  };
+
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
+    const dom = getChipCenterFromDom(position);
+    if (dom) return dom;
+
+    const cached = getCachedChipCenter(position, rect);
+    if (cached) return cached;
+
     const isObserver = currentPlayerPosition === null;
-    
+
     if (isObserver) {
       // Observer: use absolute positions
       return getAbsolutePositionCoords(position, rect);
     }
-    
+
     // Seated player: use relative slot positions
     const isCurrentPlayer = currentPlayerPosition === position;
     const clockwiseDist = getClockwiseDistance(position);
     const slotIndex = isCurrentPlayer ? -1 : clockwiseDist - 1;
-    
-    console.log('[HOLM WIN ANIM] getPositionCoords:', {
-      winnerPosition: position,
-      currentPlayerPosition,
-      isCurrentPlayer,
-      clockwiseDist,
-      slotIndex,
-    });
-    
+
     return getSlotCenterCoords(slotIndex, rect);
   };
 
