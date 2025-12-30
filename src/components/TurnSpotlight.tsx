@@ -122,23 +122,13 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
           clipPath: 'ellipse(48% 42% at 50% 50%)',
         }}
       >
-        {/* Dark overlay with cone cutout - only cuts out the outer ring, not center */}
+        {/* Dark overlay with cone cutout */}
         <div
           className="absolute inset-0"
           style={{
             background: 'rgba(0, 0, 0, 0.45)',
-            // Combine conic (spotlight direction) with radial (keep center dimmed)
-            // The radial gradient makes center black (dimmed) and outer transparent (can show spotlight)
-            maskImage: `
-              conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg),
-              radial-gradient(ellipse 30% 25% at 50% 50%, black 0%, black 100%, transparent 100%)
-            `,
-            WebkitMaskImage: `
-              conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg),
-              radial-gradient(ellipse 30% 25% at 50% 50%, black 0%, black 100%, transparent 100%)
-            `,
-            maskComposite: 'add',
-            WebkitMaskComposite: 'source-over',
+            maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
+            WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
             transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
