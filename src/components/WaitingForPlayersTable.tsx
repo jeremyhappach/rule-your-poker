@@ -270,13 +270,13 @@ export const WaitingForPlayersTable = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={(e) => {
-                      // Immediately blur to prevent stuck focus state
-                      const btn = e.currentTarget;
-                      btn.blur();
-                      // Also blur after a tiny delay in case React re-renders
-                      requestAnimationFrame(() => btn.blur());
+                    onClick={() => {
                       handleAddBot();
+                      // Move focus to Start Game button after adding bot
+                      requestAnimationFrame(() => {
+                        const startBtn = document.querySelector('[data-start-game-btn]') as HTMLButtonElement;
+                        if (startBtn) startBtn.focus();
+                      });
                     }}
                     disabled={addingBot}
                     className="border-amber-600 text-amber-300 hover:bg-amber-600/20 focus:bg-amber-600/10 focus:text-amber-300 active:bg-amber-600/20 active:text-amber-300"
@@ -288,6 +288,7 @@ export const WaitingForPlayersTable = ({
               </div>
               {isHost && hasEnoughPlayers && (
                 <Button
+                  data-start-game-btn
                   onClick={handleStartGame}
                   className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
                 >
