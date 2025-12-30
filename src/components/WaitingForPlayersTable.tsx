@@ -101,7 +101,23 @@ export const WaitingForPlayersTable = ({
 }: WaitingForPlayersTableProps) => {
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
-  const [addingBot, setAddingBot] = useState(false);
+
+  const playersRef = useRef<Player[]>(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
+  const addBotQueueRef = useRef(0);
+  const addBotProcessingRef = useRef(false);
+  const reservedBotPositionsRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    // As soon as the backend/poll shows a position as occupied, release any local reservation.
+    const occupied = new Set(players.map((p) => p.position));
+    for (const pos of reservedBotPositionsRef.current) {
+      if (occupied.has(pos)) reservedBotPositionsRef.current.delete(pos);
+    }
+  }, [players]);
   
   // Check if current user is seated
   const currentPlayer = players.find(p => p.user_id === currentUserId);
@@ -122,25 +138,50 @@ export const WaitingForPlayersTable = ({
   const hasOpenSeats = players.length < 7;
 
   // Add bot for waiting phase (joins as active, ready to play)
-  const handleAddBot = async () => {
-    if (!hasOpenSeats || addingBot) return;
+  // Users may tap quickly to add multiple bots, so we queue requests and reserve positions locally
+  // to prevent collisions before the next poll updates the players list.
+  const enqueueAddBot = () => {
+    const currentPlayers = playersRef.current;
+    if (currentPlayers.length >= 7) return;
 
-    setAddingBot(true);
+    addBotQueueRef.current += 1;
+    void processAddBotQueue();
+  };
+
+  const processAddBotQueue = async () => {
+    if (addBotProcessingRef.current) return;
+    addBotProcessingRef.current = true;
 
     try {
-      // Find open positions
-      const occupiedPositions = new Set(players.map(p => p.position));
-      const allPositions = [1, 2, 3, 4, 5, 6, 7];
-      const openPositions = allPositions.filter(pos => !occupiedPositions.has(pos));
-
-      if (openPositions.length === 0) {
-        return;
+      while (addBotQueueRef.current > 0) {
+        addBotQueueRef.current -= 1;
+        const didStart = await addSingleBot();
+        if (!didStart) break;
       }
+    } finally {
+      addBotProcessingRef.current = false;
+    }
+  };
 
-      // Pick a random open position
-      const randomIndex = Math.floor(Math.random() * openPositions.length);
-      const nextPosition = openPositions[randomIndex];
+  const addSingleBot = async (): Promise<boolean> => {
+    const currentPlayers = playersRef.current;
+    if (currentPlayers.length >= 7) return false;
 
+    // Find open positions (include locally reserved positions so rapid taps don't collide)
+    const occupiedPositions = new Set(currentPlayers.map((p) => p.position));
+    for (const pos of reservedBotPositionsRef.current) occupiedPositions.add(pos);
+
+    const allPositions = [1, 2, 3, 4, 5, 6, 7];
+    const openPositions = allPositions.filter((pos) => !occupiedPositions.has(pos));
+
+    if (openPositions.length === 0) return false;
+
+    const nextPosition = openPositions[Math.floor(Math.random() * openPositions.length)];
+    reservedBotPositionsRef.current.add(nextPosition);
+
+    let succeeded = false;
+
+    try {
       // Create bot profile
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
@@ -191,16 +232,21 @@ export const WaitingForPlayersTable = ({
           is_bot: true,
           status: 'active',
           sitting_out: false,
-          waiting: true // Waiting to start game
+          waiting: true, // Waiting to start game
         });
 
       if (playerError) {
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
+
+      succeeded = true;
+      return true;
     } catch (error: any) {
       console.error('Error adding bot:', error);
+      return true; // keep queue moving, user can tap again
     } finally {
-      setAddingBot(false);
+      // Only release reservation on failure; on success we'll release once players update.
+      if (!succeeded) reservedBotPositionsRef.current.delete(nextPosition);
     }
   };
 
@@ -275,13 +321,12 @@ export const WaitingForPlayersTable = ({
                       e.currentTarget.blur();
                       const startBtn = document.querySelector('[data-start-game-btn]') as HTMLButtonElement;
                       if (startBtn) startBtn.focus();
-                      handleAddBot();
+                      enqueueAddBot();
                     }}
-                    disabled={addingBot}
                     className="border-amber-600 text-amber-300 hover:bg-amber-600/20 focus:bg-amber-600/10 focus:text-amber-300 active:bg-amber-600/20 active:text-amber-300"
                   >
                     <Bot className="w-4 h-4 mr-2" />
-                    {addingBot ? 'Adding...' : 'Add Bot'}
+                    Add Bot
                   </Button>
                 )}
               </div>
