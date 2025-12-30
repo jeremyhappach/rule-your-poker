@@ -14,12 +14,14 @@ interface CommunityCardsProps {
 export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false, tightOverlap = false }: CommunityCardsProps) => {
   const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
-  const [animatedHandId, setAnimatedHandId] = useState<string>('');
-  const [dealtCards, setDealtCards] = useState<Set<number>>(new Set());
-  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
+  // Use refs to track state synchronously to prevent flashing during hand transitions
+  const animatedHandIdRef = useRef<string>('');
+  const dealtCardsRef = useRef<Set<number>>(new Set());
+  const flippedCardsRef = useRef<Set<number>>(new Set());
+  
+  const [renderTrigger, setRenderTrigger] = useState(0);
   
   const lastRevealedRef = useRef<number>(0);
-  const mountTimeRef = useRef<number>(Date.now());
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const isFirstMountRef = useRef<boolean>(true);
   
@@ -28,26 +30,14 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     timeoutsRef.current = [];
   };
   
-  useEffect(() => {
-    console.log('[COMMUNITY_CARDS] useEffect - handId:', handId, 'animatedHandId:', animatedHandId, 'cardsLength:', cards.length, 'dealtCardsSize:', dealtCards.size);
-    
-    if (cards.length === 0) {
-      console.log('[COMMUNITY_CARDS] Early return: no cards');
-      return;
-    }
-    if (handId === animatedHandId) {
-      console.log('[COMMUNITY_CARDS] Early return: handId matches animatedHandId, dealtCards size:', dealtCards.size);
-      return;
-    }
-    
-    console.log('[COMMUNITY_CARDS] Processing NEW hand - handId changed from', animatedHandId, 'to', handId);
+  // Synchronously update refs when handId changes to prevent flash
+  // This runs during render, before paint, so cards never disappear
+  if (cards.length > 0 && handId !== animatedHandIdRef.current) {
+    console.log('[COMMUNITY_CARDS] Sync update - handId changed from', animatedHandIdRef.current, 'to', handId);
     clearTimeouts();
     
-    // For first mount OR subsequent hands (not first game load), show cards immediately
-    // Only animate dealing on the very first hand of a session
-    const shouldSkipAnimation = isFirstMountRef.current || animatedHandId !== '';
-    
-    console.log('[COMMUNITY_CARDS] shouldSkipAnimation:', shouldSkipAnimation, 'isFirstMountRef:', isFirstMountRef.current);
+    // For subsequent hands (not first), show cards immediately with no animation
+    const shouldSkipAnimation = isFirstMountRef.current || animatedHandIdRef.current !== '';
     
     if (shouldSkipAnimation) {
       const allDealt = new Set<number>();
@@ -57,40 +47,44 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
       for (let i = 2; i < revealed; i++) preFlipped.add(i);
       
       console.log('[COMMUNITY_CARDS] Setting dealtCards to all', cards.length, 'cards, flipped up to', revealed);
-      setDealtCards(allDealt);
-      setFlippedCards(preFlipped);
-      setAnimatedHandId(handId);
+      dealtCardsRef.current = allDealt;
+      flippedCardsRef.current = preFlipped;
+      animatedHandIdRef.current = handId;
       lastRevealedRef.current = revealed;
-      isFirstMountRef.current = false; // Mark first mount as complete
-      return;
+      isFirstMountRef.current = false;
+    } else {
+      // First hand animation (rare - only on very first game load)
+      dealtCardsRef.current = new Set();
+      flippedCardsRef.current = new Set();
+      lastRevealedRef.current = revealed;
+      animatedHandIdRef.current = handId;
+      isFirstMountRef.current = false;
     }
-    
-    // First hand animation (rare - only when component mounts with no prior handId)
-    setDealtCards(new Set());
-    setFlippedCards(new Set());
-    lastRevealedRef.current = revealed;
-    
-    const INITIAL_DELAY = 400;
-    const CARD_INTERVAL = 200;
-    
-    cards.forEach((_, index) => {
-      const timeout = setTimeout(() => {
-        setDealtCards(prev => new Set([...prev, index]));
-      }, INITIAL_DELAY + index * CARD_INTERVAL);
-      timeoutsRef.current.push(timeout);
-    });
-    
-    const idTimeout = setTimeout(() => {
-      setAnimatedHandId(handId);
-      isFirstMountRef.current = false; // Mark first mount as complete
-    }, 50);
-    timeoutsRef.current.push(idTimeout);
-    
-  }, [handId, cards, revealed, animatedHandId]);
+  }
   
+  // Handle first hand dealing animation with timeouts
   useEffect(() => {
     if (cards.length === 0) return;
-    if (handId !== animatedHandId) return;
+    
+    // Only animate if this is the very first hand and we haven't dealt cards yet
+    if (dealtCardsRef.current.size === 0 && cards.length > 0 && !isFirstMountRef.current) {
+      const INITIAL_DELAY = 400;
+      const CARD_INTERVAL = 200;
+      
+      cards.forEach((_, index) => {
+        const timeout = setTimeout(() => {
+          dealtCardsRef.current = new Set([...dealtCardsRef.current, index]);
+          setRenderTrigger(n => n + 1);
+        }, INITIAL_DELAY + index * CARD_INTERVAL);
+        timeoutsRef.current.push(timeout);
+      });
+    }
+  }, [cards.length]);
+  
+  // Handle card flipping when revealed count increases
+  useEffect(() => {
+    if (cards.length === 0) return;
+    if (handId !== animatedHandIdRef.current) return;
     if (revealed <= lastRevealedRef.current) return;
     
     const previousRevealed = lastRevealedRef.current;
@@ -98,7 +92,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     
     const toFlip: number[] = [];
     for (let i = Math.max(2, previousRevealed); i < revealed; i++) {
-      if (!flippedCards.has(i)) {
+      if (!flippedCardsRef.current.has(i)) {
         toFlip.push(i);
       }
     }
@@ -110,20 +104,23 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
       const delay = isLastCard ? 1500 : arrayIndex * 200;
       
       const timeout = setTimeout(() => {
-        setFlippedCards(prev => new Set([...prev, cardIndex]));
+        flippedCardsRef.current = new Set([...flippedCardsRef.current, cardIndex]);
+        setRenderTrigger(n => n + 1);
       }, delay);
       timeoutsRef.current.push(timeout);
     });
-  }, [revealed, handId, animatedHandId, cards.length, flippedCards]);
+  }, [revealed, handId, cards.length]);
   
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => clearTimeouts();
   }, []);
   
   if (cards.length === 0) return null;
-  
-  // Don't return null during hand transitions - just render with current dealt cards state
-  // The previous null return caused cards to disappear during state sync
+
+  // Read from refs for render (they're always in sync)
+  const dealtCards = dealtCardsRef.current;
+  const flippedCards = flippedCardsRef.current;
 
   return (
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
