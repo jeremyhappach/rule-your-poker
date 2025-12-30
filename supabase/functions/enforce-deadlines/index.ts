@@ -146,25 +146,25 @@ serve(async (req) => {
     }
 
     // 1. ENFORCE CONFIG DEADLINE (dealer setup timeout)
-    // CRITICAL: Only enforce if config_deadline is set AND has had at least 5 seconds to elapse
-    // This prevents race conditions where the status changes before the deadline is properly set
+    // Check if config_deadline has expired for games in config phase
     if ((game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
       const configDeadline = new Date(game.config_deadline);
-      const deadlineAge = now.getTime() - new Date(game.updated_at).getTime();
+      const msUntilDeadline = configDeadline.getTime() - now.getTime();
       
-      // Safety: Don't enforce if the game was just updated (< 3 seconds ago)
-      // This prevents enforcing on stale deadline data during transitions
-      if (deadlineAge < 3000) {
-        console.log('[ENFORCE] Config deadline check skipped - game recently updated', { 
-          gameId, 
-          deadlineAge, 
-          status: game.status 
-        });
-      } else if (now > configDeadline) {
-        console.log('[ENFORCE] Config deadline expired for game', gameId, { 
+      console.log('[ENFORCE] Config deadline check:', {
+        gameId,
+        status: game.status,
+        configDeadline: game.config_deadline,
+        now: nowIso,
+        msUntilDeadline,
+        isExpired: msUntilDeadline <= 0,
+      });
+      
+      if (msUntilDeadline <= 0) {
+        console.log('[ENFORCE] Config deadline EXPIRED for game', gameId, { 
           deadline: game.config_deadline, 
           now: nowIso, 
-          deadlineAge 
+          expiredByMs: Math.abs(msUntilDeadline),
         });
         
         // Find dealer player
