@@ -1954,6 +1954,47 @@ export const MobileGameTable = ({
     setApprovedHandContextId(handContextId ?? null); // Track which hand these cards belong to
   }, [gameType, currentRound, communityCards, approvedCommunityCards, approvedRoundForDisplay, isDelayingCommunityCards, showCommunityCards, handContextId]);
 
+  // RECOVERY: Force-approve community cards if they should be visible but aren't.
+  // This catches edge cases where:
+  // 1. Component remounts and lastDetectedRoundRef already equals currentRound (no "new round" trigger)
+  // 2. The 1s delay timer was cancelled before completing
+  // 3. Any other race condition that leaves cards stuck invisible
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!currentRound) return;
+    if (isDealerConfigPhase) return;
+    if (awaitingNextRound) return;
+    if (isDelayingCommunityCards) return; // delay is active, don't interfere
+    if (showCommunityCards) return; // already showing, nothing to recover
+    
+    const liveLen = communityCards?.length ?? 0;
+    if (liveLen === 0) return; // no cards to show yet
+    
+    // If we have live community cards but showCommunityCards is false AND we're not in a delay,
+    // the approval logic failed somewhere. Force-approve after a short grace period.
+    const recoveryTimeout = setTimeout(() => {
+      // Re-check conditions inside timeout (they may have changed)
+      if (!showCommunityCards && !isDelayingCommunityCards && communityCards && communityCards.length > 0) {
+        console.warn('🔥🔥🔥 [MOBILE_COMMUNITY] RECOVERY: Force-approving community cards that were stuck invisible', {
+          currentRound,
+          lastDetectedRound: lastDetectedRoundRef.current,
+          liveLen: communityCards.length,
+          approvedRoundForDisplay,
+        });
+        
+        lastDetectedRoundRef.current = currentRound;
+        setApprovedRoundForDisplay(currentRound);
+        setApprovedCommunityCards([...communityCards]);
+        setApprovedHandContextId(handContextId ?? null);
+        setShowCommunityCards(true);
+        setStaggeredCardCount(communityCardsRevealed || 2);
+        setIsDelayingCommunityCards(false);
+      }
+    }, 1500); // Wait 1.5s to give normal flow time to complete
+    
+    return () => clearTimeout(recoveryTimeout);
+  }, [gameType, currentRound, communityCards, showCommunityCards, isDelayingCommunityCards, isDealerConfigPhase, awaitingNextRound, handContextId, communityCardsRevealed, approvedRoundForDisplay]);
+
   // Cache Chucky cards when available, clear only when buck passes or new game starts
   useEffect(() => {
     if (gameType !== 'holm-game') return;
