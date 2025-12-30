@@ -18,6 +18,7 @@ import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
+import { TurnSpotlight } from "./TurnSpotlight";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
@@ -2769,6 +2770,24 @@ export const MobileGameTable = ({
             </span>}
         </div>
         
+        
+        {/* Turn Spotlight - Holm games only, shows during active betting */}
+        {gameType === 'holm-game' && (
+          <TurnSpotlight
+            currentTurnPosition={currentTurnPosition ?? null}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            isObserver={!currentPlayer}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            isVisible={
+              roundStatus === 'betting' && 
+              !allDecisionsIn && 
+              !awaitingNextRound && 
+              currentTurnPosition !== null &&
+              !isWaitingPhase
+            }
+          />
+        )}
         
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
