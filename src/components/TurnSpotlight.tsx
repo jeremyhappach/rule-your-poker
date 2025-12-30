@@ -114,12 +114,12 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     <>
       {/* Dim overlay with spotlight cutout - clipped to ellipse table area */}
       <div 
-        className="absolute inset-0 pointer-events-none z-[3]"
+        className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
           // Clip to ellipse shape matching the table felt
-          clipPath: 'ellipse(48% 42% at 50% 50%)',
+          clipPath: 'ellipse(50% 50% at 50% 50%)',
         }}
       >
         {/* Dark overlay with cone cutout */}
@@ -136,11 +136,11 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
       
       {/* Solid spotlight beam - also clipped to table */}
       <div 
-        className="absolute inset-0 pointer-events-none z-[3]"
+        className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
-          clipPath: 'ellipse(48% 42% at 50% 50%)',
+          clipPath: 'ellipse(50% 50% at 50% 50%)',
         }}
       >
         <div
@@ -162,10 +162,10 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
             <div
               style={{
                 position: 'absolute',
-                left: '-120px',
+                left: '-150px',
                 bottom: '0px',
-                width: '240px',
-                height: '300px',
+                width: '300px',
+                height: '400px',
                 background: 'hsla(45, 80%, 55%, 0.25)',
                 clipPath: 'polygon(50% 100%, 5% 0%, 95% 0%)',
               }}
