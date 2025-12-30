@@ -1545,9 +1545,11 @@ export const GameTable = ({
                                 )}
                                 
                                 {/* Chip balance (center) with status indicator */}
-                                <div className={`flex items-center justify-center px-1.5 py-0.5 rounded ${
-                                  (player.sitting_out || player.auto_fold) ? 'bg-red-400/50 ring-1 ring-red-400/40' : player.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
-                                }`}>
+                                 <div
+                                   data-chip-center={player.position}
+                                   className={`flex items-center justify-center px-1.5 py-0.5 rounded ${
+                                   (player.sitting_out || player.auto_fold) ? 'bg-red-400/50 ring-1 ring-red-400/40' : player.waiting ? 'bg-yellow-500/20 ring-1 ring-yellow-500/40' : 'bg-green-500/20 ring-1 ring-green-500/40'
+                                 }`}>
                                   <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                                     ${formatChipValue(player.chips)}
                                   </p>
@@ -1598,10 +1600,11 @@ export const GameTable = ({
                                   return 'bg-white/30 ring-1 ring-white/40'; // Active but not stayed
                                 };
                                 return (
-                                  <div 
-                                    className={`flex items-center justify-center px-1.5 py-0.5 rounded ${getChipBgClass()} ${isClickable ? 'cursor-pointer hover:ring-2 hover:ring-amber-400 active:scale-95' : ''}`}
-                                    onClick={isClickable ? () => onPlayerClick(player) : undefined}
-                                  >
+                                   <div 
+                                     data-chip-center={player.position}
+                                     className={`flex items-center justify-center px-1.5 py-0.5 rounded ${getChipBgClass()} ${isClickable ? 'cursor-pointer hover:ring-2 hover:ring-amber-400 active:scale-95' : ''}`}
+                                     onClick={isClickable ? () => onPlayerClick(player) : undefined}
+                                   >
                                     <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold ${player?.chips && player.chips < 0 ? 'text-red-500' : 'text-poker-gold'}`}>
                                       ${formatChipValue(player?.chips || 0)}
                                     </p>
