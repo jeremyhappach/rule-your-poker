@@ -107,22 +107,41 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     return null;
   }
 
-  // Calculate the angle span for the wider beam (40 degrees on each side = 80 degree cone)
-  const beamHalfAngle = 40;
+  // Narrower beam (25 degrees on each side = 50 degree cone)
+  const beamHalfAngle = 25;
 
   return (
     <>
+      {/* Golden glow in spotlight area - clipped to table */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-[100]"
+        style={{
+          opacity,
+          transition: 'opacity 0.4s ease-out',
+          clipPath: 'ellipse(50% 50% at 50% 50%)',
+        }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'hsla(45, 70%, 50%, 0.18)',
+            maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`,
+            WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`,
+            transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+      </div>
+      
       {/* Dim overlay with spotlight cutout - clipped to ellipse table area */}
       <div 
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
-          // Clip to ellipse shape matching the table felt
           clipPath: 'ellipse(50% 50% at 50% 50%)',
         }}
       >
-        {/* Dark overlay with cone cutout - the undimmed area IS the spotlight */}
+        {/* Dark overlay with cone cutout */}
         <div
           className="absolute inset-0"
           style={{
