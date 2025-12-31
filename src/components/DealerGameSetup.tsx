@@ -593,8 +593,84 @@ export const DealerGameSetup = ({
     }
   };
 
-  const handleDiceGameSelect = (gameType: string) => {
-    toast.info("Coming soon!");
+  const handleDiceGameSelect = async (gameType: string) => {
+    if (gameType === 'horses') {
+      // Horses is ready - set game type and submit
+      setSelectedGameType('horses');
+      setSelectionStep('dice');
+      
+      // Fetch horses defaults
+      const { data: horsesDefaults } = await supabase
+        .from('game_defaults')
+        .select('ante_amount')
+        .eq('game_type', 'horses')
+        .single();
+      
+      if (horsesDefaults) {
+        setAnteAmount(String(horsesDefaults.ante_amount));
+      }
+    } else {
+      toast.info("Coming soon!");
+    }
+  };
+  
+  const handleHorsesSubmit = async () => {
+    if (isSubmitting || hasSubmittedRef.current) return;
+    
+    const parsedAnte = parseInt(anteAmount) || 2;
+    if (parsedAnte < 1) {
+      toast.error('Ante must be at least $1');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    hasSubmittedRef.current = true;
+    
+    console.log('[DEALER SETUP] Submitting Horses game config');
+    
+    const anteDeadline = new Date(Date.now() + 10000).toISOString();
+    
+    const { error } = await supabase
+      .from('games')
+      .update({
+        game_type: 'horses',
+        ante_amount: parsedAnte,
+        config_complete: true,
+        status: 'ante_decision',
+        ante_decision_deadline: anteDeadline,
+        // Reset card game specific fields
+        leg_value: 0,
+        legs_to_win: 0,
+        pot_max_enabled: false,
+        pussy_tax_enabled: false,
+      })
+      .eq('id', gameId);
+    
+    if (error) {
+      console.error('[DEALER SETUP] Error:', error);
+      hasSubmittedRef.current = false;
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Reset ante_decision for all non-dealer players
+    await supabase
+      .from('players')
+      .update({ ante_decision: null })
+      .eq('game_id', gameId)
+      .neq('id', dealerPlayerId);
+    
+    // Auto ante up the dealer
+    await supabase
+      .from('players')
+      .update({ 
+        ante_decision: 'ante_up',
+        sitting_out: false
+      })
+      .eq('id', dealerPlayerId);
+    
+    console.log('[DEALER SETUP] ✅ Horses config complete');
+    onConfigComplete();
   };
 
   const handleBackToCategory = () => {
@@ -673,8 +749,74 @@ export const DealerGameSetup = ({
     );
   }
 
-  // Dice games selection step
+  // Dice games selection step - show Horses config if selected
   if (selectionStep === 'dice') {
+    // If Horses is selected, show config UI
+    if (selectedGameType === 'horses') {
+      return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
+            <CardContent className="pt-6 pb-6 space-y-6">
+              {/* Header with Timer */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-poker-gold">Horses Setup</h2>
+                  <p className="text-amber-100 text-sm">{dealerUsername}, configure ante</p>
+                </div>
+                <Badge 
+                  variant={timeLeft <= 10 ? "destructive" : "default"} 
+                  className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
+                >
+                  <Timer className="w-4 h-4" />
+                  {timeLeft}s
+                </Badge>
+              </div>
+
+              {/* Horses Config */}
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <Label htmlFor="ante-horses" className="text-amber-100 text-sm">Ante ($)</Label>
+                  <Input
+                    id="ante-horses"
+                    type="text"
+                    inputMode="numeric"
+                    value={anteAmount}
+                    onChange={(e) => setAnteAmount(e.target.value)}
+                    className="bg-amber-900/30 border-poker-gold/50 text-white"
+                  />
+                </div>
+                
+                <p className="text-sm text-amber-200/70 text-center">
+                  5 dice • Up to 3 rolls • 1s are wild • Highest hand wins
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedGameType('holm-game');
+                    setSelectionStep('category');
+                  }}
+                  className="flex-1 p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
+                >
+                  ← Back
+                </button>
+                <Button
+                  onClick={handleHorsesSubmit}
+                  disabled={isSubmitting}
+                  className="flex-1 bg-poker-gold hover:bg-amber-500 text-black font-bold"
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  {isSubmitting ? 'Starting...' : 'Start Horses'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    
+    // Show dice game selection
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
@@ -702,17 +844,17 @@ export const DealerGameSetup = ({
               >
                 <div className="space-y-2 text-center">
                   <h3 className="text-xl font-bold text-poker-gold">Horses</h3>
-                  <p className="text-sm text-amber-200">Dice game</p>
+                  <p className="text-sm text-amber-200">5 dice poker • Up to 3 rolls</p>
                 </div>
               </button>
 
               <button
                 onClick={() => handleDiceGameSelect('ship-captain-crew')}
-                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+                className="relative p-6 rounded-lg border-2 transition-all border-gray-500 bg-gray-800/30 opacity-50 cursor-not-allowed"
               >
                 <div className="space-y-2 text-center">
-                  <h3 className="text-xl font-bold text-poker-gold">Ship Captain Crew</h3>
-                  <p className="text-sm text-amber-200">Dice game</p>
+                  <h3 className="text-xl font-bold text-gray-400">Ship Captain Crew</h3>
+                  <p className="text-sm text-gray-500">Coming soon</p>
                 </div>
               </button>
             </div>
