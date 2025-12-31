@@ -16,6 +16,9 @@ export interface DiceValue {
   isHeld: boolean;
 }
 
+// Alias for external use
+export type HorsesDie = DiceValue;
+
 export interface HorsesHand {
   dice: DiceValue[];
   rollsRemaining: number;
