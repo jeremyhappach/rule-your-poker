@@ -2748,7 +2748,7 @@ export const MobileGameTable = ({
       <Badge 
         variant="secondary" 
         className={cn(
-          "text-[10px] px-1.5 py-0 mt-0.5",
+          "text-xs px-2 py-0.5 mt-0.5 font-semibold",
           isHorsesCurrentlyWinning && "bg-green-600 text-white animate-pulse"
         )}
       >
@@ -3463,7 +3463,7 @@ export const MobileGameTable = ({
           // Show dice if actively rolling
           if (horsesController.feltDice) {
             return (
-              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-1">
+              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-1.5">
                 {(
                   (horsesController.feltDice?.dice as any) ||
                   Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))
@@ -3479,7 +3479,7 @@ export const MobileGameTable = ({
                     }
                     canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
                     onToggle={() => horsesController.handleToggleHold(idx)}
-                    size="sm"
+                    size="md"
                   />
                 ))}
               </div>
