@@ -43,7 +43,7 @@ import React, {
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
-import { MessageSquare, User, Clock, Dice5 } from "lucide-react";
+import { MessageSquare, User, Clock } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
@@ -63,6 +63,27 @@ const SpadeIcon = ({ className }: { className?: string }) => (
     <path d="M12 2C12 2 4 9 4 13.5C4 16.5 6.5 18.5 9 18.5C10.2 18.5 11.2 18 12 17.2C12.8 18 13.8 18.5 15 18.5C17.5 18.5 20 16.5 20 13.5C20 9 12 2 12 2Z" />
     <path d="M12 17.5L12 22" strokeWidth="2.5" strokeLinecap="round" />
     <path d="M9 22L15 22" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+// Custom dice icon with visible white pips (Lucide Dice5 shows as solid square)
+const DiceIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    className={className}
+    fill="currentColor"
+    stroke="currentColor"
+    strokeWidth="0"
+  >
+    {/* Dice body */}
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    {/* White pips - 5-dot pattern */}
+    <circle cx="7.5" cy="7.5" r="1.5" fill="white" />
+    <circle cx="16.5" cy="7.5" r="1.5" fill="white" />
+    <circle cx="12" cy="12" r="1.5" fill="white" />
+    <circle cx="7.5" cy="16.5" r="1.5" fill="white" />
+    <circle cx="16.5" cy="16.5" r="1.5" fill="white" />
   </svg>
 );
 
@@ -3442,7 +3463,7 @@ export const MobileGameTable = ({
           // Show dice if actively rolling
           if (horsesController.feltDice) {
             return (
-              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-2">
+              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-1">
                 {(
                   (horsesController.feltDice?.dice as any) ||
                   Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))
@@ -3458,7 +3479,7 @@ export const MobileGameTable = ({
                     }
                     canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
                     onToggle={() => horsesController.handleToggleHold(idx)}
-                    size="md"
+                    size="sm"
                   />
                 ))}
               </div>
@@ -4183,7 +4204,7 @@ export const MobileGameTable = ({
                 } ${showCardsTabFlashing ? 'animate-pulse ring-2 ring-green-500' : ''} ${isYourTurnNotOnCardsTab && !showCardsTabFlashing ? 'animate-pulse ring-2 ring-red-500' : ''}`}
               >
                 {gameType === 'horses' ? (
-                  <Dice5 className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
+                  <DiceIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
                 ) : (
                   <SpadeIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
                 )}
