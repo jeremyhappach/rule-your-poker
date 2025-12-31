@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
 import { GameTable } from "@/components/GameTable";
 import { MobileGameTable } from "@/components/MobileGameTable";
+import { HorsesGameTable, HorsesStateFromDB } from "@/components/HorsesGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
@@ -124,6 +125,7 @@ interface Round {
   chucky_cards_revealed?: number;
   current_turn_position?: number | null;
   created_at?: string;
+  horses_state?: any; // Horses dice game state
 }
 
 interface PlayerCards {
@@ -5273,6 +5275,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         {(game.status === 'ante_decision' || game.status === 'in_progress') && (() => {
           const isInProgress = game.status === 'in_progress';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
+          
+          // HORSES DICE GAME - render HorsesGameTable instead of card tables
+          if (isInProgress && game.game_type === 'horses') {
+            const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
+            return (
+              <HorsesGameTable
+                gameId={gameId!}
+                players={players}
+                currentUserId={user?.id}
+                pot={potForDisplay}
+                anteAmount={game.ante_amount || 2}
+                dealerPosition={game.dealer_position || 1}
+                currentRoundId={currentRound?.id || null}
+                horsesState={horsesState}
+                onRefetch={fetchGameData}
+              />
+            );
+          }
 
           return isMobile ? (
             <MobileGameTable
