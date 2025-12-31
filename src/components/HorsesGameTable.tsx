@@ -704,7 +704,7 @@ export function HorsesGameTable({
                     </div>
 
                     {isMyTurn && localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-                      <p className="text-xs text-amber-200/70">Tap dice to hold</p>
+                      <p className="text-xs text-amber-200/70">Tap dice to hold/unhold</p>
                     )}
 
                     {gamePhase === "complete" && (
