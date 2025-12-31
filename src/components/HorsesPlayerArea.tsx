@@ -1,6 +1,8 @@
+import { Badge } from "@/components/ui/badge";
+import { HorsesHandResult, HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
+import { HorsesDie } from "./HorsesDie";
 import { cn } from "@/lib/utils";
 import { Dice5 } from "lucide-react";
-import { HorsesHandResult } from "@/lib/horsesGameLogic";
 
 interface HorsesPlayerAreaProps {
   username: string;
@@ -10,6 +12,7 @@ interface HorsesPlayerAreaProps {
   handResult: HorsesHandResult | null;
   isWinningHand: boolean;
   hasTurnCompleted: boolean;
+  diceValues?: HorsesDieType[];
 }
 
 export function HorsesPlayerArea({
@@ -20,49 +23,61 @@ export function HorsesPlayerArea({
   handResult,
   isWinningHand,
   hasTurnCompleted,
+  diceValues,
 }: HorsesPlayerAreaProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all duration-300",
-        isCurrentUser
-          ? "bg-blue-900/30 border-blue-500"
-          : "bg-gray-900/30 border-gray-600",
-        isCurrentTurn && "ring-2 ring-yellow-400 ring-offset-2 ring-offset-transparent"
+        "relative flex flex-col items-center gap-2 p-4 rounded-lg border-2 min-w-[160px]",
+        isCurrentTurn && "border-yellow-500 bg-yellow-500/10",
+        isWinningHand && "border-green-500 bg-green-500/10 animate-pulse",
+        !isCurrentTurn && !isWinningHand && "border-border bg-muted/50",
+        isCurrentUser && "ring-2 ring-blue-500 ring-offset-2 ring-offset-background"
       )}
     >
-      {/* Username */}
-      <span
-        className={cn(
-          "text-sm font-medium",
-          isCurrentUser ? "text-blue-300" : "text-gray-300"
-        )}
-      >
-        {username}
-      </span>
+      {/* Bouncing dice for current turn */}
+      {isCurrentTurn && !hasTurnCompleted && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <Dice5 className="w-6 h-6 text-yellow-400 animate-bounce" />
+        </div>
+      )}
 
-      {/* Hand result or rolling indicator */}
-      <div className="h-8 flex items-center justify-center">
-        {isCurrentTurn && !hasTurnCompleted ? (
-          // Bouncing dice icon for current roller
-          <Dice5
-            className="w-6 h-6 text-yellow-400 animate-bounce"
-          />
-        ) : handResult ? (
-          // Hand result label
-          <span
+      {/* Username */}
+      <span className="font-semibold text-foreground">{username}</span>
+      <span className="text-xs text-muted-foreground">Seat {position}</span>
+
+      {/* Show completed dice */}
+      {hasTurnCompleted && diceValues && (
+        <div className="flex gap-1">
+          {diceValues.map((die, idx) => (
+            <HorsesDie
+              key={idx}
+              value={die.value}
+              isHeld={false}
+              isRolling={false}
+              canToggle={false}
+              onToggle={() => {}}
+              size="sm"
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Hand result or waiting indicator */}
+      <div className="min-h-[24px] flex items-center">
+        {hasTurnCompleted && handResult ? (
+          <Badge
+            variant={isWinningHand ? "default" : "secondary"}
             className={cn(
-              "text-lg font-bold px-3 py-1 rounded",
-              isWinningHand
-                ? "text-green-400 bg-green-900/50 animate-pulse"
-                : "text-amber-200 bg-amber-900/30"
+              isWinningHand && "bg-green-600 text-white animate-pulse"
             )}
           >
             {handResult.description}
-          </span>
+          </Badge>
+        ) : isCurrentTurn ? (
+          <span className="text-sm text-yellow-400">Rolling...</span>
         ) : (
-          // Waiting state
-          <span className="text-gray-500 text-sm">—</span>
+          <span className="text-sm text-muted-foreground">Waiting</span>
         )}
       </div>
     </div>
