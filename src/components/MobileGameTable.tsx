@@ -156,6 +156,9 @@ interface MobileGameTableProps {
   chuckyActive?: boolean;
   chuckyCardsRevealed?: number;
   roundStatus?: string;
+  // Horses (dice) state
+  horsesRoundId?: string | null;
+  horsesState?: HorsesStateFromDB | null;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
@@ -288,6 +291,8 @@ export const MobileGameTable = ({
   chuckyActive,
   chuckyCardsRevealed,
   roundStatus,
+  horsesRoundId,
+  horsesState,
   pendingDecision,
   isPaused,
   anteAmount = 0,
@@ -378,6 +383,19 @@ export const MobileGameTable = ({
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
+
+  // Horses (dice) controller - enabled ONLY for Horses so Holm/357 are untouched
+  const horsesController = useHorsesMobileController({
+    enabled: gameType === 'horses',
+    gameId,
+    players: players as any,
+    currentUserId,
+    pot,
+    anteAmount,
+    dealerPosition: dealerPosition ?? 1,
+    currentRoundId: horsesRoundId ?? null,
+    horsesState: (horsesState as any) ?? null,
+  });
 
   // Tab state - use external if provided, otherwise internal
   const [internalActiveTab, setInternalActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
@@ -2334,6 +2352,7 @@ export const MobileGameTable = ({
 
   // Calculate expected card count for 3-5-7 games
   const getExpectedCardCount = (round: number): number => {
+    if (gameType === 'horses') return 0;
     if (gameType === 'holm-game') return 4;
     if (round === 1) return 3;
     if (round === 2) return 5;
@@ -2380,7 +2399,9 @@ export const MobileGameTable = ({
   };
   
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
-    const isTheirTurn = gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound;
+    const isTheirTurn =
+      (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
+      (gameType === 'horses' && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
     const isCurrentUser = player.user_id === currentUserId;
     
     // For observers, derive slot from absolute position for consistent behavior
@@ -3370,6 +3391,34 @@ export const MobileGameTable = ({
           );
         })()}
 
+        {/* Horses felt dice (rolls happen on the felt, not in the bottom section) */}
+        {gameType === 'horses' && horsesController.enabled && (
+          <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20">
+            <div className="rounded-2xl border border-border/40 bg-background/10 px-4 py-3 backdrop-blur-sm shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]">
+              <div className="flex items-center justify-center gap-2">
+                {(
+                  (horsesController.feltDice?.dice as any) ||
+                  Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))
+                ).map((die: any, idx: number) => (
+                  <HorsesDie
+                    key={idx}
+                    value={die.value}
+                    isHeld={!!die.isHeld}
+                    isRolling={
+                      horsesController.isMyTurn
+                        ? horsesController.isRolling && !die.isHeld
+                        : !!(horsesController.feltDice as any)?.isRolling
+                    }
+                    canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
+                    onToggle={() => horsesController.handleToggleHold(idx)}
+                    size="md"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Solo player's Tabled Cards - shown above pot during solo-vs-Chucky showdown/win */}
         {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}
         {gameType === 'holm-game' && isSoloVsChucky && (() => {
@@ -4131,7 +4180,14 @@ export const MobileGameTable = ({
         })()}
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
-        {activeTab === 'cards' && currentPlayer && <div className="px-2 flex flex-col flex-1">
+        {activeTab === 'cards' && currentPlayer && (
+          gameType === 'horses' ? (
+            <HorsesMobileCardsTab
+              currentUserPlayer={currentPlayer as any}
+              horses={horsesController}
+            />
+          ) : (
+            <div className="px-2 flex flex-col flex-1">
             {/* Action area - fixed height to prevent layout shift */}
             <div className="flex items-center justify-center min-h-[36px]">
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
@@ -4402,7 +4458,9 @@ export const MobileGameTable = ({
                 }
               }
             `}</style>
-          </div>}
+          </div>
+          )
+        )}
         
         {/* CARDS TAB - Observer state */}
         {activeTab === 'cards' && !currentPlayer && <div className="px-4 pb-4 flex-1">
