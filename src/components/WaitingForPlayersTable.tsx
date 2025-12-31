@@ -316,14 +316,16 @@ export const WaitingForPlayersTable = ({
                   <Button
                     variant="outline"
                     size="sm"
+                    type="button"
                     onClick={(e) => {
-                      // Immediately blur and move focus to Start Game button
+                      // On mobile Safari, :hover can “stick” after tap; keep styles stable and
+                      // avoid leaving the button in a visually “disabled” looking state.
                       e.currentTarget.blur();
                       const startBtn = document.querySelector('[data-start-game-btn]') as HTMLButtonElement;
                       if (startBtn) startBtn.focus();
                       enqueueAddBot();
                     }}
-                    className="border-amber-600 text-amber-300 hover:bg-amber-600/20 focus:bg-amber-600/10 focus:text-amber-300 active:bg-amber-600/20 active:text-amber-300"
+                    className="border-amber-600 bg-transparent text-amber-300 hover:bg-amber-600/20 hover:text-amber-300 focus-visible:bg-amber-600/10 focus-visible:text-amber-300 active:bg-amber-600/20 active:text-amber-300"
                   >
                     <Bot className="w-4 h-4 mr-2" />
                     Add Bot
