@@ -780,6 +780,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      horses_advance_turn: {
+        Args: { _expected_current_player_id: string; _round_id: string }
+        Returns: Json
+      }
+      horses_set_player_state: {
+        Args: { _player_id: string; _round_id: string; _state: Json }
+        Returns: Json
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }
