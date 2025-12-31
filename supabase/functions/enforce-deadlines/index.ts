@@ -770,6 +770,74 @@ serve(async (req) => {
       }
     }
 
+    // 4C. ENFORCE POST-ROUND COMPLETION RECOVERY (HOLM)
+    // Holm games can get stuck with round_status='completed' but awaiting_next_round=false.
+    // This happens when endHolmRound errors mid-execution or client disconnects.
+    // Unlike 3-5-7, we don't require all_decisions_in=true (it may be false if error occurred early).
+    // Instead, check if ALL active (non-sitting-out) players have decision_locked=true.
+    const isHolmGame = game.game_type === 'holm-game' || game.game_type === 'holm';
+    if (
+      game.status === 'in_progress' &&
+      isHolmGame &&
+      game.awaiting_next_round !== true
+    ) {
+      const { data: latestRounds } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const latestRound = latestRounds?.[0];
+
+      // Check if round is completed (or stuck in processing/showdown for too long)
+      if (latestRound && (latestRound.status === 'completed' || latestRound.status === 'showdown' || latestRound.status === 'processing')) {
+        // For Holm, verify all active players have made decisions
+        const { data: activePlayers } = await supabase
+          .from('players')
+          .select('id, decision_locked, current_decision, sitting_out')
+          .eq('game_id', gameId)
+          .eq('sitting_out', false);
+
+        const allDecided = activePlayers?.every(p => p.decision_locked && p.current_decision !== null) ?? false;
+
+        if (allDecided || latestRound.status === 'completed') {
+          const gameUpdatedAt = new Date(game.updated_at);
+          const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
+
+          // Give client time to handle; if stuck >15s, recover
+          if (stuckDuration > 15000) {
+            console.log('[ENFORCE] ⚠️ HOLM post-round recovery: round', latestRound.round_number, 'status=', latestRound.status, 'stuck for', Math.round(stuckDuration/1000), 's');
+
+            // Mark round as completed if not already
+            if (latestRound.status !== 'completed') {
+              await supabase
+                .from('rounds')
+                .update({ status: 'completed' })
+                .eq('id', latestRound.id);
+            }
+
+            // Set awaiting_next_round to trigger client-side progression
+            // For Holm, next_round_number is just current + 1
+            const nextRoundNum = (latestRound.round_number || 1) + 1;
+
+            await supabase
+              .from('games')
+              .update({
+                awaiting_next_round: true,
+                all_decisions_in: true,
+                next_round_number: nextRoundNum,
+              })
+              .eq('id', gameId);
+
+            actionsTaken.push(
+              `HOLM post-round recovery: round ${latestRound.round_number} (${latestRound.status}) stuck, set awaiting_next_round for hand ${nextRoundNum}`
+            );
+          }
+        }
+      }
+    }
+
     // 5. ENFORCE AWAITING_NEXT_ROUND TIMEOUT (stuck game watchdog)
     // If a game has been stuck in awaiting_next_round=true for too long (>10 seconds),
     // it means client-side proceedToNextRound never fired. Auto-proceed server-side.
