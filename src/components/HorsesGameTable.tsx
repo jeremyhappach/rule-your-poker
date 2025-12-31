@@ -97,6 +97,7 @@ export function HorsesGameTable({
   
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{
+    playerId: string;
     dice: HorsesDieType[];
     isRolling: boolean;
   } | null>(null);
@@ -131,9 +132,17 @@ export function HorsesGameTable({
   // Current player from DB state
   const turnOrder = horsesState?.turnOrder || [];
   const currentTurnPlayerId = horsesState?.currentTurnPlayerId;
-  const currentPlayer = players.find(p => p.id === currentTurnPlayerId);
+  const currentPlayer = players.find((p) => p.id === currentTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId;
   const gamePhase = horsesState?.gamePhase || "waiting";
+
+  // Clear stale bot display state when the turn changes (prevents bot->bot flash).
+  useEffect(() => {
+    if (!botDisplayState) return;
+    if (botDisplayState.playerId !== currentTurnPlayerId) {
+      setBotDisplayState(null);
+    }
+  }, [currentTurnPlayerId, botDisplayState?.playerId]);
 
   // Mobile: show the active-turn player in the fixed Active Player section, and everyone else in the table row.
   const mobileSeatPlayers = currentTurnPlayerId
@@ -344,29 +353,40 @@ export function HorsesGameTable({
   // Bot auto-play with visible animation
   useEffect(() => {
     if (!currentPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
+    if (!currentUserId) return;
 
-    // Only one client should drive bot turns; otherwise multiple clients re-play bot turns and fight over DB state.
-    const effectiveControllerUserId =
-      horsesState.botControllerUserId ??
-      (turnOrder
-        .map((id) => players.find((p) => p.id === id))
-        .find((p) => p && !p.is_bot)?.user_id ?? null);
+    const run = async () => {
+      // Atomic single-driver claim to prevent multi-client bot turn fights (turn flashing).
+      let controllerId = horsesState.botControllerUserId ?? null;
 
-    if (effectiveControllerUserId && effectiveControllerUserId !== currentUserId) return;
+      if (!controllerId) {
+        const { data, error } = await supabase.rpc("claim_horses_bot_controller", {
+          _round_id: currentRoundId,
+        });
 
-    if (botProcessingRef.current.has(currentPlayer.id)) return;
-    botProcessingRef.current.add(currentPlayer.id);
-
-    const botPlay = async () => {
-      try {
-        // If missing, claim botControllerUserId ONCE up front and include it in all subsequent writes.
-        // Avoids a race where a late "claim" write overwrites newer state (causing infinite flashing).
-        let stateForWrites: HorsesStateFromDB = horsesState;
-        if (!stateForWrites.botControllerUserId && effectiveControllerUserId && effectiveControllerUserId === currentUserId) {
-          stateForWrites = { ...stateForWrites, botControllerUserId: currentUserId };
-          const claimErr = await updateHorsesState(currentRoundId, stateForWrites);
-          if (claimErr) console.error("[HORSES] Failed to claim bot controller:", claimErr);
+        if (error) {
+          console.error("[HORSES] Failed to claim bot controller (atomic):", error);
+        } else {
+          controllerId = (data as any)?.botControllerUserId ?? null; // eslint-disable-line @typescript-eslint/no-explicit-any
         }
+      }
+
+      // Fallback (older rounds / unexpected null)
+      controllerId =
+        controllerId ??
+        (turnOrder
+          .map((id) => players.find((p) => p.id === id))
+          .find((p) => p && !p.is_bot)?.user_id ?? null);
+
+      if (controllerId && controllerId !== currentUserId) return;
+
+      if (botProcessingRef.current.has(currentPlayer.id)) return;
+      botProcessingRef.current.add(currentPlayer.id);
+
+      try {
+        let stateForWrites: HorsesStateFromDB = controllerId
+          ? { ...horsesState, botControllerUserId: controllerId }
+          : horsesState;
 
         let botHand = stateForWrites?.playerStates?.[currentPlayer.id]
           ? {
@@ -379,14 +399,14 @@ export function HorsesGameTable({
         // Roll up to 3 times with visible animation
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
           // Show "rolling" animation
-          setBotDisplayState({ dice: botHand.dice, isRolling: true });
+          setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: true });
           await new Promise((resolve) => setTimeout(resolve, 800));
 
           // Roll the dice
           botHand = rollDice(botHand);
 
           // Show result of roll
-          setBotDisplayState({ dice: botHand.dice, isRolling: false });
+          setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: false });
 
           // Save intermediate state to DB so others can see
           const intermediateState = {
@@ -420,7 +440,7 @@ export function HorsesGameTable({
             botHand = applyHoldDecision(botHand, decision);
 
             // Show the hold decision
-            setBotDisplayState({ dice: botHand.dice, isRolling: false });
+            setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: false });
 
             // Save hold state so others can see
             const holdState = {
@@ -442,8 +462,8 @@ export function HorsesGameTable({
         botHand = lockInHand(botHand);
         const result = evaluateHand(botHand.dice);
 
-        // Clear bot display state
-        setBotDisplayState(null);
+        // Keep final bot dice visible until the DB turn advances.
+        setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: false });
 
         // Save bot state to DB
         const updatedStates = {
@@ -494,8 +514,18 @@ export function HorsesGameTable({
       }
     };
 
-    void botPlay();
-  }, [currentPlayer?.id, currentPlayer?.is_bot, gamePhase, currentRoundId, horsesState, turnOrder, currentWinningResult, currentUserId, players]);
+    void run();
+  }, [
+    currentPlayer?.id,
+    currentPlayer?.is_bot,
+    gamePhase,
+    currentRoundId,
+    horsesState,
+    turnOrder,
+    currentWinningResult,
+    currentUserId,
+    players,
+  ]);
 
   // Handle game complete - award pot to winner
   useEffect(() => {
@@ -564,9 +594,10 @@ export function HorsesGameTable({
 
   // Get dice to display for current turn (bot or from DB)
   const getCurrentTurnDice = () => {
-    if (currentPlayer?.is_bot && botDisplayState) {
+    if (currentPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) {
       return botDisplayState;
     }
+
     const state = horsesState?.playerStates?.[currentTurnPlayerId || ""];
     return state ? { dice: state.dice, isRolling: false } : null;
   };
