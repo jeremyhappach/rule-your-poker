@@ -33,13 +33,17 @@ export function HorsesDie({
 
   // Dot patterns for each die face
   const renderDots = () => {
-    if (value === 0 || isRolling) {
+    // Unrolled dice show a placeholder.
+    if (value === 0) {
       return (
         <div className="flex items-center justify-center w-full h-full">
-          <span className="text-gray-400 text-xl">?</span>
+          <span className="text-muted-foreground text-xl">?</span>
         </div>
       );
     }
+
+    // While rolling, keep showing the current face (the die itself animates via the button class).
+    // This avoids the UI looking like it "switches modes" into unknown dice.
 
     const dotClass = cn(
       dotSize,
