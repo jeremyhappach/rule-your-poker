@@ -209,6 +209,54 @@ const Game = () => {
     '3-5-7'?: PreviousGameConfig;
   }
   const [sessionGameConfigs, setSessionGameConfigs] = useState<SessionGameConfigs>({});
+
+  // "Run it back" should appear starting with the 2nd game in the same session.
+  // Hands are game-specific and are reset between games, so we detect session history via snapshots.
+  const [hasSessionHistory, setHasSessionHistory] = useState(false);
+
+  useEffect(() => {
+    if (!gameId) return;
+
+    let cancelled = false;
+    setHasSessionHistory(false);
+
+    const checkSessionHistory = async () => {
+      const { count, error } = await supabase
+        .from('session_player_snapshots')
+        .select('id', { count: 'exact', head: true })
+        .eq('game_id', gameId);
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error('[SESSION HISTORY] Failed to check snapshots:', error);
+        return;
+      }
+
+      setHasSessionHistory((count ?? 0) > 0);
+    };
+
+    checkSessionHistory();
+
+    const channel = supabase
+      .channel(`session-history-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'session_player_snapshots',
+          filter: `game_id=eq.${gameId}`,
+        },
+        () => setHasSessionHistory(true)
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [gameId]);
   
   const [isRunningItBack, setIsRunningItBack] = useState(false);
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
@@ -5040,7 +5088,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     previousGameType={game.game_type || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
-                    isFirstHand={!game.total_hands || game.total_hands === 0}
+                    isFirstHand={!hasSessionHistory}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />
