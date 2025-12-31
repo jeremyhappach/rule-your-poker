@@ -104,10 +104,7 @@ export function HorsesGameTable({
     .filter(p => !p.sitting_out)
     .sort((a, b) => a.position - b.position);
 
-  // Mobile layout: split players into a top grid and bottom grid so everyone stays visible.
-  const splitIndex = Math.ceil(activePlayers.length / 2);
-  const topPlayers = activePlayers.slice(0, splitIndex);
-  const bottomPlayers = activePlayers.slice(splitIndex);
+  // Mobile seating grid players are derived after we know the active turn player (see below).
 
   // Determine turn order: start LEFT of dealer (dealer goes LAST)
   const getTurnOrder = useCallback(() => {
@@ -135,6 +132,14 @@ export function HorsesGameTable({
   const currentPlayer = players.find(p => p.id === currentTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId;
   const gamePhase = horsesState?.gamePhase || "waiting";
+
+  // Mobile seating grid: exclude the active-turn player (shown in the felt center).
+  const mobileSeatPlayers = currentTurnPlayerId
+    ? activePlayers.filter(p => p.id !== currentTurnPlayerId)
+    : activePlayers;
+  const mobileSplitIndex = Math.ceil(mobileSeatPlayers.length / 2);
+  const mobileTopPlayers = mobileSeatPlayers.slice(0, mobileSplitIndex);
+  const mobileBottomPlayers = mobileSeatPlayers.slice(mobileSplitIndex);
 
   // Get my player state from DB
   const myPlayer = players.find(p => p.user_id === currentUserId);
@@ -560,7 +565,7 @@ export function HorsesGameTable({
       }}
     >
       {isMobile ? (
-        <div className="flex min-h-[72svh] flex-col">
+        <div className="flex min-h-[100svh] flex-col">
           <header className="px-4 pt-4 pb-3 text-center">
             <h1 className="text-xl font-bold text-poker-gold">Horses</h1>
             <p className="text-sm text-amber-200/80">Ante: ${anteAmount}</p>
@@ -593,11 +598,11 @@ export function HorsesGameTable({
             </div>
           )}
 
-          <main className="flex-1 px-3 pb-3" aria-label="Horses dice table">
-            <div className="grid h-full grid-rows-[auto_1fr_auto] gap-3">
+          <main className="flex-1 overflow-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]" aria-label="Horses dice table">
+            <div className="grid h-full grid-rows-[auto_minmax(280px,1fr)_auto] gap-3">
               {/* Top players */}
-              <section className="grid grid-cols-2 gap-3" aria-label="Players (top)">
-                {topPlayers.map((player) => {
+              <section className="grid grid-cols-2 gap-3 max-h-[22svh] overflow-auto pr-1" aria-label="Players (top)">
+                {mobileTopPlayers.map((player) => {
                   const playerState = horsesState?.playerStates?.[player.id];
                   const isWinner = winningPlayerIds.includes(player.id);
                   const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
@@ -623,12 +628,12 @@ export function HorsesGameTable({
               </section>
 
               {/* Center felt */}
-              <section className="flex items-center justify-center" aria-label="Felt (center)">
+              <section className="flex min-h-[280px] items-center justify-center" aria-label="Felt (center)">
                 <div className="w-full max-w-[560px] rounded-[32px] border border-border/40 bg-background/10 p-4 backdrop-blur-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]">
-                  {/* Active player card (so it never disappears on mobile) */}
-                  {currentPlayer && (
-                    <div className="flex justify-center">
-                      {(() => {
+                  {/* Active player card (always visible on mobile) */}
+                  <div className="flex justify-center">
+                    {currentPlayer ? (
+                      (() => {
                         const playerState = horsesState?.playerStates?.[currentPlayer.id];
                         const isWinner = winningPlayerIds.includes(currentPlayer.id);
                         const hasCompleted = playerState?.isComplete || false;
@@ -647,9 +652,13 @@ export function HorsesGameTable({
                             myStatus={isMe ? getMyStatus() : undefined}
                           />
                         );
-                      })()}
-                    </div>
-                  )}
+                      })()
+                    ) : (
+                      <div className="rounded-lg border border-border/50 bg-background/15 px-4 py-3 text-sm text-muted-foreground">
+                        Waiting for the next turn...
+                      </div>
+                    )}
+                  </div>
 
                   {/* Dice row (always on felt; held dice just tint) */}
                   <div className="mt-3 flex justify-center">
@@ -718,8 +727,8 @@ export function HorsesGameTable({
               </section>
 
               {/* Bottom players */}
-              <section className="grid grid-cols-2 gap-3" aria-label="Players (bottom)">
-                {bottomPlayers.map((player) => {
+              <section className="grid grid-cols-2 gap-3 max-h-[22svh] overflow-auto pr-1" aria-label="Players (bottom)">
+                {mobileBottomPlayers.map((player) => {
                   const playerState = horsesState?.playerStates?.[player.id];
                   const isWinner = winningPlayerIds.includes(player.id);
                   const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
