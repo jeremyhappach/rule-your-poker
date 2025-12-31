@@ -401,7 +401,10 @@ export function useHorsesMobileController({
 
       botHand = lockInHand(botHand);
       const result = evaluateHand(botHand.dice);
-      setBotDisplayState(null);
+
+      // Keep the final bot dice on-screen until the DB turn actually advances.
+      // This prevents a brief flash where botDisplayState clears before the next turn state arrives.
+      setBotDisplayState({ playerId: currentTurnPlayer.id, dice: botHand.dice, isRolling: false });
 
       const updatedStates = {
         ...(horsesState?.playerStates || {}),
