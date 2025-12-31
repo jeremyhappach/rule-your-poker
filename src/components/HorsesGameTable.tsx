@@ -547,12 +547,12 @@ export function HorsesGameTable({
       }}
     >
       {/* Header - Horses + Ante */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-        <h2 className="text-xl font-bold text-poker-gold">Horses</h2>
-        <span className="text-sm text-amber-200/80">Ante: ${anteAmount}</span>
-      </div>
+      <header className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+        <h1 className="text-xl font-bold text-poker-gold">Horses</h1>
+        <p className="text-sm text-amber-200/80">Ante: ${anteAmount}</p>
+      </header>
 
-      {/* Pot display - smaller, positioned higher */}
+      {/* Pot display */}
       <div className="absolute top-16 left-1/2 -translate-x-1/2">
         <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
           <span className="text-amber-200 text-sm">Pot:</span>
@@ -560,8 +560,29 @@ export function HorsesGameTable({
         </div>
       </div>
 
+      {/* Turn status (kept out of the felt center to avoid a "modal" feel) */}
+      {gamePhase === "playing" && currentPlayer && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2">
+          <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/20 px-3 py-1 backdrop-blur-sm">
+            <Dice5 className="h-4 w-4 text-amber-300" />
+            <span className="text-sm text-foreground/90">
+              {isMyTurn ? "Your turn" : `${getPlayerUsername(currentPlayer)}'s turn`}
+            </span>
+            {isMyTurn ? (
+              <Badge variant="secondary" className="text-xs">
+                Rolls: {localHand.rollsRemaining}
+              </Badge>
+            ) : horsesState?.playerStates?.[currentTurnPlayerId || ""] ? (
+              <Badge variant="secondary" className="text-xs">
+                Rolls: {horsesState.playerStates[currentTurnPlayerId || ""].rollsRemaining}
+              </Badge>
+            ) : null}
+          </div>
+        </div>
+      )}
+
       {/* Player areas around the felt */}
-      <div className="absolute inset-0 p-4 pt-28">
+      <main className="absolute inset-0 p-4 pt-32">
         <div className="relative w-full h-full">
           {/* Position players around the table */}
           {activePlayers.map((player, idx) => {
@@ -570,19 +591,21 @@ export function HorsesGameTable({
             const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
             const hasCompleted = playerState?.isComplete || false;
             const isMe = player.user_id === currentUserId;
-            
-            // Calculate position around the table
+
+            // Calculate position around the table (slightly higher so the bottom bar never covers players)
             const totalPlayers = activePlayers.length;
             const angle = (idx / totalPlayers) * 2 * Math.PI - Math.PI / 2;
-            const radiusX = 38;
-            const radiusY = 32;
-            const x = 50 + radiusX * Math.cos(angle);
-            const y = 50 + radiusY * Math.sin(angle);
+            const centerX = 50;
+            const centerY = 48;
+            const radiusX = 40;
+            const radiusY = 28;
+            const x = centerX + radiusX * Math.cos(angle);
+            const y = centerY + radiusY * Math.sin(angle);
 
             return (
               <div
                 key={player.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                className="absolute z-20 transform -translate-x-1/2 -translate-y-1/2"
                 style={{ left: `${x}%`, top: `${y}%` }}
               >
                 <HorsesPlayerArea
@@ -600,82 +623,55 @@ export function HorsesGameTable({
             );
           })}
 
-          {/* Dice display on the felt - for current player's turn */}
+          {/* Dice on the felt center (always behind player boxes) */}
           {gamePhase === "playing" && currentPlayer && !isMyTurn && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="flex flex-col items-center gap-3">
-                <span className="text-amber-200 text-sm">
-                  {getPlayerUsername(currentPlayer)}'s Turn
-                </span>
-                
-                {/* Show dice on the felt */}
-                {(() => {
-                  const diceState = getCurrentTurnDice();
-                  if (!diceState) return null;
-                  
-                  return (
-                    <div className="flex gap-2">
-                      {diceState.dice.map((die, idx) => (
-                        <HorsesDie
-                          key={idx}
-                          value={die.value}
-                          isHeld={die.isHeld}
-                          isRolling={diceState.isRolling}
-                          canToggle={false}
-                          onToggle={() => {}}
-                          size="md"
-                        />
-                      ))}
-                    </div>
-                  );
-                })()}
-                
-                {/* Rolls remaining indicator */}
-                {horsesState?.playerStates?.[currentTurnPlayerId || ""] && (
-                  <span className="text-xs text-muted-foreground">
-                    Rolls remaining: {horsesState.playerStates[currentTurnPlayerId || ""].rollsRemaining}
-                  </span>
-                )}
-              </div>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
+              {(() => {
+                const diceState = getCurrentTurnDice();
+                if (!diceState) return null;
+
+                return (
+                  <div className="flex gap-2">
+                    {diceState.dice.map((die, idx) => (
+                      <HorsesDie
+                        key={idx}
+                        value={die.value}
+                        isHeld={die.isHeld}
+                        isRolling={diceState.isRolling}
+                        canToggle={false}
+                        onToggle={() => {}}
+                        size="md"
+                      />
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
           {/* My turn - dice on felt center (no overlay) */}
           {isMyTurn && gamePhase === "playing" && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="flex flex-col items-center gap-2">
-                {/* Rolls remaining label */}
-                <span className="text-amber-200 text-xs">
-                  Rolls: <span className="font-semibold">{localHand.rollsRemaining}</span>
-                </span>
-
-                {/* Dice on felt */}
-                <div className="flex gap-2">
-                  {localHand.dice.map((die, idx) => (
-                    <HorsesDie
-                      key={idx}
-                      value={die.value}
-                      isHeld={die.isHeld}
-                      isRolling={isRolling && !die.isHeld}
-                      canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
-                      onToggle={() => handleToggleHold(idx)}
-                      size="md"
-                    />
-                  ))}
-                </div>
-
-                {/* Tap to hold hint */}
-                {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-                  <p className="text-xs text-amber-200/60">Tap to hold</p>
-                )}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+              <div className="flex gap-2">
+                {localHand.dice.map((die, idx) => (
+                  <HorsesDie
+                    key={idx}
+                    value={die.value}
+                    isHeld={die.isHeld}
+                    isRolling={isRolling && !die.isHeld}
+                    canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
+                    onToggle={() => handleToggleHold(idx)}
+                    size="md"
+                  />
+                ))}
               </div>
             </div>
           )}
 
-          {/* Bottom action bar for my turn - fixed at bottom, outside felt flow */}
+          {/* Bottom action bar for my turn */}
           {isMyTurn && gamePhase === "playing" && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30">
-              <div className="flex items-center gap-2 bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm border border-amber-600/30">
+              <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
                 <Button
                   onClick={handleRoll}
                   disabled={localHand.rollsRemaining <= 0 || isRolling}
@@ -697,9 +693,16 @@ export function HorsesGameTable({
                     Lock In
                   </Button>
                 )}
+
+                {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+                  <span className="ml-1 text-xs text-muted-foreground">Tap dice to hold</span>
+                )}
               </div>
             </div>
           )}
+        </div>
+      </main>
+
           {/* Game complete message - center of felt */}
           {gamePhase === "complete" && (
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
