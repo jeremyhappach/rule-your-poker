@@ -85,9 +85,14 @@ export function useHorsesMobileController({
 
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{
-    playerId: string; dice: HorsesDieType[];
+    playerId: string;
+    dice: HorsesDieType[];
     isRolling: boolean;
   } | null>(null);
+
+  // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
+  const lastFeltDiceRef = useRef<any>(null);
+  const lastFeltDiceAtRef = useRef<number>(0);
 
   const activePlayers = useMemo(
     () => players.filter((p) => !p.sitting_out).sort((a, b) => a.position - b.position),
@@ -515,14 +520,21 @@ export function useHorsesMobileController({
     getPlayerUsername,
   ]);
 
-  const feltDice = useMemo(() => {
+  const rawFeltDice = useMemo(() => {
     if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) return null;
 
+    // IMPORTANT: avoid flashing unrolled "?" dice during turn transitions.
+    // Prefer the authoritative DB state for the current player, then fall back to local state.
     if (isMyTurn) {
+      const dbState = myPlayer ? horsesState?.playerStates?.[myPlayer.id] : null;
+      const dice = dbState?.dice ?? localHand.dice;
+      const rollsRemaining =
+        typeof dbState?.rollsRemaining === "number" ? dbState.rollsRemaining : localHand.rollsRemaining;
+
       return {
-        dice: localHand.dice,
+        dice,
         isRolling,
-        canToggle: localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0,
+        canToggle: rollsRemaining < 3 && rollsRemaining > 0,
       };
     }
 
@@ -535,13 +547,33 @@ export function useHorsesMobileController({
     gamePhase,
     currentTurnPlayerId,
     isMyTurn,
+    myPlayer,
+    horsesState?.playerStates,
     localHand.dice,
     localHand.rollsRemaining,
     isRolling,
     currentTurnPlayer?.is_bot,
     botDisplayState,
-    horsesState?.playerStates,
   ]);
+
+  useEffect(() => {
+    if (rawFeltDice) {
+      lastFeltDiceRef.current = rawFeltDice;
+      lastFeltDiceAtRef.current = Date.now();
+    }
+  }, [rawFeltDice]);
+
+  const feltDice = useMemo(() => {
+    if (rawFeltDice) return rawFeltDice;
+    if (!enabled) return null;
+
+    // If state is briefly unavailable (e.g. refetch/realtime gap), keep the last dice for a beat.
+    if (lastFeltDiceRef.current && Date.now() - lastFeltDiceAtRef.current < 400) {
+      return lastFeltDiceRef.current;
+    }
+
+    return null;
+  }, [rawFeltDice, enabled]);
 
   // Calculate currently winning player IDs during play (not just at game end)
   const currentlyWinningPlayerIds = useMemo(() => {
