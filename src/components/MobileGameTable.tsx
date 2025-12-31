@@ -3393,29 +3393,25 @@ export const MobileGameTable = ({
 
         {/* Horses felt dice (rolls happen on the felt, not in the bottom section) */}
         {gameType === 'horses' && horsesController.enabled && (
-          <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20">
-            <div className="rounded-2xl border border-border/40 bg-background/10 px-4 py-3 backdrop-blur-sm shadow-[inset_0_0_40px_rgba(0,0,0,0.35)]">
-              <div className="flex items-center justify-center gap-2">
-                {(
-                  (horsesController.feltDice?.dice as any) ||
-                  Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))
-                ).map((die: any, idx: number) => (
-                  <HorsesDie
-                    key={idx}
-                    value={die.value}
-                    isHeld={!!die.isHeld}
-                    isRolling={
-                      horsesController.isMyTurn
-                        ? horsesController.isRolling && !die.isHeld
-                        : !!(horsesController.feltDice as any)?.isRolling
-                    }
-                    canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
-                    onToggle={() => horsesController.handleToggleHold(idx)}
-                    size="md"
-                  />
-                ))}
-              </div>
-            </div>
+          <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-2">
+            {(
+              (horsesController.feltDice?.dice as any) ||
+              Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))
+            ).map((die: any, idx: number) => (
+              <HorsesDie
+                key={idx}
+                value={die.value}
+                isHeld={!!die.isHeld}
+                isRolling={
+                  horsesController.isMyTurn
+                    ? horsesController.isRolling && !die.isHeld
+                    : !!(horsesController.feltDice as any)?.isRolling
+                }
+                canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
+                onToggle={() => horsesController.handleToggleHold(idx)}
+                size="md"
+              />
+            ))}
           </div>
         )}
 
