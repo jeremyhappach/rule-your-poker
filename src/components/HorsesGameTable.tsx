@@ -20,6 +20,7 @@ import {
   applyHoldDecision,
 } from "@/lib/horsesBotLogic";
 import { Dice5, Lock, RotateCcw } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -84,6 +85,8 @@ export function HorsesGameTable({
   horsesState,
   onRefetch,
 }: HorsesGameTableProps) {
+  const isMobile = useIsMobile();
+
   // Local state for dice rolling animation
   const [localHand, setLocalHand] = useState<HorsesHand>(createInitialHand());
   const [isRolling, setIsRolling] = useState(false);
@@ -100,6 +103,11 @@ export function HorsesGameTable({
   const activePlayers = players
     .filter(p => !p.sitting_out)
     .sort((a, b) => a.position - b.position);
+
+  // Mobile layout: split players into a top grid and bottom grid so everyone stays visible.
+  const splitIndex = Math.ceil(activePlayers.length / 2);
+  const topPlayers = activePlayers.slice(0, splitIndex);
+  const bottomPlayers = activePlayers.slice(splitIndex);
 
   // Determine turn order: start LEFT of dealer (dealer goes LAST)
   const getTurnOrder = useCallback(() => {
