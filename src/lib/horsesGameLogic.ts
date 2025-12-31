@@ -155,8 +155,8 @@ export function evaluateHand(dice: DiceValue[]): HorsesHandResult {
   // Special case: Five 1s (pure wilds) - best hand
   if (wildCount === 5) {
     return {
-      rank: 55,
-      description: "5 1s",
+      rank: 100, // Highest possible
+      description: "5 1s (Wilds!)",
       ofAKindCount: 5,
       highValue: 1,
     };
@@ -164,13 +164,18 @@ export function evaluateHand(dice: DiceValue[]): HorsesHandResult {
   
   // For each non-wild value (6 down to 2), calculate best possible of-a-kind
   // by adding wilds to that value's count
+  // Higher values are BETTER, so we want 6s to beat 5s, etc.
   let bestOfAKind = 0;
   let bestValue = 0;
   
   for (let value = 6; value >= 2; value--) {
     const totalWithWilds = counts[value] + wildCount;
-    if (totalWithWilds > bestOfAKind || (totalWithWilds === bestOfAKind && value > bestValue)) {
+    // Take the first (highest value) that gives us the most of-a-kind
+    // Or if equal count, prefer higher value
+    if (totalWithWilds > bestOfAKind) {
       bestOfAKind = totalWithWilds;
+      bestValue = value;
+    } else if (totalWithWilds === bestOfAKind && value > bestValue) {
       bestValue = value;
     }
   }
@@ -178,31 +183,18 @@ export function evaluateHand(dice: DiceValue[]): HorsesHandResult {
   // Cap at 5 (can't have more than 5 of a kind with 5 dice)
   bestOfAKind = Math.min(bestOfAKind, 5);
   
-  // Calculate rank
+  // Calculate rank - HIGHER dice value = HIGHER rank
+  // Ranking: Five 6s > Five 5s > Five 4s > Five 3s > Five 2s > Four 6s > etc.
+  // Formula: rank = (ofAKindCount * 10) + diceValue
+  // Five 6s = 56, Five 5s = 55, Five 4s = 54, Five 3s = 53, Five 2s = 52
+  // Four 6s = 46, Four 5s = 45, etc.
+  // This ensures higher dice values beat lower ones within same of-a-kind
+  
   let rank: number;
   let description: string;
   
   if (bestOfAKind >= 2) {
-    // X of a kind: rank = (ofAKind * 10) + value
-    // e.g., Five 6s = 50 + 6 = 56, but we use 54 to keep five 1s as best
-    // Actually, let's use: rank = ((ofAKind - 1) * 10) + value
-    // Five 6s = 40 + 6 = 46, Five 1s = 55 (special case handled above)
-    // Wait, let me recalculate to match the spec:
-    // Five 1s = 55 (best)
-    // Five 6s = 54, Five 5s = 53, ..., Five 2s = 50
-    // Four 6s = 44, Four 5s = 43, ..., Four 2s = 40
-    // etc.
-    
-    if (bestOfAKind === 5) {
-      rank = 50 + (bestValue - 2); // Five 2s = 50, Five 6s = 54
-    } else if (bestOfAKind === 4) {
-      rank = 40 + (bestValue - 2); // Four 2s = 40, Four 6s = 44
-    } else if (bestOfAKind === 3) {
-      rank = 30 + (bestValue - 2); // Three 2s = 30, Three 6s = 34
-    } else { // bestOfAKind === 2
-      rank = 20 + (bestValue - 2); // Pair 2s = 20, Pair 6s = 24
-    }
-    
+    rank = (bestOfAKind * 10) + bestValue;
     description = `${bestOfAKind} ${bestValue}s`;
   } else {
     // High card - no pairs, no wilds helping
@@ -211,6 +203,8 @@ export function evaluateHand(dice: DiceValue[]): HorsesHandResult {
     rank = 10 + highCard; // 6 high = 16, 5 high = 15, etc.
     description = `${highCard} high`;
   }
+  
+  console.log(`[HORSES] Evaluated hand: ${values.join(',')} -> ${description} (rank: ${rank})`);
   
   return {
     rank,

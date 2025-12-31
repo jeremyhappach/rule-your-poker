@@ -89,21 +89,40 @@ export function HorsesGameTable({
   const [isRolling, setIsRolling] = useState(false);
   const botProcessingRef = useRef<Set<string>>(new Set());
   const initializingRef = useRef(false);
+  
+  // Bot animation state - show intermediate dice/holds
+  const [botDisplayState, setBotDisplayState] = useState<{
+    dice: HorsesDieType[];
+    isRolling: boolean;
+  } | null>(null);
 
-  // Get active players sorted by position (clockwise from dealer's left)
+  // Get active players sorted by position
   const activePlayers = players
     .filter(p => !p.sitting_out)
-    .sort((a, b) => {
-      // Sort by distance from dealer position (clockwise)
-      const aDistance = (a.position - dealerPosition + players.length) % players.length || players.length;
-      const bDistance = (b.position - dealerPosition + players.length) % players.length || players.length;
-      return aDistance - bDistance;
-    });
+    .sort((a, b) => a.position - b.position);
 
-  // Determine turn order (left of dealer first, dealer last)
-  const turnOrder = horsesState?.turnOrder || activePlayers.map(p => p.id);
-  
+  // Determine turn order: start LEFT of dealer (dealer goes LAST)
+  const getTurnOrder = useCallback(() => {
+    if (activePlayers.length === 0) return [];
+    
+    // Find dealer's index in activePlayers
+    const dealerIdx = activePlayers.findIndex(p => p.position === dealerPosition);
+    if (dealerIdx === -1) {
+      // Fallback: just use position order
+      return activePlayers.map(p => p.id);
+    }
+    
+    // Start with player after dealer, wrap around
+    const order: string[] = [];
+    for (let i = 1; i <= activePlayers.length; i++) {
+      const idx = (dealerIdx + i) % activePlayers.length;
+      order.push(activePlayers[idx].id);
+    }
+    return order;
+  }, [activePlayers, dealerPosition]);
+
   // Current player from DB state
+  const turnOrder = horsesState?.turnOrder || [];
   const currentTurnPlayerId = horsesState?.currentTurnPlayerId;
   const currentPlayer = players.find(p => p.id === currentTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId;
@@ -156,7 +175,8 @@ export function HorsesGameTable({
     initializingRef.current = true;
 
     const initializeGame = async () => {
-      const order = activePlayers.map(p => p.id);
+      // Use proper turn order: left of dealer first
+      const order = getTurnOrder();
       
       const initialState: HorsesStateFromDB = {
         currentTurnPlayerId: order[0],
@@ -183,7 +203,7 @@ export function HorsesGameTable({
     };
 
     initializeGame();
-  }, [currentRoundId, activePlayers.length, horsesState?.turnOrder?.length, gameId]);
+  }, [currentRoundId, activePlayers.length, horsesState?.turnOrder?.length, gameId, getTurnOrder]);
 
   // Save my dice state to DB
   const saveMyState = useCallback(async (hand: HorsesHand, completed: boolean, result?: HorsesHandResult) => {
@@ -303,7 +323,7 @@ export function HorsesGameTable({
     }, 1500);
   }, [isMyTurn, localHand, saveMyState, advanceToNextTurn]);
 
-  // Bot auto-play with smart decision making
+  // Bot auto-play with visible animation
   useEffect(() => {
     if (!currentPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
     if (botProcessingRef.current.has(currentPlayer.id)) return;
@@ -319,11 +339,33 @@ export function HorsesGameTable({
           }
         : createInitialHand();
 
-      // Roll up to 3 times with smart strategy
+      // Roll up to 3 times with visible animation
       for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        // Show "rolling" animation
+        setBotDisplayState({ dice: botHand.dice, isRolling: true });
+        await new Promise(resolve => setTimeout(resolve, 800));
 
+        // Roll the dice
         botHand = rollDice(botHand);
+        
+        // Show result of roll
+        setBotDisplayState({ dice: botHand.dice, isRolling: false });
+        
+        // Save intermediate state to DB so others can see
+        const intermediateState = {
+          ...(horsesState?.playerStates || {}),
+          [currentPlayer.id]: {
+            dice: botHand.dice,
+            rollsRemaining: botHand.rollsRemaining,
+            isComplete: false,
+          },
+        };
+        await updateHorsesState(currentRoundId, {
+          ...horsesState,
+          playerStates: intermediateState,
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Check if we should stop rolling based on current hand vs winning hand
         if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) {
@@ -341,12 +383,34 @@ export function HorsesGameTable({
           
           console.log(`[Bot] Hold decision: ${decision.reasoning}`);
           botHand = applyHoldDecision(botHand, decision);
+          
+          // Show the hold decision
+          setBotDisplayState({ dice: botHand.dice, isRolling: false });
+          
+          // Save hold state so others can see
+          const holdState = {
+            ...(horsesState?.playerStates || {}),
+            [currentPlayer.id]: {
+              dice: botHand.dice,
+              rollsRemaining: botHand.rollsRemaining,
+              isComplete: false,
+            },
+          };
+          await updateHorsesState(currentRoundId, {
+            ...horsesState,
+            playerStates: holdState,
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, 800));
         }
       }
 
       // Mark complete
       botHand = lockInHand(botHand);
       const result = evaluateHand(botHand.dice);
+      
+      // Clear bot display state
+      setBotDisplayState(null);
 
       // Save bot state to DB
       const updatedStates = {
@@ -458,161 +522,207 @@ export function HorsesGameTable({
     return player.profiles?.username || `Player ${player.position}`;
   };
 
+  // Get my status for the player area display
+  const getMyStatus = (): 'waiting' | 'rolling' | 'done' => {
+    if (!myPlayer) return 'waiting';
+    if (myState?.isComplete) return 'done';
+    if (isMyTurn) return 'rolling';
+    return 'waiting';
+  };
+
+  // Get dice to display for current turn (bot or from DB)
+  const getCurrentTurnDice = () => {
+    if (currentPlayer?.is_bot && botDisplayState) {
+      return botDisplayState;
+    }
+    const state = horsesState?.playerStates?.[currentTurnPlayerId || ""];
+    return state ? { dice: state.dice, isRolling: false } : null;
+  };
+
   return (
-    <div className="flex flex-col items-center gap-6 p-6 min-h-[500px]">
-      {/* Pot display */}
-      <div className="flex items-center gap-2 bg-amber-900/50 px-4 py-2 rounded-lg">
-        <span className="text-amber-200">Pot:</span>
-        <span className="text-2xl font-bold text-poker-gold">${pot}</span>
+    <div className="relative w-full h-full min-h-[500px] rounded-xl overflow-hidden"
+      style={{
+        background: 'radial-gradient(ellipse at center, hsl(142 30% 25%) 0%, hsl(142 40% 15%) 60%, hsl(142 50% 10%) 100%)',
+        boxShadow: 'inset 0 0 100px rgba(0,0,0,0.5)',
+      }}
+    >
+      {/* Header - Horses + Ante */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+        <h2 className="text-xl font-bold text-poker-gold">Horses</h2>
+        <span className="text-sm text-amber-200/80">Ante: ${anteAmount}</span>
       </div>
 
-      {/* Player areas - show all players with their results */}
-      <div className="flex flex-wrap justify-center gap-4 max-w-4xl">
-        {activePlayers.map((player) => {
-          const playerState = horsesState?.playerStates?.[player.id];
-          const isWinner = winningPlayerIds.includes(player.id);
-          const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
-          const hasCompleted = playerState?.isComplete || false;
-
-          return (
-            <HorsesPlayerArea
-              key={player.id}
-              username={getPlayerUsername(player)}
-              position={player.position}
-              isCurrentTurn={isCurrent}
-              isCurrentUser={player.user_id === currentUserId}
-              handResult={playerState?.result || null}
-              isWinningHand={isWinner && gamePhase === "complete"}
-              hasTurnCompleted={hasCompleted}
-              diceValues={hasCompleted ? playerState?.dice : undefined}
-            />
-          );
-        })}
-      </div>
-
-      {/* Current turn indicator */}
-      {gamePhase === "playing" && currentPlayer && (
-        <div className="text-center">
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-lg px-4 py-2",
-              isMyTurn
-                ? "bg-yellow-500/20 border-yellow-500 text-yellow-300"
-                : "bg-muted/50 border-border text-muted-foreground"
-            )}
-          >
-            {isMyTurn ? "Your Turn!" : `${getPlayerUsername(currentPlayer)}'s Turn`}
-          </Badge>
+      {/* Pot display - smaller, positioned higher */}
+      <div className="absolute top-16 left-1/2 -translate-x-1/2">
+        <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
+          <span className="text-amber-200 text-sm">Pot:</span>
+          <span className="text-lg font-bold text-poker-gold">${pot}</span>
         </div>
-      )}
+      </div>
 
-      {/* Dice area - only show when it's my turn */}
-      {isMyTurn && gamePhase === "playing" && (
-        <div className="flex flex-col items-center gap-4 p-6 bg-green-900/30 rounded-xl border-2 border-green-700">
-          {/* Rolls remaining */}
-          <div className="flex items-center gap-2">
-            <Dice5 className="w-5 h-5 text-amber-400" />
-            <span className="text-amber-200">
-              Rolls remaining: <span className="font-bold">{localHand.rollsRemaining}</span>
-            </span>
-          </div>
+      {/* Player areas around the felt */}
+      <div className="absolute inset-0 p-4 pt-28">
+        <div className="relative w-full h-full">
+          {/* Position players around the table */}
+          {activePlayers.map((player, idx) => {
+            const playerState = horsesState?.playerStates?.[player.id];
+            const isWinner = winningPlayerIds.includes(player.id);
+            const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
+            const hasCompleted = playerState?.isComplete || false;
+            const isMe = player.user_id === currentUserId;
+            
+            // Calculate position around the table
+            const totalPlayers = activePlayers.length;
+            const angle = (idx / totalPlayers) * 2 * Math.PI - Math.PI / 2;
+            const radiusX = 38;
+            const radiusY = 32;
+            const x = 50 + radiusX * Math.cos(angle);
+            const y = 50 + radiusY * Math.sin(angle);
 
-          {/* Dice */}
-          <div className="flex gap-3">
-            {localHand.dice.map((die, idx) => (
-              <HorsesDie
-                key={idx}
-                value={die.value}
-                isHeld={die.isHeld}
-                isRolling={isRolling && !die.isHeld}
-                canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
-                onToggle={() => handleToggleHold(idx)}
-                size="lg"
-              />
-            ))}
-          </div>
+            return (
+              <div
+                key={player.id}
+                className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${x}%`, top: `${y}%` }}
+              >
+                <HorsesPlayerArea
+                  username={getPlayerUsername(player)}
+                  position={player.position}
+                  isCurrentTurn={isCurrent}
+                  isCurrentUser={isMe}
+                  handResult={playerState?.result || null}
+                  isWinningHand={isWinner && gamePhase === "complete"}
+                  hasTurnCompleted={hasCompleted}
+                  diceValues={hasCompleted ? playerState?.dice : undefined}
+                  myStatus={isMe ? getMyStatus() : undefined}
+                />
+              </div>
+            );
+          })}
 
-          {/* Instructions */}
-          {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-            <p className="text-sm text-amber-200/70">
-              Click dice to hold/unhold them
-            </p>
+          {/* Dice display on the felt - for current player's turn */}
+          {gamePhase === "playing" && currentPlayer && !isMyTurn && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-amber-200 text-sm">
+                  {getPlayerUsername(currentPlayer)}'s Turn
+                </span>
+                
+                {/* Show dice on the felt */}
+                {(() => {
+                  const diceState = getCurrentTurnDice();
+                  if (!diceState) return null;
+                  
+                  return (
+                    <div className="flex gap-2">
+                      {diceState.dice.map((die, idx) => (
+                        <HorsesDie
+                          key={idx}
+                          value={die.value}
+                          isHeld={die.isHeld}
+                          isRolling={diceState.isRolling}
+                          canToggle={false}
+                          onToggle={() => {}}
+                          size="md"
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+                
+                {/* Rolls remaining indicator */}
+                {horsesState?.playerStates?.[currentTurnPlayerId || ""] && (
+                  <span className="text-xs text-muted-foreground">
+                    Rolls remaining: {horsesState.playerStates[currentTurnPlayerId || ""].rollsRemaining}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={handleRoll}
-              disabled={localHand.rollsRemaining <= 0 || isRolling}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Roll {localHand.rollsRemaining === 3 ? "" : "Again"}
-            </Button>
+          {/* My turn - dice in center of felt */}
+          {isMyTurn && gamePhase === "playing" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="flex flex-col items-center gap-4 p-4 bg-black/20 rounded-xl backdrop-blur-sm">
+                {/* Rolls remaining */}
+                <div className="flex items-center gap-2">
+                  <Dice5 className="w-5 h-5 text-amber-400" />
+                  <span className="text-amber-200">
+                    Rolls remaining: <span className="font-bold">{localHand.rollsRemaining}</span>
+                  </span>
+                </div>
 
-            {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-              <Button
-                onClick={handleLockIn}
-                variant="outline"
-                className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
-              >
-                <Lock className="w-4 h-4 mr-2" />
-                Lock In
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+                {/* Dice */}
+                <div className="flex gap-3">
+                  {localHand.dice.map((die, idx) => (
+                    <HorsesDie
+                      key={idx}
+                      value={die.value}
+                      isHeld={die.isHeld}
+                      isRolling={isRolling && !die.isHeld}
+                      canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
+                      onToggle={() => handleToggleHold(idx)}
+                      size="lg"
+                    />
+                  ))}
+                </div>
 
-      {/* Watching other player roll */}
-      {!isMyTurn && gamePhase === "playing" && currentPlayer && (
-        <div className="flex flex-col items-center gap-4 p-6 bg-muted/30 rounded-xl border-2 border-border">
-          <div className="flex items-center gap-2">
-            <Dice5 className="w-5 h-5 text-muted-foreground animate-bounce" />
-            <span className="text-muted-foreground">
-              {getPlayerUsername(currentPlayer)} is rolling...
-            </span>
-          </div>
-          
-          {/* Show current player's dice state */}
-          {horsesState?.playerStates?.[currentPlayer.id] && (
-            <div className="flex gap-3">
-              {horsesState.playerStates[currentPlayer.id].dice.map((die, idx) => (
-                <HorsesDie
-                  key={idx}
-                  value={die.value}
-                  isHeld={die.isHeld}
-                  isRolling={false}
-                  canToggle={false}
-                  onToggle={() => {}}
-                  size="md"
-                />
-              ))}
+                {/* Instructions */}
+                {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+                  <p className="text-sm text-amber-200/70">
+                    Click dice to hold/unhold them
+                  </p>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleRoll}
+                    disabled={localHand.rollsRemaining <= 0 || isRolling}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Roll {localHand.rollsRemaining === 3 ? "" : "Again"}
+                  </Button>
+
+                  {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+                    <Button
+                      onClick={handleLockIn}
+                      variant="outline"
+                      className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
+                    >
+                      <Lock className="w-4 h-4 mr-2" />
+                      Lock In
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Game complete message - center of felt */}
+          {gamePhase === "complete" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="text-center p-6 bg-amber-900/50 rounded-xl border-2 border-amber-600 backdrop-blur-sm">
+                <h3 className="text-2xl font-bold text-poker-gold mb-2">Round Complete!</h3>
+                {winningPlayerIds.length > 1 ? (
+                  <p className="text-amber-200">It's a tie! Re-ante to continue...</p>
+                ) : (
+                  <p className="text-amber-200">
+                    {(() => {
+                      const winner = completedResults.find(r => r.playerId === winningPlayerIds[0]);
+                      const winnerPlayer = players.find(p => p.id === winningPlayerIds[0]);
+                      return winner && winnerPlayer
+                        ? `${getPlayerUsername(winnerPlayer)} wins with ${winner.result.description}!`
+                        : "Winner determined!";
+                    })()}
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* Game complete message */}
-      {gamePhase === "complete" && (
-        <div className="text-center p-6 bg-amber-900/30 rounded-xl border-2 border-amber-600">
-          <h3 className="text-2xl font-bold text-poker-gold mb-2">Round Complete!</h3>
-          {winningPlayerIds.length > 1 ? (
-            <p className="text-amber-200">It's a tie! Re-ante to continue...</p>
-          ) : (
-            <p className="text-amber-200">
-              {(() => {
-                const winner = completedResults.find(r => r.playerId === winningPlayerIds[0]);
-                const winnerPlayer = players.find(p => p.id === winningPlayerIds[0]);
-                return winner && winnerPlayer
-                  ? `${getPlayerUsername(winnerPlayer)} wins with ${winner.result.description}!`
-                  : "Winner determined!";
-              })()}
-            </p>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
