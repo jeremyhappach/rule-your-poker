@@ -640,20 +640,20 @@ export function HorsesGameTable({
             </div>
           )}
 
-          {/* My turn - dice in center of felt */}
+          {/* My turn - keep table + player boxes visible; show dice directly on felt */}
           {isMyTurn && gamePhase === "playing" && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="flex flex-col items-center gap-4 p-4 bg-black/20 rounded-xl backdrop-blur-sm">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+              <div className="flex flex-col items-center gap-3">
                 {/* Rolls remaining */}
                 <div className="flex items-center gap-2">
-                  <Dice5 className="w-5 h-5 text-amber-400" />
-                  <span className="text-amber-200">
-                    Rolls remaining: <span className="font-bold">{localHand.rollsRemaining}</span>
+                  <Dice5 className="w-4 h-4 text-amber-400" />
+                  <span className="text-amber-200 text-sm">
+                    Rolls remaining: <span className="font-semibold">{localHand.rollsRemaining}</span>
                   </span>
                 </div>
 
-                {/* Dice */}
-                <div className="flex gap-3">
+                {/* Dice on felt */}
+                <div className="flex gap-2">
                   {localHand.dice.map((die, idx) => (
                     <HorsesDie
                       key={idx}
@@ -662,27 +662,27 @@ export function HorsesGameTable({
                       isRolling={isRolling && !die.isHeld}
                       canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
                       onToggle={() => handleToggleHold(idx)}
-                      size="lg"
+                      size="md"
                     />
                   ))}
                 </div>
 
                 {/* Instructions */}
                 {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-                  <p className="text-sm text-amber-200/70">
-                    Click dice to hold/unhold them
+                  <p className="text-xs text-amber-200/70">
+                    Tap dice to hold/unhold
                   </p>
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-3">
+                <div className="flex items-center gap-2">
                   <Button
                     onClick={handleRoll}
                     disabled={localHand.rollsRemaining <= 0 || isRolling}
                     className="bg-green-600 hover:bg-green-700"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
-                    Roll {localHand.rollsRemaining === 3 ? "" : "Again"}
+                    Roll{localHand.rollsRemaining === 3 ? "" : " again"}
                   </Button>
 
                   {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
@@ -699,7 +699,6 @@ export function HorsesGameTable({
               </div>
             </div>
           )}
-
           {/* Game complete message - center of felt */}
           {gamePhase === "complete" && (
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
