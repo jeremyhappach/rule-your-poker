@@ -523,13 +523,16 @@ export function useHorsesMobileController({
   const rawFeltDice = useMemo(() => {
     if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) return null;
 
-    // IMPORTANT: avoid flashing unrolled "?" dice during turn transitions.
+    // IMPORTANT: avoid flashing unrolled dice during turn transitions.
     // Prefer the authoritative DB state for the current player, then fall back to local state.
     if (isMyTurn) {
       const dbState = myPlayer ? horsesState?.playerStates?.[myPlayer.id] : null;
       const dice = dbState?.dice ?? localHand.dice;
       const rollsRemaining =
         typeof dbState?.rollsRemaining === "number" ? dbState.rollsRemaining : localHand.rollsRemaining;
+
+      const isBlank = dice.every((d: any) => !d?.value);
+      if (isBlank && rollsRemaining === 3 && !isRolling) return null;
 
       return {
         dice,
@@ -538,10 +541,19 @@ export function useHorsesMobileController({
       };
     }
 
-    if (currentTurnPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) return botDisplayState;
+    if (currentTurnPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) {
+      const isBlank = botDisplayState.dice.every((d: any) => !d?.value);
+      if (isBlank && !botDisplayState.isRolling) return null;
+      return botDisplayState;
+    }
 
     const state = horsesState?.playerStates?.[currentTurnPlayerId];
-    return state ? { dice: state.dice, isRolling: false } : null;
+    if (!state) return null;
+
+    const isBlank = state.dice.every((d: any) => !d?.value);
+    if (isBlank && state.rollsRemaining === 3) return null;
+
+    return { dice: state.dice, isRolling: false };
   }, [
     enabled,
     gamePhase,

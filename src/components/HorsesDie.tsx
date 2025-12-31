@@ -33,22 +33,19 @@ export function HorsesDie({
 
   // Dot patterns for each die face
   const renderDots = () => {
-    // Unrolled dice show a placeholder.
+    // Unrolled dice show a subtle placeholder (no "?" to avoid flicker).
     if (value === 0) {
       return (
         <div className="flex items-center justify-center w-full h-full">
-          <span className="text-muted-foreground text-xl">?</span>
+          <div className={cn(dotSize, "rounded-full bg-muted-foreground/25")} />
         </div>
       );
     }
 
-    // While rolling, keep showing the current face (the die itself animates via the button class).
-    // This avoids the UI looking like it "switches modes" into unknown dice.
-
     const dotClass = cn(
       dotSize,
       "rounded-full",
-      value === 1 ? "bg-red-500" : "bg-gray-900"
+      value === 1 ? "bg-destructive" : "bg-foreground/90",
     );
 
     switch (value) {
@@ -141,15 +138,16 @@ export function HorsesDie({
       disabled={!canToggle}
       className={cn(
         sizeClasses[size],
-        "rounded-lg border-2 transition-all duration-200",
+        "rounded-lg border-2",
+        "transition-colors duration-150",
         "flex items-center justify-center",
-        isRolling && "animate-bounce",
+        isRolling && "ring-2 ring-primary/30",
         isHeld
-          ? "bg-amber-100 border-amber-500 shadow-lg shadow-amber-500/30"
-          : "bg-white border-gray-300 shadow-md",
-        canToggle && !isHeld && "hover:border-amber-400 hover:shadow-lg cursor-pointer",
-        canToggle && isHeld && "hover:border-amber-600 cursor-pointer",
-        !canToggle && "cursor-default opacity-90"
+          ? "bg-accent border-primary shadow-sm"
+          : "bg-card border-border shadow-sm",
+        canToggle && !isHeld && "hover:border-primary/60 cursor-pointer",
+        canToggle && isHeld && "hover:border-primary cursor-pointer",
+        !canToggle && "cursor-default opacity-95",
       )}
     >
       {renderDots()}
