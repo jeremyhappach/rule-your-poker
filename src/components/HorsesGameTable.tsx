@@ -640,17 +640,14 @@ export function HorsesGameTable({
             </div>
           )}
 
-          {/* My turn - keep table + player boxes visible; show dice directly on felt */}
+          {/* My turn - dice on felt center (no overlay) */}
           {isMyTurn && gamePhase === "playing" && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-              <div className="flex flex-col items-center gap-3">
-                {/* Rolls remaining */}
-                <div className="flex items-center gap-2">
-                  <Dice5 className="w-4 h-4 text-amber-400" />
-                  <span className="text-amber-200 text-sm">
-                    Rolls remaining: <span className="font-semibold">{localHand.rollsRemaining}</span>
-                  </span>
-                </div>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="flex flex-col items-center gap-2">
+                {/* Rolls remaining label */}
+                <span className="text-amber-200 text-xs">
+                  Rolls: <span className="font-semibold">{localHand.rollsRemaining}</span>
+                </span>
 
                 {/* Dice on felt */}
                 <div className="flex gap-2">
@@ -667,35 +664,39 @@ export function HorsesGameTable({
                   ))}
                 </div>
 
-                {/* Instructions */}
+                {/* Tap to hold hint */}
                 {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-                  <p className="text-xs text-amber-200/70">
-                    Tap dice to hold/unhold
-                  </p>
+                  <p className="text-xs text-amber-200/60">Tap to hold</p>
                 )}
+              </div>
+            </div>
+          )}
 
-                {/* Action buttons */}
-                <div className="flex items-center gap-2">
+          {/* Bottom action bar for my turn - fixed at bottom, outside felt flow */}
+          {isMyTurn && gamePhase === "playing" && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30">
+              <div className="flex items-center gap-2 bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm border border-amber-600/30">
+                <Button
+                  onClick={handleRoll}
+                  disabled={localHand.rollsRemaining <= 0 || isRolling}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Roll{localHand.rollsRemaining === 3 ? "" : " Again"}
+                </Button>
+
+                {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
                   <Button
-                    onClick={handleRoll}
-                    disabled={localHand.rollsRemaining <= 0 || isRolling}
-                    className="bg-green-600 hover:bg-green-700"
+                    onClick={handleLockIn}
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
                   >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Roll{localHand.rollsRemaining === 3 ? "" : " again"}
+                    <Lock className="w-4 h-4 mr-1" />
+                    Lock In
                   </Button>
-
-                  {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-                    <Button
-                      onClick={handleLockIn}
-                      variant="outline"
-                      className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
-                    >
-                      <Lock className="w-4 h-4 mr-2" />
-                      Lock In
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           )}
