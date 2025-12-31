@@ -700,12 +700,10 @@ export function HorsesGameTable({
               </div>
             </div>
           )}
-        </div>
-      </main>
 
           {/* Game complete message - center of felt */}
           {gamePhase === "complete" && (
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
               <div className="text-center p-6 bg-amber-900/50 rounded-xl border-2 border-amber-600 backdrop-blur-sm">
                 <h3 className="text-2xl font-bold text-poker-gold mb-2">Round Complete!</h3>
                 {winningPlayerIds.length > 1 ? (
@@ -725,7 +723,7 @@ export function HorsesGameTable({
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
