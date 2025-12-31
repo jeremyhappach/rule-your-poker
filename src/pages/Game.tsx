@@ -5040,7 +5040,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     previousGameType={game.game_type || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
-                    isFirstHand={game.is_first_hand !== false}
+                    isFirstHand={!game.total_hands || game.total_hands === 0}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />
