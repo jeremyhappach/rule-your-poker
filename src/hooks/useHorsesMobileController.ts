@@ -91,7 +91,7 @@ export function useHorsesMobileController({
   } | null>(null);
 
   // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
-  const lastFeltDiceRef = useRef<any>(null);
+  const lastFeltDiceRef = useRef<{ playerId: string | null; value: any } | null>(null);
   const lastFeltDiceAtRef = useRef<number>(0);
 
   const activePlayers = useMemo(
@@ -558,22 +558,27 @@ export function useHorsesMobileController({
 
   useEffect(() => {
     if (rawFeltDice) {
-      lastFeltDiceRef.current = rawFeltDice;
+      lastFeltDiceRef.current = { playerId: currentTurnPlayerId ?? null, value: rawFeltDice };
       lastFeltDiceAtRef.current = Date.now();
     }
-  }, [rawFeltDice]);
+  }, [rawFeltDice, currentTurnPlayerId]);
 
   const feltDice = useMemo(() => {
     if (rawFeltDice) return rawFeltDice;
     if (!enabled) return null;
 
     // If state is briefly unavailable (e.g. refetch/realtime gap), keep the last dice for a beat.
-    if (lastFeltDiceRef.current && Date.now() - lastFeltDiceAtRef.current < 400) {
-      return lastFeltDiceRef.current;
+    // IMPORTANT: only reuse the cache if it's for the SAME player (prevents bot->you flash).
+    const cached = lastFeltDiceRef.current;
+    if (
+      cached?.playerId === currentTurnPlayerId &&
+      Date.now() - lastFeltDiceAtRef.current < 400
+    ) {
+      return cached.value;
     }
 
     return null;
-  }, [rawFeltDice, enabled]);
+  }, [rawFeltDice, enabled, currentTurnPlayerId]);
 
   // Calculate currently winning player IDs during play (not just at game end)
   const currentlyWinningPlayerIds = useMemo(() => {
