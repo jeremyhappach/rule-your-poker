@@ -334,7 +334,7 @@ export function useHorsesMobileController({
 
       for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
         setBotDisplayState({ dice: botHand.dice, isRolling: true });
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 450));
 
         botHand = rollDice(botHand);
         setBotDisplayState({ dice: botHand.dice, isRolling: false });
@@ -353,7 +353,7 @@ export function useHorsesMobileController({
           playerStates: intermediateState,
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 450));
 
         if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) {
           break;
@@ -383,7 +383,7 @@ export function useHorsesMobileController({
             playerStates: holdState,
           });
 
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          await new Promise((resolve) => setTimeout(resolve, 350));
         }
       }
 
@@ -406,7 +406,7 @@ export function useHorsesMobileController({
         playerStates: updatedStates,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 450));
 
       const currentIndex = turnOrder.indexOf(currentTurnPlayer.id);
       const nextIndex = currentIndex + 1;
