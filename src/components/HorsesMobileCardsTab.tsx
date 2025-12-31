@@ -31,7 +31,7 @@ export function HorsesMobileCardsTab({
               value={die.value}
               isHeld={die.isHeld}
               isRolling={horses.isRolling && !die.isHeld}
-              canToggle={horses.localHand.rollsRemaining > 0}
+              canToggle={horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
               onToggle={() => horses.handleToggleHold(idx)}
               size="sm"
             />
@@ -83,7 +83,7 @@ export function HorsesMobileCardsTab({
       {/* Small helper text */}
       <div className="mt-2 flex items-center justify-center">
         {horses.isMyTurn && horses.localHand.rollsRemaining < 3 && horses.localHand.rollsRemaining > 0 ? (
-          <p className="text-xs text-muted-foreground">Tap dice on the felt to hold</p>
+          <p className="text-xs text-muted-foreground">Tap dice to hold/unhold</p>
         ) : (
           <div className="h-4" />
         )}

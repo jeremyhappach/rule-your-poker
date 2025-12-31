@@ -138,19 +138,25 @@ export function HorsesDie({
       disabled={!canToggle}
       className={cn(
         sizeClasses[size],
-        "rounded-lg border-2",
-        "transition-colors duration-150",
+        "rounded-lg border-2 relative",
+        "transition-all duration-150",
         "flex items-center justify-center",
-        isRolling && "ring-2 ring-primary/30",
+        isRolling && "ring-2 ring-primary/30 animate-pulse",
         isHeld
-          ? "bg-accent border-primary shadow-sm"
+          ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
           : "bg-card border-border shadow-sm",
-        canToggle && !isHeld && "hover:border-primary/60 cursor-pointer",
-        canToggle && isHeld && "hover:border-primary cursor-pointer",
+        canToggle && !isHeld && "hover:border-primary/60 cursor-pointer active:scale-95",
+        canToggle && isHeld && "hover:border-amber-600 cursor-pointer active:scale-95",
         !canToggle && "cursor-default opacity-95",
       )}
     >
       {renderDots()}
+      {/* HOLD indicator for held dice */}
+      {isHeld && value > 0 && (
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wide bg-amber-500 text-amber-950 px-1.5 py-0.5 rounded-sm shadow-sm">
+          Hold
+        </span>
+      )}
     </button>
   );
 }
