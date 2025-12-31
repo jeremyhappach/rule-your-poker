@@ -85,7 +85,7 @@ export function useHorsesMobileController({
 
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{
-    dice: HorsesDieType[];
+    playerId: string; dice: HorsesDieType[];
     isRolling: boolean;
   } | null>(null);
 
@@ -143,11 +143,11 @@ export function useHorsesMobileController({
     } else if (isMyTurn && !myState) {
       setLocalHand(createInitialHand());
     }
-  }, [enabled, isMyTurn, myState?.rollsRemaining, myState?.isComplete]);
+  }, [enabled, isMyTurn, currentTurnPlayerId, myState?.dice, myState?.rollsRemaining, myState?.isComplete]);
 
   // Clear bot display state when turn changes to a non-bot (prevents dice flash)
   useEffect(() => {
-    if (!currentTurnPlayer?.is_bot && botDisplayState) {
+    if (botDisplayState && botDisplayState.playerId !== currentTurnPlayerId) {
       setBotDisplayState(null);
     }
   }, [currentTurnPlayerId, currentTurnPlayer?.is_bot]);
@@ -340,11 +340,11 @@ export function useHorsesMobileController({
         : createInitialHand();
 
       for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
-        setBotDisplayState({ dice: botHand.dice, isRolling: true });
+        setBotDisplayState({ playerId: currentTurnPlayer.id, dice: botHand.dice, isRolling: true });
         await new Promise((resolve) => setTimeout(resolve, 450));
 
         botHand = rollDice(botHand);
-        setBotDisplayState({ dice: botHand.dice, isRolling: false });
+        setBotDisplayState({ playerId: currentTurnPlayer.id, dice: botHand.dice, isRolling: false });
 
         const intermediateState = {
           ...(horsesState?.playerStates || {}),
@@ -374,7 +374,7 @@ export function useHorsesMobileController({
           });
 
           botHand = applyHoldDecision(botHand, decision);
-          setBotDisplayState({ dice: botHand.dice, isRolling: false });
+          setBotDisplayState({ playerId: currentTurnPlayer.id, dice: botHand.dice, isRolling: false });
 
           const holdState = {
             ...(horsesState?.playerStates || {}),
@@ -526,7 +526,7 @@ export function useHorsesMobileController({
       };
     }
 
-    if (currentTurnPlayer?.is_bot && botDisplayState) return botDisplayState;
+    if (currentTurnPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) return botDisplayState;
 
     const state = horsesState?.playerStates?.[currentTurnPlayerId];
     return state ? { dice: state.dice, isRolling: false } : null;
