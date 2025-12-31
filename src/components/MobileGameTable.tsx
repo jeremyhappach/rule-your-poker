@@ -3463,7 +3463,7 @@ export const MobileGameTable = ({
           // Show dice if actively rolling
           if (horsesController.feltDice) {
             return (
-              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-1.5">
+              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-0.5">
                 {(
                   (horsesController.feltDice?.dice as any) ||
                   Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))

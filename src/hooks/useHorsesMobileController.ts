@@ -486,7 +486,8 @@ export function useHorsesMobileController({
       await supabase
         .from("games")
         .update({
-          status: "game_over",
+          awaiting_next_round: true,
+          next_round_number: 1,
           last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
         })
         .eq("id", gameId);
