@@ -3442,20 +3442,19 @@ export const MobileGameTable = ({
           const isCurrentTurnWinning = horsesController.currentTurnPlayerId 
             && horsesController.currentlyWinningPlayerIds.includes(horsesController.currentTurnPlayerId);
 
-          const showResult = !horsesController.feltDice && !!currentTurnResult;
-          const showDice = !!horsesController.feltDice;
-
           const diceArray = (horsesController.feltDice as any)?.dice as any[] | undefined;
+          const fallbackDice = Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }));
+
+          const showResult = !horsesController.feltDice && !!currentTurnResult;
+          const showDice = !!horsesController.feltDice && !!diceArray?.length;
+
+          // Always keep the container mounted to avoid blink/flicker during turn handoffs.
+          // If dice aren't available for a moment, show a stable placeholder row.
+          const diceToRender = showDice ? diceArray! : fallbackDice;
 
           return (
-            <div
-              className={cn(
-                "absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20",
-                "transition-opacity duration-150",
-                (showResult || (showDice && diceArray?.length)) ? "opacity-100" : "opacity-0"
-              )}
-              style={{ pointerEvents: showDice ? 'auto' : 'none' }}
-            >
+            <div className={cn("absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20")}
+                 style={{ pointerEvents: showDice ? 'auto' : 'none' }}>
               {showResult && currentTurnResult ? (
                 <div className="flex flex-col items-center gap-2">
                   <Badge 
@@ -3468,25 +3467,31 @@ export const MobileGameTable = ({
                     {currentTurnResult.description}
                   </Badge>
                 </div>
-              ) : showDice && diceArray?.length ? (
+              ) : (
                 <div className="flex items-center justify-center gap-0.5">
-                  {diceArray.map((die: any, idx: number) => (
+                  {diceToRender.map((die: any, idx: number) => (
                     <HorsesDie
                       key={idx}
-                      value={die.value}
-                      isHeld={!!die.isHeld}
+                      value={die?.value ?? 0}
+                      isHeld={!!die?.isHeld}
                       isRolling={
-                        horsesController.isMyTurn
-                          ? horsesController.isRolling && !die.isHeld
-                          : !!(horsesController.feltDice as any)?.isRolling
+                        showDice
+                          ? (horsesController.isMyTurn
+                              ? horsesController.isRolling && !die?.isHeld
+                              : !!(horsesController.feltDice as any)?.isRolling)
+                          : false
                       }
-                      canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
-                      onToggle={() => horsesController.handleToggleHold(idx)}
+                      canToggle={!!(showDice && horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
+                      onToggle={
+                        showDice
+                          ? () => horsesController.handleToggleHold(idx)
+                          : undefined
+                      }
                       size="md"
                     />
                   ))}
                 </div>
-              ) : null}
+              )}
             </div>
           );
         })()}
