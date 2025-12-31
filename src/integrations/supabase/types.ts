@@ -765,6 +765,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_horses_bot_controller: {
+        Args: { _round_id: string }
+        Returns: Json
+      }
       decrement_player_chips: {
         Args: { amount: number; player_ids: string[] }
         Returns: undefined
