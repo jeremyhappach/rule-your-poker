@@ -133,13 +133,10 @@ export function HorsesGameTable({
   const isMyTurn = currentPlayer?.user_id === currentUserId;
   const gamePhase = horsesState?.gamePhase || "waiting";
 
-  // Mobile seating grid: exclude the active-turn player (shown in the felt center).
+  // Mobile: show the active-turn player in the fixed Active Player section, and everyone else in the table row.
   const mobileSeatPlayers = currentTurnPlayerId
     ? activePlayers.filter(p => p.id !== currentTurnPlayerId)
     : activePlayers;
-  const mobileSplitIndex = Math.ceil(mobileSeatPlayers.length / 2);
-  const mobileTopPlayers = mobileSeatPlayers.slice(0, mobileSplitIndex);
-  const mobileBottomPlayers = mobileSeatPlayers.slice(mobileSplitIndex);
 
   // Get my player state from DB
   const myPlayer = players.find(p => p.user_id === currentUserId);
@@ -556,7 +553,7 @@ export function HorsesGameTable({
     <div
       className={cn(
         "relative w-full rounded-xl",
-        isMobile ? "min-h-[72svh] overflow-hidden" : "h-full min-h-[500px] overflow-hidden"
+        isMobile ? "h-[100svh] overflow-hidden" : "h-full min-h-[500px] overflow-hidden"
       )}
       style={{
         background:
@@ -565,8 +562,9 @@ export function HorsesGameTable({
       }}
     >
       {isMobile ? (
-        <div className="flex min-h-[100svh] flex-col">
-          <header className="px-4 pt-4 pb-3 text-center">
+        <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">
+          {/* Header */}
+          <header className="px-4 pt-4 pb-2 text-center">
             <h1 className="text-xl font-bold text-poker-gold">Horses</h1>
             <p className="text-sm text-amber-200/80">Ante: ${anteAmount}</p>
 
@@ -576,33 +574,34 @@ export function HorsesGameTable({
                 <span className="text-lg font-bold text-poker-gold">${pot}</span>
               </div>
             </div>
+
+            {gamePhase === "playing" && currentPlayer && (
+              <div className="mt-3 flex justify-center">
+                <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/20 px-3 py-1 backdrop-blur-sm">
+                  <Dice5 className="h-4 w-4 text-amber-300" />
+                  <span className="text-sm text-foreground/90">
+                    {isMyTurn ? "Your turn" : `${getPlayerUsername(currentPlayer)}'s turn`}
+                  </span>
+                  {isMyTurn ? (
+                    <Badge variant="secondary" className="text-xs">
+                      Rolls: {localHand.rollsRemaining}
+                    </Badge>
+                  ) : horsesState?.playerStates?.[currentTurnPlayerId || ""] ? (
+                    <Badge variant="secondary" className="text-xs">
+                      Rolls: {horsesState.playerStates[currentTurnPlayerId || ""].rollsRemaining}
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </header>
 
-          {gamePhase === "playing" && currentPlayer && (
-            <div className="px-4 pb-2 flex justify-center">
-              <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/20 px-3 py-1 backdrop-blur-sm">
-                <Dice5 className="h-4 w-4 text-amber-300" />
-                <span className="text-sm text-foreground/90">
-                  {isMyTurn ? "Your turn" : `${getPlayerUsername(currentPlayer)}'s turn`}
-                </span>
-                {isMyTurn ? (
-                  <Badge variant="secondary" className="text-xs">
-                    Rolls: {localHand.rollsRemaining}
-                  </Badge>
-                ) : horsesState?.playerStates?.[currentTurnPlayerId || ""] ? (
-                  <Badge variant="secondary" className="text-xs">
-                    Rolls: {horsesState.playerStates[currentTurnPlayerId || ""].rollsRemaining}
-                  </Badge>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          <main className="flex-1 overflow-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]" aria-label="Horses dice table">
-            <div className="grid h-full grid-rows-[auto_minmax(280px,1fr)_auto] gap-3">
-              {/* Top players */}
-              <section className="grid grid-cols-2 gap-3 max-h-[22svh] overflow-auto pr-1" aria-label="Players (top)">
-                {mobileTopPlayers.map((player) => {
+          {/* Table (fixed area) */}
+          <main className="px-3 pb-3 overflow-hidden" aria-label="Horses game table">
+            <div className="flex h-full flex-col">
+              {/* Other players row (scrolls sideways, never pushes layout) */}
+              <section className="flex gap-3 overflow-x-auto pb-2" aria-label="Players">
+                {mobileSeatPlayers.map((player) => {
                   const playerState = horsesState?.playerStates?.[player.id];
                   const isWinner = winningPlayerIds.includes(player.id);
                   const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
@@ -610,7 +609,7 @@ export function HorsesGameTable({
                   const isMe = player.user_id === currentUserId;
 
                   return (
-                    <div key={player.id} className="flex justify-center">
+                    <div key={player.id} className="shrink-0">
                       <HorsesPlayerArea
                         username={getPlayerUsername(player)}
                         position={player.position}
@@ -627,137 +626,126 @@ export function HorsesGameTable({
                 })}
               </section>
 
-              {/* Center felt */}
-              <section className="flex min-h-[280px] items-center justify-center" aria-label="Felt (center)">
+              {/* Felt (rolls happen here) */}
+              <section className="flex-1 flex items-center justify-center" aria-label="Felt">
                 <div className="w-full max-w-[560px] rounded-[32px] border border-border/40 bg-background/10 p-4 backdrop-blur-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]">
-                  {/* Active player card (always visible on mobile) */}
-                  <div className="flex justify-center">
-                    {currentPlayer ? (
-                      (() => {
-                        const playerState = horsesState?.playerStates?.[currentPlayer.id];
-                        const isWinner = winningPlayerIds.includes(currentPlayer.id);
-                        const hasCompleted = playerState?.isComplete || false;
-                        const isMe = currentPlayer.user_id === currentUserId;
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex gap-2">
+                      {(() => {
+                        // Waiting / no current player yet
+                        if (gamePhase !== "playing" || !currentPlayer) {
+                          return Array.from({ length: 5 }).map((_, idx) => (
+                            <HorsesDie
+                              key={idx}
+                              value={0}
+                              isHeld={false}
+                              isRolling={false}
+                              canToggle={false}
+                              onToggle={() => {}}
+                              size="md"
+                            />
+                          ));
+                        }
 
-                        return (
-                          <HorsesPlayerArea
-                            username={getPlayerUsername(currentPlayer)}
-                            position={currentPlayer.position}
-                            isCurrentTurn={gamePhase === "playing"}
-                            isCurrentUser={isMe}
-                            handResult={playerState?.result || null}
-                            isWinningHand={isWinner && gamePhase === "complete"}
-                            hasTurnCompleted={hasCompleted}
-                            diceValues={hasCompleted ? playerState?.dice : undefined}
-                            myStatus={isMe ? getMyStatus() : undefined}
+                        // My turn
+                        if (isMyTurn) {
+                          return localHand.dice.map((die, idx) => (
+                            <HorsesDie
+                              key={idx}
+                              value={die.value}
+                              isHeld={die.isHeld}
+                              isRolling={isRolling && !die.isHeld}
+                              canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
+                              onToggle={() => handleToggleHold(idx)}
+                              size="md"
+                            />
+                          ));
+                        }
+
+                        // Someone else's turn
+                        const diceState = getCurrentTurnDice();
+                        if (!diceState) return null;
+
+                        return diceState.dice.map((die, idx) => (
+                          <HorsesDie
+                            key={idx}
+                            value={die.value}
+                            isHeld={die.isHeld}
+                            isRolling={diceState.isRolling}
+                            canToggle={false}
+                            onToggle={() => {}}
+                            size="md"
                           />
-                        );
-                      })()
-                    ) : (
-                      <div className="rounded-lg border border-border/50 bg-background/15 px-4 py-3 text-sm text-muted-foreground">
-                        Waiting for the next turn...
+                        ));
+                      })()}
+                    </div>
+
+                    {isMyTurn && localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+                      <p className="text-xs text-amber-200/70">Tap dice to hold</p>
+                    )}
+
+                    {gamePhase === "complete" && (
+                      <div className="mt-1 text-center p-4 bg-amber-900/50 rounded-xl border-2 border-amber-600 w-full">
+                        <h3 className="text-xl font-bold text-poker-gold mb-1">Round Complete!</h3>
+                        {winningPlayerIds.length > 1 ? (
+                          <p className="text-amber-200">It's a tie! Re-ante to continue...</p>
+                        ) : (
+                          <p className="text-amber-200">
+                            {(() => {
+                              const winner = completedResults.find((r) => r.playerId === winningPlayerIds[0]);
+                              const winnerPlayer = players.find((p) => p.id === winningPlayerIds[0]);
+                              return winner && winnerPlayer
+                                ? `${getPlayerUsername(winnerPlayer)} wins with ${winner.result.description}!`
+                                : "Winner determined!";
+                            })()}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
-
-                  {/* Dice row (always on felt; held dice just tint) */}
-                  <div className="mt-3 flex justify-center">
-                    {gamePhase === "playing" && currentPlayer ? (
-                      isMyTurn ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="flex gap-2">
-                            {localHand.dice.map((die, idx) => (
-                              <HorsesDie
-                                key={idx}
-                                value={die.value}
-                                isHeld={die.isHeld}
-                                isRolling={isRolling && !die.isHeld}
-                                canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
-                                onToggle={() => handleToggleHold(idx)}
-                                size="md"
-                              />
-                            ))}
-                          </div>
-                          {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
-                            <p className="text-xs text-amber-200/70">Tap dice to hold</p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          {(() => {
-                            const diceState = getCurrentTurnDice();
-                            if (!diceState) return null;
-                            return diceState.dice.map((die, idx) => (
-                              <HorsesDie
-                                key={idx}
-                                value={die.value}
-                                isHeld={die.isHeld}
-                                isRolling={diceState.isRolling}
-                                canToggle={false}
-                                onToggle={() => {}}
-                                size="md"
-                              />
-                            ));
-                          })()}
-                        </div>
-                      )
-                    ) : null}
-                  </div>
-
-                  {/* Game complete message */}
-                  {gamePhase === "complete" && (
-                    <div className="mt-4 text-center p-4 bg-amber-900/50 rounded-xl border-2 border-amber-600">
-                      <h3 className="text-xl font-bold text-poker-gold mb-1">Round Complete!</h3>
-                      {winningPlayerIds.length > 1 ? (
-                        <p className="text-amber-200">It's a tie! Re-ante to continue...</p>
-                      ) : (
-                        <p className="text-amber-200">
-                          {(() => {
-                            const winner = completedResults.find((r) => r.playerId === winningPlayerIds[0]);
-                            const winnerPlayer = players.find((p) => p.id === winningPlayerIds[0]);
-                            return winner && winnerPlayer
-                              ? `${getPlayerUsername(winnerPlayer)} wins with ${winner.result.description}!`
-                              : "Winner determined!";
-                          })()}
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
-              </section>
-
-              {/* Bottom players */}
-              <section className="grid grid-cols-2 gap-3 max-h-[22svh] overflow-auto pr-1" aria-label="Players (bottom)">
-                {mobileBottomPlayers.map((player) => {
-                  const playerState = horsesState?.playerStates?.[player.id];
-                  const isWinner = winningPlayerIds.includes(player.id);
-                  const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
-                  const hasCompleted = playerState?.isComplete || false;
-                  const isMe = player.user_id === currentUserId;
-
-                  return (
-                    <div key={player.id} className="flex justify-center">
-                      <HorsesPlayerArea
-                        username={getPlayerUsername(player)}
-                        position={player.position}
-                        isCurrentTurn={isCurrent}
-                        isCurrentUser={isMe}
-                        handResult={playerState?.result || null}
-                        isWinningHand={isWinner && gamePhase === "complete"}
-                        hasTurnCompleted={hasCompleted}
-                        diceValues={hasCompleted ? playerState?.dice : undefined}
-                        myStatus={isMe ? getMyStatus() : undefined}
-                      />
-                    </div>
-                  );
-                })}
               </section>
             </div>
           </main>
 
-          {/* Bottom action bar for my turn (fixed within layout, not overlay) */}
-          {isMyTurn && gamePhase === "playing" && (
-            <div className="mt-auto px-3 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+          {/* Active Player (fixed section) */}
+          <section className="px-3 pb-2" aria-label="Active player">
+            <div className="flex justify-center">
+              {currentPlayer ? (
+                (() => {
+                  const playerState = horsesState?.playerStates?.[currentPlayer.id];
+                  const isWinner = winningPlayerIds.includes(currentPlayer.id);
+                  const hasCompleted = playerState?.isComplete || false;
+                  const isMe = currentPlayer.user_id === currentUserId;
+
+                  return (
+                    <HorsesPlayerArea
+                      username={getPlayerUsername(currentPlayer)}
+                      position={currentPlayer.position}
+                      isCurrentTurn={gamePhase === "playing"}
+                      isCurrentUser={isMe}
+                      handResult={playerState?.result || null}
+                      isWinningHand={isWinner && gamePhase === "complete"}
+                      hasTurnCompleted={hasCompleted}
+                      diceValues={hasCompleted ? playerState?.dice : undefined}
+                      myStatus={isMe ? getMyStatus() : undefined}
+                    />
+                  );
+                })()
+              ) : (
+                <div className="rounded-lg border border-border/50 bg-background/15 px-4 py-3 text-sm text-muted-foreground">
+                  Waiting for the next turn...
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Actions (fixed bottom bar) */}
+          <footer
+            className="px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
+            aria-label="Actions"
+          >
+            {isMyTurn && gamePhase === "playing" ? (
               <div className="mx-auto w-fit flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
                 <Button
                   onClick={handleRoll}
@@ -781,8 +769,10 @@ export function HorsesGameTable({
                   </Button>
                 )}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="h-2" />
+            )}
+          </footer>
         </div>
       ) : (
         <>
