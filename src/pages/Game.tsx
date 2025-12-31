@@ -105,6 +105,7 @@ interface GameData {
   real_money?: boolean;
   rabbit_hunt?: boolean;
   reveal_at_showdown?: boolean;
+  is_first_hand?: boolean;
   rounds?: Round[];
 }
 
@@ -5039,7 +5040,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     previousGameType={game.game_type || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
-                    isFirstHand={(game.total_hands || 0) === 0}
+                    isFirstHand={game.is_first_hand !== false}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />
