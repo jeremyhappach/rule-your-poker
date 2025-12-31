@@ -44,6 +44,11 @@ export interface HorsesStateFromDB {
   playerStates: Record<string, HorsesPlayerDiceState>;
   gamePhase: "waiting" | "playing" | "complete";
   turnOrder: string[]; // Player IDs in turn order
+  /**
+   * Single-client bot driver to prevent multiple clients from re-playing bot turns and fighting over state.
+   * Chosen deterministically at round init.
+   */
+  botControllerUserId?: string | null;
 }
 
 async function updateHorsesState(roundId: string, state: HorsesStateFromDB): Promise<Error | null> {
@@ -121,6 +126,15 @@ export function useHorsesMobileController({
   const isMyTurn = !!(enabled && currentTurnPlayer?.user_id && currentTurnPlayer.user_id === currentUserId);
   const gamePhase: HorsesStateFromDB["gamePhase"] = horsesState?.gamePhase || "waiting";
 
+  const candidateBotControllerUserId = useMemo(() => {
+    if (!turnOrder?.length) return null;
+    return (
+      turnOrder
+        .map((id) => players.find((p) => p.id === id))
+        .find((p) => p && !p.is_bot)?.user_id ?? null
+    );
+  }, [turnOrder, players]);
+
   const myPlayer = useMemo(
     () => (currentUserId ? players.find((p) => p.user_id === currentUserId) ?? null : null),
     [players, currentUserId],
@@ -192,11 +206,17 @@ export function useHorsesMobileController({
     const initializeGame = async () => {
       const order = getTurnOrder();
 
+      const controllerUserId =
+        order
+          .map((id) => activePlayers.find((p) => p.id === id))
+          .find((p) => p && !p.is_bot)?.user_id ?? null;
+
       const initialState: HorsesStateFromDB = {
         currentTurnPlayerId: order[0] ?? null,
         playerStates: {},
         gamePhase: "playing",
         turnOrder: order,
+        botControllerUserId: controllerUserId,
       };
 
       order.forEach((playerId) => {
@@ -331,6 +351,18 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
     if (!currentTurnPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
+
+    // IMPORTANT: only one client should drive bot turns.
+    // Otherwise, multiple open clients will all run the bot loop and overwrite each other,
+    // causing "flashing" and turns that never reliably advance.
+    const effectiveControllerUserId = horsesState.botControllerUserId ?? candidateBotControllerUserId;
+    if (effectiveControllerUserId && effectiveControllerUserId !== currentUserId) return;
+
+    // If this round was created before we introduced botControllerUserId, claim it deterministically.
+    if (!horsesState.botControllerUserId && effectiveControllerUserId && effectiveControllerUserId === currentUserId) {
+      void updateHorsesState(currentRoundId, { ...horsesState, botControllerUserId: currentUserId });
+    }
+
     if (botProcessingRef.current.has(currentTurnPlayer.id)) return;
 
     botProcessingRef.current.add(currentTurnPlayer.id);
