@@ -552,8 +552,9 @@ export function HorsesGameTable({
   return (
     <div
       className={cn(
-        "relative w-full rounded-xl",
-        isMobile ? "h-[100svh] overflow-hidden" : "h-full min-h-[500px] overflow-hidden"
+        "relative w-full rounded-xl overflow-hidden",
+        // On mobile, DO NOT force viewport units; the parent mobile table controls height.
+        isMobile ? "h-full min-h-0" : "h-full min-h-[500px]"
       )}
       style={{
         background:
@@ -597,7 +598,7 @@ export function HorsesGameTable({
           </header>
 
           {/* Table (fixed area) */}
-          <main className="px-3 pb-3 overflow-hidden" aria-label="Horses game table">
+          <main className="px-3 pb-2 overflow-hidden" aria-label="Horses game table">
             <div className="flex h-full flex-col">
               {/* Other players row (scrolls sideways, never pushes layout) */}
               <section className="flex gap-3 overflow-x-auto pb-2" aria-label="Players">
@@ -627,7 +628,7 @@ export function HorsesGameTable({
               </section>
 
               {/* Felt (rolls happen here) */}
-              <section className="flex-1 flex items-center justify-center" aria-label="Felt">
+              <section className="flex-1 flex items-end justify-center pb-3" aria-label="Felt">
                 <div className="w-full max-w-[560px] rounded-[32px] border border-border/40 bg-background/10 p-4 backdrop-blur-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]">
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex gap-2">
