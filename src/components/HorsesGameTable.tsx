@@ -63,6 +63,8 @@ export interface HorsesStateFromDB {
   playerStates: Record<string, PlayerDiceState>;
   gamePhase: "waiting" | "playing" | "complete";
   turnOrder: string[]; // Player IDs in turn order
+  /** Single-client bot driver to avoid multi-client state fights */
+  botControllerUserId?: string | null;
 }
 
 // Helper to update horses_state in rounds table (bypasses type checking since column is new)
@@ -187,12 +189,18 @@ export function HorsesGameTable({
     const initializeGame = async () => {
       // Use proper turn order: left of dealer first
       const order = getTurnOrder();
-      
+
+      const controllerUserId =
+        order
+          .map((id) => activePlayers.find((p) => p.id === id))
+          .find((p) => p && !p.is_bot)?.user_id ?? null;
+
       const initialState: HorsesStateFromDB = {
         currentTurnPlayerId: order[0],
         playerStates: {},
         gamePhase: "playing",
         turnOrder: order,
+        botControllerUserId: controllerUserId,
       };
 
       // Initialize each player's state
@@ -336,8 +344,23 @@ export function HorsesGameTable({
   // Bot auto-play with visible animation
   useEffect(() => {
     if (!currentPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
+
+    // Only one client should drive bot turns; otherwise multiple clients re-play bot turns and fight over DB state.
+    const effectiveControllerUserId =
+      horsesState.botControllerUserId ??
+      (turnOrder
+        .map((id) => players.find((p) => p.id === id))
+        .find((p) => p && !p.is_bot)?.user_id ?? null);
+
+    if (effectiveControllerUserId && effectiveControllerUserId !== currentUserId) return;
+
+    // Round might be missing botControllerUserId if it was started before this fix.
+    if (!horsesState.botControllerUserId && effectiveControllerUserId && effectiveControllerUserId === currentUserId) {
+      void updateHorsesState(currentRoundId, { ...horsesState, botControllerUserId: currentUserId });
+    }
+
     if (botProcessingRef.current.has(currentPlayer.id)) return;
-    
+
     botProcessingRef.current.add(currentPlayer.id);
 
     const botPlay = async () => {
