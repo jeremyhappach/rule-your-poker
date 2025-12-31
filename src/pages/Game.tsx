@@ -2724,13 +2724,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('last_round_result, next_round_number, pot, ante_amount, status, legs_to_win')
+              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win')
               .eq('id', gameId)
               .single();
             
             // Skip if game is already over (357 sweep sets game_over after 5s)
             if (freshGame?.status === 'game_over') {
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
+              return;
+            }
+
+            // Horses: proceed by starting a new Horses round (not startRound)
+            if (freshGame?.game_type === 'horses') {
+              console.log('[AWAITING_NEXT_ROUND] Horses game detected — starting next Horses hand');
+
+              const { data: updateResult } = await supabase
+                .from('games')
+                .update({
+                  awaiting_next_round: false,
+                  next_round_number: null,
+                  last_round_result: null,
+                })
+                .eq('id', gameId)
+                .eq('awaiting_next_round', true)
+                .select();
+
+              if (!updateResult || updateResult.length === 0) {
+                console.log('[AWAITING_NEXT_ROUND] Another process already proceeding (horses), skipping');
+                return;
+              }
+
+              await startHorsesRound(gameId);
               return;
             }
             
