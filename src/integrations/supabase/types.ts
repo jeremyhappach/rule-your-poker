@@ -609,6 +609,7 @@ export type Database = {
           decision_deadline: string | null
           game_id: string
           hand_number: number | null
+          horses_state: Json | null
           id: string
           pot: number | null
           round_number: number
@@ -627,6 +628,7 @@ export type Database = {
           decision_deadline?: string | null
           game_id: string
           hand_number?: number | null
+          horses_state?: Json | null
           id?: string
           pot?: number | null
           round_number: number
@@ -645,6 +647,7 @@ export type Database = {
           decision_deadline?: string | null
           game_id?: string
           hand_number?: number | null
+          horses_state?: Json | null
           id?: string
           pot?: number | null
           round_number?: number

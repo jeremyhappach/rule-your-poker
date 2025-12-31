@@ -26,6 +26,7 @@ import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
+import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -4417,6 +4418,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Start first round - let the round start functions handle the status change
     try {
           const isHolmGame = game?.game_type === 'holm-game';
+          const isHorsesGame = game?.game_type === 'horses';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
           const activePlayersBefore = players.filter(p => !p.sitting_out);
@@ -4435,7 +4437,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setExpectedPostAnteChips(expectedChips);
             setAnteAnimationExpectedPot(expectedPot);
 
-            const triggerKey = `${isHolmGame ? 'holm' : '357'}-first-ante-${expectedPot}`;
+            const triggerKey = `${isHolmGame ? 'holm' : isHorsesGame ? 'horses' : '357'}-first-ante-${expectedPot}`;
             if (anteAnimationFiredRef.current !== triggerKey) {
               anteAnimationFiredRef.current = triggerKey;
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
@@ -4445,6 +4447,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Now start the round (animation already triggered above)
           if (isHolmGame) {
             await startHolmRound(gameId, true);
+          } else if (isHorsesGame) {
+            await startHorsesRound(gameId, true);
           } else {
             await supabase
               .from('games')
