@@ -2715,6 +2715,26 @@ export const MobileGameTable = ({
       </div>
     );
     
+    // Horses: get player's completed hand result and check if currently winning
+    const horsesPlayerResult = gameType === 'horses' && horsesController.enabled 
+      ? horsesController.getPlayerHandResult(player.id) 
+      : null;
+    const isHorsesCurrentlyWinning = gameType === 'horses' && horsesController.enabled 
+      && horsesController.currentlyWinningPlayerIds.includes(player.id);
+    
+    // Horses result badge element - shown below chip for completed players
+    const horsesResultBadge = gameType === 'horses' && horsesPlayerResult && (
+      <Badge 
+        variant="secondary" 
+        className={cn(
+          "text-[10px] px-1.5 py-0 mt-0.5",
+          isHorsesCurrentlyWinning && "bg-green-600 text-white animate-pulse"
+        )}
+      >
+        {horsesPlayerResult.description}
+      </Badge>
+    );
+    
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
         {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
         {/* Upper corners in regular mode show name BELOW chipstack for readability */}
@@ -2735,6 +2755,8 @@ export const MobileGameTable = ({
         {showNameBelowChipstack && nameElement}
         {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
         {cardsElement}
+        {/* Horses result badge - show below chip for completed players */}
+        {horsesResultBadge}
         {/* Name below cards for upper corners and middle positions during showdown */}
         {showNameBelowCards && (
           <div className={isUpperCorner ? 'mt-2' : ''}>
@@ -3391,29 +3413,60 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* Horses felt dice (rolls happen on the felt, not in the bottom section) */}
-        {gameType === 'horses' && horsesController.enabled && (
-          <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-2">
-            {(
-              (horsesController.feltDice?.dice as any) ||
-              Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))
-            ).map((die: any, idx: number) => (
-              <HorsesDie
-                key={idx}
-                value={die.value}
-                isHeld={!!die.isHeld}
-                isRolling={
-                  horsesController.isMyTurn
-                    ? horsesController.isRolling && !die.isHeld
-                    : !!(horsesController.feltDice as any)?.isRolling
-                }
-                canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
-                onToggle={() => horsesController.handleToggleHold(idx)}
-                size="md"
-              />
-            ))}
-          </div>
-        )}
+        {/* Horses felt dice OR result (rolls happen on the felt, not in the bottom section) */}
+        {gameType === 'horses' && horsesController.enabled && (() => {
+          // Get the current turn player's result if they just finished
+          const currentTurnResult = horsesController.currentTurnPlayerId 
+            ? horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId)
+            : null;
+          const isCurrentTurnWinning = horsesController.currentTurnPlayerId 
+            && horsesController.currentlyWinningPlayerIds.includes(horsesController.currentTurnPlayerId);
+          
+          // Show result badge if player just completed (feltDice is null but result exists)
+          if (!horsesController.feltDice && currentTurnResult) {
+            return (
+              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2">
+                <Badge 
+                  variant="secondary" 
+                  className={cn(
+                    "text-lg px-4 py-1.5 font-bold",
+                    isCurrentTurnWinning && "bg-green-600 text-white animate-pulse"
+                  )}
+                >
+                  {currentTurnResult.description}
+                </Badge>
+              </div>
+            );
+          }
+          
+          // Show dice if actively rolling
+          if (horsesController.feltDice) {
+            return (
+              <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center gap-2">
+                {(
+                  (horsesController.feltDice?.dice as any) ||
+                  Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }))
+                ).map((die: any, idx: number) => (
+                  <HorsesDie
+                    key={idx}
+                    value={die.value}
+                    isHeld={!!die.isHeld}
+                    isRolling={
+                      horsesController.isMyTurn
+                        ? horsesController.isRolling && !die.isHeld
+                        : !!(horsesController.feltDice as any)?.isRolling
+                    }
+                    canToggle={!!(horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
+                    onToggle={() => horsesController.handleToggleHold(idx)}
+                    size="md"
+                  />
+                ))}
+              </div>
+            );
+          }
+          
+          return null;
+        })()}
 
         {/* Solo player's Tabled Cards - shown above pot during solo-vs-Chucky showdown/win */}
         {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}

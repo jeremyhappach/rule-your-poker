@@ -535,6 +535,24 @@ export function useHorsesMobileController({
     horsesState?.playerStates,
   ]);
 
+  // Calculate currently winning player IDs during play (not just at game end)
+  const currentlyWinningPlayerIds = useMemo(() => {
+    if (completedResults.length === 0) return [] as string[];
+    return determineWinners(completedResults.map((r) => r.result)).map(
+      (i) => completedResults[i].playerId,
+    );
+  }, [completedResults]);
+
+  // Get a player's completed hand result
+  const getPlayerHandResult = useCallback(
+    (playerId: string): HorsesHandResult | null => {
+      const state = horsesState?.playerStates?.[playerId];
+      if (state?.isComplete && state.result) return state.result;
+      return null;
+    },
+    [horsesState?.playerStates],
+  );
+
   return {
     enabled,
     anteAmount,
@@ -551,6 +569,8 @@ export function useHorsesMobileController({
     isRolling,
     feltDice,
     winningPlayerIds,
+    currentlyWinningPlayerIds,
+    getPlayerHandResult,
     handleRoll,
     handleToggleHold,
     handleLockIn,
