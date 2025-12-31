@@ -14,6 +14,11 @@ import {
   evaluateHand,
   determineWinners,
 } from "@/lib/horsesGameLogic";
+import {
+  getBotHoldDecision,
+  shouldBotStopRolling,
+  applyHoldDecision,
+} from "@/lib/horsesBotLogic";
 import { Dice5, Lock, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,13 +127,20 @@ export function HorsesGameTable({
     }
   }, [isMyTurn, myState?.rollsRemaining, myState?.isComplete]);
 
-  // Calculate winning hands
+  // Calculate winning hands (best result so far among completed players)
   const completedResults = Object.entries(horsesState?.playerStates || {})
     .filter(([_, state]) => state.isComplete && state.result)
     .map(([playerId, state]) => ({
       playerId,
       result: state.result!,
     }));
+
+  // Get current winning result (best hand completed so far)
+  const currentWinningResult = completedResults.length > 0
+    ? completedResults.reduce((best, curr) => 
+        curr.result.rank > best.result.rank ? curr : best
+      ).result
+    : null;
 
   const winningPlayerIds = completedResults.length > 0 && gamePhase === "complete"
     ? determineWinners(completedResults.map(r => r.result)).map(i => completedResults[i].playerId)
@@ -291,7 +303,7 @@ export function HorsesGameTable({
     }, 1500);
   }, [isMyTurn, localHand, saveMyState, advanceToNextTurn]);
 
-  // Bot auto-play
+  // Bot auto-play with smart decision making
   useEffect(() => {
     if (!currentPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
     if (botProcessingRef.current.has(currentPlayer.id)) return;
@@ -307,42 +319,28 @@ export function HorsesGameTable({
           }
         : createInitialHand();
 
-      // Roll up to 3 times with some strategy
+      // Roll up to 3 times with smart strategy
       for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
         await new Promise(resolve => setTimeout(resolve, 1200));
 
         botHand = rollDice(botHand);
 
-        // Simple strategy: lock in if we have 4 or 5 of a kind
-        const result = evaluateHand(botHand.dice);
-        if (result.ofAKindCount >= 4) {
+        // Check if we should stop rolling based on current hand vs winning hand
+        if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) {
+          console.log(`[Bot] Stopping early - good enough hand`);
           break;
         }
 
-        // Hold dice that match the most common value (excluding 1s which are wild)
+        // Determine which dice to hold using smart decision logic
         if (botHand.rollsRemaining > 0) {
-          const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-          botHand.dice.forEach(d => counts[d.value]++);
-
-          // Find best value to keep (highest count, prefer higher values)
-          let bestValue = 6;
-          let bestCount = 0;
-          for (let v = 6; v >= 2; v--) {
-            const totalWithWilds = counts[v] + counts[1];
-            if (totalWithWilds > bestCount) {
-              bestCount = totalWithWilds;
-              bestValue = v;
-            }
-          }
-
-          // Hold dice matching best value or 1s
-          botHand = {
-            ...botHand,
-            dice: botHand.dice.map(d => ({
-              ...d,
-              isHeld: d.value === bestValue || d.value === 1,
-            })),
-          };
+          const decision = getBotHoldDecision({
+            currentDice: botHand.dice,
+            rollsRemaining: botHand.rollsRemaining,
+            currentWinningResult,
+          });
+          
+          console.log(`[Bot] Hold decision: ${decision.reasoning}`);
+          botHand = applyHoldDecision(botHand, decision);
         }
       }
 
@@ -401,7 +399,7 @@ export function HorsesGameTable({
     };
 
     botPlay();
-  }, [currentPlayer?.id, currentPlayer?.is_bot, gamePhase, currentRoundId, horsesState, turnOrder]);
+  }, [currentPlayer?.id, currentPlayer?.is_bot, gamePhase, currentRoundId, horsesState, turnOrder, currentWinningResult]);
 
   // Handle game complete - award pot to winner
   useEffect(() => {
