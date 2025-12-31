@@ -3358,7 +3358,7 @@ export const MobileGameTable = ({
                 gameType === 'holm-game' 
                   ? (isHolmMultiPlayerShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
                   : gameType === 'horses'
-                    ? 'top-[35%] -translate-y-1/2'  /* Horses: position higher like Holm */
+                    ? 'top-[30%] -translate-y-full'  /* Horses: smaller + higher like Holm */
                     : 'top-1/2 -translate-y-1/2'
               }`}
               style={{ 
@@ -3368,10 +3368,10 @@ export const MobileGameTable = ({
               }}
             >
               <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
-                gameType === 'holm-game' ? 'px-5 py-1.5' : is357MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
+                gameType === 'holm-game' || gameType === 'horses' ? 'px-5 py-1.5' : is357MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
               }`}>
                 <span className={`text-poker-gold font-bold ${
-                  gameType === 'holm-game' ? 'text-xl' : is357MultiPlayerShowdown ? 'text-base' : 'text-3xl'
+                  gameType === 'holm-game' || gameType === 'horses' ? 'text-xl' : is357MultiPlayerShowdown ? 'text-base' : 'text-3xl'
                 }`}>${formatChipValue(Math.round(
                   // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
