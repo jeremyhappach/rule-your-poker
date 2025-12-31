@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { HorsesDie } from "./HorsesDie";
 import { cn, formatChipValue } from "@/lib/utils";
 import { Lock, RotateCcw } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
@@ -15,9 +16,29 @@ export function HorsesMobileCardsTab({
   const isWaitingForYourTurn = horses.gamePhase === "playing" && !horses.isMyTurn;
   const hasCompleted = !!horses.myState?.isComplete;
   const myResult = horses.myState?.result ?? null;
+  
+  // Show dice when it's my turn and I've rolled at least once
+  const showMyDice = horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3;
 
   return (
     <div className="px-2 flex flex-col flex-1">
+      {/* Dice display when rolling */}
+      {showMyDice && (
+        <div className="flex items-center justify-center gap-1.5 mb-2">
+          {horses.localHand.dice.map((die, idx) => (
+            <HorsesDie
+              key={idx}
+              value={die.value}
+              isHeld={die.isHeld}
+              isRolling={horses.isRolling && !die.isHeld}
+              canToggle={horses.localHand.rollsRemaining > 0}
+              onToggle={() => horses.handleToggleHold(idx)}
+              size="sm"
+            />
+          ))}
+        </div>
+      )}
+      
       {/* Action area (fixed height) */}
       <div className="flex items-center justify-center min-h-[36px]">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
