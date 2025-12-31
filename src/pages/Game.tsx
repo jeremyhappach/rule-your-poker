@@ -5279,10 +5279,73 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         {(game.status === 'ante_decision' || game.status === 'in_progress') && (() => {
           const isInProgress = game.status === 'in_progress';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
-          
-          // HORSES DICE GAME - render HorsesGameTable instead of card tables
+
+          // HORSES DICE GAME
           if (isInProgress && game.game_type === 'horses') {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
+
+            // Mobile: use the same MobileGameTable shell as Holm/357
+            if (isMobile) {
+              return (
+                <MobileGameTable
+                  key={gameId ?? 'unknown-game'}
+                  gameId={gameId}
+                  players={players}
+                  currentUserId={user?.id}
+                  pot={potForDisplay}
+                  currentRound={game.current_round ?? 0}
+                  allDecisionsIn={false}
+                  playerCards={[]}
+                  timeLeft={timeLeft}
+                  maxTime={decisionTimerSeconds}
+                  lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
+                  dealerPosition={game.dealer_position}
+                  legValue={game.leg_value || 1}
+                  legsToWin={game.legs_to_win || 3}
+                  potMaxEnabled={game.pot_max_enabled ?? true}
+                  potMaxValue={game.pot_max_value || 10}
+                  pendingSessionEnd={game.pending_session_end || false}
+                  awaitingNextRound={game.awaiting_next_round || false}
+                  gameType={game.game_type}
+                  roundStatus={currentRound?.status}
+                  isPaused={game.is_paused || false}
+                  anteAmount={game.ante_amount || 2}
+                  pussyTaxValue={game.pussy_tax_value || 1}
+                  gameStatus={game.status}
+                  anteAnimationTriggerId={anteAnimationTriggerId}
+                  anteAnimationExpectedPot={anteAnimationExpectedPot}
+                  preAnteChips={preAnteChips}
+                  expectedPostAnteChips={expectedPostAnteChips}
+                  onAnteAnimationStarted={() => {
+                    setAnteAnimationTriggerId(null);
+                    setAnteAnimationExpectedPot(null);
+                    setPreAnteChips(null);
+                    setExpectedPostAnteChips(null);
+                  }}
+                  chatBubbles={chatBubbles}
+                  allMessages={allMessages}
+                  onSendChat={sendChatMessage}
+                  isChatSending={isChatSending}
+                  getPositionForUserId={getPositionForUserId}
+                  onStay={() => {}}
+                  onFold={() => {}}
+                  // Horses-specific state
+                  horsesRoundId={currentRound?.id || null}
+                  horsesState={horsesState}
+                  // Lifted mobile state
+                  activeTab={mobileActiveTab}
+                  onActiveTabChange={setMobileActiveTab}
+                  hasUnreadMessages={mobileHasUnreadMessages}
+                  onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                  chatInputValue={mobileChatInput}
+                  onChatInputChange={setMobileChatInput}
+                  dealerSetupMessage={dealerSetupMessage}
+                  reAnteMessage={reAnteMessage}
+                />
+              );
+            }
+
+            // Desktop (unchanged)
             return (
               <HorsesGameTable
                 gameId={gameId!}
@@ -5297,8 +5360,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               />
             );
           }
-
-          return isMobile ? (
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               gameId={gameId}
