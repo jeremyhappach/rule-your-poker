@@ -354,149 +354,148 @@ export function HorsesGameTable({
 
     if (effectiveControllerUserId && effectiveControllerUserId !== currentUserId) return;
 
-    // Round might be missing botControllerUserId if it was started before this fix.
-    if (!horsesState.botControllerUserId && effectiveControllerUserId && effectiveControllerUserId === currentUserId) {
-      void updateHorsesState(currentRoundId, { ...horsesState, botControllerUserId: currentUserId });
-    }
-
     if (botProcessingRef.current.has(currentPlayer.id)) return;
-
     botProcessingRef.current.add(currentPlayer.id);
 
     const botPlay = async () => {
-      let botHand = horsesState?.playerStates?.[currentPlayer.id] 
-        ? {
-            dice: horsesState.playerStates[currentPlayer.id].dice,
-            rollsRemaining: horsesState.playerStates[currentPlayer.id].rollsRemaining,
-            isComplete: horsesState.playerStates[currentPlayer.id].isComplete,
-          }
-        : createInitialHand();
-
-      // Roll up to 3 times with visible animation
-      for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
-        // Show "rolling" animation
-        setBotDisplayState({ dice: botHand.dice, isRolling: true });
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // Roll the dice
-        botHand = rollDice(botHand);
-        
-        // Show result of roll
-        setBotDisplayState({ dice: botHand.dice, isRolling: false });
-        
-        // Save intermediate state to DB so others can see
-        const intermediateState = {
-          ...(horsesState?.playerStates || {}),
-          [currentPlayer.id]: {
-            dice: botHand.dice,
-            rollsRemaining: botHand.rollsRemaining,
-            isComplete: false,
-          },
-        };
-        await updateHorsesState(currentRoundId, {
-          ...horsesState,
-          playerStates: intermediateState,
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Check if we should stop rolling based on current hand vs winning hand
-        if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) {
-          console.log(`[Bot] Stopping early - good enough hand`);
-          break;
+      try {
+        // If missing, claim botControllerUserId ONCE up front and include it in all subsequent writes.
+        // Avoids a race where a late "claim" write overwrites newer state (causing infinite flashing).
+        let stateForWrites: HorsesStateFromDB = horsesState;
+        if (!stateForWrites.botControllerUserId && effectiveControllerUserId && effectiveControllerUserId === currentUserId) {
+          stateForWrites = { ...stateForWrites, botControllerUserId: currentUserId };
+          const claimErr = await updateHorsesState(currentRoundId, stateForWrites);
+          if (claimErr) console.error("[HORSES] Failed to claim bot controller:", claimErr);
         }
 
-        // Determine which dice to hold using smart decision logic
-        if (botHand.rollsRemaining > 0) {
-          const decision = getBotHoldDecision({
-            currentDice: botHand.dice,
-            rollsRemaining: botHand.rollsRemaining,
-            currentWinningResult,
-          });
-          
-          console.log(`[Bot] Hold decision: ${decision.reasoning}`);
-          botHand = applyHoldDecision(botHand, decision);
-          
-          // Show the hold decision
+        let botHand = stateForWrites?.playerStates?.[currentPlayer.id]
+          ? {
+              dice: stateForWrites.playerStates[currentPlayer.id].dice,
+              rollsRemaining: stateForWrites.playerStates[currentPlayer.id].rollsRemaining,
+              isComplete: stateForWrites.playerStates[currentPlayer.id].isComplete,
+            }
+          : createInitialHand();
+
+        // Roll up to 3 times with visible animation
+        for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
+          // Show "rolling" animation
+          setBotDisplayState({ dice: botHand.dice, isRolling: true });
+          await new Promise((resolve) => setTimeout(resolve, 800));
+
+          // Roll the dice
+          botHand = rollDice(botHand);
+
+          // Show result of roll
           setBotDisplayState({ dice: botHand.dice, isRolling: false });
-          
-          // Save hold state so others can see
-          const holdState = {
-            ...(horsesState?.playerStates || {}),
+
+          // Save intermediate state to DB so others can see
+          const intermediateState = {
+            ...(stateForWrites?.playerStates || {}),
             [currentPlayer.id]: {
               dice: botHand.dice,
               rollsRemaining: botHand.rollsRemaining,
               isComplete: false,
             },
           };
-          await updateHorsesState(currentRoundId, {
-            ...horsesState,
-            playerStates: holdState,
-          });
-          
-          await new Promise(resolve => setTimeout(resolve, 800));
+          stateForWrites = { ...stateForWrites, playerStates: intermediateState };
+          await updateHorsesState(currentRoundId, stateForWrites);
+
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // Check if we should stop rolling based on current hand vs winning hand
+          if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) {
+            console.log(`[Bot] Stopping early - good enough hand`);
+            break;
+          }
+
+          // Determine which dice to hold using smart decision logic
+          if (botHand.rollsRemaining > 0) {
+            const decision = getBotHoldDecision({
+              currentDice: botHand.dice,
+              rollsRemaining: botHand.rollsRemaining,
+              currentWinningResult,
+            });
+
+            console.log(`[Bot] Hold decision: ${decision.reasoning}`);
+            botHand = applyHoldDecision(botHand, decision);
+
+            // Show the hold decision
+            setBotDisplayState({ dice: botHand.dice, isRolling: false });
+
+            // Save hold state so others can see
+            const holdState = {
+              ...(stateForWrites?.playerStates || {}),
+              [currentPlayer.id]: {
+                dice: botHand.dice,
+                rollsRemaining: botHand.rollsRemaining,
+                isComplete: false,
+              },
+            };
+            stateForWrites = { ...stateForWrites, playerStates: holdState };
+            await updateHorsesState(currentRoundId, stateForWrites);
+
+            await new Promise((resolve) => setTimeout(resolve, 800));
+          }
         }
-      }
 
-      // Mark complete
-      botHand = lockInHand(botHand);
-      const result = evaluateHand(botHand.dice);
-      
-      // Clear bot display state
-      setBotDisplayState(null);
+        // Mark complete
+        botHand = lockInHand(botHand);
+        const result = evaluateHand(botHand.dice);
 
-      // Save bot state to DB
-      const updatedStates = {
-        ...(horsesState?.playerStates || {}),
-        [currentPlayer.id]: {
-          dice: botHand.dice,
-          rollsRemaining: 0,
-          isComplete: true,
-          result,
-        },
-      };
+        // Clear bot display state
+        setBotDisplayState(null);
 
-      await updateHorsesState(currentRoundId, {
-        ...horsesState,
-        playerStates: updatedStates,
-      });
-
-      // Advance turn after a moment
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const currentIndex = turnOrder.indexOf(currentPlayer.id);
-      const nextIndex = currentIndex + 1;
-
-      if (nextIndex >= turnOrder.length) {
-        await updateHorsesState(currentRoundId, {
-          ...horsesState,
-          playerStates: updatedStates,
-          gamePhase: "complete",
-          currentTurnPlayerId: null,
-        });
-      } else {
-        const nextPlayerId = turnOrder[nextIndex];
-        const nextPlayerState = horsesState?.playerStates?.[nextPlayerId] || {
-          dice: createInitialHand().dice,
-          rollsRemaining: 3,
-          isComplete: false,
+        // Save bot state to DB
+        const updatedStates = {
+          ...(stateForWrites?.playerStates || {}),
+          [currentPlayer.id]: {
+            dice: botHand.dice,
+            rollsRemaining: 0,
+            isComplete: true,
+            result,
+          },
         };
 
-        await updateHorsesState(currentRoundId, {
-          ...horsesState,
-          playerStates: {
-            ...updatedStates,
-            [nextPlayerId]: nextPlayerState,
-          },
-          currentTurnPlayerId: nextPlayerId,
-        });
-      }
+        stateForWrites = { ...stateForWrites, playerStates: updatedStates };
+        await updateHorsesState(currentRoundId, stateForWrites);
 
-      botProcessingRef.current.delete(currentPlayer.id);
+        // Advance turn after a moment
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        const currentIndex = stateForWrites.turnOrder.indexOf(currentPlayer.id);
+        const nextIndex = currentIndex + 1;
+
+        if (nextIndex >= stateForWrites.turnOrder.length) {
+          await updateHorsesState(currentRoundId, {
+            ...stateForWrites,
+            playerStates: updatedStates,
+            gamePhase: "complete",
+            currentTurnPlayerId: null,
+          });
+        } else {
+          const nextPlayerId = stateForWrites.turnOrder[nextIndex];
+          const nextPlayerState = stateForWrites?.playerStates?.[nextPlayerId] || {
+            dice: createInitialHand().dice,
+            rollsRemaining: 3,
+            isComplete: false,
+          };
+
+          await updateHorsesState(currentRoundId, {
+            ...stateForWrites,
+            playerStates: {
+              ...updatedStates,
+              [nextPlayerId]: nextPlayerState,
+            },
+            currentTurnPlayerId: nextPlayerId,
+          });
+        }
+      } finally {
+        botProcessingRef.current.delete(currentPlayer.id);
+      }
     };
 
-    botPlay();
-  }, [currentPlayer?.id, currentPlayer?.is_bot, gamePhase, currentRoundId, horsesState, turnOrder, currentWinningResult]);
+    void botPlay();
+  }, [currentPlayer?.id, currentPlayer?.is_bot, gamePhase, currentRoundId, horsesState, turnOrder, currentWinningResult, currentUserId, players]);
 
   // Handle game complete - award pot to winner
   useEffect(() => {
