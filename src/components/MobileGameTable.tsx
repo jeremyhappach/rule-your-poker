@@ -40,7 +40,7 @@ import React, {
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
-import { MessageSquare, User, Clock } from "lucide-react";
+import { MessageSquare, User, Clock, Dice5 } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
@@ -2739,7 +2739,7 @@ export const MobileGameTable = ({
         {/* Game name on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-            {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+            {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : '3-5-7'}
           </span>
           <span className="text-white/40 text-xs font-medium">
             {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
@@ -4057,7 +4057,7 @@ export const MobileGameTable = ({
           
           return (
             <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
-              {/* Cards tab - 35% width */}
+              {/* Cards/Dice tab - 35% width */}
               <button 
                 onClick={() => setActiveTab('cards')}
                 style={{ flex: '0 0 35%' }}
@@ -4067,7 +4067,11 @@ export const MobileGameTable = ({
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
                 } ${showCardsTabFlashing ? 'animate-pulse ring-2 ring-green-500' : ''} ${isYourTurnNotOnCardsTab && !showCardsTabFlashing ? 'animate-pulse ring-2 ring-red-500' : ''}`}
               >
-                <SpadeIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
+                {gameType === 'horses' ? (
+                  <Dice5 className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
+                ) : (
+                  <SpadeIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
+                )}
               </button>
               {/* Chat tab - 35% width */}
               <button 
@@ -4434,7 +4438,7 @@ export const MobileGameTable = ({
               <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+                  {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : '3-5-7'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>

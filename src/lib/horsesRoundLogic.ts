@@ -10,7 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
  * Creates a round record and sets the game to in_progress
  */
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
-  console.log('[HORSES] Starting round', { gameId, isFirstHand });
+  console.log('[HORSES] 🎲 Starting round', { gameId, isFirstHand });
+  console.trace('[HORSES] Stack trace for startHorsesRound');
 
   // Get current game state
   const { data: game, error: gameError } = await supabase
