@@ -93,8 +93,9 @@ export function HorsesGameTable({
   const [localHand, setLocalHand] = useState<HorsesHand>(createInitialHand());
   const [isRolling, setIsRolling] = useState(false);
   const botProcessingRef = useRef<Set<string>>(new Set());
+  const botRunTokenRef = useRef(0);
   const initializingRef = useRef(false);
-  
+
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{
     playerId: string;
@@ -355,7 +356,13 @@ export function HorsesGameTable({
     if (!currentPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
     if (!currentUserId) return;
 
+    const token = ++botRunTokenRef.current;
+    let cancelled = false;
+
     const run = async () => {
+      const botId = currentPlayer.id;
+      console.log("[HORSES] bot loop start", { roundId: currentRoundId, botId, token });
+
       // Atomic single-driver claim to prevent multi-client bot turn fights (turn flashing).
       let controllerId = horsesState.botControllerUserId ?? null;
 
@@ -380,38 +387,121 @@ export function HorsesGameTable({
 
       if (controllerId && controllerId !== currentUserId) return;
 
-      if (botProcessingRef.current.has(currentPlayer.id)) return;
-      botProcessingRef.current.add(currentPlayer.id);
+      if (cancelled || botRunTokenRef.current !== token) return;
+
+      // Preflight: read the latest horses_state to avoid acting on stale props.
+      const { data: roundRow, error: roundErr } = await supabase
+        .from("rounds")
+        .select("horses_state")
+        .eq("id", currentRoundId)
+        .maybeSingle();
+
+      if (cancelled || botRunTokenRef.current !== token) return;
+
+      if (roundErr) {
+        console.error("[HORSES] Failed to preflight round state:", roundErr);
+      }
+
+      const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+      // If the DB already moved the turn, do nothing.
+      if (latestState?.currentTurnPlayerId && latestState.currentTurnPlayerId !== botId) {
+        console.log("[HORSES] bot loop abort: turn already moved", {
+          roundId: currentRoundId,
+          expectedBotId: botId,
+          currentTurnPlayerId: latestState.currentTurnPlayerId,
+        });
+        return;
+      }
+
+      const latestBotState = latestState?.playerStates?.[botId];
+
+      // If bot already completed but the turn is still stuck on the bot, advance only.
+      if (latestState && latestBotState?.isComplete && latestState.currentTurnPlayerId === botId) {
+        console.warn("[HORSES] bot already complete but turn stuck; advancing only", {
+          roundId: currentRoundId,
+          botId,
+        });
+
+        const stateForAdvance: HorsesStateFromDB = controllerId
+          ? { ...latestState, botControllerUserId: controllerId }
+          : latestState;
+
+        const currentIndex = stateForAdvance.turnOrder.indexOf(botId);
+        const nextIndex = currentIndex + 1;
+
+        if (nextIndex >= stateForAdvance.turnOrder.length) {
+          await updateHorsesState(currentRoundId, {
+            ...stateForAdvance,
+            gamePhase: "complete",
+            currentTurnPlayerId: null,
+          });
+        } else {
+          const nextPlayerId = stateForAdvance.turnOrder[nextIndex];
+          const nextPlayerState = stateForAdvance.playerStates?.[nextPlayerId] || {
+            dice: createInitialHand().dice,
+            rollsRemaining: 3,
+            isComplete: false,
+          };
+
+          await updateHorsesState(currentRoundId, {
+            ...stateForAdvance,
+            playerStates: {
+              ...stateForAdvance.playerStates,
+              [nextPlayerId]: nextPlayerState,
+            },
+            currentTurnPlayerId: nextPlayerId,
+          });
+        }
+        return;
+      }
+
+      if (latestBotState?.isComplete) {
+        console.log("[HORSES] bot loop abort: bot already complete", { roundId: currentRoundId, botId });
+        return;
+      }
+
+      if (botProcessingRef.current.has(botId)) return;
+      botProcessingRef.current.add(botId);
 
       try {
-        let stateForWrites: HorsesStateFromDB = controllerId
-          ? { ...horsesState, botControllerUserId: controllerId }
-          : horsesState;
+        // Prefer the freshest state we just read.
+        let stateForWrites: HorsesStateFromDB = latestState
+          ? controllerId
+            ? { ...latestState, botControllerUserId: controllerId }
+            : latestState
+          : controllerId
+            ? { ...horsesState, botControllerUserId: controllerId }
+            : horsesState;
 
-        let botHand = stateForWrites?.playerStates?.[currentPlayer.id]
+        let botHand = stateForWrites?.playerStates?.[botId]
           ? {
-              dice: stateForWrites.playerStates[currentPlayer.id].dice,
-              rollsRemaining: stateForWrites.playerStates[currentPlayer.id].rollsRemaining,
-              isComplete: stateForWrites.playerStates[currentPlayer.id].isComplete,
+              dice: stateForWrites.playerStates[botId].dice,
+              rollsRemaining: stateForWrites.playerStates[botId].rollsRemaining,
+              isComplete: stateForWrites.playerStates[botId].isComplete,
             }
           : createInitialHand();
 
         // Roll up to 3 times with visible animation
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
+          if (cancelled || botRunTokenRef.current !== token) return;
+
           // Show "rolling" animation
-          setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: true });
+          setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: true });
           await new Promise((resolve) => setTimeout(resolve, 800));
+
+          if (cancelled || botRunTokenRef.current !== token) return;
 
           // Roll the dice
           botHand = rollDice(botHand);
 
           // Show result of roll
-          setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: false });
+          setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
           // Save intermediate state to DB so others can see
           const intermediateState = {
             ...(stateForWrites?.playerStates || {}),
-            [currentPlayer.id]: {
+            [botId]: {
               dice: botHand.dice,
               rollsRemaining: botHand.rollsRemaining,
               isComplete: false,
@@ -440,12 +530,12 @@ export function HorsesGameTable({
             botHand = applyHoldDecision(botHand, decision);
 
             // Show the hold decision
-            setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: false });
+            setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
             // Save hold state so others can see
             const holdState = {
               ...(stateForWrites?.playerStates || {}),
-              [currentPlayer.id]: {
+              [botId]: {
                 dice: botHand.dice,
                 rollsRemaining: botHand.rollsRemaining,
                 isComplete: false,
@@ -458,17 +548,19 @@ export function HorsesGameTable({
           }
         }
 
+        if (cancelled || botRunTokenRef.current !== token) return;
+
         // Mark complete
         botHand = lockInHand(botHand);
         const result = evaluateHand(botHand.dice);
 
         // Keep final bot dice visible until the DB turn advances.
-        setBotDisplayState({ playerId: currentPlayer.id, dice: botHand.dice, isRolling: false });
+        setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
         // Save bot state to DB
         const updatedStates = {
           ...(stateForWrites?.playerStates || {}),
-          [currentPlayer.id]: {
+          [botId]: {
             dice: botHand.dice,
             rollsRemaining: 0,
             isComplete: true,
@@ -482,7 +574,26 @@ export function HorsesGameTable({
         // Advance turn after a moment
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        const currentIndex = stateForWrites.turnOrder.indexOf(currentPlayer.id);
+        if (cancelled || botRunTokenRef.current !== token) return;
+
+        // Final guard: if someone already moved the turn, don't overwrite.
+        const { data: turnCheck } = await supabase
+          .from("rounds")
+          .select("horses_state")
+          .eq("id", currentRoundId)
+          .maybeSingle();
+
+        const checkState = (turnCheck as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (checkState?.currentTurnPlayerId && checkState.currentTurnPlayerId !== botId) {
+          console.log("[HORSES] bot advance abort: turn already changed", {
+            roundId: currentRoundId,
+            botId,
+            currentTurnPlayerId: checkState.currentTurnPlayerId,
+          });
+          return;
+        }
+
+        const currentIndex = stateForWrites.turnOrder.indexOf(botId);
         const nextIndex = currentIndex + 1;
 
         if (nextIndex >= stateForWrites.turnOrder.length) {
@@ -510,11 +621,14 @@ export function HorsesGameTable({
           });
         }
       } finally {
-        botProcessingRef.current.delete(currentPlayer.id);
+        botProcessingRef.current.delete(botId);
       }
     };
 
     void run();
+    return () => {
+      cancelled = true;
+    };
   }, [
     currentPlayer?.id,
     currentPlayer?.is_bot,
