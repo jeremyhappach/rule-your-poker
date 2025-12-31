@@ -29,13 +29,14 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   const newHandNumber = (game.total_hands || 0) + 1;
 
   // Create the round record
+  // NOTE: cards_dealt has a check constraint (2-7) - use 2 as minimum for non-card games
   const { data: roundData, error: roundError } = await supabase
     .from('rounds')
     .insert({
       game_id: gameId,
       round_number: newRoundNumber,
       hand_number: newHandNumber,
-      cards_dealt: 0, // Horses doesn't deal cards
+      cards_dealt: 2, // Horses doesn't deal cards but constraint requires >= 2
       status: 'betting', // Use existing status; HorsesGameTable manages gamePhase in horses_state
       pot: game.pot || 0,
       // horses_state will be initialized by HorsesGameTable component

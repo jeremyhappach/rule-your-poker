@@ -2741,12 +2741,24 @@ export const MobileGameTable = ({
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
             {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : '3-5-7'}
           </span>
-          <span className="text-white/40 text-xs font-medium">
-            {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
-          </span>
-          {gameType !== 'holm-game' && <span className="text-white/40 text-xs font-medium">
+          {/* Only show No Limit/Max for non-Horses games */}
+          {gameType !== 'horses' && (
+            <span className="text-white/40 text-xs font-medium">
+              {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+            </span>
+          )}
+          {/* Only show legs for 3-5-7 games (not holm, not horses) */}
+          {gameType !== 'holm-game' && gameType !== 'horses' && (
+            <span className="text-white/40 text-xs font-medium">
               {legsToWin} legs to win
-            </span>}
+            </span>
+          )}
+          {/* For Horses, show ante instead */}
+          {gameType === 'horses' && (
+            <span className="text-white/40 text-xs font-medium">
+              Ante: ${anteAmount}
+            </span>
+          )}
         </div>
         
         
@@ -3321,7 +3333,9 @@ export const MobileGameTable = ({
               className={`absolute left-1/2 transform -translate-x-1/2 z-20 transition-all duration-300 ${
                 gameType === 'holm-game' 
                   ? (isHolmMultiPlayerShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
-                  : 'top-1/2 -translate-y-1/2'
+                  : gameType === 'horses'
+                    ? 'top-[35%] -translate-y-1/2'  /* Horses: position higher like Holm */
+                    : 'top-1/2 -translate-y-1/2'
               }`}
               style={{ 
                 visibility: shouldHidePot ? 'hidden' : 'visible',
