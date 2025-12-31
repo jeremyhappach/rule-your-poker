@@ -350,9 +350,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           <div className="py-8 text-center text-muted-foreground">Loading...</div>
         ) : (
           <Tabs defaultValue="holm" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="holm">Holm</TabsTrigger>
               <TabsTrigger value="3-5-7">3-5-7</TabsTrigger>
+              <TabsTrigger value="horses">Horses</TabsTrigger>
+              <TabsTrigger value="scc">SCC</TabsTrigger>
             </TabsList>
 
             <TabsContent value="holm" className="space-y-4 mt-4">
@@ -501,6 +503,62 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
                     {renderGameSettings('3-5-7')}
                     {renderBotSettings('3-5-7')}
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            {/* Horses Tab */}
+            <TabsContent value="horses" className="space-y-4 mt-4">
+              {(() => {
+                const horsesDefaults = getDefaultByType('horses');
+                if (!horsesDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Horses</div>;
+                return (
+                  <>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <DollarSign className="h-4 w-4" />
+                      Game Settings
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="horses-ante">Ante Amount ($)</Label>
+                      <Input
+                        id="horses-ante"
+                        type="text"
+                        inputMode="numeric"
+                        value={horsesDefaults.ante_amount}
+                        onChange={(e) => updateDefault('horses', 'ante_amount', e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">Amount each player antes</p>
+                    </div>
+                  </>
+                );
+              })()}
+            </TabsContent>
+
+            {/* Ship Captain Crew Tab */}
+            <TabsContent value="scc" className="space-y-4 mt-4">
+              {(() => {
+                const sccDefaults = getDefaultByType('ship-captain-crew');
+                if (!sccDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Ship Captain Crew</div>;
+                return (
+                  <>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <DollarSign className="h-4 w-4" />
+                      Game Settings
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="scc-ante">Ante Amount ($)</Label>
+                      <Input
+                        id="scc-ante"
+                        type="text"
+                        inputMode="numeric"
+                        value={sccDefaults.ante_amount}
+                        onChange={(e) => updateDefault('ship-captain-crew', 'ante_amount', e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">Amount each player antes</p>
+                    </div>
                   </>
                 );
               })()}

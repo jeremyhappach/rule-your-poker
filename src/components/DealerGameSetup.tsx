@@ -6,9 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, Timer, Plus, Minus } from "lucide-react";
+import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
+import { toast } from "sonner";
+
+type SelectionStep = 'category' | 'cards' | 'dice';
 
 interface PreviousGameConfig {
   game_type: string | null;
@@ -38,6 +41,7 @@ interface DealerGameSetupProps {
   previousGameType?: string; // The last game type played
   previousGameConfig?: PreviousGameConfig | null; // The previous game's actual config
   sessionGameConfigs?: SessionGameConfigs; // Session-specific configs per game type
+  isFirstHand?: boolean; // Whether this is the first hand of the session (no run back option)
   onConfigComplete: () => void;
   onSessionEnd: () => void;
 }
@@ -64,9 +68,12 @@ export const DealerGameSetup = ({
   previousGameType,
   previousGameConfig,
   sessionGameConfigs,
+  isFirstHand = true,
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
+  // Selection step: category -> cards/dice
+  const [selectionStep, setSelectionStep] = useState<SelectionStep>('category');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
   const [timeLeft, setTimeLeft] = useState(30);
@@ -553,6 +560,180 @@ export const DealerGameSetup = ({
 
   const isHolmGame = selectedGameType === 'holm-game';
 
+  const getGameDisplayName = (gameType: string) => {
+    switch (gameType) {
+      case '3-5-7': return '3-5-7';
+      case 'holm-game': return 'Holm';
+      case 'horses': return 'Horses';
+      case 'ship-captain-crew': return 'Ship Captain Crew';
+      default: return gameType;
+    }
+  };
+
+  const handleCategorySelect = (category: 'cards' | 'dice') => {
+    setSelectionStep(category);
+  };
+
+  const handleRunBack = () => {
+    if (previousGameType && previousGameConfig) {
+      // Use previous config and submit immediately
+      setSelectedGameType(previousGameType);
+      setAnteAmount(String(previousGameConfig.ante_amount));
+      setLegValue(String(previousGameConfig.leg_value));
+      setLegsToWin(String(previousGameConfig.legs_to_win));
+      setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
+      setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
+      setPotMaxEnabled(previousGameConfig.pot_max_enabled);
+      setPotMaxValue(String(previousGameConfig.pot_max_value));
+      setChuckyCards(String(previousGameConfig.chucky_cards));
+      setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
+      setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
+      // Submit with previous config
+      setTimeout(() => handleSubmit(), 100);
+    }
+  };
+
+  const handleDiceGameSelect = (gameType: string) => {
+    toast.info("Coming soon!");
+  };
+
+  const handleBackToCategory = () => {
+    setSelectionStep('category');
+  };
+
+  // Category selection step
+  if (selectionStep === 'category') {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
+          <CardContent className="pt-6 pb-6 space-y-6">
+            {/* Header with Timer */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-poker-gold">Dealer Setup</h2>
+                <p className="text-amber-100 text-sm">{dealerUsername}, choose game type</p>
+              </div>
+              <Badge 
+                variant={timeLeft <= 10 ? "destructive" : "default"} 
+                className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
+              >
+                <Timer className="w-4 h-4" />
+                {timeLeft}s
+              </Badge>
+            </div>
+
+            {/* Category Selection */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Cards option */}
+              <button
+                onClick={() => handleCategorySelect('cards')}
+                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+              >
+                <div className="flex flex-col items-center space-y-3">
+                  <Spade className="w-12 h-12 text-poker-gold" />
+                  <h3 className="text-xl font-bold text-poker-gold">Cards</h3>
+                  <p className="text-sm text-amber-200">Poker games</p>
+                </div>
+              </button>
+
+              {/* Dice option */}
+              <button
+                onClick={() => handleCategorySelect('dice')}
+                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+              >
+                <div className="flex flex-col items-center space-y-3">
+                  <Dice5 className="w-12 h-12 text-poker-gold" />
+                  <h3 className="text-xl font-bold text-poker-gold">Dice</h3>
+                  <p className="text-sm text-amber-200">Dice games</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Run Back option - only show on 2nd+ game of session */}
+            {!isFirstHand && previousGameType && previousGameConfig && (
+              <div className="pt-4 border-t border-poker-gold/30">
+                <button
+                  onClick={handleRunBack}
+                  className="w-full p-4 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-3"
+                >
+                  <RotateCcw className="w-6 h-6 text-amber-400" />
+                  <span className="text-lg font-bold text-amber-400">
+                    Run Back {getGameDisplayName(previousGameType)}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            <p className="text-xs text-amber-200/60 text-center">
+              If timer expires without action, you'll be marked as sitting out
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Dice games selection step
+  if (selectionStep === 'dice') {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
+          <CardContent className="pt-6 pb-6 space-y-6">
+            {/* Header with Timer */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-poker-gold">Select Dice Game</h2>
+                <p className="text-amber-100 text-sm">{dealerUsername}, choose a dice game</p>
+              </div>
+              <Badge 
+                variant={timeLeft <= 10 ? "destructive" : "default"} 
+                className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
+              >
+                <Timer className="w-4 h-4" />
+                {timeLeft}s
+              </Badge>
+            </div>
+
+            {/* Dice Game Selection */}
+            <div className="grid grid-cols-1 gap-4">
+              <button
+                onClick={() => handleDiceGameSelect('horses')}
+                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+              >
+                <div className="space-y-2 text-center">
+                  <h3 className="text-xl font-bold text-poker-gold">Horses</h3>
+                  <p className="text-sm text-amber-200">Dice game</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleDiceGameSelect('ship-captain-crew')}
+                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+              >
+                <div className="space-y-2 text-center">
+                  <h3 className="text-xl font-bold text-poker-gold">Ship Captain Crew</h3>
+                  <p className="text-sm text-amber-200">Dice game</p>
+                </div>
+              </button>
+            </div>
+
+            <button
+              onClick={handleBackToCategory}
+              className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
+            >
+              ← Back to Game Types
+            </button>
+
+            <p className="text-xs text-amber-200/60 text-center">
+              If timer expires without action, you'll be marked as sitting out
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Cards selection step - show poker game tabs
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[90vh] overflow-y-auto">
@@ -560,8 +741,8 @@ export const DealerGameSetup = ({
           {/* Header with Timer */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-poker-gold">Dealer Setup</h2>
-              <p className="text-amber-100 text-sm">{dealerUsername}, choose your game</p>
+              <h2 className="text-2xl font-bold text-poker-gold">Card Game Setup</h2>
+              <p className="text-amber-100 text-sm">{dealerUsername}, configure your game</p>
             </div>
             <Badge 
               variant={timeLeft <= 10 ? "destructive" : "default"} 
@@ -786,6 +967,14 @@ export const DealerGameSetup = ({
               </div>
             </TabsContent>
           </Tabs>
+
+          {/* Back Button */}
+          <button
+            onClick={handleBackToCategory}
+            className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
+          >
+            ← Back to Game Types
+          </button>
 
           {/* Start Button */}
           <Button 
