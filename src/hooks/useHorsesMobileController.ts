@@ -351,27 +351,37 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
     if (!currentTurnPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
+    if (!currentUserId) return;
 
-    // IMPORTANT: only one client should drive bot turns.
-    // Otherwise, multiple open clients will all run the bot loop and overwrite each other,
-    // causing "flashing" and turns that never reliably advance.
-    const effectiveControllerUserId = horsesState.botControllerUserId ?? candidateBotControllerUserId;
-    if (effectiveControllerUserId && effectiveControllerUserId !== currentUserId) return;
+    const run = async () => {
+      // Ensure a SINGLE client drives bot turns.
+      // Use an atomic backend claim to avoid overwriting newer horses_state (the main cause of turn flashing).
+      let controllerId = horsesState.botControllerUserId ?? null;
 
-    if (botProcessingRef.current.has(currentTurnPlayer.id)) return;
-    botProcessingRef.current.add(currentTurnPlayer.id);
+      if (!controllerId) {
+        const { data, error } = await supabase.rpc("claim_horses_bot_controller", {
+          _round_id: currentRoundId,
+        });
 
-    const botPlay = async () => {
-      try {
-        // If this round was created before botControllerUserId existed, set it ONCE up front and then
-        // always include it in every write. This avoids a race where a late "claim" write overwrites
-        // newer playerStates/currentTurnPlayerId and causes infinite flashing.
-        let stateForWrites: HorsesStateFromDB = horsesState;
-        if (!stateForWrites.botControllerUserId && effectiveControllerUserId && effectiveControllerUserId === currentUserId) {
-          stateForWrites = { ...stateForWrites, botControllerUserId: currentUserId };
-          const claimErr = await updateHorsesState(currentRoundId, stateForWrites);
-          if (claimErr) console.error("[HORSES] Failed to claim bot controller:", claimErr);
+        if (error) {
+          console.error("[HORSES] Failed to claim bot controller (atomic):", error);
+        } else {
+          controllerId = (data as any)?.botControllerUserId ?? null; // eslint-disable-line @typescript-eslint/no-explicit-any
         }
+      }
+
+      // Fallback for older rounds / unexpected nulls
+      controllerId = controllerId ?? candidateBotControllerUserId ?? null;
+
+      if (controllerId && controllerId !== currentUserId) return;
+
+      if (botProcessingRef.current.has(currentTurnPlayer.id)) return;
+      botProcessingRef.current.add(currentTurnPlayer.id);
+
+      try {
+        let stateForWrites: HorsesStateFromDB = controllerId
+          ? { ...horsesState, botControllerUserId: controllerId }
+          : horsesState;
 
         let botHand: HorsesHand = stateForWrites.playerStates?.[currentTurnPlayer.id]
           ? {
@@ -480,12 +490,14 @@ export function useHorsesMobileController({
             currentTurnPlayerId: nextPlayerId,
           });
         }
+      } catch (error) {
+        console.error("[HORSES] Bot play failed:", error);
       } finally {
         botProcessingRef.current.delete(currentTurnPlayer.id);
       }
     };
 
-    void botPlay();
+    void run();
   }, [
     enabled,
     currentTurnPlayer?.id,
