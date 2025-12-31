@@ -145,6 +145,13 @@ export function useHorsesMobileController({
     }
   }, [enabled, isMyTurn, myState?.rollsRemaining, myState?.isComplete]);
 
+  // Clear bot display state when turn changes to a non-bot (prevents dice flash)
+  useEffect(() => {
+    if (!currentTurnPlayer?.is_bot && botDisplayState) {
+      setBotDisplayState(null);
+    }
+  }, [currentTurnPlayerId, currentTurnPlayer?.is_bot]);
+
   const completedResults = useMemo(
     () =>
       Object.entries(horsesState?.playerStates || {})
