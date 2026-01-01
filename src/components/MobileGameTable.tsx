@@ -3401,7 +3401,7 @@ export const MobileGameTable = ({
                 gameType === 'holm-game' 
                   ? (isHolmMultiPlayerShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
                   : gameType === 'horses'
-                    ? 'top-[30%] -translate-y-full'  /* Horses: smaller + higher like Holm */
+                    ? 'top-[36%] -translate-y-full'  /* Horses: moved down to avoid overlap with felt label */
                     : 'top-1/2 -translate-y-1/2'
               }`}
               style={{ 
