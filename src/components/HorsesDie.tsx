@@ -8,6 +8,7 @@ interface HorsesDieProps {
   isRolling?: boolean;
   onToggle?: () => void;
   size?: "sm" | "md" | "lg";
+  showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
 }
 
 export function HorsesDie({
@@ -17,6 +18,7 @@ export function HorsesDie({
   isRolling = false,
   onToggle,
   size = "md",
+  showWildHighlight = true,
 }: HorsesDieProps) {
   // Track the displayed value during roll animation
   const [displayValue, setDisplayValue] = useState(value);
@@ -104,7 +106,7 @@ export function HorsesDie({
       case 1:
         return (
           <div className="flex items-center justify-center w-full h-full">
-            <div className={cn(dotClass, "w-4 h-4 bg-poker-gold")} />
+            <div className={cn(dotClass, "w-4 h-4", showWildHighlight ? "bg-poker-gold" : "bg-foreground/90")} />
           </div>
         );
       case 2:
@@ -183,8 +185,8 @@ export function HorsesDie({
     }
   };
 
-  // Check if this die shows a wild (1)
-  const isWildDie = displayValue === 1 && !animating;
+  // Check if this die shows a wild (1) - only highlight if showWildHighlight is true
+  const isWildDie = showWildHighlight && displayValue === 1 && !animating;
 
   return (
     <button

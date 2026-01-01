@@ -19,6 +19,7 @@ interface HorsesPlayerAreaProps {
   hasTurnCompleted: boolean;
   diceValues?: DiceGameDieType[];
   myStatus?: 'waiting' | 'rolling' | 'done';
+  gameType?: string | null;
 }
 
 export function HorsesPlayerArea({
@@ -31,6 +32,7 @@ export function HorsesPlayerArea({
   hasTurnCompleted,
   diceValues,
   myStatus,
+  gameType,
 }: HorsesPlayerAreaProps) {
   return (
     <div
@@ -78,6 +80,7 @@ export function HorsesPlayerArea({
                       canToggle={false}
                       onToggle={() => {}}
                       size="sm"
+                      showWildHighlight={gameType !== 'ship-captain-crew'}
                     />
                   ))}
                 </div>
@@ -108,6 +111,7 @@ export function HorsesPlayerArea({
               canToggle={false}
               onToggle={() => {}}
               size="sm"
+              showWildHighlight={gameType !== 'ship-captain-crew'}
             />
           ))}
         </div>

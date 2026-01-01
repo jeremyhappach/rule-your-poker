@@ -993,6 +993,7 @@ export function HorsesGameTable({
                         hasTurnCompleted={hasCompleted}
                         diceValues={hasCompleted ? playerState?.dice : undefined}
                         myStatus={isMe ? getMyStatus() : undefined}
+                        gameType={gameType}
                       />
                     </div>
                   );
@@ -1111,6 +1112,7 @@ export function HorsesGameTable({
                         hasTurnCompleted={hasCompleted}
                         diceValues={hasCompleted ? playerState?.dice : undefined}
                         myStatus={isMe ? getMyStatus() : undefined}
+                        gameType={gameType}
                       />
                     );
                   })()
@@ -1233,6 +1235,7 @@ export function HorsesGameTable({
                       hasTurnCompleted={hasCompleted}
                       diceValues={hasCompleted ? playerState?.dice : undefined}
                       myStatus={isMe ? getMyStatus() : undefined}
+                      gameType={gameType}
                     />
                   </div>
                 );

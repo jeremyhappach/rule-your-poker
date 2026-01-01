@@ -3543,6 +3543,7 @@ export const MobileGameTable = ({
                         canToggle={canToggle}
                         onToggle={showDice ? () => horsesController.handleToggleHold(idx) : undefined}
                         size="md"
+                        showWildHighlight={gameType !== 'ship-captain-crew'}
                       />
                     );
                   })}
@@ -4350,6 +4351,7 @@ export const MobileGameTable = ({
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
               horses={horsesController}
+              gameType={gameType}
             />
           ) : (
             <div className="px-2 flex flex-col flex-1">

@@ -12,12 +12,14 @@ interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };
   horses: ReturnType<typeof useHorsesMobileController>;
   onAutoFoldChange?: (autoFold: boolean) => void;
+  gameType?: string | null;
 }
 
 export function HorsesMobileCardsTab({
   currentUserPlayer,
   horses,
   onAutoFoldChange,
+  gameType,
 }: HorsesMobileCardsTabProps) {
   const isWaitingForYourTurn = horses.gamePhase === "playing" && !horses.isMyTurn;
   const hasCompleted = !!horses.myState?.isComplete;
@@ -65,6 +67,7 @@ export function HorsesMobileCardsTab({
               canToggle={horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
               onToggle={() => horses.handleToggleHold(idx)}
               size="lg"
+              showWildHighlight={gameType !== 'ship-captain-crew'}
             />
           ))}
         </div>
