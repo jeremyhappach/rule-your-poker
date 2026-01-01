@@ -141,7 +141,8 @@ export function HorsesDie({
         "rounded-lg border-2 relative",
         "transition-all duration-150",
         "flex items-center justify-center",
-        isRolling && "ring-2 ring-primary/30 animate-pulse",
+        // Only animate while the die is actually interactive; avoids "frozen" dice flashing.
+        isRolling && canToggle && value > 0 && "ring-2 ring-primary/30 animate-pulse",
         isHeld
           ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
           : "bg-card border-border shadow-sm",
