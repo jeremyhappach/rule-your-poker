@@ -243,6 +243,16 @@ export function HorsesGameTable({
   const announcedTurnsRef = useRef<Set<string>>(new Set());
   const currentTurnState = horsesState?.playerStates?.[currentTurnPlayerId || ""] ?? null;
 
+  // Always clear the pending announcement timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (clearAnnouncementTimerRef.current) {
+        window.clearTimeout(clearAnnouncementTimerRef.current);
+        clearAnnouncementTimerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (gamePhase !== "playing") return;
     if (!currentRoundId || !currentTurnPlayerId || !currentPlayer) return;
@@ -255,11 +265,14 @@ export function HorsesGameTable({
     const playerName = getPlayerUsername(currentPlayer);
     setTurnAnnouncement(`${playerName} rolled ${currentTurnState.result.description}!`);
 
+    // IMPORTANT: do NOT clear this timeout in the effect cleanup, otherwise the banner can persist
+    // forever when the turn advances (deps change triggers cleanup before the timeout fires).
     if (clearAnnouncementTimerRef.current) {
       window.clearTimeout(clearAnnouncementTimerRef.current);
     }
     clearAnnouncementTimerRef.current = window.setTimeout(() => {
       setTurnAnnouncement(null);
+      clearAnnouncementTimerRef.current = null;
     }, 2500);
   }, [
     gamePhase,
