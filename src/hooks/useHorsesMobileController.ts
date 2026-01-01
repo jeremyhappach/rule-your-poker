@@ -50,6 +50,10 @@ export interface HorsesStateFromDB {
    * Chosen deterministically at round init.
    */
   botControllerUserId?: string | null;
+  /**
+   * ISO timestamp deadline for the current turn. Player times out if not acted by this time.
+   */
+  turnDeadline?: string | null;
 }
 
 async function updateHorsesState(roundId: string, state: HorsesStateFromDB): Promise<Error | null> {
@@ -107,6 +111,7 @@ export interface UseHorsesMobileControllerArgs {
 
 const HORSES_ROLL_ANIMATION_MS = 350;
 const HORSES_POST_TURN_PAUSE_MS = 650;
+const HORSES_TURN_TIMER_SECONDS = 30; // Default turn timer for Horses
 
 export function useHorsesMobileController({
   enabled,
@@ -149,6 +154,10 @@ export function useHorsesMobileController({
   // Prevent DB/realtime rehydration from overwriting the local felt while the user is actively tapping.
   const lastLocalEditAtRef = useRef<number>(0);
   const myTurnKeyRef = useRef<string | null>(null);
+
+  // Timer state for turn countdown
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const timeoutProcessedRef = useRef<string | null>(null);
 
   const activePlayers = useMemo(
     () => players.filter((p) => !p.sitting_out).sort((a, b) => a.position - b.position),
@@ -299,12 +308,19 @@ export function useHorsesMobileController({
           .map((id) => activePlayers.find((p) => p.id === id))
           .find((p) => p && !p.is_bot)?.user_id ?? null;
 
+      // Set deadline for the first player's turn (skip for bots)
+      const firstPlayer = activePlayers.find((p) => p.id === order[0]);
+      const deadline = firstPlayer?.is_bot
+        ? null
+        : new Date(Date.now() + HORSES_TURN_TIMER_SECONDS * 1000).toISOString();
+
       const initialState: HorsesStateFromDB = {
         currentTurnPlayerId: order[0] ?? null,
         playerStates: {},
         gamePhase: "playing",
         turnOrder: order,
         botControllerUserId: controllerUserId,
+        turnDeadline: deadline,
       };
 
       order.forEach((playerId) => {
@@ -412,9 +428,37 @@ export function useHorsesMobileController({
       const expected = expectedCurrentPlayerId ?? horsesState?.currentTurnPlayerId;
       if (!expected) return;
 
-      await horsesAdvanceTurn(currentRoundId, expected);
+      const newState = await horsesAdvanceTurn(currentRoundId, expected);
+      
+      // After advancing, set deadline for the new player (if human)
+      if (newState?.currentTurnPlayerId && newState.gamePhase === "playing") {
+        const nextPlayer = players.find((p) => p.id === newState.currentTurnPlayerId);
+        if (nextPlayer && !nextPlayer.is_bot) {
+          const newDeadline = new Date(Date.now() + HORSES_TURN_TIMER_SECONDS * 1000).toISOString();
+          await supabase
+            .from("rounds")
+            .update({
+              horses_state: {
+                ...newState,
+                turnDeadline: newDeadline,
+              },
+            } as any)
+            .eq("id", currentRoundId);
+        } else if (nextPlayer?.is_bot) {
+          // Clear deadline for bot turns
+          await supabase
+            .from("rounds")
+            .update({
+              horses_state: {
+                ...newState,
+                turnDeadline: null,
+              },
+            } as any)
+            .eq("id", currentRoundId);
+        }
+      }
     },
-    [enabled, currentRoundId, horsesState?.currentTurnPlayerId],
+    [enabled, currentRoundId, horsesState?.currentTurnPlayerId, players],
   );
 
   // Freeze guard: if a player finished but their client never advanced the turn (or a timeout was dropped),
@@ -460,6 +504,131 @@ export function useHorsesMobileController({
     currentUserId,
     candidateBotControllerUserId,
     advanceToNextTurn,
+  ]);
+
+  // Timer countdown effect - calculate time remaining from deadline
+  useEffect(() => {
+    if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) {
+      setTimeLeft(null);
+      return;
+    }
+
+    // Bots don't need a visible timer
+    if (currentTurnPlayer?.is_bot) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const deadline = horsesState?.turnDeadline;
+    if (!deadline) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const updateTimeLeft = () => {
+      const deadlineTime = new Date(deadline).getTime();
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((deadlineTime - now) / 1000));
+      setTimeLeft(remaining);
+      return remaining;
+    };
+
+    // Initial calculation
+    const initial = updateTimeLeft();
+    if (initial <= 0) {
+      setTimeLeft(0);
+      return;
+    }
+
+    // Update every second
+    const interval = setInterval(() => {
+      const remaining = updateTimeLeft();
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [enabled, gamePhase, currentTurnPlayerId, currentTurnPlayer?.is_bot, horsesState?.turnDeadline]);
+
+  // Timeout handler - auto-complete turn and mark player for sit-out
+  useEffect(() => {
+    if (!enabled || gamePhase !== "playing") return;
+    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (currentTurnPlayer?.is_bot) return; // Bots handle themselves
+    if (timeLeft === null || timeLeft > 0) return;
+
+    // Only the player whose turn it is OR the bot controller should handle the timeout
+    const iAmTurnOwner = currentTurnPlayer?.user_id === currentUserId;
+    const iAmController = candidateBotControllerUserId === currentUserId;
+    if (!iAmTurnOwner && !iAmController) return;
+
+    // Prevent duplicate timeout processing
+    const timeoutKey = `${currentRoundId}:${currentTurnPlayerId}:timeout`;
+    if (timeoutProcessedRef.current === timeoutKey) return;
+    timeoutProcessedRef.current = timeoutKey;
+
+    const handleTimeout = async () => {
+      console.log("[HORSES] Turn timeout for player:", currentTurnPlayerId);
+
+      // Get current player state
+      const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
+      
+      // If player hasn't rolled yet, give them a forced roll result
+      let result;
+      if (!playerState || playerState.rollsRemaining === 3) {
+        // Never rolled - create a random hand
+        const forcedDice = Array(5).fill(null).map(() => ({
+          value: Math.floor(Math.random() * 6) + 1,
+          isHeld: false,
+        }));
+        result = evaluateHand(forcedDice);
+        
+        // Save the forced state
+        await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
+          dice: forcedDice,
+          rollsRemaining: 0,
+          isComplete: true,
+          result,
+        });
+      } else if (!playerState.isComplete) {
+        // Had rolled but didn't lock in - evaluate current dice
+        result = evaluateHand(playerState.dice);
+        await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
+          ...playerState,
+          rollsRemaining: 0,
+          isComplete: true,
+          result,
+        });
+      }
+
+      // Mark player to sit out next hand (disconnect/timeout penalty)
+      await supabase
+        .from("players")
+        .update({ sit_out_next_hand: true })
+        .eq("id", currentTurnPlayerId);
+
+      toast.info(`${getPlayerUsername(currentTurnPlayer!)} timed out - sitting out next hand`);
+
+      // Advance to next turn
+      setTimeout(() => {
+        advanceToNextTurn(currentTurnPlayerId);
+      }, HORSES_POST_TURN_PAUSE_MS);
+    };
+
+    handleTimeout();
+  }, [
+    enabled,
+    gamePhase,
+    currentRoundId,
+    currentTurnPlayerId,
+    currentTurnPlayer,
+    currentUserId,
+    candidateBotControllerUserId,
+    timeLeft,
+    horsesState?.playerStates,
+    advanceToNextTurn,
+    getPlayerUsername,
   ]);
 
   const handleRoll = useCallback(async () => {
@@ -771,13 +940,12 @@ export function useHorsesMobileController({
       processedWinRoundRef.current = currentRoundId;
 
       if (winningPlayerIds.length > 1) {
-        toast.info("It's a tie! Everyone re-antes.");
         // Set awaiting_next_round to trigger re-ante flow
         await supabase
           .from("games")
           .update({
             awaiting_next_round: true,
-            last_round_result: "Tie - everyone re-antes!",
+            last_round_result: "Roll Over",
           })
           .eq("id", gameId);
         return;
@@ -995,5 +1163,8 @@ export function useHorsesMobileController({
     handleRoll,
     handleToggleHold,
     handleLockIn,
+    // Timer state
+    timeLeft,
+    maxTime: HORSES_TURN_TIMER_SECONDS,
   };
 }
