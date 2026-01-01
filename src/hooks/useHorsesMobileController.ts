@@ -131,6 +131,10 @@ export function useHorsesMobileController({
     dice: HorsesDieType[];
     isRolling: boolean;
   } | null>(null);
+  
+  // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
+  // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
+  const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
 
   // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
   const lastFeltDiceRef = useRef<{ playerId: string | null; value: any } | null>(null);
@@ -510,6 +514,9 @@ export function useHorsesMobileController({
       // Lock immediately to prevent effect re-runs from starting a second bot loop before the first sets its lock.
       if (botProcessingRef.current.has(botId)) return;
       botProcessingRef.current.add(botId);
+      
+      // Mark this bot turn as actively animating - prevents DB/realtime from overwriting display
+      setBotTurnActiveId(botId);
 
       try {
         console.log("[HORSES] (mobile) bot loop start", { roundId: currentRoundId, botId, token });
@@ -712,6 +719,10 @@ export function useHorsesMobileController({
         console.error("[HORSES] Bot play failed:", error);
       } finally {
         botProcessingRef.current.delete(botId);
+        // Clear the active bot turn flag after a short delay to allow final display state to render
+        setTimeout(() => {
+          setBotTurnActiveId((current) => current === botId ? null : current);
+        }, 100);
       }
     };
 
@@ -885,12 +896,22 @@ export function useHorsesMobileController({
       };
     }
 
+    // CRITICAL: When a bot turn is actively being animated, ALWAYS use botDisplayState.
+    // This prevents DB/realtime updates from causing flicker by overwriting the animation state.
+    if (botTurnActiveId === currentTurnPlayerId && botDisplayState?.playerId === currentTurnPlayerId) {
+      const isBlank = botDisplayState.dice.every((d: any) => !d?.value);
+      if (isBlank && !botDisplayState.isRolling) return null;
+      return botDisplayState;
+    }
+
+    // For non-active bot turns, still prefer botDisplayState if it matches
     if (currentTurnPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) {
       const isBlank = botDisplayState.dice.every((d: any) => !d?.value);
       if (isBlank && !botDisplayState.isRolling) return null;
       return botDisplayState;
     }
 
+    // Fallback to DB state for human players (who aren't "me")
     const state = horsesState?.playerStates?.[currentTurnPlayerId];
     if (!state) return null;
 
@@ -910,6 +931,7 @@ export function useHorsesMobileController({
     isRolling,
     currentTurnPlayer?.is_bot,
     botDisplayState,
+    botTurnActiveId,
   ]);
 
   useEffect(() => {
