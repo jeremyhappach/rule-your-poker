@@ -139,6 +139,7 @@ export function useHorsesMobileController({
   const [botDisplayState, setBotDisplayState] = useState<{
     playerId: string;
     dice: HorsesDieType[];
+    rollsRemaining: number;
     isRolling: boolean;
   } | null>(null);
 
@@ -472,25 +473,34 @@ export function useHorsesMobileController({
     return horsesState?.playerStates?.[currentTurnPlayerId] ?? null;
   }, [horsesState?.playerStates, currentTurnPlayerId]);
 
-  // Announcement effect: when a player's turn completes, show a toast with their result
+  // Announcement effect: when a player's turn completes, show a dealer-style banner (NOT a toast)
   const announcedTurnsRef = useRef<Set<string>>(new Set());
-  
+
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
-    if (!currentTurnPlayerId || !currentTurnPlayer) return;
+    if (!currentRoundId || !currentTurnPlayerId || !currentTurnPlayer) return;
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
-    
+
     const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
     if (announcedTurnsRef.current.has(announceKey)) return;
     announcedTurnsRef.current.add(announceKey);
-    
+
     const playerName = getPlayerUsername(currentTurnPlayer);
-    const result = currentTurnState.result;
-    
-    // Format announcement: "Player1 rolled 4 6s!" or "Player1 rolled nothing"
-    toast.info(`${playerName} rolled ${result.description}!`, {
-      duration: 2500,
-    });
+    setTurnAnnouncement(`${playerName} rolled ${currentTurnState.result.description}!`);
+
+    if (clearAnnouncementTimerRef.current) {
+      window.clearTimeout(clearAnnouncementTimerRef.current);
+    }
+    clearAnnouncementTimerRef.current = window.setTimeout(() => {
+      setTurnAnnouncement(null);
+    }, 2500);
+
+    return () => {
+      if (clearAnnouncementTimerRef.current) {
+        window.clearTimeout(clearAnnouncementTimerRef.current);
+        clearAnnouncementTimerRef.current = null;
+      }
+    };
   }, [
     enabled,
     gamePhase,
@@ -836,13 +846,22 @@ export function useHorsesMobileController({
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
           if (cancelled) return;
 
-          setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: true });
+          setBotDisplayState({
+            playerId: botId,
+            dice: botHand.dice,
+            rollsRemaining: botHand.rollsRemaining,
+            isRolling: true,
+          });
           await new Promise((resolve) => setTimeout(resolve, 450));
           if (cancelled) return;
 
           botHand = rollDice(botHand);
-          setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
-          if (cancelled) return;
+          setBotDisplayState({
+            playerId: botId,
+            dice: botHand.dice,
+            rollsRemaining: botHand.rollsRemaining,
+            isRolling: false,
+          });
 
           await horsesSetPlayerState(currentRoundId, botId, {
             dice: botHand.dice,
@@ -865,8 +884,12 @@ export function useHorsesMobileController({
             });
 
             botHand = applyHoldDecision(botHand, decision);
-            setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
-            if (cancelled) return;
+            setBotDisplayState({
+              playerId: botId,
+              dice: botHand.dice,
+              rollsRemaining: botHand.rollsRemaining,
+              isRolling: false,
+            });
 
             await horsesSetPlayerState(currentRoundId, botId, {
               dice: botHand.dice,
@@ -884,8 +907,12 @@ export function useHorsesMobileController({
 
         botHand = lockInHand(botHand);
         const result = evaluateHand(botHand.dice);
-        setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
-
+        setBotDisplayState({
+          playerId: botId,
+          dice: botHand.dice,
+          rollsRemaining: botHand.rollsRemaining,
+          isRolling: false,
+        });
         await horsesSetPlayerState(currentRoundId, botId, {
           dice: botHand.dice,
           rollsRemaining: 0,
@@ -1106,6 +1133,7 @@ export function useHorsesMobileController({
 
       return {
         dice,
+        rollsRemaining,
         isRolling,
         canToggle: rollsRemaining < 3 && rollsRemaining > 0,
       };
@@ -1133,7 +1161,7 @@ export function useHorsesMobileController({
     const isBlank = state.dice.every((d: any) => !d?.value);
     if (isBlank && state.rollsRemaining === 3) return null;
 
-    return { dice: state.dice, isRolling: false };
+    return { dice: state.dice, rollsRemaining: state.rollsRemaining, isRolling: false };
   }, [
     enabled,
     gamePhase,

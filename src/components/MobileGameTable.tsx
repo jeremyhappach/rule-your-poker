@@ -2759,7 +2759,7 @@ export const MobileGameTable = ({
         variant="secondary" 
         className={cn(
           "text-xs px-2 py-0.5 mt-0.5 font-semibold",
-          isHorsesCurrentlyWinning && "bg-green-600 text-white animate-pulse"
+          isHorsesCurrentlyWinning && "bg-green-600 text-white",
         )}
       >
         {horsesPlayerResult.description}
@@ -3486,11 +3486,11 @@ export const MobileGameTable = ({
           // If dice aren't available for a moment, show a stable placeholder row.
           const diceToRender = showDice ? diceArray! : fallbackDice;
 
-          // Timer display for horses
-          const showTimer = horsesController.gamePhase === "playing" 
-            && horsesController.currentTurnPlayerId 
-            && !horsesController.currentTurnPlayer?.is_bot
-            && horsesController.timeLeft !== null;
+          // Always keep the container mounted to avoid blink/flicker during turn handoffs.
+          // If dice aren't available for a moment, show a stable placeholder row.
+          const diceToRender = showDice ? diceArray! : fallbackDice;
+
+          const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
 
           return (
             <div
@@ -3499,39 +3499,6 @@ export const MobileGameTable = ({
               )}
               style={{ pointerEvents: 'auto' }}
             >
-              {/* Dealer-style turn announcement */}
-              {horsesController.turnAnnouncement && (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-sm text-center truncate">
-                    {horsesController.turnAnnouncement}
-                  </p>
-                </div>
-              )}
-
-              {/* Timer display */}
-              {showTimer && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span
-                    className={cn(
-                      "text-sm font-mono font-bold",
-                      horsesController.timeLeft! <= 5
-                        ? "text-destructive"
-                        : horsesController.timeLeft! <= 10
-                          ? "text-amber-500"
-                          : "text-foreground",
-                    )}
-                  >
-                    {horsesController.timeLeft}s
-                  </span>
-                  {!horsesController.isMyTurn && horsesController.currentTurnPlayerName && (
-                    <span className="text-xs text-muted-foreground">
-                      ({horsesController.currentTurnPlayerName})
-                    </span>
-                  )}
-                </div>
-              )}
-
               {showResult && currentTurnResult ? (
                 <div className="flex flex-col items-center gap-2">
                   <Badge
@@ -3545,21 +3512,26 @@ export const MobileGameTable = ({
                   </Badge>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-0.5 scale-[0.92] origin-center">
+                <div className="flex items-center justify-center gap-0.5 scale-[0.88] origin-center">
                   {diceToRender.map((die: any, idx: number) => {
-                    // Only show HOLD visuals while holds are actually interactable.
                     const canToggle = !!(
                       showDice &&
                       horsesController.isMyTurn &&
                       (horsesController.feltDice as any)?.canToggle
                     );
-                    const showHeld = !!(canToggle && !!die?.isHeld);
+
+                    // Show lock/hold visuals for ANY player after rolls 1–2 only (never after final roll).
+                    const showHeldVisual =
+                      typeof rollsRemaining === "number" &&
+                      rollsRemaining > 0 &&
+                      rollsRemaining < 3 &&
+                      !!die?.isHeld;
 
                     return (
                       <HorsesDie
                         key={idx}
                         value={die?.value ?? 0}
-                        isHeld={showHeld}
+                        isHeld={showHeldVisual}
                         isRolling={
                           showDice
                             ? horsesController.isMyTurn
@@ -4211,24 +4183,58 @@ export const MobileGameTable = ({
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
         {/* FIXED HEIGHT announcement/timer area - prevents layout shift when announcements appear/disappear */}
         <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
-          {/* Player timer bar - shown when it's player's turn to decide (mutually exclusive with announcements) */}
-          {currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
-            <div key={`timer-${currentRound}-${currentTurnPosition}`} className="w-full">
-              <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
-                <div 
-                  className={`h-full transition-[width] duration-1000 ease-linear ${
-                    timeLeft <= 3 ? 'bg-red-500' : 
-                    timeLeft <= 5 ? 'bg-yellow-500' : 
-                    'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
-                />
+          {/* Horses: dealer announcement + countdown timer live here (top of the active player box) */}
+          {gameType === 'horses' && horsesController.enabled && horsesController.gamePhase === 'playing' ? (
+            horsesController.turnAnnouncement ? (
+              <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+                <p className="text-slate-900 font-bold text-sm text-center truncate">
+                  {horsesController.turnAnnouncement}
+                </p>
               </div>
-              <p className="text-xs text-center text-muted-foreground mt-0.5">
-                {timeLeft}s remaining
-              </p>
-            </div>
-          ) : isPaused ? (
+            ) : horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot && horsesController.timeLeft !== null ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <span
+                    className={cn(
+                      "text-sm font-mono font-bold",
+                      horsesController.timeLeft <= 5
+                        ? "text-destructive"
+                        : horsesController.timeLeft <= 10
+                          ? "text-amber-500"
+                          : "text-foreground",
+                    )}
+                  >
+                    {horsesController.timeLeft}s
+                  </span>
+                  {horsesController.currentTurnPlayerName && (
+                    <span className="text-xs text-muted-foreground">
+                      ({horsesController.currentTurnPlayerName})
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : null
+          ) : (
+            /* Player timer bar - shown when it's player's turn to decide (mutually exclusive with announcements) */
+            currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
+              <div key={`timer-${currentRound}-${currentTurnPosition}`} className="w-full">
+                <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
+                  <div 
+                    className={`h-full transition-[width] duration-1000 ease-linear ${
+                      timeLeft <= 3 ? 'bg-red-500' : 
+                      timeLeft <= 5 ? 'bg-yellow-500' : 
+                      'bg-green-500'
+                    }`}
+                    style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-center text-muted-foreground mt-0.5">
+                  {timeLeft}s remaining
+                </p>
+              </div>
+            ) : null
+          )}
             /* Paused badge only - LAST HAND moved to page header */
             <div className="flex items-center justify-center gap-2">
               <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
