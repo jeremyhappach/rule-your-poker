@@ -237,6 +237,35 @@ export function HorsesGameTable({
     ? determineWinners(completedResults.map(r => r.result)).map(i => completedResults[i].playerId)
     : [];
 
+  // Announcement effect: when a player's turn completes, show a toast with their result
+  const announcedTurnsRef = useRef<Set<string>>(new Set());
+  const currentTurnState = horsesState?.playerStates?.[currentTurnPlayerId || ""] ?? null;
+  
+  useEffect(() => {
+    if (gamePhase !== "playing") return;
+    if (!currentTurnPlayerId || !currentPlayer) return;
+    if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
+    
+    const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
+    if (announcedTurnsRef.current.has(announceKey)) return;
+    announcedTurnsRef.current.add(announceKey);
+    
+    const playerName = getPlayerUsername(currentPlayer);
+    const result = currentTurnState.result;
+    
+    // Format announcement: "Player1 rolled 4 6s!" or "Player1 rolled nothing"
+    toast.info(`${playerName} rolled ${result.description}!`, {
+      duration: 2500,
+    });
+  }, [
+    gamePhase,
+    currentRoundId,
+    currentTurnPlayerId,
+    currentPlayer,
+    currentTurnState?.isComplete,
+    currentTurnState?.result,
+  ]);
+
   // Initialize game state when round starts
   useEffect(() => {
     if (!currentRoundId || !gameId) return;
@@ -1103,11 +1132,11 @@ export function HorsesGameTable({
                           <HorsesDie
                             key={idx}
                             value={die.value}
-                            isHeld={die.isHeld}
+                            isHeld={false}
                             isRolling={diceState.isRolling}
                             canToggle={false}
                             onToggle={() => {}}
-                            size="md"
+                            size="sm"
                           />
                         ))}
                       </div>
@@ -1124,11 +1153,11 @@ export function HorsesGameTable({
                       <HorsesDie
                         key={idx}
                         value={die.value}
-                        isHeld={die.isHeld}
+                        isHeld={localHand.rollsRemaining > 0 && die.isHeld}
                         isRolling={isRolling && !die.isHeld}
                         canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
                         onToggle={() => handleToggleHold(idx)}
-                        size="md"
+                        size="sm"
                       />
                     ))}
                   </div>

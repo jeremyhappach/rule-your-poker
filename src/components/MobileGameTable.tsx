@@ -3486,9 +3486,35 @@ export const MobileGameTable = ({
           // If dice aren't available for a moment, show a stable placeholder row.
           const diceToRender = showDice ? diceArray! : fallbackDice;
 
+          // Timer display for horses
+          const showTimer = horsesController.gamePhase === "playing" 
+            && horsesController.currentTurnPlayerId 
+            && !horsesController.currentTurnPlayer?.is_bot
+            && horsesController.timeLeft !== null;
+
           return (
-            <div className={cn("absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20")}
+            <div className={cn("absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2")}
                  style={{ pointerEvents: showDice ? 'auto' : 'none' }}>
+              {/* Timer display */}
+              {showTimer && (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <span className={cn(
+                    "text-sm font-mono font-bold",
+                    horsesController.timeLeft! <= 5 ? "text-destructive" : 
+                    horsesController.timeLeft! <= 10 ? "text-amber-500" : 
+                    "text-foreground"
+                  )}>
+                    {horsesController.timeLeft}s
+                  </span>
+                  {!horsesController.isMyTurn && horsesController.currentTurnPlayerName && (
+                    <span className="text-xs text-muted-foreground">
+                      ({horsesController.currentTurnPlayerName})
+                    </span>
+                  )}
+                </div>
+              )}
+
               {showResult && currentTurnResult ? (
                 <div className="flex flex-col items-center gap-2">
                   <Badge 
@@ -3503,27 +3529,34 @@ export const MobileGameTable = ({
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-0.5">
-                  {diceToRender.map((die: any, idx: number) => (
-                    <HorsesDie
-                      key={idx}
-                      value={die?.value ?? 0}
-                      isHeld={!!die?.isHeld}
-                      isRolling={
-                        showDice
-                          ? (horsesController.isMyTurn
-                              ? horsesController.isRolling && !die?.isHeld
-                              : !!(horsesController.feltDice as any)?.isRolling)
-                          : false
-                      }
-                      canToggle={!!(showDice && horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle)}
-                      onToggle={
-                        showDice
-                          ? () => horsesController.handleToggleHold(idx)
-                          : undefined
-                      }
-                      size="md"
-                    />
-                  ))}
+                  {diceToRender.map((die: any, idx: number) => {
+                    // Don't show as held after final roll (rollsRemaining === 0)
+                    const canToggle = !!(showDice && horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle);
+                    const rollsRemaining = horsesController.localHand?.rollsRemaining ?? 0;
+                    const showHeld = rollsRemaining > 0 && !!die?.isHeld;
+                    
+                    return (
+                      <HorsesDie
+                        key={idx}
+                        value={die?.value ?? 0}
+                        isHeld={showHeld}
+                        isRolling={
+                          showDice
+                            ? (horsesController.isMyTurn
+                                ? horsesController.isRolling && !die?.isHeld
+                                : !!(horsesController.feltDice as any)?.isRolling)
+                            : false
+                        }
+                        canToggle={canToggle}
+                        onToggle={
+                          showDice
+                            ? () => horsesController.handleToggleHold(idx)
+                            : undefined
+                        }
+                        size="sm"
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
