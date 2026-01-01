@@ -839,9 +839,15 @@ export function useHorsesMobileController({
     // Prefer the authoritative DB state for the current player, then fall back to local state.
     if (isMyTurn) {
       const dbState = myPlayer ? horsesState?.playerStates?.[myPlayer.id] : null;
-      const dice = dbState?.dice ?? localHand.dice;
-      const rollsRemaining =
-        typeof dbState?.rollsRemaining === "number" ? dbState.rollsRemaining : localHand.rollsRemaining;
+
+      // IMPORTANT: while the user is interacting (roll/hold), the DB state will lag behind.
+      // Prefer localHand briefly to avoid a "stale dice" flash when the roll animation ends.
+      const preferLocal = Date.now() - lastLocalEditAtRef.current < 900;
+
+      const dice = preferLocal ? localHand.dice : (dbState?.dice ?? localHand.dice);
+      const rollsRemaining = preferLocal
+        ? localHand.rollsRemaining
+        : (typeof dbState?.rollsRemaining === "number" ? dbState.rollsRemaining : localHand.rollsRemaining);
 
       const isBlank = dice.every((d: any) => !d?.value);
       if (isBlank && rollsRemaining === 3 && !isRolling) return null;
