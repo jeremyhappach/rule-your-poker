@@ -104,6 +104,9 @@ export interface UseHorsesMobileControllerArgs {
   horsesState: HorsesStateFromDB | null;
 }
 
+const HORSES_ROLL_ANIMATION_MS = 350;
+const HORSES_POST_TURN_PAUSE_MS = 650;
+
 export function useHorsesMobileController({
   enabled,
   gameId,
@@ -315,6 +318,51 @@ export function useHorsesMobileController({
     [enabled, currentRoundId, horsesState?.currentTurnPlayerId],
   );
 
+  // Freeze guard: if a player finished but their client never advanced the turn (or a timeout was dropped),
+  // the hand can stall. Allow the turn-owner OR the deterministic "bot controller" client to advance.
+  const stuckAdvanceKeyRef = useRef<string | null>(null);
+
+  const currentTurnState = useMemo(() => {
+    if (!currentTurnPlayerId) return null;
+    return horsesState?.playerStates?.[currentTurnPlayerId] ?? null;
+  }, [horsesState?.playerStates, currentTurnPlayerId]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (gamePhase !== "playing") return;
+    if (!currentRoundId || !currentTurnPlayerId) return;
+
+    if (!currentTurnState?.isComplete) return;
+
+    // Bot turns already have their own "stuck advance" logic in the bot loop.
+    if (currentTurnPlayer?.is_bot) return;
+
+    const iAmTurnOwner = currentTurnPlayer?.user_id === currentUserId;
+    const iAmController = candidateBotControllerUserId === currentUserId;
+    if (!iAmTurnOwner && !iAmController) return;
+
+    const key = `${currentRoundId}:${currentTurnPlayerId}`;
+    if (stuckAdvanceKeyRef.current === key) return;
+    stuckAdvanceKeyRef.current = key;
+
+    const t = window.setTimeout(() => {
+      void advanceToNextTurn(currentTurnPlayerId);
+    }, HORSES_POST_TURN_PAUSE_MS);
+
+    return () => window.clearTimeout(t);
+  }, [
+    enabled,
+    gamePhase,
+    currentRoundId,
+    currentTurnPlayerId,
+    currentTurnState?.isComplete,
+    currentTurnPlayer?.is_bot,
+    currentTurnPlayer?.user_id,
+    currentUserId,
+    candidateBotControllerUserId,
+    advanceToNextTurn,
+  ]);
+
   const handleRoll = useCallback(async () => {
     if (!enabled) return;
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
@@ -332,11 +380,11 @@ export function useHorsesMobileController({
         await saveMyState(newHand, true, result);
         setTimeout(() => {
           advanceToNextTurn(myPlayer?.id ?? null);
-        }, 1500);
+        }, HORSES_POST_TURN_PAUSE_MS);
       } else {
         await saveMyState(newHand, false);
       }
-    }, 500);
+    }, HORSES_ROLL_ANIMATION_MS);
   }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id]);
 
   const handleToggleHold = useCallback(
@@ -368,7 +416,7 @@ export function useHorsesMobileController({
 
     setTimeout(() => {
       advanceToNextTurn(myPlayer?.id ?? null);
-    }, 1500);
+    }, HORSES_POST_TURN_PAUSE_MS);
   }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id]);
 
   // Bot auto-play with visible animation
