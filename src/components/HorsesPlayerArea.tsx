@@ -1,18 +1,23 @@
 import { Badge } from "@/components/ui/badge";
 import { HorsesHandResult, HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
+import { SCCHandResult, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
 import { cn } from "@/lib/utils";
 import { Dice5 } from "lucide-react";
+
+// Union type for dice and hand results to support both Horses and SCC games
+type DiceGameHandResult = HorsesHandResult | SCCHandResult;
+type DiceGameDieType = HorsesDieType | SCCDieType;
 
 interface HorsesPlayerAreaProps {
   username: string;
   position: number;
   isCurrentTurn: boolean;
   isCurrentUser: boolean;
-  handResult: HorsesHandResult | null;
+  handResult: DiceGameHandResult | null;
   isWinningHand: boolean;
   hasTurnCompleted: boolean;
-  diceValues?: HorsesDieType[];
+  diceValues?: DiceGameDieType[];
   myStatus?: 'waiting' | 'rolling' | 'done';
 }
 
