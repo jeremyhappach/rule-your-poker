@@ -121,8 +121,12 @@ export function useHorsesMobileController({
   // Local state for dice rolling animation (only used by the local user when it's their turn)
   const [localHand, setLocalHand] = useState<HorsesHand>(createInitialHand());
   const [isRolling, setIsRolling] = useState(false);
-  const botProcessingRef = useRef<Set<string>>(new Set());
-  const botRunTokenRef = useRef(0);
+
+  // Bot loop guards (mobile): prevent duplicate bot loops across realtime re-renders,
+  // but allow a retry if the loop gets stuck.
+  const botProcessingKeyRef = useRef<string | null>(null);
+  const botStuckTimerRef = useRef<number | null>(null);
+
   const initializingRef = useRef(false);
 
   // Bot animation state - show intermediate dice/holds
@@ -131,7 +135,7 @@ export function useHorsesMobileController({
     dice: HorsesDieType[];
     isRolling: boolean;
   } | null>(null);
-  
+
   // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
   const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
@@ -499,36 +503,69 @@ export function useHorsesMobileController({
     }, HORSES_POST_TURN_PAUSE_MS);
   }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id]);
 
-  // Bot auto-play with visible animation
+  // Bot auto-play with visible animation (mobile)
   useEffect(() => {
     if (!enabled) return;
-    if (!currentTurnPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
+    if (gamePhase !== "playing") return;
+    if (!currentRoundId) return;
     if (!currentUserId) return;
 
-    const token = ++botRunTokenRef.current;
+    const botId = currentTurnPlayer?.is_bot ? currentTurnPlayer.id : null;
+    if (!botId) return;
+
+    const processingKey = `${currentRoundId}:${botId}`;
+
+    // If we're already running this exact bot turn loop, do not start another.
+    if (botProcessingKeyRef.current === processingKey) return;
+
+    // Mark processing synchronously (prevents double-start on rapid re-renders)
+    botProcessingKeyRef.current = processingKey;
+
+    // Fail-safe: if something stalls mid-loop, allow a retry.
+    if (botStuckTimerRef.current) window.clearTimeout(botStuckTimerRef.current);
+    botStuckTimerRef.current = window.setTimeout(() => {
+      if (botProcessingKeyRef.current === processingKey) {
+        console.warn("[HORSES] (mobile) bot loop watchdog: releasing lock", { processingKey });
+        botProcessingKeyRef.current = null;
+        setBotTurnActiveId(null);
+      }
+    }, 15000);
+
     let cancelled = false;
 
     const run = async () => {
-      const botId = currentTurnPlayer.id;
-
-      // Lock immediately to prevent effect re-runs from starting a second bot loop before the first sets its lock.
-      if (botProcessingRef.current.has(botId)) return;
-      botProcessingRef.current.add(botId);
-      
-      // Mark this bot turn as actively animating - prevents DB/realtime from overwriting display
       setBotTurnActiveId(botId);
 
       try {
-        console.log("[HORSES] (mobile) bot loop start", { roundId: currentRoundId, botId, token });
+        // Preflight: read the latest horses_state so we don't act on stale props.
+        const { data: roundRow, error: roundErr } = await supabase
+          .from("rounds")
+          .select("horses_state")
+          .eq("id", currentRoundId)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        if (roundErr) {
+          console.error("[HORSES] Failed to preflight round state:", roundErr);
+          return;
+        }
+
+        const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        // If the DB already moved the turn, do nothing.
+        if (latestState?.currentTurnPlayerId && latestState.currentTurnPlayerId !== botId) return;
 
         // Ensure a SINGLE client drives bot turns.
-        // Use an atomic backend claim to avoid overwriting newer horses_state (the main cause of turn flashing).
-        let controllerId = horsesState.botControllerUserId ?? null;
+        let controllerId = latestState?.botControllerUserId ?? null;
 
         if (!controllerId) {
-          const { data, error } = await supabase.rpc("claim_horses_bot_controller", {
-            _round_id: currentRoundId,
-          });
+          const { data, error } = await supabase.rpc(
+            "claim_horses_bot_controller" as any,
+            { _round_id: currentRoundId } as any,
+          );
+
+          if (cancelled) return;
 
           if (error) {
             console.error("[HORSES] Failed to claim bot controller (atomic):", error);
@@ -537,113 +574,50 @@ export function useHorsesMobileController({
           }
         }
 
-        // Fallback for older rounds / unexpected nulls
         controllerId = controllerId ?? candidateBotControllerUserId ?? null;
-
         if (controllerId && controllerId !== currentUserId) return;
-
-        if (cancelled || botRunTokenRef.current !== token) return;
-
-        // Preflight: read the latest horses_state to avoid acting on stale props.
-        const { data: roundRow, error: roundErr } = await supabase
-          .from("rounds")
-          .select("horses_state")
-          .eq("id", currentRoundId)
-          .maybeSingle();
-
-        if (cancelled || botRunTokenRef.current !== token) return;
-
-        if (roundErr) {
-          console.error("[HORSES] Failed to preflight round state:", roundErr);
-        }
-
-        const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-        // If the DB already moved the turn, do nothing.
-        if (latestState?.currentTurnPlayerId && latestState.currentTurnPlayerId !== botId) {
-          console.log("[HORSES] (mobile) bot loop abort: turn already moved", {
-            roundId: currentRoundId,
-            expectedBotId: botId,
-            currentTurnPlayerId: latestState.currentTurnPlayerId,
-          });
-          return;
-        }
 
         const latestBotState = latestState?.playerStates?.[botId];
 
         // If bot already completed but the turn is still stuck on the bot, advance only.
         if (latestState && latestBotState?.isComplete && latestState.currentTurnPlayerId === botId) {
-          console.warn("[HORSES] (mobile) bot already complete but turn stuck; advancing only", {
-            roundId: currentRoundId,
-            botId,
-          });
-
           await horsesAdvanceTurn(currentRoundId, botId);
           return;
         }
 
-        if (latestBotState?.isComplete) {
-          console.log("[HORSES] (mobile) bot loop abort: bot already complete", {
-            roundId: currentRoundId,
-            botId,
-          });
-          return;
-        }
+        if (latestBotState?.isComplete) return;
 
-        let stateForWrites: HorsesStateFromDB = latestState
-          ? controllerId
-            ? { ...latestState, botControllerUserId: controllerId }
-            : latestState
-          : controllerId
-            ? { ...horsesState, botControllerUserId: controllerId }
-            : horsesState;
-
-        let botHand: HorsesHand = stateForWrites.playerStates?.[botId]
+        let botHand: HorsesHand = latestBotState
           ? {
-              dice: stateForWrites.playerStates[botId].dice,
-              rollsRemaining: stateForWrites.playerStates[botId].rollsRemaining,
-              isComplete: stateForWrites.playerStates[botId].isComplete,
+              dice: latestBotState.dice,
+              rollsRemaining: latestBotState.rollsRemaining,
+              isComplete: latestBotState.isComplete,
             }
           : createInitialHand();
 
+        // Roll up to 3 times with visible animation
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
-          if (cancelled || botRunTokenRef.current !== token) return;
+          if (cancelled) return;
 
-          // Show current dice as rolling (animation will cycle random values)
           setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: true });
           await new Promise((resolve) => setTimeout(resolve, 450));
+          if (cancelled) return;
 
-          // Check token again after async wait
-          if (cancelled || botRunTokenRef.current !== token) return;
-
-          // Roll the dice to get new values
-          const rolledHand = rollDice(botHand);
-          botHand = rolledHand;
-          
-          // Show new dice values (not rolling)
+          botHand = rollDice(botHand);
           setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
+          if (cancelled) return;
 
-          // Check token before DB write
-          if (cancelled || botRunTokenRef.current !== token) return;
-
-          // Save intermediate bot state (atomic per-player)
           await horsesSetPlayerState(currentRoundId, botId, {
             dice: botHand.dice,
             rollsRemaining: botHand.rollsRemaining,
             isComplete: false,
           });
-
-          // Check token after DB write
-          if (cancelled || botRunTokenRef.current !== token) return;
+          if (cancelled) return;
 
           await new Promise((resolve) => setTimeout(resolve, 450));
+          if (cancelled) return;
 
-          // Check token after display pause
-          if (cancelled || botRunTokenRef.current !== token) return;
-
-          if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) {
-            break;
-          }
+          if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) break;
 
           if (botHand.rollsRemaining > 0) {
             const decision = getBotHoldDecision({
@@ -654,36 +628,26 @@ export function useHorsesMobileController({
 
             botHand = applyHoldDecision(botHand, decision);
             setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
+            if (cancelled) return;
 
-            // Check token before DB write
-            if (cancelled || botRunTokenRef.current !== token) return;
-
-            // Save hold state (atomic per-player)
             await horsesSetPlayerState(currentRoundId, botId, {
               dice: botHand.dice,
               rollsRemaining: botHand.rollsRemaining,
               isComplete: false,
             });
-
-            // Check token after DB write
-            if (cancelled || botRunTokenRef.current !== token) return;
+            if (cancelled) return;
 
             await new Promise((resolve) => setTimeout(resolve, 350));
-            
-            // Check token after hold display pause
-            if (cancelled || botRunTokenRef.current !== token) return;
+            if (cancelled) return;
           }
         }
 
-        if (cancelled || botRunTokenRef.current !== token) return;
+        if (cancelled) return;
 
         botHand = lockInHand(botHand);
         const result = evaluateHand(botHand.dice);
-
-        // Keep the final bot dice on-screen until the DB turn actually advances.
         setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
-        // Save bot final state (atomic per-player)
         await horsesSetPlayerState(currentRoundId, botId, {
           dice: botHand.dice,
           rollsRemaining: 0,
@@ -692,55 +656,51 @@ export function useHorsesMobileController({
         });
 
         await new Promise((resolve) => setTimeout(resolve, 450));
+        if (cancelled) return;
 
-        if (cancelled || botRunTokenRef.current !== token) return;
-
-        // Final guard: if someone already moved the turn, don't overwrite.
         const { data: turnCheck } = await supabase
           .from("rounds")
           .select("horses_state")
           .eq("id", currentRoundId)
           .maybeSingle();
 
+        if (cancelled) return;
+
         const checkState = (turnCheck as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (checkState?.currentTurnPlayerId && checkState.currentTurnPlayerId !== botId) {
-          console.log("[HORSES] (mobile) bot advance abort: turn already changed", {
-            roundId: currentRoundId,
-            botId,
-            currentTurnPlayerId: checkState.currentTurnPlayerId,
-          });
-          return;
-        }
+        if (checkState?.currentTurnPlayerId && checkState.currentTurnPlayerId !== botId) return;
 
-        // Advance turn (atomic + guarded)
         await horsesAdvanceTurn(currentRoundId, botId);
-
       } catch (error) {
         console.error("[HORSES] Bot play failed:", error);
       } finally {
-        botProcessingRef.current.delete(botId);
+        if (botStuckTimerRef.current) window.clearTimeout(botStuckTimerRef.current);
+        if (botProcessingKeyRef.current === processingKey) botProcessingKeyRef.current = null;
+
         // Clear the active bot turn flag after a short delay to allow final display state to render
         setTimeout(() => {
-          setBotTurnActiveId((current) => current === botId ? null : current);
+          setBotTurnActiveId((current) => (current === botId ? null : current));
         }, 100);
       }
     };
 
     void run();
+
     return () => {
       cancelled = true;
+      if (botStuckTimerRef.current) window.clearTimeout(botStuckTimerRef.current);
+      if (botProcessingKeyRef.current === processingKey) botProcessingKeyRef.current = null;
     };
   }, [
     enabled,
-    currentTurnPlayer?.id,
-    currentTurnPlayer?.is_bot,
     gamePhase,
     currentRoundId,
-    horsesState,
-    turnOrder,
-    currentWinningResult,
-    candidateBotControllerUserId,
     currentUserId,
+    currentTurnPlayer?.id,
+    currentTurnPlayer?.is_bot,
+    horsesState?.currentTurnPlayerId,
+    horsesState?.playerStates,
+    candidateBotControllerUserId,
+    currentWinningResult,
   ]);
 
   // Handle game complete - award pot to winner
