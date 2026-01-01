@@ -151,22 +151,10 @@ export function shouldBotStopRolling(
 ): boolean {
   const result = evaluateHand(currentDice);
   
-  // If we have 5 of a kind, always stop
+  // ONLY stop rolling early if we have 5 of a kind
+  // With anything less, we should always use all our rolls to try for better
   if (result.ofAKindCount === 5) {
     return true;
-  }
-  
-  // If we have 4 of a kind with 6s or no winning hand to beat, might stop early
-  if (result.ofAKindCount === 4) {
-    if (!currentWinningResult) {
-      // No winning hand - 4 of a kind is strong, might stop
-      return result.highValue >= 5; // Stop on 4 5s or 4 6s with no competition
-    }
-    
-    // Check if we're already winning
-    if (result.rank >= currentWinningResult.rank) {
-      return true;
-    }
   }
   
   // If last roll anyway, no choice
@@ -174,6 +162,7 @@ export function shouldBotStopRolling(
     return true;
   }
   
+  // Keep rolling - don't stop early with less than 5 of a kind
   return false;
 }
 
