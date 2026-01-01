@@ -583,22 +583,34 @@ export function useHorsesMobileController({
   ]);
 
   // Handle game complete - award pot to winner
+  // Track if we've already processed this round's win to prevent duplicates
+  const processedWinRoundRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
     if (winningPlayerIds.length === 0) return;
 
-    const shouldProcess =
-      turnOrder[0] && players.find((p) => p.id === turnOrder[0])?.user_id === currentUserId;
-    if (!shouldProcess) return;
+    // Prevent duplicate processing
+    if (processedWinRoundRef.current === currentRoundId) return;
+
+    // Allow winner to process, OR first player in turn order as fallback (for bot wins)
+    const myPlayerId = myPlayer?.id;
+    const winnerId = winningPlayerIds.length === 1 ? winningPlayerIds[0] : null;
+    const isWinner = winnerId && myPlayerId === winnerId;
+    const isFirstPlayer = turnOrder[0] && players.find((p) => p.id === turnOrder[0])?.user_id === currentUserId;
+    
+    if (!isWinner && !isFirstPlayer) return;
 
     const processWin = async () => {
+      // Mark as processed IMMEDIATELY to prevent race conditions
+      processedWinRoundRef.current = currentRoundId;
+
       if (winningPlayerIds.length > 1) {
         toast.info("It's a tie! Everyone re-antes.");
         return;
       }
 
-      const winnerId = winningPlayerIds[0];
       const winnerPlayer = players.find((p) => p.id === winnerId);
       const winnerResult = completedResults.find((r) => r.playerId === winnerId);
 
@@ -639,6 +651,7 @@ export function useHorsesMobileController({
     completedResults,
     pot,
     getPlayerUsername,
+    myPlayer,
   ]);
 
   const rawFeltDice = useMemo(() => {
