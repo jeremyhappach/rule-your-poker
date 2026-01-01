@@ -600,13 +600,22 @@ export function useHorsesMobileController({
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
           if (cancelled || botRunTokenRef.current !== token) return;
 
+          // Show current dice as rolling (animation will cycle random values)
           setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: true });
           await new Promise((resolve) => setTimeout(resolve, 450));
 
+          // Check token again after async wait
           if (cancelled || botRunTokenRef.current !== token) return;
 
-          botHand = rollDice(botHand);
+          // Roll the dice to get new values
+          const rolledHand = rollDice(botHand);
+          botHand = rolledHand;
+          
+          // Show new dice values (not rolling)
           setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
+
+          // Check token before DB write
+          if (cancelled || botRunTokenRef.current !== token) return;
 
           // Save intermediate bot state (atomic per-player)
           await horsesSetPlayerState(currentRoundId, botId, {
@@ -615,7 +624,13 @@ export function useHorsesMobileController({
             isComplete: false,
           });
 
+          // Check token after DB write
+          if (cancelled || botRunTokenRef.current !== token) return;
+
           await new Promise((resolve) => setTimeout(resolve, 450));
+
+          // Check token after display pause
+          if (cancelled || botRunTokenRef.current !== token) return;
 
           if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) {
             break;
@@ -631,6 +646,9 @@ export function useHorsesMobileController({
             botHand = applyHoldDecision(botHand, decision);
             setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
+            // Check token before DB write
+            if (cancelled || botRunTokenRef.current !== token) return;
+
             // Save hold state (atomic per-player)
             await horsesSetPlayerState(currentRoundId, botId, {
               dice: botHand.dice,
@@ -638,7 +656,13 @@ export function useHorsesMobileController({
               isComplete: false,
             });
 
+            // Check token after DB write
+            if (cancelled || botRunTokenRef.current !== token) return;
+
             await new Promise((resolve) => setTimeout(resolve, 350));
+            
+            // Check token after hold display pause
+            if (cancelled || botRunTokenRef.current !== token) return;
           }
         }
 
@@ -801,7 +825,7 @@ export function useHorsesMobileController({
         game_type: "horses",
       });
 
-      toast.success(`${winnerName} wins $${actualPot} with ${winnerResult.result.description}!`);
+      // Note: No toast here - dealer announcement already shows the win message
 
       // Transition to game_over and reset pot
       await supabase
