@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HorsesDie } from "./HorsesDie";
+import { SCCDie } from "./SCCDie";
 import { HorsesPlayerArea } from "./HorsesPlayerArea";
 import {
   HorsesHand,
@@ -15,10 +16,23 @@ import {
   determineWinners,
 } from "@/lib/horsesGameLogic";
 import {
+  SCCHand,
+  SCCHandResult,
+  SCCDie as SCCDieType,
+  createInitialSCCHand,
+  rollSCCDice,
+  lockInSCCHand,
+  evaluateSCCHand,
+  determineSCCWinners,
+  isQualified,
+  getSCCDisplayOrder,
+} from "@/lib/sccGameLogic";
+import {
   getBotHoldDecision,
   shouldBotStopRolling,
   applyHoldDecision,
 } from "@/lib/horsesBotLogic";
+import { getSCCBotDecision, shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
 import { Dice5, Lock, RotateCcw } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -313,11 +327,12 @@ export function HorsesGameTable({
         botControllerUserId: controllerUserId,
       };
 
-      // Initialize each player's state
+      // Initialize each player's state based on game type
+      const isSCC = gameType === 'ship-captain-crew';
       order.forEach(playerId => {
-        const initHand = createInitialHand();
+        const initHand = isSCC ? createInitialSCCHand() : createInitialHand();
         initialState.playerStates[playerId] = {
-          dice: initHand.dice,
+          dice: initHand.dice as any,
           rollsRemaining: initHand.rollsRemaining,
           isComplete: false,
         };

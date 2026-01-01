@@ -414,9 +414,12 @@ export const MobileGameTable = ({
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
 
-  // Horses (dice) controller - enabled ONLY for Horses so Holm/357 are untouched
+  // Helper: check if this is a dice game (Horses or Ship Captain Crew)
+  const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
+  
+  // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
-    enabled: gameType === 'horses',
+    enabled: isDiceGame,
     gameId,
     players: players as any,
     currentUserId,
@@ -2382,7 +2385,7 @@ export const MobileGameTable = ({
 
   // Calculate expected card count for 3-5-7 games
   const getExpectedCardCount = (round: number): number => {
-    if (gameType === 'horses') return 0;
+    if (isDiceGame) return 0;
     if (gameType === 'holm-game') return 4;
     if (round === 1) return 3;
     if (round === 2) return 5;
@@ -2403,8 +2406,8 @@ export const MobileGameTable = ({
       return 'bg-red-400';
     }
     // Green background for players who stayed (replaces the glow ring)
-    // CRITICAL: Only apply for non-Horses games - Horses has no stay/fold decisions
-    if (playerDecision === 'stay' && gameType !== 'horses') {
+    // CRITICAL: Only apply for non-dice games - dice games have no stay/fold decisions
+    if (playerDecision === 'stay' && !isDiceGame) {
       return 'bg-green-400';
     }
     // White for active players who haven't acted yet
@@ -2432,7 +2435,7 @@ export const MobileGameTable = ({
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn =
       (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
-      (gameType === 'horses' && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
+      (isDiceGame && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
     const isCurrentUser = player.user_id === currentUserId;
     
     // For observers, derive slot from absolute position for consistent behavior
@@ -2746,15 +2749,15 @@ export const MobileGameTable = ({
       </div>
     );
     
-    // Horses: get player's completed hand result and check if currently winning
-    const horsesPlayerResult = gameType === 'horses' && horsesController.enabled 
+    // Dice games: get player's completed hand result and check if currently winning
+    const horsesPlayerResult = isDiceGame && horsesController.enabled 
       ? horsesController.getPlayerHandResult(player.id) 
       : null;
-    const isHorsesCurrentlyWinning = gameType === 'horses' && horsesController.enabled 
+    const isHorsesCurrentlyWinning = isDiceGame && horsesController.enabled 
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
-    // Horses result badge element - shown below chip for completed players
-    const horsesResultBadge = gameType === 'horses' && horsesPlayerResult && (
+    // Dice game result badge element - shown below chip for completed players
+    const horsesResultBadge = isDiceGame && horsesPlayerResult && (
       <Badge 
         variant="secondary" 
         className={cn(
@@ -2816,22 +2819,22 @@ export const MobileGameTable = ({
         {/* Game name on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-            {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : '3-5-7'}
+            {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : gameType === 'ship-captain-crew' ? 'Ship' : '3-5-7'}
           </span>
-          {/* Only show No Limit/Max for non-Horses games */}
-          {gameType !== 'horses' && (
+          {/* Only show No Limit/Max for non-dice games */}
+          {!isDiceGame && (
             <span className="text-white/40 text-xs font-medium">
               {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
             </span>
           )}
-          {/* Only show legs for 3-5-7 games (not holm, not horses) */}
-          {gameType !== 'holm-game' && gameType !== 'horses' && (
+          {/* Only show legs for 3-5-7 games (not holm, not dice) */}
+          {gameType !== 'holm-game' && !isDiceGame && (
             <span className="text-white/40 text-xs font-medium">
               {legsToWin} legs to win
             </span>
           )}
-          {/* For Horses, show ante instead */}
-          {gameType === 'horses' && (
+          {/* For dice games, show ante instead */}
+          {isDiceGame && (
             <span className="text-white/40 text-xs font-medium">
               Ante: ${anteAmount}
             </span>
@@ -3434,8 +3437,8 @@ export const MobileGameTable = ({
               className={`absolute left-1/2 transform -translate-x-1/2 z-20 transition-all duration-300 ${
                 gameType === 'holm-game' 
                   ? (isHolmMultiPlayerShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
-                  : gameType === 'horses'
-                    ? 'top-[36%] -translate-y-full'  /* Horses: moved down to avoid overlap with felt label */
+                  : isDiceGame
+                    ? 'top-[36%] -translate-y-full'  /* Dice games: moved down to avoid overlap with felt label */
                     : 'top-1/2 -translate-y-1/2'
               }`}
               style={{ 
@@ -3445,10 +3448,10 @@ export const MobileGameTable = ({
               }}
             >
               <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
-                gameType === 'holm-game' || gameType === 'horses' ? 'px-5 py-1.5' : is357MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
+                gameType === 'holm-game' || isDiceGame ? 'px-5 py-1.5' : is357MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
               }`}>
                 <span className={`text-poker-gold font-bold ${
-                  gameType === 'holm-game' || gameType === 'horses' ? 'text-xl' : is357MultiPlayerShowdown ? 'text-base' : 'text-3xl'
+                  gameType === 'holm-game' || isDiceGame ? 'text-xl' : is357MultiPlayerShowdown ? 'text-base' : 'text-3xl'
                 }`}>${formatChipValue(Math.round(
                   // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
@@ -3468,8 +3471,8 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* Horses felt dice OR result (rolls happen on the felt, not in the bottom section) */}
-        {gameType === 'horses' && horsesController.enabled && (() => {
+        {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
+        {isDiceGame && horsesController.enabled && (() => {
           const currentTurnResult = horsesController.currentTurnPlayerId 
             ? horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId)
             : null;
@@ -4179,8 +4182,8 @@ export const MobileGameTable = ({
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
         {/* FIXED HEIGHT announcement/timer area - prevents layout shift when announcements appear/disappear */}
         <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
-          {/* Horses: dealer announcement + countdown timer live here (top of the active player box) */}
-          {gameType === 'horses' && horsesController.enabled && horsesController.gamePhase === 'playing' ? (
+          {/* Dice games: dealer announcement + countdown timer live here (top of the active player box) */}
+          {isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' ? (
             horsesController.turnAnnouncement ? (
               <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
                 <p className="text-slate-900 font-bold text-sm text-center truncate">
@@ -4293,7 +4296,7 @@ export const MobileGameTable = ({
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
                 } ${showCardsTabFlashing ? 'animate-pulse ring-2 ring-green-500' : ''} ${isYourTurnNotOnCardsTab && !showCardsTabFlashing ? 'animate-pulse ring-2 ring-red-500' : ''}`}
               >
-                {gameType === 'horses' ? (
+                {isDiceGame ? (
                   <DiceIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
                 ) : (
                   <SpadeIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
@@ -4341,7 +4344,7 @@ export const MobileGameTable = ({
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && (
-          gameType === 'horses' ? (
+          isDiceGame ? (
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
               horses={horsesController}
@@ -4673,7 +4676,7 @@ export const MobileGameTable = ({
               <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : '3-5-7'}
+                  {gameType === 'holm-game' ? 'Holm' : isDiceGame ? (gameType === 'ship-captain-crew' ? 'Ship' : 'Horses') : '3-5-7'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>
