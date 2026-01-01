@@ -5496,6 +5496,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 currentRoundId={currentRound?.id || null}
                 horsesState={horsesState}
                 onRefetch={fetchGameData}
+                gameType={game.game_type || 'horses'}
               />
             );
           }

@@ -48,6 +48,7 @@ interface HorsesGameTableProps {
   currentRoundId: string | null;
   horsesState: HorsesStateFromDB | null;
   onRefetch: () => void;
+  gameType?: string;
 }
 
 // Database state structure
@@ -123,7 +124,10 @@ export function HorsesGameTable({
   currentRoundId,
   horsesState,
   onRefetch,
+  gameType = 'horses',
 }: HorsesGameTableProps) {
+  // Determine display title based on game type
+  const gameTitle = gameType === 'ship-captain-crew' ? 'Ship' : 'Horses';
   const isMobile = useIsMobile();
 
   // Local state for dice rolling animation
@@ -846,7 +850,7 @@ export function HorsesGameTable({
         <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">
           {/* Header */}
           <header className="px-4 pt-4 pb-2 text-center">
-            <h1 className="text-xl font-bold text-poker-gold">Horses</h1>
+            <h1 className="text-xl font-bold text-poker-gold">{gameTitle}</h1>
             <p className="text-sm text-amber-200/80">Ante: ${anteAmount}</p>
 
             <div className="mt-2 flex justify-center">
@@ -1069,7 +1073,7 @@ export function HorsesGameTable({
         <>
           {/* Header - Horses + Ante */}
           <header className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-            <h1 className="text-xl font-bold text-poker-gold">Horses</h1>
+            <h1 className="text-xl font-bold text-poker-gold">{gameTitle}</h1>
             <p className="text-sm text-amber-200/80">Ante: ${anteAmount}</p>
           </header>
 
