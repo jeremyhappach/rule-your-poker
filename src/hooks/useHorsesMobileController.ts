@@ -470,6 +470,36 @@ export function useHorsesMobileController({
     return horsesState?.playerStates?.[currentTurnPlayerId] ?? null;
   }, [horsesState?.playerStates, currentTurnPlayerId]);
 
+  // Announcement effect: when a player's turn completes, show a toast with their result
+  const announcedTurnsRef = useRef<Set<string>>(new Set());
+  
+  useEffect(() => {
+    if (!enabled || gamePhase !== "playing") return;
+    if (!currentTurnPlayerId || !currentTurnPlayer) return;
+    if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
+    
+    const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
+    if (announcedTurnsRef.current.has(announceKey)) return;
+    announcedTurnsRef.current.add(announceKey);
+    
+    const playerName = getPlayerUsername(currentTurnPlayer);
+    const result = currentTurnState.result;
+    
+    // Format announcement: "Player1 rolled 4 6s!" or "Player1 rolled nothing"
+    toast.info(`${playerName} rolled ${result.description}!`, {
+      duration: 2500,
+    });
+  }, [
+    enabled,
+    gamePhase,
+    currentRoundId,
+    currentTurnPlayerId,
+    currentTurnPlayer,
+    currentTurnState?.isComplete,
+    currentTurnState?.result,
+    getPlayerUsername,
+  ]);
+
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "playing") return;
