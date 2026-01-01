@@ -476,6 +476,16 @@ export function useHorsesMobileController({
   // Announcement effect: when a player's turn completes, show a dealer-style banner (NOT a toast)
   const announcedTurnsRef = useRef<Set<string>>(new Set());
 
+  // Always clear the pending announcement timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (clearAnnouncementTimerRef.current) {
+        window.clearTimeout(clearAnnouncementTimerRef.current);
+        clearAnnouncementTimerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
     if (!currentRoundId || !currentTurnPlayerId || !currentTurnPlayer) return;
@@ -488,19 +498,15 @@ export function useHorsesMobileController({
     const playerName = getPlayerUsername(currentTurnPlayer);
     setTurnAnnouncement(`${playerName} rolled ${currentTurnState.result.description}!`);
 
+    // IMPORTANT: do NOT clear this timeout in the effect cleanup, otherwise the banner can persist
+    // forever when the turn advances (deps change triggers cleanup before the timeout fires).
     if (clearAnnouncementTimerRef.current) {
       window.clearTimeout(clearAnnouncementTimerRef.current);
     }
     clearAnnouncementTimerRef.current = window.setTimeout(() => {
       setTurnAnnouncement(null);
+      clearAnnouncementTimerRef.current = null;
     }, 2500);
-
-    return () => {
-      if (clearAnnouncementTimerRef.current) {
-        window.clearTimeout(clearAnnouncementTimerRef.current);
-        clearAnnouncementTimerRef.current = null;
-      }
-    };
   }, [
     enabled,
     gamePhase,
