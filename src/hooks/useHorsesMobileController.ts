@@ -677,6 +677,14 @@ export function useHorsesMobileController({
 
       if (winningPlayerIds.length > 1) {
         toast.info("It's a tie! Everyone re-antes.");
+        // Set awaiting_next_round to trigger re-ante flow
+        await supabase
+          .from("games")
+          .update({
+            awaiting_next_round: true,
+            last_round_result: "Tie - everyone re-antes!",
+          })
+          .eq("id", gameId);
         return;
       }
 
@@ -685,22 +693,59 @@ export function useHorsesMobileController({
 
       if (!winnerPlayer || !winnerResult) return;
 
+      // Fetch the actual pot from the database (prop may be stale)
+      const { data: gameData } = await supabase
+        .from("games")
+        .select("pot, total_hands")
+        .eq("id", gameId)
+        .single();
+
+      const actualPot = gameData?.pot || pot || 0;
+      const handNumber = gameData?.total_hands || 1;
+
+      // Award pot to winner
       const { error: updateError } = await supabase
         .from("players")
-        .update({ chips: winnerPlayer.chips + pot })
+        .update({ chips: winnerPlayer.chips + actualPot })
         .eq("id", winnerId);
 
-      if (updateError) return;
+      if (updateError) {
+        console.error("[HORSES] Failed to update winner chips:", updateError);
+        return;
+      }
 
       const winnerName = getPlayerUsername(winnerPlayer);
-      toast.success(`${winnerName} wins $${pot} with ${winnerResult.result.description}!`);
 
-      // Transition to game_over (same as HorsesGameTable desktop path)
-      // This ensures the GameOverCountdown fires and advances to next game.
+      // Record the game result
+      const chipChanges: Record<string, number> = {};
+      players.forEach((p) => {
+        if (p.id === winnerId) {
+          chipChanges[p.id] = actualPot; // Winner gains pot
+        } else if (!p.sitting_out) {
+          chipChanges[p.id] = -(anteAmount || 0); // Others lost their ante
+        }
+      });
+
+      await supabase.from("game_results").insert({
+        game_id: gameId,
+        hand_number: handNumber,
+        winner_player_id: winnerId,
+        winner_username: winnerName,
+        winning_hand_description: winnerResult.result.description,
+        pot_won: actualPot,
+        player_chip_changes: chipChanges,
+        is_chopped: false,
+        game_type: "horses",
+      });
+
+      toast.success(`${winnerName} wins $${actualPot} with ${winnerResult.result.description}!`);
+
+      // Transition to game_over and reset pot
       await supabase
         .from("games")
         .update({
           status: "game_over",
+          pot: 0,
           game_over_at: new Date().toISOString(),
           last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
         })
@@ -718,6 +763,7 @@ export function useHorsesMobileController({
     currentUserId,
     completedResults,
     pot,
+    anteAmount,
     getPlayerUsername,
     myPlayer,
     candidateBotControllerUserId,

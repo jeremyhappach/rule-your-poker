@@ -583,53 +583,105 @@ export function HorsesGameTable({
   ]);
 
   // Handle game complete - award pot to winner
+  const processedWinRoundRef = useRef<string | null>(null);
+  
   useEffect(() => {
     if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
     if (winningPlayerIds.length === 0) return;
+    
+    // Prevent duplicate processing
+    if (processedWinRoundRef.current === currentRoundId) return;
 
     // Only the first player in turn order processes the win
     const shouldProcess = turnOrder[0] && players.find(p => p.id === turnOrder[0])?.user_id === currentUserId;
     if (!shouldProcess) return;
 
     const processWin = async () => {
+      // Mark as processed IMMEDIATELY
+      processedWinRoundRef.current = currentRoundId;
+
       if (winningPlayerIds.length > 1) {
-        // Tie - need to handle re-ante
+        // Tie - trigger re-ante flow
         toast.info("It's a tie! Everyone re-antes.");
-        // TODO: Trigger re-ante flow
-      } else {
-        const winnerId = winningPlayerIds[0];
-        const winnerPlayer = players.find(p => p.id === winnerId);
-        const winnerResult = completedResults.find(r => r.playerId === winnerId);
-        
-        if (winnerPlayer && winnerResult) {
-          // Award pot to winner
-          const { error: updateError } = await supabase
-            .from("players")
-            .update({ chips: winnerPlayer.chips + pot })
-            .eq("id", winnerId);
-
-          if (!updateError) {
-            const winnerName = winnerPlayer.is_bot 
-              ? getBotAlias(players, winnerPlayer.user_id)
-              : (winnerPlayer.profiles?.username || "Unknown");
-            
-            toast.success(`${winnerName} wins $${pot} with ${winnerResult.result.description}!`);
-
-            // Transition game to game_over
-            await supabase
-              .from("games")
-              .update({ 
-                status: "game_over",
-                last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
-              })
-              .eq("id", gameId);
-          }
-        }
+        await supabase
+          .from("games")
+          .update({
+            awaiting_next_round: true,
+            last_round_result: "Tie - everyone re-antes!",
+          })
+          .eq("id", gameId);
+        return;
       }
+
+      const winnerId = winningPlayerIds[0];
+      const winnerPlayer = players.find(p => p.id === winnerId);
+      const winnerResult = completedResults.find(r => r.playerId === winnerId);
+      
+      if (!winnerPlayer || !winnerResult) return;
+
+      // Fetch the actual pot from the database
+      const { data: gameData } = await supabase
+        .from("games")
+        .select("pot, total_hands")
+        .eq("id", gameId)
+        .single();
+
+      const actualPot = gameData?.pot || pot || 0;
+      const handNumber = gameData?.total_hands || 1;
+
+      // Award pot to winner
+      const { error: updateError } = await supabase
+        .from("players")
+        .update({ chips: winnerPlayer.chips + actualPot })
+        .eq("id", winnerId);
+
+      if (updateError) {
+        console.error("[HORSES] Failed to update winner chips:", updateError);
+        return;
+      }
+
+      const winnerName = winnerPlayer.is_bot 
+        ? getBotAlias(players, winnerPlayer.user_id)
+        : (winnerPlayer.profiles?.username || "Unknown");
+
+      // Record the game result
+      const chipChanges: Record<string, number> = {};
+      players.forEach((p) => {
+        if (p.id === winnerId) {
+          chipChanges[p.id] = actualPot;
+        } else if (!p.sitting_out) {
+          chipChanges[p.id] = -(anteAmount || 0);
+        }
+      });
+
+      await supabase.from("game_results").insert({
+        game_id: gameId,
+        hand_number: handNumber,
+        winner_player_id: winnerId,
+        winner_username: winnerName,
+        winning_hand_description: winnerResult.result.description,
+        pot_won: actualPot,
+        player_chip_changes: chipChanges,
+        is_chopped: false,
+        game_type: "horses",
+      });
+      
+      toast.success(`${winnerName} wins $${actualPot} with ${winnerResult.result.description}!`);
+
+      // Transition game to game_over and reset pot
+      await supabase
+        .from("games")
+        .update({ 
+          status: "game_over",
+          pot: 0,
+          game_over_at: new Date().toISOString(),
+          last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
+        })
+        .eq("id", gameId);
     };
 
     processWin();
-  }, [gamePhase, winningPlayerIds, pot, players, currentUserId, gameId, turnOrder, completedResults, currentRoundId]);
+  }, [gamePhase, winningPlayerIds, pot, players, currentUserId, gameId, turnOrder, completedResults, currentRoundId, anteAmount]);
 
   // Get username for player
   const getPlayerUsername = (player: Player) => {
