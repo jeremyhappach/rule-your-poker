@@ -594,27 +594,37 @@ export const DealerGameSetup = ({
   };
 
   const handleDiceGameSelect = async (gameType: string) => {
-    if (gameType === 'horses') {
-      // Horses is ready - set game type and submit
-      setSelectedGameType('horses');
+    if (gameType === 'horses' || gameType === 'ship-captain-crew') {
+      // Dice games are ready - set game type and go to config step
+      setSelectedGameType(gameType);
       setSelectionStep('dice');
       
-      // Fetch horses defaults
-      const { data: horsesDefaults } = await supabase
+      // Fetch defaults for this game type (fall back to horses defaults if SCC doesn't have its own)
+      const { data: gameDefaults } = await supabase
         .from('game_defaults')
         .select('ante_amount')
-        .eq('game_type', 'horses')
+        .eq('game_type', gameType)
         .single();
       
-      if (horsesDefaults) {
-        setAnteAmount(String(horsesDefaults.ante_amount));
+      if (gameDefaults) {
+        setAnteAmount(String(gameDefaults.ante_amount));
+      } else {
+        // Fall back to horses defaults for SCC
+        const { data: horsesDefaults } = await supabase
+          .from('game_defaults')
+          .select('ante_amount')
+          .eq('game_type', 'horses')
+          .single();
+        if (horsesDefaults) {
+          setAnteAmount(String(horsesDefaults.ante_amount));
+        }
       }
     } else {
       toast.info("Coming soon!");
     }
   };
   
-  const handleHorsesSubmit = async () => {
+  const handleDiceGameSubmit = async () => {
     if (isSubmitting || hasSubmittedRef.current) return;
     
     const parsedAnte = parseInt(anteAmount) || 2;
@@ -626,14 +636,15 @@ export const DealerGameSetup = ({
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
     
-    console.log('[DEALER SETUP] Submitting Horses game config');
+    const gameTypeName = selectedGameType === 'ship-captain-crew' ? 'Ship Captain Crew' : 'Horses';
+    console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config`);
     
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
     
     const { error } = await supabase
       .from('games')
       .update({
-        game_type: 'horses',
+        game_type: selectedGameType,
         ante_amount: parsedAnte,
         config_complete: true,
         status: 'ante_decision',
@@ -669,7 +680,7 @@ export const DealerGameSetup = ({
       })
       .eq('id', dealerPlayerId);
     
-    console.log('[DEALER SETUP] ✅ Horses config complete');
+    console.log(`[DEALER SETUP] ✅ ${gameTypeName} config complete`);
     onConfigComplete();
   };
 
@@ -751,8 +762,14 @@ export const DealerGameSetup = ({
 
   // Dice games selection step - show Horses config if selected
   if (selectionStep === 'dice') {
-    // If Horses is selected, show config UI
-    if (selectedGameType === 'horses') {
+    // If a dice game is selected, show config UI
+    if (selectedGameType === 'horses' || selectedGameType === 'ship-captain-crew') {
+      const isSCC = selectedGameType === 'ship-captain-crew';
+      const gameDisplayName = isSCC ? 'Ship Captain Crew' : 'Horses';
+      const gameRulesText = isSCC 
+        ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
+        : '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins';
+      
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
@@ -760,7 +777,7 @@ export const DealerGameSetup = ({
               {/* Header with Timer */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-poker-gold">Horses Setup</h2>
+                  <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
                   <p className="text-amber-100 text-sm">{dealerUsername}, configure ante</p>
                 </div>
                 <Badge 
@@ -772,12 +789,12 @@ export const DealerGameSetup = ({
                 </Badge>
               </div>
 
-              {/* Horses Config */}
+              {/* Dice Game Config */}
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <Label htmlFor="ante-horses" className="text-amber-100 text-sm">Ante ($)</Label>
+                  <Label htmlFor="ante-dice" className="text-amber-100 text-sm">Ante ($)</Label>
                   <Input
-                    id="ante-horses"
+                    id="ante-dice"
                     type="text"
                     inputMode="numeric"
                     value={anteAmount}
@@ -787,7 +804,7 @@ export const DealerGameSetup = ({
                 </div>
                 
                 <p className="text-sm text-amber-200/70 text-center">
-                  5 dice • Up to 3 rolls • 1s are wild • Highest hand wins
+                  {gameRulesText}
                 </p>
               </div>
 
@@ -802,12 +819,12 @@ export const DealerGameSetup = ({
                   ← Back
                 </button>
                 <Button
-                  onClick={handleHorsesSubmit}
+                  onClick={handleDiceGameSubmit}
                   disabled={isSubmitting}
                   className="flex-1 bg-poker-gold hover:bg-amber-500 text-black font-bold"
                 >
                   <Lock className="w-4 h-4 mr-2" />
-                  {isSubmitting ? 'Starting...' : 'Start Horses'}
+                  {isSubmitting ? 'Starting...' : `Start ${gameDisplayName}`}
                 </Button>
               </div>
             </CardContent>
