@@ -59,6 +59,39 @@ async function updateHorsesState(roundId: string, state: HorsesStateFromDB): Pro
   return error;
 }
 
+async function horsesSetPlayerState(
+  roundId: string,
+  playerId: string,
+  state: HorsesPlayerDiceState,
+): Promise<HorsesStateFromDB | null> {
+  const { data, error } = await supabase.rpc("horses_set_player_state" as any, {
+    _round_id: roundId,
+    _player_id: playerId,
+    _state: state as any,
+  } as any);
+
+  if (error) {
+    console.error("[HORSES] horses_set_player_state failed:", error);
+    return null;
+  }
+
+  return (data as any) as HorsesStateFromDB;
+}
+
+async function horsesAdvanceTurn(roundId: string, expectedCurrentPlayerId: string): Promise<HorsesStateFromDB | null> {
+  const { data, error } = await supabase.rpc("horses_advance_turn" as any, {
+    _round_id: roundId,
+    _expected_current_player_id: expectedCurrentPlayerId,
+  } as any);
+
+  if (error) {
+    console.error("[HORSES] horses_advance_turn failed:", error);
+    return null;
+  }
+
+  return (data as any) as HorsesStateFromDB;
+}
+
 export interface UseHorsesMobileControllerArgs {
   enabled: boolean;
   gameId?: string;
@@ -240,7 +273,7 @@ export function useHorsesMobileController({
   const saveMyState = useCallback(
     async (hand: HorsesHand, completed: boolean, result?: HorsesHandResult) => {
       if (!enabled) return;
-      if (!currentRoundId || !myPlayer || !horsesState) return;
+      if (!currentRoundId || !myPlayer) return;
 
       const newPlayerState: HorsesPlayerDiceState = {
         dice: hand.dice,
@@ -249,57 +282,23 @@ export function useHorsesMobileController({
         result,
       };
 
-      const updatedState: HorsesStateFromDB = {
-        ...horsesState,
-        playerStates: {
-          ...horsesState.playerStates,
-          [myPlayer.id]: newPlayerState,
-        },
-      };
-
-      const error = await updateHorsesState(currentRoundId, updatedState);
-      if (error) console.error("[HORSES] Failed to save state:", error);
+      await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
     },
-    [enabled, currentRoundId, myPlayer, horsesState],
+    [enabled, currentRoundId, myPlayer],
   );
 
-  const advanceToNextTurn = useCallback(async () => {
-    if (!enabled) return;
-    if (!currentRoundId || !horsesState) return;
+  const advanceToNextTurn = useCallback(
+    async (expectedCurrentPlayerId?: string | null) => {
+      if (!enabled) return;
+      if (!currentRoundId) return;
 
-    const currentIndex = turnOrder.indexOf(currentTurnPlayerId || "");
-    const nextIndex = currentIndex + 1;
+      const expected = expectedCurrentPlayerId ?? horsesState?.currentTurnPlayerId;
+      if (!expected) return;
 
-    if (nextIndex >= turnOrder.length) {
-      const updatedState: HorsesStateFromDB = {
-        ...horsesState,
-        gamePhase: "complete",
-        currentTurnPlayerId: null,
-      };
-      const error = await updateHorsesState(currentRoundId, updatedState);
-      if (error) console.error("[HORSES] Failed to complete game:", error);
-      return;
-    }
-
-    const nextPlayerId = turnOrder[nextIndex];
-    const nextPlayerState = horsesState.playerStates[nextPlayerId] || {
-      dice: createInitialHand().dice,
-      rollsRemaining: 3,
-      isComplete: false,
-    };
-
-    const updatedState: HorsesStateFromDB = {
-      ...horsesState,
-      currentTurnPlayerId: nextPlayerId,
-      playerStates: {
-        ...horsesState.playerStates,
-        [nextPlayerId]: nextPlayerState,
-      },
-    };
-
-    const error = await updateHorsesState(currentRoundId, updatedState);
-    if (error) console.error("[HORSES] Failed to advance turn:", error);
-  }, [enabled, currentRoundId, horsesState, turnOrder, currentTurnPlayerId]);
+      await horsesAdvanceTurn(currentRoundId, expected);
+    },
+    [enabled, currentRoundId, horsesState?.currentTurnPlayerId],
+  );
 
   const handleRoll = useCallback(async () => {
     if (!enabled) return;
@@ -316,13 +315,13 @@ export function useHorsesMobileController({
         const result = evaluateHand(newHand.dice);
         await saveMyState(newHand, true, result);
         setTimeout(() => {
-          advanceToNextTurn();
+          advanceToNextTurn(myPlayer?.id ?? null);
         }, 1500);
       } else {
         await saveMyState(newHand, false);
       }
     }, 500);
-  }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn]);
+  }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id]);
 
   const handleToggleHold = useCallback(
     (index: number) => {
@@ -344,9 +343,9 @@ export function useHorsesMobileController({
     await saveMyState(lockedHand, true, result);
 
     setTimeout(() => {
-      advanceToNextTurn();
+      advanceToNextTurn(myPlayer?.id ?? null);
     }, 1500);
-  }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn]);
+  }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id]);
 
   // Bot auto-play with visible animation
   useEffect(() => {
@@ -418,36 +417,7 @@ export function useHorsesMobileController({
           botId,
         });
 
-        const stateForAdvance: HorsesStateFromDB = controllerId
-          ? { ...latestState, botControllerUserId: controllerId }
-          : latestState;
-
-        const currentIndex = stateForAdvance.turnOrder.indexOf(botId);
-        const nextIndex = currentIndex + 1;
-
-        if (nextIndex >= stateForAdvance.turnOrder.length) {
-          await updateHorsesState(currentRoundId, {
-            ...stateForAdvance,
-            gamePhase: "complete",
-            currentTurnPlayerId: null,
-          });
-        } else {
-          const nextPlayerId = stateForAdvance.turnOrder[nextIndex];
-          const nextPlayerState = stateForAdvance.playerStates?.[nextPlayerId] || {
-            dice: createInitialHand().dice,
-            rollsRemaining: 3,
-            isComplete: false,
-          };
-
-          await updateHorsesState(currentRoundId, {
-            ...stateForAdvance,
-            playerStates: {
-              ...stateForAdvance.playerStates,
-              [nextPlayerId]: nextPlayerState,
-            },
-            currentTurnPlayerId: nextPlayerId,
-          });
-        }
+        await horsesAdvanceTurn(currentRoundId, botId);
         return;
       }
 
@@ -490,17 +460,12 @@ export function useHorsesMobileController({
           botHand = rollDice(botHand);
           setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
-          const intermediateState = {
-            ...(stateForWrites.playerStates || {}),
-            [botId]: {
-              dice: botHand.dice,
-              rollsRemaining: botHand.rollsRemaining,
-              isComplete: false,
-            },
-          };
-
-          stateForWrites = { ...stateForWrites, playerStates: intermediateState };
-          await updateHorsesState(currentRoundId, stateForWrites);
+          // Save intermediate bot state (atomic per-player)
+          await horsesSetPlayerState(currentRoundId, botId, {
+            dice: botHand.dice,
+            rollsRemaining: botHand.rollsRemaining,
+            isComplete: false,
+          });
 
           await new Promise((resolve) => setTimeout(resolve, 450));
 
@@ -518,17 +483,12 @@ export function useHorsesMobileController({
             botHand = applyHoldDecision(botHand, decision);
             setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
-            const holdState = {
-              ...(stateForWrites.playerStates || {}),
-              [botId]: {
-                dice: botHand.dice,
-                rollsRemaining: botHand.rollsRemaining,
-                isComplete: false,
-              },
-            };
-
-            stateForWrites = { ...stateForWrites, playerStates: holdState };
-            await updateHorsesState(currentRoundId, stateForWrites);
+            // Save hold state (atomic per-player)
+            await horsesSetPlayerState(currentRoundId, botId, {
+              dice: botHand.dice,
+              rollsRemaining: botHand.rollsRemaining,
+              isComplete: false,
+            });
 
             await new Promise((resolve) => setTimeout(resolve, 350));
           }
@@ -542,18 +502,13 @@ export function useHorsesMobileController({
         // Keep the final bot dice on-screen until the DB turn actually advances.
         setBotDisplayState({ playerId: botId, dice: botHand.dice, isRolling: false });
 
-        const updatedStates = {
-          ...(stateForWrites.playerStates || {}),
-          [botId]: {
-            dice: botHand.dice,
-            rollsRemaining: 0,
-            isComplete: true,
-            result,
-          },
-        };
-
-        stateForWrites = { ...stateForWrites, playerStates: updatedStates };
-        await updateHorsesState(currentRoundId, stateForWrites);
+        // Save bot final state (atomic per-player)
+        await horsesSetPlayerState(currentRoundId, botId, {
+          dice: botHand.dice,
+          rollsRemaining: 0,
+          isComplete: true,
+          result,
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 450));
 
@@ -576,33 +531,9 @@ export function useHorsesMobileController({
           return;
         }
 
-        const currentIndex = stateForWrites.turnOrder.indexOf(botId);
-        const nextIndex = currentIndex + 1;
+        // Advance turn (atomic + guarded)
+        await horsesAdvanceTurn(currentRoundId, botId);
 
-        if (nextIndex >= stateForWrites.turnOrder.length) {
-          await updateHorsesState(currentRoundId, {
-            ...stateForWrites,
-            playerStates: updatedStates,
-            gamePhase: "complete",
-            currentTurnPlayerId: null,
-          });
-        } else {
-          const nextPlayerId = stateForWrites.turnOrder[nextIndex];
-          const nextPlayerState = stateForWrites.playerStates?.[nextPlayerId] || {
-            dice: createInitialHand().dice,
-            rollsRemaining: 3,
-            isComplete: false,
-          };
-
-          await updateHorsesState(currentRoundId, {
-            ...stateForWrites,
-            playerStates: {
-              ...updatedStates,
-              [nextPlayerId]: nextPlayerState,
-            },
-            currentTurnPlayerId: nextPlayerId,
-          });
-        }
       } catch (error) {
         console.error("[HORSES] Bot play failed:", error);
       } finally {
