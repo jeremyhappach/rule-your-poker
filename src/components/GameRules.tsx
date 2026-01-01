@@ -21,9 +21,11 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
         </DialogHeader>
         
         <Tabs defaultValue="357" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="357">3-5-7</TabsTrigger>
             <TabsTrigger value="holm">Holm</TabsTrigger>
+            <TabsTrigger value="horses">Horses</TabsTrigger>
+            <TabsTrigger value="scc">Ship Captain Crew</TabsTrigger>
           </TabsList>
           
           <ScrollArea className="h-[60vh] mt-4">
@@ -162,6 +164,116 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                   <li>Turn-based decisions (not simultaneous)</li>
                   <li>Chucky acts as the "house" opponent</li>
                   <li>Game continues until someone beats Chucky alone</li>
+                </ul>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="horses" className="mt-0 space-y-4 pr-4">
+              <div className="space-y-3">
+                <h3 className="font-bold text-lg text-primary">Horses Overview</h3>
+                <p className="text-sm text-muted-foreground">
+                  A dice game where players roll to get the best hand. Highest hand wins the pot!
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Setup</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>All players ante to start</li>
+                  <li>Each player gets 5 dice and 3 rolls per turn</li>
+                  <li>Players take turns clockwise from the dealer</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Rolling</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>Roll all 5 dice on your first roll</li>
+                  <li>After each roll, choose which dice to <strong>freeze</strong> (keep)</li>
+                  <li>Re-roll any unfrozen dice (up to 3 total rolls)</li>
+                  <li>You can stop rolling early if you're satisfied</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Hand Rankings (Best to Worst)</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li><span className="text-primary font-medium">Five of a Kind</span> - All 5 dice match (e.g., 6-6-6-6-6)</li>
+                  <li><span className="text-primary font-medium">Four of a Kind</span> - 4 dice match</li>
+                  <li><span className="text-primary font-medium">Full House</span> - 3 of one + 2 of another</li>
+                  <li><span className="text-primary font-medium">Straight</span> - 1-2-3-4-5 or 2-3-4-5-6</li>
+                  <li><span className="text-primary font-medium">Three of a Kind</span> - 3 dice match</li>
+                  <li><span className="text-primary font-medium">Two Pair</span> - 2 pairs of matching dice</li>
+                  <li><span className="text-primary font-medium">One Pair</span> - 2 dice match</li>
+                  <li><span className="text-primary font-medium">High Dice</span> - No matches, highest die wins</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Winning</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>After all players roll, highest hand wins the pot</li>
+                  <li>Ties go to the higher dice within the hand type</li>
+                  <li><strong>Tie:</strong> Pot splits evenly among tied players</li>
+                </ul>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="scc" className="mt-0 space-y-4 pr-4">
+              <div className="space-y-3">
+                <h3 className="font-bold text-lg text-primary">Ship Captain Crew Overview</h3>
+                <p className="text-sm text-muted-foreground">
+                  A dice game where you must qualify by rolling Ship (6), Captain (5), and Crew (4) in order. 
+                  Your remaining two dice become your cargo (score).
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Setup</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>All players ante to start</li>
+                  <li>Each player gets 5 dice and 3 rolls per turn</li>
+                  <li>Players take turns clockwise from the dealer</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Qualifying (6-5-4)</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>You <strong>must</strong> roll a <span className="text-primary font-medium">6 (Ship)</span> first</li>
+                  <li>Then roll a <span className="text-primary font-medium">5 (Captain)</span></li>
+                  <li>Then roll a <span className="text-primary font-medium">4 (Crew)</span></li>
+                  <li>These must be obtained <strong>in order</strong> - you cannot keep a 5 before getting a 6</li>
+                  <li>Once rolled, 6-5-4 are automatically frozen</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Cargo (Scoring)</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>After qualifying (6-5-4), your remaining 2 dice are your <strong>cargo</strong></li>
+                  <li>Your score is the <strong>sum</strong> of your cargo dice (max 12)</li>
+                  <li>You can re-roll cargo dice to try for a higher score</li>
+                  <li>Best possible cargo: 6 + 6 = <span className="text-primary font-medium">12</span></li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">No Qualify (NQ)</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>If you cannot roll 6-5-4 in order within 3 rolls, you <strong>do not qualify</strong></li>
+                  <li>Your hand shows as <span className="text-destructive font-medium">NQ</span> (No Qualify)</li>
+                  <li>Any qualified hand beats an NQ hand</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Winning</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>Highest cargo sum among qualified players wins</li>
+                  <li>Qualified hands always beat NQ hands</li>
+                  <li><strong>Tie:</strong> Pot splits evenly among tied players</li>
+                  <li>If everyone NQs, pot splits among all players</li>
                 </ul>
               </div>
             </TabsContent>
