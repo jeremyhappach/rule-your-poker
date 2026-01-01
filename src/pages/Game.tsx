@@ -501,8 +501,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     const newPausedState = !game.is_paused;
     
-    // Get current round for deadline updates - use latest round for Holm games
-    const currentRoundData = game.game_type === 'holm-game'
+    // Get current round for deadline updates - use latest round for Holm and Horses games
+    const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses')
       ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
       : game.rounds?.find(r => r.round_number === game.current_round);
     
@@ -1889,8 +1889,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.status, game?.is_paused, gameId]);
 
   // Extract current round info - use cached data during game_over to preserve community cards
-  // CRITICAL: For Holm games, always use the LATEST round by round_number (not game.current_round which can be stale)
-  const liveRound = game?.game_type === 'holm-game'
+  // CRITICAL: For Holm and Horses games, always use the LATEST round by round_number (not game.current_round which can be stale)
+  // This prevents stale horses_state from old rounds triggering premature win processing
+  const liveRound = (game?.game_type === 'holm-game' || game?.game_type === 'horses')
     ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
     : game?.rounds?.find(r => r.round_number === game.current_round);
   
@@ -3174,9 +3175,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         !gameData.awaiting_next_round &&
         !gameData.last_round_result &&
         !gameData.game_over_at) {  // Don't set timeLeft if game_over_at is set
-      // CRITICAL: For Holm games, use the LATEST round by round_number (not game.current_round which can be stale)
-      const isHolmGame = gameData.game_type === 'holm-game';
-      const currentRound = isHolmGame
+      // CRITICAL: For Holm and Horses games, use the LATEST round by round_number (not game.current_round which can be stale)
+      const isHolmOrHorses = gameData.game_type === 'holm-game' || gameData.game_type === 'horses';
+      const currentRound = isHolmOrHorses
         ? gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
         : gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
       
@@ -3197,7 +3198,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setDecisionDeadline(currentRound.decision_deadline);
         
         // Holm game: turn-based, needs current_turn_position
-        if (isHolmGame && currentRound.current_turn_position) {
+        if (gameData.game_type === 'holm-game' && currentRound.current_turn_position) {
           // Check if turn changed
           const turnChanged = lastTurnPosition !== null && lastTurnPosition !== currentRound.current_turn_position;
           
@@ -3213,7 +3214,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         } 
         // 3-5-7 game: simultaneous decisions, no turn position needed
-        else if (!isHolmGame) {
+        else if (gameData.game_type !== 'holm-game' && gameData.game_type !== 'horses') {
           console.log('[FETCH] 3-5-7: Using server deadline for timer');
         }
       } else {
