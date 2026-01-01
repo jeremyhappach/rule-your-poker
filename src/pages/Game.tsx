@@ -298,6 +298,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [holmWinWinnerPosition, setHolmWinWinnerPosition] = useState<number>(1);
   const holmWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
   
+  // Horses win pot animation state (when player wins the round)
+  const [horsesWinPotTriggerId, setHorsesWinPotTriggerId] = useState<string | null>(null);
+  const [horsesWinPotAmount, setHorsesWinPotAmount] = useState<number>(0);
+  const [horsesWinWinnerPosition, setHorsesWinWinnerPosition] = useState<number>(1);
+  const horsesWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
+  
   // 3-5-7 win animation state (when player wins final leg)
   const [threeFiveSevenWinTriggerId, setThreeFiveSevenWinTriggerId] = useState<string | null>(null);
   const [threeFiveSevenWinPotAmount, setThreeFiveSevenWinPotAmount] = useState<number>(0);
@@ -2736,7 +2742,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
             // Horses: proceed by starting a new Horses round (not startRound)
             if (freshGame?.game_type === 'horses') {
-              console.log('[AWAITING_NEXT_ROUND] Horses game detected — starting next Horses hand');
+              console.log('[AWAITING_NEXT_ROUND] Horses game detected — starting next Horses hand (re-ante)');
 
               const { data: updateResult } = await supabase
                 .from('games')
@@ -2754,7 +2760,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 return;
               }
 
+              // Capture pre-ante chips BEFORE startHorsesRound deducts them
+              const { data: playersBeforeAnte } = await supabase
+                .from('players')
+                .select('id, chips, sitting_out')
+                .eq('game_id', gameId);
+
+              const activePlayersForAnte = (playersBeforeAnte || []).filter(p => !p.sitting_out);
+              const perPlayerAmount = freshGame?.ante_amount || 0;
+              const activeCount = activePlayersForAnte.length;
+
+              const preChipsSnapshot: Record<string, number> = {};
+              const expectedChipsSnapshot: Record<string, number> = {};
+              activePlayersForAnte.forEach(p => {
+                preChipsSnapshot[p.id] = p.chips;
+                expectedChipsSnapshot[p.id] = p.chips - perPlayerAmount;
+              });
+
+              // Calculate expected pot: existing pot (from tie) + new antes
+              const currentPot = freshGame?.pot || 0;
+              const expectedPot = currentPot + (perPlayerAmount * activeCount);
+
               await startHorsesRound(gameId);
+
+              // Trigger ante animation for Horses re-ante
+              if (perPlayerAmount > 0 && activeCount > 0) {
+                setPreAnteChips(preChipsSnapshot);
+                setExpectedPostAnteChips(expectedChipsSnapshot);
+                setAnteAnimationExpectedPot(expectedPot);
+
+                const triggerKey = `horses-reante-${expectedPot}-${Date.now()}`;
+                if (anteAnimationFiredRef.current !== triggerKey) {
+                  anteAnimationFiredRef.current = triggerKey;
+                  setAnteAnimationTriggerId(`ante-${Date.now()}`);
+                  console.log('[HORSES RE-ANTE] Triggered ante animation:', { perPlayerAmount, activeCount, expectedPot });
+                }
+              }
               return;
             }
             
@@ -3990,8 +4031,66 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
+  // Horses win pot animation trigger detection
+  // Detect Horses game_over and trigger pot-to-player animation
+  useEffect(() => {
+    if (game?.game_type !== 'horses') return;
+    if (game?.status !== 'game_over') {
+      // Reset when game status changes away from game_over
+      horsesWinProcessedRef.current = null;
+      setHorsesWinPotTriggerId(null);
+      return;
+    }
+    
+    const resultMessage = game?.last_round_result;
+    if (!resultMessage) return;
+    
+    // Example format: "PlayerName wins with Horse" or "BotName wins with ..."
+    const isHorsesWin = resultMessage.includes('wins with');
+    if (!isHorsesWin) return;
+    
+    // Don't re-process the same result
+    if (horsesWinProcessedRef.current === resultMessage) return;
+    
+    // Parse winner name from message "PlayerName wins with ..."
+    const match = resultMessage.match(/^(.+?) wins with/);
+    const winnerName = match?.[1]?.trim() || '';
+    
+    // Find winner player
+    let winnerPlayer = players.find(p => 
+      p.profiles?.username?.trim().toLowerCase() === winnerName.toLowerCase()
+    );
+    
+    // Try bot alias
+    if (!winnerPlayer) {
+      winnerPlayer = players.find(p => 
+        p.is_bot && getBotAlias(players, p.user_id).trim().toLowerCase() === winnerName.toLowerCase()
+      );
+    }
+    
+    if (!winnerPlayer) {
+      console.warn('[HORSES WIN POT] Could not resolve winner player for animation:', { winnerName, resultMessage });
+      return;
+    }
+    
+    // Get pot amount from cache (since DB pot is already reset to 0)
+    const potAmount = cachedPotForHorsesWinRef.current || game?.pot || 0;
+    
+    // Mark as processed
+    horsesWinProcessedRef.current = resultMessage;
+    
+    console.log('[HORSES WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPlayer.position, 'pot:', potAmount);
+    
+    setHorsesWinPotAmount(potAmount);
+    setHorsesWinWinnerPosition(winnerPlayer.position);
+    setHorsesWinPotTriggerId(`horses-win-${Date.now()}`);
+  }, [game?.status, game?.game_type, game?.last_round_result, game?.pot, players]);
+
   // Cache pot value for 3-5-7 win animation (pot gets reset before game_over)
   const cachedPotFor357WinRef = useRef<number>(0);
+  
+  // Cache pot value for Horses win animation (pot gets reset before game_over)
+  const cachedPotForHorsesWinRef = useRef<number>(0);
   
   // Cache leg positions for 3-5-7 win animation (legs get reset before animation runs)
   const [cachedLegPositions, setCachedLegPositions] = useState<{ playerId: string; position: number; legCount: number }[]>([]);
@@ -4012,6 +4111,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const prev = cachedPotFor357WinRef.current;
       cachedPotFor357WinRef.current = game.pot;
       console.log('[357 CACHE] Cached pot (max):', { prev, next: game.pot });
+    }
+    
+    // Cache pot for Horses separately
+    if (game?.game_type === 'horses' && game?.pot && game.pot > cachedPotForHorsesWinRef.current) {
+      cachedPotForHorsesWinRef.current = game.pot;
+      console.log('[HORSES CACHE] Cached pot (max):', game.pot);
     }
     
     // Cache leg positions whenever any player has legs (before they get reset)
@@ -5168,6 +5273,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     holmWinPotAmount={holmWinPotAmount}
                     holmWinWinnerPosition={holmWinWinnerPosition}
                     onHolmWinPotAnimationComplete={handleHolmWinPotAnimationComplete}
+                    horsesWinPotTriggerId={horsesWinPotTriggerId}
+                    horsesWinPotAmount={horsesWinPotAmount || cachedPotForHorsesWinRef.current}
+                    horsesWinWinnerPosition={horsesWinWinnerPosition}
+                    onHorsesWinPotAnimationComplete={() => {
+                      console.log('[HORSES WIN] Animation complete, transitioning to next game');
+                      setHorsesWinPotTriggerId(null);
+                      cachedPotForHorsesWinRef.current = 0;
+                      handleGameOverComplete();
+                    }}
                     threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
                     threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
                     threeFiveSevenWinnerId={threeFiveSevenWinnerId}

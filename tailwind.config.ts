@@ -150,6 +150,38 @@ export default {
             opacity: "1",
           },
         },
+        "dice-shake": {
+          "0%, 100%": { 
+            transform: "translateX(0) rotate(0deg)",
+          },
+          "10%": { 
+            transform: "translateX(-3px) rotate(-4deg)",
+          },
+          "20%": { 
+            transform: "translateX(3px) rotate(4deg)",
+          },
+          "30%": { 
+            transform: "translateX(-3px) rotate(-4deg)",
+          },
+          "40%": { 
+            transform: "translateX(3px) rotate(4deg)",
+          },
+          "50%": { 
+            transform: "translateX(-2px) rotate(-2deg)",
+          },
+          "60%": { 
+            transform: "translateX(2px) rotate(2deg)",
+          },
+          "70%": { 
+            transform: "translateX(-1px) rotate(-1deg)",
+          },
+          "80%": { 
+            transform: "translateX(1px) rotate(1deg)",
+          },
+          "90%": { 
+            transform: "translateX(0) rotate(0deg)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -162,6 +194,7 @@ export default {
         "fold-cards": "foldCards 1.5s ease-out forwards",
         "turn-pulse": "turn-pulse 0.8s ease-in-out infinite",
         "spin-table": "spin-table 1s ease-out forwards",
+        "dice-shake": "dice-shake 0.4s ease-in-out infinite",
       },
     },
   },

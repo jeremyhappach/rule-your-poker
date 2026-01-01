@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 interface HorsesDieProps {
   value: number; // 1-6, 0 for unrolled
@@ -17,6 +18,37 @@ export function HorsesDie({
   onToggle,
   size = "md",
 }: HorsesDieProps) {
+  // Track the displayed value during roll animation
+  const [displayValue, setDisplayValue] = useState(value);
+  const [animating, setAnimating] = useState(false);
+
+  // When rolling starts, cycle through random values for dramatic effect
+  useEffect(() => {
+    if (isRolling && !isHeld) {
+      setAnimating(true);
+      let frameCount = 0;
+      const maxFrames = 8; // ~400ms of cycling at 50ms intervals
+      
+      const interval = setInterval(() => {
+        frameCount++;
+        if (frameCount >= maxFrames) {
+          clearInterval(interval);
+          setDisplayValue(value);
+          // Keep animating flag slightly longer for the "land" effect
+          setTimeout(() => setAnimating(false), 150);
+        } else {
+          // Random value 1-6 for the cycling effect
+          setDisplayValue(Math.floor(Math.random() * 6) + 1);
+        }
+      }, 50);
+
+      return () => clearInterval(interval);
+    } else {
+      setDisplayValue(value);
+      setAnimating(false);
+    }
+  }, [isRolling, isHeld, value]);
+
   const sizeClasses = {
     sm: "w-10 h-10",
     md: "w-14 h-14",
@@ -33,8 +65,10 @@ export function HorsesDie({
 
   // Dot patterns for each die face
   const renderDots = () => {
+    const v = displayValue;
+    
     // Unrolled dice show a subtle placeholder (no "?" to avoid flicker).
-    if (value === 0) {
+    if (v === 0) {
       return (
         <div className="flex items-center justify-center w-full h-full">
           <div className={cn(dotSize, "rounded-full bg-muted-foreground/25")} />
@@ -45,10 +79,10 @@ export function HorsesDie({
     const dotClass = cn(
       dotSize,
       "rounded-full",
-      value === 1 ? "bg-destructive" : "bg-foreground/90",
+      v === 1 ? "bg-destructive" : "bg-foreground/90",
     );
 
-    switch (value) {
+    switch (v) {
       case 1:
         return (
           <div className="flex items-center justify-center w-full h-full">
@@ -141,8 +175,8 @@ export function HorsesDie({
         "rounded-lg border-2 relative",
         "transition-all duration-150",
         "flex items-center justify-center",
-        // Roll animation: show ring + pulse ONLY when this die is actively rolling AND interactive
-        isRolling && canToggle && !isHeld && "ring-2 ring-primary/30 animate-pulse",
+        // Rolling animation with shake + glow
+        animating && "animate-dice-shake",
         isHeld
           ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
           : "bg-card border-border shadow-sm",
@@ -150,6 +184,10 @@ export function HorsesDie({
         canToggle && isHeld && "hover:border-amber-600 cursor-pointer active:scale-95",
         !canToggle && "cursor-default opacity-95",
       )}
+      style={{
+        // Add glow effect during roll
+        boxShadow: animating ? '0 0 12px 2px rgba(251, 191, 36, 0.6)' : undefined,
+      }}
     >
       {renderDots()}
       {/* HOLD indicator for held dice */}
