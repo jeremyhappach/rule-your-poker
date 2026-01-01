@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { HorsesHandResult, HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
-import { SCCHandResult, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
+import { SCCHandResult, SCCDie as SCCDieType, getSCCDisplayOrder, SCCHand } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
 import { cn } from "@/lib/utils";
 import { Dice5 } from "lucide-react";
@@ -71,18 +71,35 @@ export function HorsesPlayerArea({
             <>
               {diceValues && (
                 <div className="flex gap-1">
-                  {diceValues.map((die, idx) => (
-                    <HorsesDie
-                      key={idx}
-                      value={die.value}
-                      isHeld={false}
-                      isRolling={false}
-                      canToggle={false}
-                      onToggle={() => {}}
-                      size="sm"
-                      showWildHighlight={gameType !== 'ship-captain-crew'}
-                    />
-                  ))}
+                  {gameType === 'ship-captain-crew' ? (
+                    // SCC: Use display order to put frozen 6-5-4 on the left with gold highlighting
+                    getSCCDisplayOrder({ dice: diceValues as SCCDieType[] } as SCCHand).map(({ die, originalIndex }) => (
+                      <HorsesDie
+                        key={originalIndex}
+                        value={die.value}
+                        isHeld={false}
+                        isRolling={false}
+                        canToggle={false}
+                        onToggle={() => {}}
+                        size="sm"
+                        showWildHighlight={false}
+                        isSCCDie={(die as SCCDieType).isSCC}
+                      />
+                    ))
+                  ) : (
+                    diceValues.map((die, idx) => (
+                      <HorsesDie
+                        key={idx}
+                        value={die.value}
+                        isHeld={false}
+                        isRolling={false}
+                        canToggle={false}
+                        onToggle={() => {}}
+                        size="sm"
+                        showWildHighlight={true}
+                      />
+                    ))
+                  )}
                 </div>
               )}
               <Badge
@@ -102,18 +119,35 @@ export function HorsesPlayerArea({
       {/* For other players: show completed dice */}
       {!isCurrentUser && hasTurnCompleted && diceValues && (
         <div className="flex gap-1">
-          {diceValues.map((die, idx) => (
-            <HorsesDie
-              key={idx}
-              value={die.value}
-              isHeld={false}
-              isRolling={false}
-              canToggle={false}
-              onToggle={() => {}}
-              size="sm"
-              showWildHighlight={gameType !== 'ship-captain-crew'}
-            />
-          ))}
+          {gameType === 'ship-captain-crew' ? (
+            // SCC: Use display order to put frozen 6-5-4 on the left with gold highlighting
+            getSCCDisplayOrder({ dice: diceValues as SCCDieType[] } as SCCHand).map(({ die, originalIndex }) => (
+              <HorsesDie
+                key={originalIndex}
+                value={die.value}
+                isHeld={false}
+                isRolling={false}
+                canToggle={false}
+                onToggle={() => {}}
+                size="sm"
+                showWildHighlight={false}
+                isSCCDie={(die as SCCDieType).isSCC}
+              />
+            ))
+          ) : (
+            diceValues.map((die, idx) => (
+              <HorsesDie
+                key={idx}
+                value={die.value}
+                isHeld={false}
+                isRolling={false}
+                canToggle={false}
+                onToggle={() => {}}
+                size="sm"
+                showWildHighlight={true}
+              />
+            ))
+          )}
         </div>
       )}
 

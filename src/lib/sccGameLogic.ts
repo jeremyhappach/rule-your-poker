@@ -186,7 +186,7 @@ export function evaluateSCCHand(hand: SCCHand): SCCHandResult {
 
   return {
     rank: cargoSum, // 2-12, higher is better
-    description: `Cargo: ${cargoSum}`,
+    description: `${cargoSum}`,
     isQualified: true,
     cargoSum,
   };

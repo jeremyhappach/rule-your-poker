@@ -9,6 +9,7 @@ interface HorsesDieProps {
   onToggle?: () => void;
   size?: "sm" | "md" | "lg";
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
+  isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
 }
 
 export function HorsesDie({
@@ -19,6 +20,7 @@ export function HorsesDie({
   onToggle,
   size = "md",
   showWildHighlight = true,
+  isSCCDie = false,
 }: HorsesDieProps) {
   // Track the displayed value during roll animation
   const [displayValue, setDisplayValue] = useState(value);
@@ -186,7 +188,8 @@ export function HorsesDie({
   };
 
   // Check if this die shows a wild (1) - only highlight if showWildHighlight is true
-  const isWildDie = showWildHighlight && displayValue === 1 && !animating;
+  // Or if it's a frozen SCC die (6-5-4), show gold highlight
+  const isWildDie = (showWildHighlight && displayValue === 1 && !animating) || isSCCDie;
 
   return (
     <button
