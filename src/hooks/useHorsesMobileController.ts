@@ -140,6 +140,7 @@ export function useHorsesMobileController({
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
   const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
 
+
   // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
   const lastFeltDiceRef = useRef<{ playerId: string | null; value: any } | null>(null);
   const lastFeltDiceAtRef = useRef<number>(0);
@@ -264,7 +265,22 @@ export function useHorsesMobileController({
     );
   }, [completedResults, gamePhase]);
 
-  // Initialize game state when round starts
+  // Refs for latest values so bot loop can read them without re-triggering the effect
+  const horsesStateRef = useRef(horsesState);
+  const currentWinningResultRef = useRef<HorsesHandResult | null>(currentWinningResult);
+  const candidateBotControllerUserIdRef = useRef(candidateBotControllerUserId);
+
+  // Keep refs updated
+  useEffect(() => {
+    horsesStateRef.current = horsesState;
+  }, [horsesState]);
+  useEffect(() => {
+    currentWinningResultRef.current = currentWinningResult;
+  }, [currentWinningResult]);
+  useEffect(() => {
+    candidateBotControllerUserIdRef.current = candidateBotControllerUserId;
+  }, [candidateBotControllerUserId]);
+
   useEffect(() => {
     if (!enabled) return;
     if (!currentRoundId || !gameId) return;
@@ -504,6 +520,8 @@ export function useHorsesMobileController({
   }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id]);
 
   // Bot auto-play with visible animation (mobile)
+  // CRITICAL: This effect should ONLY re-run when the turn identity changes (round + bot),
+  // NOT on every horsesState update. We use refs to read latest values inside the loop.
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "playing") return;
@@ -556,7 +574,7 @@ export function useHorsesMobileController({
         // If the DB already moved the turn, do nothing.
         if (latestState?.currentTurnPlayerId && latestState.currentTurnPlayerId !== botId) return;
 
-        // Ensure a SINGLE client drives bot turns.
+        // Ensure a SINGLE client drives bot turns - use ref for latest value
         let controllerId = latestState?.botControllerUserId ?? null;
 
         if (!controllerId) {
@@ -574,7 +592,7 @@ export function useHorsesMobileController({
           }
         }
 
-        controllerId = controllerId ?? candidateBotControllerUserId ?? null;
+        controllerId = controllerId ?? candidateBotControllerUserIdRef.current ?? null;
         if (controllerId && controllerId !== currentUserId) return;
 
         const latestBotState = latestState?.playerStates?.[botId];
@@ -617,13 +635,14 @@ export function useHorsesMobileController({
           await new Promise((resolve) => setTimeout(resolve, 450));
           if (cancelled) return;
 
-          if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResult)) break;
+          // Use ref for latest currentWinningResult
+          if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResultRef.current)) break;
 
           if (botHand.rollsRemaining > 0) {
             const decision = getBotHoldDecision({
               currentDice: botHand.dice,
               rollsRemaining: botHand.rollsRemaining,
-              currentWinningResult,
+              currentWinningResult: currentWinningResultRef.current,
             });
 
             botHand = applyHoldDecision(botHand, decision);
@@ -685,6 +704,8 @@ export function useHorsesMobileController({
 
     void run();
 
+    // IMPORTANT: Only cancel and cleanup when the turn IDENTITY changes, not on state updates.
+    // The effect only re-runs when these deps change, so cleanup only happens on real turn changes.
     return () => {
       cancelled = true;
       if (botStuckTimerRef.current) window.clearTimeout(botStuckTimerRef.current);
@@ -697,10 +718,10 @@ export function useHorsesMobileController({
     currentUserId,
     currentTurnPlayer?.id,
     currentTurnPlayer?.is_bot,
-    horsesState?.currentTurnPlayerId,
-    horsesState?.playerStates,
-    candidateBotControllerUserId,
-    currentWinningResult,
+    // REMOVED: horsesState?.currentTurnPlayerId - causes re-runs on every state update
+    // REMOVED: horsesState?.playerStates - causes re-runs on every state update
+    // REMOVED: candidateBotControllerUserId - use ref instead
+    // REMOVED: currentWinningResult - use ref instead
   ]);
 
   // Handle game complete - award pot to winner
