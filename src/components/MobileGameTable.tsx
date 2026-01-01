@@ -2403,7 +2403,8 @@ export const MobileGameTable = ({
       return 'bg-red-400';
     }
     // Green background for players who stayed (replaces the glow ring)
-    if (playerDecision === 'stay') {
+    // CRITICAL: Only apply for non-Horses games - Horses has no stay/fold decisions
+    if (playerDecision === 'stay' && gameType !== 'horses') {
       return 'bg-green-400';
     }
     // White for active players who haven't acted yet
