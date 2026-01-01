@@ -32,6 +32,30 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     return;
   }
 
+  // GUARD: Check if a round already exists for this round number (partial failure recovery)
+  const expectedRoundNumber = isFirstHand ? 1 : (game.current_round || 0) + 1;
+  const { data: existingRound } = await supabase
+    .from('rounds')
+    .select('id')
+    .eq('game_id', gameId)
+    .eq('round_number', expectedRoundNumber)
+    .maybeSingle();
+
+  if (existingRound) {
+    console.log('[HORSES] Round already exists, just updating game status');
+    // Round exists but game status wasn't updated - fix the game status
+    await supabase
+      .from('games')
+      .update({
+        status: 'in_progress',
+        current_round: expectedRoundNumber,
+        all_decisions_in: false,
+        awaiting_next_round: false,
+      })
+      .eq('id', gameId);
+    return;
+  }
+
   // Get active players for ante collection
   const { data: players, error: playersError } = await supabase
     .from('players')
