@@ -850,11 +850,11 @@ export const DealerGameSetup = ({
 
               <button
                 onClick={() => handleDiceGameSelect('ship-captain-crew')}
-                className="relative p-6 rounded-lg border-2 transition-all border-gray-500 bg-gray-800/30 opacity-50 cursor-not-allowed"
+                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
               >
                 <div className="space-y-2 text-center">
-                  <h3 className="text-xl font-bold text-gray-400">Ship Captain Crew</h3>
-                  <p className="text-sm text-gray-500">Coming soon</p>
+                  <h3 className="text-xl font-bold text-poker-gold">Ship Captain Crew</h3>
+                  <p className="text-sm text-amber-200">Get 6-5-4, then max cargo</p>
                 </div>
               </button>
             </div>
