@@ -28,26 +28,42 @@ export function HorsesDie({
       setAnimating(true);
       let frameCount = 0;
       const maxFrames = 8; // ~400ms of cycling at 50ms intervals
+      let cancelled = false;
       
       const interval = setInterval(() => {
+        if (cancelled) return;
         frameCount++;
         if (frameCount >= maxFrames) {
           clearInterval(interval);
-          setDisplayValue(value);
-          // Keep animating flag slightly longer for the "land" effect
-          setTimeout(() => setAnimating(false), 150);
+          // Don't set displayValue here - let the non-rolling branch handle it
+          // to avoid stale closure issues
+          setTimeout(() => {
+            if (!cancelled) setAnimating(false);
+          }, 150);
         } else {
           // Random value 1-6 for the cycling effect
           setDisplayValue(Math.floor(Math.random() * 6) + 1);
         }
       }, 50);
 
-      return () => clearInterval(interval);
+      return () => {
+        cancelled = true;
+        clearInterval(interval);
+      };
     } else {
+      // When not rolling, always sync display value to prop
       setDisplayValue(value);
       setAnimating(false);
     }
-  }, [isRolling, isHeld, value]);
+  }, [isRolling, isHeld]);
+
+  // Keep display value synced with prop when NOT rolling
+  // This fixes the stale closure issue where the animation would show old values
+  useEffect(() => {
+    if (!isRolling && !animating) {
+      setDisplayValue(value);
+    }
+  }, [value, isRolling, animating]);
 
   const sizeClasses = {
     sm: "w-10 h-10",

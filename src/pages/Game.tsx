@@ -5335,8 +5335,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       gameStatus={game.status}
                       handContextId={handContextKey}
                     />
-                    {/* Desktop game over countdown - BLOCKED during 357 win animation */}
-                    {game.game_over_at && !is357WinAnimationActive && (
+                    {/* Desktop game over countdown - BLOCKED during 357 win animation or Horses win animation */}
+                    {game.game_over_at && !is357WinAnimationActive && !horsesWinPotTriggerId && (
                       <GameOverCountdown
                         winnerMessage={game.last_round_result}
                         nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
@@ -5348,8 +5348,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     )}
                   </>
                 )}
-                {/* Mobile game over countdown - BLOCKED during 357 win animation */}
-                {isMobile && game.game_over_at && !is357WinAnimationActive && (
+                {/* Mobile game over countdown - BLOCKED during 357 win animation or Horses win animation */}
+                {isMobile && game.game_over_at && !is357WinAnimationActive && !horsesWinPotTriggerId && (
                   <GameOverCountdown
                     winnerMessage={game.last_round_result}
                     nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
