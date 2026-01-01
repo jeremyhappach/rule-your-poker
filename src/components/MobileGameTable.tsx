@@ -3493,7 +3493,7 @@ export const MobileGameTable = ({
             && horsesController.timeLeft !== null;
 
           return (
-            <div className={cn("absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2")}
+            <div className={cn("absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2")}
                  style={{ pointerEvents: showDice ? 'auto' : 'none' }}>
               {/* Timer display */}
               {showTimer && (
@@ -3521,7 +3521,7 @@ export const MobileGameTable = ({
                     variant="secondary" 
                     className={cn(
                       "text-lg px-4 py-1.5 font-bold",
-                      isCurrentTurnWinning && "bg-green-600 text-white animate-pulse"
+                      isCurrentTurnWinning && "bg-green-600 text-white"
                     )}
                   >
                     {currentTurnResult.description}
@@ -3553,7 +3553,7 @@ export const MobileGameTable = ({
                             ? () => horsesController.handleToggleHold(idx)
                             : undefined
                         }
-                        size="sm"
+                        size="md"
                       />
                     );
                   })}

@@ -32,7 +32,7 @@ export function HorsesPlayerArea({
       className={cn(
         "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 min-w-[140px]",
         isCurrentTurn && "border-yellow-500 bg-yellow-500/10",
-        isWinningHand && "border-green-500 bg-green-500/20 animate-pulse",
+        isWinningHand && "border-green-500 bg-green-500/20",
         !isCurrentTurn && !isWinningHand && "border-border/50 bg-black/30",
         isCurrentUser && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent"
       )}
