@@ -15,6 +15,10 @@ import {
   determineWinners,
 } from "@/lib/horsesGameLogic";
 import {
+  SCCHandResult,
+  SCCDie as SCCDieType,
+} from "@/lib/sccGameLogic";
+import {
   getBotHoldDecision,
   shouldBotStopRolling,
   applyHoldDecision,
@@ -32,12 +36,12 @@ export interface HorsesPlayerForController {
   };
 }
 
-// Database state structure
+// Database state structure - supports both Horses and SCC dice types
 export interface HorsesPlayerDiceState {
-  dice: HorsesDieType[];
+  dice: HorsesDieType[] | SCCDieType[];
   rollsRemaining: number;
   isComplete: boolean;
-  result?: HorsesHandResult;
+  result?: HorsesHandResult | SCCHandResult;
 }
 
 export interface HorsesStateFromDB {
@@ -273,14 +277,16 @@ export function useHorsesMobileController({
 
   const winningPlayerIds = useMemo(() => {
     if (completedResults.length === 0 || gamePhase !== "complete") return [] as string[];
-    return determineWinners(completedResults.map((r) => r.result)).map(
+    // Note: This hook is used for Horses on mobile. SCC uses different winner determination.
+    // For now, use Horses logic; SCC mobile support would need separate handling.
+    return determineWinners(completedResults.map((r) => r.result as HorsesHandResult)).map(
       (i) => completedResults[i].playerId,
     );
   }, [completedResults, gamePhase]);
 
   // Refs for latest values so bot loop can read them without re-triggering the effect
   const horsesStateRef = useRef(horsesState);
-  const currentWinningResultRef = useRef<HorsesHandResult | null>(currentWinningResult);
+  const currentWinningResultRef = useRef<HorsesHandResult | SCCHandResult | null>(currentWinningResult);
   const candidateBotControllerUserIdRef = useRef(candidateBotControllerUserId);
 
   // Keep refs updated
@@ -879,14 +885,14 @@ export function useHorsesMobileController({
           await new Promise((resolve) => setTimeout(resolve, 450));
           if (cancelled) return;
 
-          // Use ref for latest currentWinningResult
-          if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResultRef.current)) break;
+          // Use ref for latest currentWinningResult (cast to Horses type for mobile Horses games)
+          if (shouldBotStopRolling(botHand.dice, botHand.rollsRemaining, currentWinningResultRef.current as HorsesHandResult | null)) break;
 
           if (botHand.rollsRemaining > 0) {
             const decision = getBotHoldDecision({
               currentDice: botHand.dice,
               rollsRemaining: botHand.rollsRemaining,
-              currentWinningResult: currentWinningResultRef.current,
+              currentWinningResult: currentWinningResultRef.current as HorsesHandResult | null,
             });
 
             botHand = applyHoldDecision(botHand, decision);
@@ -1210,14 +1216,15 @@ export function useHorsesMobileController({
   // Calculate currently winning player IDs during play (not just at game end)
   const currentlyWinningPlayerIds = useMemo(() => {
     if (completedResults.length === 0) return [] as string[];
-    return determineWinners(completedResults.map((r) => r.result)).map(
+    // Cast to Horses types - this hook is used for Horses on mobile
+    return determineWinners(completedResults.map((r) => r.result as HorsesHandResult)).map(
       (i) => completedResults[i].playerId,
     );
   }, [completedResults]);
 
   // Get a player's completed hand result
   const getPlayerHandResult = useCallback(
-    (playerId: string): HorsesHandResult | null => {
+    (playerId: string): HorsesHandResult | SCCHandResult | null => {
       const state = horsesState?.playerStates?.[playerId];
       if (state?.isComplete && state.result) return state.result;
       return null;
