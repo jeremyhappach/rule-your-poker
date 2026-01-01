@@ -27,6 +27,7 @@ import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
+import { startSCCRound } from "@/lib/sccRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -502,7 +503,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const newPausedState = !game.is_paused;
     
     // Get current round for deadline updates - use latest round for Holm and Horses games
-    const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses')
+    const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses' || game.game_type === 'ship-captain-crew')
       ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
       : game.rounds?.find(r => r.round_number === game.current_round);
     
@@ -1891,7 +1892,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Extract current round info - use cached data during game_over to preserve community cards
   // CRITICAL: For Holm and Horses games, always use the LATEST round by round_number (not game.current_round which can be stale)
   // This prevents stale horses_state from old rounds triggering premature win processing
-  const liveRound = (game?.game_type === 'holm-game' || game?.game_type === 'horses')
+  const liveRound = (game?.game_type === 'holm-game' || game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew')
     ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
     : game?.rounds?.find(r => r.round_number === game.current_round);
   
@@ -2742,8 +2743,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             // Horses: proceed by starting a new Horses round (not startRound)
-            if (freshGame?.game_type === 'horses') {
-              console.log('[AWAITING_NEXT_ROUND] Horses game detected — starting next Horses hand (re-ante)');
+            if (freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew') {
+              const isDiceGame = freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew';
+              console.log('[AWAITING_NEXT_ROUND] Dice game detected — starting next hand (re-ante)', freshGame?.game_type);
 
               const { data: updateResult } = await supabase
                 .from('games')
@@ -2757,11 +2759,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 .select();
 
               if (!updateResult || updateResult.length === 0) {
-                console.log('[AWAITING_NEXT_ROUND] Another process already proceeding (horses), skipping');
+                console.log('[AWAITING_NEXT_ROUND] Another process already proceeding (dice game), skipping');
                 return;
               }
 
-              // Capture pre-ante chips BEFORE startHorsesRound deducts them
+              // Capture pre-ante chips BEFORE startRound deducts them
               const { data: playersBeforeAnte } = await supabase
                 .from('players')
                 .select('id, chips, sitting_out')
@@ -2782,19 +2784,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               const currentPot = freshGame?.pot || 0;
               const expectedPot = currentPot + (perPlayerAmount * activeCount);
 
-              await startHorsesRound(gameId);
+              // Start the appropriate round type
+              if (freshGame?.game_type === 'ship-captain-crew') {
+                await startSCCRound(gameId);
+              } else {
+                await startHorsesRound(gameId);
+              }
 
-              // Trigger ante animation for Horses re-ante
+              // Trigger ante animation for dice game re-ante
               if (perPlayerAmount > 0 && activeCount > 0) {
                 setPreAnteChips(preChipsSnapshot);
                 setExpectedPostAnteChips(expectedChipsSnapshot);
                 setAnteAnimationExpectedPot(expectedPot);
 
-                const triggerKey = `horses-reante-${expectedPot}-${Date.now()}`;
+                const triggerKey = `dice-reante-${expectedPot}-${Date.now()}`;
                 if (anteAnimationFiredRef.current !== triggerKey) {
                   anteAnimationFiredRef.current = triggerKey;
                   setAnteAnimationTriggerId(`ante-${Date.now()}`);
-                  console.log('[HORSES RE-ANTE] Triggered ante animation:', { perPlayerAmount, activeCount, expectedPot });
+                  console.log('[DICE RE-ANTE] Triggered ante animation:', { perPlayerAmount, activeCount, expectedPot });
                 }
               }
               return;
@@ -3176,7 +3183,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         !gameData.last_round_result &&
         !gameData.game_over_at) {  // Don't set timeLeft if game_over_at is set
       // CRITICAL: For Holm and Horses games, use the LATEST round by round_number (not game.current_round which can be stale)
-      const isHolmOrHorses = gameData.game_type === 'holm-game' || gameData.game_type === 'horses';
+      const isHolmOrHorses = gameData.game_type === 'holm-game' || gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
       const currentRound = isHolmOrHorses
         ? gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
         : gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
@@ -4115,9 +4122,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     // Cache pot for Horses separately
-    if (game?.game_type === 'horses' && game?.pot && game.pot > cachedPotForHorsesWinRef.current) {
+    if ((game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew') && game?.pot && game.pot > cachedPotForHorsesWinRef.current) {
       cachedPotForHorsesWinRef.current = game.pot;
-      console.log('[HORSES CACHE] Cached pot (max):', game.pot);
+      console.log('[DICE CACHE] Cached pot (max):', game.pot);
     }
     
     // Cache leg positions whenever any player has legs (before they get reset)
@@ -4548,7 +4555,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Start first round - let the round start functions handle the status change
     try {
           const isHolmGame = game?.game_type === 'holm-game';
-          const isHorsesGame = game?.game_type === 'horses';
+          const isHorsesGame = game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
           const activePlayersBefore = players.filter(p => !p.sitting_out);
@@ -4578,7 +4585,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (isHolmGame) {
             await startHolmRound(gameId, true);
           } else if (isHorsesGame) {
-            await startHorsesRound(gameId, true);
+            // isHorsesGame now includes ship-captain-crew
+            if (game?.game_type === 'ship-captain-crew') {
+              await startSCCRound(gameId, true);
+            } else {
+              await startHorsesRound(gameId, true);
+            }
           } else {
             await supabase
               .from('games')
@@ -5419,8 +5431,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isInProgress = game.status === 'in_progress';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
 
-          // HORSES DICE GAME
-          if (isInProgress && game.game_type === 'horses') {
+          // DICE GAMES (Horses and Ship Captain Crew)
+          if (isInProgress && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
 
             // Mobile: use the same MobileGameTable shell as Holm/357
