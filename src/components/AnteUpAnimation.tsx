@@ -95,21 +95,32 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   };
 
   // Get target position on pot box edge based on VISUAL slot position (closest edge to player)
-  // Pot box position: Holm = bottom at 35%, 3-5-7 = center at 50%
+  // Pot box position: Holm = bottom at 35%, 3-5-7 = center at 50%, Horses = higher at 30%
   // We calculate center and then offset to the nearest edge based on where the player chip starts
-  const getPotBoxTarget = (slotIndex: number, rect: DOMRect, isHolm: boolean): { x: number; y: number } => {
+  const getPotBoxTarget = (slotIndex: number, rect: DOMRect, gType: string | null | undefined): { x: number; y: number } => {
     const centerX = rect.width / 2;
 
-    // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm, px-8 py-3 for 3-5-7)
-    // Holm: ~90px wide, ~32px tall
+    const isHolm = gType === 'holm-game';
+    const isHorses = gType === 'horses';
+
+    // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm/Horses, px-8 py-3 for 3-5-7)
+    // Holm/Horses: ~90px wide, ~32px tall
     // 3-5-7: ~130px wide, ~56px tall
-    const potHalfWidth = isHolm ? 50 : 70; // Add buffer to stop at visible border
-    const potHalfHeight = isHolm ? 20 : 32;
+    const potHalfWidth = (isHolm || isHorses) ? 50 : 70;
+    const potHalfHeight = (isHolm || isHorses) ? 20 : 32;
 
     // Calculate pot center Y based on CSS positioning
-    // Holm: "top-[35%] -translate-y-full" means bottom edge at 35%, so center = 35% - halfHeight
+    // Holm: "top-[35%] -translate-y-full" means bottom edge at 35%
+    // Horses: "top-[30%] -translate-y-full" means bottom edge at 30%
     // 3-5-7: "top-1/2 -translate-y-1/2" means center at 50%
-    const potBottomY = isHolm ? rect.height * 0.35 : rect.height * 0.5 + potHalfHeight;
+    let potBottomY: number;
+    if (isHolm) {
+      potBottomY = rect.height * 0.35;
+    } else if (isHorses) {
+      potBottomY = rect.height * 0.30;
+    } else {
+      potBottomY = rect.height * 0.5 + potHalfHeight;
+    }
     const potTopY = potBottomY - potHalfHeight * 2;
     const potCenterY = (potTopY + potBottomY) / 2;
 
@@ -163,8 +174,6 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     // Lock the display amount BEFORE calling onAnimationStart (which clears the trigger)
     lockedDisplayAmountRef.current = displayAmount;
 
-    const isHolm = gameType === 'holm-game';
-
     // Start animation immediately
     onAnimationStart?.();
 
@@ -198,7 +207,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
         slot = getSlotPercent(slotIndexForTarget);
       }
 
-      const target = getPotBoxTarget(slotIndexForTarget, rect, isHolm);
+      const target = getPotBoxTarget(slotIndexForTarget, rect, gameType);
 
       return {
         id: `chip-${animIdRef.current++}`,
