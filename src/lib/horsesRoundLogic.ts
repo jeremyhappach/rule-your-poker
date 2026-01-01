@@ -25,34 +25,65 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     throw new Error('Failed to get game state');
   }
 
-  // GUARD: Prevent duplicate round starts (e.g., from polling retries)
-  // If the game is already in_progress, don't create another round or collect more antes
-  if (game.status === 'in_progress') {
-    console.log('[HORSES] Game already in_progress, skipping duplicate startHorsesRound');
+  // IMPORTANT:
+  // This app keeps historical rounds in the same session (gameId) when starting a "new game".
+  // That means round_number=1 may already exist from a previous Horses game.
+  // So we must choose the next round_number based on (game.current_round OR max(round_number)).
+  const { data: latestRound, error: latestRoundError } = await supabase
+    .from('rounds')
+    .select('round_number')
+    .eq('game_id', gameId)
+    .order('round_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestRoundError) {
+    console.warn('[HORSES] Failed to read latest round_number (continuing):', latestRoundError);
+  }
+
+  const latestRoundNumber = latestRound?.round_number ?? 0;
+
+  // If we are starting the FIRST hand and the game is already in progress, this is a duplicate call.
+  // (For re-antes / ties, we allow starting the next hand while still in_progress.)
+  if (isFirstHand && game.status === 'in_progress') {
+    console.log('[HORSES] Game already in_progress (first hand), skipping duplicate startHorsesRound');
     return;
   }
 
-  // GUARD: Check if a round already exists for this round number (partial failure recovery)
-  const expectedRoundNumber = isFirstHand ? 1 : (game.current_round || 0) + 1;
+  const baseRoundNumber = (typeof game.current_round === 'number' ? game.current_round : latestRoundNumber) ?? 0;
+  const newRoundNumber = baseRoundNumber + 1;
+  const newHandNumber = (game.total_hands || 0) + 1;
+
+  // GUARD: If the round already exists for this computed round number, assume a previous call partially failed.
+  // IMPORTANT: Because newRoundNumber is always "next" (never reuses old round #1), this will not resurrect old state.
   const { data: existingRound } = await supabase
     .from('rounds')
-    .select('id')
+    .select('id, pot, hand_number')
     .eq('game_id', gameId)
-    .eq('round_number', expectedRoundNumber)
+    .eq('round_number', newRoundNumber)
     .maybeSingle();
 
   if (existingRound) {
-    console.log('[HORSES] Round already exists, just updating game status');
-    // Round exists but game status wasn't updated - fix the game status
+    console.log('[HORSES] Round already exists, just updating game status', {
+      roundId: existingRound.id,
+      roundNumber: newRoundNumber,
+    });
+
+    const existingHandNumber = (existingRound as any)?.hand_number as number | null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
     await supabase
       .from('games')
       .update({
         status: 'in_progress',
-        current_round: expectedRoundNumber,
+        current_round: newRoundNumber,
+        total_hands: existingHandNumber ? Math.max(newHandNumber, existingHandNumber) : newHandNumber,
+        pot: (existingRound as any)?.pot ?? game.pot ?? 0, // eslint-disable-line @typescript-eslint/no-explicit-any
         all_decisions_in: false,
         awaiting_next_round: false,
+        is_first_hand: isFirstHand,
       })
       .eq('id', gameId);
+
     return;
   }
 
@@ -67,15 +98,12 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     throw new Error('Failed to get players');
   }
 
-  const activePlayers = (players || []).filter(p => !p.sitting_out);
+  const activePlayers = (players || []).filter((p) => !p.sitting_out);
   const anteAmount = game.ante_amount || 2;
 
   // Calculate pot: previous pot (for re-ante/tie) + new antes
   const newAnteTotal = activePlayers.length * anteAmount;
   const potForRound = (isFirstHand ? 0 : (game.pot || 0)) + newAnteTotal;
-
-  const newRoundNumber = isFirstHand ? 1 : (game.current_round || 0) + 1;
-  const newHandNumber = (game.total_hands || 0) + 1;
 
   // STEP 1: Create the round record FIRST (before collecting antes)
   // This ensures we don't collect antes multiple times if round creation fails
@@ -101,8 +129,7 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
 
   console.log('[HORSES] Round created:', roundData.id, 'pot:', potForRound);
 
-  // STEP 2: Update game status to in_progress BEFORE collecting antes
-  // This prevents retry loops from calling startHorsesRound again
+  // STEP 2: Update game status/pointers BEFORE collecting antes
   const { error: updateError } = await supabase
     .from('games')
     .update({
@@ -119,15 +146,13 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   if (updateError) {
     console.error('[HORSES] Failed to update game:', updateError);
     // Don't throw here - we already created the round, just log the error
-    // The game may still be playable
   }
 
   console.log('[HORSES] Game set to in_progress, pot:', potForRound);
 
-  // STEP 3: Collect antes AFTER round is created and game is in_progress
-  // This ensures we only collect once per successful round creation
+  // STEP 3: Collect antes AFTER round is created and game pointers are set
   if (activePlayers.length > 0 && anteAmount > 0) {
-    const playerIds = activePlayers.map(p => p.id);
+    const playerIds = activePlayers.map((p) => p.id);
     const { error: anteError } = await supabase.rpc('decrement_player_chips', {
       player_ids: playerIds,
       amount: anteAmount,
