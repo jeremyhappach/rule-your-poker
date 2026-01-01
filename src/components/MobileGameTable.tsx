@@ -3486,10 +3486,6 @@ export const MobileGameTable = ({
           // If dice aren't available for a moment, show a stable placeholder row.
           const diceToRender = showDice ? diceArray! : fallbackDice;
 
-          // Always keep the container mounted to avoid blink/flicker during turn handoffs.
-          // If dice aren't available for a moment, show a stable placeholder row.
-          const diceToRender = showDice ? diceArray! : fallbackDice;
-
           const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
 
           return (
@@ -3512,7 +3508,7 @@ export const MobileGameTable = ({
                   </Badge>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-0.5 scale-[0.88] origin-center">
+                <div className="flex items-center justify-center gap-0.5 scale-[0.82] origin-center">
                   {diceToRender.map((die: any, idx: number) => {
                     const canToggle = !!(
                       showDice &&
@@ -4215,29 +4211,27 @@ export const MobileGameTable = ({
                 </div>
               </div>
             ) : null
-          ) : (
-            /* Player timer bar - shown when it's player's turn to decide (mutually exclusive with announcements) */
-            currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
-              <div key={`timer-${currentRound}-${currentTurnPosition}`} className="w-full">
-                <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
-                  <div 
-                    className={`h-full transition-[width] duration-1000 ease-linear ${
-                      timeLeft <= 3 ? 'bg-red-500' : 
-                      timeLeft <= 5 ? 'bg-yellow-500' : 
-                      'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-center text-muted-foreground mt-0.5">
-                  {timeLeft}s remaining
-                </p>
-              </div>
-            ) : null
-          )}
+          ) : isPaused ? (
             /* Paused badge only - LAST HAND moved to page header */
             <div className="flex items-center justify-center gap-2">
               <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
+            </div>
+          ) : currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
+            /* Player timer bar - shown when it's player's turn to decide */
+            <div key={`timer-${currentRound}-${currentTurnPosition}`} className="w-full">
+              <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
+                <div 
+                  className={`h-full transition-[width] duration-1000 ease-linear ${
+                    timeLeft <= 3 ? 'bg-red-500' : 
+                    timeLeft <= 5 ? 'bg-yellow-500' : 
+                    'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-center text-muted-foreground mt-0.5">
+                {timeLeft}s remaining
+              </p>
             </div>
           ) : isGameOver && lastRoundResult && !(
             gameType !== 'holm-game' && (
