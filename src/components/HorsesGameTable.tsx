@@ -442,81 +442,83 @@ export function HorsesGameTable({
 
     const run = async () => {
       const botId = currentPlayer.id;
-      console.log("[HORSES] bot loop start", { roundId: currentRoundId, botId, token });
 
-      // Atomic single-driver claim to prevent multi-client bot turn fights (turn flashing).
-      let controllerId = horsesState.botControllerUserId ?? null;
-
-      if (!controllerId) {
-        const { data, error } = await supabase.rpc("claim_horses_bot_controller", {
-          _round_id: currentRoundId,
-        });
-
-        if (error) {
-          console.error("[HORSES] Failed to claim bot controller (atomic):", error);
-        } else {
-          controllerId = (data as any)?.botControllerUserId ?? null; // eslint-disable-line @typescript-eslint/no-explicit-any
-        }
-      }
-
-      // Fallback (older rounds / unexpected null)
-      controllerId =
-        controllerId ??
-        (turnOrder
-          .map((id) => players.find((p) => p.id === id))
-          .find((p) => p && !p.is_bot)?.user_id ?? null);
-
-      if (controllerId && controllerId !== currentUserId) return;
-
-      if (cancelled || botRunTokenRef.current !== token) return;
-
-      // Preflight: read the latest horses_state to avoid acting on stale props.
-      const { data: roundRow, error: roundErr } = await supabase
-        .from("rounds")
-        .select("horses_state")
-        .eq("id", currentRoundId)
-        .maybeSingle();
-
-      if (cancelled || botRunTokenRef.current !== token) return;
-
-      if (roundErr) {
-        console.error("[HORSES] Failed to preflight round state:", roundErr);
-      }
-
-      const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-      // If the DB already moved the turn, do nothing.
-      if (latestState?.currentTurnPlayerId && latestState.currentTurnPlayerId !== botId) {
-        console.log("[HORSES] bot loop abort: turn already moved", {
-          roundId: currentRoundId,
-          expectedBotId: botId,
-          currentTurnPlayerId: latestState.currentTurnPlayerId,
-        });
-        return;
-      }
-
-       const latestBotState = latestState?.playerStates?.[botId];
-
-       // If bot already completed but the turn is still stuck on the bot, advance only.
-       if (latestState && latestBotState?.isComplete && latestState.currentTurnPlayerId === botId) {
-         console.warn("[HORSES] bot already complete but turn stuck; advancing only", {
-           roundId: currentRoundId,
-           botId,
-         });
-
-         await horsesAdvanceTurn(currentRoundId, botId);
-         return;
-       }
-
-      if (latestBotState?.isComplete) {
-        console.log("[HORSES] bot loop abort: bot already complete", { roundId: currentRoundId, botId });
-        return;
-      }
-
+      // Lock immediately to prevent effect re-runs from starting a second bot loop before the first sets its lock.
       if (botProcessingRef.current.has(botId)) return;
       botProcessingRef.current.add(botId);
 
       try {
+        console.log("[HORSES] bot loop start", { roundId: currentRoundId, botId, token });
+
+        // Atomic single-driver claim to prevent multi-client bot turn fights (turn flashing).
+        let controllerId = horsesState.botControllerUserId ?? null;
+
+        if (!controllerId) {
+          const { data, error } = await supabase.rpc("claim_horses_bot_controller", {
+            _round_id: currentRoundId,
+          });
+
+          if (error) {
+            console.error("[HORSES] Failed to claim bot controller (atomic):", error);
+          } else {
+            controllerId = (data as any)?.botControllerUserId ?? null; // eslint-disable-line @typescript-eslint/no-explicit-any
+          }
+        }
+
+        // Fallback (older rounds / unexpected null)
+        controllerId =
+          controllerId ??
+          (turnOrder
+            .map((id) => players.find((p) => p.id === id))
+            .find((p) => p && !p.is_bot)?.user_id ?? null);
+
+        if (controllerId && controllerId !== currentUserId) return;
+
+        if (cancelled || botRunTokenRef.current !== token) return;
+
+        // Preflight: read the latest horses_state to avoid acting on stale props.
+        const { data: roundRow, error: roundErr } = await supabase
+          .from("rounds")
+          .select("horses_state")
+          .eq("id", currentRoundId)
+          .maybeSingle();
+
+        if (cancelled || botRunTokenRef.current !== token) return;
+
+        if (roundErr) {
+          console.error("[HORSES] Failed to preflight round state:", roundErr);
+        }
+
+        const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        // If the DB already moved the turn, do nothing.
+        if (latestState?.currentTurnPlayerId && latestState.currentTurnPlayerId !== botId) {
+          console.log("[HORSES] bot loop abort: turn already moved", {
+            roundId: currentRoundId,
+            expectedBotId: botId,
+            currentTurnPlayerId: latestState.currentTurnPlayerId,
+          });
+          return;
+        }
+
+         const latestBotState = latestState?.playerStates?.[botId];
+
+         // If bot already completed but the turn is still stuck on the bot, advance only.
+         if (latestState && latestBotState?.isComplete && latestState.currentTurnPlayerId === botId) {
+           console.warn("[HORSES] bot already complete but turn stuck; advancing only", {
+             roundId: currentRoundId,
+             botId,
+           });
+
+           await horsesAdvanceTurn(currentRoundId, botId);
+           return;
+         }
+
+        if (latestBotState?.isComplete) {
+          console.log("[HORSES] bot loop abort: bot already complete", { roundId: currentRoundId, botId });
+          return;
+        }
+
         // Prefer the freshest state we just read.
         let stateForWrites: HorsesStateFromDB = latestState
           ? controllerId
@@ -737,7 +739,7 @@ export function HorsesGameTable({
         game_type: "horses",
       });
       
-      toast.success(`${winnerName} wins $${actualPot} with ${winnerResult.result.description}!`);
+      // Note: no toast here; the table already shows the dealer announcement.
 
       // Transition game to game_over and reset pot
       await supabase
