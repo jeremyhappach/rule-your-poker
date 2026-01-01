@@ -95,29 +95,29 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   };
 
   // Get target position on pot box edge based on VISUAL slot position (closest edge to player)
-  // Pot box position: Holm = bottom at 35%, 3-5-7 = center at 50%, Horses = higher at 30%
+  // Pot box position: Holm = bottom at 35%, Dice games = bottom at 36%, 3-5-7 = center at 50%
   // We calculate center and then offset to the nearest edge based on where the player chip starts
   const getPotBoxTarget = (slotIndex: number, rect: DOMRect, gType: string | null | undefined): { x: number; y: number } => {
     const centerX = rect.width / 2;
 
     const isHolm = gType === 'holm-game';
-    const isHorses = gType === 'horses';
+    const isDiceGame = gType === 'horses' || gType === 'ship-captain-crew';
 
-    // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm/Horses, px-8 py-3 for 3-5-7)
-    // Holm/Horses: ~90px wide, ~32px tall
+    // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm/Dice, px-8 py-3 for 3-5-7)
+    // Holm/Dice: ~90px wide, ~32px tall
     // 3-5-7: ~130px wide, ~56px tall
-    const potHalfWidth = (isHolm || isHorses) ? 50 : 70;
-    const potHalfHeight = (isHolm || isHorses) ? 20 : 32;
+    const potHalfWidth = (isHolm || isDiceGame) ? 50 : 70;
+    const potHalfHeight = (isHolm || isDiceGame) ? 20 : 32;
 
     // Calculate pot center Y based on CSS positioning
     // Holm: "top-[35%] -translate-y-full" means bottom edge at 35%
-    // Horses: "top-[30%] -translate-y-full" means bottom edge at 30%
+    // Dice games (Horses/SCC): "top-[36%] -translate-y-full" means bottom edge at 36%
     // 3-5-7: "top-1/2 -translate-y-1/2" means center at 50%
     let potBottomY: number;
     if (isHolm) {
       potBottomY = rect.height * 0.35;
-    } else if (isHorses) {
-      potBottomY = rect.height * 0.30;
+    } else if (isDiceGame) {
+      potBottomY = rect.height * 0.36;
     } else {
       potBottomY = rect.height * 0.5 + potHalfHeight;
     }
