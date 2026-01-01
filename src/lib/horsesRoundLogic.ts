@@ -39,11 +39,9 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   const activePlayers = (players || []).filter(p => !p.sitting_out);
   const anteAmount = game.ante_amount || 2;
 
-  // Only collect antes from players who can actually pay (chips >= anteAmount)
-  const playersWhoCanPay = activePlayers.filter(p => p.chips >= anteAmount);
-  
-  if (playersWhoCanPay.length > 0 && anteAmount > 0) {
-    const playerIds = playersWhoCanPay.map(p => p.id);
+  // Collect antes from all active players (can go negative)
+  if (activePlayers.length > 0 && anteAmount > 0) {
+    const playerIds = activePlayers.map(p => p.id);
     const { error: anteError } = await supabase.rpc('decrement_player_chips', {
       player_ids: playerIds,
       amount: anteAmount,
@@ -52,14 +50,12 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     if (anteError) {
       console.error('[HORSES] ERROR collecting antes:', anteError);
     } else {
-      console.log('[HORSES] Antes collected from', playerIds.length, 'players (of', activePlayers.length, 'active), amount:', anteAmount);
+      console.log('[HORSES] Antes collected from', playerIds.length, 'players, amount:', anteAmount);
     }
-  } else {
-    console.log('[HORSES] No players can pay ante of', anteAmount, '- pot will be', game.pot || 0);
   }
 
-  // Calculate pot: previous pot (for re-ante/tie) + new antes from players who paid
-  const newAnteTotal = playersWhoCanPay.length * anteAmount;
+  // Calculate pot: previous pot (for re-ante/tie) + new antes
+  const newAnteTotal = activePlayers.length * anteAmount;
   const potForRound = (isFirstHand ? 0 : (game.pot || 0)) + newAnteTotal;
 
   const newRoundNumber = isFirstHand ? 1 : (game.current_round || 0) + 1;
