@@ -37,16 +37,14 @@ export const GameSelection = ({
     {
       id: "horses",
       name: "Horses",
-      description: "Dice game",
+      description: "5 dice, wilds & of-a-kind",
       enabled: true,
-      comingSoon: true,
     },
     {
       id: "ship-captain-crew",
       name: "Ship Captain Crew",
-      description: "Dice game",
+      description: "Get 6-5-4, then max cargo",
       enabled: true,
-      comingSoon: true,
     },
   ];
 
@@ -208,7 +206,7 @@ export const GameSelection = ({
               {diceGames.map((game) => (
                 <button
                   key={game.id}
-                  onClick={() => handleGameSelect(game.id, game.comingSoon)}
+                  onClick={() => handleGameSelect(game.id)}
                   className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
                 >
                   <div className="space-y-2">
