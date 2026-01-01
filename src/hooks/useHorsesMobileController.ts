@@ -327,9 +327,14 @@ export function useHorsesMobileController({
     (index: number) => {
       if (!enabled) return;
       if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3) return;
-      setLocalHand((prev) => toggleHold(prev, index));
+
+      // IMPORTANT (mobile): persist holds immediately.
+      // Otherwise the next realtime/DB sync can overwrite local holds and it feels like it "won't hold".
+      const nextHand = toggleHold(localHand, index);
+      setLocalHand(nextHand);
+      void saveMyState(nextHand, false);
     },
-    [enabled, isMyTurn, localHand.isComplete, localHand.rollsRemaining],
+    [enabled, isMyTurn, localHand, saveMyState],
   );
 
   const handleLockIn = useCallback(async () => {
