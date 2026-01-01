@@ -19,6 +19,7 @@ import {
   SCCHandResult,
   SCCDie as SCCDieType,
   createInitialSCCHand,
+  reconstructSCCHand,
   rollSCCDice,
   lockInSCCHand,
   evaluateSCCHand,
@@ -253,11 +254,20 @@ export function useHorsesMobileController({
     if (Date.now() - lastLocalEditAtRef.current < 900) return;
 
     if (myState) {
-      setLocalHand({
-        dice: myState.dice,
-        rollsRemaining: myState.rollsRemaining,
-        isComplete: myState.isComplete,
-      });
+      // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
+      if (isSCC) {
+        setLocalHand(reconstructSCCHand(
+          myState.dice as SCCDieType[],
+          myState.rollsRemaining,
+          myState.isComplete
+        ));
+      } else {
+        setLocalHand({
+          dice: myState.dice,
+          rollsRemaining: myState.rollsRemaining,
+          isComplete: myState.isComplete,
+        });
+      }
     }
   }, [
     enabled,
@@ -909,11 +919,18 @@ export function useHorsesMobileController({
         if (latestBotState?.isComplete) return;
 
         let botHand: HorsesHand | SCCHand = latestBotState
-          ? {
-              dice: latestBotState.dice as any,
-              rollsRemaining: latestBotState.rollsRemaining,
-              isComplete: latestBotState.isComplete,
-            }
+          ? (isSCC 
+              ? reconstructSCCHand(
+                  latestBotState.dice as SCCDieType[],
+                  latestBotState.rollsRemaining,
+                  latestBotState.isComplete
+                )
+              : {
+                  dice: latestBotState.dice as HorsesDieType[],
+                  rollsRemaining: latestBotState.rollsRemaining,
+                  isComplete: latestBotState.isComplete,
+                }
+            )
           : (isSCC ? createInitialSCCHand() : createInitialHand());
 
         // Roll up to 3 times with visible animation

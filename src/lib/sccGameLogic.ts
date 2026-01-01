@@ -55,6 +55,21 @@ export function createInitialSCCHand(): SCCHand {
 }
 
 /**
+ * Reconstruct SCC hand from stored dice state (restores hasShip/hasCaptain/hasCrew flags)
+ * This is needed when loading state from DB since we only store dice array
+ */
+export function reconstructSCCHand(dice: SCCDie[], rollsRemaining: number, isComplete: boolean): SCCHand {
+  return {
+    dice,
+    rollsRemaining,
+    isComplete,
+    hasShip: dice.some(d => d.sccType === 'ship'),
+    hasCaptain: dice.some(d => d.sccType === 'captain'),
+    hasCrew: dice.some(d => d.sccType === 'crew'),
+  };
+}
+
+/**
  * Roll a single die (returns 1-6)
  */
 function rollDie(): number {
