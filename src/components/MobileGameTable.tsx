@@ -3493,18 +3493,35 @@ export const MobileGameTable = ({
             && horsesController.timeLeft !== null;
 
           return (
-            <div className={cn("absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2")}
-                 style={{ pointerEvents: showDice ? 'auto' : 'none' }}>
+            <div
+              className={cn(
+                "absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2",
+              )}
+              style={{ pointerEvents: 'auto' }}
+            >
+              {/* Dealer-style turn announcement */}
+              {horsesController.turnAnnouncement && (
+                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+                  <p className="text-slate-900 font-bold text-sm text-center truncate">
+                    {horsesController.turnAnnouncement}
+                  </p>
+                </div>
+              )}
+
               {/* Timer display */}
               {showTimer && (
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
                   <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span className={cn(
-                    "text-sm font-mono font-bold",
-                    horsesController.timeLeft! <= 5 ? "text-destructive" : 
-                    horsesController.timeLeft! <= 10 ? "text-amber-500" : 
-                    "text-foreground"
-                  )}>
+                  <span
+                    className={cn(
+                      "text-sm font-mono font-bold",
+                      horsesController.timeLeft! <= 5
+                        ? "text-destructive"
+                        : horsesController.timeLeft! <= 10
+                          ? "text-amber-500"
+                          : "text-foreground",
+                    )}
+                  >
                     {horsesController.timeLeft}s
                   </span>
                   {!horsesController.isMyTurn && horsesController.currentTurnPlayerName && (
@@ -3517,24 +3534,27 @@ export const MobileGameTable = ({
 
               {showResult && currentTurnResult ? (
                 <div className="flex flex-col items-center gap-2">
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className={cn(
                       "text-lg px-4 py-1.5 font-bold",
-                      isCurrentTurnWinning && "bg-green-600 text-white"
+                      isCurrentTurnWinning && "bg-green-600 text-white",
                     )}
                   >
                     {currentTurnResult.description}
                   </Badge>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-0.5">
+                <div className="flex items-center justify-center gap-0.5 scale-[0.92] origin-center">
                   {diceToRender.map((die: any, idx: number) => {
-                    // Don't show as held after final roll (rollsRemaining === 0)
-                    const canToggle = !!(showDice && horsesController.isMyTurn && (horsesController.feltDice as any)?.canToggle);
-                    const rollsRemaining = horsesController.localHand?.rollsRemaining ?? 0;
-                    const showHeld = rollsRemaining > 0 && !!die?.isHeld;
-                    
+                    // Only show HOLD visuals while holds are actually interactable.
+                    const canToggle = !!(
+                      showDice &&
+                      horsesController.isMyTurn &&
+                      (horsesController.feltDice as any)?.canToggle
+                    );
+                    const showHeld = !!(canToggle && !!die?.isHeld);
+
                     return (
                       <HorsesDie
                         key={idx}
@@ -3542,17 +3562,13 @@ export const MobileGameTable = ({
                         isHeld={showHeld}
                         isRolling={
                           showDice
-                            ? (horsesController.isMyTurn
-                                ? horsesController.isRolling && !die?.isHeld
-                                : !!(horsesController.feltDice as any)?.isRolling)
+                            ? horsesController.isMyTurn
+                              ? horsesController.isRolling && !die?.isHeld
+                              : !!(horsesController.feltDice as any)?.isRolling
                             : false
                         }
                         canToggle={canToggle}
-                        onToggle={
-                          showDice
-                            ? () => horsesController.handleToggleHold(idx)
-                            : undefined
-                        }
+                        onToggle={showDice ? () => horsesController.handleToggleHold(idx) : undefined}
                         size="md"
                       />
                     );

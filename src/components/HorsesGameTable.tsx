@@ -237,26 +237,30 @@ export function HorsesGameTable({
     ? determineWinners(completedResults.map(r => r.result)).map(i => completedResults[i].playerId)
     : [];
 
-  // Announcement effect: when a player's turn completes, show a toast with their result
+  // Announcement: show dealer-style banner text when a player's turn completes
+  const [turnAnnouncement, setTurnAnnouncement] = useState<string | null>(null);
+  const clearAnnouncementTimerRef = useRef<number | null>(null);
   const announcedTurnsRef = useRef<Set<string>>(new Set());
   const currentTurnState = horsesState?.playerStates?.[currentTurnPlayerId || ""] ?? null;
-  
+
   useEffect(() => {
     if (gamePhase !== "playing") return;
-    if (!currentTurnPlayerId || !currentPlayer) return;
+    if (!currentRoundId || !currentTurnPlayerId || !currentPlayer) return;
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
-    
+
     const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
     if (announcedTurnsRef.current.has(announceKey)) return;
     announcedTurnsRef.current.add(announceKey);
-    
+
     const playerName = getPlayerUsername(currentPlayer);
-    const result = currentTurnState.result;
-    
-    // Format announcement: "Player1 rolled 4 6s!" or "Player1 rolled nothing"
-    toast.info(`${playerName} rolled ${result.description}!`, {
-      duration: 2500,
-    });
+    setTurnAnnouncement(`${playerName} rolled ${currentTurnState.result.description}!`);
+
+    if (clearAnnouncementTimerRef.current) {
+      window.clearTimeout(clearAnnouncementTimerRef.current);
+    }
+    clearAnnouncementTimerRef.current = window.setTimeout(() => {
+      setTurnAnnouncement(null);
+    }, 2500);
   }, [
     gamePhase,
     currentRoundId,
@@ -917,7 +921,7 @@ export function HorsesGameTable({
                             <HorsesDie
                               key={idx}
                               value={die.value}
-                              isHeld={die.isHeld}
+                              isHeld={localHand.rollsRemaining > 0 ? die.isHeld : false}
                               isRolling={isRolling && !die.isHeld}
                               canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
                               onToggle={() => handleToggleHold(idx)}
@@ -975,32 +979,42 @@ export function HorsesGameTable({
           {/* Active Player (fixed section) */}
           <section className="px-3 pb-2" aria-label="Active player">
             <div className="flex justify-center">
-              {currentPlayer ? (
-                (() => {
-                  const playerState = horsesState?.playerStates?.[currentPlayer.id];
-                  const isWinner = winningPlayerIds.includes(currentPlayer.id);
-                  const hasCompleted = playerState?.isComplete || false;
-                  const isMe = currentPlayer.user_id === currentUserId;
+              <div className="w-full max-w-sm flex flex-col items-center gap-2">
+                {turnAnnouncement && (
+                  <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+                    <p className="text-slate-900 font-bold text-sm text-center truncate">
+                      {turnAnnouncement}
+                    </p>
+                  </div>
+                )}
 
-                  return (
-                    <HorsesPlayerArea
-                      username={getPlayerUsername(currentPlayer)}
-                      position={currentPlayer.position}
-                      isCurrentTurn={gamePhase === "playing"}
-                      isCurrentUser={isMe}
-                      handResult={playerState?.result || null}
-                      isWinningHand={isWinner && gamePhase === "complete"}
-                      hasTurnCompleted={hasCompleted}
-                      diceValues={hasCompleted ? playerState?.dice : undefined}
-                      myStatus={isMe ? getMyStatus() : undefined}
-                    />
-                  );
-                })()
-              ) : (
-                <div className="rounded-lg border border-border/50 bg-background/15 px-4 py-3 text-sm text-muted-foreground">
-                  Waiting for the next turn...
-                </div>
-              )}
+                {currentPlayer ? (
+                  (() => {
+                    const playerState = horsesState?.playerStates?.[currentPlayer.id];
+                    const isWinner = winningPlayerIds.includes(currentPlayer.id);
+                    const hasCompleted = playerState?.isComplete || false;
+                    const isMe = currentPlayer.user_id === currentUserId;
+
+                    return (
+                      <HorsesPlayerArea
+                        username={getPlayerUsername(currentPlayer)}
+                        position={currentPlayer.position}
+                        isCurrentTurn={gamePhase === "playing"}
+                        isCurrentUser={isMe}
+                        handResult={playerState?.result || null}
+                        isWinningHand={isWinner && gamePhase === "complete"}
+                        hasTurnCompleted={hasCompleted}
+                        diceValues={hasCompleted ? playerState?.dice : undefined}
+                        myStatus={isMe ? getMyStatus() : undefined}
+                      />
+                    );
+                  })()
+                ) : (
+                  <div className="rounded-lg border border-border/50 bg-background/15 px-4 py-3 text-sm text-muted-foreground">
+                    Waiting for the next turn...
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 

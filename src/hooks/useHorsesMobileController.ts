@@ -157,6 +157,8 @@ export function useHorsesMobileController({
 
   // Timer state for turn countdown
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [turnAnnouncement, setTurnAnnouncement] = useState<string | null>(null);
+  const clearAnnouncementTimerRef = useRef<number | null>(null);
   const timeoutProcessedRef = useRef<string | null>(null);
 
   const activePlayers = useMemo(
@@ -537,6 +539,8 @@ export function useHorsesMobileController({
   ]);
 
   // Timer countdown effect - calculate time remaining from deadline
+  // NOTE: If no server deadline is present yet, we still show a local countdown for UI,
+  // but we DO NOT process timeouts unless a real deadline exists.
   useEffect(() => {
     if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) {
       setTimeLeft(null);
@@ -550,9 +554,17 @@ export function useHorsesMobileController({
     }
 
     const deadline = horsesState?.turnDeadline;
+
+    // Fallback UI countdown when older rounds/clients don't provide a turnDeadline yet.
     if (!deadline) {
-      setTimeLeft(null);
-      return;
+      setTimeLeft(HORSES_TURN_TIMER_SECONDS);
+      const interval = window.setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev === null) return HORSES_TURN_TIMER_SECONDS;
+          return Math.max(0, prev - 1);
+        });
+      }, 1000);
+      return () => window.clearInterval(interval);
     }
 
     const updateTimeLeft = () => {
@@ -571,21 +583,28 @@ export function useHorsesMobileController({
     }
 
     // Update every second
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       const remaining = updateTimeLeft();
       if (remaining <= 0) {
-        clearInterval(interval);
+        window.clearInterval(interval);
       }
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, [enabled, gamePhase, currentTurnPlayerId, currentTurnPlayer?.is_bot, horsesState?.turnDeadline]);
+    return () => window.clearInterval(interval);
+  }, [
+    enabled,
+    gamePhase,
+    currentTurnPlayerId,
+    currentTurnPlayer?.is_bot,
+    horsesState?.turnDeadline,
+  ]);
 
   // Timeout handler - auto-complete turn and mark player for sit-out
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
     if (!currentRoundId || !currentTurnPlayerId) return;
     if (currentTurnPlayer?.is_bot) return; // Bots handle themselves
+    if (!horsesState?.turnDeadline) return; // Only process timeouts when a real server deadline exists
     if (timeLeft === null || timeLeft > 0) return;
 
     // Only the player whose turn it is OR the bot controller should handle the timeout
@@ -603,17 +622,19 @@ export function useHorsesMobileController({
 
       // Get current player state
       const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
-      
+
       // If player hasn't rolled yet, give them a forced roll result
       let result;
       if (!playerState || playerState.rollsRemaining === 3) {
         // Never rolled - create a random hand
-        const forcedDice = Array(5).fill(null).map(() => ({
-          value: Math.floor(Math.random() * 6) + 1,
-          isHeld: false,
-        }));
+        const forcedDice = Array(5)
+          .fill(null)
+          .map(() => ({
+            value: Math.floor(Math.random() * 6) + 1,
+            isHeld: false,
+          }));
         result = evaluateHand(forcedDice);
-        
+
         // Save the forced state
         await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
           dice: forcedDice,
@@ -633,10 +654,7 @@ export function useHorsesMobileController({
       }
 
       // Mark player to sit out next hand (disconnect/timeout penalty)
-      await supabase
-        .from("players")
-        .update({ sit_out_next_hand: true })
-        .eq("id", currentTurnPlayerId);
+      await supabase.from("players").update({ sit_out_next_hand: true }).eq("id", currentTurnPlayerId);
 
       toast.info(`${getPlayerUsername(currentTurnPlayer!)} timed out - sitting out next hand`);
 
@@ -656,6 +674,7 @@ export function useHorsesMobileController({
     currentUserId,
     candidateBotControllerUserId,
     timeLeft,
+    horsesState?.turnDeadline,
     horsesState?.playerStates,
     advanceToNextTurn,
     getPlayerUsername,
@@ -1196,5 +1215,7 @@ export function useHorsesMobileController({
     // Timer state
     timeLeft,
     maxTime: HORSES_TURN_TIMER_SECONDS,
+    // Turn announcement
+    turnAnnouncement,
   };
 }
