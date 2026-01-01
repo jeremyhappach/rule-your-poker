@@ -428,6 +428,7 @@ export const MobileGameTable = ({
     dealerPosition: dealerPosition ?? 1,
     currentRoundId: horsesRoundId ?? null,
     horsesState: (horsesState as any) ?? null,
+    gameType: gameType ?? 'horses',
   });
 
   // Tab state - use external if provided, otherwise internal
@@ -2653,7 +2654,8 @@ export const MobileGameTable = ({
     const nameElement = (
       <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
         {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
-        {player.is_bot && player.profiles?.aggression_level && (
+        {/* Only show aggression level for card games, not dice games */}
+        {!isDiceGame && player.is_bot && player.profiles?.aggression_level && (
           <span className="text-purple-300 ml-0.5">
             ({getAggressionAbbreviation(player.profiles.aggression_level)})
           </span>
