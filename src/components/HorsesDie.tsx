@@ -94,15 +94,17 @@ export function HorsesDie({
 
     const dotClass = cn(
       dotSize,
-      "rounded-full",
-      v === 1 ? "bg-destructive" : "bg-foreground/90",
+      "rounded-full bg-foreground/90",
     );
+
+    // Special styling for 1s (wild) - use gold outline on the die itself, not red pip
+    const isWild = v === 1;
 
     switch (v) {
       case 1:
         return (
           <div className="flex items-center justify-center w-full h-full">
-            <div className={cn(dotClass, "w-4 h-4")} />
+            <div className={cn(dotClass, "w-4 h-4 bg-poker-gold")} />
           </div>
         );
       case 2:
@@ -181,6 +183,9 @@ export function HorsesDie({
     }
   };
 
+  // Check if this die shows a wild (1)
+  const isWildDie = displayValue === 1 && !animating;
+
   return (
     <button
       type="button"
@@ -195,14 +200,21 @@ export function HorsesDie({
         animating && "animate-dice-shake",
         isHeld
           ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
-          : "bg-card border-border shadow-sm",
-        canToggle && !isHeld && "hover:border-primary/60 cursor-pointer active:scale-95",
+          : isWildDie
+            ? "bg-card border-poker-gold shadow-md ring-2 ring-poker-gold/50"
+            : "bg-card border-border shadow-sm",
+        canToggle && !isHeld && !isWildDie && "hover:border-primary/60 cursor-pointer active:scale-95",
+        canToggle && !isHeld && isWildDie && "hover:border-poker-gold cursor-pointer active:scale-95",
         canToggle && isHeld && "hover:border-amber-600 cursor-pointer active:scale-95",
         !canToggle && "cursor-default opacity-95",
       )}
       style={{
-        // Add glow effect during roll
-        boxShadow: animating ? '0 0 12px 2px rgba(251, 191, 36, 0.6)' : undefined,
+        // Add glow effect during roll or for wild dice
+        boxShadow: animating 
+          ? '0 0 12px 2px rgba(251, 191, 36, 0.6)' 
+          : isWildDie 
+            ? '0 0 8px 1px rgba(212, 175, 55, 0.5)' 
+            : undefined,
       }}
     >
       {renderDots()}
