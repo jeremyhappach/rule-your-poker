@@ -20,6 +20,7 @@ import {
   SCCHandResult,
   SCCDie as SCCDieType,
   createInitialSCCHand,
+  reconstructSCCHand,
   rollSCCDice,
   lockInSCCHand,
   evaluateSCCHand,
@@ -233,11 +234,20 @@ export function HorsesGameTable({
     if (Date.now() - lastLocalEditAtRef.current < 700) return;
 
     if (myState && isMyTurn) {
-      setLocalHand({
-        dice: myState.dice,
-        rollsRemaining: myState.rollsRemaining,
-        isComplete: myState.isComplete,
-      });
+      // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
+      if (isSCC) {
+        setLocalHand(reconstructSCCHand(
+          myState.dice as SCCDieType[],
+          myState.rollsRemaining,
+          myState.isComplete
+        ));
+      } else {
+        setLocalHand({
+          dice: myState.dice,
+          rollsRemaining: myState.rollsRemaining,
+          isComplete: myState.isComplete,
+        });
+      }
     }
   }, [isMyTurn, currentRoundId, currentTurnPlayerId, myState?.rollsRemaining, myState?.isComplete]);
 
@@ -644,16 +654,18 @@ export function HorsesGameTable({
         // Initialize bot hand based on game type
         const isSCCGame = gameType === 'ship-captain-crew';
         let botHand: HorsesHand | SCCHand = stateForWrites?.playerStates?.[botId]
-          ? {
-              dice: stateForWrites.playerStates[botId].dice as any,
-              rollsRemaining: stateForWrites.playerStates[botId].rollsRemaining,
-              isComplete: stateForWrites.playerStates[botId].isComplete,
-              ...(isSCCGame ? {
-                hasShip: (stateForWrites.playerStates[botId].dice as SCCDieType[]).some(d => d.sccType === 'ship'),
-                hasCaptain: (stateForWrites.playerStates[botId].dice as SCCDieType[]).some(d => d.sccType === 'captain'),
-                hasCrew: (stateForWrites.playerStates[botId].dice as SCCDieType[]).some(d => d.sccType === 'crew'),
-              } : {}),
-            } as any
+          ? (isSCCGame 
+              ? reconstructSCCHand(
+                  stateForWrites.playerStates[botId].dice as SCCDieType[],
+                  stateForWrites.playerStates[botId].rollsRemaining,
+                  stateForWrites.playerStates[botId].isComplete
+                )
+              : {
+                  dice: stateForWrites.playerStates[botId].dice as HorsesDieType[],
+                  rollsRemaining: stateForWrites.playerStates[botId].rollsRemaining,
+                  isComplete: stateForWrites.playerStates[botId].isComplete,
+                }
+            )
           : (isSCCGame ? createInitialSCCHand() : createInitialHand());
 
         // Roll up to 3 times with visible animation
