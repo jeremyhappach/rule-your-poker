@@ -220,6 +220,11 @@ interface MobileGameTableProps {
   holmWinPotAmount?: number;
   holmWinWinnerPosition?: number;
   onHolmWinPotAnimationComplete?: () => void;
+  // Horses win pot animation props (winner takes pot at game end)
+  horsesWinPotTriggerId?: string | null;
+  horsesWinPotAmount?: number;
+  horsesWinWinnerPosition?: number;
+  onHorsesWinPotAnimationComplete?: () => void;
   // 3-5-7 win animation props (player wins final leg)
   threeFiveSevenWinTriggerId?: string | null;
   threeFiveSevenWinPotAmount?: number;
@@ -350,6 +355,10 @@ export const MobileGameTable = ({
   holmWinPotAmount = 0,
   holmWinWinnerPosition = 1,
   onHolmWinPotAnimationComplete,
+  horsesWinPotTriggerId,
+  horsesWinPotAmount = 0,
+  horsesWinWinnerPosition = 1,
+  onHorsesWinPotAnimationComplete,
   threeFiveSevenWinTriggerId,
   threeFiveSevenWinPotAmount = 0,
   threeFiveSevenWinnerId,
@@ -3164,6 +3173,30 @@ export const MobileGameTable = ({
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false); // Clear POT-OUT flag
               onHolmWinPotAnimationComplete?.();
+            }}
+          />
+        )}
+        
+        {/* Horses Win Pot Animation (winner takes pot at game end) */}
+        {horsesWinPotTriggerId && (
+          <HolmWinPotAnimation
+            triggerId={horsesWinPotTriggerId}
+            amount={horsesWinPotAmount}
+            winnerPosition={horsesWinWinnerPosition}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            isCurrentPlayerWinner={currentPlayer?.position === horsesWinWinnerPosition}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            onAnimationStart={() => {
+              setPotOutAnimationActive(true);
+              setDisplayedPot(0);
+              console.log('[HORSES WIN] POT-OUT animation started');
+            }}
+            onAnimationComplete={() => {
+              console.log('[HORSES WIN] Animation complete');
+              setHolmWinPotHiddenUntilReset(true);
+              setPotOutAnimationActive(false);
+              onHorsesWinPotAnimationComplete?.();
             }}
           />
         )}
