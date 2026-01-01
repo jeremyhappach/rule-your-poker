@@ -131,6 +131,10 @@ export function HorsesGameTable({
   const botRunTokenRef = useRef(0);
   const initializingRef = useRef(false);
 
+  // Prevent DB rehydration from overwriting the felt while the user is interacting.
+  const lastLocalEditAtRef = useRef<number>(0);
+  const myTurnKeyRef = useRef<string | null>(null);
+
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{
     playerId: string;
@@ -191,17 +195,26 @@ export function HorsesGameTable({
 
   // Sync local hand with DB state when it's my turn
   useEffect(() => {
+    if (!isMyTurn) {
+      myTurnKeyRef.current = null;
+      return;
+    }
+
+    const myKey = `${currentRoundId ?? "no-round"}:${currentTurnPlayerId ?? "no-turn"}`;
+    if (myTurnKeyRef.current !== myKey) {
+      myTurnKeyRef.current = myKey;
+    }
+
+    if (Date.now() - lastLocalEditAtRef.current < 700) return;
+
     if (myState && isMyTurn) {
       setLocalHand({
         dice: myState.dice,
         rollsRemaining: myState.rollsRemaining,
         isComplete: myState.isComplete,
       });
-    } else if (isMyTurn && !myState) {
-      // Initialize fresh hand when it becomes my turn
-      setLocalHand(createInitialHand());
     }
-  }, [isMyTurn, myState?.rollsRemaining, myState?.isComplete]);
+  }, [isMyTurn, currentRoundId, currentTurnPlayerId, myState?.rollsRemaining, myState?.isComplete]);
 
   // Calculate winning hands (best result so far among completed players)
   const completedResults = Object.entries(horsesState?.playerStates || {})
@@ -301,6 +314,7 @@ export function HorsesGameTable({
     // Animate for a moment then show result
     setTimeout(async () => {
       const newHand = rollDice(localHand);
+      lastLocalEditAtRef.current = Date.now();
       setLocalHand(newHand);
       setIsRolling(false);
 
@@ -323,6 +337,8 @@ export function HorsesGameTable({
   const handleToggleHold = useCallback((index: number) => {
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3) return;
 
+    lastLocalEditAtRef.current = Date.now();
+
     // Persist holds immediately so DB sync can't revert held dice.
     const nextHand = toggleHold(localHand, index);
     setLocalHand(nextHand);
@@ -334,6 +350,7 @@ export function HorsesGameTable({
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
 
     const lockedHand = lockInHand(localHand);
+    lastLocalEditAtRef.current = Date.now();
     setLocalHand(lockedHand);
 
     const result = evaluateHand(lockedHand.dice);

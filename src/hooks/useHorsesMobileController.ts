@@ -133,6 +133,10 @@ export function useHorsesMobileController({
   const lastFeltDiceRef = useRef<{ playerId: string | null; value: any } | null>(null);
   const lastFeltDiceAtRef = useRef<number>(0);
 
+  // Prevent DB/realtime rehydration from overwriting the local felt while the user is actively tapping.
+  const lastLocalEditAtRef = useRef<number>(0);
+  const myTurnKeyRef = useRef<string | null>(null);
+
   const activePlayers = useMemo(
     () => players.filter((p) => !p.sitting_out).sort((a, b) => a.position - b.position),
     [players],
@@ -187,16 +191,27 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
 
-    if (myState && isMyTurn) {
+    if (!isMyTurn) {
+      myTurnKeyRef.current = null;
+      return;
+    }
+
+    const myKey = `${currentRoundId ?? "no-round"}:${currentTurnPlayerId ?? "no-turn"}`;
+    if (myTurnKeyRef.current !== myKey) {
+      myTurnKeyRef.current = myKey;
+    }
+
+    // If the user just interacted, don't let a stale DB snapshot overwrite their felt.
+    if (Date.now() - lastLocalEditAtRef.current < 700) return;
+
+    if (myState) {
       setLocalHand({
         dice: myState.dice,
         rollsRemaining: myState.rollsRemaining,
         isComplete: myState.isComplete,
       });
-    } else if (isMyTurn && !myState) {
-      setLocalHand(createInitialHand());
     }
-  }, [enabled, isMyTurn, currentTurnPlayerId, myState?.dice, myState?.rollsRemaining, myState?.isComplete]);
+  }, [enabled, isMyTurn, currentRoundId, currentTurnPlayerId, myState?.rollsRemaining, myState?.isComplete]);
 
   // Clear bot display state when turn changes to a non-bot (prevents dice flash)
   useEffect(() => {
@@ -308,6 +323,7 @@ export function useHorsesMobileController({
 
     setTimeout(async () => {
       const newHand = rollDice(localHand);
+      lastLocalEditAtRef.current = Date.now();
       setLocalHand(newHand);
       setIsRolling(false);
 
@@ -328,6 +344,8 @@ export function useHorsesMobileController({
       if (!enabled) return;
       if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3) return;
 
+      lastLocalEditAtRef.current = Date.now();
+
       // IMPORTANT (mobile): persist holds immediately.
       // Otherwise the next realtime/DB sync can overwrite local holds and it feels like it "won't hold".
       const nextHand = toggleHold(localHand, index);
@@ -342,6 +360,7 @@ export function useHorsesMobileController({
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
 
     const lockedHand = lockInHand(localHand);
+    lastLocalEditAtRef.current = Date.now();
     setLocalHand(lockedHand);
 
     const result = evaluateHand(lockedHand.dice);
