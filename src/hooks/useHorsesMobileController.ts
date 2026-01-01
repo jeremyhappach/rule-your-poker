@@ -614,11 +614,13 @@ export function useHorsesMobileController({
       const winnerName = getPlayerUsername(winnerPlayer);
       toast.success(`${winnerName} wins $${pot} with ${winnerResult.result.description}!`);
 
+      // Transition to game_over (same as HorsesGameTable desktop path)
+      // This ensures the GameOverCountdown fires and advances to next game.
       await supabase
         .from("games")
         .update({
-          awaiting_next_round: true,
-          next_round_number: 1,
+          status: "game_over",
+          game_over_at: new Date().toISOString(),
           last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
         })
         .eq("id", gameId);
