@@ -22,10 +22,10 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
         
         <Tabs defaultValue="357" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="357">3-5-7</TabsTrigger>
-            <TabsTrigger value="holm">Holm</TabsTrigger>
-            <TabsTrigger value="horses">Horses</TabsTrigger>
-            <TabsTrigger value="scc">Ship Captain Crew</TabsTrigger>
+            <TabsTrigger value="357" className="text-xs sm:text-sm px-1 sm:px-3">3-5-7</TabsTrigger>
+            <TabsTrigger value="holm" className="text-xs sm:text-sm px-1 sm:px-3">Holm</TabsTrigger>
+            <TabsTrigger value="horses" className="text-xs sm:text-sm px-1 sm:px-3">Horses</TabsTrigger>
+            <TabsTrigger value="scc" className="text-xs sm:text-sm px-1 sm:px-3">SCC</TabsTrigger>
           </TabsList>
           
           <ScrollArea className="h-[60vh] mt-4">
@@ -200,7 +200,6 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li><span className="text-primary font-medium">Five of a Kind</span> - All 5 dice match (e.g., 6-6-6-6-6)</li>
                   <li><span className="text-primary font-medium">Four of a Kind</span> - 4 dice match</li>
-                  <li><span className="text-primary font-medium">Full House</span> - 3 of one + 2 of another</li>
                   <li><span className="text-primary font-medium">Straight</span> - 1-2-3-4-5 or 2-3-4-5-6</li>
                   <li><span className="text-primary font-medium">Three of a Kind</span> - 3 dice match</li>
                   <li><span className="text-primary font-medium">Two Pair</span> - 2 pairs of matching dice</li>
