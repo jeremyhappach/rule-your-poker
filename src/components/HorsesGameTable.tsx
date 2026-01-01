@@ -322,8 +322,12 @@ export function HorsesGameTable({
   // Handle toggle hold
   const handleToggleHold = useCallback((index: number) => {
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3) return;
-    setLocalHand(prev => toggleHold(prev, index));
-  }, [isMyTurn, localHand.isComplete, localHand.rollsRemaining]);
+
+    // Persist holds immediately so DB sync can't revert held dice.
+    const nextHand = toggleHold(localHand, index);
+    setLocalHand(nextHand);
+    void saveMyState(nextHand, false);
+  }, [isMyTurn, localHand, saveMyState]);
 
   // Handle lock in (end turn early)
   const handleLockIn = useCallback(async () => {
