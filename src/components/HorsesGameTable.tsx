@@ -65,6 +65,8 @@ export interface HorsesStateFromDB {
   turnOrder: string[]; // Player IDs in turn order
   /** Single-client bot driver to avoid multi-client state fights */
   botControllerUserId?: string | null;
+  /** ISO timestamp deadline for the current turn */
+  turnDeadline?: string | null;
 }
 
 // Helpers to update horses_state in rounds table.
@@ -675,12 +677,11 @@ export function HorsesGameTable({
 
       if (winningPlayerIds.length > 1) {
         // Tie - trigger re-ante flow
-        toast.info("It's a tie! Everyone re-antes.");
         await supabase
           .from("games")
           .update({
             awaiting_next_round: true,
-            last_round_result: "Tie - everyone re-antes!",
+            last_round_result: "Roll Over",
           })
           .eq("id", gameId);
         return;

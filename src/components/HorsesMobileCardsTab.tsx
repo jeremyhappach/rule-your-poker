@@ -1,18 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
+import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { cn, formatChipValue } from "@/lib/utils";
-import { Lock, RotateCcw } from "lucide-react";
+import { Lock, RotateCcw, Clock } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
+
+interface HorsesMobileCardsTabProps {
+  currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };
+  horses: ReturnType<typeof useHorsesMobileController>;
+  onAutoFoldChange?: (autoFold: boolean) => void;
+}
 
 export function HorsesMobileCardsTab({
   currentUserPlayer,
   horses,
-}: {
-  currentUserPlayer: HorsesPlayerForController;
-  horses: ReturnType<typeof useHorsesMobileController>;
-}) {
+  onAutoFoldChange,
+}: HorsesMobileCardsTabProps) {
   const isWaitingForYourTurn = horses.gamePhase === "playing" && !horses.isMyTurn;
   const hasCompleted = !!horses.myState?.isComplete;
   const myResult = horses.myState?.result ?? null;
@@ -20,11 +26,36 @@ export function HorsesMobileCardsTab({
   // Show dice when it's my turn and I've rolled at least once
   const showMyDice = horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3;
 
+  // Timer display for current turn player
+  const showTimer = horses.gamePhase === "playing" && horses.currentTurnPlayerId && !horses.currentTurnPlayer?.is_bot;
+
   return (
     <div className="px-2 flex flex-col flex-1">
-      {/* Dice display when rolling */}
+      {/* Timer display when someone's turn is active */}
+      {showTimer && horses.timeLeft !== null && (
+        <div className="flex items-center justify-center mb-2">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className={cn(
+              "text-sm font-mono font-bold",
+              horses.timeLeft <= 5 ? "text-destructive" : 
+              horses.timeLeft <= 10 ? "text-amber-500" : 
+              "text-foreground"
+            )}>
+              {horses.timeLeft}s
+            </span>
+            {!horses.isMyTurn && horses.currentTurnPlayerName && (
+              <span className="text-xs text-muted-foreground">
+                ({horses.currentTurnPlayerName})
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Dice display when rolling - LARGER dice, no helper text */}
       {showMyDice && (
-        <div className="flex items-center justify-center gap-1.5 mb-2">
+        <div className="flex items-center justify-center gap-2 mb-3">
           {horses.localHand.dice.map((die, idx) => (
             <HorsesDie
               key={idx}
@@ -33,7 +64,7 @@ export function HorsesMobileCardsTab({
               isRolling={horses.isRolling && !die.isHeld}
               canToggle={horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
               onToggle={() => horses.handleToggleHold(idx)}
-              size="sm"
+              size="lg"
             />
           ))}
         </div>
@@ -80,17 +111,22 @@ export function HorsesMobileCardsTab({
         )}
       </div>
 
-      {/* Small helper text */}
-      <div className="mt-2 flex items-center justify-center">
-        {horses.isMyTurn && horses.localHand.rollsRemaining < 3 && horses.localHand.rollsRemaining > 0 ? (
-          <p className="text-xs text-muted-foreground">Tap dice to hold/unhold</p>
-        ) : (
-          <div className="h-4" />
-        )}
-      </div>
+      {/* Auto-fold checkbox for reconnection */}
+      {currentUserPlayer.auto_fold && (
+        <div className="flex items-center justify-center mt-2">
+          <label className="flex items-center gap-2 text-xs text-amber-500 cursor-pointer">
+            <Checkbox
+              checked={!currentUserPlayer.auto_fold}
+              onCheckedChange={(checked) => onAutoFoldChange?.(!checked)}
+              className="h-4 w-4"
+            />
+            <span>You're sitting out (uncheck to rejoin)</span>
+          </label>
+        </div>
+      )}
 
-      {/* Player info (bottom) */}
-      <div className={cn("flex flex-col gap-1 mt-3 pb-2")}
+      {/* Player info (bottom) - moved down with more spacing */}
+      <div className={cn("flex flex-col gap-1 mt-auto pt-3 pb-2")}
       >
         <div className="flex items-center justify-center gap-3">
           <p className="text-sm font-semibold text-foreground">{currentUserPlayer.profiles?.username || "You"}</p>

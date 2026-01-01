@@ -184,7 +184,7 @@ export async function endHorsesRound(
       .from('games')
       .update({
         awaiting_next_round: true,
-        last_round_result: 'Tie - everyone re-antes!',
+        last_round_result: 'Roll Over',
       })
       .eq('id', gameId);
 
