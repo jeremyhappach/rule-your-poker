@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBotAlias } from "@/lib/botAlias";
+import { snapshotPlayerChips } from "@/lib/gameLogic";
 import {
   HorsesHand,
   HorsesHandResult,
@@ -727,11 +728,24 @@ export function useHorsesMobileController({
   // Handle game complete - award pot to winner
   // Track if we've already processed this round's win to prevent duplicates
   const processedWinRoundRef = useRef<string | null>(null);
+  
+  // CRITICAL: Reset processed ref when gameId changes (new game session)
+  useEffect(() => {
+    processedWinRoundRef.current = null;
+  }, [gameId]);
 
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
     if (winningPlayerIds.length === 0) return;
+    
+    // GUARD: Ensure all active players have completed results before processing
+    // This prevents premature win processing from stale/cached state
+    const activePlayerCount = activePlayers.length;
+    if (completedResults.length < activePlayerCount) {
+      console.log("[HORSES] Not all players complete yet:", completedResults.length, "/", activePlayerCount);
+      return;
+    }
 
     // Prevent duplicate processing
     if (processedWinRoundRef.current === currentRoundId) return;
@@ -820,6 +834,9 @@ export function useHorsesMobileController({
       });
 
       // Note: No toast here - dealer announcement already shows the win message
+      
+      // Snapshot player chips for session history (enables "Run Back" option)
+      await snapshotPlayerChips(gameId, handNumber);
 
       // Transition to game_over and reset pot
       await supabase
