@@ -299,6 +299,69 @@ export function useHorsesMobileController({
     initializeGame();
   }, [enabled, currentRoundId, gameId, horsesState?.turnOrder?.length, activePlayers.length, getTurnOrder]);
 
+  // Recovery: if gamePhase is "playing" but currentTurnPlayerId is null/missing and we have turnOrder,
+  // re-initialize the current turn to the first incomplete player
+  const stuckRecoveryKeyRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    if (!enabled) return;
+    if (!currentRoundId || !gameId) return;
+    if (gamePhase !== "playing") return;
+    if (currentTurnPlayerId) return; // Not stuck - there's a current player
+    if (!turnOrder.length) return; // No turn order yet - init effect will handle
+    if (!currentUserId) return;
+    
+    // Only let one client (bot controller or first human) attempt recovery
+    const iAmController = candidateBotControllerUserId === currentUserId;
+    if (!iAmController) return;
+    
+    const key = `recovery:${currentRoundId}`;
+    if (stuckRecoveryKeyRef.current === key) return;
+    stuckRecoveryKeyRef.current = key;
+    
+    console.warn("[HORSES] Detected stuck game - attempting recovery", { currentRoundId, turnOrder });
+    
+    const recover = async () => {
+      // Find the first player who hasn't completed their turn
+      const nextPlayerId = turnOrder.find((pid) => {
+        const state = horsesState?.playerStates?.[pid];
+        return !state?.isComplete;
+      });
+      
+      if (!nextPlayerId) {
+        // Everyone is complete - set to complete phase
+        console.log("[HORSES] Recovery: all players complete, setting phase to complete");
+        await updateHorsesState(currentRoundId, {
+          ...horsesState!,
+          currentTurnPlayerId: null,
+          gamePhase: "complete",
+        });
+      } else {
+        // Set the next incomplete player as current
+        console.log("[HORSES] Recovery: setting currentTurnPlayerId to", nextPlayerId);
+        await updateHorsesState(currentRoundId, {
+          ...horsesState!,
+          currentTurnPlayerId: nextPlayerId,
+          gamePhase: "playing",
+        });
+      }
+    };
+    
+    // Small delay to avoid race with normal initialization
+    const t = window.setTimeout(recover, 1000);
+    return () => window.clearTimeout(t);
+  }, [
+    enabled,
+    currentRoundId,
+    gameId,
+    gamePhase,
+    currentTurnPlayerId,
+    turnOrder,
+    horsesState,
+    currentUserId,
+    candidateBotControllerUserId,
+  ]);
+
   const saveMyState = useCallback(
     async (hand: HorsesHand, completed: boolean, result?: HorsesHandResult) => {
       if (!enabled) return;

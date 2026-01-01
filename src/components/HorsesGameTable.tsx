@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HorsesDie } from "./HorsesDie";
@@ -280,6 +280,77 @@ export function HorsesGameTable({
 
     initializeGame();
   }, [currentRoundId, activePlayers.length, horsesState?.turnOrder?.length, gameId, getTurnOrder]);
+
+  // Recovery: if gamePhase is "playing" but currentTurnPlayerId is null/missing and we have turnOrder,
+  // re-initialize the current turn to the first incomplete player
+  const stuckRecoveryKeyRef = useRef<string | null>(null);
+  
+  // Candidate bot controller for desktop
+  const candidateBotControllerUserId = useMemo(() => {
+    if (!turnOrder?.length) return null;
+    return (
+      turnOrder
+        .map((id) => players.find((p) => p.id === id))
+        .find((p) => p && !p.is_bot)?.user_id ?? null
+    );
+  }, [turnOrder, players]);
+  
+  useEffect(() => {
+    if (!currentRoundId || !gameId) return;
+    if (gamePhase !== "playing") return;
+    if (currentTurnPlayerId) return; // Not stuck - there's a current player
+    if (!turnOrder.length) return; // No turn order yet - init effect will handle
+    if (!currentUserId) return;
+    
+    // Only let one client (bot controller or first human) attempt recovery
+    const iAmController = candidateBotControllerUserId === currentUserId;
+    if (!iAmController) return;
+    
+    const key = `recovery:${currentRoundId}`;
+    if (stuckRecoveryKeyRef.current === key) return;
+    stuckRecoveryKeyRef.current = key;
+    
+    console.warn("[HORSES] (desktop) Detected stuck game - attempting recovery", { currentRoundId, turnOrder });
+    
+    const recover = async () => {
+      // Find the first player who hasn't completed their turn
+      const nextPlayerId = turnOrder.find((pid) => {
+        const state = horsesState?.playerStates?.[pid];
+        return !state?.isComplete;
+      });
+      
+      if (!nextPlayerId) {
+        // Everyone is complete - set to complete phase
+        console.log("[HORSES] Recovery: all players complete, setting phase to complete");
+        await updateHorsesState(currentRoundId, {
+          ...horsesState!,
+          currentTurnPlayerId: null,
+          gamePhase: "complete",
+        });
+      } else {
+        // Set the next incomplete player as current
+        console.log("[HORSES] Recovery: setting currentTurnPlayerId to", nextPlayerId);
+        await updateHorsesState(currentRoundId, {
+          ...horsesState!,
+          currentTurnPlayerId: nextPlayerId,
+          gamePhase: "playing",
+        });
+      }
+    };
+    
+    // Small delay to avoid race with normal initialization
+    const t = window.setTimeout(recover, 1000);
+    return () => window.clearTimeout(t);
+  }, [
+    currentRoundId,
+    gameId,
+    gamePhase,
+    currentTurnPlayerId,
+    turnOrder,
+    horsesState,
+    currentUserId,
+    candidateBotControllerUserId,
+  ]);
 
   // Save my dice state to DB (atomic per-player update)
   const saveMyState = useCallback(async (hand: HorsesHand, completed: boolean, result?: HorsesHandResult) => {
