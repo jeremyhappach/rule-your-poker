@@ -5277,14 +5277,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     horsesWinPotAmount={horsesWinPotAmount || cachedPotForHorsesWinRef.current}
                     horsesWinWinnerPosition={horsesWinWinnerPosition}
                     onHorsesWinPotAnimationComplete={() => {
-                      // IMPORTANT: For Horses, do NOT auto-start a new game after animation.
-                      // The game is already in game_over status with game_over_at set.
-                      // Let the normal game_over flow (countdown + dealer "Next Game" button) handle it.
-                      console.log('[HORSES WIN] Animation complete, clearing state (dealer will start next game)');
+                      console.log('[HORSES WIN] Animation complete, transitioning to next game');
                       setHorsesWinPotTriggerId(null);
                       cachedPotForHorsesWinRef.current = 0;
-                      // Do NOT call handleGameOverComplete() - that would start a new game immediately
-                      // and cause an infinite ante loop
+                      handleGameOverComplete();
                     }}
                     threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
                     threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}

@@ -16,13 +16,20 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount')
+    .select('current_round, total_hands, pot, ante_amount, status')
     .eq('id', gameId)
     .single();
 
   if (gameError || !game) {
     console.error('[HORSES] Failed to get game:', gameError);
     throw new Error('Failed to get game state');
+  }
+
+  // GUARD: Prevent duplicate round starts (e.g., from polling retries)
+  // If the game is already in_progress, don't create another round or collect more antes
+  if (game.status === 'in_progress') {
+    console.log('[HORSES] Game already in_progress, skipping duplicate startHorsesRound');
+    return;
   }
 
   // Get active players for ante collection
@@ -39,21 +46,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   const activePlayers = (players || []).filter(p => !p.sitting_out);
   const anteAmount = game.ante_amount || 2;
 
-  // Collect antes from all active players (can go negative)
-  if (activePlayers.length > 0 && anteAmount > 0) {
-    const playerIds = activePlayers.map(p => p.id);
-    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: playerIds,
-      amount: anteAmount,
-    });
-
-    if (anteError) {
-      console.error('[HORSES] ERROR collecting antes:', anteError);
-    } else {
-      console.log('[HORSES] Antes collected from', playerIds.length, 'players, amount:', anteAmount);
-    }
-  }
-
   // Calculate pot: previous pot (for re-ante/tie) + new antes
   const newAnteTotal = activePlayers.length * anteAmount;
   const potForRound = (isFirstHand ? 0 : (game.pot || 0)) + newAnteTotal;
@@ -61,7 +53,8 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   const newRoundNumber = isFirstHand ? 1 : (game.current_round || 0) + 1;
   const newHandNumber = (game.total_hands || 0) + 1;
 
-  // Create the round record with the correct pot
+  // STEP 1: Create the round record FIRST (before collecting antes)
+  // This ensures we don't collect antes multiple times if round creation fails
   // NOTE: cards_dealt has a check constraint (2-7) - use 2 as minimum for non-card games
   const { data: roundData, error: roundError } = await supabase
     .from('rounds')
@@ -84,7 +77,8 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
 
   console.log('[HORSES] Round created:', roundData.id, 'pot:', potForRound);
 
-  // Update game status to in_progress with the new pot
+  // STEP 2: Update game status to in_progress BEFORE collecting antes
+  // This prevents retry loops from calling startHorsesRound again
   const { error: updateError } = await supabase
     .from('games')
     .update({
@@ -100,10 +94,28 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
 
   if (updateError) {
     console.error('[HORSES] Failed to update game:', updateError);
-    throw new Error('Failed to update game status');
+    // Don't throw here - we already created the round, just log the error
+    // The game may still be playable
   }
 
   console.log('[HORSES] Game set to in_progress, pot:', potForRound);
+
+  // STEP 3: Collect antes AFTER round is created and game is in_progress
+  // This ensures we only collect once per successful round creation
+  if (activePlayers.length > 0 && anteAmount > 0) {
+    const playerIds = activePlayers.map(p => p.id);
+    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
+      player_ids: playerIds,
+      amount: anteAmount,
+    });
+
+    if (anteError) {
+      console.error('[HORSES] ERROR collecting antes:', anteError);
+      // Don't throw - the game is already in_progress, we'll handle missing antes gracefully
+    } else {
+      console.log('[HORSES] Antes collected from', playerIds.length, 'players, amount:', anteAmount);
+    }
+  }
 }
 
 /**
