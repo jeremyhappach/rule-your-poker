@@ -204,8 +204,11 @@ export function useHorsesMobileController({
       myTurnKeyRef.current = myKey;
     }
 
+    // While rolling (and shortly after interactions), don't let DB snapshots overwrite the felt.
+    if (isRolling) return;
+
     // If the user just interacted, don't let a stale DB snapshot overwrite their felt.
-    if (Date.now() - lastLocalEditAtRef.current < 700) return;
+    if (Date.now() - lastLocalEditAtRef.current < 900) return;
 
     if (myState) {
       setLocalHand({
@@ -214,7 +217,15 @@ export function useHorsesMobileController({
         isComplete: myState.isComplete,
       });
     }
-  }, [enabled, isMyTurn, currentRoundId, currentTurnPlayerId, myState?.rollsRemaining, myState?.isComplete]);
+  }, [
+    enabled,
+    isMyTurn,
+    currentRoundId,
+    currentTurnPlayerId,
+    myState?.rollsRemaining,
+    myState?.isComplete,
+    isRolling,
+  ]);
 
   // Clear bot display state when turn changes to a non-bot (prevents dice flash)
   useEffect(() => {
@@ -367,6 +378,8 @@ export function useHorsesMobileController({
     if (!enabled) return;
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    // Mark interaction immediately so realtime/DB snapshots can't overwrite the felt during the roll animation.
+    lastLocalEditAtRef.current = Date.now();
     setIsRolling(true);
 
     setTimeout(async () => {
