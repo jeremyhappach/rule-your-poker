@@ -22,7 +22,7 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
       const timer = setTimeout(() => {
         setVisible(false);
         onCompleteRef.current?.();
-      }, 2000);
+      }, 1200);
       return () => clearTimeout(timer);
     } else if (!show) {
       // Reset when show becomes false
@@ -60,9 +60,6 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
           <span className="text-red-500 font-black text-3xl sm:text-4xl md:text-5xl tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase">
             NO QUALIFY
           </span>
-        </div>
-        <div className="text-white/80 text-sm sm:text-base font-medium mt-2 bg-black/60 px-4 py-1 rounded">
-          船長がいない! (No Captain!)
         </div>
       </div>
       
