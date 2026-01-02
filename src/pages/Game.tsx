@@ -5175,6 +5175,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <DealerSelection 
                 players={players}
                 onComplete={selectDealer}
+                isHost={isCreator}
               />
             )}
             {(!is357WinAnimationActive && !horsesWinPotTriggerId && (
