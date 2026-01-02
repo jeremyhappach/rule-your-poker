@@ -3,10 +3,11 @@ import noQualifyBg from "@/assets/no-qualify-bg.jpg";
 
 interface NoQualifyAnimationProps {
   show: boolean;
+  playerName?: string;
   onComplete?: () => void;
 }
 
-export const NoQualifyAnimation = ({ show, onComplete }: NoQualifyAnimationProps) => {
+export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
@@ -32,7 +33,7 @@ export const NoQualifyAnimation = ({ show, onComplete }: NoQualifyAnimationProps
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none overflow-hidden">
+    <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none overflow-hidden">
       {/* Background image */}
       <div 
         className="absolute inset-0 bg-cover bg-center animate-scale-in"
@@ -50,6 +51,11 @@ export const NoQualifyAnimation = ({ show, onComplete }: NoQualifyAnimationProps
       
       {/* NO QUALIFY text */}
       <div className="flex flex-col items-center gap-2 animate-scale-in z-10">
+        {playerName && (
+          <div className="text-white/90 text-lg sm:text-xl font-bold mb-2 bg-black/60 px-4 py-1 rounded">
+            {playerName}
+          </div>
+        )}
         <div className="bg-black/80 px-6 py-4 rounded-lg border-2 border-red-500/70 shadow-[0_0_30px_rgba(239,68,68,0.5)]">
           <span className="text-red-500 font-black text-3xl sm:text-4xl md:text-5xl tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase">
             NO QUALIFY

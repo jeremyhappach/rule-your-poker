@@ -8,7 +8,6 @@ import { Lock, RotateCcw, Clock } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { getSCCDisplayOrder, SCCHand } from "@/lib/sccGameLogic";
-import { NoQualifyAnimation } from "./NoQualifyAnimation";
 
 interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };
@@ -35,13 +34,6 @@ export function HorsesMobileCardsTab({
 
   return (
     <div className="px-2 flex flex-col flex-1 relative">
-      {/* No Qualify Animation for SCC games */}
-      {gameType === 'ship-captain-crew' && (
-        <NoQualifyAnimation 
-          show={horses.showNoQualifyAnimation} 
-          onComplete={horses.handleNoQualifyAnimationComplete}
-        />
-      )}
       {/* Timer display when someone's turn is active */}
       {showTimer && horses.timeLeft !== null && (
         <div className="flex items-center justify-center mb-2">
