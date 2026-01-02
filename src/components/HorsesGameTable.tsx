@@ -336,13 +336,21 @@ export function HorsesGameTable({
     const playerStates = horsesState?.playerStates;
     if (!playerStates) return;
     
+    console.log('[MIDNIGHT DEBUG] Checking player states:', Object.keys(playerStates));
+    
     for (const [playerId, state] of Object.entries(playerStates)) {
+      console.log('[MIDNIGHT DEBUG] Player:', playerId, 'isComplete:', state.isComplete, 'result:', state.result);
+      
       if (!state.isComplete || !state.result) continue;
       
       const result = state.result as SCCHandResult;
+      console.log('[MIDNIGHT DEBUG] Result check - isQualified:', result.isQualified, 'cargoSum:', result.cargoSum);
+      
       // Midnight = qualified with cargo of 12 (highest possible)
       if (result.isQualified && result.cargoSum === 12) {
         const midnightKey = `${currentRoundId}:${playerId}`;
+        console.log('[MIDNIGHT DEBUG] Midnight detected! Key:', midnightKey, 'already shown:', midnightShownForRef.current.has(midnightKey));
+        
         if (midnightShownForRef.current.has(midnightKey)) continue;
         
         midnightShownForRef.current.add(midnightKey);
@@ -350,6 +358,7 @@ export function HorsesGameTable({
         const player = players.find(p => p.id === playerId);
         const playerName = player ? getPlayerUsername(player) : null;
         
+        console.log('[MIDNIGHT DEBUG] Showing animation for:', playerName);
         setMidnightPlayerName(playerName);
         setShowMidnightAnimation(true);
         break;
@@ -588,8 +597,9 @@ export function HorsesGameTable({
     // Animate for a moment then show result
     setTimeout(async () => {
       // Use appropriate roll function based on game type
+      // TEMP: Pass true to force Midnight for human player testing
       const newHand = isSCC 
-        ? rollSCCDice(localHand as SCCHand)
+        ? rollSCCDice(localHand as SCCHand, true)
         : rollDice(localHand as HorsesHand);
       lastLocalEditAtRef.current = Date.now();
       setLocalHand(newHand);
