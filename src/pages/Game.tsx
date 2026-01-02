@@ -24,7 +24,7 @@ import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
 
-import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips } from "@/lib/gameLogic";
+import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
@@ -447,6 +447,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
     
+    // Snapshot this player's chips before they leave (for real money games)
+    if (game?.real_money) {
+      const username = currentPlayer.profiles?.username || 'Unknown';
+      await snapshotDepartingPlayer(
+        gameId!, 
+        currentPlayer.id, 
+        currentPlayer.user_id, 
+        currentPlayer.chips, 
+        username,
+        currentPlayer.is_bot
+      );
+    }
+    
     // Stand up = delete player record to become an observer
     const { error } = await supabase
       .from('players')
@@ -480,6 +493,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       navigate('/');
       return;
+    }
+    
+    // Snapshot this player's chips before they leave (for real money games)
+    if (game?.real_money) {
+      const username = currentPlayer.profiles?.username || 'Unknown';
+      await snapshotDepartingPlayer(
+        gameId!, 
+        currentPlayer.id, 
+        currentPlayer.user_id, 
+        currentPlayer.chips, 
+        username,
+        currentPlayer.is_bot
+      );
     }
     
     // Delete the player record entirely
