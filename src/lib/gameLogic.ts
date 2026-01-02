@@ -58,6 +58,53 @@ export async function snapshotPlayerChips(gameId: string, handNumber: number) {
 }
 
 /**
+ * Snapshot a single player's chips when they leave mid-session.
+ * This ensures their final chip balance is captured for accurate session results.
+ */
+export async function snapshotDepartingPlayer(
+  gameId: string, 
+  playerId: string, 
+  userId: string, 
+  chips: number, 
+  username: string,
+  isBot: boolean
+) {
+  console.log('[SNAPSHOT] Snapshotting departing player:', username, 'chips:', chips);
+  
+  // Get the current hand number from the game's total_hands
+  const { data: game, error: gameError } = await supabase
+    .from('games')
+    .select('total_hands')
+    .eq('id', gameId)
+    .maybeSingle();
+  
+  if (gameError || !game) {
+    console.error('[SNAPSHOT] Error fetching game for departing snapshot:', gameError);
+    return;
+  }
+  
+  const handNumber = game.total_hands || 0;
+  
+  const { error: insertError } = await supabase
+    .from('session_player_snapshots')
+    .insert({
+      game_id: gameId,
+      player_id: playerId,
+      user_id: userId,
+      username,
+      chips,
+      is_bot: isBot,
+      hand_number: handNumber
+    });
+  
+  if (insertError) {
+    console.error('[SNAPSHOT] Error inserting departing player snapshot:', insertError);
+  } else {
+    console.log('[SNAPSHOT] Successfully snapshotted departing player:', username);
+  }
+}
+
+/**
  * Get the last known chip count for a user in a session (for rejoining players)
  */
 export async function getLastKnownChips(gameId: string, userId: string): Promise<number | null> {
