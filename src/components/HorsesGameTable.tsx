@@ -1042,6 +1042,7 @@ export function HorsesGameTable({
         getClockwiseDistance={getClockwiseDistance}
         containerRef={tableContainerRef}
         isVisible={gamePhase === "playing" && currentPlayer !== undefined}
+        useFullCoverage={true}
       />
       {isMobile ? (
         <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">
