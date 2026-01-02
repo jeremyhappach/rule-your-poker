@@ -72,21 +72,24 @@ export function reconstructSCCHand(dice: SCCDie[], rollsRemaining: number, isCom
 /**
  * Roll a single die (returns 1-6)
  */
-// TEMP: Counter for forcing Midnight test
-let tempMidnightRollIndex = 0;
 function rollDie(): number {
-  // TEMP: Force Midnight (6-5-4 + 6-6 cargo) for testing
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+// TEMP: Force Midnight dice for testing (only for human players)
+let tempMidnightRollIndex = 0;
+function rollDieForced(): number {
   const forcedRolls = [6, 5, 4, 6, 6]; // Perfect Midnight roll
   const result = forcedRolls[tempMidnightRollIndex % 5];
   tempMidnightRollIndex++;
   return result;
-  // return Math.floor(Math.random() * 6) + 1;
 }
 
 /**
  * Process a roll: apply auto-freeze logic for 6-5-4 in sequence
+ * @param forceMidnight - TEMP: If true, force a perfect Midnight roll for testing
  */
-export function rollSCCDice(hand: SCCHand): SCCHand {
+export function rollSCCDice(hand: SCCHand, forceMidnight: boolean = false): SCCHand {
   if (hand.rollsRemaining <= 0 || hand.isComplete) {
     return hand;
   }
@@ -94,7 +97,7 @@ export function rollSCCDice(hand: SCCHand): SCCHand {
   // Roll all non-held dice
   const newDice = hand.dice.map(die => ({
     ...die,
-    value: die.isHeld ? die.value : rollDie(),
+    value: die.isHeld ? die.value : (forceMidnight ? rollDieForced() : rollDie()),
   }));
 
   // Track what we have
