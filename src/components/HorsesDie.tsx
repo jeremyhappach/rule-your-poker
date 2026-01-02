@@ -223,8 +223,8 @@ export function HorsesDie({
       }}
     >
       {renderDots()}
-      {/* HOLD indicator for held dice */}
-      {isHeld && value > 0 && (
+      {/* HOLD indicator for held dice - only show if more rolls remain */}
+      {isHeld && value > 0 && canToggle && (
         <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wide bg-amber-500 text-amber-950 px-1.5 py-0.5 rounded-sm shadow-sm">
           Hold
         </span>
