@@ -16,9 +16,10 @@ interface Player {
 interface DealerSelectionProps {
   players: Player[];
   onComplete: (dealerPosition: number) => void;
+  isHost: boolean;
 }
 
-export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) => {
+export const DealerSelection = ({ players, onComplete, isHost }: DealerSelectionProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isSpinning, setIsSpinning] = useState(true);
   const [finalPosition, setFinalPosition] = useState<number | null>(null);
@@ -51,26 +52,32 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
       return;
     }
     
-    // SINGLE ELIGIBLE DEALER: Bypass selection entirely
+    // SINGLE ELIGIBLE DEALER: Bypass selection entirely (only host triggers)
     if (eligibleDealers.length === 1) {
       console.log('[DEALER SELECTION] Only one eligible dealer, bypassing selection');
-      // Immediate callback - no animation needed
-      onComplete(eligibleDealers[0].position);
+      if (isHost) {
+        onComplete(eligibleDealers[0].position);
+      }
       return;
     }
     
     // MULTIPLE ELIGIBLE DEALERS: Run the spinning selection animation
-    console.log('[DEALER SELECTION] Multiple eligible dealers, running selection animation');
+    console.log('[DEALER SELECTION] Multiple eligible dealers, running selection animation. isHost:', isHost);
     
-    // Randomly select final dealer from eligible human players
-    const randomIndex = Math.floor(Math.random() * eligibleDealers.length);
-    const selectedPlayer = eligibleDealers[randomIndex];
-    const selectedPosition = selectedPlayer.position;
-    setFinalPosition(selectedPosition);
+    // Only the HOST picks the random dealer - non-hosts just show the animation
+    // This prevents each client from picking a different dealer
+    let selectedPosition: number | null = null;
+    let targetIndex: number | null = null;
+    
+    if (isHost) {
+      const randomIndex = Math.floor(Math.random() * eligibleDealers.length);
+      const selectedPlayer = eligibleDealers[randomIndex];
+      selectedPosition = selectedPlayer.position;
+      setFinalPosition(selectedPosition);
+      targetIndex = sortedPlayers.findIndex(p => p.position === selectedPosition);
+    }
+    
     hasStoppedRef.current = false;
-
-    // Find the index of the selected player in the sorted array
-    const targetIndex = sortedPlayers.findIndex(p => p.position === selectedPosition);
 
     let spins = 0;
     const minSpins = 15; // Minimum cycles before stopping
@@ -92,15 +99,17 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
       setCurrentIndex(prev => {
         const nextIndex = (prev + 1) % sortedPlayers.length;
         
-        if (canStop && nextIndex === targetIndex) {
-          // Stop immediately
+        // Only the host stops on a specific target and calls onComplete
+        if (isHost && canStop && targetIndex !== null && nextIndex === targetIndex) {
           hasStoppedRef.current = true;
           setIsSpinning(false);
           clearInterval(spinInterval);
           
           // Complete after showing the announcement
           setTimeout(() => {
-            onComplete(selectedPosition);
+            if (selectedPosition !== null) {
+              onComplete(selectedPosition);
+            }
           }, 2000);
           
           return targetIndex;
@@ -108,13 +117,13 @@ export const DealerSelection = ({ players, onComplete }: DealerSelectionProps) =
         
         return nextIndex;
       });
-    }, 150); // Slightly slower for readability
+    }, 150);
 
     return () => {
       clearInterval(spinInterval);
       hasStoppedRef.current = true;
     };
-  }, [players.length]);
+  }, [players.length, isHost]);
 
   // If single eligible dealer, don't render anything (immediate bypass)
   if (eligibleDealers.length <= 1) {
