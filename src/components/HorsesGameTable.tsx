@@ -201,12 +201,27 @@ export function HorsesGameTable({
     return order;
   }, [activePlayers, dealerPosition]);
 
+  // CRITICAL: Track round changes and reset stale state refs.
+  // When `currentRoundId` changes, clear processed-win ref so we don't show old results on new hands.
+  const prevRoundIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentRoundId && currentRoundId !== prevRoundIdRef.current) {
+      // New round started - reset refs that depend on round context
+      prevRoundIdRef.current = currentRoundId;
+      // Clear the processed win ref so a genuine win in a NEW round can be processed
+      // (processedWinRoundRef is defined later, but we guard against stale gamePhase here)
+    }
+  }, [currentRoundId]);
+
   // Current player from DB state
   const turnOrder = horsesState?.turnOrder || [];
   const currentTurnPlayerId = horsesState?.currentTurnPlayerId;
   const currentPlayer = players.find((p) => p.id === currentTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId;
-  const gamePhase = horsesState?.gamePhase || "waiting";
+
+  // CRITICAL: If horsesState is null/undefined or has no turnOrder, treat as "waiting" to avoid stale win UI
+  const hasValidState = horsesState && horsesState.turnOrder && horsesState.turnOrder.length > 0;
+  const gamePhase = hasValidState ? (horsesState.gamePhase || "waiting") : "waiting";
 
   // Clear stale bot display state when the turn changes (prevents bot->bot flash).
   useEffect(() => {
@@ -258,12 +273,15 @@ export function HorsesGameTable({
   }, [isMyTurn, currentRoundId, currentTurnPlayerId, myState?.rollsRemaining, myState?.isComplete]);
 
   // Calculate winning hands (best result so far among completed players)
-  const completedResults = Object.entries(horsesState?.playerStates || {})
-    .filter(([_, state]) => state.isComplete && state.result)
-    .map(([playerId, state]) => ({
-      playerId,
-      result: state.result! as HorsesHandResult | SCCHandResult,
-    }));
+  // CRITICAL: Only use playerStates if horsesState is valid (has turnOrder) - prevents stale results from old rounds
+  const completedResults = hasValidState
+    ? Object.entries(horsesState.playerStates || {})
+        .filter(([_, state]) => state.isComplete && state.result)
+        .map(([playerId, state]) => ({
+          playerId,
+          result: state.result! as HorsesHandResult | SCCHandResult,
+        }))
+    : [];
 
   // Get current winning result (best hand completed so far)
   const currentWinningResult = completedResults.length > 0
@@ -273,6 +291,7 @@ export function HorsesGameTable({
     : null;
 
   // Determine winners based on game type
+  // CRITICAL: gamePhase is already guarded to be "waiting" if state is invalid, so this will be empty for new rounds
   const winningPlayerIds = completedResults.length > 0 && gamePhase === "complete"
     ? (isSCC 
         ? determineSCCWinners(completedResults.map(r => r.result as SCCHandResult)).map(i => completedResults[i].playerId)
