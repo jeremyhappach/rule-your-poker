@@ -34,6 +34,11 @@ import { MyGameHistory } from "@/components/MyGameHistory";
 import { GameRules } from "@/components/GameRules";
 import { CustomGameNamesManager } from "@/components/CustomGameNamesManager";
 import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { usePlayerBalance } from "@/hooks/usePlayerBalance";
+import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog";
+import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
+import { formatChipValue } from "@/lib/utils";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -54,6 +59,20 @@ const Index = () => {
   const [loadingBotDealersSetting, setLoadingBotDealersSetting] = useState(true);
   const { isMaintenanceMode, loading: maintenanceLoading, toggleMaintenanceMode } = useMaintenanceMode();
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
+  const { isAdmin } = useIsAdmin(user?.id);
+  const { balance, refetch: refetchBalance } = usePlayerBalance(user?.id);
+  const [showBalanceDialog, setShowBalanceDialog] = useState(false);
+  const [showAdminPlayerList, setShowAdminPlayerList] = useState(false);
+
+  // Refetch balance when dialog opens
+  const handleBalanceButtonClick = () => {
+    refetchBalance();
+    if (isAdmin) {
+      setShowAdminPlayerList(true);
+    } else {
+      setShowBalanceDialog(true);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -299,29 +318,43 @@ const Index = () => {
     <div className="min-h-screen p-4 bg-background">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between gap-2">
-          {/* Left-aligned profile button with username */}
+          {/* Left-aligned username + balance button */}
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setShowProfileDialog(true)}
+            onClick={handleBalanceButtonClick}
             className="flex-1 min-w-0 h-8 px-3 justify-between"
-            title="Profile"
+            title={isAdmin ? "Player Balances" : "My Balance"}
           >
             <span 
               className="truncate"
               style={{
-                fontSize: currentUsername.length > 20 ? '0.7rem' : 
-                         currentUsername.length > 15 ? '0.8rem' : 
-                         currentUsername.length > 10 ? '0.875rem' : '0.875rem'
+                fontSize: currentUsername.length > 15 ? '0.7rem' : 
+                         currentUsername.length > 10 ? '0.8rem' : '0.875rem'
               }}
             >
               {currentUsername}
             </span>
-            <UserCircle className="w-4 h-4 flex-shrink-0 ml-2" />
+            <span 
+              className={`font-bold ml-2 flex-shrink-0 ${
+                balance >= 0 ? 'text-green-500' : 'text-red-500'
+              }`}
+            >
+              ${formatChipValue(balance)}
+            </span>
           </Button>
           
-          {/* Right side buttons */}
+          {/* Right side buttons - Profile, History, Logout */}
           <div className="flex gap-1.5 flex-shrink-0">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowProfileDialog(true)}
+              className="h-8 w-8 p-0"
+              title="Profile Settings"
+            >
+              <UserCircle className="w-4 h-4" />
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
@@ -543,6 +576,23 @@ const Index = () => {
       <GameRules 
         open={showRulesDialog} 
         onOpenChange={setShowRulesDialog} 
+      />
+
+      {/* Transaction History Dialog (for non-admins) */}
+      {user && (
+        <TransactionHistoryDialog
+          open={showBalanceDialog}
+          onOpenChange={setShowBalanceDialog}
+          profileId={user.id}
+          playerName={currentUsername}
+          isAdmin={isAdmin}
+        />
+      )}
+
+      {/* Admin Player List Dialog */}
+      <AdminPlayerListDialog
+        open={showAdminPlayerList}
+        onOpenChange={setShowAdminPlayerList}
       />
     </div>
   );
