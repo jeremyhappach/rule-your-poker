@@ -842,6 +842,25 @@ export function useHorsesMobileController({
       setLocalHand(newHand);
       setIsRolling(false);
 
+      // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
+      if (isSCC) {
+        const sccHand = newHand as SCCHand;
+        const result = evaluateSCCHand(sccHand);
+        
+        // Midnight = qualified with cargo of 12 (best possible hand)
+        if (result.isQualified && result.cargoSum === 12) {
+          console.log('[SCC] Midnight rolled! Auto-locking...');
+          const lockedHand = lockInSCCHand(sccHand);
+          setLocalHand(lockedHand);
+          await saveMyState(lockedHand, true, result);
+          
+          setTimeout(() => {
+            advanceToNextTurn(myPlayer?.id ?? null);
+          }, HORSES_POST_TURN_PAUSE_MS);
+          return;
+        }
+      }
+
       if (newHand.rollsRemaining === 0) {
         // Use appropriate evaluation function based on game type
         const result = isSCC 
