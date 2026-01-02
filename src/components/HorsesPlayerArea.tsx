@@ -20,6 +20,8 @@ interface HorsesPlayerAreaProps {
   diceValues?: DiceGameDieType[];
   myStatus?: 'waiting' | 'rolling' | 'done';
   gameType?: string | null;
+  onClick?: () => void;
+  isBot?: boolean;
 }
 
 export function HorsesPlayerArea({
@@ -33,15 +35,19 @@ export function HorsesPlayerArea({
   diceValues,
   myStatus,
   gameType,
+  onClick,
+  isBot,
 }: HorsesPlayerAreaProps) {
   return (
     <div
+      onClick={onClick}
       className={cn(
         "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 min-w-[140px]",
         isCurrentTurn && "border-yellow-500 bg-yellow-500/10",
         isWinningHand && "border-green-500 bg-green-500/20",
         !isCurrentTurn && !isWinningHand && "border-border/50 bg-black/30",
-        isCurrentUser && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent"
+        isCurrentUser && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent",
+        onClick && "cursor-pointer hover:bg-white/5 transition-colors"
       )}
     >
       {/* Bouncing dice icon for current turn */}

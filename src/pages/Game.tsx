@@ -5496,6 +5496,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   allMessages={allMessages}
                   onSendChat={sendChatMessage}
                   isChatSending={isChatSending}
+                  isHost={isCreator}
+                  onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
                   getPositionForUserId={getPositionForUserId}
                   onStay={() => {}}
                   onFold={() => {}}
@@ -5528,6 +5530,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 horsesState={horsesState}
                 onRefetch={fetchGameData}
                 gameType={game.game_type || 'horses'}
+                isHost={isCreator}
+                onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
               />
             );
           }
