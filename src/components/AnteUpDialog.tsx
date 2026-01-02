@@ -127,26 +127,28 @@ export const AnteUpDialog = ({
             <div className="font-semibold">Ante Amount:</div>
             <div className="text-right">${anteAmount}</div>
             
-            {isHolmGame ? (
+            {isHolmGame && (
               <>
                 <div className="font-semibold">Chucky Cards:</div>
                 <div className="text-right">{chuckyCards || 4}</div>
               </>
-            ) : (
+            )}
+            
+            {!isHolmGame && !isHorsesGame && !isSCCGame && (
               <>
                 <div className="font-semibold">Leg Value:</div>
                 <div className="text-right">${legValue}</div>
                 
                 <div className="font-semibold">Legs to Win:</div>
                 <div className="text-right">{legsToWin}</div>
+                
+                <div className="font-semibold">Pussy Tax:</div>
+                <div className="text-right">{pussyTaxEnabled ? `$${pussyTaxValue}` : 'Disabled'}</div>
+                
+                <div className="font-semibold">Pot Maximum:</div>
+                <div className="text-right">{potMaxEnabled ? `$${potMaxValue}` : 'Unlimited'}</div>
               </>
             )}
-            
-            <div className="font-semibold">Pussy Tax:</div>
-            <div className="text-right">{pussyTaxEnabled ? `$${pussyTaxValue}` : 'Disabled'}</div>
-            
-            <div className="font-semibold">Pot Maximum:</div>
-            <div className="text-right">{potMaxEnabled ? `$${potMaxValue}` : 'Unlimited'}</div>
           </div>
         </div>
 
