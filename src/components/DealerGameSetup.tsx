@@ -565,32 +565,17 @@ export const DealerGameSetup = ({
       case '3-5-7': return '3-5-7';
       case 'holm-game': return 'Holm';
       case 'horses': return 'Horses';
-      case 'ship-captain-crew': return 'Ship Captain Crew';
+      case 'ship-captain-crew': return 'Ship';
       default: return gameType;
     }
+  };
+  
+  const isDiceGame = (gameType: string) => {
+    return gameType === 'horses' || gameType === 'ship-captain-crew';
   };
 
   const handleCategorySelect = (category: 'cards' | 'dice') => {
     setSelectionStep(category);
-  };
-
-  const handleRunBack = () => {
-    if (previousGameType && previousGameConfig) {
-      // Use previous config and submit immediately
-      setSelectedGameType(previousGameType);
-      setAnteAmount(String(previousGameConfig.ante_amount));
-      setLegValue(String(previousGameConfig.leg_value));
-      setLegsToWin(String(previousGameConfig.legs_to_win));
-      setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
-      setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
-      setPotMaxEnabled(previousGameConfig.pot_max_enabled);
-      setPotMaxValue(String(previousGameConfig.pot_max_value));
-      setChuckyCards(String(previousGameConfig.chucky_cards));
-      setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
-      setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
-      // Submit with previous config
-      setTimeout(() => handleSubmit(), 100);
-    }
   };
 
   const handleDiceGameSelect = async (gameType: string) => {
@@ -636,7 +621,7 @@ export const DealerGameSetup = ({
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
     
-    const gameTypeName = selectedGameType === 'ship-captain-crew' ? 'Ship Captain Crew' : 'Horses';
+    const gameTypeName = selectedGameType === 'ship-captain-crew' ? 'Ship' : 'Horses';
     console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config`);
     
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
@@ -682,6 +667,33 @@ export const DealerGameSetup = ({
     
     console.log(`[DEALER SETUP] ✅ ${gameTypeName} config complete`);
     onConfigComplete();
+  };
+
+  const handleRunBack = () => {
+    if (previousGameType && previousGameConfig) {
+      // Use previous config and submit immediately
+      setSelectedGameType(previousGameType);
+      setAnteAmount(String(previousGameConfig.ante_amount));
+      
+      // For dice games, we only need ante - submit with dice game handler
+      if (isDiceGame(previousGameType)) {
+        // Submit with dice game handler after state update
+        setTimeout(() => handleDiceGameSubmit(), 100);
+      } else {
+        // Card games need full config
+        setLegValue(String(previousGameConfig.leg_value));
+        setLegsToWin(String(previousGameConfig.legs_to_win));
+        setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
+        setPussyTaxValue(String(previousGameConfig.pussy_tax_value));
+        setPotMaxEnabled(previousGameConfig.pot_max_enabled);
+        setPotMaxValue(String(previousGameConfig.pot_max_value));
+        setChuckyCards(String(previousGameConfig.chucky_cards));
+        setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
+        setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
+        // Submit with card game handler
+        setTimeout(() => handleSubmit(), 100);
+      }
+    }
   };
 
   const handleBackToCategory = () => {
