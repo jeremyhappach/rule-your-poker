@@ -58,7 +58,7 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
         )}
         <div className="bg-black/80 px-6 py-4 rounded-lg border-2 border-red-500/70 shadow-[0_0_30px_rgba(239,68,68,0.5)]">
           <span className="text-red-500 font-black text-3xl sm:text-4xl md:text-5xl tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase">
-            NO QUALIFY
+            NO QRARIFY
           </span>
         </div>
       </div>
