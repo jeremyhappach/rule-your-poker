@@ -2,9 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
-import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { cn, formatChipValue } from "@/lib/utils";
-import { Lock, RotateCcw, Clock } from "lucide-react";
+import { Lock, RotateCcw } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { getSCCDisplayOrder, SCCHand } from "@/lib/sccGameLogic";
@@ -29,33 +28,8 @@ export function HorsesMobileCardsTab({
   // Show dice when it's my turn and I've rolled at least once
   const showMyDice = horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3;
 
-  // Timer display for current turn player
-  const showTimer = horses.gamePhase === "playing" && horses.currentTurnPlayerId && !horses.currentTurnPlayer?.is_bot;
-
   return (
     <div className="px-2 flex flex-col flex-1 relative">
-      {/* Timer display when someone's turn is active */}
-      {showTimer && horses.timeLeft !== null && (
-        <div className="flex items-center justify-center mb-2">
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <span className={cn(
-              "text-sm font-mono font-bold",
-              horses.timeLeft <= 5 ? "text-destructive" : 
-              horses.timeLeft <= 10 ? "text-amber-500" : 
-              "text-foreground"
-            )}>
-              {horses.timeLeft}s
-            </span>
-            {!horses.isMyTurn && horses.currentTurnPlayerName && (
-              <span className="text-xs text-muted-foreground">
-                ({horses.currentTurnPlayerName})
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Dice display when rolling - LARGER dice, no helper text */}
       {showMyDice && (
         <div className="flex items-center justify-center gap-2 mb-3">
