@@ -20,6 +20,7 @@ import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
+import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
@@ -3261,6 +3262,15 @@ export const MobileGameTable = ({
         )}
         
         <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
+        
+        {/* No Qualify Animation (Ship Captain Crew only) */}
+        {(gameType === 'ship-captain-crew') && (
+          <NoQualifyAnimation 
+            show={horsesController.showNoQualifyAnimation} 
+            playerName={horsesController.noQualifyPlayerName ?? undefined}
+            onComplete={horsesController.handleNoQualifyAnimationComplete}
+          />
+        )}
         
         {/* Leg Earned Animation (3-5-7 only) */}
         <LegEarnedAnimation 

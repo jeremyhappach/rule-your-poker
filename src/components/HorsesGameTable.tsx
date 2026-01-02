@@ -281,31 +281,44 @@ export function HorsesGameTable({
   const announcedTurnsRef = useRef<Set<string>>(new Set());
   const currentTurnState = horsesState?.playerStates?.[currentTurnPlayerId || ""] ?? null;
 
-  // No Qualify animation state for SCC games
+  // No Qualify animation state for SCC games (any player)
   const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
-  const noQualifyShownForRoundRef = useRef<string | null>(null);
+  const [noQualifyPlayerName, setNoQualifyPlayerName] = useState<string | null>(null);
+  const noQualifyShownForRef = useRef<Set<string>>(new Set());
 
-  // Detect when the current player's SCC hand is complete and they didn't qualify
+  // Detect when ANY player's SCC hand is complete and they didn't qualify
   useEffect(() => {
     if (!isSCC) return;
-    if (!currentRoundId || !myPlayer) return;
+    if (!currentRoundId) return;
     
-    // Only trigger once per round
-    const roundKey = currentRoundId;
-    if (noQualifyShownForRoundRef.current === roundKey) return;
+    // Check all player states for newly completed no-qualify hands
+    const playerStates = horsesState?.playerStates;
+    if (!playerStates) return;
     
-    // Check if my state is complete and I didn't qualify
-    if (!myState?.isComplete || !myState?.result) return;
-    
-    const result = myState.result as SCCHandResult;
-    if (!result.isQualified) {
-      noQualifyShownForRoundRef.current = roundKey;
-      setShowNoQualifyAnimation(true);
+    for (const [playerId, state] of Object.entries(playerStates)) {
+      if (!state.isComplete || !state.result) continue;
+      
+      const result = state.result as SCCHandResult;
+      if (!result.isQualified) {
+        const noQualifyKey = `${currentRoundId}:${playerId}`;
+        if (noQualifyShownForRef.current.has(noQualifyKey)) continue;
+        
+        noQualifyShownForRef.current.add(noQualifyKey);
+        
+        // Find player name
+        const player = players.find(p => p.id === playerId);
+        const playerName = player ? getPlayerUsername(player) : null;
+        
+        setNoQualifyPlayerName(playerName);
+        setShowNoQualifyAnimation(true);
+        break; // Only show one at a time
+      }
     }
-  }, [isSCC, currentRoundId, myPlayer, myState?.isComplete, myState?.result]);
+  }, [isSCC, currentRoundId, horsesState?.playerStates, players]);
 
   const handleNoQualifyAnimationComplete = useCallback(() => {
     setShowNoQualifyAnimation(false);
+    setNoQualifyPlayerName(null);
   }, []);
 
   // Always clear the pending announcement timer on unmount.
@@ -974,10 +987,11 @@ export function HorsesGameTable({
         boxShadow: "inset 0 0 100px rgba(0,0,0,0.5)",
       }}
     >
-      {/* No Qualify Animation for SCC games */}
+      {/* No Qualify Animation for SCC games - full table overlay */}
       {isSCC && (
         <NoQualifyAnimation 
-          show={showNoQualifyAnimation} 
+          show={showNoQualifyAnimation}
+          playerName={noQualifyPlayerName ?? undefined}
           onComplete={handleNoQualifyAnimationComplete}
         />
       )}
