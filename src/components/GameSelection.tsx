@@ -53,7 +53,7 @@ export const GameSelection = ({
       case '3-5-7': return '3-5-7';
       case 'holm-game': return 'Holm';
       case 'horses': return 'Horses';
-      case 'ship-captain-crew': return 'Ship Captain Crew';
+      case 'ship-captain-crew': return 'Ship';
       default: return gameType;
     }
   };
