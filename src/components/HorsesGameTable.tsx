@@ -5,6 +5,7 @@ import { HorsesDie } from "./HorsesDie";
 import { SCCDie } from "./SCCDie";
 import { HorsesPlayerArea } from "./HorsesPlayerArea";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
+import { MidnightAnimation } from "./MidnightAnimation";
 import { TurnSpotlight } from "./TurnSpotlight";
 import {
   HorsesHand,
@@ -321,6 +322,45 @@ export function HorsesGameTable({
   const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
   const [noQualifyPlayerName, setNoQualifyPlayerName] = useState<string | null>(null);
   const noQualifyShownForRef = useRef<Set<string>>(new Set());
+
+  // Midnight animation state for SCC games (when someone rolls a 12)
+  const [showMidnightAnimation, setShowMidnightAnimation] = useState(false);
+  const [midnightPlayerName, setMidnightPlayerName] = useState<string | null>(null);
+  const midnightShownForRef = useRef<Set<string>>(new Set());
+
+  // Detect when ANY player's SCC hand is complete and they rolled Midnight (cargo = 12)
+  useEffect(() => {
+    if (!isSCC) return;
+    if (!currentRoundId) return;
+    
+    const playerStates = horsesState?.playerStates;
+    if (!playerStates) return;
+    
+    for (const [playerId, state] of Object.entries(playerStates)) {
+      if (!state.isComplete || !state.result) continue;
+      
+      const result = state.result as SCCHandResult;
+      // Midnight = qualified with cargo of 12 (highest possible)
+      if (result.isQualified && result.cargoSum === 12) {
+        const midnightKey = `${currentRoundId}:${playerId}`;
+        if (midnightShownForRef.current.has(midnightKey)) continue;
+        
+        midnightShownForRef.current.add(midnightKey);
+        
+        const player = players.find(p => p.id === playerId);
+        const playerName = player ? getPlayerUsername(player) : null;
+        
+        setMidnightPlayerName(playerName);
+        setShowMidnightAnimation(true);
+        break;
+      }
+    }
+  }, [isSCC, currentRoundId, horsesState?.playerStates, players]);
+
+  const handleMidnightAnimationComplete = useCallback(() => {
+    setShowMidnightAnimation(false);
+    setMidnightPlayerName(null);
+  }, []);
 
   // Detect when ANY player's SCC hand is complete and they didn't qualify
   useEffect(() => {
@@ -1031,6 +1071,15 @@ export function HorsesGameTable({
           show={showNoQualifyAnimation}
           playerName={noQualifyPlayerName ?? undefined}
           onComplete={handleNoQualifyAnimationComplete}
+        />
+      )}
+      
+      {/* Midnight Animation for SCC games - when someone rolls a 12 */}
+      {isSCC && (
+        <MidnightAnimation 
+          show={showMidnightAnimation}
+          playerName={midnightPlayerName ?? undefined}
+          onComplete={handleMidnightAnimationComplete}
         />
       )}
       
