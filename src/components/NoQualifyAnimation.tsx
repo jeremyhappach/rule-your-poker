@@ -39,15 +39,15 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
         className="absolute inset-0 bg-cover bg-center animate-scale-in"
         style={{ 
           backgroundImage: `url(${noQualifyBg})`,
-          filter: 'brightness(0.6) saturate(1.2)'
+          filter: 'brightness(0.8) saturate(1.1)'
         }}
       />
       
-      {/* Red overlay */}
-      <div className="absolute inset-0 bg-red-900/40" />
+      {/* Light red overlay - keeps face visible */}
+      <div className="absolute inset-0 bg-red-900/20" />
       
-      {/* Vignette effect */}
-      <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/70" />
+      {/* Subtle vignette effect */}
+      <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/40" />
       
       {/* NO QUALIFY text */}
       <div className="flex flex-col items-center gap-2 animate-scale-in z-10">
