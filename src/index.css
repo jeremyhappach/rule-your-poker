@@ -107,3 +107,19 @@ All colors MUST be HSL.
 .animate-rapid-flash {
   animation: rapid-flash 0.2s ease-in-out infinite;
 }
+
+/* Slow pulse animation for roll icon */
+@keyframes slow-pulse-red {
+  0%, 100% { 
+    opacity: 1;
+    color: hsl(0, 84%, 60%);
+  }
+  50% { 
+    opacity: 0.6;
+    color: hsl(0, 84%, 45%);
+  }
+}
+
+.animate-slow-pulse-red {
+  animation: slow-pulse-red 1.5s ease-in-out infinite;
+}

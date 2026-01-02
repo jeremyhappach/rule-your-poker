@@ -1014,26 +1014,6 @@ export function HorsesGameTable({
                 <span className="text-lg font-bold text-poker-gold">${pot}</span>
               </div>
             </div>
-
-            {gamePhase === "playing" && currentPlayer && (
-              <div className="mt-3 flex justify-center">
-                <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/20 px-3 py-1 backdrop-blur-sm">
-                  <Dice5 className="h-4 w-4 text-amber-300" />
-                  <span className="text-sm text-foreground/90">
-                    {isMyTurn ? "Your turn" : `${getPlayerUsername(currentPlayer)}'s turn`}
-                  </span>
-                  {isMyTurn ? (
-                    <Badge variant="secondary" className="text-xs">
-                      Rolls: {localHand.rollsRemaining}
-                    </Badge>
-                  ) : horsesState?.playerStates?.[currentTurnPlayerId || ""] ? (
-                    <Badge variant="secondary" className="text-xs">
-                      Rolls: {horsesState.playerStates[currentTurnPlayerId || ""].rollsRemaining}
-                    </Badge>
-                  ) : null}
-                </div>
-              </div>
-            )}
           </header>
 
           {/* Table (fixed area) */}
@@ -1209,7 +1189,7 @@ export function HorsesGameTable({
                   size="sm"
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  <RotateCcw className="w-4 h-4 mr-1" />
+                  <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
                   Roll{localHand.rollsRemaining === 3 ? "" : " Again"}
                 </Button>
 
@@ -1393,7 +1373,7 @@ export function HorsesGameTable({
                   size="sm"
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  <RotateCcw className="w-4 h-4 mr-1" />
+                  <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
                   Roll{localHand.rollsRemaining === 3 ? "" : " Again"}
                 </Button>
 
