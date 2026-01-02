@@ -9,11 +9,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowLeft } from "lucide-react";
-import { usePlayerBalance } from "@/hooks/usePlayerBalance";
+import { Plus, ArrowLeft, Trash2 } from "lucide-react";
+import { usePlayerBalance, deleteTransaction } from "@/hooks/usePlayerBalance";
 import { useState } from "react";
 import { AddTransactionDialog } from "./AddTransactionDialog";
 import { formatChipValue } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface TransactionHistoryDialogProps {
   open: boolean;
@@ -34,9 +35,22 @@ export const TransactionHistoryDialog = ({
 }: TransactionHistoryDialogProps) => {
   const { balance, transactions, loading, refetch } = usePlayerBalance(profileId);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleTransactionAdded = () => {
     refetch();
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    setDeletingId(transactionId);
+    const success = await deleteTransaction(transactionId);
+    if (success) {
+      toast.success("Transaction deleted");
+      refetch();
+    } else {
+      toast.error("Failed to delete transaction");
+    }
+    setDeletingId(null);
   };
 
   const getTransactionBadgeColor = (type: string) => {
@@ -128,13 +142,26 @@ export const TransactionHistoryDialog = ({
                         </p>
                       )}
                     </div>
-                    <span
-                      className={`font-bold ml-2 flex-shrink-0 ${
-                        Number(txn.amount) >= 0 ? 'text-green-500' : 'text-red-500'
-                      }`}
-                    >
-                      {Number(txn.amount) >= 0 ? '+' : ''}${formatChipValue(Number(txn.amount))}
-                    </span>
+                    <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                      <span
+                        className={`font-bold ${
+                          Number(txn.amount) >= 0 ? 'text-green-500' : 'text-red-500'
+                        }`}
+                      >
+                        {Number(txn.amount) >= 0 ? '+' : ''}${formatChipValue(Number(txn.amount))}
+                      </span>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteTransaction(txn.id)}
+                          disabled={deletingId === txn.id}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
