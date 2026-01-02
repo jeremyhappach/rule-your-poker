@@ -2847,7 +2847,7 @@ export const MobileGameTable = ({
         </div>
         
         
-        {/* Turn Spotlight - Holm games only, shows during active betting */}
+        {/* Turn Spotlight - Holm games and Dice games */}
         {gameType === 'holm-game' && (
           <TurnSpotlight
             currentTurnPosition={currentTurnPosition ?? null}
@@ -2862,6 +2862,19 @@ export const MobileGameTable = ({
               currentTurnPosition !== null &&
               !isWaitingPhase
             }
+          />
+        )}
+        
+        {/* Turn Spotlight - Dice games (Horses/SCC) */}
+        {isDiceGame && horsesController.enabled && (
+          <TurnSpotlight
+            currentTurnPosition={horsesController.currentTurnPlayer?.position ?? null}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            isObserver={!currentPlayer}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            isVisible={horsesController.gamePhase === 'playing' && horsesController.currentTurnPlayerId !== null}
+            useFullCoverage={true}
           />
         )}
         
