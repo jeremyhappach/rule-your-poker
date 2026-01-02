@@ -60,6 +60,7 @@ export const useAllPlayerBalances = () => {
     id: string;
     username: string;
     balance: number;
+    lastTransactionDate: string | null;
   }>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +84,7 @@ export const useAllPlayerBalances = () => {
     // Get all transactions
     const { data: transactions, error: txnError } = await supabase
       .from('player_transactions')
-      .select('profile_id, amount');
+      .select('profile_id, amount, date');
 
     if (txnError) {
       console.error('[useAllPlayerBalances] Error fetching transactions:', txnError);
@@ -92,16 +93,23 @@ export const useAllPlayerBalances = () => {
         id: p.id,
         username: p.username,
         balance: 0,
+        lastTransactionDate: null,
       })));
       setLoading(false);
       return;
     }
 
-    // Calculate balance per profile
+    // Calculate balance and last transaction date per profile
     const balanceMap = new Map<string, number>();
+    const lastTxnMap = new Map<string, string>();
     (transactions || []).forEach(t => {
       const current = balanceMap.get(t.profile_id) || 0;
       balanceMap.set(t.profile_id, current + Number(t.amount));
+      
+      const existingDate = lastTxnMap.get(t.profile_id);
+      if (!existingDate || new Date(t.date) > new Date(existingDate)) {
+        lastTxnMap.set(t.profile_id, t.date);
+      }
     });
 
     // Combine profiles with balances
@@ -109,9 +117,10 @@ export const useAllPlayerBalances = () => {
       id: p.id,
       username: p.username,
       balance: balanceMap.get(p.id) || 0,
+      lastTransactionDate: lastTxnMap.get(p.id) || null,
     }));
 
-    // Sort by balance descending
+    // Sort by balance descending by default
     playersWithBalances.sort((a, b) => b.balance - a.balance);
 
     setPlayers(playersWithBalances);
@@ -123,4 +132,18 @@ export const useAllPlayerBalances = () => {
   }, [fetchAllBalances]);
 
   return { players, loading, refetch: fetchAllBalances };
+};
+
+// Function to delete a transaction (admin only)
+export const deleteTransaction = async (transactionId: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('player_transactions')
+    .delete()
+    .eq('id', transactionId);
+
+  if (error) {
+    console.error('[deleteTransaction] Error:', error);
+    return false;
+  }
+  return true;
 };
