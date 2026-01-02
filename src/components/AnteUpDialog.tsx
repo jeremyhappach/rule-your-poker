@@ -36,7 +36,16 @@ export const AnteUpDialog = ({
   onDecisionMade,
 }: AnteUpDialogProps) => {
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
-  const gameDisplayName = isHolmGame ? 'Holm Game' : '3-5-7';
+  const isHorsesGame = gameType === 'horses';
+  const isSCCGame = gameType === 'ship-captain-crew';
+  
+  const getGameDisplayName = () => {
+    if (isHolmGame) return 'Holm Game';
+    if (isHorsesGame) return 'Horses';
+    if (isSCCGame) return 'Ship Captain Crew';
+    return '3-5-7';
+  };
+  const gameDisplayName = getGameDisplayName();
   const [timeLeft, setTimeLeft] = useState(10);
   const [hasDecided, setHasDecided] = useState(false);
 

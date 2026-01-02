@@ -5169,7 +5169,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           />
         )}
 
-        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive) && (
+        {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive || horsesWinPotTriggerId) && (
           <>
             {game.status === 'dealer_selection' && (
               <DealerSelection 
@@ -5177,7 +5177,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onComplete={selectDealer}
               />
             )}
-            {(!is357WinAnimationActive && (
+            {(!is357WinAnimationActive && !horsesWinPotTriggerId && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
@@ -5261,7 +5261,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   />
                 )}
               </div>
-            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game')) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 {isMobile ? (
                   <MobileGameTable key={gameId ?? 'unknown-game'}
