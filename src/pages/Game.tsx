@@ -4039,10 +4039,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_type, game?.last_round_result, players]);
 
-  // Horses win pot animation trigger detection
-  // Detect Horses game_over and trigger pot-to-player animation
+  // Horses/SCC win pot animation trigger detection
+  // Detect Horses or Ship Captain Crew game_over and trigger pot-to-player animation
   useEffect(() => {
-    if (game?.game_type !== 'horses') return;
+    if (game?.game_type !== 'horses' && game?.game_type !== 'ship-captain-crew') return;
     if (game?.status !== 'game_over') {
       // Reset when game status changes away from game_over
       horsesWinProcessedRef.current = null;
