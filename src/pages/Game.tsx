@@ -5193,6 +5193,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isChatSending={isChatSending}
             getPositionForUserId={getPositionForUserId}
             onLeaveGameNow={handleLeaveGameNow}
+            realMoney={game.real_money}
           />
         )}
 

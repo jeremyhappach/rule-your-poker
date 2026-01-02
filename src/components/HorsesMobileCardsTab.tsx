@@ -102,7 +102,7 @@ export function HorsesMobileCardsTab({
               disabled={horses.localHand.rollsRemaining <= 0 || horses.isRolling}
               className="flex-1 max-w-[170px] text-sm font-bold h-9"
             >
-              <RotateCcw className="w-4 h-4 mr-2" />
+              <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
               Roll{horses.localHand.rollsRemaining === 3 ? "" : " Again"}
             </Button>
 

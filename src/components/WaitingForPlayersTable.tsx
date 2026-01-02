@@ -83,6 +83,7 @@ interface WaitingForPlayersTableProps {
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
   onLeaveGameNow?: () => void;
+  realMoney?: boolean;
 }
 
 export const WaitingForPlayersTable = ({
@@ -97,7 +98,8 @@ export const WaitingForPlayersTable = ({
   onSendChat,
   isChatSending = false,
   getPositionForUserId,
-  onLeaveGameNow
+  onLeaveGameNow,
+  realMoney = false,
 }: WaitingForPlayersTableProps) => {
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
@@ -312,7 +314,7 @@ export const WaitingForPlayersTable = ({
                   <Share2 className="w-4 h-4 mr-2" />
                   Invite
                 </Button>
-                {isHost && hasOpenSeats && (
+                {isHost && hasOpenSeats && !realMoney && (
                   <Button
                     variant="outline"
                     size="sm"
