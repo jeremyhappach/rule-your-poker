@@ -64,12 +64,12 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     setLoading(true);
 
     // First try to get data from session_player_snapshots (new accurate method)
-    // Order by hand_number DESC to get the final state per player
+    // Order by created_at DESC to get the most recent snapshot per player
     const { data: snapshots, error: snapshotsError } = await supabase
       .from('session_player_snapshots')
       .select('*')
       .eq('game_id', session.id)
-      .order('hand_number', { ascending: false });
+      .order('created_at', { ascending: false });
 
     // Calculate actual hand count from snapshots
     let handMax: number | null = null;

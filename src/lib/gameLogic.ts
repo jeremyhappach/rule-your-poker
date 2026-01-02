@@ -66,7 +66,7 @@ export async function getLastKnownChips(gameId: string, userId: string): Promise
     .select('chips')
     .eq('game_id', gameId)
     .eq('user_id', userId)
-    .order('hand_number', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
   

@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBotAlias } from "@/lib/botAlias";
+import { snapshotPlayerChips } from "@/lib/gameLogic";
 
 interface Player {
   id: string;
@@ -935,7 +936,8 @@ export function HorsesGameTable({
         game_type: "horses",
       });
       
-      // Note: no toast here; the table already shows the dealer announcement.
+      // Snapshot player chips for session history AFTER awarding prize
+      await snapshotPlayerChips(gameId, handNumber);
 
       // Transition game to game_over and reset pot
       await supabase
