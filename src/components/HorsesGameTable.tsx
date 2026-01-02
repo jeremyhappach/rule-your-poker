@@ -65,6 +65,8 @@ interface HorsesGameTableProps {
   horsesState: HorsesStateFromDB | null;
   onRefetch: () => void;
   gameType?: string;
+  isHost?: boolean;
+  onPlayerClick?: (player: Player) => void;
 }
 
 // Database state structure - supports both Horses and SCC dice types
@@ -141,6 +143,8 @@ export function HorsesGameTable({
   horsesState,
   onRefetch,
   gameType = 'horses',
+  isHost = false,
+  onPlayerClick,
 }: HorsesGameTableProps) {
   // Determine display title based on game type
   const gameTitle = gameType === 'ship-captain-crew' ? 'Ship' : 'Horses';
@@ -1055,6 +1059,8 @@ export function HorsesGameTable({
                         diceValues={hasCompleted ? playerState?.dice : undefined}
                         myStatus={isMe ? getMyStatus() : undefined}
                         gameType={gameType}
+                        isBot={player.is_bot}
+                        onClick={isHost && player.is_bot && onPlayerClick ? () => onPlayerClick(player) : undefined}
                       />
                     </div>
                   );
@@ -1174,6 +1180,8 @@ export function HorsesGameTable({
                         diceValues={hasCompleted ? playerState?.dice : undefined}
                         myStatus={isMe ? getMyStatus() : undefined}
                         gameType={gameType}
+                        isBot={currentPlayer.is_bot}
+                        onClick={isHost && currentPlayer.is_bot && onPlayerClick ? () => onPlayerClick(currentPlayer) : undefined}
                       />
                     );
                   })()
@@ -1297,6 +1305,8 @@ export function HorsesGameTable({
                       diceValues={hasCompleted ? playerState?.dice : undefined}
                       myStatus={isMe ? getMyStatus() : undefined}
                       gameType={gameType}
+                      isBot={player.is_bot}
+                      onClick={isHost && player.is_bot && onPlayerClick ? () => onPlayerClick(player) : undefined}
                     />
                   </div>
                 );
