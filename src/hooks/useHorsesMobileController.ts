@@ -834,9 +834,8 @@ export function useHorsesMobileController({
 
     setTimeout(async () => {
       // Use appropriate roll function based on game type
-      // TEMP: Pass true to force Midnight for human player testing
       const newHand = isSCC 
-        ? rollSCCDice(localHand as SCCHand, true)
+        ? rollSCCDice(localHand as SCCHand)
         : rollDice(localHand as HorsesHand);
       lastLocalEditAtRef.current = Date.now();
       setLocalHand(newHand);
