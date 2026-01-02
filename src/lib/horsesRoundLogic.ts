@@ -50,6 +50,27 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     return;
   }
 
+  // CRITICAL: Prevent multi-client race where multiple players start the first hand at the same time,
+  // causing multiple rounds + multiple ante charges.
+  // We "claim" first-hand start by flipping status to in_progress only if it isn't already.
+  if (isFirstHand) {
+    const { data: claim, error: claimError } = await supabase
+      .from('games')
+      .update({ status: 'in_progress' })
+      .eq('id', gameId)
+      .neq('status', 'in_progress')
+      .select('id');
+
+    if (claimError) {
+      console.warn('[HORSES] Failed to claim first-hand start (continuing):', claimError);
+    }
+
+    if (!claim || claim.length === 0) {
+      console.log('[HORSES] Another client claimed first-hand start, skipping');
+      return;
+    }
+  }
+
   const baseRoundNumber = (typeof game.current_round === 'number' ? game.current_round : latestRoundNumber) ?? 0;
   const newRoundNumber = baseRoundNumber + 1;
   const newHandNumber = (game.total_hands || 0) + 1;
