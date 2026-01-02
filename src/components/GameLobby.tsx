@@ -792,7 +792,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                 </label>
               </div>
               {realMoney && (
-                <p className="text-xs font-bold text-amber-200 px-1">
+                <p className="text-xs font-bold text-red-400 px-1">
                   Results of this session will be reflected in player balances when session completes.
                 </p>
               )}
