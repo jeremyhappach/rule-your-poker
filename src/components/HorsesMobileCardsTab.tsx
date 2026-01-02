@@ -152,7 +152,10 @@ export function HorsesMobileCardsTab({
       >
         <div className="flex items-center justify-center gap-3">
           <p className="text-sm font-semibold text-foreground">{currentUserPlayer.profiles?.username || "You"}</p>
-          <span className="text-lg font-bold text-poker-gold">
+          <span className={cn(
+            "text-lg font-bold",
+            currentUserPlayer.chips < 0 ? "text-destructive" : "text-poker-gold"
+          )}>
             ${formatChipValue(Math.round(currentUserPlayer.chips))}
           </span>
           {horses.isMyTurn && horses.gamePhase === "playing" && (
