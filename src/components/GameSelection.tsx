@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Lock, Spade, Dice5, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +17,11 @@ export const GameSelection = ({
   isFirstHand = true 
 }: GameSelectionProps) => {
   const [step, setStep] = useState<SelectionStep>('category');
+
+  // Reset to category view when component mounts (new game selection)
+  useEffect(() => {
+    setStep('category');
+  }, []);
 
   const cardGames = [
     {
