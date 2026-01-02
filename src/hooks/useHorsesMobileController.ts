@@ -213,7 +213,16 @@ export function useHorsesMobileController({
     ? players.find((p) => p.id === currentTurnPlayerId) ?? null
     : null;
   const isMyTurn = !!(enabled && currentTurnPlayer?.user_id && currentTurnPlayer.user_id === currentUserId);
-  const gamePhase: HorsesStateFromDB["gamePhase"] = horsesState?.gamePhase || "waiting";
+
+  // CRITICAL: Treat state as "waiting" unless the current round has a valid horses_state payload.
+  // This prevents showing the previous round's "complete" state / winners while a new hand is spinning up.
+  const hasValidState = !!(
+    currentRoundId &&
+    horsesState &&
+    Array.isArray(horsesState.turnOrder) &&
+    horsesState.turnOrder.length > 0
+  );
+  const gamePhase: HorsesStateFromDB["gamePhase"] = hasValidState ? (horsesState!.gamePhase || "waiting") : "waiting";
 
   const candidateBotControllerUserId = useMemo(() => {
     if (!turnOrder?.length) return null;
@@ -261,11 +270,9 @@ export function useHorsesMobileController({
     if (myState) {
       // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
       if (isSCC) {
-        setLocalHand(reconstructSCCHand(
-          myState.dice as SCCDieType[],
-          myState.rollsRemaining,
-          myState.isComplete
-        ));
+        setLocalHand(
+          reconstructSCCHand(myState.dice as SCCDieType[], myState.rollsRemaining, myState.isComplete),
+        );
       } else {
         setLocalHand({
           dice: myState.dice,
@@ -293,10 +300,12 @@ export function useHorsesMobileController({
 
   const completedResults = useMemo(
     () =>
-      Object.entries(horsesState?.playerStates || {})
-        .filter(([_, state]) => state.isComplete && state.result)
-        .map(([playerId, state]) => ({ playerId, result: state.result! })),
-    [horsesState?.playerStates],
+      hasValidState
+        ? Object.entries(horsesState?.playerStates || {})
+            .filter(([_, state]) => state.isComplete && state.result)
+            .map(([playerId, state]) => ({ playerId, result: state.result! }))
+        : [],
+    [horsesState?.playerStates, hasValidState],
   );
 
   const currentWinningResult = useMemo(() => {

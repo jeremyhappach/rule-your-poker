@@ -41,19 +41,27 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
 
   const latestRoundNumber = latestRound?.round_number ?? 0;
 
-  // If we are starting the FIRST hand and the game is already in progress, this is a duplicate call.
-  if (isFirstHand && game.status === 'in_progress') {
-    console.log('[SCC] Game already in_progress (first hand), skipping duplicate startSCCRound');
-    return;
-  }
+  const baseRoundNumber = (typeof game.current_round === 'number' ? game.current_round : latestRoundNumber) ?? 0;
+  const newRoundNumber = baseRoundNumber + 1;
+  const newHandNumber = (game.total_hands || 0) + 1;
 
   // CRITICAL: Prevent multi-client race where multiple players start the first hand at the same time,
   // causing multiple rounds + multiple ante charges.
-  // We "claim" first-hand start by flipping status to in_progress only if it isn't already.
+  // We "claim" first-hand start by atomically switching the game to in_progress AND advancing current_round.
+  // This also clears any stale game_over / last_round_result so the UI doesn't show the previous winner.
   if (isFirstHand) {
     const { data: claim, error: claimError } = await supabase
       .from('games')
-      .update({ status: 'in_progress' })
+      .update({
+        status: 'in_progress',
+        current_round: newRoundNumber,
+        total_hands: newHandNumber,
+        awaiting_next_round: false,
+        all_decisions_in: false,
+        last_round_result: null,
+        game_over_at: null,
+        is_first_hand: true,
+      })
       .eq('id', gameId)
       .neq('status', 'in_progress')
       .select('id');
@@ -67,10 +75,6 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       return;
     }
   }
-
-  const baseRoundNumber = (typeof game.current_round === 'number' ? game.current_round : latestRoundNumber) ?? 0;
-  const newRoundNumber = baseRoundNumber + 1;
-  const newHandNumber = (game.total_hands || 0) + 1;
 
   // GUARD: If the round already exists for this computed round number, assume a previous call partially failed.
   const { data: existingRound } = await supabase
@@ -97,6 +101,8 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
         pot: (existingRound as any)?.pot ?? game.pot ?? 0,
         all_decisions_in: false,
         awaiting_next_round: false,
+        last_round_result: null,
+        game_over_at: null,
         is_first_hand: isFirstHand,
       })
       .eq('id', gameId);
@@ -155,6 +161,8 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       pot: potForRound,
       all_decisions_in: false,
       awaiting_next_round: false,
+      last_round_result: null,
+      game_over_at: null,
       is_first_hand: isFirstHand,
     })
     .eq('id', gameId);
