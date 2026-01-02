@@ -5511,7 +5511,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   onHasUnreadMessagesChange={setMobileHasUnreadMessages}
                   chatInputValue={mobileChatInput}
                   onChatInputChange={setMobileChatInput}
-                  dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
+                  dealerSetupMessage={undefined}
                   reAnteMessage={reAnteMessage}
                 />
               );
