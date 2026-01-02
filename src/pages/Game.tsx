@@ -4041,12 +4041,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Horses/SCC win pot animation trigger detection
   // Detect Horses or Ship Captain Crew game_over and trigger pot-to-player animation
+  // Track the round/hand that triggered animation to prevent re-triggers
+  const horsesWinAnimationRoundRef = useRef<number | null>(null);
+  
   useEffect(() => {
     if (game?.game_type !== 'horses' && game?.game_type !== 'ship-captain-crew') return;
+    
+    // When moving to a new round (not game_over), reset the processed ref for that new round
     if (game?.status !== 'game_over') {
-      // Reset when game status changes away from game_over
-      horsesWinProcessedRef.current = null;
-      setHorsesWinPotTriggerId(null);
+      // Only reset if we're in a new round (current_round changed)
+      if (horsesWinAnimationRoundRef.current !== null && 
+          game?.current_round !== null && 
+          game?.current_round !== horsesWinAnimationRoundRef.current) {
+        horsesWinProcessedRef.current = null;
+        horsesWinAnimationRoundRef.current = null;
+      }
       return;
     }
     
@@ -4057,8 +4066,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const isHorsesWin = resultMessage.includes('wins with');
     if (!isHorsesWin) return;
     
-    // Don't re-process the same result
+    // Don't re-process the same result (prevents double-trigger from dependency changes)
     if (horsesWinProcessedRef.current === resultMessage) return;
+    
+    // Don't trigger if animation is already in progress
+    if (horsesWinPotTriggerId) return;
     
     // Parse winner name from message "PlayerName wins with ..."
     const match = resultMessage.match(/^(.+?) wins with/);
@@ -4084,15 +4096,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Get pot amount from cache (since DB pot is already reset to 0)
     const potAmount = cachedPotForHorsesWinRef.current || game?.pot || 0;
     
-    // Mark as processed
+    // Don't animate with $0 pot
+    if (potAmount <= 0) {
+      console.warn('[HORSES WIN POT] Skipping animation - pot is 0:', { potAmount, cached: cachedPotForHorsesWinRef.current });
+      return;
+    }
+    
+    // Mark as processed and remember which round triggered it
     horsesWinProcessedRef.current = resultMessage;
+    horsesWinAnimationRoundRef.current = game?.current_round ?? null;
     
     console.log('[HORSES WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPlayer.position, 'pot:', potAmount);
     
     setHorsesWinPotAmount(potAmount);
     setHorsesWinWinnerPosition(winnerPlayer.position);
     setHorsesWinPotTriggerId(`horses-win-${Date.now()}`);
-  }, [game?.status, game?.game_type, game?.last_round_result, game?.pot, players]);
+  }, [game?.status, game?.game_type, game?.last_round_result, game?.current_round, players, horsesWinPotTriggerId]);
 
   // Cache pot value for 3-5-7 win animation (pot gets reset before game_over)
   const cachedPotFor357WinRef = useRef<number>(0);
