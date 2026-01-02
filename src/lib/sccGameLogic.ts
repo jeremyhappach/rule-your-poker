@@ -72,8 +72,15 @@ export function reconstructSCCHand(dice: SCCDie[], rollsRemaining: number, isCom
 /**
  * Roll a single die (returns 1-6)
  */
+// TEMP: Counter for forcing Midnight test
+let tempMidnightRollIndex = 0;
 function rollDie(): number {
-  return Math.floor(Math.random() * 6) + 1;
+  // TEMP: Force Midnight (6-5-4 + 6-6 cargo) for testing
+  const forcedRolls = [6, 5, 4, 6, 6]; // Perfect Midnight roll
+  const result = forcedRolls[tempMidnightRollIndex % 5];
+  tempMidnightRollIndex++;
+  return result;
+  // return Math.floor(Math.random() * 6) + 1;
 }
 
 /**
