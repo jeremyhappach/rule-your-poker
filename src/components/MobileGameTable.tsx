@@ -21,6 +21,7 @@ import { TurnSpotlight } from "./TurnSpotlight";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
+import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
@@ -3269,6 +3270,15 @@ export const MobileGameTable = ({
             show={horsesController.showNoQualifyAnimation} 
             playerName={horsesController.noQualifyPlayerName ?? undefined}
             onComplete={horsesController.handleNoQualifyAnimationComplete}
+          />
+        )}
+        
+        {/* Midnight Animation (Ship Captain Crew only - when someone rolls 12) */}
+        {(gameType === 'ship-captain-crew') && (
+          <MidnightAnimation 
+            show={horsesController.showMidnightAnimation} 
+            playerName={horsesController.midnightPlayerName ?? undefined}
+            onComplete={horsesController.handleMidnightAnimationComplete}
           />
         )}
         
