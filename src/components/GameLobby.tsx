@@ -841,6 +841,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             total_hands: selectedSession.total_hands || 0,
             host_username: selectedSession.host_username || 'Unknown',
             game_type: selectedSession.game_type,
+            real_money: selectedSession.real_money,
             players: selectedSession.players || [],
           }}
         />
