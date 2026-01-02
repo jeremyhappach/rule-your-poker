@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAllPlayerBalances } from "@/hooks/usePlayerBalance";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TransactionHistoryDialog } from "./TransactionHistoryDialog";
 import { formatChipValue } from "@/lib/utils";
 
@@ -25,6 +25,13 @@ export const AdminPlayerListDialog = ({
     id: string;
     username: string;
   } | null>(null);
+
+  // Refetch balances when dialog opens
+  useEffect(() => {
+    if (open && !selectedPlayer) {
+      refetch();
+    }
+  }, [open, selectedPlayer, refetch]);
 
   const handlePlayerClick = (player: { id: string; username: string }) => {
     setSelectedPlayer(player);
