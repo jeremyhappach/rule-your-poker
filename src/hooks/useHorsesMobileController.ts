@@ -152,6 +152,12 @@ export function useHorsesMobileController({
   const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
   const [noQualifyPlayerName, setNoQualifyPlayerName] = useState<string | null>(null);
   const noQualifyShownForRef = useRef<Set<string>>(new Set());
+  
+  // Track when to show the "Midnight" animation for SCC games (someone rolls 12)
+  const [showMidnightAnimation, setShowMidnightAnimation] = useState(false);
+  const [midnightPlayerName, setMidnightPlayerName] = useState<string | null>(null);
+  const midnightShownForRef = useRef<Set<string>>(new Set());
+  
   const [isRolling, setIsRolling] = useState(false);
 
   // Bot loop guards (mobile): prevent duplicate bot loops across realtime re-renders,
@@ -603,6 +609,41 @@ export function useHorsesMobileController({
   const handleNoQualifyAnimationComplete = useCallback(() => {
     setShowNoQualifyAnimation(false);
     setNoQualifyPlayerName(null);
+  }, []);
+
+  // Detect when ANY player's SCC hand is complete and they rolled Midnight (cargo = 12)
+  useEffect(() => {
+    if (!enabled || !isSCC) return;
+    if (!currentRoundId) return;
+    
+    const playerStates = horsesState?.playerStates;
+    if (!playerStates) return;
+    
+    for (const [playerId, state] of Object.entries(playerStates)) {
+      if (!state.isComplete || !state.result) continue;
+      
+      const result = state.result as SCCHandResult;
+      // Midnight = qualified with cargo of 12 (highest possible)
+      if (result.isQualified && result.cargoSum === 12) {
+        const midnightKey = `${currentRoundId}:${playerId}`;
+        if (midnightShownForRef.current.has(midnightKey)) continue;
+        
+        midnightShownForRef.current.add(midnightKey);
+        
+        const player = players.find(p => p.id === playerId);
+        const playerName = player ? getPlayerUsername(player) : null;
+        
+        setMidnightPlayerName(playerName);
+        setShowMidnightAnimation(true);
+        break;
+      }
+    }
+  }, [enabled, isSCC, currentRoundId, horsesState?.playerStates, players, getPlayerUsername]);
+
+  // Handler to reset the midnight animation
+  const handleMidnightAnimationComplete = useCallback(() => {
+    setShowMidnightAnimation(false);
+    setMidnightPlayerName(null);
   }, []);
 
   useEffect(() => {
@@ -1411,5 +1452,9 @@ export function useHorsesMobileController({
     showNoQualifyAnimation,
     noQualifyPlayerName,
     handleNoQualifyAnimationComplete,
+    // Midnight animation state (SCC only)
+    showMidnightAnimation,
+    midnightPlayerName,
+    handleMidnightAnimationComplete,
   };
 }
