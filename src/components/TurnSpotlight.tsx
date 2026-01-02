@@ -13,6 +13,8 @@ interface TurnSpotlightProps {
   containerRef: React.RefObject<HTMLElement>;
   /** Whether to show the spotlight (hide during showdowns, between hands, etc.) */
   isVisible: boolean;
+  /** Use full rectangular coverage instead of ellipse clip (for dice games) */
+  useFullCoverage?: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   getClockwiseDistance,
   containerRef,
   isVisible,
+  useFullCoverage = false,
 }) => {
   const [rotation, setRotation] = useState<number>(0);
   const [opacity, setOpacity] = useState<number>(0);
@@ -110,15 +113,18 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   // Narrower beam (25 degrees on each side = 50 degree cone)
   const beamHalfAngle = 25;
 
+  // Clip path - use ellipse for poker table, none for dice games
+  const clipStyle = useFullCoverage ? undefined : 'ellipse(50% 50% at 50% 50%)';
+
   return (
     <>
-      {/* Golden glow in spotlight area - clipped to table */}
+      {/* Golden glow in spotlight area */}
       <div 
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
-          clipPath: 'ellipse(50% 50% at 50% 50%)',
+          clipPath: clipStyle,
         }}
       >
         <div
@@ -132,13 +138,13 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
         />
       </div>
       
-      {/* Dim overlay with spotlight cutout - clipped to ellipse table area */}
+      {/* Dim overlay with spotlight cutout */}
       <div 
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
-          clipPath: 'ellipse(50% 50% at 50% 50%)',
+          clipPath: clipStyle,
         }}
       >
         {/* Dark overlay with cone cutout */}
