@@ -775,20 +775,27 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             <p className="text-sm text-muted-foreground">
               Start a dealer call-it home game session. Players begin at $0 and can go into debt. The dealer will select the game type and configure rules once the game starts.
             </p>
-            <div className="flex items-center justify-between p-3 rounded-lg border border-amber-600/30 bg-slate-800/50">
-              <div>
-                <div className="font-medium text-amber-100">Real Money</div>
-                <div className="text-xs text-amber-300/60">Track this session for real money</div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-3 rounded-lg border border-amber-600/30 bg-slate-800/50">
+                <div>
+                  <div className="font-medium text-amber-100">Real Money</div>
+                  <div className="text-xs text-amber-300/60">Track this session for real money</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={realMoney}
+                    onChange={(e) => setRealMoney(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={realMoney}
-                  onChange={(e) => setRealMoney(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-              </label>
+              {realMoney && (
+                <p className="text-xs font-bold text-amber-200 px-1">
+                  Results of this session will be reflected in player balances when session completes.
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
