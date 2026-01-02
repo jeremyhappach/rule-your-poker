@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { HorsesDie } from "./HorsesDie";
 import { SCCDie } from "./SCCDie";
 import { HorsesPlayerArea } from "./HorsesPlayerArea";
+import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import {
   HorsesHand,
   HorsesHandResult,
@@ -279,6 +280,33 @@ export function HorsesGameTable({
   const clearAnnouncementTimerRef = useRef<number | null>(null);
   const announcedTurnsRef = useRef<Set<string>>(new Set());
   const currentTurnState = horsesState?.playerStates?.[currentTurnPlayerId || ""] ?? null;
+
+  // No Qualify animation state for SCC games
+  const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
+  const noQualifyShownForRoundRef = useRef<string | null>(null);
+
+  // Detect when the current player's SCC hand is complete and they didn't qualify
+  useEffect(() => {
+    if (!isSCC) return;
+    if (!currentRoundId || !myPlayer) return;
+    
+    // Only trigger once per round
+    const roundKey = currentRoundId;
+    if (noQualifyShownForRoundRef.current === roundKey) return;
+    
+    // Check if my state is complete and I didn't qualify
+    if (!myState?.isComplete || !myState?.result) return;
+    
+    const result = myState.result as SCCHandResult;
+    if (!result.isQualified) {
+      noQualifyShownForRoundRef.current = roundKey;
+      setShowNoQualifyAnimation(true);
+    }
+  }, [isSCC, currentRoundId, myPlayer, myState?.isComplete, myState?.result]);
+
+  const handleNoQualifyAnimationComplete = useCallback(() => {
+    setShowNoQualifyAnimation(false);
+  }, []);
 
   // Always clear the pending announcement timer on unmount.
   useEffect(() => {
@@ -946,6 +974,13 @@ export function HorsesGameTable({
         boxShadow: "inset 0 0 100px rgba(0,0,0,0.5)",
       }}
     >
+      {/* No Qualify Animation for SCC games */}
+      {isSCC && (
+        <NoQualifyAnimation 
+          show={showNoQualifyAnimation} 
+          onComplete={handleNoQualifyAnimationComplete}
+        />
+      )}
       {isMobile ? (
         <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">
           {/* Header */}

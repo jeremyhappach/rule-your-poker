@@ -147,6 +147,11 @@ export function useHorsesMobileController({
   const [localHand, setLocalHand] = useState<HorsesHand | SCCHand>(() => 
     isSCC ? createInitialSCCHand() : createInitialHand()
   );
+  
+  // Track when to show the "No Qualify" animation for SCC games
+  const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
+  const noQualifyShownForRoundRef = useRef<string | null>(null
+  );
   const [isRolling, setIsRolling] = useState(false);
 
   // Bot loop guards (mobile): prevent duplicate bot loops across realtime re-renders,
@@ -554,6 +559,30 @@ export function useHorsesMobileController({
     currentTurnState?.result,
     getPlayerUsername,
   ]);
+
+  // Detect when the current player's SCC hand is complete and they didn't qualify
+  useEffect(() => {
+    if (!enabled || !isSCC) return;
+    if (!currentRoundId || !myPlayer) return;
+    
+    // Only trigger once per round
+    const roundKey = currentRoundId;
+    if (noQualifyShownForRoundRef.current === roundKey) return;
+    
+    // Check if my state is complete and I didn't qualify
+    if (!myState?.isComplete || !myState?.result) return;
+    
+    const result = myState.result as SCCHandResult;
+    if (!result.isQualified) {
+      noQualifyShownForRoundRef.current = roundKey;
+      setShowNoQualifyAnimation(true);
+    }
+  }, [enabled, isSCC, currentRoundId, myPlayer, myState?.isComplete, myState?.result]);
+
+  // Handler to reset the no qualify animation
+  const handleNoQualifyAnimationComplete = useCallback(() => {
+    setShowNoQualifyAnimation(false);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -1356,5 +1385,8 @@ export function useHorsesMobileController({
     maxTime: HORSES_TURN_TIMER_SECONDS,
     // Turn announcement
     turnAnnouncement,
+    // No Qualify animation state (SCC only)
+    showNoQualifyAnimation,
+    handleNoQualifyAnimationComplete,
   };
 }
