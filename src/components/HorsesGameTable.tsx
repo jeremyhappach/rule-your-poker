@@ -5,6 +5,7 @@ import { HorsesDie } from "./HorsesDie";
 import { SCCDie } from "./SCCDie";
 import { HorsesPlayerArea } from "./HorsesPlayerArea";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
+import { TurnSpotlight } from "./TurnSpotlight";
 import {
   HorsesHand,
   HorsesHandResult,
@@ -162,6 +163,7 @@ export function HorsesGameTable({
   const botProcessingRef = useRef<Set<string>>(new Set());
   const botRunTokenRef = useRef(0);
   const initializingRef = useRef(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Prevent DB rehydration from overwriting the felt while the user is interacting.
   const lastLocalEditAtRef = useRef<number>(0);
@@ -239,6 +241,16 @@ export function HorsesGameTable({
   // Get my player state from DB
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const myState = myPlayer ? horsesState?.playerStates?.[myPlayer.id] : null;
+
+  // Spotlight helper: calculate clockwise distance from current player to target
+  const getClockwiseDistance = useCallback((targetPosition: number) => {
+    if (!myPlayer) return 0;
+    const myPos = myPlayer.position;
+    // Positions are 1-7, calculate clockwise wrap
+    if (targetPosition === myPos) return 0;
+    const diff = targetPosition - myPos;
+    return diff > 0 ? diff : diff + 7;
+  }, [myPlayer?.position]);
 
   // Sync local hand with DB state when it's my turn
   useEffect(() => {
@@ -1001,6 +1013,7 @@ export function HorsesGameTable({
 
   return (
     <div
+      ref={tableContainerRef}
       className={cn(
         "relative w-full rounded-xl overflow-hidden",
         // On mobile, DO NOT force viewport units; the parent mobile table controls height.
@@ -1020,6 +1033,16 @@ export function HorsesGameTable({
           onComplete={handleNoQualifyAnimationComplete}
         />
       )}
+      
+      {/* Turn Spotlight - shows during active dice rolling */}
+      <TurnSpotlight
+        currentTurnPosition={currentPlayer?.position ?? null}
+        currentPlayerPosition={myPlayer?.position ?? null}
+        isObserver={!myPlayer}
+        getClockwiseDistance={getClockwiseDistance}
+        containerRef={tableContainerRef}
+        isVisible={gamePhase === "playing" && currentPlayer !== undefined}
+      />
       {isMobile ? (
         <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">
           {/* Header */}
