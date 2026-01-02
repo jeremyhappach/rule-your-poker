@@ -17,9 +17,9 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round')
     .eq('id', gameId)
-    .single();
+    .maybeSingle();
 
   if (gameError || !game) {
     console.error('[SCC] Failed to get game:', gameError);
@@ -46,8 +46,8 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   const newHandNumber = (game.total_hands || 0) + 1;
 
   // CRITICAL: Prevent multi-client race where multiple players start the first hand at the same time,
-  // causing multiple rounds + multiple ante charges.
-  // We "claim" first-hand start by atomically switching the game to in_progress AND advancing current_round.
+  // OR multiple clients try to start the next hand after a rollover.
+  // We "claim" the right to start the new hand by atomically flipping pointers on the game row.
   // This also clears any stale game_over / last_round_result so the UI doesn't show the previous winner.
   if (isFirstHand) {
     const { data: claim, error: claimError } = await supabase
@@ -74,9 +74,38 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       console.log('[SCC] Another client claimed first-hand start, skipping');
       return;
     }
-  }
+  } else if (game.awaiting_next_round) {
+    // Rollover / re-ante: multiple clients may see awaiting_next_round and try to start the next hand.
+    let q = supabase
+      .from('games')
+      .update({
+        status: 'in_progress',
+        current_round: newRoundNumber,
+        total_hands: newHandNumber,
+        awaiting_next_round: false,
+        all_decisions_in: false,
+        last_round_result: null,
+        game_over_at: null,
+        is_first_hand: false,
+      })
+      .eq('id', gameId)
+      .eq('awaiting_next_round', true);
 
-  // GUARD: If the round already exists for this computed round number, assume a previous call partially failed.
+    // Only one client should succeed: require the current_round we observed.
+    if (typeof game.current_round === 'number') q = q.eq('current_round', game.current_round);
+    else q = q.is('current_round', null);
+
+    const { data: claim, error: claimError } = await q.select('id');
+
+    if (claimError) {
+      console.warn('[SCC] Failed to claim rollover start (continuing):', claimError);
+    }
+
+    if (!claim || claim.length === 0) {
+      console.log('[SCC] Another client claimed rollover start (or no longer awaiting), skipping');
+      return;
+    }
+  }
   const { data: existingRound } = await supabase
     .from('rounds')
     .select('id, pot, hand_number')
