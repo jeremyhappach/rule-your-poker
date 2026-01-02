@@ -1916,12 +1916,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return () => clearInterval(pollInterval);
   }, [game?.status, game?.is_paused, gameId]);
 
-  // Extract current round info - use cached data during game_over to preserve community cards
-  // CRITICAL: For Holm and Horses games, always use the LATEST round by round_number (not game.current_round which can be stale)
-  // This prevents stale horses_state from old rounds triggering premature win processing
-  const liveRound = (game?.game_type === 'holm-game' || game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew')
-    ? game?.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
-    : game?.rounds?.find(r => r.round_number === game.current_round);
+  // Extract current round info.
+  // IMPORTANT: For dice games (Horses + Ship Captain Crew), DO NOT fall back to the previous round while a new round row
+  // is still being created. That gap is what causes the "instant winner" + stale badge problem.
+  // So we prefer the round that matches game.current_round, and if it doesn't exist yet we treat it as "no round".
+  const liveRound = (() => {
+    if (!game?.rounds?.length) return null as Round | null;
+
+    if (game.game_type === "holm-game") {
+      // Holm: current_round can be stale, so prefer the latest by round_number.
+      return game.rounds.reduce(
+        (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
+        null as Round | null,
+      );
+    }
+
+    if (game.game_type === "horses" || game.game_type === "ship-captain-crew") {
+      // Dice games: current_round is authoritative; never show the previous round during the creation gap.
+      if (typeof game.current_round === "number") {
+        return game.rounds.find((r) => r.round_number === game.current_round) ?? null;
+      }
+      return game.rounds.reduce(
+        (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
+        null as Round | null,
+      );
+    }
+
+    // Default behavior for other games.
+    if (typeof game.current_round === "number") {
+      return game.rounds.find((r) => r.round_number === game.current_round) ?? null;
+    }
+
+    return game.rounds.reduce(
+      (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
+      null as Round | null,
+    );
+  })();
   
   // DEBUG: Always log liveRound details during in_progress Holm games
   if (game?.game_type === 'holm-game' && game?.status === 'in_progress') {
@@ -3209,11 +3239,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         !gameData.awaiting_next_round &&
         !gameData.last_round_result &&
         !gameData.game_over_at) {  // Don't set timeLeft if game_over_at is set
-      // CRITICAL: For Holm and Horses games, use the LATEST round by round_number (not game.current_round which can be stale)
-      const isHolmOrHorses = gameData.game_type === 'holm-game' || gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
-      const currentRound = isHolmOrHorses
+      // CRITICAL: Pick the correct round for timer calculations.
+      // For dice games, never fall back to the previous round while the new round row is still being created.
+      const isHolm = gameData.game_type === 'holm-game';
+      const isDice = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
+
+      const currentRound = isHolm
         ? gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
-        : gameData.rounds.find((r: Round) => r.round_number === gameData.current_round);
+        : (typeof gameData.current_round === 'number'
+            ? (gameData.rounds.find((r: Round) => r.round_number === gameData.current_round) || null)
+            : (isDice
+                ? null
+                : gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
+              )
+          );
       
       console.log('[FETCH] Round data:', {
         gameType: gameData.game_type,
