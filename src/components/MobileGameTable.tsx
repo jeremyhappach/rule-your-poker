@@ -3530,7 +3530,7 @@ export const MobileGameTable = ({
           return (
             <div
               className={cn(
-                "absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2",
+                "absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2",
               )}
               style={{ pointerEvents: 'auto' }}
             >
