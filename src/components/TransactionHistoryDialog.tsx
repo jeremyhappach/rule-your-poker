@@ -86,21 +86,25 @@ export const TransactionHistoryDialog = ({
                 <DialogTitle>{playerName}</DialogTitle>
                 <DialogDescription>Transaction History</DialogDescription>
               </div>
-              {isAdmin && (
-                <Button
-                  size="sm"
-                  onClick={() => setShowAddTransaction(true)}
-                  className="h-8 w-8 p-0"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              )}
             </div>
           </DialogHeader>
 
-          {/* Current Balance */}
+          {/* Current Balance with Add button */}
           <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
-            <span className="text-sm text-muted-foreground">Current Balance</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Current Balance</span>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAddTransaction(true)}
+                  className="h-7 px-2"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add
+                </Button>
+              )}
+            </div>
             <span
               className={`text-2xl font-bold ${
                 balance >= 0 ? 'text-green-500' : 'text-red-500'
@@ -109,6 +113,7 @@ export const TransactionHistoryDialog = ({
               ${formatChipValue(balance)}
             </span>
           </div>
+
 
           {/* Transactions List */}
           <ScrollArea className="max-h-[350px] pr-2">
