@@ -81,6 +81,7 @@ export const DealerGameSetup = ({
   const [showDeletingEmptySession, setShowDeletingEmptySession] = useState(false);
   const [deleteCountdown, setDeleteCountdown] = useState(5);
   const hasSubmittedRef = useRef(false);
+  const handleDealerTimeoutRef = useRef<() => void>(() => {});
   
   // Config state - use strings for free text input with validation on save
   const [anteAmount, setAnteAmount] = useState("2");
@@ -329,6 +330,9 @@ export const DealerGameSetup = ({
     onConfigComplete();
   };
 
+  // Keep ref updated with latest handleDealerTimeout function
+  handleDealerTimeoutRef.current = handleDealerTimeout;
+
   // Sync with existing config_deadline in database (set atomically when transitioning to game_selection)
   // Instead of setting our own deadline, we read the server's deadline and sync our timer
   useEffect(() => {
@@ -352,7 +356,7 @@ export const DealerGameSetup = ({
           // The server-side enforcer should have handled this, but handle it client-side as backup
           console.log('[DEALER SETUP] Deadline already expired on reconnect, triggering timeout');
           if (!hasSubmittedRef.current) {
-            handleDealerTimeout();
+            handleDealerTimeoutRef.current();
           }
           return;
         }
@@ -383,7 +387,7 @@ export const DealerGameSetup = ({
           clearInterval(timer);
           // Dealer timed out - mark as sitting out and re-evaluate
           if (!hasSubmittedRef.current) {
-            handleDealerTimeout();
+            handleDealerTimeoutRef.current();
           }
           return 0;
         }
