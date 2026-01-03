@@ -441,10 +441,16 @@ export const DealerGameSetup = ({
 
   const handleSubmit = async (overrideGameType?: string) => {
     if (isSubmitting || hasSubmittedRef.current) return;
-    
+
     // Use override if provided (for run back), otherwise use state
     const gameTypeToSubmit = overrideGameType || selectedGameType;
-    
+
+    // Guard: card submit should never run with a dice game type
+    if (gameTypeToSubmit === 'horses' || gameTypeToSubmit === 'ship-captain-crew') {
+      toast.error('Select a card game (Holm or 3-5-7)');
+      return;
+    }
+
     // Validate all numeric fields
     const parsedAnte = parseInt(anteAmount) || 0;
     const parsedLegValue = parseInt(legValue) || 0;
@@ -579,6 +585,15 @@ export const DealerGameSetup = ({
 
   const handleCategorySelect = (category: 'cards' | 'dice') => {
     setSelectionStep(category);
+
+    // If we're going to the card setup screen, make sure we start with a CARD game type.
+    // Otherwise we can accidentally submit the previous dice game type.
+    if (category === 'cards') {
+      const defaultCardType = previousGameType && !isDiceGame(previousGameType)
+        ? previousGameType
+        : 'holm-game';
+      handleGameTypeChange(defaultCardType);
+    }
   };
 
   const handleDiceGameSelect = async (gameType: string) => {
