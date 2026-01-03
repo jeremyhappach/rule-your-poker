@@ -439,8 +439,11 @@ export const DealerGameSetup = ({
     }
   }, [isBot, loadingDefaults, previousGameType, sessionGameConfigs, holmDefaults, threeFiveSevenDefaults]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (overrideGameType?: string) => {
     if (isSubmitting || hasSubmittedRef.current) return;
+    
+    // Use override if provided (for run back), otherwise use state
+    const gameTypeToSubmit = overrideGameType || selectedGameType;
     
     // Validate all numeric fields
     const parsedAnte = parseInt(anteAmount) || 0;
@@ -471,7 +474,7 @@ export const DealerGameSetup = ({
       console.error('Invalid Pot Max: must be at least $1');
       return;
     }
-    if (selectedGameType === 'holm-game' && (parsedChucky < 2 || parsedChucky > 7)) {
+    if (gameTypeToSubmit === 'holm-game' && (parsedChucky < 2 || parsedChucky > 7)) {
       console.error('Invalid Chucky Cards: must be between 2-7');
       return;
     }
@@ -479,13 +482,13 @@ export const DealerGameSetup = ({
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
 
-    console.log('[DEALER SETUP] Submitting game config:', { selectedGameType, parsedAnte, parsedLegValue, parsedChucky });
+    console.log('[DEALER SETUP] Submitting game config:', { gameTypeToSubmit, parsedAnte, parsedLegValue, parsedChucky });
 
-    const isHolmGame = selectedGameType === 'holm-game';
+    const isHolmGame = gameTypeToSubmit === 'holm-game';
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
     
     const updateData: any = {
-      game_type: selectedGameType,
+      game_type: gameTypeToSubmit,
       ante_amount: parsedAnte,
       leg_value: parsedLegValue,
       pussy_tax_enabled: pussyTaxEnabled,
@@ -609,7 +612,7 @@ export const DealerGameSetup = ({
     }
   };
   
-  const handleDiceGameSubmit = async () => {
+  const handleDiceGameSubmit = async (overrideGameType?: string) => {
     if (isSubmitting || hasSubmittedRef.current) return;
     
     const parsedAnte = parseInt(anteAmount) || 2;
@@ -621,15 +624,17 @@ export const DealerGameSetup = ({
     setIsSubmitting(true);
     hasSubmittedRef.current = true;
     
-    const gameTypeName = selectedGameType === 'ship-captain-crew' ? 'Ship' : 'Horses';
-    console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config`);
+    // Use override if provided (for run back), otherwise use state
+    const gameTypeToSubmit = overrideGameType || selectedGameType;
+    const gameTypeName = gameTypeToSubmit === 'ship-captain-crew' ? 'Ship' : 'Horses';
+    console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config, game_type:`, gameTypeToSubmit);
     
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
     
     const { error } = await supabase
       .from('games')
       .update({
-        game_type: selectedGameType,
+        game_type: gameTypeToSubmit,
         ante_amount: parsedAnte,
         config_complete: true,
         status: 'ante_decision',
@@ -672,15 +677,16 @@ export const DealerGameSetup = ({
   const handleRunBack = () => {
     if (previousGameType && previousGameConfig) {
       // Use previous config and submit immediately
+      // CRITICAL: Pass the game type directly to submit functions to avoid async state issues
       setSelectedGameType(previousGameType);
       setAnteAmount(String(previousGameConfig.ante_amount));
       
       // For dice games, we only need ante - submit with dice game handler
       if (isDiceGame(previousGameType)) {
-        // Submit with dice game handler after state update
-        setTimeout(() => handleDiceGameSubmit(), 100);
+        // Pass game type directly to avoid state race condition
+        handleDiceGameSubmit(previousGameType);
       } else {
-        // Card games need full config
+        // Card games need full config - set state then submit with explicit game type
         setLegValue(String(previousGameConfig.leg_value));
         setLegsToWin(String(previousGameConfig.legs_to_win));
         setPussyTaxEnabled(previousGameConfig.pussy_tax_enabled);
@@ -690,8 +696,8 @@ export const DealerGameSetup = ({
         setChuckyCards(String(previousGameConfig.chucky_cards));
         setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
         setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
-        // Submit with card game handler
-        setTimeout(() => handleSubmit(), 100);
+        // Pass game type directly to avoid state race condition
+        handleSubmit(previousGameType);
       }
     }
   };
@@ -831,7 +837,7 @@ export const DealerGameSetup = ({
                   ← Back
                 </button>
                 <Button
-                  onClick={handleDiceGameSubmit}
+                  onClick={() => handleDiceGameSubmit()}
                   disabled={isSubmitting}
                   className="flex-1 bg-poker-gold hover:bg-amber-500 text-black font-bold"
                 >
@@ -1149,7 +1155,7 @@ export const DealerGameSetup = ({
 
           {/* Start Button */}
           <Button 
-            onClick={handleSubmit} 
+            onClick={() => handleSubmit()} 
             disabled={isSubmitting}
             className="w-full bg-poker-gold hover:bg-poker-gold/80 text-black font-bold text-lg py-6"
           >
