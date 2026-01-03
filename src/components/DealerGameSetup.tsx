@@ -594,6 +594,13 @@ export const DealerGameSetup = ({
         : 'holm-game';
       handleGameTypeChange(defaultCardType);
     }
+    
+    // If we're going to dice selection, CLEAR the selected game type so we show the
+    // game selection screen instead of jumping straight to config of the previous dice game.
+    if (category === 'dice') {
+      // Reset to a non-dice placeholder so the dice selection UI shows
+      setSelectedGameType('');
+    }
   };
 
   const handleDiceGameSelect = async (gameType: string) => {
@@ -844,8 +851,8 @@ export const DealerGameSetup = ({
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    setSelectedGameType('holm-game');
-                    setSelectionStep('category');
+                    // Go back to dice game selection, not category
+                    setSelectedGameType('');
                   }}
                   className="flex-1 p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
                 >
