@@ -95,10 +95,44 @@ serve(async (req) => {
       // Call the enforce-deadlines function for this game
       try {
         console.log('[CRON-ENFORCE] Invoking enforce-deadlines for game:', game.id);
-        
-        const response = await supabase.functions.invoke('enforce-deadlines', {
-          body: { gameId: game.id },
-        });
+
+        const invokeWithRetry = async () => {
+          let lastResponse: any = null;
+
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            const response = await supabase.functions.invoke('enforce-deadlines', {
+              body: { gameId: game.id },
+            });
+
+            lastResponse = response;
+
+            if (!response.error) return response;
+
+            const msg = String(response.error?.message ?? '');
+            const isTransient =
+              msg.includes('502') ||
+              msg.toLowerCase().includes('bad gateway') ||
+              msg.includes('503') ||
+              msg.toLowerCase().includes('service unavailable') ||
+              msg.toLowerCase().includes('edge function returned a non-2xx') ||
+              msg.toLowerCase().includes('timeout');
+
+            if (!isTransient || attempt === 3) return response;
+
+            const waitMs = 400 * attempt;
+            console.log('[CRON-ENFORCE] Transient enforce-deadlines error; retrying', {
+              gameId: game.id,
+              attempt,
+              waitMs,
+              msg,
+            });
+            await new Promise((r) => setTimeout(r, waitMs));
+          }
+
+          return lastResponse;
+        };
+
+        const response = await invokeWithRetry();
 
         if (response.error) {
           console.error('[CRON-ENFORCE] Error enforcing deadlines for game', game.id, ':', response.error);
@@ -106,10 +140,10 @@ serve(async (req) => {
         } else {
           const actionsTaken = response.data?.actionsTaken || [];
           console.log('[CRON-ENFORCE] Enforcement result for game', game.id, ':', actionsTaken);
-          results.push({ 
-            gameId: game.id, 
-            status: game.status, 
-            result: actionsTaken.length > 0 ? actionsTaken.join('; ') : 'no_action_needed' 
+          results.push({
+            gameId: game.id,
+            status: game.status,
+            result: actionsTaken.length > 0 ? actionsTaken.join('; ') : 'no_action_needed',
           });
         }
       } catch (err) {

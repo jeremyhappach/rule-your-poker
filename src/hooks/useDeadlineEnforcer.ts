@@ -11,12 +11,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   const lastCallRef = useRef<number>(0);
 
   useEffect(() => {
-    // If the publishable key is unavailable in this build context, any backend call can hard-fail.
-    // Bail early to prevent blank screens in error/preview environments.
-    const publishableKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '');
-    if (!publishableKey || publishableKey.length === 0) {
-      return;
-    }
+    // Don't gate enforcement on build-time env checks; transient backend issues are already suppressed below.
 
     if (!gameId) {
       return;
