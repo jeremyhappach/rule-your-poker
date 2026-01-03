@@ -1626,13 +1626,18 @@ export const MobileGameTable = ({
   
   // Function to check if a player's cards should be shown
   const isPlayerCardsExposed = (playerId: string): boolean => {
-    // During game_over, always show cached cards (for pot animation)
-    if (isInGameOverStatus && showdownCardsCache.current.has(playerId)) {
+    // CRITICAL: Validate cache with BOTH round AND handContextId
+    const isCacheValidForCurrentHand = handContextId != null
+      ? showdownHandContextRef.current === handContextId && showdownRoundRef.current === currentRound
+      : showdownRoundRef.current !== null && showdownRoundRef.current === currentRound;
+    
+    // During game_over, show cached cards only if cache is valid
+    if (isInGameOverStatus && showdownCardsCache.current.has(playerId) && isCacheValidForCurrentHand) {
       return true;
     }
     if (!currentRound) return false;
-    // Cards are exposed if: we're in showdown round AND player has cached cards
-    return showdownRoundRef.current === currentRound && showdownCardsCache.current.has(playerId);
+    // Cards are exposed if: cache is valid AND player has cached cards
+    return isCacheValidForCurrentHand && showdownCardsCache.current.has(playerId);
   };
 
   // Find current player and their cards

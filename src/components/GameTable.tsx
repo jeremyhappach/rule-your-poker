@@ -205,9 +205,9 @@ export const GameTable = ({
   const lastRoundResetHashRef = useRef<string>('');
   
   // Track showdown state and CACHE CARDS during showdown to prevent flickering
+  // CRITICAL: Key showdown cache by BOTH roundId AND handContextId to prevent stale cards
   const showdownRoundRef = useRef<string | null>(null);
   const showdownCardsCache = useRef<Map<string, CardType[]>>(new Map());
-  // CRITICAL: Track the handContextId when cards were cached to prevent stale cards from previous hands
   const showdownHandContextRef = useRef<string | null>(null);
   
   // Cache Chucky cards to persist through announcement phase
@@ -215,52 +215,62 @@ export const GameTable = ({
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
 
-  // CRITICAL: When game type switches, clear any locally-held cards before paint to prevent stale flash.
+  // Helper function to clear ALL card caches
+  const clearAllCardCaches = useCallback((reason: string) => {
+    console.log('[GAMETABLE] 🧹 Clearing ALL card caches:', reason);
+    setLocalPlayerCards([]);
+    showdownCardsCache.current = new Map();
+    showdownRoundRef.current = null;
+    showdownHandContextRef.current = null;
+    lastFetchedRoundIdRef.current = null;
+    lastRoundResetHashRef.current = '';
+    setCachedChuckyCards(null);
+    setCachedChuckyActive(false);
+    setCachedChuckyCardsRevealed(0);
+  }, []);
+
+  // CRITICAL: When game type switches, clear all caches before paint
   const prevGameTypeForClearRef = useRef(gameType);
   useLayoutEffect(() => {
     if (prevGameTypeForClearRef.current !== gameType) {
-      console.log('[GAMETABLE] Game type changed -> clearing local cards/caches before paint', {
-        prevType: prevGameTypeForClearRef.current,
-        nextType: gameType,
-      });
-      setLocalPlayerCards([]);
-      showdownCardsCache.current = new Map();
-      showdownRoundRef.current = null;
-      showdownHandContextRef.current = null;
+      clearAllCardCaches(`game type changed: ${prevGameTypeForClearRef.current} -> ${gameType}`);
       prevGameTypeForClearRef.current = gameType;
     }
-  }, [gameType]);
+  }, [gameType, clearAllCardCaches]);
 
-  // AGGRESSIVE: When your player-hand round changes, hard-reset Chucky/showdown caches.
+  // CRITICAL: handContextId is the SINGLE SOURCE OF TRUTH for cache invalidation
+  // When it changes, ALL caches must be cleared immediately
   const prevHandContextIdRef = useRef<string | null>(handContextId ?? null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const prev = prevHandContextIdRef.current;
     const next = handContextId ?? null;
 
-    if (prev !== next) {
-      console.error('[HAND_RESET][DESKTOP] Hand context changed -> clearing cached Chucky/showdown/local cards', {
-        prev,
-        next,
-      });
-      setCachedChuckyCards(null);
-      setCachedChuckyActive(false);
-      setCachedChuckyCardsRevealed(0);
-      showdownRoundRef.current = null;
-      showdownCardsCache.current = new Map();
-      showdownHandContextRef.current = null;
-      setLocalPlayerCards([]);
-      lastFetchedRoundIdRef.current = null;
+    if (prev !== next && next !== null) {
+      clearAllCardCaches(`handContextId changed: ${prev} -> ${next}`);
     }
 
     prevHandContextIdRef.current = next;
-  }, [handContextId]);
+  }, [handContextId, clearAllCardCaches]);
+  
+  // CRITICAL: Clear caches on game status transitions to setup phases
+  const prevGameStatusRef = useRef(gameStatus);
+  useLayoutEffect(() => {
+    const prev = prevGameStatusRef.current;
+    const next = gameStatus;
+    const setupPhases = ['ante_decision', 'configuring', 'game_selection', 'dealer_selection', 'waiting'];
+    
+    if (prev !== next && setupPhases.includes(next || '')) {
+      clearAllCardCaches(`game status changed to setup phase: ${prev} -> ${next}`);
+    }
+    
+    prevGameStatusRef.current = next;
+  }, [gameStatus, clearAllCardCaches]);
   
   // Compute showdown state synchronously during render
-  // Count players who stayed for multi-player showdown detection
   const stayedPlayersCount = players.filter(p => p.current_decision === 'stay').length;
   const is357Round3MultiPlayerShowdown = gameType !== 'holm-game' && currentRound === 3 && allDecisionsIn && stayedPlayersCount >= 2;
   
-  // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
+  // 3-5-7 "secret reveal" for rounds 1 and 2
   const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
   const currentPlayerStayed = currentPlayerForSecretReveal?.current_decision === 'stay';
   const is357SecretRevealActive = gameType !== 'holm-game' && 
@@ -275,14 +285,15 @@ export const GameTable = ({
     is357Round3MultiPlayerShowdown ||
     is357SecretRevealActive;
   
-  // Get current round ID for tracking
   const currentRoundId = realtimeRound?.id || null;
   
-  // Clear showdown cache when:
-  // 1. A new round starts (round ID changes)
-  // 2. Round status resets to early phases
-  // 3. awaitingNextRound becomes true (hand ended, transitioning to next)
-  if (currentRoundId && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRoundId) {
+  // Clear showdown cache when round context changes
+  // CRITICAL: Use BOTH roundId AND handContextId for validation
+  const showdownCacheKey = `${currentRoundId}-${handContextId}`;
+  const currentShowdownCacheKey = `${showdownRoundRef.current}-${showdownHandContextRef.current}`;
+  
+  if (showdownRoundRef.current !== null && showdownCacheKey !== currentShowdownCacheKey) {
+    console.log('[GAMETABLE] Showdown cache key mismatch, clearing:', { old: currentShowdownCacheKey, new: showdownCacheKey });
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
     showdownHandContextRef.current = null;
@@ -294,19 +305,17 @@ export const GameTable = ({
     showdownHandContextRef.current = null;
   }
   
-  // If showdown is active, cache cards for players who stayed
-  // CRITICAL: Also validate handContextId to prevent caching stale cards
+  // Cache cards during showdown - only if handContextId matches
   if (isShowdownActive && currentRoundId && handContextId) {
     if (showdownRoundRef.current === null) {
       showdownRoundRef.current = currentRoundId;
       showdownHandContextRef.current = handContextId;
     }
-    // Cache cards for stayed players during this showdown
+    // CRITICAL: Only cache if BOTH roundId AND handContextId match
     if (showdownRoundRef.current === currentRoundId && showdownHandContextRef.current === handContextId) {
       players
         .filter(p => p.current_decision === 'stay')
         .forEach(p => {
-          // Only cache if we have cards and haven't cached yet
           if (!showdownCardsCache.current.has(p.id)) {
             const playerCardData = localPlayerCards.find(pc => pc.player_id === p.id);
             if (playerCardData && playerCardData.cards.length > 0) {
@@ -321,9 +330,12 @@ export const GameTable = ({
   const getPlayerCards = (playerId: string): CardType[] => {
     const liveCards = localPlayerCards.find(pc => pc.player_id === playerId)?.cards || [];
 
-    // CRITICAL: Once cards are cached for this round, ALWAYS use cache
-    // This prevents flickering when isShowdownActive temporarily becomes false
-    if (showdownRoundRef.current === currentRoundId) {
+    // CRITICAL: Only use cache if BOTH roundId AND handContextId match
+    // This prevents stale cards from previous hands showing during new hands
+    const cacheIsValid = showdownRoundRef.current === currentRoundId && 
+                         showdownHandContextRef.current === handContextId;
+    
+    if (cacheIsValid) {
       const cachedCards = showdownCardsCache.current.get(playerId);
       if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
@@ -334,9 +346,11 @@ export const GameTable = ({
   
   // Function to check if a player's cards should be shown
   const isPlayerCardsExposed = (playerId: string): boolean => {
-    if (!currentRoundId) return false;
-    // Cards are exposed if: we're in showdown round AND player has cached cards
-    return showdownRoundRef.current === currentRoundId && showdownCardsCache.current.has(playerId);
+    if (!currentRoundId || !handContextId) return false;
+    // Cards are exposed if: we're in showdown AND cache is valid for this hand
+    const cacheIsValid = showdownRoundRef.current === currentRoundId && 
+                         showdownHandContextRef.current === handContextId;
+    return cacheIsValid && showdownCardsCache.current.has(playerId);
   };
   
   // Keep ref in sync with state
@@ -463,14 +477,18 @@ export const GameTable = ({
                                  newRound.status === 'betting'; // Only treat as reset when back to betting
             
             if (isNewRoundId || isRoundReset) {
-              console.log('[GAMETABLE RT] 🔄 NEW ROUND/HAND DETECTED - clearing old cards', {
+              console.log('[GAMETABLE RT] 🔄 NEW ROUND/HAND DETECTED - clearing ALL caches', {
                 isNewRoundId,
                 isRoundReset,
                 oldHash: lastRoundResetHashRef.current.slice(0, 50),
                 newHash: roundResetHash.slice(0, 50)
               });
+              // CRITICAL: Clear ALL caches, not just localPlayerCards
               setLocalPlayerCards([]);
               lastFetchedRoundIdRef.current = null;
+              showdownCardsCache.current = new Map();
+              showdownRoundRef.current = null;
+              showdownHandContextRef.current = null;
             }
             
             // Update the reset hash
