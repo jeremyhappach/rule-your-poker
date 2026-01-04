@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { HorsesHandResult, HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCHandResult, SCCDie as SCCDieType, getSCCDisplayOrder, SCCHand } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
+import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { cn } from "@/lib/utils";
 import { Dice5 } from "lucide-react";
 
@@ -111,11 +112,18 @@ export function HorsesPlayerArea({
               <Badge
                 variant={isWinningHand ? "default" : "secondary"}
                 className={cn(
-                  "mt-1",
+                  "mt-1 px-2 py-1",
                   isWinningHand && "bg-green-600 text-white"
                 )}
               >
-                {handResult.description}
+                {gameType === 'horses' ? (
+                  <HorsesHandResultDisplay 
+                    description={handResult.description} 
+                    isWinning={isWinningHand}
+                  />
+                ) : (
+                  handResult.description
+                )}
               </Badge>
             </>
           )}
@@ -164,10 +172,18 @@ export function HorsesPlayerArea({
             <Badge
               variant={isWinningHand ? "default" : "secondary"}
               className={cn(
+                "px-2 py-1",
                 isWinningHand && "bg-green-600 text-white"
               )}
             >
-              {handResult.description}
+              {gameType === 'horses' ? (
+                <HorsesHandResultDisplay 
+                  description={handResult.description} 
+                  isWinning={isWinningHand}
+                />
+              ) : (
+                handResult.description
+              )}
             </Badge>
           ) : isCurrentTurn ? (
             <span className="text-sm text-yellow-400">Rolling...</span>
