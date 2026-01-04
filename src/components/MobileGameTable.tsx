@@ -28,6 +28,7 @@ import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { HorsesDie } from "./HorsesDie";
+import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
 import { useHorsesMobileController, HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
@@ -2775,7 +2776,14 @@ export const MobileGameTable = ({
           isHorsesCurrentlyWinning && "bg-green-600 text-white",
         )}
       >
-        {horsesPlayerResult.description}
+        {gameType === 'horses' ? (
+          <HorsesHandResultDisplay 
+            description={horsesPlayerResult.description} 
+            isWinning={isHorsesCurrentlyWinning}
+          />
+        ) : (
+          horsesPlayerResult.description
+        )}
       </Badge>
     );
     
@@ -3548,7 +3556,15 @@ export const MobileGameTable = ({
                       isCurrentTurnWinning && "bg-green-600 text-white",
                     )}
                   >
-                    {currentTurnResult.description}
+                    {gameType === 'horses' ? (
+                      <HorsesHandResultDisplay 
+                        description={currentTurnResult.description} 
+                        isWinning={isCurrentTurnWinning}
+                        size="md"
+                      />
+                    ) : (
+                      currentTurnResult.description
+                    )}
                   </Badge>
                 </div>
               ) : (
