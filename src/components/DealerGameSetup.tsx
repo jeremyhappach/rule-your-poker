@@ -166,34 +166,38 @@ export const DealerGameSetup = ({
   };
 
   // Update config when tab changes - PRIORITY: session config > global defaults
+  // Only applies to card games (holm-game, 3-5-7) - dice games don't have persistent configs
   const handleGameTypeChange = (gameType: string) => {
     setSelectedGameType(gameType);
     
-    // Normalize game type key for session configs lookup
-    const sessionKey = gameType === 'holm-game' ? 'holm-game' : '3-5-7';
-    const sessionConfig = sessionGameConfigs?.[sessionKey];
-    
-    // PRIORITY 1: Use session-specific config if available (remembers settings from earlier in session)
-    if (sessionConfig) {
-      console.log('[DEALER SETUP] Using session config for', gameType, ':', sessionConfig);
-      setAnteAmount(String(sessionConfig.ante_amount));
-      setLegValue(String(sessionConfig.leg_value));
-      setLegsToWin(String(sessionConfig.legs_to_win));
-      setPussyTaxEnabled(sessionConfig.pussy_tax_enabled);
-      setPussyTaxValue(String(sessionConfig.pussy_tax_value));
-      setPotMaxEnabled(sessionConfig.pot_max_enabled);
-      setPotMaxValue(String(sessionConfig.pot_max_value));
-      setChuckyCards(String(sessionConfig.chucky_cards));
-      setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
-      setRevealAtShowdown(sessionConfig.reveal_at_showdown ?? false);
-      return;
-    }
-    
-    // PRIORITY 2: Fall back to global defaults
-    const defaults = gameType === 'holm-game' ? holmDefaults : threeFiveSevenDefaults;
-    if (defaults) {
-      console.log('[DEALER SETUP] Using global defaults for', gameType);
-      applyDefaults(defaults);
+    // Only card games have session configs
+    if (gameType === 'holm-game' || gameType === '3-5-7') {
+      // Normalize game type key for session configs lookup
+      const sessionKey = gameType === 'holm-game' ? 'holm-game' : '3-5-7';
+      const sessionConfig = sessionGameConfigs?.[sessionKey];
+      
+      // PRIORITY 1: Use session-specific config if available (remembers settings from earlier in session)
+      if (sessionConfig && sessionConfig.game_type === gameType) {
+        console.log('[DEALER SETUP] Using session config for', gameType, ':', sessionConfig);
+        setAnteAmount(String(sessionConfig.ante_amount));
+        setLegValue(String(sessionConfig.leg_value));
+        setLegsToWin(String(sessionConfig.legs_to_win));
+        setPussyTaxEnabled(sessionConfig.pussy_tax_enabled);
+        setPussyTaxValue(String(sessionConfig.pussy_tax_value));
+        setPotMaxEnabled(sessionConfig.pot_max_enabled);
+        setPotMaxValue(String(sessionConfig.pot_max_value));
+        setChuckyCards(String(sessionConfig.chucky_cards));
+        setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
+        setRevealAtShowdown(sessionConfig.reveal_at_showdown ?? false);
+        return;
+      }
+      
+      // PRIORITY 2: Fall back to global defaults
+      const defaults = gameType === 'holm-game' ? holmDefaults : threeFiveSevenDefaults;
+      if (defaults) {
+        console.log('[DEALER SETUP] Using global defaults for', gameType);
+        applyDefaults(defaults);
+      }
     }
   };
 
@@ -513,8 +517,9 @@ export const DealerGameSetup = ({
         setSelectedGameType(newGameType);
         
         // Load session config or defaults for the new game type
+        // Only use session config if it's for the same game type (not a dice game config)
         const sessionConfig = sessionGameConfigs?.[newGameType];
-        if (sessionConfig) {
+        if (sessionConfig && sessionConfig.game_type === newGameType) {
           setAnteAmount(String(sessionConfig.ante_amount));
           setLegValue(String(sessionConfig.leg_value));
           setLegsToWin(String(sessionConfig.legs_to_win));

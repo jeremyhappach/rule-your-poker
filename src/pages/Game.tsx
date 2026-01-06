@@ -3643,12 +3643,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setPreviousGameConfig(gameConfig);
       
       // Also save to session-specific configs by game type
-      const gameTypeKey = game.game_type === 'holm-game' || game.game_type === 'holm' ? 'holm-game' : '3-5-7';
-      setSessionGameConfigs(prev => ({
-        ...prev,
-        [gameTypeKey]: gameConfig
-      }));
-      console.log('[GAME OVER] Saved session config for game type:', gameTypeKey);
+      // Only save card game configs (holm-game, 3-5-7) - dice games have no config to remember
+      if (game.game_type === 'holm-game' || game.game_type === 'holm' || game.game_type === '3-5-7') {
+        const gameTypeKey = game.game_type === 'holm-game' || game.game_type === 'holm' ? 'holm-game' : '3-5-7';
+        setSessionGameConfigs(prev => ({
+          ...prev,
+          [gameTypeKey]: gameConfig
+        }));
+        console.log('[GAME OVER] Saved session config for card game type:', gameTypeKey);
+      } else {
+        console.log('[GAME OVER] Skipping session config save for dice game:', game.game_type);
+      }
     }
 
     // CRITICAL: Mark ALL rounds as 'completed' before transitioning to new game
