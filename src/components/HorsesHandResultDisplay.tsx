@@ -81,13 +81,14 @@ export function HorsesHandResultDisplay({
     
     return (
       <div className={cn(
-        "inline-flex items-center gap-0.5",
+        "inline-flex items-center gap-1",
         isWinning && "ring-1 ring-green-500 ring-offset-1 ring-offset-transparent rounded"
       )}>
         {/* Count numeral */}
         <span className={cn(
-          "font-bold tabular-nums text-black",
-          size === "sm" ? "text-sm" : "text-base"
+          "font-bold tabular-nums",
+          size === "sm" ? "text-sm" : "text-base",
+          isWinning ? "text-white" : "text-black"
         )}>
           {count}
         </span>
