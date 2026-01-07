@@ -864,6 +864,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }, 300); // 300ms balances responsiveness and batching
     };
 
+    // Fallback polling if realtime subscription drops.
+    // This prevents "frozen" games when the realtime channel enters CHANNEL_ERROR.
+    let fallbackPollInterval: ReturnType<typeof setInterval> | null = null;
+    const startFallbackPolling = () => {
+      if (fallbackPollInterval) return;
+      fallbackPollInterval = setInterval(() => {
+        fetchGameData();
+      }, 1500);
+    };
+    const stopFallbackPolling = () => {
+      if (!fallbackPollInterval) return;
+      clearInterval(fallbackPollInterval);
+      fallbackPollInterval = null;
+    };
+
     const channel = supabase
       .channel(`game-${gameId}`)
       .on(
@@ -1125,51 +1140,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'player_cards'
-        },
-        (payload) => {
-          console.log('[REALTIME] Player cards changed:', payload);
-          // Immediate fetch for INSERT (cards dealt) - critical for observers and newly active players
-          if (payload.eventType === 'INSERT') {
-            console.log('[REALTIME] 🃏 CARDS DEALT - Immediate fetch!');
-            if (debounceTimer) clearTimeout(debounceTimer);
-            fetchGameData();
-            // CRITICAL: Cards are inserted BEFORE game status is updated to 'in_progress'
-            // This causes a race condition where fetchGameData won't fetch cards because
-            // the status check fails. Add delayed refetch to catch the updated status.
-            setTimeout(() => {
-              console.log('[REALTIME] 🃏 CARDS DEALT - Delayed refetch after status update');
-              fetchGameData();
-            }, 500);
-          } else {
-            debouncedFetch();
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles'
-        },
-        (payload) => {
-          console.log('[REALTIME] Profiles table changed:', payload);
-          debouncedFetch();
-        }
-      )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
+
+        // When realtime drops, keep the UI in sync via polling instead of "freezing".
+        if (status === 'SUBSCRIBED') {
+          stopFallbackPolling();
+          return;
+        }
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          console.warn('[SUBSCRIPTION] Realtime issue; enabling fallback polling:', status);
+          startFallbackPolling();
+        }
       });
 
     return () => {
       console.log('[SUBSCRIPTION] Cleaning up subscriptions');
       if (debounceTimer) clearTimeout(debounceTimer);
+      stopFallbackPolling();
       supabase.removeChannel(channel);
     };
   }, [gameId, user]);
