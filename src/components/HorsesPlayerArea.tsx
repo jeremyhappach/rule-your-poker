@@ -39,12 +39,16 @@ export function HorsesPlayerArea({
   onClick,
   isBot,
 }: HorsesPlayerAreaProps) {
+  // For Horses: hide username/seat when showing completed hand result to save space
+  const showCompactResult = gameType === 'horses' && hasTurnCompleted && handResult;
+
   return (
     <div
       onClick={onClick}
       className={cn(
-        "relative flex flex-col items-center gap-2 p-3 rounded-lg border-2 min-w-[140px]",
-        isCurrentTurn && "border-yellow-500 bg-yellow-500/10 z-[110]", // z-[110] to stay above spotlight overlay (z-[100])
+        "relative flex flex-col items-center gap-1 p-2 rounded-lg border-2",
+        showCompactResult ? "min-w-[100px]" : "min-w-[140px]",
+        isCurrentTurn && "border-yellow-500 bg-yellow-500/10 z-[110]",
         isWinningHand && "border-green-500 bg-green-500/20",
         !isCurrentTurn && !isWinningHand && "border-border/50 bg-black/30",
         isCurrentUser && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent",
@@ -58,12 +62,29 @@ export function HorsesPlayerArea({
         </div>
       )}
 
-      {/* Username */}
-      <span className="font-semibold text-foreground text-sm">{username}</span>
-      <span className="text-xs text-muted-foreground">Seat {position}</span>
+      {/* Username - hide in compact mode */}
+      {!showCompactResult && (
+        <>
+          <span className="font-semibold text-foreground text-sm">{username}</span>
+          <span className="text-xs text-muted-foreground">Seat {position}</span>
+        </>
+      )}
 
-      {/* For current user: show status-based content */}
-      {isCurrentUser && myStatus && (
+      {/* Compact mode: just show username initial + result */}
+      {showCompactResult && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground truncate max-w-[50px]">
+            {username}
+          </span>
+          <HorsesHandResultDisplay 
+            description={handResult.description} 
+            isWinning={isWinningHand}
+          />
+        </div>
+      )}
+
+      {/* For current user: show status-based content (non-compact) */}
+      {!showCompactResult && isCurrentUser && myStatus && (
         <div className="min-h-[50px] flex flex-col items-center justify-center gap-1">
           {myStatus === 'waiting' && !hasTurnCompleted && (
             <span className="text-sm text-muted-foreground italic">Waiting to roll...</span>
@@ -79,7 +100,6 @@ export function HorsesPlayerArea({
               {diceValues && (
                 <div className="flex gap-1">
                   {gameType === 'ship-captain-crew' ? (
-                    // SCC: Use display order to put frozen 6-5-4 on the left with gold highlighting
                     getSCCDisplayOrder({ dice: diceValues as SCCDieType[] } as SCCHand).map(({ die, originalIndex }) => (
                       <HorsesDie
                         key={originalIndex}
@@ -130,11 +150,10 @@ export function HorsesPlayerArea({
         </div>
       )}
 
-      {/* For other players: show completed dice */}
-      {!isCurrentUser && hasTurnCompleted && diceValues && (
+      {/* For other players: show completed dice (non-compact, non-Horses) */}
+      {!showCompactResult && !isCurrentUser && hasTurnCompleted && diceValues && (
         <div className="flex gap-1">
           {gameType === 'ship-captain-crew' ? (
-            // SCC: Use display order to put frozen 6-5-4 on the left with gold highlighting
             getSCCDisplayOrder({ dice: diceValues as SCCDieType[] } as SCCHand).map(({ die, originalIndex }) => (
               <HorsesDie
                 key={originalIndex}
@@ -165,8 +184,8 @@ export function HorsesPlayerArea({
         </div>
       )}
 
-      {/* Hand result or status for other players */}
-      {!isCurrentUser && (
+      {/* Hand result or status for other players (non-compact) */}
+      {!showCompactResult && !isCurrentUser && (
         <div className="min-h-[24px] flex items-center">
           {hasTurnCompleted && handResult ? (
             <Badge
