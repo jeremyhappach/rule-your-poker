@@ -1393,7 +1393,7 @@ export function HorsesGameTable({
                 return (
                   <div
                     key={player.id}
-                    className="absolute z-20 transform -translate-x-1/2 -translate-y-1/2"
+                    className="absolute z-[105] transform -translate-x-1/2 -translate-y-1/2"
                     style={{ left: `${x}%`, top: `${y}%` }}
                   >
                     <HorsesPlayerArea

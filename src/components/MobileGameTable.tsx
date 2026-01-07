@@ -421,6 +421,9 @@ export const MobileGameTable = ({
   // Helper: check if this is a dice game (Horses or Ship Captain Crew)
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
   
+  // Z-index for player slots - higher in dice games to stay above spotlight
+  const playerSlotZIndex = isDiceGame ? 'z-[105]' : 'z-10';
+  
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
     enabled: isDiceGame,
@@ -3938,7 +3941,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
-                <div className={`absolute left-10 z-10 transition-all duration-300 ${
+                <div className={`absolute left-10 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldMoveUp ? 'top-8' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 2)}
@@ -3951,7 +3954,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
-                <div className={`absolute left-0 z-10 transition-all duration-300 ${
+                <div className={`absolute left-0 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 1)}
@@ -3960,19 +3963,19 @@ export const MobileGameTable = ({
             })()}
             {/* Position 3: Bottom-left */}
             {players.find(p => p.position === 3) && (
-              <div className="absolute bottom-2 left-10 z-10">
+              <div className={`absolute bottom-2 left-10 ${playerSlotZIndex}`}>
                 {renderPlayerChip(players.find(p => p.position === 3)!, 0)}
               </div>
             )}
             {/* Position 4: Bottom center */}
             {players.find(p => p.position === 4) && (
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+              <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 ${playerSlotZIndex}`}>
                 {renderPlayerChip(players.find(p => p.position === 4)!, -1)}
               </div>
             )}
             {/* Position 5: Bottom-right */}
             {players.find(p => p.position === 5) && (
-              <div className="absolute bottom-2 right-10 z-10">
+              <div className={`absolute bottom-2 right-10 ${playerSlotZIndex}`}>
                 {renderPlayerChip(players.find(p => p.position === 5)!, 5)}
               </div>
             )}
@@ -3982,7 +3985,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
-                <div className={`absolute right-0 z-10 transition-all duration-300 ${
+                <div className={`absolute right-0 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 4)}
@@ -3995,7 +3998,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
-                <div className={`absolute right-10 z-10 transition-all duration-300 ${
+                <div className={`absolute right-10 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldMoveUp ? 'top-8' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 3)}
@@ -4007,7 +4010,7 @@ export const MobileGameTable = ({
           // SEATED PLAYER MODE: Render players at relative slots (clockwise from current player)
           <>
             {/* Slot 0 (1 seat clockwise): Bottom-left */}
-            <div className="absolute bottom-2 left-10 z-10">
+            <div className={`absolute bottom-2 left-10 ${playerSlotZIndex}`}>
               {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
             </div>
             {/* Slot 1 (2 seats clockwise): Middle-left - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
@@ -4017,7 +4020,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
-                <div className={`absolute left-0 z-10 transition-all duration-300 ${
+                <div className={`absolute left-0 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 1)}
@@ -4030,7 +4033,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
-                <div className={`absolute left-10 z-10 transition-all duration-300 ${
+                <div className={`absolute left-10 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldMoveUp ? 'top-8' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 2)}
@@ -4043,7 +4046,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return player && (
-                <div className={`absolute right-10 z-10 transition-all duration-300 ${
+                <div className={`absolute right-10 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldMoveUp ? 'top-8' : 'top-4'
                 }`}>
                   {renderPlayerChip(player, 3)}
@@ -4057,7 +4060,7 @@ export const MobileGameTable = ({
               const playerStayed = player?.current_decision === 'stay';
               const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
               return (
-                <div className={`absolute right-0 z-10 transition-all duration-300 ${
+                <div className={`absolute right-0 ${playerSlotZIndex} transition-all duration-300 ${
                   shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
                 }`}>
                   {player && renderPlayerChip(player, 4)}
@@ -4065,7 +4068,7 @@ export const MobileGameTable = ({
               );
             })()}
             {/* Slot 5 (6 seats clockwise): Bottom-right */}
-            <div className="absolute bottom-2 right-10 z-10">
+            <div className={`absolute bottom-2 right-10 ${playerSlotZIndex}`}>
               {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, 5)}
             </div>
           </>
