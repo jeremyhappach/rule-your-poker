@@ -90,16 +90,14 @@ export function HorsesHandResultDisplay({
         {/* Die face pips */}
         <DieFacePips value={dieValue} isWild={isWild} />
         
-        {/* Outlined number overlay */}
+        {/* Semi-transparent filled number overlay */}
         <span 
           className={cn(
-            "absolute inset-0 flex items-center justify-center font-black",
+            "absolute inset-0 flex items-center justify-center font-black pointer-events-none",
             size === "sm" ? "text-3xl" : "text-4xl"
           )}
           style={{
-            WebkitTextStroke: isWild ? '2px #d4af55' : '2px #374151',
-            color: 'transparent',
-            textShadow: '0 0 4px rgba(255,255,255,0.8)',
+            color: isWild ? 'rgba(212, 175, 55, 0.35)' : 'rgba(250, 204, 21, 0.4)',
           }}
         >
           {count}
