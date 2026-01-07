@@ -1457,6 +1457,7 @@ export function useHorsesMobileController({
     feltDice,
     winningPlayerIds,
     currentlyWinningPlayerIds,
+    currentWinningResult,
     getPlayerHandResult,
     handleRoll,
     handleToggleHold,

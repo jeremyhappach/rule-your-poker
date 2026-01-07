@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
+import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { cn, formatChipValue } from "@/lib/utils";
-import { Lock, RotateCcw } from "lucide-react";
+import { Lock, RotateCcw, Target } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { getSCCDisplayOrder, SCCHand } from "@/lib/sccGameLogic";
@@ -28,8 +29,24 @@ export function HorsesMobileCardsTab({
   // Show dice when it's my turn and I've rolled at least once
   const showMyDice = horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3;
 
+  // Show "rolling against" when it's my turn and there's already a winning hand to beat
+  const showRollingAgainst = horses.isMyTurn && horses.gamePhase === "playing" && horses.currentWinningResult;
+
   return (
     <div className="px-2 flex flex-col flex-1 relative">
+      {/* "Rolling against" indicator - show current best hand to beat */}
+      {showRollingAgainst && gameType === 'horses' && (
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Target className="w-3 h-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Beat:</span>
+          <HorsesHandResultDisplay 
+            description={horses.currentWinningResult!.description} 
+            isWinning={true}
+            size="sm"
+          />
+        </div>
+      )}
+
       {/* Dice display when rolling - LARGER dice, no helper text */}
       {showMyDice && (
         <div className="flex items-center justify-center gap-2 mb-3">
