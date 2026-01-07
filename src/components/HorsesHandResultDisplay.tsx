@@ -6,32 +6,29 @@ interface HorsesHandResultDisplayProps {
   size?: "sm" | "md";
 }
 
-// Dot patterns for the die face overlay
-function DieFaceOverlay({ value, isWild }: { value: number; isWild: boolean }) {
-  const dotClass = cn(
-    "rounded-full",
-    isWild ? "bg-poker-gold" : "bg-white"
-  );
-
-  const dotSize = "w-[3px] h-[3px]";
+// Dot patterns for the die face - black pips on white
+function DieFacePips({ value, isWild }: { value: number; isWild: boolean }) {
+  const dotClass = "rounded-full bg-black";
+  const dotSize = "w-[5px] h-[5px]";
+  const largeDotSize = "w-[7px] h-[7px]";
 
   switch (value) {
     case 1:
       return (
         <div className="flex items-center justify-center w-full h-full">
-          <div className={cn(dotClass, "w-[5px] h-[5px]")} />
+          <div className={cn(dotClass, isWild ? "bg-poker-gold" : "bg-black", largeDotSize)} />
         </div>
       );
     case 2:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-[3px]">
+        <div className="flex flex-col justify-between w-full h-full p-1.5">
           <div className="flex justify-end"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-start"><div className={cn(dotClass, dotSize)} /></div>
         </div>
       );
     case 3:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-[3px]">
+        <div className="flex flex-col justify-between w-full h-full p-1.5">
           <div className="flex justify-end"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-center"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-start"><div className={cn(dotClass, dotSize)} /></div>
@@ -39,14 +36,14 @@ function DieFaceOverlay({ value, isWild }: { value: number; isWild: boolean }) {
       );
     case 4:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-[3px]">
+        <div className="flex flex-col justify-between w-full h-full p-1.5">
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
         </div>
       );
     case 5:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-[3px]">
+        <div className="flex flex-col justify-between w-full h-full p-1.5">
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-center"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
@@ -54,7 +51,7 @@ function DieFaceOverlay({ value, isWild }: { value: number; isWild: boolean }) {
       );
     case 6:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-[3px]">
+        <div className="flex flex-col justify-between w-full h-full p-1.5">
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
@@ -66,17 +63,13 @@ function DieFaceOverlay({ value, isWild }: { value: number; isWild: boolean }) {
 }
 
 /**
- * Displays a Horses hand result as a compact die with overlaid count.
- * Shows "5" overlaid on a die showing 6s for "5 6s".
+ * Displays a Horses hand result as a white die with pips and an outlined number overlay.
  */
 export function HorsesHandResultDisplay({
   description,
   isWinning = false,
   size = "sm",
 }: HorsesHandResultDisplayProps) {
-  // Parse the description to extract count and die value
-  // Patterns: "3 6s", "5 1s (Wilds!)", "6 high"
-  
   // Match "X Ys" pattern (e.g., "3 6s", "5 1s")
   const ofAKindMatch = description.match(/^(\d+)\s+(\d+)s/);
   
@@ -88,24 +81,27 @@ export function HorsesHandResultDisplay({
     return (
       <div className={cn(
         "relative inline-flex items-center justify-center",
-        size === "sm" ? "w-7 h-7" : "w-9 h-9",
-        "rounded-md border",
-        isWild 
-          ? "bg-gradient-to-br from-amber-800 to-amber-950 border-poker-gold" 
-          : "bg-gradient-to-br from-red-700 to-red-900 border-red-500/50",
-        isWinning && "ring-1 ring-green-500 ring-offset-1 ring-offset-transparent"
+        size === "sm" ? "w-9 h-9" : "w-11 h-11",
+        "rounded-lg border-2 shadow-md",
+        "bg-white",
+        isWild ? "border-poker-gold" : "border-gray-400",
+        isWinning && "ring-2 ring-green-500 ring-offset-1 ring-offset-transparent"
       )}>
-        {/* Die face dots in background */}
-        <div className="absolute inset-0 opacity-30">
-          <DieFaceOverlay value={dieValue} isWild={isWild} />
-        </div>
+        {/* Die face pips */}
+        <DieFacePips value={dieValue} isWild={isWild} />
         
-        {/* Count overlay */}
-        <span className={cn(
-          "relative font-bold tabular-nums drop-shadow-lg",
-          size === "sm" ? "text-lg" : "text-xl",
-          isWild ? "text-poker-gold" : "text-white"
-        )}>
+        {/* Outlined number overlay */}
+        <span 
+          className={cn(
+            "absolute inset-0 flex items-center justify-center font-black",
+            size === "sm" ? "text-3xl" : "text-4xl"
+          )}
+          style={{
+            WebkitTextStroke: isWild ? '2px #d4af55' : '2px #374151',
+            color: 'transparent',
+            textShadow: '0 0 4px rgba(255,255,255,0.8)',
+          }}
+        >
           {count}
         </span>
       </div>
@@ -121,16 +117,16 @@ export function HorsesHandResultDisplay({
     return (
       <div className={cn(
         "relative inline-flex items-center justify-center",
-        size === "sm" ? "w-7 h-7" : "w-9 h-9",
-        "rounded-md border",
-        "bg-gradient-to-br from-gray-600 to-gray-800 border-gray-500/50",
-        isWinning && "ring-1 ring-green-500 ring-offset-1 ring-offset-transparent"
+        size === "sm" ? "w-9 h-9" : "w-11 h-11",
+        "rounded-lg border-2 shadow-md",
+        "bg-white border-gray-400",
+        isWinning && "ring-2 ring-green-500 ring-offset-1 ring-offset-transparent"
       )}>
-        {/* Die face dots */}
-        <DieFaceOverlay value={dieValue} isWild={false} />
+        {/* Die face pips */}
+        <DieFacePips value={dieValue} isWild={false} />
         
         {/* "H" for high in corner */}
-        <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold text-muted-foreground bg-background/80 px-0.5 rounded-sm">
+        <span className="absolute -bottom-1 -right-1 text-[10px] font-bold text-white bg-gray-600 px-1 rounded-sm shadow">
           H
         </span>
       </div>
