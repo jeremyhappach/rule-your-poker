@@ -7,10 +7,11 @@ interface HorsesHandResultDisplayProps {
 }
 
 // Dot patterns for the die face - black pips on white
-function DieFacePips({ value, isWild }: { value: number; isWild: boolean }) {
+function DieFacePips({ value, isWild, size = "sm" }: { value: number; isWild: boolean; size?: "sm" | "md" }) {
   const dotClass = "rounded-full bg-black";
-  const dotSize = "w-[5px] h-[5px]";
-  const largeDotSize = "w-[7px] h-[7px]";
+  const dotSize = size === "sm" ? "w-[3px] h-[3px]" : "w-[4px] h-[4px]";
+  const largeDotSize = size === "sm" ? "w-[4px] h-[4px]" : "w-[5px] h-[5px]";
+  const padding = size === "sm" ? "p-1" : "p-1.5";
 
   switch (value) {
     case 1:
@@ -21,14 +22,14 @@ function DieFacePips({ value, isWild }: { value: number; isWild: boolean }) {
       );
     case 2:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-1.5">
+        <div className={cn("flex flex-col justify-between w-full h-full", padding)}>
           <div className="flex justify-end"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-start"><div className={cn(dotClass, dotSize)} /></div>
         </div>
       );
     case 3:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-1.5">
+        <div className={cn("flex flex-col justify-between w-full h-full", padding)}>
           <div className="flex justify-end"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-center"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-start"><div className={cn(dotClass, dotSize)} /></div>
@@ -36,14 +37,14 @@ function DieFacePips({ value, isWild }: { value: number; isWild: boolean }) {
       );
     case 4:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-1.5">
+        <div className={cn("flex flex-col justify-between w-full h-full", padding)}>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
         </div>
       );
     case 5:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-1.5">
+        <div className={cn("flex flex-col justify-between w-full h-full", padding)}>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-center"><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
@@ -51,7 +52,7 @@ function DieFacePips({ value, isWild }: { value: number; isWild: boolean }) {
       );
     case 6:
       return (
-        <div className="flex flex-col justify-between w-full h-full p-1.5">
+        <div className={cn("flex flex-col justify-between w-full h-full", padding)}>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
           <div className="flex justify-between"><div className={cn(dotClass, dotSize)} /><div className={cn(dotClass, dotSize)} /></div>
@@ -80,28 +81,27 @@ export function HorsesHandResultDisplay({
     
     return (
       <div className={cn(
-        "relative inline-flex items-center justify-center",
-        size === "sm" ? "w-9 h-9" : "w-11 h-11",
-        "rounded-lg border-2 shadow-md",
-        "bg-white",
-        isWild ? "border-poker-gold" : "border-gray-400",
-        isWinning && "ring-2 ring-green-500 ring-offset-1 ring-offset-transparent"
+        "inline-flex items-center gap-0.5",
+        isWinning && "ring-1 ring-green-500 ring-offset-1 ring-offset-transparent rounded"
       )}>
-        {/* Die face pips */}
-        <DieFacePips value={dieValue} isWild={isWild} />
-        
-        {/* Semi-transparent filled number overlay */}
-        <span 
-          className={cn(
-            "absolute inset-0 flex items-center justify-center font-black pointer-events-none",
-            size === "sm" ? "text-3xl" : "text-4xl"
-          )}
-          style={{
-            color: isWild ? 'rgba(212, 175, 55, 0.35)' : 'rgba(250, 204, 21, 0.4)',
-          }}
-        >
+        {/* Count numeral */}
+        <span className={cn(
+          "font-bold tabular-nums text-black",
+          size === "sm" ? "text-sm" : "text-base"
+        )}>
           {count}
         </span>
+        
+        {/* Die */}
+        <div className={cn(
+          "relative inline-flex items-center justify-center",
+          size === "sm" ? "w-6 h-6" : "w-7 h-7",
+          "rounded border shadow-sm",
+          "bg-white",
+          isWild ? "border-poker-gold" : "border-gray-400"
+        )}>
+          <DieFacePips value={dieValue} isWild={isWild} size={size} />
+        </div>
       </div>
     );
   }
@@ -114,19 +114,21 @@ export function HorsesHandResultDisplay({
     
     return (
       <div className={cn(
-        "relative inline-flex items-center justify-center",
-        size === "sm" ? "w-9 h-9" : "w-11 h-11",
-        "rounded-lg border-2 shadow-md",
-        "bg-white border-gray-400",
-        isWinning && "ring-2 ring-green-500 ring-offset-1 ring-offset-transparent"
+        "inline-flex items-center gap-0.5",
+        isWinning && "ring-1 ring-green-500 ring-offset-1 ring-offset-transparent rounded"
       )}>
-        {/* Die face pips */}
-        <DieFacePips value={dieValue} isWild={false} />
+        {/* Die */}
+        <div className={cn(
+          "relative inline-flex items-center justify-center",
+          size === "sm" ? "w-6 h-6" : "w-7 h-7",
+          "rounded border shadow-sm",
+          "bg-white border-gray-400"
+        )}>
+          <DieFacePips value={dieValue} isWild={false} size={size} />
+        </div>
         
-        {/* "H" for high in corner */}
-        <span className="absolute -bottom-1 -right-1 text-[10px] font-bold text-white bg-gray-600 px-1 rounded-sm shadow">
-          H
-        </span>
+        {/* "H" for high */}
+        <span className="text-[10px] font-medium text-muted-foreground">H</span>
       </div>
     );
   }
