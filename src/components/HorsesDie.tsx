@@ -75,14 +75,21 @@ export function HorsesDie({
     lg: "w-20 h-20",
   };
 
-  // Thicker pips for better visibility
+  // Pip sizes - smaller for sm to avoid looking too thick
   const dotSizeClasses = {
-    sm: "w-2.5 h-2.5",
+    sm: "w-1.5 h-1.5",
     md: "w-3 h-3",
     lg: "w-4 h-4",
   };
 
   const dotSize = dotSizeClasses[size];
+  // Larger center pip for case 1
+  const largeDotSizeClasses = {
+    sm: "w-2 h-2",
+    md: "w-4 h-4",
+    lg: "w-5 h-5",
+  };
+  const largeDotSize = largeDotSizeClasses[size];
 
   // Dot patterns for each die face
   const renderDots = () => {
@@ -109,7 +116,7 @@ export function HorsesDie({
       case 1:
         return (
           <div className="flex items-center justify-center w-full h-full">
-            <div className={cn(dotClass, "w-4 h-4", showWildHighlight ? "bg-poker-gold" : "bg-foreground/90")} />
+            <div className={cn(dotClass, largeDotSize, showWildHighlight ? "bg-poker-gold" : "bg-foreground/90")} />
           </div>
         );
       case 2:
