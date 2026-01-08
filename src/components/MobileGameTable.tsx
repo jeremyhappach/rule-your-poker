@@ -2773,15 +2773,45 @@ export const MobileGameTable = ({
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
     // Dice game result element - replaces chip stack for completed players
-    const horsesResultElement = isDiceGame && effectiveHorsesResult && (
-      <div className="flex items-center justify-center">
-        <HorsesHandResultDisplay 
-          description={effectiveHorsesResult.description} 
-          isWinning={isHorsesCurrentlyWinning}
-          size="sm"
-        />
-      </div>
-    );
+    // For SCC: show cargo dice with themed background; for Horses: show the result display
+    const horsesResultElement = isDiceGame && effectiveHorsesResult && (() => {
+      if (gameType === 'ship-captain-crew' && horsesStatePlayerData?.dice) {
+        // Get cargo dice (the 2 dice that are not SCC)
+        const cargoDice = (horsesStatePlayerData.dice as SCCDieType[]).filter(d => !d.isSCC);
+        return (
+          <div className={cn(
+            "inline-flex items-center gap-1 rounded px-1 py-1",
+            isHorsesCurrentlyWinning 
+              ? "bg-poker-gold border border-poker-gold" 
+              : "bg-white border border-gray-300"
+          )}>
+            {cargoDice.map((die, idx) => (
+              <HorsesDie
+                key={idx}
+                value={die.value}
+                isHeld={false}
+                isRolling={false}
+                canToggle={false}
+                onToggle={() => {}}
+                size="sm"
+                showWildHighlight={false}
+                isSCCDie={false}
+              />
+            ))}
+          </div>
+        );
+      }
+      // For Horses: show the result display as before
+      return (
+        <div className="flex items-center justify-center">
+          <HorsesHandResultDisplay 
+            description={effectiveHorsesResult.description} 
+            isWinning={isHorsesCurrentlyWinning}
+            size="sm"
+          />
+        </div>
+      );
+    })();
     
     // Hide chip stack when player has a horses/dice result
     const hideChipForHorses = isDiceGame && effectiveHorsesResult;
