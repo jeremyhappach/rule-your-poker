@@ -2770,25 +2770,19 @@ export const MobileGameTable = ({
     const isHorsesCurrentlyWinning = isDiceGame && horsesController.enabled 
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
-    // Dice game result badge element - shown below chip for completed players
-    const horsesResultBadge = isDiceGame && horsesPlayerResult && (
-      <Badge 
-        variant="secondary" 
-        className={cn(
-          "text-xs px-2 py-0.5 mt-0.5 font-semibold",
-          isHorsesCurrentlyWinning && "bg-green-600 text-white",
-        )}
-      >
-        {gameType === 'horses' ? (
-          <HorsesHandResultDisplay 
-            description={horsesPlayerResult.description} 
-            isWinning={isHorsesCurrentlyWinning}
-          />
-        ) : (
-          horsesPlayerResult.description
-        )}
-      </Badge>
+    // Dice game result element - replaces chip stack for completed players
+    const horsesResultElement = isDiceGame && horsesPlayerResult && (
+      <div className="flex items-center justify-center">
+        <HorsesHandResultDisplay 
+          description={horsesPlayerResult.description} 
+          isWinning={isHorsesCurrentlyWinning}
+          size="sm"
+        />
+      </div>
     );
+    
+    // Hide chip stack when player has a horses/dice result
+    const hideChipForHorses = isDiceGame && horsesPlayerResult;
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
         {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
@@ -2796,22 +2790,22 @@ export const MobileGameTable = ({
         {(isBottomPosition || (!showNameBelowCards && !isBottomPosition && !showNameBelowChipstack)) && !hideChipForShowdown && nameElement}
         {/* During showdown with hidden chips, show name above cards for bottom positions only */}
         {hideChipForShowdown && isBottomPosition && nameElement}
-        {/* Hide chip stack during showdown to make room for cards */}
-        {!hideChipForShowdown && (
+        {/* Hide chip stack during showdown OR when player has dice result */}
+        {!hideChipForShowdown && !hideChipForHorses && (
           <div data-seat-chip-position={player.position} className="relative">
             <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
               {chipElement}
             </MobilePlayerTimer>
           </div>
         )}
+        {/* Show dice result in place of chip stack */}
+        {hideChipForHorses && horsesResultElement}
         {/* Emoticon overlay when chip is hidden during showdown */}
         {emoticonOverlayElement}
         {/* Name below chipstack for upper corners in regular mode */}
         {showNameBelowChipstack && nameElement}
         {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
         {cardsElement}
-        {/* Horses result badge - show below chip for completed players */}
-        {horsesResultBadge}
         {/* Name below cards for upper corners and middle positions during showdown */}
         {showNameBelowCards && (
           <div className={isUpperCorner ? 'mt-2' : ''}>
