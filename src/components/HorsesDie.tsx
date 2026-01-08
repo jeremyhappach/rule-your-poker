@@ -75,10 +75,11 @@ export function HorsesDie({
     lg: "w-20 h-20",
   };
 
+  // Thicker pips for better visibility
   const dotSizeClasses = {
-    sm: "w-2 h-2",
-    md: "w-2.5 h-2.5",
-    lg: "w-3 h-3",
+    sm: "w-2.5 h-2.5",
+    md: "w-3 h-3",
+    lg: "w-4 h-4",
   };
 
   const dotSize = dotSizeClasses[size];
@@ -207,19 +208,19 @@ export function HorsesDie({
           ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
           : isWildDie
             ? "bg-card border-poker-gold shadow-md ring-2 ring-poker-gold/50"
-            : "bg-card border-border shadow-sm",
+            : "bg-card border-border",
         canToggle && !isHeld && !isWildDie && "hover:border-primary/60 cursor-pointer active:scale-95",
         canToggle && !isHeld && isWildDie && "hover:border-poker-gold cursor-pointer active:scale-95",
         canToggle && isHeld && "hover:border-amber-600 cursor-pointer active:scale-95",
         !canToggle && "cursor-default opacity-95",
       )}
       style={{
-        // Add glow effect during roll or for wild dice
+        // 3D edge effect with inset highlight and drop shadow
         boxShadow: animating 
-          ? '0 0 12px 2px rgba(251, 191, 36, 0.6)' 
+          ? '0 0 12px 2px rgba(251, 191, 36, 0.6), inset 0 1px 2px rgba(255,255,255,0.4), 0 3px 6px rgba(0,0,0,0.3)' 
           : isWildDie 
-            ? '0 0 8px 1px rgba(212, 175, 55, 0.5)' 
-            : undefined,
+            ? '0 0 8px 1px rgba(212, 175, 55, 0.5), inset 0 1px 2px rgba(255,255,255,0.3), 0 3px 6px rgba(0,0,0,0.25)' 
+            : 'inset 0 1px 2px rgba(255,255,255,0.4), 0 3px 6px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.1)',
       }}
     >
       {renderDots()}
