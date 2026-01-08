@@ -86,9 +86,10 @@ export function HorsesHandResultDisplay({
       )}>
         {/* Count numeral */}
         <span className={cn(
-          "tabular-nums",
-          size === "sm" ? "text-sm" : "text-base",
-          isWinning ? "font-extrabold text-white" : "font-bold text-black"
+          "tabular-nums leading-none",
+          isWinning 
+            ? (size === "sm" ? "text-base font-extrabold text-white" : "text-lg font-extrabold text-white")
+            : (size === "sm" ? "text-sm font-bold text-black" : "text-base font-bold text-black")
         )}>
           {count}
         </span>
