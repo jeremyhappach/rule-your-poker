@@ -85,12 +85,15 @@ export function HorsesHandResultDisplay({
         isWinning && "bg-poker-gold"
       )}>
         {/* Count numeral */}
-        <span className={cn(
-          "tabular-nums leading-none",
-          isWinning 
-            ? (size === "sm" ? "text-base font-extrabold text-white" : "text-lg font-extrabold text-white")
-            : (size === "sm" ? "text-sm font-bold text-black" : "text-base font-bold text-black")
-        )}>
+        <span 
+          className={cn(
+            "tabular-nums leading-none",
+            isWinning 
+              ? (size === "sm" ? "text-base font-extrabold text-white" : "text-lg font-extrabold text-white")
+              : (size === "sm" ? "text-sm font-bold text-black" : "text-base font-bold text-black")
+          )}
+          style={isWinning ? { textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" } : undefined}
+        >
           {count}
         </span>
         
