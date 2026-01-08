@@ -977,6 +977,12 @@ export function useHorsesMobileController({
     const run = async () => {
       setBotTurnActiveId(botId);
 
+      // Add 1.5 second delay before SCC bots start their turn
+      if (isSCC) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (cancelled) return;
+      }
+
       try {
         // Preflight: read the latest horses_state so we don't act on stale props.
         const { data: roundRow, error: roundErr } = await supabase
