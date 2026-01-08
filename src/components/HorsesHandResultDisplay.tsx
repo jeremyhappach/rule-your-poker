@@ -9,8 +9,9 @@ interface HorsesHandResultDisplayProps {
 // Dot patterns for the die face - black pips on white
 function DieFacePips({ value, isWild, size = "sm" }: { value: number; isWild: boolean; size?: "sm" | "md" }) {
   const dotClass = "rounded-full bg-black";
-  const dotSize = size === "sm" ? "w-[3px] h-[3px]" : "w-[4px] h-[4px]";
-  const largeDotSize = size === "sm" ? "w-[4px] h-[4px]" : "w-[5px] h-[5px]";
+  // Thicker pips for better visibility
+  const dotSize = size === "sm" ? "w-[4px] h-[4px]" : "w-[5px] h-[5px]";
+  const largeDotSize = size === "sm" ? "w-[5px] h-[5px]" : "w-[6px] h-[6px]";
   const padding = size === "sm" ? "p-1" : "p-1.5";
 
   switch (value) {
@@ -82,14 +83,16 @@ export function HorsesHandResultDisplay({
     return (
       <div className={cn(
         "inline-flex items-center gap-0.5 rounded",
-        isWinning ? "bg-poker-gold px-0.5 py-0" : "px-1.5 py-0.5"
+        isWinning 
+          ? "bg-white border border-poker-gold px-0.5 py-0.5" 
+          : "bg-white border border-gray-300 px-0.5 py-0.5"
       )}>
         {/* Count numeral */}
         <span 
           className={cn(
             "tabular-nums leading-none",
             isWinning 
-              ? (size === "sm" ? "text-xl font-extrabold text-white" : "text-2xl font-extrabold text-white")
+              ? (size === "sm" ? "text-xl font-extrabold text-poker-gold" : "text-2xl font-extrabold text-poker-gold")
               : (size === "sm" ? "text-sm font-bold text-black" : "text-base font-bold text-black")
           )}
           style={isWinning ? { textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" } : undefined}
@@ -98,13 +101,18 @@ export function HorsesHandResultDisplay({
         </span>
         
         {/* Die */}
-        <div className={cn(
-          "relative inline-flex items-center justify-center",
-          size === "sm" ? "w-6 h-6" : "w-7 h-7",
-          "rounded border shadow-sm",
-          "bg-white",
-          isWild ? "border-poker-gold" : "border-gray-400"
-        )}>
+        <div 
+          className={cn(
+            "relative inline-flex items-center justify-center",
+            size === "sm" ? "w-6 h-6" : "w-7 h-7",
+            "rounded border",
+            "bg-white",
+            isWild ? "border-poker-gold" : "border-gray-400"
+          )}
+          style={{
+            boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.5), 0 2px 4px rgba(0,0,0,0.25), 0 1px 0 rgba(0,0,0,0.1)',
+          }}
+        >
           <DieFacePips value={dieValue} isWild={isWild} size={size} />
         </div>
       </div>
@@ -119,21 +127,28 @@ export function HorsesHandResultDisplay({
     
     return (
       <div className={cn(
-        "inline-flex items-center gap-0.5",
-        isWinning && "ring-1 ring-green-500 ring-offset-1 ring-offset-transparent rounded"
+        "inline-flex items-center gap-0.5 rounded",
+        isWinning 
+          ? "bg-white border border-poker-gold px-0.5 py-0.5" 
+          : "bg-white border border-gray-300 px-0.5 py-0.5"
       )}>
         {/* Die */}
-        <div className={cn(
-          "relative inline-flex items-center justify-center",
-          size === "sm" ? "w-6 h-6" : "w-7 h-7",
-          "rounded border shadow-sm",
-          "bg-white border-gray-400"
-        )}>
+        <div 
+          className={cn(
+            "relative inline-flex items-center justify-center",
+            size === "sm" ? "w-6 h-6" : "w-7 h-7",
+            "rounded border",
+            "bg-white border-gray-400"
+          )}
+          style={{
+            boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.5), 0 2px 4px rgba(0,0,0,0.25), 0 1px 0 rgba(0,0,0,0.1)',
+          }}
+        >
           <DieFacePips value={dieValue} isWild={false} size={size} />
         </div>
         
         {/* "H" for high */}
-        <span className="text-[10px] font-medium text-muted-foreground">H</span>
+        <span className="text-[10px] font-medium text-black">H</span>
       </div>
     );
   }
