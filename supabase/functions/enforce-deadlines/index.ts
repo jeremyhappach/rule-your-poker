@@ -1,6 +1,33 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Card utilities for server-side Holm round start
+interface Card {
+  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  rank: string;
+}
+
+function createDeck(): Card[] {
+  const suits: Card['suit'][] = ['hearts', 'diamonds', 'clubs', 'spades'];
+  const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  const deck: Card[] = [];
+  for (const suit of suits) {
+    for (const rank of ranks) {
+      deck.push({ suit, rank });
+    }
+  }
+  return deck;
+}
+
+function shuffleDeck(deck: Card[]): Card[] {
+  const shuffled = [...deck];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -908,9 +935,146 @@ serve(async (req) => {
           const isHolmGame = game.game_type === 'holm-game';
           
           if (isHolmGame) {
-            // For Holm games: Let the client handle round start via realtime
-            // We just cleared the awaiting flag - client will detect and start the round
-            actionsTaken.push(`awaiting_next_round watchdog: Cleared awaiting state for Holm round ${nextRoundNum}`);
+            // For Holm games: Start the round server-side (just like we do for 3-5-7)
+            // This ensures the game progresses even when no clients are connected
+            
+            // Get active players (not sitting out)
+            const activePlayers = freshPlayers?.filter((p: any) => 
+              p.status === 'active' && !p.sitting_out
+            ) || [];
+            
+            if (activePlayers.length >= 2) {
+              // Get game defaults for timer
+              const { data: holmDefaults } = await supabase
+                .from('game_defaults')
+                .select('decision_timer_seconds')
+                .eq('game_type', 'holm')
+                .maybeSingle();
+              
+              const timerSeconds = (holmDefaults as any)?.decision_timer_seconds ?? 30;
+              const decisionDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+              
+              // Calculate buck position - rotate clockwise from current position
+              const occupiedPositions = activePlayers.map((p: any) => p.position).sort((a: number, b: number) => a - b);
+              let buckPosition = game.buck_position || occupiedPositions[0];
+              
+              // Rotate buck clockwise for next hand
+              const currentBuckIndex = occupiedPositions.indexOf(buckPosition);
+              if (currentBuckIndex !== -1) {
+                const nextBuckIndex = (currentBuckIndex + 1) % occupiedPositions.length;
+                buckPosition = occupiedPositions[nextBuckIndex];
+              }
+              
+              // Clean up any existing round with same round_number
+              const { data: existingHolmRound } = await supabase
+                .from('rounds')
+                .select('id')
+                .eq('game_id', gameId)
+                .eq('round_number', nextRoundNum)
+                .maybeSingle();
+              
+              if (existingHolmRound?.id) {
+                await supabase.from('player_cards').delete().eq('round_id', existingHolmRound.id);
+                await supabase.from('player_actions').delete().eq('round_id', existingHolmRound.id);
+                await supabase.from('rounds').delete().eq('id', existingHolmRound.id);
+              }
+              
+              // Deal cards
+              const deck = shuffleDeck(createDeck());
+              let cardIndex = 0;
+              
+              // Deal 4 community cards
+              const communityCards = [
+                deck[cardIndex++],
+                deck[cardIndex++],
+                deck[cardIndex++],
+                deck[cardIndex++]
+              ];
+              
+              // Get total_hands for hand_number
+              const handNumber = (game.total_hands || 0) + 1;
+              
+              // Create the round
+              const { data: newRound, error: holmRoundError } = await supabase
+                .from('rounds')
+                .insert({
+                  game_id: gameId,
+                  round_number: nextRoundNum,
+                  cards_dealt: 4,
+                  pot: game.pot || 0,
+                  status: 'betting',
+                  decision_deadline: decisionDeadline,
+                  community_cards: communityCards,
+                  community_cards_revealed: 2,
+                  chucky_active: false,
+                  current_turn_position: buckPosition,
+                  hand_number: handNumber
+                })
+                .select()
+                .single();
+              
+              if (holmRoundError || !newRound) {
+                console.error('[ENFORCE] Failed to create Holm round:', holmRoundError);
+                actionsTaken.push(`awaiting_next_round watchdog: Failed to create Holm round ${nextRoundNum}`);
+              } else {
+                // Deal 4 cards to each player
+                for (const player of activePlayers) {
+                  const playerCards = [
+                    deck[cardIndex++],
+                    deck[cardIndex++],
+                    deck[cardIndex++],
+                    deck[cardIndex++]
+                  ];
+                  
+                  await supabase
+                    .from('player_cards')
+                    .insert({
+                      player_id: player.id,
+                      round_id: newRound.id,
+                      cards: playerCards
+                    });
+                }
+                
+                // Reset player decisions
+                await supabase
+                  .from('players')
+                  .update({ current_decision: null, decision_locked: false })
+                  .eq('game_id', gameId);
+                
+                // Update game state
+                await supabase
+                  .from('games')
+                  .update({
+                    current_round: nextRoundNum,
+                    buck_position: buckPosition,
+                    all_decisions_in: false,
+                    last_round_result: null,
+                    is_first_hand: false,
+                    total_hands: handNumber
+                  })
+                  .eq('id', gameId);
+                
+                actionsTaken.push(`awaiting_next_round watchdog: Started Holm round ${nextRoundNum} (hand #${handNumber}) with ${activePlayers.length} players, buck at position ${buckPosition}`);
+                console.log('[ENFORCE] ✅ Successfully started Holm round server-side:', {
+                  gameId,
+                  roundNumber: nextRoundNum,
+                  handNumber,
+                  buckPosition,
+                  playerCount: activePlayers.length
+                });
+              }
+            } else {
+              // Not enough players - return to waiting state
+              await supabase
+                .from('games')
+                .update({
+                  status: 'waiting_for_players',
+                  awaiting_next_round: false,
+                  next_round_number: null
+                })
+                .eq('id', gameId);
+              actionsTaken.push('awaiting_next_round watchdog: Not enough Holm players, returning to waiting');
+            }
           } else {
             // For 3-5-7: Start the round directly server-side
             // This matches what client's proceedToNextRound -> startRound does
