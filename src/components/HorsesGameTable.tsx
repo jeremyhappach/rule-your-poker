@@ -715,8 +715,8 @@ export function HorsesGameTable({
       if (botProcessingRef.current.has(botId)) return;
       botProcessingRef.current.add(botId);
 
-      // Add 1.5 second delay before SCC bots start their turn
-      if (isSCC) {
+      // Add 1.5 second delay before SCC bots start their turn (only during active gameplay)
+      if (isSCC && gamePhase === 'playing') {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         if (cancelled || botRunTokenRef.current !== token) return;
       }
