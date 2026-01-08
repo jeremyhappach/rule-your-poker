@@ -84,7 +84,7 @@ export function HorsesHandResultDisplay({
       <div className={cn(
         "inline-flex items-center gap-0.5 rounded",
         isWinning 
-          ? "bg-white border border-poker-gold px-0.5 py-0.5" 
+          ? "bg-poker-gold border border-poker-gold px-0.5 py-0.5" 
           : "bg-white border border-gray-300 px-0.5 py-0.5"
       )}>
         {/* Count numeral */}
@@ -92,7 +92,7 @@ export function HorsesHandResultDisplay({
           className={cn(
             "tabular-nums leading-none",
             isWinning 
-              ? (size === "sm" ? "text-xl font-extrabold text-poker-gold" : "text-2xl font-extrabold text-poker-gold")
+              ? (size === "sm" ? "text-xl font-extrabold text-white" : "text-2xl font-extrabold text-white")
               : (size === "sm" ? "text-sm font-bold text-black" : "text-base font-bold text-black")
           )}
           style={isWinning ? { textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" } : undefined}
