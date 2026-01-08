@@ -7,10 +7,14 @@ interface HorsesHandResultDisplayProps {
 }
 
 // Dot patterns for the die face - black pips on white
-function DieFacePips({ value, isWild, size = "sm" }: { value: number; isWild: boolean; size?: "sm" | "md" }) {
+function DieFacePips({ value, isWild, size = "sm", isWinning = false }: { value: number; isWild: boolean; size?: "sm" | "md"; isWinning?: boolean }) {
   const dotClass = "rounded-full bg-black";
-  const dotSize = size === "sm" ? "w-[3px] h-[3px]" : "w-[4px] h-[4px]";
-  const largeDotSize = size === "sm" ? "w-[4px] h-[4px]" : "w-[5px] h-[5px]";
+  const dotSize = size === "sm" 
+    ? (isWinning ? "w-[4px] h-[4px]" : "w-[3px] h-[3px]") 
+    : (isWinning ? "w-[5px] h-[5px]" : "w-[4px] h-[4px]");
+  const largeDotSize = size === "sm" 
+    ? (isWinning ? "w-[5px] h-[5px]" : "w-[4px] h-[4px]") 
+    : (isWinning ? "w-[6px] h-[6px]" : "w-[5px] h-[5px]");
   const padding = size === "sm" ? "p-1" : "p-1.5";
 
   switch (value) {
@@ -82,12 +86,13 @@ export function HorsesHandResultDisplay({
     return (
       <div className={cn(
         "inline-flex items-center gap-1 px-1.5 py-0.5 rounded",
-        isWinning && "bg-white border border-poker-gold"
+        isWinning && "bg-poker-gold"
       )}>
         {/* Count numeral */}
         <span className={cn(
-          "font-bold tabular-nums text-black",
-          size === "sm" ? "text-sm" : "text-base"
+          "tabular-nums text-black",
+          size === "sm" ? "text-sm" : "text-base",
+          isWinning ? "font-extrabold" : "font-bold"
         )}>
           {count}
         </span>
@@ -100,7 +105,7 @@ export function HorsesHandResultDisplay({
           "bg-white",
           isWild ? "border-poker-gold" : "border-gray-400"
         )}>
-          <DieFacePips value={dieValue} isWild={isWild} size={size} />
+          <DieFacePips value={dieValue} isWild={isWild} size={size} isWinning={isWinning} />
         </div>
       </div>
     );
