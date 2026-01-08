@@ -2764,17 +2764,19 @@ export const MobileGameTable = ({
     );
     
     // Dice games: get player's completed hand result and check if currently winning
+    const horsesStatePlayerData = isDiceGame ? (horsesState as any)?.playerStates?.[player.id] : null;
     const horsesPlayerResult = isDiceGame && horsesController.enabled 
       ? horsesController.getPlayerHandResult(player.id) 
       : null;
+    const effectiveHorsesResult = horsesPlayerResult || (horsesStatePlayerData?.isComplete ? horsesStatePlayerData.result : null);
     const isHorsesCurrentlyWinning = isDiceGame && horsesController.enabled 
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
     // Dice game result element - replaces chip stack for completed players
-    const horsesResultElement = isDiceGame && horsesPlayerResult && (
+    const horsesResultElement = isDiceGame && effectiveHorsesResult && (
       <div className="flex items-center justify-center">
         <HorsesHandResultDisplay 
-          description={horsesPlayerResult.description} 
+          description={effectiveHorsesResult.description} 
           isWinning={isHorsesCurrentlyWinning}
           size="sm"
         />
@@ -2782,7 +2784,7 @@ export const MobileGameTable = ({
     );
     
     // Hide chip stack when player has a horses/dice result
-    const hideChipForHorses = isDiceGame && horsesPlayerResult;
+    const hideChipForHorses = isDiceGame && effectiveHorsesResult;
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
         {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
