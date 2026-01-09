@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
@@ -21,7 +20,9 @@ interface DiceTableLayoutProps {
   showRollingMessage?: boolean;
   /** If true, hide dice that haven't been rolled yet (value === 0) */
   hideUnrolledDice?: boolean;
-  /** Number of dice that were held BEFORE the current render (for layout stability on turn completion) */
+  /** Per-die mask of what was held BEFORE turn completion (layout should freeze at last-roll start) */
+  heldMaskBeforeComplete?: boolean[];
+  /** Legacy fallback: number of dice held before completion (can't preserve exact dice) */
   previouslyHeldCount?: number;
 }
 
@@ -75,6 +76,7 @@ export function DiceTableLayout({
   isObserver = false,
   showRollingMessage = false,
   hideUnrolledDice = false,
+  heldMaskBeforeComplete,
   previouslyHeldCount,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
@@ -131,35 +133,37 @@ export function DiceTableLayout({
   const unheldCount = unheldDice.length;
   
   // Special case: all 5 dice held (player's turn is complete)
-  // Previously held dice stay in held row, newly held dice stay in scatter
+  // Layout should freeze to exactly what it was at the START of the final roll:
+  // - dice that were already held stay in the held row
+  // - dice that were not held stay in scatter positions (but show held styling)
   const allHeld = heldCount === 5;
-  
-  if (allHeld && previouslyHeldCount !== undefined) {
-    // We know how many were previously held - those go in held row
-    // The rest (newly held) stay in scatter positions
-    const prevHeldCount = Math.min(previouslyHeldCount, 5);
-    const newlyHeldCount = 5 - prevHeldCount;
-    
-    // Split dice: first prevHeldCount go to held row, rest stay in scatter
-    const diceInHeldRow = orderedDice.slice(0, prevHeldCount);
-    const diceInScatter = orderedDice.slice(prevHeldCount);
-    
-    const heldPositions = getHeldPositions(prevHeldCount, dieWidth, gap);
-    const scatterPositions = UNHELD_POSITIONS[newlyHeldCount] || [];
-    
+
+  const hasValidHeldMask =
+    Array.isArray(heldMaskBeforeComplete) &&
+    heldMaskBeforeComplete.length >= dice.length;
+
+  if (allHeld && hasValidHeldMask) {
+    const wasHeld = (originalIndex: number) => !!heldMaskBeforeComplete?.[originalIndex];
+
+    const heldAtStartOfFinalRoll = orderedDice.filter((d) => wasHeld(d.originalIndex));
+    const unheldAtStartOfFinalRoll = orderedDice.filter((d) => !wasHeld(d.originalIndex));
+
+    const heldPositions = getHeldPositions(heldAtStartOfFinalRoll.length, dieWidth, gap);
+    const scatterPositions = UNHELD_POSITIONS[unheldAtStartOfFinalRoll.length] || [];
+
     const heldYOffset = -35;
-    const scatterYOffset = prevHeldCount > 0 ? 50 : 10;
-    
+    const scatterYOffset = heldAtStartOfFinalRoll.length > 0 ? 50 : 10;
+
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
-        {/* Previously held dice - in held row */}
-        {diceInHeldRow.map((item, displayIdx) => {
+        {/* Dice that were held before the final roll started */}
+        {heldAtStartOfFinalRoll.map((item, displayIdx) => {
           const pos = heldPositions[displayIdx];
           if (!pos) return null;
-          
+
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
-          
+
           return (
             <div
               key={`held-${item.originalIndex}`}
@@ -183,15 +187,96 @@ export function DiceTableLayout({
             </div>
           );
         })}
-        
-        {/* Newly held dice - stay in scatter but show as held */}
+
+        {/* Dice that were NOT held when the final roll started (stay in scatter positions) */}
+        {unheldAtStartOfFinalRoll.map((item, displayIdx) => {
+          const pos = scatterPositions[displayIdx];
+          if (!pos) return null;
+
+          const sccDie = item.die as SCCDieType;
+          const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
+
+          return (
+            <div
+              key={`scatter-held-${item.originalIndex}`}
+              className="absolute transition-all duration-300 ease-out"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + scatterYOffset}px)) rotate(${pos.rotate}deg)`,
+              }}
+            >
+              <HorsesDie
+                value={item.die.value}
+                isHeld={true}
+                isRolling={false}
+                canToggle={false}
+                onToggle={() => onToggleHold?.(item.originalIndex)}
+                size={size}
+                showWildHighlight={showWildHighlight && !isSCC}
+                isSCCDie={isSCCDie}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Legacy fallback: we know only "how many" were held (not which ones). Keep prior behavior.
+  if (allHeld && previouslyHeldCount !== undefined) {
+    const prevHeldCount = Math.min(previouslyHeldCount, 5);
+    const newlyHeldCount = 5 - prevHeldCount;
+
+    const diceInHeldRow = orderedDice.slice(0, prevHeldCount);
+    const diceInScatter = orderedDice.slice(prevHeldCount);
+
+    const heldPositions = getHeldPositions(prevHeldCount, dieWidth, gap);
+    const scatterPositions = UNHELD_POSITIONS[newlyHeldCount] || [];
+
+    const heldYOffset = -35;
+    const scatterYOffset = prevHeldCount > 0 ? 50 : 10;
+
+    return (
+      <div className="relative" style={{ width: '200px', height: '120px' }}>
+        {diceInHeldRow.map((item, displayIdx) => {
+          const pos = heldPositions[displayIdx];
+          if (!pos) return null;
+
+          const sccDie = item.die as SCCDieType;
+          const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
+
+          return (
+            <div
+              key={`held-${item.originalIndex}`}
+              className="absolute transition-all duration-300 ease-out"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`,
+              }}
+            >
+              <HorsesDie
+                value={item.die.value}
+                isHeld={true}
+                isRolling={false}
+                canToggle={false}
+                onToggle={() => onToggleHold?.(item.originalIndex)}
+                size={size}
+                showWildHighlight={showWildHighlight && !isSCC}
+                isSCCDie={isSCCDie}
+              />
+            </div>
+          );
+        })}
+
         {diceInScatter.map((item, displayIdx) => {
           const pos = scatterPositions[displayIdx];
           if (!pos) return null;
-          
+
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
-          
+
           return (
             <div
               key={`scatter-held-${item.originalIndex}`}
