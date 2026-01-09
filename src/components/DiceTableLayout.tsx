@@ -120,38 +120,122 @@ export function DiceTableLayout({
     return <div className="relative" style={{ width: '200px', height: '120px' }} />;
   }
   
-  // All dice stay in their scatter positions - held state is shown visually only
-  // Use 5-dice positions for consistent placement
-  const allPositions = UNHELD_POSITIONS[5] || [];
+  // Separate held and unheld dice
+  const heldDice = orderedDice.filter(d => d.die.isHeld);
+  const unheldDice = orderedDice.filter(d => !d.die.isHeld);
   
-  // Slight vertical offset to center the dice area
-  const yOffset = 10;
+  const heldCount = heldDice.length;
+  const unheldCount = unheldDice.length;
+  
+  // Special case: all 5 dice held (player's turn is complete)
+  // Keep all dice in their scatter positions, just show held state visually
+  const allHeld = heldCount === 5;
+  
+  if (allHeld) {
+    // All dice stay in scatter positions - held state is shown visually only
+    const allPositions = UNHELD_POSITIONS[5] || [];
+    const yOffset = 10;
+    
+    return (
+      <div className="relative" style={{ width: '200px', height: '120px' }}>
+        {orderedDice.map((item, displayIdx) => {
+          const pos = allPositions[displayIdx];
+          if (!pos) return null;
+          
+          const sccDie = item.die as SCCDieType;
+          const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
+          
+          return (
+            <div
+              key={`die-${item.originalIndex}`}
+              className="absolute transition-all duration-300 ease-out"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + yOffset}px)) rotate(${pos.rotate}deg)`,
+              }}
+            >
+              <HorsesDie
+                value={item.die.value}
+                isHeld={true}
+                isRolling={false}
+                canToggle={false}
+                onToggle={() => onToggleHold?.(item.originalIndex)}
+                size={size}
+                showWildHighlight={showWildHighlight && !isSCC}
+                isSCCDie={isSCCDie}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  
+  // Normal case: held dice move to held row, unheld stay in scatter
+  const heldPositions = getHeldPositions(heldCount, dieWidth, gap);
+  const unheldPositions = UNHELD_POSITIONS[unheldCount] || [];
+  
+  // Held dice go at the top (tighter to pot), unheld dice go below
+  const heldYOffset = -35;
+  const unheldYOffset = heldCount > 0 ? 50 : 5;
   
   return (
     <div className="relative" style={{ width: '200px', height: '120px' }}>
-      {/* All dice in scatter positions - held state shown via color only */}
-      {orderedDice.map((item, displayIdx) => {
-        const pos = allPositions[displayIdx];
+      {/* Held dice - horizontal line */}
+      {heldDice.map((item, displayIdx) => {
+        const pos = heldPositions[displayIdx];
         if (!pos) return null;
         
         const sccDie = item.die as SCCDieType;
         const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
-        const isHeld = item.die.isHeld;
         
         return (
           <div
-            key={`die-${item.originalIndex}`}
+            key={`held-${item.originalIndex}`}
             className="absolute transition-all duration-300 ease-out"
             style={{
               left: '50%',
               top: '50%',
-              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + yOffset}px)) rotate(${pos.rotate}deg)`,
+              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`,
             }}
           >
             <HorsesDie
               value={item.die.value}
-              isHeld={isHeld}
-              isRolling={isRolling && !isHeld}
+              isHeld={true}
+              isRolling={false}
+              canToggle={canToggle && !isObserver}
+              onToggle={() => onToggleHold?.(item.originalIndex)}
+              size={size}
+              showWildHighlight={showWildHighlight && !isSCC}
+              isSCCDie={isSCCDie}
+            />
+          </div>
+        );
+      })}
+      
+      {/* Unheld dice - staggered scatter */}
+      {unheldDice.map((item, displayIdx) => {
+        const pos = unheldPositions[displayIdx];
+        if (!pos) return null;
+        
+        const sccDie = item.die as SCCDieType;
+        const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
+        
+        return (
+          <div
+            key={`unheld-${item.originalIndex}`}
+            className="absolute transition-all duration-300 ease-out"
+            style={{
+              left: '50%',
+              top: '50%',
+              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + unheldYOffset}px)) rotate(${pos.rotate}deg)`,
+            }}
+          >
+            <HorsesDie
+              value={item.die.value}
+              isHeld={false}
+              isRolling={isRolling}
               canToggle={canToggle && !isObserver && !isSCC}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
@@ -163,4 +247,18 @@ export function DiceTableLayout({
       })}
     </div>
   );
+}
+
+// Calculate held dice positions (horizontal line, centered)
+function getHeldPositions(count: number, dieWidth: number, gap: number): { x: number; y: number }[] {
+  if (count === 0) return [];
+  
+  const tightGap = Math.max(2, gap - 4);
+  const totalWidth = count * dieWidth + (count - 1) * tightGap;
+  const startX = -totalWidth / 2 + dieWidth / 2;
+  
+  return Array.from({ length: count }, (_, i) => ({
+    x: startX + i * (dieWidth + tightGap),
+    y: 0,
+  }));
 }
