@@ -575,35 +575,29 @@ export function useHorsesMobileController({
     getPlayerUsername,
   ]);
 
-  // Detect when ANY player's SCC hand is complete and they didn't qualify
+  // Detect when the CURRENT USER's SCC hand is complete and they didn't qualify
+  // Only show the overlay to the player who rolled no qualify, not to spectators
   useEffect(() => {
     if (!enabled || !isSCC) return;
     if (!currentRoundId) return;
+    if (!myPlayer) return;
     
-    // Check all player states for newly completed no-qualify hands
-    const playerStates = horsesState?.playerStates;
-    if (!playerStates) return;
+    // Only check the current user's state
+    const myPlayerState = horsesState?.playerStates?.[myPlayer.id];
+    if (!myPlayerState?.isComplete || !myPlayerState?.result) return;
     
-    for (const [playerId, state] of Object.entries(playerStates)) {
-      if (!state.isComplete || !state.result) continue;
+    const result = myPlayerState.result as SCCHandResult;
+    if (!result.isQualified) {
+      const noQualifyKey = `${currentRoundId}:${myPlayer.id}`;
+      if (noQualifyShownForRef.current.has(noQualifyKey)) return;
       
-      const result = state.result as SCCHandResult;
-      if (!result.isQualified) {
-        const noQualifyKey = `${currentRoundId}:${playerId}`;
-        if (noQualifyShownForRef.current.has(noQualifyKey)) continue;
-        
-        noQualifyShownForRef.current.add(noQualifyKey);
-        
-        // Find player name
-        const player = players.find(p => p.id === playerId);
-        const playerName = player ? getPlayerUsername(player) : null;
-        
-        setNoQualifyPlayerName(playerName);
-        setShowNoQualifyAnimation(true);
-        break; // Only show one at a time
-      }
+      noQualifyShownForRef.current.add(noQualifyKey);
+      
+      // Show animation for the current user (no need for player name since it's them)
+      setNoQualifyPlayerName(null);
+      setShowNoQualifyAnimation(true);
     }
-  }, [enabled, isSCC, currentRoundId, horsesState?.playerStates, players, getPlayerUsername]);
+  }, [enabled, isSCC, currentRoundId, myPlayer, horsesState?.playerStates]);
 
   // Handler to reset the no qualify animation
   const handleNoQualifyAnimationComplete = useCallback(() => {

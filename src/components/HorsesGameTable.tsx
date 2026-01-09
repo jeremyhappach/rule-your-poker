@@ -371,35 +371,33 @@ export function HorsesGameTable({
     setMidnightPlayerName(null);
   }, []);
 
-  // Detect when ANY player's SCC hand is complete and they didn't qualify
+  // Detect when the CURRENT USER's SCC hand is complete and they didn't qualify
+  // Only show the overlay to the player who rolled no qualify, not to spectators
   useEffect(() => {
     if (!isSCC) return;
     if (!currentRoundId) return;
+    if (!currentUserId) return;
     
-    // Check all player states for newly completed no-qualify hands
-    const playerStates = horsesState?.playerStates;
-    if (!playerStates) return;
+    // Find the current user's player
+    const myPlayer = players.find(p => p.user_id === currentUserId);
+    if (!myPlayer) return;
     
-    for (const [playerId, state] of Object.entries(playerStates)) {
-      if (!state.isComplete || !state.result) continue;
+    // Only check the current user's state
+    const myState = horsesState?.playerStates?.[myPlayer.id];
+    if (!myState?.isComplete || !myState?.result) return;
+    
+    const result = myState.result as SCCHandResult;
+    if (!result.isQualified) {
+      const noQualifyKey = `${currentRoundId}:${myPlayer.id}`;
+      if (noQualifyShownForRef.current.has(noQualifyKey)) return;
       
-      const result = state.result as SCCHandResult;
-      if (!result.isQualified) {
-        const noQualifyKey = `${currentRoundId}:${playerId}`;
-        if (noQualifyShownForRef.current.has(noQualifyKey)) continue;
-        
-        noQualifyShownForRef.current.add(noQualifyKey);
-        
-        // Find player name
-        const player = players.find(p => p.id === playerId);
-        const playerName = player ? getPlayerUsername(player) : null;
-        
-        setNoQualifyPlayerName(playerName);
-        setShowNoQualifyAnimation(true);
-        break; // Only show one at a time
-      }
+      noQualifyShownForRef.current.add(noQualifyKey);
+      
+      // Show animation for the current user (no need for player name since it's them)
+      setNoQualifyPlayerName(null);
+      setShowNoQualifyAnimation(true);
     }
-  }, [isSCC, currentRoundId, horsesState?.playerStates, players]);
+  }, [isSCC, currentRoundId, currentUserId, horsesState?.playerStates, players]);
 
   const handleNoQualifyAnimationComplete = useCallback(() => {
     setShowNoQualifyAnimation(false);
