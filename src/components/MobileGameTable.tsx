@@ -2801,7 +2801,7 @@ export const MobileGameTable = ({
           
           return (
             <div className={cn(
-              "inline-flex items-center gap-1 rounded px-1 py-1",
+              "inline-flex items-center gap-0.5 rounded px-0.5 py-0.5",
               isHorsesCurrentlyWinning 
                 ? "bg-poker-gold border border-poker-gold" 
                 : "bg-white border border-gray-300"
@@ -2814,7 +2814,7 @@ export const MobileGameTable = ({
                   isRolling={false}
                   canToggle={false}
                   onToggle={() => {}}
-                  size="sm"
+                  size="xs"
                   showWildHighlight={false}
                   isSCCDie={false}
                 />
