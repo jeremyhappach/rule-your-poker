@@ -4,19 +4,19 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Smart deadline enforcer that uses realtime subscriptions to minimize edge function calls.
  * 
- * Instead of polling every 3 seconds continuously, this hook:
- * 1. Subscribes to realtime updates on games/rounds tables
- * 2. Tracks the nearest deadline from the current game state
- * 3. Only starts polling when a deadline is within 15 seconds of expiring
- * 4. Stops polling once the deadline is enforced (detected via state change)
+ * Optimizations:
+ * 1. If only 1 human player in game: NO polling at all (bots never timeout, cron handles disconnected human)
+ * 2. For multi-human games: Only polls when a deadline is within 15 seconds of expiring
+ * 3. Uses realtime subscriptions to detect deadline changes instead of constant polling
  * 
- * This reduces edge function calls by ~83% while maintaining the same enforcement guarantee.
+ * This reduces edge function calls by 83-100% depending on game composition.
  */
 export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: string | undefined) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCallRef = useRef<number>(0);
   const [nearestDeadline, setNearestDeadline] = useState<Date | null>(null);
+  const [humanPlayerCount, setHumanPlayerCount] = useState<number>(0);
   const [isPollingActive, setIsPollingActive] = useState(false);
 
   // Cleanup function to clear all timers
@@ -124,8 +124,14 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   }, [enforceDeadlines]);
 
   // Schedule polling to start when deadline is imminent
-  const schedulePolling = useCallback((deadline: Date) => {
+  const schedulePolling = useCallback((deadline: Date, skipIfSingleHuman: boolean) => {
     clearTimers();
+    
+    // If only 1 human player, skip all client-side polling
+    // Bots never timeout, and cron handles disconnected human
+    if (skipIfSingleHuman) {
+      return;
+    }
     
     const now = new Date();
     const msUntilDeadline = deadline.getTime() - now.getTime();
@@ -175,6 +181,24 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     );
   }, []);
 
+  // Fetch human player count for the game
+  const fetchHumanPlayerCount = useCallback(async () => {
+    if (!gameId) return 0;
+    
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('is_bot', false);
+      
+      if (error) return 0;
+      return data?.length ?? 0;
+    } catch {
+      return 0;
+    }
+  }, [gameId]);
+
   // Main effect: subscribe to realtime and manage polling
   useEffect(() => {
     if (!gameId) {
@@ -190,10 +214,17 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     }
 
     let isMounted = true;
+    let currentHumanCount = 0;
 
-    // Fetch initial game/round state to get deadlines
+    // Fetch initial game/round state to get deadlines and player count
     const fetchInitialState = async () => {
       try {
+        // Get human player count
+        currentHumanCount = await fetchHumanPlayerCount();
+        if (isMounted) {
+          setHumanPlayerCount(currentHumanCount);
+        }
+
         const { data: gameData } = await supabase
           .from('games')
           .select('config_deadline, ante_decision_deadline, game_over_at, current_round')
@@ -218,7 +249,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
         if (isMounted) {
           setNearestDeadline(nearest);
           if (nearest) {
-            schedulePolling(nearest);
+            schedulePolling(nearest, currentHumanCount <= 1);
           }
         }
       } catch {
@@ -227,6 +258,34 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     };
 
     fetchInitialState();
+
+    // Subscribe to player changes (to track human count)
+    const playerChannel = supabase
+      .channel(`deadline-players-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'players',
+          filter: `game_id=eq.${gameId}`,
+        },
+        async () => {
+          if (!isMounted) return;
+          
+          const newCount = await fetchHumanPlayerCount();
+          if (isMounted) {
+            currentHumanCount = newCount;
+            setHumanPlayerCount(newCount);
+            
+            // If we went from multi-human to single-human, stop polling
+            if (newCount <= 1) {
+              clearTimers();
+            }
+          }
+        }
+      )
+      .subscribe();
 
     // Subscribe to game changes
     const gameChannel = supabase
@@ -267,7 +326,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
             // If deadline changed, reschedule polling
             if (nearest?.getTime() !== previousDeadline?.getTime()) {
               if (nearest) {
-                schedulePolling(nearest);
+                schedulePolling(nearest, currentHumanCount <= 1);
               } else {
                 // No more deadlines, stop polling
                 clearTimers();
@@ -315,7 +374,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           if (isMounted) {
             setNearestDeadline(nearest);
             if (nearest) {
-              schedulePolling(nearest);
+              schedulePolling(nearest, currentHumanCount <= 1);
             } else {
               clearTimers();
             }
@@ -327,10 +386,11 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     return () => {
       isMounted = false;
       clearTimers();
+      supabase.removeChannel(playerChannel);
       supabase.removeChannel(gameChannel);
       supabase.removeChannel(roundChannel);
     };
-  }, [gameId, gameStatus, clearTimers, calculateNearestDeadline, schedulePolling]);
+  }, [gameId, gameStatus, clearTimers, calculateNearestDeadline, schedulePolling, fetchHumanPlayerCount]);
 
   // Cleanup on unmount
   useEffect(() => {
