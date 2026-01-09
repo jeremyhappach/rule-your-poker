@@ -152,10 +152,10 @@ export function DiceTableLayout({
   const allHeld = heldCount === 5;
   
   // Calculate vertical offset for the two groups
-  // Held dice go at the top (under pot), unheld dice go below
+  // Held dice go at the top (tighter to pot), unheld dice go below
   // When all 5 are held, they move to the center (rolling area)
-  const heldYOffset = allHeld ? 15 : -20; // Higher up unless all held
-  const unheldYOffset = heldCount > 0 ? 45 : 5; // Push down to utilize bottom space
+  const heldYOffset = allHeld ? 15 : -35; // Move held dice up closer to pot
+  const unheldYOffset = heldCount > 0 ? 50 : 5; // Push unheld down more to avoid overlap
   
   return (
     <div className="relative" style={{ width: '200px', height: '120px' }}>
