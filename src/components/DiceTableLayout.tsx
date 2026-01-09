@@ -104,14 +104,14 @@ export function DiceTableLayout({
     );
   }
   
-  // Get die dimensions based on size
+  // Get die dimensions based on size (reduced for less overlap)
   const dieSizes = {
-    sm: 40,
-    md: 56,
-    lg: 80,
+    sm: 36,
+    md: 48,
+    lg: 72,
   };
   const dieWidth = dieSizes[size];
-  const gap = 8;
+  const gap = 6;
   
   // For SCC games, use display order if available
   let orderedDice: { die: HorsesDieType | SCCDieType; originalIndex: number }[] = [];

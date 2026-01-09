@@ -7,7 +7,7 @@ interface HorsesDieProps {
   canToggle: boolean;
   isRolling?: boolean;
   onToggle?: () => void;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
   isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
 }
@@ -70,24 +70,27 @@ export function HorsesDie({
   }, [value, isRolling, animating]);
 
   const sizeClasses = {
-    sm: "w-10 h-10",
-    md: "w-14 h-14",
-    lg: "w-20 h-20",
+    xs: "w-7 h-7",
+    sm: "w-9 h-9",
+    md: "w-12 h-12",
+    lg: "w-18 h-18",
   };
 
-  // Pip sizes - smaller for sm to avoid looking too thick
+  // Pip sizes - smaller for xs/sm to avoid looking too thick
   const dotSizeClasses = {
+    xs: "w-1 h-1",
     sm: "w-1.5 h-1.5",
-    md: "w-3 h-3",
-    lg: "w-4 h-4",
+    md: "w-2.5 h-2.5",
+    lg: "w-3.5 h-3.5",
   };
 
   const dotSize = dotSizeClasses[size];
   // Larger center pip for case 1
   const largeDotSizeClasses = {
+    xs: "w-1.5 h-1.5",
     sm: "w-2 h-2",
-    md: "w-4 h-4",
-    lg: "w-5 h-5",
+    md: "w-3 h-3",
+    lg: "w-4 h-4",
   };
   const largeDotSize = largeDotSizeClasses[size];
 
