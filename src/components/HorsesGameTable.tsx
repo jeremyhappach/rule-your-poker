@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HorsesDie } from "./HorsesDie";
 import { SCCDie } from "./SCCDie";
+import { DiceTableLayout } from "./DiceTableLayout";
 import { HorsesPlayerArea } from "./HorsesPlayerArea";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import { MidnightAnimation } from "./MidnightAnimation";
@@ -1426,19 +1427,15 @@ export function HorsesGameTable({
                     if (!diceState) return null;
 
                     return (
-                      <div className="flex gap-2">
-                        {diceState.dice.map((die, idx) => (
-                          <HorsesDie
-                            key={idx}
-                            value={die.value}
-                            isHeld={false}
-                            isRolling={diceState.isRolling}
-                            canToggle={false}
-                            onToggle={() => {}}
-                            size="sm"
-                          />
-                        ))}
-                      </div>
+                      <DiceTableLayout
+                        dice={diceState.dice as (HorsesDieType | SCCDieType)[]}
+                        isRolling={diceState.isRolling}
+                        canToggle={false}
+                        size="sm"
+                        gameType={gameType}
+                        showWildHighlight={!isSCC}
+                        isObserver={true}
+                      />
                     );
                   })()}
                 </div>
@@ -1447,19 +1444,20 @@ export function HorsesGameTable({
               {/* My turn - dice on felt center */}
               {isMyTurn && gamePhase === "playing" && (
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
-                  <div className="flex gap-2">
-                    {localHand.dice.map((die, idx) => (
-                      <HorsesDie
-                        key={idx}
-                        value={die.value}
-                        isHeld={localHand.rollsRemaining > 0 && die.isHeld}
-                        isRolling={isRolling && !die.isHeld}
-                        canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
-                        onToggle={() => handleToggleHold(idx)}
-                        size="sm"
-                      />
-                    ))}
-                  </div>
+                  <DiceTableLayout
+                    dice={localHand.dice.map((die, i) => ({
+                      ...die,
+                      isHeld: localHand.rollsRemaining > 0 && die.isHeld,
+                    })) as (HorsesDieType | SCCDieType)[]}
+                    isRolling={isRolling}
+                    canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
+                    onToggleHold={handleToggleHold}
+                    size="sm"
+                    gameType={gameType}
+                    showWildHighlight={!isSCC}
+                    useSCCDisplayOrder={isSCC}
+                    sccHand={isSCC ? localHand as SCCHand : undefined}
+                  />
                 </div>
               )}
 

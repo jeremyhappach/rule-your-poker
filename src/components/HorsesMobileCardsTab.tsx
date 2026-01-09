@@ -2,12 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
+import { DiceTableLayout } from "./DiceTableLayout";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { cn, formatChipValue } from "@/lib/utils";
 import { Lock, RotateCcw, Target } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
-import { getSCCDisplayOrder, SCCHand } from "@/lib/sccGameLogic";
+import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
+import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 
 interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };
@@ -32,6 +34,8 @@ export function HorsesMobileCardsTab({
   // Show "rolling against" when it's my turn and there's already a winning hand to beat
   const showRollingAgainst = horses.isMyTurn && horses.gamePhase === "playing" && horses.currentWinningResult;
 
+  const isSCC = gameType === 'ship-captain-crew';
+
   return (
     <div className="px-2 flex flex-col flex-1 relative">
       {/* "Rolling against" indicator - show current best hand to beat */}
@@ -47,39 +51,23 @@ export function HorsesMobileCardsTab({
         </div>
       )}
 
-      {/* Dice display when rolling - LARGER dice, no helper text */}
+      {/* Dice display when rolling - staggered layout */}
       {showMyDice && (
-        <div className="flex items-center justify-center gap-2 mb-3">
-          {gameType === 'ship-captain-crew' ? (
-            // SCC: Use display order to put frozen 6-5-4 on the left with gold highlighting
-            getSCCDisplayOrder(horses.localHand as SCCHand).map(({ die, originalIndex }) => (
-              <HorsesDie
-                key={originalIndex}
-                value={die.value}
-                isHeld={die.isHeld}
-                isRolling={horses.isRolling && !die.isHeld}
-                canToggle={false} // SCC dice can't be manually toggled
-                onToggle={() => {}}
-                size="lg"
-                showWildHighlight={false}
-                isSCCDie={die.isSCC}
-              />
-            ))
-          ) : (
-            // Horses: Regular dice display
-            horses.localHand.dice.map((die, idx) => (
-              <HorsesDie
-                key={idx}
-                value={die.value}
-                isHeld={die.isHeld}
-                isRolling={horses.isRolling && !die.isHeld}
-                canToggle={horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
-                onToggle={() => horses.handleToggleHold(idx)}
-                size="lg"
-                showWildHighlight={true}
-              />
-            ))
-          )}
+        <div className="flex items-center justify-center mb-3">
+          <DiceTableLayout
+            dice={horses.localHand.dice.map((die, i) => ({
+              ...die,
+              isHeld: horses.localHand.rollsRemaining > 0 && die.isHeld,
+            })) as (HorsesDieType | SCCDieType)[]}
+            isRolling={horses.isRolling}
+            canToggle={!isSCC && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
+            onToggleHold={horses.handleToggleHold}
+            size="lg"
+            gameType={gameType ?? undefined}
+            showWildHighlight={!isSCC}
+            useSCCDisplayOrder={isSCC}
+            sccHand={isSCC ? horses.localHand as SCCHand : undefined}
+          />
         </div>
       )}
       
