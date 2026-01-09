@@ -2,14 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
-import { DiceTableLayout } from "./DiceTableLayout";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { cn, formatChipValue } from "@/lib/utils";
 import { Lock, RotateCcw, Target } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
-import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
-import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 
 interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };
@@ -51,23 +48,21 @@ export function HorsesMobileCardsTab({
         </div>
       )}
 
-      {/* Dice display when rolling - staggered layout */}
+      {/* Dice display when rolling - horizontal line layout (not staggered for active player) */}
       {showMyDice && (
-        <div className="flex items-center justify-center mb-3">
-          <DiceTableLayout
-            dice={horses.localHand.dice.map((die, i) => ({
-              ...die,
-              isHeld: horses.localHand.rollsRemaining > 0 && die.isHeld,
-            })) as (HorsesDieType | SCCDieType)[]}
-            isRolling={horses.isRolling}
-            canToggle={!isSCC && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
-            onToggleHold={horses.handleToggleHold}
-            size="lg"
-            gameType={gameType ?? undefined}
-            showWildHighlight={!isSCC}
-            useSCCDisplayOrder={isSCC}
-            sccHand={isSCC ? horses.localHand as SCCHand : undefined}
-          />
+        <div className="flex items-center justify-center gap-1 mb-3">
+          {horses.localHand.dice.map((die, idx) => (
+            <HorsesDie
+              key={idx}
+              value={die.value}
+              isHeld={horses.localHand.rollsRemaining > 0 && die.isHeld}
+              isRolling={horses.isRolling && !die.isHeld}
+              canToggle={!isSCC && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
+              onToggle={() => horses.handleToggleHold(idx)}
+              size="lg"
+              showWildHighlight={!isSCC}
+            />
+          ))}
         </div>
       )}
       

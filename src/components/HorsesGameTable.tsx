@@ -1128,10 +1128,11 @@ export function HorsesGameTable({
       />
       {isMobile ? (
         <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">
-          {/* Header */}
+          {/* Header - Single line */}
           <header className="px-4 pt-4 pb-2 text-center">
-            <h1 className="text-xl font-bold text-poker-gold">{gameTitle}</h1>
-            <p className="text-sm text-amber-200/80">Ante: ${anteAmount}</p>
+            <h1 className="text-xl font-bold text-poker-gold">
+              ${anteAmount} {gameTitle.toUpperCase()}
+            </h1>
 
             <div className="mt-2 flex justify-center">
               <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
@@ -1182,49 +1183,49 @@ export function HorsesGameTable({
                       {(() => {
                         // Waiting / no current player yet
                         if (gamePhase !== "playing" || !currentPlayer) {
-                          return Array.from({ length: 5 }).map((_, idx) => (
+                          // Don't show placeholder dice before game starts
+                          return null;
+                        }
+
+                        // My turn - show "You are rolling" message
+                        if (isMyTurn) {
+                          const hasRolled = localHand.rollsRemaining < 3;
+                          if (!hasRolled) {
+                            return (
+                              <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                                You are rolling
+                              </p>
+                            );
+                          }
+                          // After rolling, still show message (dice are in player box)
+                          return (
+                            <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                              You are rolling
+                            </p>
+                          );
+                        }
+
+                        // Someone else's turn - show their dice
+                        const diceState = getCurrentTurnDice();
+                        if (!diceState) return null;
+                        
+                        // Hide unrolled dice
+                        const hasRolled = diceState.dice.some(d => d.value !== 0);
+                        if (!hasRolled) return null;
+
+                        return diceState.dice
+                          .filter(die => die.value !== 0)
+                          .map((die, idx) => (
                             <HorsesDie
                               key={idx}
-                              value={0}
-                              isHeld={false}
-                              isRolling={false}
+                              value={die.value}
+                              isHeld={die.isHeld}
+                              isRolling={diceState.isRolling}
                               canToggle={false}
                               onToggle={() => {}}
                               size="md"
                             />
                           ));
-                        }
-
-                        // My turn
-                        if (isMyTurn) {
-                          return localHand.dice.map((die, idx) => (
-                            <HorsesDie
-                              key={idx}
-                              value={die.value}
-                              isHeld={localHand.rollsRemaining > 0 ? die.isHeld : false}
-                              isRolling={isRolling && !die.isHeld}
-                              canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
-                              onToggle={() => handleToggleHold(idx)}
-                              size="md"
-                            />
-                          ));
-                        }
-
-                        // Someone else's turn
-                        const diceState = getCurrentTurnDice();
-                        if (!diceState) return null;
-
-                        return diceState.dice.map((die, idx) => (
-                          <HorsesDie
-                            key={idx}
-                            value={die.value}
-                            isHeld={die.isHeld}
-                            isRolling={diceState.isRolling}
-                            canToggle={false}
-                            onToggle={() => {}}
-                            size="md"
-                          />
-                        ));
                       })()}
                     </div>
 
@@ -1337,14 +1338,15 @@ export function HorsesGameTable({
         </div>
       ) : (
         <>
-          {/* Header - Horses + Ante */}
-          <header className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
-            <h1 className="text-xl font-bold text-poker-gold">{gameTitle}</h1>
-            <p className="text-sm text-amber-200/80">Ante: ${anteAmount}</p>
+          {/* Header - Single line: "$X SHIP" or "$X HORSES" */}
+          <header className="absolute top-3 left-1/2 -translate-x-1/2">
+            <h1 className="text-xl font-bold text-poker-gold">
+              ${anteAmount} {gameTitle.toUpperCase()}
+            </h1>
           </header>
 
-          {/* Pot display */}
-          <div className="absolute top-16 left-1/2 -translate-x-1/2">
+          {/* Pot display - moved up */}
+          <div className="absolute top-10 left-1/2 -translate-x-1/2">
             <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
               <span className="text-amber-200 text-sm">Pot:</span>
               <span className="text-lg font-bold text-poker-gold">${pot}</span>
@@ -1353,7 +1355,7 @@ export function HorsesGameTable({
 
           {/* Turn status (kept out of the felt center to avoid a "modal" feel) */}
           {gamePhase === "playing" && currentPlayer && (
-            <div className="absolute top-24 left-1/2 -translate-x-1/2">
+            <div className="absolute top-[72px] left-1/2 -translate-x-1/2">
               <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/20 px-3 py-1 backdrop-blur-sm">
                 <Dice5 className="h-4 w-4 text-amber-300" />
                 <span className="text-sm text-foreground/90">
@@ -1373,7 +1375,7 @@ export function HorsesGameTable({
           )}
 
           <main
-            className={cn("absolute inset-0 pt-32", isMobile ? "px-3 pb-24" : "p-4")}
+            className={cn("absolute inset-0 pt-28", isMobile ? "px-3 pb-24" : "p-4")}
             aria-label="Horses dice table"
           >
             <div className="relative w-full h-full">
@@ -1419,12 +1421,16 @@ export function HorsesGameTable({
                 );
               })}
 
-              {/* Dice on the felt center */}
+              {/* Dice on the felt center - for other players watching someone roll */}
               {gamePhase === "playing" && currentPlayer && !isMyTurn && (
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
                   {(() => {
                     const diceState = getCurrentTurnDice();
                     if (!diceState) return null;
+                    
+                    // Hide unrolled dice (value === 0)
+                    const hasRolled = diceState.dice.some(d => d.value !== 0);
+                    if (!hasRolled) return null;
 
                     return (
                       <DiceTableLayout
@@ -1435,28 +1441,23 @@ export function HorsesGameTable({
                         gameType={gameType}
                         showWildHighlight={!isSCC}
                         isObserver={true}
+                        hideUnrolledDice={true}
                       />
                     );
                   })()}
                 </div>
               )}
 
-              {/* My turn - dice on felt center */}
+              {/* My turn - show "You are rolling" message on felt (dice shown in player box) */}
               {isMyTurn && gamePhase === "playing" && (
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
                   <DiceTableLayout
-                    dice={localHand.dice.map((die, i) => ({
-                      ...die,
-                      isHeld: localHand.rollsRemaining > 0 && die.isHeld,
-                    })) as (HorsesDieType | SCCDieType)[]}
-                    isRolling={isRolling}
-                    canToggle={localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0}
-                    onToggleHold={handleToggleHold}
+                    dice={[]}
+                    isRolling={false}
+                    canToggle={false}
                     size="sm"
                     gameType={gameType}
-                    showWildHighlight={!isSCC}
-                    useSCCDisplayOrder={isSCC}
-                    sccHand={isSCC ? localHand as SCCHand : undefined}
+                    showRollingMessage={true}
                   />
                 </div>
               )}
