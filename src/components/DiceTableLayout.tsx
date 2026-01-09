@@ -123,11 +123,11 @@ export function DiceTableLayout({
   // Calculate vertical offset for the two groups
   // Held dice go at the top (under pot), unheld dice go below
   // When all 5 are held, they move to the center (rolling area)
-  const heldYOffset = allHeld ? 10 : -20; // Higher up unless all held
-  const unheldYOffset = heldCount > 0 ? 35 : 0; // Push down if there are held dice above
+  const heldYOffset = allHeld ? 20 : -25; // Higher up unless all held
+  const unheldYOffset = heldCount > 0 ? 50 : 10; // Push down more to utilize bottom space
   
   return (
-    <div className="relative" style={{ width: '180px', height: '140px' }}>
+    <div className="relative" style={{ width: '180px', height: '160px' }}>
       {/* Held dice - horizontal line */}
       {heldDice.map((item, displayIdx) => {
         const pos = heldPositions[displayIdx];
