@@ -73,7 +73,7 @@ export function HorsesDie({
     xs: "w-7 h-7",
     sm: "w-9 h-9",
     md: "w-12 h-12",
-    lg: "w-18 h-18",
+    lg: "w-[72px] h-[72px]",
   };
 
   // Pip sizes - smaller for xs/sm to avoid looking too thick
