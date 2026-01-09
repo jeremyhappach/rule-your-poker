@@ -79,6 +79,8 @@ interface PlayerDiceState {
   rollsRemaining: number;
   isComplete: boolean;
   result?: HorsesHandResult | SCCHandResult;
+  /** Number of dice that were held before turn completion (for layout stability) */
+  heldCountBeforeComplete?: number;
 }
 
 export interface HorsesStateFromDB {
@@ -564,7 +566,7 @@ export function HorsesGameTable({
   ]);
 
   // Save my dice state to DB (atomic per-player update)
-  const saveMyState = useCallback(async (hand: HorsesHand | SCCHand, completed: boolean, result?: HorsesHandResult | SCCHandResult) => {
+  const saveMyState = useCallback(async (hand: HorsesHand | SCCHand, completed: boolean, result?: HorsesHandResult | SCCHandResult, heldCountBeforeComplete?: number) => {
     if (!currentRoundId || !myPlayer) return;
 
     const newPlayerState: PlayerDiceState = {
@@ -572,6 +574,7 @@ export function HorsesGameTable({
       rollsRemaining: hand.rollsRemaining,
       isComplete: completed,
       result,
+      heldCountBeforeComplete,
     };
 
     await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
@@ -590,6 +593,9 @@ export function HorsesGameTable({
   // Handle roll dice
   const handleRoll = useCallback(async () => {
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
+
+    // Track held count BEFORE the roll for layout stability
+    const heldCountBeforeRoll = localHand.dice.filter(d => d.isHeld).length;
 
     setIsRolling(true);
 
@@ -613,7 +619,7 @@ export function HorsesGameTable({
           console.log('[SCC] Midnight rolled! Auto-locking...');
           const lockedHand = lockInSCCHand(sccHand);
           setLocalHand(lockedHand);
-          await saveMyState(lockedHand as any, true, result);
+          await saveMyState(lockedHand as any, true, result, heldCountBeforeRoll);
           
           setTimeout(() => {
             advanceToNextTurn(myPlayer?.id ?? null);
@@ -624,11 +630,11 @@ export function HorsesGameTable({
 
       // Save to DB
       if (newHand.rollsRemaining === 0) {
-        // Auto-lock when out of rolls
+        // Auto-lock when out of rolls - pass held count from before this roll
         const result = isSCC 
           ? evaluateSCCHand(newHand as SCCHand)
           : evaluateHand((newHand as HorsesHand).dice);
-        await saveMyState(newHand as HorsesHand, true, result);
+        await saveMyState(newHand as HorsesHand, true, result, heldCountBeforeRoll);
 
         setTimeout(() => {
           advanceToNextTurn(myPlayer?.id ?? null);
@@ -668,6 +674,9 @@ export function HorsesGameTable({
   const handleLockIn = useCallback(async () => {
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
 
+    // Track held count BEFORE lock-in for layout stability
+    const heldCountBeforeLockIn = localHand.dice.filter(d => d.isHeld).length;
+
     // For SCC: can only lock in if qualified (have 6-5-4)
     if (isSCC) {
       const sccHand = localHand as SCCHand;
@@ -680,7 +689,7 @@ export function HorsesGameTable({
       setLocalHand(lockedHand);
 
       const result = evaluateSCCHand(lockedHand);
-      await saveMyState(lockedHand as any, true, result);
+      await saveMyState(lockedHand as any, true, result, heldCountBeforeLockIn);
 
       setTimeout(() => {
         advanceToNextTurn(myPlayer?.id ?? null);
@@ -691,7 +700,7 @@ export function HorsesGameTable({
       setLocalHand(lockedHand);
 
       const result = evaluateHand(lockedHand.dice);
-      await saveMyState(lockedHand, true, result);
+      await saveMyState(lockedHand, true, result, heldCountBeforeLockIn);
 
       setTimeout(() => {
         advanceToNextTurn(myPlayer?.id ?? null);
@@ -1081,7 +1090,11 @@ export function HorsesGameTable({
     }
 
     const state = horsesState?.playerStates?.[currentTurnPlayerId || ""];
-    return state ? { dice: state.dice, isRolling: false } : null;
+    return state ? { 
+      dice: state.dice, 
+      isRolling: false,
+      heldCountBeforeComplete: state.heldCountBeforeComplete,
+    } : null;
   };
 
   return (
@@ -1442,6 +1455,7 @@ export function HorsesGameTable({
                         showWildHighlight={!isSCC}
                         isObserver={true}
                         hideUnrolledDice={true}
+                        previouslyHeldCount={(diceState as any).heldCountBeforeComplete}
                       />
                     );
                   })()}
