@@ -2885,28 +2885,29 @@ export const MobileGameTable = ({
 
 
         
-        {/* Game name on felt */}
+        {/* Game name on felt - single line for dice games */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-          <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-            {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : gameType === 'ship-captain-crew' ? 'Ship' : '3-5-7'}
-          </span>
-          {/* Only show No Limit/Max for non-dice games */}
-          {!isDiceGame && (
-            <span className="text-white/40 text-xs font-medium">
-              {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+          {isDiceGame ? (
+            // Single line format: "$200 SHIP" or "$5 HORSES"
+            <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+              ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : 'HORSES'}
             </span>
-          )}
-          {/* Only show legs for 3-5-7 games (not holm, not dice) */}
-          {gameType !== 'holm-game' && !isDiceGame && (
-            <span className="text-white/40 text-xs font-medium">
-              {legsToWin} legs to win
-            </span>
-          )}
-          {/* For dice games, show ante instead */}
-          {isDiceGame && (
-            <span className="text-white/40 text-xs font-medium">
-              Ante: ${anteAmount}
-            </span>
+          ) : (
+            <>
+              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+              </span>
+              {/* Only show No Limit/Max for non-dice games */}
+              <span className="text-white/40 text-xs font-medium">
+                {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+              </span>
+              {/* Only show legs for 3-5-7 games (not holm) */}
+              {gameType !== 'holm-game' && (
+                <span className="text-white/40 text-xs font-medium">
+                  {legsToWin} legs to win
+                </span>
+              )}
+            </>
           )}
         </div>
         
@@ -3538,7 +3539,7 @@ export const MobileGameTable = ({
                 gameType === 'holm-game' 
                   ? (isHolmMultiPlayerShowdown ? 'top-[50%] -translate-y-full' : 'top-[35%] -translate-y-full')
                   : isDiceGame
-                    ? 'top-[36%] -translate-y-full'  /* Dice games: moved down to avoid overlap with felt label */
+                    ? 'top-[28%] -translate-y-full'  /* Dice games: moved up since label is now single line */
                     : 'top-1/2 -translate-y-1/2'
               }`}
               style={{ 
@@ -3573,6 +3574,11 @@ export const MobileGameTable = ({
 
         {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
         {isDiceGame && horsesController.enabled && (() => {
+          // Don't show dice when game phase is complete or waiting
+          if (horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') {
+            return null;
+          }
+          
           const currentTurnResult = horsesController.currentTurnPlayerId 
             ? horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId)
             : null;
@@ -3584,10 +3590,28 @@ export const MobileGameTable = ({
 
           const showResult = !horsesController.feltDice && !!currentTurnResult;
           const showDice = !!horsesController.feltDice && !!diceArray?.length;
-
-          // Always keep the container mounted to avoid blink/flicker during turn handoffs.
-          // If dice aren't available for a moment, show a stable placeholder row.
-          const diceToRender = showDice ? diceArray! : fallbackDice;
+          
+          // Check if dice have been rolled (at least one die has a value > 0)
+          const hasRolled = diceArray?.some(d => d?.value > 0) ?? false;
+          
+          // If it's my turn and I haven't rolled yet, show "You are rolling" message
+          if (horsesController.isMyTurn && !hasRolled) {
+            return (
+              <div
+                className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2"
+                style={{ pointerEvents: 'auto' }}
+              >
+                <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                  You are rolling
+                </p>
+              </div>
+            );
+          }
+          
+          // If observing someone else who hasn't rolled yet, show nothing
+          if (!horsesController.isMyTurn && !hasRolled && !showResult) {
+            return null;
+          }
 
           const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
 
@@ -3618,7 +3642,13 @@ export const MobileGameTable = ({
                     )}
                   </Badge>
                 </div>
+              ) : horsesController.isMyTurn ? (
+                // My turn - show "You are rolling" message (dice are in player's card tab)
+                <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                  You are rolling
+                </p>
               ) : (
+                // Observer view - show staggered dice layout
                 <DiceTableLayout
                   dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
                     const showHeldVisual =
@@ -3638,18 +3668,14 @@ export const MobileGameTable = ({
                         : !!(horsesController.feltDice as any)?.isRolling
                       : false
                   }
-                  canToggle={!!(
-                    showDice &&
-                    horsesController.isMyTurn &&
-                    (horsesController.feltDice as any)?.canToggle
-                  )}
-                  onToggleHold={horsesController.handleToggleHold}
+                  canToggle={false}
                   size="md"
                   gameType={gameType ?? undefined}
                   showWildHighlight={gameType !== 'ship-captain-crew'}
                   useSCCDisplayOrder={gameType === 'ship-captain-crew'}
                   sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
-                  isObserver={!horsesController.isMyTurn}
+                  isObserver={true}
+                  hideUnrolledDice={true}
                 />
               )}
             </div>

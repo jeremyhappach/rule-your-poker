@@ -24,38 +24,37 @@ interface DiceTableLayoutProps {
 }
 
 // Staggered positions for unheld dice (as pixel offsets from center)
-// These create the scattered "random-looking" pattern matching the reference images
-// Expanded horizontally to use more space (but not too far to leave room for result displays)
+// Organic scatter pattern utilizing corners - not perfect geometric shapes
 const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[]> = {
-  // 5 unheld dice - full scatter pattern (first roll, no held dice)
+  // 5 unheld dice - rough pentagon using corners + center
   5: [
-    { x: -55, y: -20, rotate: -12 },  // far left
-    { x: 55, y: -25, rotate: 15 },    // far right
-    { x: -25, y: 15, rotate: -8 },    // middle-left
-    { x: 30, y: 10, rotate: 10 },     // middle-right
-    { x: 0, y: 40, rotate: -3 },      // bottom-center
+    { x: -48, y: -22, rotate: -15 },  // upper-left area
+    { x: 52, y: -18, rotate: 12 },    // upper-right area
+    { x: 3, y: 8, rotate: 5 },        // center-ish
+    { x: -45, y: 38, rotate: -8 },    // lower-left corner
+    { x: 48, y: 42, rotate: 11 },     // lower-right corner
   ],
-  // 4 unheld dice - scatter pattern (1 held)
+  // 4 unheld dice - rough rectangle using corners
   4: [
-    { x: -50, y: -5, rotate: -10 },
-    { x: 50, y: -10, rotate: 12 },
-    { x: -20, y: 30, rotate: -6 },
-    { x: 25, y: 35, rotate: 8 },
+    { x: -44, y: -15, rotate: -12 },  // upper-left
+    { x: 50, y: -10, rotate: 14 },    // upper-right
+    { x: -48, y: 35, rotate: -6 },    // lower-left
+    { x: 45, y: 40, rotate: 9 },      // lower-right
   ],
-  // 3 unheld dice - triangle scatter (2 held)
+  // 3 unheld dice - loose triangle (bottom corners + top center)
   3: [
-    { x: -40, y: 10, rotate: -8 },
-    { x: 40, y: 5, rotate: 10 },
-    { x: 0, y: 40, rotate: -4 },
+    { x: 5, y: -18, rotate: 8 },      // top center-ish
+    { x: -42, y: 35, rotate: -10 },   // lower-left
+    { x: 46, y: 38, rotate: 6 },      // lower-right
   ],
-  // 2 unheld dice - diagonal scatter (3 held)
+  // 2 unheld dice - rough diagonal
   2: [
-    { x: -35, y: 20, rotate: -6 },
-    { x: 35, y: 25, rotate: 8 },
+    { x: -38, y: 8, rotate: -7 },     // left-ish
+    { x: 42, y: 18, rotate: 10 },     // right-ish lower
   ],
-  // 1 unheld die - centered below (4 held)
+  // 1 unheld die - slightly off-center with tilt
   1: [
-    { x: 0, y: 35, rotate: 0 },
+    { x: 5, y: 12, rotate: -4 },
   ],
   // 0 unheld dice - empty
   0: [],
