@@ -28,10 +28,12 @@ import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { HorsesDie } from "./HorsesDie";
+import { DiceTableLayout } from "./DiceTableLayout";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
 import { useHorsesMobileController, HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
+import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { Card as CardType, evaluateHand, formatHandRank, getWinningCardIndices } from "@/lib/cardUtils";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
@@ -3617,72 +3619,38 @@ export const MobileGameTable = ({
                   </Badge>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-0.5 scale-[0.82] origin-center">
-                  {gameType === 'ship-captain-crew' && showDice ? (
-                    // SCC: Use display order to put frozen 6-5-4 on the left with gold highlighting
-                    getSCCDisplayOrder({ dice: diceToRender as SCCDieType[] } as SCCHand).map(({ die, originalIndex }) => {
-                      const rollsRem = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
-                      const showHeldVisual =
-                        typeof rollsRem === "number" &&
-                        rollsRem > 0 &&
-                        rollsRem < 3 &&
-                        !!die?.isHeld;
-
-                      return (
-                        <HorsesDie
-                          key={originalIndex}
-                          value={die?.value ?? 0}
-                          isHeld={showHeldVisual}
-                          isRolling={
-                            horsesController.isMyTurn
-                              ? horsesController.isRolling && !die?.isHeld
-                              : !!(horsesController.feltDice as any)?.isRolling
-                          }
-                          canToggle={false}
-                          onToggle={() => {}}
-                          size="md"
-                          showWildHighlight={false}
-                          isSCCDie={(die as SCCDieType).isSCC}
-                        />
-                      );
-                    })
-                  ) : (
-                    // Horses or placeholder: Regular dice display
-                    diceToRender.map((die: any, idx: number) => {
-                      const canToggle = !!(
-                        showDice &&
-                        horsesController.isMyTurn &&
-                        (horsesController.feltDice as any)?.canToggle
-                      );
-
-                      // Show lock/hold visuals for ANY player after rolls 1–2 only (never after final roll).
-                      const showHeldVisual =
-                        typeof rollsRemaining === "number" &&
-                        rollsRemaining > 0 &&
-                        rollsRemaining < 3 &&
-                        !!die?.isHeld;
-
-                      return (
-                        <HorsesDie
-                          key={idx}
-                          value={die?.value ?? 0}
-                          isHeld={showHeldVisual}
-                          isRolling={
-                            showDice
-                              ? horsesController.isMyTurn
-                                ? horsesController.isRolling && !die?.isHeld
-                                : !!(horsesController.feltDice as any)?.isRolling
-                              : false
-                          }
-                          canToggle={canToggle}
-                          onToggle={showDice ? () => horsesController.handleToggleHold(idx) : undefined}
-                          size="md"
-                          showWildHighlight={gameType !== 'ship-captain-crew'}
-                        />
-                      );
-                    })
+                <DiceTableLayout
+                  dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
+                    const showHeldVisual =
+                      typeof rollsRemaining === "number" &&
+                      rollsRemaining > 0 &&
+                      rollsRemaining < 3 &&
+                      !!die?.isHeld;
+                    return {
+                      ...die,
+                      isHeld: showHeldVisual,
+                    };
+                  }) as (HorsesDieType | SCCDieType)[]}
+                  isRolling={
+                    showDice
+                      ? horsesController.isMyTurn
+                        ? horsesController.isRolling
+                        : !!(horsesController.feltDice as any)?.isRolling
+                      : false
+                  }
+                  canToggle={!!(
+                    showDice &&
+                    horsesController.isMyTurn &&
+                    (horsesController.feltDice as any)?.canToggle
                   )}
-                </div>
+                  onToggleHold={horsesController.handleToggleHold}
+                  size="md"
+                  gameType={gameType ?? undefined}
+                  showWildHighlight={gameType !== 'ship-captain-crew'}
+                  useSCCDisplayOrder={gameType === 'ship-captain-crew'}
+                  sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
+                  isObserver={!horsesController.isMyTurn}
+                />
               )}
             </div>
           );
