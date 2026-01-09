@@ -60,21 +60,6 @@ const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[
   0: [],
 };
 
-// Calculate held dice positions (horizontal line, centered)
-// Tighter gap for held dice
-function getHeldPositions(count: number, dieWidth: number, gap: number): { x: number; y: number }[] {
-  if (count === 0) return [];
-  
-  const tightGap = Math.max(2, gap - 4); // Tighter padding
-  const totalWidth = count * dieWidth + (count - 1) * tightGap;
-  const startX = -totalWidth / 2 + dieWidth / 2;
-  
-  return Array.from({ length: count }, (_, i) => ({
-    x: startX + i * (dieWidth + tightGap),
-    y: 0,
-  }));
-}
-
 export function DiceTableLayout({
   dice,
   isRolling = false,
@@ -135,115 +120,38 @@ export function DiceTableLayout({
     return <div className="relative" style={{ width: '200px', height: '120px' }} />;
   }
   
-  // Separate held and unheld dice
-  const heldDice = orderedDice.filter(d => d.die.isHeld);
-  const unheldDice = orderedDice.filter(d => !d.die.isHeld);
+  // All dice stay in their scatter positions - held state is shown visually only
+  // Use 5-dice positions for consistent placement
+  const allPositions = UNHELD_POSITIONS[5] || [];
   
-  const heldCount = heldDice.length;
-  const unheldCount = unheldDice.length;
-  
-  // Special case: all 5 dice held
-  // The last held die (5th) should stay in its rolling position but show as held
-  const allHeld = heldCount === 5;
-  
-  // When all 5 are held, we show 4 in the held row and 1 in the rolling area
-  const effectiveHeldCount = allHeld ? 4 : heldCount;
-  const heldDiceForRow = allHeld ? heldDice.slice(0, 4) : heldDice;
-  const lastHeldDie = allHeld ? heldDice[4] : null; // The 5th die stays in scatter
-  
-  // Get positions for held dice (horizontal line)
-  const heldPositions = getHeldPositions(effectiveHeldCount, dieWidth, gap);
-  
-  // Get positions for unheld dice (staggered scatter)
-  // When all 5 held, we use position for 1 die in the scatter area for the 5th die
-  const effectiveUnheldCount = allHeld ? 1 : unheldCount;
-  const unheldPositions = UNHELD_POSITIONS[effectiveUnheldCount] || [];
-  
-  // Calculate vertical offset for the two groups
-  // Held dice go at the top (tighter to pot), unheld dice go below
-  const heldYOffset = -35; // Move held dice up closer to pot
-  const unheldYOffset = effectiveHeldCount > 0 ? 50 : 5; // Push unheld down more to avoid overlap
+  // Slight vertical offset to center the dice area
+  const yOffset = 10;
   
   return (
     <div className="relative" style={{ width: '200px', height: '120px' }}>
-      {/* Held dice - horizontal line (up to 4 dice) */}
-      {heldDiceForRow.map((item, displayIdx) => {
-        const pos = heldPositions[displayIdx];
+      {/* All dice in scatter positions - held state shown via color only */}
+      {orderedDice.map((item, displayIdx) => {
+        const pos = allPositions[displayIdx];
         if (!pos) return null;
         
         const sccDie = item.die as SCCDieType;
         const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
+        const isHeld = item.die.isHeld;
         
         return (
           <div
-            key={`held-${item.originalIndex}`}
+            key={`die-${item.originalIndex}`}
             className="absolute transition-all duration-300 ease-out"
             style={{
               left: '50%',
               top: '50%',
-              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`,
+              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + yOffset}px)) rotate(${pos.rotate}deg)`,
             }}
           >
             <HorsesDie
               value={item.die.value}
-              isHeld={true}
-              isRolling={false}
-              canToggle={canToggle && !isObserver}
-              onToggle={() => onToggleHold?.(item.originalIndex)}
-              size={size}
-              showWildHighlight={showWildHighlight && !isSCC}
-              isSCCDie={isSCCDie}
-            />
-          </div>
-        );
-      })}
-      
-      {/* The 5th held die - stays in rolling area but shows as held */}
-      {lastHeldDie && (
-        <div
-          key={`held-last-${lastHeldDie.originalIndex}`}
-          className="absolute transition-all duration-300 ease-out"
-          style={{
-            left: '50%',
-            top: '50%',
-            transform: `translate(calc(-50% + ${unheldPositions[0]?.x || 0}px), calc(-50% + ${(unheldPositions[0]?.y || 0) + unheldYOffset}px)) rotate(${unheldPositions[0]?.rotate || 0}deg)`,
-          }}
-        >
-          <HorsesDie
-            value={lastHeldDie.die.value}
-            isHeld={true}
-            isRolling={false}
-            canToggle={canToggle && !isObserver}
-            onToggle={() => onToggleHold?.(lastHeldDie.originalIndex)}
-            size={size}
-            showWildHighlight={showWildHighlight && !isSCC}
-            isSCCDie={isSCC && 'isSCC' in (lastHeldDie.die as SCCDieType) && (lastHeldDie.die as SCCDieType).isSCC}
-          />
-        </div>
-      )}
-      
-      {/* Unheld dice - staggered scatter */}
-      {unheldDice.map((item, displayIdx) => {
-        const pos = unheldPositions[displayIdx];
-        if (!pos) return null;
-        
-        const sccDie = item.die as SCCDieType;
-        const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
-        
-        return (
-          <div
-            key={`unheld-${item.originalIndex}`}
-            className="absolute transition-all duration-300 ease-out"
-            style={{
-              left: '50%',
-              top: '50%',
-              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + unheldYOffset}px)) rotate(${pos.rotate}deg)`,
-            }}
-          >
-            <HorsesDie
-              value={item.die.value}
-              isHeld={false}
-              isRolling={isRolling}
+              isHeld={isHeld}
+              isRolling={isRolling && !isHeld}
               canToggle={canToggle && !isObserver && !isSCC}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
