@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Smart deadline enforcer that uses realtime subscriptions to minimize edge function calls.
  * 
  * Optimizations:
- * 1. If only 1 human player in game: NO polling at all (bots never timeout, cron handles disconnected human)
+ * 1. If only 1 ACTIVE human player (not sitting out): NO polling at all (bots never timeout, cron handles disconnected human)
  * 2. For multi-human games: Only polls when a deadline is within 15 seconds of expiring
  * 3. Uses realtime subscriptions to detect deadline changes instead of constant polling
  * 
@@ -181,8 +181,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     );
   }, []);
 
-  // Fetch human player count for the game
-  const fetchHumanPlayerCount = useCallback(async () => {
+  // Fetch ACTIVE human player count (not sitting out) for the game
+  const fetchActiveHumanPlayerCount = useCallback(async () => {
     if (!gameId) return 0;
     
     try {
@@ -190,7 +190,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
         .from('players')
         .select('id')
         .eq('game_id', gameId)
-        .eq('is_bot', false);
+        .eq('is_bot', false)
+        .eq('sitting_out', false);
       
       if (error) return 0;
       return data?.length ?? 0;
@@ -220,7 +221,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     const fetchInitialState = async () => {
       try {
         // Get human player count
-        currentHumanCount = await fetchHumanPlayerCount();
+        currentHumanCount = await fetchActiveHumanPlayerCount();
         if (isMounted) {
           setHumanPlayerCount(currentHumanCount);
         }
@@ -273,7 +274,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
         async () => {
           if (!isMounted) return;
           
-          const newCount = await fetchHumanPlayerCount();
+          const newCount = await fetchActiveHumanPlayerCount();
           if (isMounted) {
             currentHumanCount = newCount;
             setHumanPlayerCount(newCount);
@@ -390,7 +391,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
       supabase.removeChannel(gameChannel);
       supabase.removeChannel(roundChannel);
     };
-  }, [gameId, gameStatus, clearTimers, calculateNearestDeadline, schedulePolling, fetchHumanPlayerCount]);
+  }, [gameId, gameStatus, clearTimers, calculateNearestDeadline, schedulePolling, fetchActiveHumanPlayerCount]);
 
   // Cleanup on unmount
   useEffect(() => {
