@@ -616,18 +616,19 @@ export function HorsesGameTable({
     // Track which dice were held BEFORE the roll (for layout freeze on completion)
     const heldMaskBeforeRoll = localHand.dice.map((d) => d.isHeld);
 
+    // Roll immediately so the animation displays the NEW dice values (prevents old->new flash)
+    const newHand = isSCC 
+      ? rollSCCDice(localHand as SCCHand)
+      : rollDice(localHand as HorsesHand);
+
     setIsRolling(true);
-    // Increment roll animation key to trigger fly-in animation
+    lastLocalEditAtRef.current = Date.now();
+    setLocalHand(newHand);
+    // Increment roll animation key AFTER setting the new hand so fly-in uses new values
     setRollAnimationKey(prev => prev + 1);
 
-    // Animate for a moment then show result
+    // Animate for a moment then finalize
     setTimeout(async () => {
-      // Use appropriate roll function based on game type
-      const newHand = isSCC 
-        ? rollSCCDice(localHand as SCCHand)
-        : rollDice(localHand as HorsesHand);
-      lastLocalEditAtRef.current = Date.now();
-      setLocalHand(newHand);
       setIsRolling(false);
 
       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
