@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
+import { DiceDebugOverlay } from "./DiceDebugOverlay";
 import { cn, formatChipValue } from "@/lib/utils";
-import { Lock, RotateCcw } from "lucide-react";
+import { Lock, RotateCcw, Bug } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 
@@ -20,6 +22,8 @@ export function HorsesMobileCardsTab({
   onAutoFoldChange,
   gameType,
 }: HorsesMobileCardsTabProps) {
+  const [debugOpen, setDebugOpen] = useState(false);
+
   const isWaitingForYourTurn = horses.gamePhase === "playing" && !horses.isMyTurn;
   const hasCompleted = !!horses.myState?.isComplete;
   const myResult = horses.myState?.result ?? null;
@@ -34,6 +38,26 @@ export function HorsesMobileCardsTab({
 
   return (
     <div className="px-2 flex flex-col flex-1 relative">
+      {/* Debug overlay toggle + panel (DEV only) */}
+      {import.meta.env.DEV && (
+        <>
+          <button
+            type="button"
+            className="absolute right-2 top-2 z-20 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background/70 text-foreground backdrop-blur"
+            onClick={() => setDebugOpen((v) => !v)}
+            title="Toggle dice debug"
+          >
+            <Bug className="h-4 w-4" />
+          </button>
+          <DiceDebugOverlay
+            open={debugOpen}
+            onOpenChange={setDebugOpen}
+            events={horses.debugEvents}
+            onClear={horses.clearDebugEvents}
+            title="Dice Debug (mobile)"
+          />
+        </>
+      )}
 
       {/* Action buttons (always above dice, centered) */}
       <div className="flex items-center justify-center min-h-[36px] mb-3">
