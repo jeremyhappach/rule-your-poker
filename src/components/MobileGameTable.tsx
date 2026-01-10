@@ -51,6 +51,7 @@ import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { MessageSquare, User, Clock } from "lucide-react";
 import { HandHistory } from "./HandHistory";
+import { DiceDebugOverlay } from "./DiceDebugOverlay";
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
 // otherwise resets state and reintroduces the pot flash).
@@ -466,6 +467,9 @@ export const MobileGameTable = ({
   // Chopped animation state
   const [showChopped, setShowChopped] = useState(false);
   const lastChoppedResultRef = useRef<string | null>(null);
+  
+  // Dice debug overlay state tracking
+  const [feltBlockMounted, setFeltBlockMounted] = useState(false);
 
   // Buck's on you animation state
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
@@ -3621,6 +3625,10 @@ export const MobileGameTable = ({
           // Don't show dice when game phase is complete or waiting
           if (horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') {
             console.log(`${logPrefix} UNMOUNT: gamePhase=${horsesController.gamePhase}`);
+            // Track unmount for debug overlay
+            if (feltBlockMounted) {
+              setTimeout(() => setFeltBlockMounted(false), 0);
+            }
             return null;
           }
           
@@ -3644,6 +3652,10 @@ export const MobileGameTable = ({
           // If it's my turn and I haven't rolled yet, show "You are rolling" message
           if (horsesController.isMyTurn && !hasRolled) {
             console.log(`${logPrefix} RENDER: You are rolling message`);
+            // Track mount for debug overlay
+            if (!feltBlockMounted) {
+              setTimeout(() => setFeltBlockMounted(true), 0);
+            }
             return (
               <div
                 className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2"
@@ -3659,10 +3671,18 @@ export const MobileGameTable = ({
           // If observing someone else who hasn't rolled yet, show nothing
           if (!horsesController.isMyTurn && !hasRolled && !showResult) {
             console.log(`${logPrefix} UNMOUNT: observer, hasRolled=${hasRolled}, showResult=${showResult}`);
+            // Track unmount for debug overlay
+            if (feltBlockMounted) {
+              setTimeout(() => setFeltBlockMounted(false), 0);
+            }
             return null;
           }
 
           console.log(`${logPrefix} RENDER: DiceTableLayout or result`);
+          // Track mount for debug overlay
+          if (!feltBlockMounted) {
+            setTimeout(() => setFeltBlockMounted(true), 0);
+          }
           const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
 
           return (
@@ -4929,5 +4949,19 @@ export const MobileGameTable = ({
           </div>
         )}
       </div>
+      
+      {/* Dice Debug Overlay - triple-tap top-left corner to toggle */}
+      {isDiceGame && horsesController.enabled && (
+        <DiceDebugOverlay
+          gameType={gameType as 'horses' | 'ship-captain-crew'}
+          feltDice={(horsesController.feltDice as any)?.dice ?? null}
+          rollKey={(horsesController.feltDice as any)?.rollKey}
+          isMyTurn={horsesController.isMyTurn}
+          hasRolled={((horsesController.feltDice as any)?.dice as any[])?.some(d => d?.value > 0) ?? false}
+          showResult={!horsesController.feltDice && !!horsesController.currentTurnPlayerId && !!horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId)}
+          isRolling={horsesController.isRolling}
+          feltBlockMounted={feltBlockMounted}
+        />
+      )}
     </div>;
 };
