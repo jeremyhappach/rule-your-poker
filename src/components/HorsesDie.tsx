@@ -78,7 +78,7 @@ export function HorsesDie({
 
   // Pip sizes - smaller for xs/sm to avoid looking too thick
   const dotSizeClasses = {
-    xs: "w-1 h-1",
+    xs: "w-0.5 h-0.5",
     sm: "w-1.5 h-1.5",
     md: "w-2.5 h-2.5",
     lg: "w-3.5 h-3.5",
@@ -87,12 +87,15 @@ export function HorsesDie({
   const dotSize = dotSizeClasses[size];
   // Larger center pip for case 1
   const largeDotSizeClasses = {
-    xs: "w-1.5 h-1.5",
+    xs: "w-1 h-1",
     sm: "w-2 h-2",
     md: "w-3 h-3",
     lg: "w-4 h-4",
   };
   const largeDotSize = largeDotSizeClasses[size];
+
+  // Tighter padding on tiny dice so pips don't feel oversized / cramped
+  const pipPadding = size === "xs" ? "p-1" : "p-2";
 
   // Dot patterns for each die face
   const renderDots = () => {
@@ -124,7 +127,7 @@ export function HorsesDie({
         );
       case 2:
         return (
-          <div className="flex flex-col justify-between w-full h-full p-2">
+          <div className={cn("flex flex-col justify-between w-full h-full", pipPadding)}>
             <div className="flex justify-end">
               <div className={dotClass} />
             </div>
@@ -135,7 +138,7 @@ export function HorsesDie({
         );
       case 3:
         return (
-          <div className="flex flex-col justify-between w-full h-full p-2">
+          <div className={cn("flex flex-col justify-between w-full h-full", pipPadding)}>
             <div className="flex justify-end">
               <div className={dotClass} />
             </div>
@@ -149,7 +152,7 @@ export function HorsesDie({
         );
       case 4:
         return (
-          <div className="flex flex-col justify-between w-full h-full p-2">
+          <div className={cn("flex flex-col justify-between w-full h-full", pipPadding)}>
             <div className="flex justify-between">
               <div className={dotClass} />
               <div className={dotClass} />
@@ -162,7 +165,7 @@ export function HorsesDie({
         );
       case 5:
         return (
-          <div className="flex flex-col justify-between w-full h-full p-2">
+          <div className={cn("flex flex-col justify-between w-full h-full", pipPadding)}>
             <div className="flex justify-between">
               <div className={dotClass} />
               <div className={dotClass} />
@@ -178,7 +181,7 @@ export function HorsesDie({
         );
       case 6:
         return (
-          <div className="flex flex-col justify-between w-full h-full p-2">
+          <div className={cn("flex flex-col justify-between w-full h-full", pipPadding)}>
             <div className="flex justify-between">
               <div className={dotClass} />
               <div className={dotClass} />
