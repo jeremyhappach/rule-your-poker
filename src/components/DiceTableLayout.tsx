@@ -100,10 +100,16 @@ export function DiceTableLayout({
     if (rollKey !== undefined && rollKey !== prevRollKeyRef.current && animationOrigin) {
       prevRollKeyRef.current = rollKey;
       
-      // Find which dice are unheld (these should animate in)
+      // Find which dice were unheld at the START of the roll (these should animate in)
+      // IMPORTANT: use heldMaskBeforeComplete when available so SCC "auto-hold" dice
+      // still animate if they weren't held pre-roll.
+      const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
       const unheldIndices = dice
         .map((d, i) => ({ d, i }))
-        .filter(({ d }) => !d.isHeld && d.value !== 0)
+        .filter(({ d, i }) => {
+          const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+          return !wasHeldAtRollStart && d.value !== 0;
+        })
         .map(({ i }) => i);
       
       if (unheldIndices.length > 0) {
@@ -117,7 +123,7 @@ export function DiceTableLayout({
         clearTimeout(animationCompleteTimeoutRef.current);
       }
     };
-  }, [rollKey, animationOrigin, dice]);
+  }, [rollKey, animationOrigin, dice, heldMaskBeforeComplete]);
   
   // Handle animation complete
   const handleAnimationComplete = () => {

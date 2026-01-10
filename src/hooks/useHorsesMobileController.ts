@@ -1090,20 +1090,25 @@ export function useHorsesMobileController({
           await new Promise((resolve) => setTimeout(resolve, 2000));
           if (cancelled) return;
 
+          // Roll immediately so the fly-in animation "lands" on the NEW values (prevents old->new flash)
+          const rolledHand = isSCC ? rollSCCDice(botHand as SCCHand) : rollDice(botHand as HorsesHand);
+
           setBotDisplayState({
             playerId: botId,
-            dice: botHand.dice as HorsesDieType[],
-            rollsRemaining: botHand.rollsRemaining,
+            dice: rolledHand.dice as HorsesDieType[],
+            rollsRemaining: rolledHand.rollsRemaining,
             isRolling: true,
             heldMaskBeforeComplete,
             heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
             rollKey: botRollKey,
           });
+
+          // Let the fly-in animation play while we show "rolling"
           await new Promise((resolve) => setTimeout(resolve, 1500));
           if (cancelled) return;
 
-          // Use appropriate roll function based on game type
-          botHand = isSCC ? rollSCCDice(botHand as SCCHand) : rollDice(botHand as HorsesHand);
+          // Commit the rolled values without changing dice again (prevents flicker)
+          botHand = rolledHand;
           setBotDisplayState({
             playerId: botId,
             dice: botHand.dice as HorsesDieType[],
