@@ -34,7 +34,7 @@ export function DiceRollAnimation({
   onComplete,
   size = "sm",
   isSCC = false,
-  scatterYOffset = 35,
+  scatterYOffset = 50,
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing" | "complete">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
