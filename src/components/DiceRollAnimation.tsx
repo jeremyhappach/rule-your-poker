@@ -38,11 +38,13 @@ export function DiceRollAnimation({
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   
-  // Random tumble rotations for each die
-  const [tumbleRotations] = useState(() => 
+  // Random tumble rotations and display sequences for each die (memoized to prevent switching)
+  const [tumbleData] = useState(() => 
     animatingIndices.map(() => ({
       rotations: Math.floor(Math.random() * 3) + 2, // 2-4 full rotations
       axis: Math.random() > 0.5 ? 1 : -1, // direction
+      // Pre-generate a sequence of random values for tumbling display
+      tumbleSequence: Array.from({ length: 8 }, () => Math.floor(Math.random() * 6) + 1),
     }))
   );
 
@@ -107,16 +109,18 @@ export function DiceRollAnimation({
         const currentScale = START_SCALE + (1 - START_SCALE) * flyProgress;
         
         // Tumbling rotation
-        const tumble = tumbleRotations[animIdx];
+        const tumble = tumbleData[animIdx];
         const totalTumbleRotation = tumble.rotations * 360 * tumble.axis * flyProgress;
         const finalRotation = target.rotate;
         // Blend tumble rotation into final rotation
         const currentRotation = totalTumbleRotation + finalRotation * flyProgress;
         
-        // During flight, show random face values for tumbling effect
+        // During flight, show pre-generated tumbling values (based on progress)
         // As we approach landing, show the final value
         const showFinalValue = flyProgress > 0.7;
-        const displayValue = showFinalValue ? die.value : Math.floor(Math.random() * 6) + 1;
+        // Use progress to pick from pre-generated sequence (prevents random switching)
+        const sequenceIndex = Math.floor(flyProgress * (tumble.tumbleSequence.length - 1));
+        const displayValue = showFinalValue ? die.value : tumble.tumbleSequence[sequenceIndex];
 
         const sccDie = die as SCCDieType;
         const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
