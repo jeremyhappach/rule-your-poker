@@ -1,4 +1,4 @@
-import { Card as CardType } from "@/lib/cardUtils";
+import { Card as CardType, Suit } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import bullsLogo from '@/assets/bulls-logo.png';
@@ -11,6 +11,23 @@ const TEAM_LOGOS: Record<string, string> = {
   bears: bearsLogo,
   cubs: cubsLogo,
   hawks: hawksLogo,
+};
+
+// Normalize text suit names to symbols (fixes corrupted data from DB)
+const SUIT_NAME_TO_SYMBOL: Record<string, Suit> = {
+  'hearts': '♥',
+  'diamonds': '♦',
+  'clubs': '♣',
+  'spades': '♠',
+  '♥': '♥',
+  '♦': '♦',
+  '♣': '♣',
+  '♠': '♠',
+};
+
+const normalizeSuit = (suit: string): Suit => {
+  const lower = suit?.toLowerCase?.() || '';
+  return SUIT_NAME_TO_SYMBOL[lower] || SUIT_NAME_TO_SYMBOL[suit] || suit as Suit;
 };
 
 export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
@@ -74,10 +91,13 @@ export const PlayingCard = ({
   
   const sizeClasses = SIZE_CLASSES[size];
   
+  // Normalize suit to handle corrupted data with text suit names
+  const normalizedSuit = card ? normalizeSuit(card.suit) : null;
+  
   // Determine card styling based on effective deck color mode (considers session override)
   const effectiveDeckColorMode = getEffectiveDeckColorMode();
   const isFourColor = effectiveDeckColorMode === 'four_color';
-  const fourColorConfig = card ? FOUR_COLOR_SUITS[card.suit] : null;
+  const fourColorConfig = normalizedSuit ? FOUR_COLOR_SUITS[normalizedSuit] : null;
   
   // For 4-color deck: colored background with white text, no suit symbol
   // For 2-color deck: white background with red/black text and suit symbol
@@ -90,7 +110,7 @@ export const PlayingCard = ({
     }
     return {
       backgroundColor: 'white',
-      textColor: card && (card.suit === '♥' || card.suit === '♦') ? 'text-red-600' : 'text-black',
+      textColor: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? 'text-red-600' : 'text-black',
     };
   };
   
@@ -154,7 +174,7 @@ export const PlayingCard = ({
             backgroundColor: cardFaceStyle.backgroundColor,
             backfaceVisibility: 'hidden',
             transform: showFront ? 'rotateY(0deg)' : 'rotateY(-180deg)',
-            ...(!isFourColor ? { color: card && (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } : {}),
+            ...(!isFourColor ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
           <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
@@ -162,7 +182,7 @@ export const PlayingCard = ({
           </span>
           {!isFourColor && (
             <span className={`${sizeClasses.suit} leading-none -mt-1.5`}>
-              {card.suit}
+              {normalizedSuit}
             </span>
           )}
         </Card>
@@ -173,7 +193,7 @@ export const PlayingCard = ({
   // Standard face-up card
   // For 2-color mode, we need to explicitly set text color inline to override dark mode's text-card-foreground
   const textColorStyle = !isFourColor 
-    ? { color: card && (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
+    ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' }
     : {};
   
   // No ring/glow highlighting - just use lift effect for winning cards
@@ -203,7 +223,7 @@ export const PlayingCard = ({
       </span>
       {!isFourColor && (
         <span className={`${sizeClasses.suit} leading-none -mt-1.5`}>
-          {card.suit}
+          {normalizedSuit}
         </span>
       )}
     </Card>
