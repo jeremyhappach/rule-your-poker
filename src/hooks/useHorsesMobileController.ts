@@ -1454,11 +1454,29 @@ export function useHorsesMobileController({
       const dbIsBlank = Array.isArray(dbDice) ? dbDice.every((d: any) => !d?.value) : true;
 
       // DB is "behind" local if it still shows more rolls remaining (or blank dice while local has values)
-      const dbBehind =
-        typeof dbRollsRemaining === "number" && dbRollsRemaining > localRollsRemaining;
+      const dbBehind = typeof dbRollsRemaining === "number" && dbRollsRemaining > localRollsRemaining;
       const dbClearlyStale = dbIsBlank && !localIsBlank;
 
-      const preferLocal = isRolling || withinProtectionWindow || dbBehind || dbClearlyStale;
+      // If DB has the *same* rollsRemaining but different dice, it's still stale (out-of-order snapshot).
+      // Keep local until DB catches up (bounded by a max wait to avoid permanent lock).
+      const dbMatchesLocal =
+        Array.isArray(dbDice) &&
+        dbDice.length === localDice.length &&
+        dbDice.every((d: any, i: number) => {
+          const l = (localDice as any)[i];
+          return (
+            (d?.value ?? 0) === (l?.value ?? 0) &&
+            !!d?.isHeld === !!l?.isHeld &&
+            (!!d?.isSCC === !!l?.isSCC)
+          );
+        });
+
+      const awaitingDbSync =
+        !!dbDice &&
+        !dbMatchesLocal &&
+        Date.now() - lastLocalEditAtRef.current < 10_000;
+
+      const preferLocal = isRolling || withinProtectionWindow || dbBehind || dbClearlyStale || awaitingDbSync;
 
       const dice = preferLocal ? localDice : (dbDice ?? localDice);
       const rollsRemaining = preferLocal
