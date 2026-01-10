@@ -207,13 +207,14 @@ export function DiceTableLayout({
       setIsInCompletionTransition(true);
       setHideFormerlyUnheld(false);
       
-      // After held dice animate to row (300ms CSS), wait, then hide formerly-unheld dice
+      // After held dice animate to row (300ms CSS), fade out formerly-unheld dice
+      // Reduced delays: 400ms for CSS transition + 200ms extra = 600ms total, then 200ms to end transition
       completionTransitionTimeoutRef.current = window.setTimeout(() => {
         setHideFormerlyUnheld(true);
         setTimeout(() => {
           setIsInCompletionTransition(false);
-        }, 400);
-      }, 600);
+        }, 200);
+      }, 400);
     }
     prevAllHeldRef.current = allHeldNow;
   }, [allHeldNow, isAnimatingFlyIn]);
@@ -238,11 +239,12 @@ export function DiceTableLayout({
     window.setTimeout(() => {
       setIsAnimatingFlyIn(false);
 
-      // Step 3 & 4: After held dice have moved (CSS transition ~200ms), fade out unheld dice
+      // Step 3 & 4: After held dice have moved (CSS transition ~300ms), fade out unheld dice
+      // Total dissolve delay = 100ms + 300ms = ~400ms (reduced from 5s+)
       animationCompleteTimeoutRef.current = window.setTimeout(() => {
         setShowUnheldDice(false);
-      }, 150);
-    }, 150);
+      }, 300);
+    }, 100);
   }, []);
   
   // If showing "You are rolling" message, render that instead of dice

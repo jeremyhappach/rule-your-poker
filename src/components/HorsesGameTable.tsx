@@ -1134,19 +1134,31 @@ export function HorsesGameTable({
   };
 
   // Get dice to display for current turn (bot or from DB)
+  // CRITICAL: When a bot locks in early, we need to preserve the heldMaskBeforeComplete
+  // so the layout doesn't revert from the correct frozen position.
   const getCurrentTurnDice = () => {
+    // Prefer bot display state if it matches the current turn player
     if (currentPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) {
       return botDisplayState;
     }
 
+    // Fall back to DB state - this includes the heldMaskBeforeComplete for frozen layout
     const state = horsesState?.playerStates?.[currentTurnPlayerId || ""];
-    return state ? {
+    if (!state) return null;
+    
+    // Generate a stable rollKey from the DB state to prevent layout jumps
+    // Use the state's completion status + roll count as a stable identifier
+    const stableRollKey = state.isComplete 
+      ? `complete-${currentTurnPlayerId}` 
+      : `roll-${state.rollsRemaining}-${currentTurnPlayerId}`;
+    
+    return {
       dice: state.dice,
       isRolling: false,
       heldMaskBeforeComplete: state.heldMaskBeforeComplete,
       heldCountBeforeComplete: state.heldCountBeforeComplete,
-      rollKey: botDisplayState?.rollKey,
-    } : null;
+      rollKey: stableRollKey,
+    };
   };
   
   // Calculate animation origin based on current player position (for observer view)

@@ -3686,11 +3686,12 @@ export const MobileGameTable = ({
                           <HorsesDie
                             key={idx}
                             value={die.value}
-                            isHeld={true}
+                            isHeld={false}
                             isRolling={false}
                             canToggle={false}
                             size="sm"
                             showWildHighlight={false}
+                            forceWhiteBackground={true}
                           />
                         ))}
                       </div>
@@ -3769,7 +3770,7 @@ export const MobileGameTable = ({
                         return cargo.length === 2 ? (
                           <div className="flex items-center gap-1">
                             {cargo.map((die, idx) => (
-                              <HorsesDie key={idx} value={die.value} isHeld={true} isRolling={false} canToggle={false} size="sm" showWildHighlight={false} />
+                              <HorsesDie key={idx} value={die.value} isHeld={false} isRolling={false} canToggle={false} size="sm" showWildHighlight={false} forceWhiteBackground={true} />
                             ))}
                           </div>
                         ) : null;
