@@ -427,7 +427,7 @@ export function DiceTableLayout({
               value={item.die.value}
               isHeld={true}
               isRolling={false}
-              canToggle={canToggle && !isObserver}
+              canToggle={canToggle && !isObserver && !isAnimatingFlyIn}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
               showWildHighlight={showWildHighlight && !isSCC}
@@ -476,7 +476,7 @@ export function DiceTableLayout({
               value={item.die.value}
               isHeld={false}
               isRolling={isRolling && !isAnimatingFlyIn}
-              canToggle={canToggle && !isObserver && !isSCC}
+              canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
               showWildHighlight={showWildHighlight && !isSCC}
