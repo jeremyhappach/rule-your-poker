@@ -396,18 +396,36 @@ export function DiceTableLayout({
     );
   }
   
+  // CRITICAL: During fly-in animation, use the held mask from BEFORE the roll to determine positions.
+  // This prevents dice from jumping to held positions before the animation lands.
+  // After animation completes, dice will transition to their correct (new) positions.
+  const usePreRollLayout = isAnimatingFlyIn && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
+  
+  let layoutHeldDice: typeof orderedDice;
+  let layoutUnheldDice: typeof orderedDice;
+  
+  if (usePreRollLayout) {
+    // During animation: use the pre-roll held state for layout (keeps dice in unheld scatter until animation ends)
+    layoutHeldDice = orderedDice.filter((d) => !!heldMaskBeforeComplete?.[d.originalIndex]);
+    layoutUnheldDice = orderedDice.filter((d) => !heldMaskBeforeComplete?.[d.originalIndex]);
+  } else {
+    // Normal: use actual isHeld state
+    layoutHeldDice = heldDice;
+    layoutUnheldDice = unheldDice;
+  }
+  
   // Normal case: held dice move to held row, unheld stay in scatter
-  const heldPositions = getHeldPositions(heldCount, dieWidth, gap);
-  const unheldPositions = UNHELD_POSITIONS[unheldCount] || [];
+  const heldPositions = getHeldPositions(layoutHeldDice.length, dieWidth, gap);
+  const unheldPositions = UNHELD_POSITIONS[layoutUnheldDice.length] || [];
   
   // Held dice go at the top (tighter to pot), unheld dice go below
   const heldYOffset = -35;
-  const unheldYOffset = heldCount > 0 ? 50 : 5;
+  const unheldYOffset = layoutHeldDice.length > 0 ? 50 : 5;
   
   return (
     <div className="relative" style={{ width: '200px', height: '120px' }}>
       {/* Held dice - horizontal line */}
-      {heldDice.map((item, displayIdx) => {
+      {layoutHeldDice.map((item, displayIdx) => {
         const pos = heldPositions[displayIdx];
         if (!pos) return null;
         
@@ -452,7 +470,7 @@ export function DiceTableLayout({
       )}
       
       {/* Unheld dice - staggered scatter (completely hidden during fly-in animation to prevent double-render) */}
-      {unheldDice.map((item, displayIdx) => {
+      {layoutUnheldDice.map((item, displayIdx) => {
         const pos = unheldPositions[displayIdx];
         if (!pos) return null;
         
@@ -467,7 +485,7 @@ export function DiceTableLayout({
         return (
           <div
             key={`unheld-${item.originalIndex}`}
-            className="absolute"
+            className="absolute transition-all duration-300 ease-out"
             style={{
               left: '50%',
               top: '50%',
@@ -476,7 +494,7 @@ export function DiceTableLayout({
           >
             <HorsesDie
               value={item.die.value}
-              isHeld={false}
+              isHeld={item.die.isHeld}
               isRolling={false}
               canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn && !isRolling}
               onToggle={() => onToggleHold?.(item.originalIndex)}
