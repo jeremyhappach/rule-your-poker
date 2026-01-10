@@ -252,10 +252,11 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     onStartRef.current?.();
 
     setAnimation({
-      fromX: potCoords.x,
-      fromY: potCoords.y,
-      toX: winnerCoords.x,
-      toY: winnerCoords.y,
+      // Convert container-relative coords → viewport coords so we can render with position:fixed
+      fromX: rect.left + potCoords.x,
+      fromY: rect.top + potCoords.y,
+      toX: rect.left + winnerCoords.x,
+      toY: rect.top + winnerCoords.y,
     });
 
     // Timing depends on game type - dice games are faster
@@ -298,7 +299,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
 
   return (
     <div
-      className="absolute z-[200] pointer-events-none"
+      className="fixed z-[9999] pointer-events-none"
       style={{
         left: animation.fromX,
         top: animation.fromY,

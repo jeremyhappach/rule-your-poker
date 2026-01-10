@@ -42,11 +42,11 @@ const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[
   // 5 unheld dice - rough pentagon using corners + center
   // NOTE: Y positions shifted down so initial roll lands lower, matching where dice stay when 1+ are held
   5: [
-    { x: -48, y: 8, rotate: -15 },    // upper-left area (was -22)
-    { x: 52, y: 12, rotate: 12 },     // upper-right area (was -18)
-    { x: 3, y: 38, rotate: 5 },       // center-ish (was 8)
-    { x: -45, y: 68, rotate: -8 },    // lower-left corner (was 38)
-    { x: 48, y: 72, rotate: 11 },     // lower-right corner (was 42)
+    { x: -48, y: -22, rotate: -15 },   // upper-left area
+    { x: 52, y: -18, rotate: 12 },     // upper-right area
+    { x: 3, y: 8, rotate: 5 },         // center-ish
+    { x: -45, y: 38, rotate: -8 },     // lower-left corner
+    { x: 48, y: 42, rotate: 11 },      // lower-right corner
   ],
   // 4 unheld dice - rough rectangle using corners
   4: [
@@ -335,8 +335,8 @@ export function DiceTableLayout({
     };
 
     const heldYOffset = -35;
-    // No Y offset needed - UNHELD_POSITIONS for 5 dice already lands at final position
-    const scatterYOffset = 0;
+    // Keep scatter dice vertically separated from the held row (matches normal layout)
+    const scatterYOffset = 50;
 
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -502,9 +502,8 @@ export function DiceTableLayout({
   // This prevents dice from jumping to held positions before the animation lands.
   // After animation completes, dice will transition to their correct (new) positions.
   const usePreRollLayout = isAnimatingFlyIn && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
-  
-  // No Y offset needed - UNHELD_POSITIONS for 5 dice already lands at final position
-  const unheldYOffset = 0;
+  // Keep unheld dice lower than the held row to avoid overlap
+  const unheldYOffset = 50;
   
   // Get positions based on COUNT of unheld dice (not originalIndex)
   // Each roll, dice get new positions based on how many are being rolled
@@ -554,7 +553,7 @@ export function DiceTableLayout({
           onComplete={handleAnimationComplete}
           size={size}
           isSCC={isSCC}
-          scatterYOffset={0}
+          scatterYOffset={unheldYOffset}
         />
       )}
 
