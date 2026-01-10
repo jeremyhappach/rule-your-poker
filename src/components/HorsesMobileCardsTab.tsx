@@ -57,7 +57,7 @@ export function HorsesMobileCardsTab({
               value={die.value}
               isHeld={horses.localHand.rollsRemaining > 0 && die.isHeld}
               isRolling={horses.isRolling && !die.isHeld}
-              canToggle={!isSCC && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
+              canToggle={!isSCC && !horses.isRolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
               onToggle={() => horses.handleToggleHold(idx)}
               size="lg"
               showWildHighlight={!isSCC}
