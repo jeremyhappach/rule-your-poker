@@ -33,7 +33,7 @@ import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playe
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
-import { Share2, Bot, Settings } from "lucide-react";
+import { Share2, Bot } from "lucide-react";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
@@ -4851,48 +4851,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     navigator.clipboard.writeText(gameUrl);
   };
 
-  const handleRecoverSession = async () => {
-    if (!gameId) return;
-
-    toast({
-      title: 'Recovering…',
-      description: 'Checking deadlines to unstick the session.',
-      duration: 2500,
-    });
-
-    let lastErr: any = null;
-
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const { error } = await supabase.functions.invoke('enforce-deadlines', {
-          body: { gameId },
-        });
-
-        if (!error) {
-          lastErr = null;
-          break;
-        }
-
-        lastErr = error;
-      } catch (err) {
-        lastErr = err;
-      }
-
-      await new Promise((r) => setTimeout(r, 300 * attempt));
-    }
-
-    await fetchGameData();
-
-    if (lastErr) {
-      toast({
-        title: 'Recover failed',
-        description: 'Backend did not respond—try again in a few seconds.',
-        variant: 'destructive',
-      });
-    } else {
-      toast({ title: 'Recovered', description: 'Deadline check completed.' });
-    }
-  };
 
   const handleSelectSeat = async (position: number) => {
     if (!gameId || !user) {
@@ -5187,11 +5145,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 </Button>
               )}
               {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) && (
-                <Button variant="outline" onClick={handleRecoverSession}>
-                  Recover
-                </Button>
-              )}
-              {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) && (
                 <Button variant="destructive" onClick={() => setShowEndSessionDialog(true)}>
                   End Session
                 </Button>
@@ -5245,17 +5198,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
                   }}
                 />
-              )}
-              {isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 px-2"
-                  onClick={handleRecoverSession}
-                  title="Recover session"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
               )}
               {/* Last Hand badge in header */}
               {game.pending_session_end && (
