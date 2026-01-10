@@ -585,8 +585,11 @@ export function DiceTableLayout({
             ? getUnheldPosition(unheldDisplayIdx, layoutUnheldDice.length)
             : getUnheldPosition(0, Math.max(1, layoutUnheldDice.length)));
 
-        // Fade out unheld dice when showUnheldDice is false (but never fade held dice)
-        const shouldFadeOut = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
+        // Hide unheld dice immediately when showUnheldDice is false (no fade, just disappear)
+        const shouldHide = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
+        
+        // Don't render unheld dice at all when they should be hidden
+        if (shouldHide) return null;
 
         // CRITICAL: When all dice just became held (early lock-in), do NOT animate unheld→held transition.
         // Skip the transition by omitting transition classes for dice that just switched from unheld to held.
@@ -605,8 +608,7 @@ export function DiceTableLayout({
               left: "50%",
               top: "50%",
               transform,
-              opacity: shouldFadeOut ? 0 : 1,
-              pointerEvents: shouldFadeOut ? "none" : "auto",
+              pointerEvents: "auto",
               zIndex: isHeldInLayout ? 2 : 1,
             }}
           >

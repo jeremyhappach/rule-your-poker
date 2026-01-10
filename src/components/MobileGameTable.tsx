@@ -1972,9 +1972,9 @@ export const MobileGameTable = ({
         clearTimeout(communityCardsDelayRef.current);
       }
       
-      // Initial delay of 1 second, then reveal cards one at a time
+      // Brief delay before revealing cards one at a time
       const cardCount = communityCardsRevealed || 2;
-      console.log('🔥🔥 [MOBILE_COMMUNITY] Setting 1000ms timeout to approve round', currentRound, 'with', cardCount, 'cards');
+      console.log('🔥🔥 [MOBILE_COMMUNITY] Setting 200ms timeout to approve round', currentRound, 'with', cardCount, 'cards');
       const capturedHandContextId = handContextId; // Capture for closure
       communityCardsDelayRef.current = setTimeout(() => {
         console.log('🔥🔥🔥🔥🔥 [MOBILE_COMMUNITY] Delay complete - approving round for display:', currentRound);
@@ -1992,7 +1992,7 @@ export const MobileGameTable = ({
             }
           }, (i - 1) * 150);
         }
-      }, 1000);
+      }, 200);
     }
     
     // IMPORTANT: do NOT return a cleanup that clears communityCardsDelayRef here.
