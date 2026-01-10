@@ -285,9 +285,16 @@ export function HorsesGameTable({
 
     // If the user just interacted, don't let a stale DB snapshot overwrite their felt.
     // Must exceed the longest animation duration to prevent flicker during roll animations.
-    if (Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS) return;
+    const timeSinceEdit = Date.now() - lastLocalEditAtRef.current;
+    if (timeSinceEdit < LOCAL_STATE_PROTECTION_MS) {
+      console.log(`[SYNC_DEBUG_DESKTOP] Blocked sync: within protection window (${timeSinceEdit}ms < ${LOCAL_STATE_PROTECTION_MS}ms)`);
+      return;
+    }
 
     if (myState && isMyTurn) {
+      console.log(`[SYNC_DEBUG_DESKTOP] *** APPLYING DB STATE *** dbDice=[${(myState.dice as any[]).map((d: any) => d?.value).join(',')}], dbRollsRemaining=${myState.rollsRemaining}`);
+      console.log(`[SYNC_DEBUG_DESKTOP] Local was: dice=[${(localHand.dice as any[]).map((d: any) => d?.value).join(',')}], rollsRemaining=${localHand.rollsRemaining}`);
+      
       // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
       if (isSCC) {
         setLocalHand(reconstructSCCHand(
@@ -624,9 +631,13 @@ export function HorsesGameTable({
   const handleRoll = useCallback(async () => {
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    const rollStartTime = Date.now();
+    console.log(`[ROLL_DEBUG_DESKTOP] ===== ROLL STARTED at ${new Date(rollStartTime).toISOString()} =====`);
+
     // Determine if this is the first roll (rollsRemaining === 3 means first roll)
     const isFirstRoll = localHand.rollsRemaining === 3;
     const animationDuration = isFirstRoll ? FIRST_ROLL_ANIMATION_MS : ROLL_AGAIN_ANIMATION_MS;
+    console.log(`[ROLL_DEBUG_DESKTOP] isFirstRoll=${isFirstRoll}, animationDuration=${animationDuration}ms`);
 
     // Track which dice were held BEFORE the roll (for layout freeze on completion)
     const heldMaskBeforeRoll = localHand.dice.map((d) => d.isHeld);
@@ -635,15 +646,20 @@ export function HorsesGameTable({
     const newHand = isSCC 
       ? rollSCCDice(localHand as SCCHand)
       : rollDice(localHand as HorsesHand);
+    console.log(`[ROLL_DEBUG_DESKTOP] newHand dice: [${(newHand.dice as any[]).map((d: any) => d.value).join(',')}], rollsRemaining=${newHand.rollsRemaining}`);
 
     setIsRolling(true);
-    lastLocalEditAtRef.current = Date.now();
+    lastLocalEditAtRef.current = rollStartTime;
     setLocalHand(newHand);
+    console.log(`[ROLL_DEBUG_DESKTOP] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
     // Increment roll animation key AFTER setting the new hand so fly-in uses new values
     setRollAnimationKey(prev => prev + 1);
 
     // Animate for appropriate duration based on roll type
     setTimeout(async () => {
+      const animationEndTime = Date.now();
+      console.log(`[ROLL_DEBUG_DESKTOP] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`);
+      console.log(`[ROLL_DEBUG_DESKTOP] setIsRolling(false) being called NOW`);
       setIsRolling(false);
 
       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
