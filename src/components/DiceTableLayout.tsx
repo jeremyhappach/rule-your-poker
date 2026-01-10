@@ -334,8 +334,8 @@ export function DiceTableLayout({
     };
 
     const heldYOffset = -35;
-    // Y offset based on held count
-    const scatterYOffset = heldAtStartOfFinalRoll.length > 0 ? 50 : 5;
+    // No Y offset needed - UNHELD_POSITIONS for 5 dice already lands at final position
+    const scatterYOffset = 0;
 
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -502,8 +502,8 @@ export function DiceTableLayout({
   // After animation completes, dice will transition to their correct (new) positions.
   const usePreRollLayout = isAnimatingFlyIn && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
   
-  // Y offset depends on whether there are held dice - push unheld dice lower when there are held
-  const unheldYOffset = heldCount > 0 ? 50 : 5;
+  // No Y offset needed - UNHELD_POSITIONS for 5 dice already lands at final position
+  const unheldYOffset = 0;
   
   // Get positions based on COUNT of unheld dice (not originalIndex)
   // Each roll, dice get new positions based on how many are being rolled
@@ -553,7 +553,7 @@ export function DiceTableLayout({
           onComplete={handleAnimationComplete}
           size={size}
           isSCC={isSCC}
-          scatterYOffset={animationHeldCount > 0 ? 50 : 5}
+          scatterYOffset={0}
         />
       )}
 
