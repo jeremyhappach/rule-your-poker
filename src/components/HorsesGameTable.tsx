@@ -184,6 +184,7 @@ export function HorsesGameTable({
     dice: HorsesDieType[];
     isRolling: boolean;
     rollKey?: number;
+    heldMaskBeforeComplete?: boolean[];
   } | null>(null);
 
   // Get active players sorted by position
@@ -851,9 +852,15 @@ export function HorsesGameTable({
 
         // Roll up to 3 times with visible animation
         let botRollKey = Date.now(); // Use timestamp as unique key for each roll
+        // Track held mask at the START of each roll so we can freeze layout on completion
+        let heldMaskBeforeComplete: boolean[] | undefined;
+        
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
           if (cancelled || botRunTokenRef.current !== token) return;
 
+          // Capture held state BEFORE rolling (for layout freeze on completion)
+          heldMaskBeforeComplete = botHand.dice.map((d: any) => !!d.isHeld);
+          
           // Increment roll key for each roll
           botRollKey++;
           
@@ -871,6 +878,7 @@ export function HorsesGameTable({
             dice: rolledHand.dice as HorsesDieType[],
             isRolling: true,
             rollKey: botRollKey,
+            heldMaskBeforeComplete,
           });
           await new Promise((resolve) => setTimeout(resolve, 400));
 
@@ -885,6 +893,7 @@ export function HorsesGameTable({
             dice: botHand.dice as HorsesDieType[],
             isRolling: false,
             rollKey: botRollKey,
+            heldMaskBeforeComplete,
           });
 
            // Save intermediate state to DB so others can see (atomic per-player)
@@ -923,7 +932,7 @@ export function HorsesGameTable({
               botHand = applyHoldDecision(botHand as HorsesHand, decision);
 
               // Show the hold decision
-              setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false });
+              setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false, heldMaskBeforeComplete });
 
                // Save hold state so others can see (atomic per-player)
                await horsesSetPlayerState(currentRoundId, botId, {
@@ -950,7 +959,7 @@ export function HorsesGameTable({
         }
 
         // Keep final bot dice visible until the DB turn advances.
-        setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false });
+        setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false, heldMaskBeforeComplete });
 
          // Save bot final state to DB (atomic per-player)
          await horsesSetPlayerState(currentRoundId, botId, {
@@ -958,7 +967,8 @@ export function HorsesGameTable({
            rollsRemaining: 0,
            isComplete: true,
            result,
-         });
+           heldMaskBeforeComplete,
+         } as any);
 
         // Advance turn after a moment
         await new Promise((resolve) => setTimeout(resolve, 1000));
