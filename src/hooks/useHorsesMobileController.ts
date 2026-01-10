@@ -135,15 +135,15 @@ export interface UseHorsesMobileControllerArgs {
   gameType?: string; // 'horses' or 'ship-captain-crew'
 }
 
-// First roll: just fly-in animation (~1200ms + buffer)
-const HORSES_FIRST_ROLL_ANIMATION_MS = 1300;
-// Subsequent rolls: sync with observer animations (fly-in 1200ms + pause 100ms + held move 300ms + unheld delay 1000ms = ~2600ms)
-const HORSES_ROLL_AGAIN_ANIMATION_MS = 2500;
-const HORSES_POST_TURN_PAUSE_MS = 650;
-// Local state protection window - must exceed the longest animation to prevent DB state from flashing stale dice
-const LOCAL_STATE_PROTECTION_MS = HORSES_ROLL_AGAIN_ANIMATION_MS + 200; // 2700ms
-const HORSES_TURN_TIMER_SECONDS = 30; // Default turn timer for Horses
-const BOT_TURN_START_DELAY_MS = 500; // Delay before bots start their turn (was 1500ms)
+// === DICE ANIMATION TIMING CONSTANTS (SINGLE SOURCE OF TRUTH) ===
+// Active player roll mask: how long the "rolling" animation shows in the active window
+const HORSES_FIRST_ROLL_ANIMATION_MS = 1300;   // Roll 1: ~1.3s
+const HORSES_ROLL_AGAIN_ANIMATION_MS = 1800;   // Rolls 2/3: ~1.8s (was 2500 - too long)
+const HORSES_POST_TURN_PAUSE_MS = 400;         // Pause after lock-in before advancing (was 650)
+// Local state protection: prevent DB overwrites during animation
+const LOCAL_STATE_PROTECTION_MS = HORSES_ROLL_AGAIN_ANIMATION_MS + 200;
+const HORSES_TURN_TIMER_SECONDS = 30;
+const BOT_TURN_START_DELAY_MS = 400;           // Bot start delay (was 500)
 
 export function useHorsesMobileController({
   enabled,

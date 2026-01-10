@@ -9,11 +9,9 @@ import { Lock, RotateCcw, Bug } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 
-// Active-player dice roll mask durations.
-// These are intentionally UI-owned so the active window ALWAYS animates long enough
-// to cover the felt/observer transitions.
-const ACTIVE_FIRST_ROLL_MS = 1300;
-const ACTIVE_ROLL_AGAIN_MS = 2500;
+// Active-player dice roll mask durations (matches useHorsesMobileController constants)
+const ACTIVE_FIRST_ROLL_MS = 1300;   // Roll 1: ~1.3s
+const ACTIVE_ROLL_AGAIN_MS = 1800;   // Rolls 2/3: ~1.8s
 
 interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };

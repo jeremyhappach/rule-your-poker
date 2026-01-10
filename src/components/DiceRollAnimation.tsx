@@ -22,8 +22,8 @@ interface DiceRollAnimationProps {
   scatterYOffset?: number;
 }
 
-// Animation duration in ms
-const ANIMATION_DURATION = 1200;
+// Animation duration in ms (reduced for snappier feel)
+const ANIMATION_DURATION = 900;
 const START_SCALE = 0.25;
 
 export function DiceRollAnimation({
