@@ -375,8 +375,11 @@ export async function startRound(gameId: string, roundNumber: number) {
       .from('games')
       .update({
         current_round: roundNumber,
-        all_decisions_in: false
+        all_decisions_in: false,
         // DON'T update pot - it's already correct from the first call
+        // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
+        config_deadline: null,
+        ante_decision_deadline: null,
       })
       .eq('id', gameId);
     
@@ -398,7 +401,10 @@ export async function startRound(gameId: string, roundNumber: number) {
       .update({
         current_round: roundNumber,
         all_decisions_in: false,
-        pot: currentPot + initialPot  // Add antes to existing pot
+        pot: currentPot + initialPot,  // Add antes to existing pot
+        // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
+        config_deadline: null,
+        ante_decision_deadline: null,
       })
       .eq('id', gameId);
     

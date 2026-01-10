@@ -181,6 +181,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   console.log('[SCC] Round created:', roundData.id, 'pot:', potForRound);
 
   // STEP 2: Update game status/pointers BEFORE collecting antes
+  // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
   const { error: updateError } = await supabase
     .from('games')
     .update({
@@ -193,6 +194,8 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       last_round_result: null,
       game_over_at: null,
       is_first_hand: isFirstHand,
+      config_deadline: null,
+      ante_decision_deadline: null,
     })
     .eq('id', gameId);
 
