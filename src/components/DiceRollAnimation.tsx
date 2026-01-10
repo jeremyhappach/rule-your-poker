@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
+import { logTimingEvent } from "@/hooks/useDiceTimingDebug";
 
 interface DiceRollAnimationProps {
   /** The dice to animate */
@@ -62,6 +63,8 @@ export function DiceRollAnimation({
   useEffect(() => {
     if (animatingIndices.length === 0) return;
 
+    logTimingEvent(`[DiceRollAnimation] START: ${animatingIndices.length} dice, duration=${ANIMATION_DURATION}ms`);
+
     // Cancel anything in-flight before starting a new run
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     if (completionTimeoutRef.current) {
@@ -93,7 +96,9 @@ export function DiceRollAnimation({
       setPhase("landing");
       if (!completedRef.current) {
         completedRef.current = true;
+        logTimingEvent(`[DiceRollAnimation] LANDED after ${ANIMATION_DURATION}ms, calling onComplete in 100ms`);
         completionTimeoutRef.current = window.setTimeout(() => {
+          logTimingEvent(`[DiceRollAnimation] CALLING onComplete`);
           onCompleteRef.current();
         }, 100);
       }
