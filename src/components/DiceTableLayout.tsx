@@ -105,6 +105,9 @@ export function DiceTableLayout({
   const prevRollKeyRef = useRef<string | number | undefined>(undefined);
   const animationCompleteTimeoutRef = useRef<number | null>(null);
   
+  // Track held count at the START of animation (so animation lands at correct Y offset)
+  const [animationHeldCount, setAnimationHeldCount] = useState(0);
+  
   // Track whether unheld dice should be visible (they disappear after animation lands until next roll)
   // Unheld dice are only visible during the fly-in animation landing
   const [showUnheldDice, setShowUnheldDice] = useState(true);
@@ -128,6 +131,11 @@ export function DiceTableLayout({
         .map(({ i }) => i);
 
       if (unheldIndices.length > 0) {
+        // Track how many were held at the START of this roll (for Y offset calculation)
+        const heldAtRollStart = heldMask 
+          ? heldMask.filter(Boolean).length 
+          : dice.filter(d => d.isHeld).length;
+        setAnimationHeldCount(heldAtRollStart);
         setAnimatingDiceIndices(unheldIndices);
         setIsAnimatingFlyIn(true);
         // Show unheld dice when animation starts (they'll animate in)
@@ -147,10 +155,10 @@ export function DiceTableLayout({
     setIsAnimatingFlyIn(false);
     setAnimatingDiceIndices([]);
     // After animation lands, hide unheld dice (they'll reappear on next roll)
-    // Brief delay so user sees where they landed before they disappear
+    // Longer delay so user sees where they landed before they disappear
     animationCompleteTimeoutRef.current = window.setTimeout(() => {
       setShowUnheldDice(false);
-    }, 400);
+    }, 800);
   };
   
   // If showing "You are rolling" message, render that instead of dice
@@ -495,6 +503,8 @@ export function DiceTableLayout({
       })}
       
       {/* Fly-in animation for unheld dice - positions based on count of animating dice */}
+      {/* CRITICAL: Use animationHeldCount (held count at roll start) to calculate Y offset */}
+      {/* This ensures animation lands at same position as static dice will render */}
       {isAnimatingFlyIn && animationOrigin && (
         <DiceRollAnimation
           dice={dice}
@@ -506,7 +516,7 @@ export function DiceTableLayout({
           onComplete={handleAnimationComplete}
           size={size}
           isSCC={isSCC}
-          scatterYOffset={unheldYOffset}
+          scatterYOffset={animationHeldCount > 0 ? 50 : 5}
         />
       )}
       
