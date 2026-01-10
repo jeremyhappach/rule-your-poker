@@ -288,6 +288,17 @@ export function useHorsesMobileController({
     if (Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS) return;
 
     if (myState) {
+      // Extra guard: even after the time window, ignore DB snapshots that are clearly behind local.
+      // This prevents "dice disappear" / "dice jump back" flashes when realtime/queries deliver an older state.
+      const localRollsRemaining = localHand.rollsRemaining;
+      const dbRollsRemaining = myState.rollsRemaining;
+      const dbDiceBlank = Array.isArray(myState.dice) && myState.dice.every((d: any) => !d?.value);
+      const localDiceBlank =
+        Array.isArray((localHand as any)?.dice) && (localHand as any).dice.every((d: any) => !d?.value);
+
+      if (typeof dbRollsRemaining === "number" && dbRollsRemaining > localRollsRemaining) return;
+      if (dbDiceBlank && !localDiceBlank) return;
+
       // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
       if (isSCC) {
         setLocalHand(
@@ -308,7 +319,11 @@ export function useHorsesMobileController({
     currentTurnPlayerId,
     myState?.rollsRemaining,
     myState?.isComplete,
+    myState?.dice,
+    localHand.rollsRemaining,
+    localHand.dice,
     isRolling,
+    isSCC,
   ]);
 
   // Clear bot display state when turn changes to a non-bot (prevents dice flash)
@@ -1425,14 +1440,30 @@ export function useHorsesMobileController({
     if (isMyTurn) {
       const dbState = myPlayer ? horsesState?.playerStates?.[myPlayer.id] : null;
 
-      // IMPORTANT: while the user is interacting (roll/hold), the DB state will lag behind.
-      // Prefer localHand until the animation completes and DB has had time to sync.
-      const preferLocal = Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS;
+      const localDice = localHand.dice;
+      const localRollsRemaining = localHand.rollsRemaining;
 
-      const dice = preferLocal ? localHand.dice : (dbState?.dice ?? localHand.dice);
+      const dbDice = dbState?.dice as any[] | undefined;
+      const dbRollsRemaining = typeof dbState?.rollsRemaining === "number" ? dbState.rollsRemaining : undefined;
+
+      // IMPORTANT: while the user is interacting (roll/hold), the DB state will lag behind.
+      // Prefer localHand until the animation completes AND until DB is at least as "new" as local.
+      const withinProtectionWindow = Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS;
+
+      const localIsBlank = localDice.every((d: any) => !d?.value);
+      const dbIsBlank = Array.isArray(dbDice) ? dbDice.every((d: any) => !d?.value) : true;
+
+      // DB is "behind" local if it still shows more rolls remaining (or blank dice while local has values)
+      const dbBehind =
+        typeof dbRollsRemaining === "number" && dbRollsRemaining > localRollsRemaining;
+      const dbClearlyStale = dbIsBlank && !localIsBlank;
+
+      const preferLocal = isRolling || withinProtectionWindow || dbBehind || dbClearlyStale;
+
+      const dice = preferLocal ? localDice : (dbDice ?? localDice);
       const rollsRemaining = preferLocal
-        ? localHand.rollsRemaining
-        : (typeof dbState?.rollsRemaining === "number" ? dbState.rollsRemaining : localHand.rollsRemaining);
+        ? localRollsRemaining
+        : (typeof dbRollsRemaining === "number" ? dbRollsRemaining : localRollsRemaining);
 
       const isBlank = dice.every((d: any) => !d?.value);
       if (isBlank && rollsRemaining === 3 && !isRolling) {
