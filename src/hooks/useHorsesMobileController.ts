@@ -352,6 +352,40 @@ export function useHorsesMobileController({
         return;
       }
 
+      // CRITICAL: If DB reports the same rollsRemaining but the dice don't match local, it's an out-of-order snapshot.
+      // Never apply that to local UI (it causes the "dice switched" flicker). Wait until DB matches local,
+      // but cap the wait so we can recover from a real desync.
+      const dbMatchesLocal =
+        Array.isArray(myState.dice) &&
+        Array.isArray((localHand as any)?.dice) &&
+        myState.dice.length === (localHand as any).dice.length &&
+        myState.dice.every((d: any, i: number) => {
+          const l = (localHand as any).dice[i];
+          return (
+            (d?.value ?? 0) === (l?.value ?? 0) &&
+            !!d?.isHeld === !!l?.isHeld &&
+            (!!d?.isSCC === !!l?.isSCC)
+          );
+        });
+
+      if (
+        typeof dbRollsRemaining === "number" &&
+        dbRollsRemaining === localRollsRemaining &&
+        !dbMatchesLocal &&
+        !localDiceBlank &&
+        timeSinceEdit < 10_000
+      ) {
+        console.log(
+          `[SYNC_DEBUG] Blocked sync: dbMismatch (same rollsRemaining=${dbRollsRemaining}) timeSinceEdit=${timeSinceEdit}ms`,
+        );
+        logDebug(
+          "sync_blocked",
+          `dbMismatch sameRR=${dbRollsRemaining} timeSinceEdit=${timeSinceEdit}ms`,
+          { dbRollsRemaining, localRollsRemaining, timeSinceEdit },
+        );
+        return;
+      }
+
       const dbVals = (myState.dice as any[]).map((d: any) => d?.value).join(",");
       const localVals = (localHand.dice as any[]).map((d: any) => d?.value).join(",");
       console.log(
