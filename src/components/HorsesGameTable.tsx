@@ -610,9 +610,19 @@ export function HorsesGameTable({
     await horsesAdvanceTurn(currentRoundId, expected);
   }, [currentRoundId, horsesState?.currentTurnPlayerId]);
 
+  // Animation timing constants
+  // First roll: just fly-in animation (~1200ms + buffer)
+  const FIRST_ROLL_ANIMATION_MS = 1300;
+  // Subsequent rolls: sync with observer animations (fly-in + held move + unheld delay)
+  const ROLL_AGAIN_ANIMATION_MS = 2500;
+
   // Handle roll dice
   const handleRoll = useCallback(async () => {
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
+
+    // Determine if this is the first roll (rollsRemaining === 3 means first roll)
+    const isFirstRoll = localHand.rollsRemaining === 3;
+    const animationDuration = isFirstRoll ? FIRST_ROLL_ANIMATION_MS : ROLL_AGAIN_ANIMATION_MS;
 
     // Track which dice were held BEFORE the roll (for layout freeze on completion)
     const heldMaskBeforeRoll = localHand.dice.map((d) => d.isHeld);
@@ -628,8 +638,7 @@ export function HorsesGameTable({
     // Increment roll animation key AFTER setting the new hand so fly-in uses new values
     setRollAnimationKey(prev => prev + 1);
 
-    // Animate for extended duration to sync with observer animations
-    // (fly-in 1200ms + pause 100ms + held move 300ms + unheld delay 1000ms = ~2600ms)
+    // Animate for appropriate duration based on roll type
     setTimeout(async () => {
       setIsRolling(false);
 
@@ -666,7 +675,7 @@ export function HorsesGameTable({
       } else {
         await saveMyState(newHand as HorsesHand, false);
       }
-    }, 2500);
+    }, animationDuration);
   }, [isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
 
   // Handle toggle hold - SCC has auto-freeze for 6-5-4, humans cannot toggle SCC dice
