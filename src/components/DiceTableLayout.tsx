@@ -118,6 +118,10 @@ export function DiceTableLayout({
   const [hideFormerlyUnheld, setHideFormerlyUnheld] = useState(false);
   const prevAllHeldRef = useRef(false);
   const completionTransitionTimeoutRef = useRef<number | null>(null);
+  
+  // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
+  // This prevents the empty container from rendering during state transitions
+  const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(dice);
 
   // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
@@ -258,13 +262,22 @@ export function DiceTableLayout({
   // For SCC games, use display order if available
   let orderedDice: { die: HorsesDieType | SCCDieType; originalIndex: number }[] = [];
   
+  // Determine which dice source to use - prefer current if valid, fallback to cached
+  const hasValidCurrentDice = dice.length > 0 && dice.some(d => d.value > 0);
+  const effectiveDice = hasValidCurrentDice ? dice : lastValidDiceRef.current;
+  
+  // Update cache when we have valid dice
+  if (hasValidCurrentDice) {
+    lastValidDiceRef.current = dice;
+  }
+  
   if (useSCCDisplayOrder && sccHand) {
     orderedDice = getSCCDisplayOrder(sccHand).map(({ die, originalIndex }) => ({
       die: die as SCCDieType,
       originalIndex,
     }));
   } else {
-    orderedDice = dice.map((die, i) => ({ die, originalIndex: i }));
+    orderedDice = effectiveDice.map((die, i) => ({ die, originalIndex: i }));
   }
   
   // Filter out unrolled dice if hideUnrolledDice is true
@@ -273,7 +286,9 @@ export function DiceTableLayout({
   }
   
   // If no dice to show, return empty container
+  // CRITICAL: This should rarely happen now due to lastValidDiceRef caching
   if (orderedDice.length === 0) {
+    console.warn('[DiceTableLayout] Empty orderedDice - this may cause visual flicker');
     return <div className="relative" style={{ width: '200px', height: '120px' }} />;
   }
   
