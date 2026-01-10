@@ -18,6 +18,8 @@ interface DiceRollAnimationProps {
   size?: "sm" | "md" | "lg";
   /** Whether this is an SCC game */
   isSCC?: boolean;
+  /** Y offset for the scatter area (must match DiceTableLayout's unheldYOffset) */
+  scatterYOffset?: number;
 }
 
 // Animation duration in ms
@@ -32,6 +34,7 @@ export function DiceRollAnimation({
   onComplete,
   size = "sm",
   isSCC = false,
+  scatterYOffset = 50,
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing" | "complete">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
@@ -91,8 +94,7 @@ export function DiceRollAnimation({
     return null;
   }
 
-  // Y offset for scatter area (unheld dice go below held row)
-  const scatterYOffset = 50;
+  // Y offset is now passed in as a prop to match DiceTableLayout's unheldYOffset
 
   return (
     <div className="absolute inset-0 pointer-events-none z-20">

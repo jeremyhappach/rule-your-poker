@@ -34,6 +34,16 @@ interface DiceTableLayoutProps {
 
 // Staggered positions for unheld dice (as pixel offsets from center)
 // Organic scatter pattern utilizing corners - not perfect geometric shapes
+// IMPORTANT: positions are indexed by originalIndex slot, not display order
+const UNHELD_POSITIONS_5: { x: number; y: number; rotate: number }[] = [
+  { x: -48, y: -22, rotate: -15 },  // position 0
+  { x: 52, y: -18, rotate: 12 },    // position 1
+  { x: 3, y: 8, rotate: 5 },        // position 2
+  { x: -45, y: 38, rotate: -8 },    // position 3
+  { x: 48, y: 42, rotate: 11 },     // position 4
+];
+
+// Legacy lookup for older code paths that don't use stable positions
 const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[]> = {
   // 5 unheld dice - rough pentagon using corners + center
   5: [
@@ -200,10 +210,13 @@ export function DiceTableLayout({
     const unheldAtStartOfFinalRoll = orderedDice.filter((d) => !wasHeld(d.originalIndex));
 
     const heldPositions = getHeldPositions(heldAtStartOfFinalRoll.length, dieWidth, gap);
-    const scatterPositions = UNHELD_POSITIONS[unheldAtStartOfFinalRoll.length] || [];
+    
+    // Use STABLE positions based on originalIndex (same as animation)
+    const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
 
     const heldYOffset = -35;
-    const scatterYOffset = heldAtStartOfFinalRoll.length > 0 ? 50 : 10;
+    // CRITICAL: Must match the unheldYOffset used in the normal path and animation
+    const scatterYOffset = heldAtStartOfFinalRoll.length > 0 ? 50 : 5;
 
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -239,10 +252,10 @@ export function DiceTableLayout({
           );
         })}
 
-        {/* Dice that were NOT held when the final roll started (stay in scatter positions) */}
-        {unheldAtStartOfFinalRoll.map((item, displayIdx) => {
-          const pos = scatterPositions[displayIdx];
-          if (!pos) return null;
+        {/* Dice that were NOT held when the final roll started - use STABLE positions by originalIndex */}
+        {unheldAtStartOfFinalRoll.map((item) => {
+          // Use stable position based on originalIndex (matches animation landing)
+          const pos = getStablePos(item.originalIndex);
 
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
@@ -274,19 +287,21 @@ export function DiceTableLayout({
     );
   }
 
-  // Legacy fallback: we know only "how many" were held (not which ones). Keep prior behavior.
+  // Legacy fallback: we know only "how many" were held (not which ones). Use stable positions.
   if (allHeld && previouslyHeldCount !== undefined) {
     const prevHeldCount = Math.min(previouslyHeldCount, 5);
-    const newlyHeldCount = 5 - prevHeldCount;
 
     const diceInHeldRow = orderedDice.slice(0, prevHeldCount);
     const diceInScatter = orderedDice.slice(prevHeldCount);
 
     const heldPositions = getHeldPositions(prevHeldCount, dieWidth, gap);
-    const scatterPositions = UNHELD_POSITIONS[newlyHeldCount] || [];
+    
+    // Use STABLE positions based on originalIndex
+    const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
 
     const heldYOffset = -35;
-    const scatterYOffset = prevHeldCount > 0 ? 50 : 10;
+    // CRITICAL: Must match unheldYOffset used elsewhere
+    const scatterYOffset = prevHeldCount > 0 ? 50 : 5;
 
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -321,9 +336,9 @@ export function DiceTableLayout({
           );
         })}
 
-        {diceInScatter.map((item, displayIdx) => {
-          const pos = scatterPositions[displayIdx];
-          if (!pos) return null;
+        {diceInScatter.map((item) => {
+          // Use stable position based on originalIndex
+          const pos = getStablePos(item.originalIndex);
 
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
@@ -355,16 +370,17 @@ export function DiceTableLayout({
     );
   }
   
-  // Fallback for all held without previouslyHeldCount: show all in scatter
+  // Fallback for all held without previouslyHeldCount: show all in scatter using stable positions
   if (allHeld) {
-    const allPositions = UNHELD_POSITIONS[5] || [];
-    const yOffset = 10;
+    // Use STABLE positions based on originalIndex
+    const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
+    // 0 held means unheldYOffset = 5
+    const yOffset = 5;
     
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
-        {orderedDice.map((item, displayIdx) => {
-          const pos = allPositions[displayIdx];
-          if (!pos) return null;
+        {orderedDice.map((item) => {
+          const pos = getStablePos(item.originalIndex);
           
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
@@ -401,11 +417,30 @@ export function DiceTableLayout({
   // After animation completes, dice will transition to their correct (new) positions.
   const usePreRollLayout = isAnimatingFlyIn && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
   
+  // For pre-roll layout, calculate how many were held BEFORE the roll
+  const preRollHeldCount = usePreRollLayout 
+    ? heldMaskBeforeComplete!.filter(Boolean).length 
+    : heldCount;
+  
+  // Unheld Y offset depends on whether there are held dice
+  // CRITICAL: animation and static must use the SAME offset
+  const unheldYOffset = preRollHeldCount > 0 ? 50 : 5;
+  
+  // Get stable positions for ALL dice based on their original indices
+  // Each die keeps its assigned position regardless of hold state changes
+  const getStableUnheldPosition = (originalIndex: number) => {
+    return UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
+  };
+  
+  // Held dice go at the top (tighter to pot)
+  const heldYOffset = -35;
+  
+  // Calculate which dice should render where
   let layoutHeldDice: typeof orderedDice;
   let layoutUnheldDice: typeof orderedDice;
   
   if (usePreRollLayout) {
-    // During animation: use the pre-roll held state for layout (keeps dice in unheld scatter until animation ends)
+    // During animation: use the pre-roll held state for layout
     layoutHeldDice = orderedDice.filter((d) => !!heldMaskBeforeComplete?.[d.originalIndex]);
     layoutUnheldDice = orderedDice.filter((d) => !heldMaskBeforeComplete?.[d.originalIndex]);
   } else {
@@ -414,13 +449,7 @@ export function DiceTableLayout({
     layoutUnheldDice = unheldDice;
   }
   
-  // Normal case: held dice move to held row, unheld stay in scatter
   const heldPositions = getHeldPositions(layoutHeldDice.length, dieWidth, gap);
-  const unheldPositions = UNHELD_POSITIONS[layoutUnheldDice.length] || [];
-  
-  // Held dice go at the top (tighter to pot), unheld dice go below
-  const heldYOffset = -35;
-  const unheldYOffset = layoutHeldDice.length > 0 ? 50 : 5;
   
   return (
     <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -456,23 +485,24 @@ export function DiceTableLayout({
         );
       })}
       
-      {/* Fly-in animation for unheld dice */}
+      {/* Fly-in animation for unheld dice - uses STABLE positions based on originalIndex */}
       {isAnimatingFlyIn && animationOrigin && (
         <DiceRollAnimation
           dice={dice}
           animatingIndices={animatingDiceIndices}
-          targetPositions={animatingDiceIndices.map((_, idx) => unheldPositions[idx] || { x: 0, y: 0, rotate: 0 })}
+          targetPositions={animatingDiceIndices.map((origIdx) => getStableUnheldPosition(origIdx))}
           originPosition={animationOrigin}
           onComplete={handleAnimationComplete}
           size={size}
           isSCC={isSCC}
+          scatterYOffset={unheldYOffset}
         />
       )}
       
-      {/* Unheld dice - staggered scatter (completely hidden during fly-in animation to prevent double-render) */}
-      {layoutUnheldDice.map((item, displayIdx) => {
-        const pos = unheldPositions[displayIdx];
-        if (!pos) return null;
+      {/* Unheld dice - STABLE scatter positions based on originalIndex */}
+      {layoutUnheldDice.map((item) => {
+        // Use stable position based on originalIndex (die keeps its spot)
+        const pos = getStableUnheldPosition(item.originalIndex);
         
         const sccDie = item.die as SCCDieType;
         const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
