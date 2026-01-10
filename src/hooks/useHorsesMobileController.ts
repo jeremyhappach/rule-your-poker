@@ -1001,8 +1001,9 @@ export function useHorsesMobileController({
     const run = async () => {
       setBotTurnActiveId(botId);
 
-      // Add 1.5 second delay before SCC bots start their turn (only during active gameplay)
-      if (isSCC && gamePhase === 'playing') {
+      // Add 1.5 second delay before bots start their turn (only during active gameplay)
+      // This allows the component to render and subscribe to state changes before the first roll
+      if (gamePhase === 'playing') {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         if (cancelled) return;
       }
