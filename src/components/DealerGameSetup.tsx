@@ -916,7 +916,7 @@ export const DealerGameSetup = ({
     // If a dice game is selected, show config UI
     if (selectedGameType === 'horses' || selectedGameType === 'ship-captain-crew') {
       const isSCC = selectedGameType === 'ship-captain-crew';
-      const gameDisplayName = isSCC ? 'Ship Captain Crew' : 'Horses';
+      const gameDisplayName = isSCC ? 'Ship' : 'Horses';
       const gameRulesText = isSCC 
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins';
