@@ -227,8 +227,8 @@ export function DiceTableLayout({
     const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
 
     const heldYOffset = -35;
-    // CRITICAL: Must match the unheldYOffset used in the normal path and animation
-    const scatterYOffset = heldAtStartOfFinalRoll.length > 0 ? 50 : 5;
+    // CRITICAL: Must match the CONSTANT unheldYOffset used in normal path (35)
+    const scatterYOffset = 35;
 
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -313,8 +313,8 @@ export function DiceTableLayout({
     const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
 
     const heldYOffset = -35;
-    // CRITICAL: Must match unheldYOffset used elsewhere
-    const scatterYOffset = prevHeldCount > 0 ? 50 : 5;
+    // CRITICAL: Must match the CONSTANT unheldYOffset used in normal path (35)
+    const scatterYOffset = 35;
 
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -388,8 +388,8 @@ export function DiceTableLayout({
   if (allHeld && !isAnimatingFlyIn) {
     // Use STABLE positions based on originalIndex
     const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
-    // 0 held means unheldYOffset = 5
-    const yOffset = 5;
+    // CRITICAL: Must match the CONSTANT unheldYOffset used in normal path (35)
+    const yOffset = 35;
     
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
@@ -431,14 +431,10 @@ export function DiceTableLayout({
   // After animation completes, dice will transition to their correct (new) positions.
   const usePreRollLayout = isAnimatingFlyIn && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
   
-  // For pre-roll layout, calculate how many were held BEFORE the roll
-  const preRollHeldCount = usePreRollLayout 
-    ? heldMaskBeforeComplete!.filter(Boolean).length 
-    : heldCount;
-  
-  // Unheld Y offset depends on whether there are held dice
-  // CRITICAL: animation and static must use the SAME offset
-  const unheldYOffset = preRollHeldCount > 0 ? 50 : 5;
+  // CRITICAL: Use a CONSTANT Y offset for unheld dice so they NEVER shift
+  // when held count changes. This keeps dice in stable positions across rolls.
+  // Value of 35 balances well between held row (at -35) and bottom of container.
+  const unheldYOffset = 35;
   
   // Get stable positions for ALL dice based on their original indices
   // Each die keeps its assigned position regardless of hold state changes
