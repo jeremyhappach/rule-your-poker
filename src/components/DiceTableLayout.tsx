@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useLayoutEffect, useRef } from "react";
 import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
@@ -96,10 +96,11 @@ export function DiceTableLayout({
   const animationCompleteTimeoutRef = useRef<number | null>(null);
   
   // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
-  useEffect(() => {
+  // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
+  useLayoutEffect(() => {
     if (rollKey !== undefined && rollKey !== prevRollKeyRef.current && animationOrigin) {
       prevRollKeyRef.current = rollKey;
-      
+
       // Find which dice were unheld at the START of the roll (these should animate in)
       // IMPORTANT: use heldMaskBeforeComplete when available so SCC "auto-hold" dice
       // still animate if they weren't held pre-roll.
@@ -111,13 +112,13 @@ export function DiceTableLayout({
           return !wasHeldAtRollStart && d.value !== 0;
         })
         .map(({ i }) => i);
-      
+
       if (unheldIndices.length > 0) {
         setAnimatingDiceIndices(unheldIndices);
         setIsAnimatingFlyIn(true);
       }
     }
-    
+
     return () => {
       if (animationCompleteTimeoutRef.current) {
         clearTimeout(animationCompleteTimeoutRef.current);
@@ -427,7 +428,7 @@ export function DiceTableLayout({
               value={item.die.value}
               isHeld={true}
               isRolling={false}
-              canToggle={canToggle && !isObserver && !isAnimatingFlyIn}
+              canToggle={canToggle && !isObserver && !isAnimatingFlyIn && !isRolling}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
               showWildHighlight={showWildHighlight && !isSCC}
@@ -476,7 +477,7 @@ export function DiceTableLayout({
               value={item.die.value}
               isHeld={false}
               isRolling={isRolling && !isAnimatingFlyIn}
-              canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn}
+              canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn && !isRolling}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
               showWildHighlight={showWildHighlight && !isSCC}
