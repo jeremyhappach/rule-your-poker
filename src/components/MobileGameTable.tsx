@@ -3694,10 +3694,7 @@ export const MobileGameTable = ({
                 <DiceTableLayout
                   dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
                     const showHeldVisual =
-                      typeof rollsRemaining === "number" &&
-                      rollsRemaining > 0 &&
-                      rollsRemaining < 3 &&
-                      !!die?.isHeld;
+                      typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
                     return {
                       ...die,
                       isHeld: showHeldVisual,

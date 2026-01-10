@@ -508,50 +508,23 @@ export function DiceTableLayout({
   }
   
   const heldPositions = getHeldPositions(layoutHeldDice.length, dieWidth, gap);
-  
+
+  // Build quick lookup maps so a die can smoothly transition between scatter and held row
+  const heldPositionByOriginalIndex = new Map<number, { x: number; y: number }>();
+  layoutHeldDice.forEach((item, displayIdx) => {
+    const pos = heldPositions[displayIdx];
+    if (pos) heldPositionByOriginalIndex.set(item.originalIndex, pos);
+  });
+
   return (
-    <div className="relative" style={{ width: '200px', height: '120px' }}>
-      {/* Held dice - horizontal line */}
-      {layoutHeldDice.map((item, displayIdx) => {
-        const pos = heldPositions[displayIdx];
-        if (!pos) return null;
-        
-        const sccDie = item.die as SCCDieType;
-        const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
-        
-        return (
-          <div
-            key={`held-${item.originalIndex}`}
-            className="absolute transition-all duration-300 ease-out"
-            style={{
-              left: '50%',
-              top: '50%',
-              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`,
-            }}
-          >
-            <HorsesDie
-              value={item.die.value}
-              isHeld={true}
-              isRolling={false}
-              canToggle={canToggle && !isObserver && !isAnimatingFlyIn && !isRolling}
-              onToggle={() => onToggleHold?.(item.originalIndex)}
-              size={size}
-              showWildHighlight={showWildHighlight && !isSCC}
-              isSCCDie={isSCCDie}
-            />
-          </div>
-        );
-      })}
-      
-      {/* Fly-in animation for unheld dice - positions based on count of animating dice */}
-      {/* CRITICAL: Use animationHeldCount (held count at roll start) to calculate Y offset */}
-      {/* This ensures animation lands at same position as static dice will render */}
+    <div className="relative" style={{ width: "200px", height: "120px" }}>
+      {/* Fly-in animation overlay for unheld dice */}
       {isAnimatingFlyIn && animationOrigin && (
         <DiceRollAnimation
           dice={dice}
           animatingIndices={animatingDiceIndices}
-          targetPositions={animatingDiceIndices.map((_, displayIdx) => 
-            getUnheldPosition(displayIdx, animatingDiceIndices.length)
+          targetPositions={animatingDiceIndices.map((_, displayIdx) =>
+            getUnheldPosition(displayIdx, animatingDiceIndices.length),
           )}
           originPosition={animationOrigin}
           onComplete={handleAnimationComplete}
@@ -560,45 +533,56 @@ export function DiceTableLayout({
           scatterYOffset={animationHeldCount > 0 ? 50 : 5}
         />
       )}
-      
-      {/* Unheld dice - positions based on count of unheld dice */}
-      {/* They fade out after animation lands and stay hidden until next roll */}
-      {layoutUnheldDice.map((item, displayIdx) => {
+
+      {/* Render each die once (stable key) so it can transition between scatter ↔ held row */}
+      {orderedDice.map((item) => {
+        const sccDie = item.die as SCCDieType;
+        const isSCCDie = isSCC && "isSCC" in sccDie && sccDie.isSCC;
+
+        // Don't render this die at all if it's currently animating in (prevents double render)
+        const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
+        if (isThisDieAnimating) return null;
+
+        const heldPos = heldPositionByOriginalIndex.get(item.originalIndex);
+        const isHeldInLayout = !!heldPos;
+
         // Prefer stable, per-roll positions (prevents re-scatter when holds change mid-roll)
         const stablePos =
           stableScatterRollKeyRef.current === rollKey
             ? stableScatterByDieRef.current.get(item.originalIndex)
             : undefined;
 
-        // Fallback: position based on display index and total unheld count
-        const pos = stablePos ?? getUnheldPosition(displayIdx, layoutUnheldDice.length);
+        // For scatter positions, we need the die's index among *layoutUnheldDice*
+        const unheldDisplayIdx = layoutUnheldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+        const scatterPos =
+          stablePos ??
+          (unheldDisplayIdx >= 0
+            ? getUnheldPosition(unheldDisplayIdx, layoutUnheldDice.length)
+            : getUnheldPosition(0, Math.max(1, layoutUnheldDice.length)));
 
-        const sccDie = item.die as SCCDieType;
-        const isSCCDie = isSCC && "isSCC" in sccDie && sccDie.isSCC;
+        // Fade out unheld dice when showUnheldDice is false (but never fade held dice)
+        const shouldFadeOut = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
 
-        // Don't render this die at all if it's currently animating in
-        // This prevents the "double render" where animation dice and static dice both show
-        const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
-        if (isThisDieAnimating) return null;
-
-        // Fade out unheld dice when showUnheldDice is false
-        const shouldFadeOut = !showUnheldDice && !isAnimatingFlyIn;
+        const transform = isHeldInLayout
+          ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
+          : `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`;
 
         return (
           <div
-            key={`unheld-${item.originalIndex}`}
+            key={`die-${item.originalIndex}`}
             className="absolute transition-all duration-300 ease-out"
             style={{
               left: "50%",
               top: "50%",
-              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + unheldYOffset}px)) rotate(${pos.rotate}deg)`,
+              transform,
               opacity: shouldFadeOut ? 0 : 1,
               pointerEvents: shouldFadeOut ? "none" : "auto",
+              zIndex: isHeldInLayout ? 2 : 1,
             }}
           >
             <HorsesDie
               value={item.die.value}
-              isHeld={item.die.isHeld}
+              isHeld={isHeldInLayout}
               isRolling={false}
               canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn && !isRolling}
               onToggle={() => onToggleHold?.(item.originalIndex)}
