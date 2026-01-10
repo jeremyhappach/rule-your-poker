@@ -178,13 +178,10 @@ export function HorsesGameTable({
   const lastLocalEditAtRef = useRef<number>(0);
   const myTurnKeyRef = useRef<string | null>(null);
 
-  // Animation timing constants
-  // First roll: just fly-in animation (~1200ms + buffer)
+  // Animation timing constants (sync with useHorsesMobileController)
   const FIRST_ROLL_ANIMATION_MS = 1300;
-  // Subsequent rolls: sync with observer animations (fly-in + held move + unheld delay)
-  const ROLL_AGAIN_ANIMATION_MS = 2500;
-  // Local state protection window - must exceed the longest animation to prevent DB state from flashing stale dice
-  const LOCAL_STATE_PROTECTION_MS = ROLL_AGAIN_ANIMATION_MS + 200; // 2700ms
+  const ROLL_AGAIN_ANIMATION_MS = 1800;
+  const LOCAL_STATE_PROTECTION_MS = ROLL_AGAIN_ANIMATION_MS + 200;
 
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{

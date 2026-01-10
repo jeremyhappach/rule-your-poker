@@ -198,53 +198,42 @@ export function DiceTableLayout({
     sccHand,
   ]);
 
-  // Handle "all held" transition: when turn completes, delay hiding formerly-unheld dice
-  // Use raw `dice` prop here since orderedDice isn't defined yet
+  // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly
   const allHeldNow = dice.length > 0 && dice.every(d => d.isHeld);
   useLayoutEffect(() => {
     if (allHeldNow && !prevAllHeldRef.current && !isAnimatingFlyIn) {
-      // Just transitioned to all-held state - start completion transition
       setIsInCompletionTransition(true);
       setHideFormerlyUnheld(false);
       
-      // After held dice animate to row (300ms CSS), fade out formerly-unheld dice
-      // Reduced delays: 400ms for CSS transition + 200ms extra = 600ms total, then 200ms to end transition
+      // Quick transition: 200ms for CSS + 100ms buffer = 300ms total
       completionTransitionTimeoutRef.current = window.setTimeout(() => {
         setHideFormerlyUnheld(true);
-        setTimeout(() => {
-          setIsInCompletionTransition(false);
-        }, 200);
-      }, 400);
+        setTimeout(() => setIsInCompletionTransition(false), 100);
+      }, 200);
     }
     prevAllHeldRef.current = allHeldNow;
   }, [allHeldNow, isAnimatingFlyIn]);
 
-  // Handle animation complete - unheld dice will fade out AFTER held dice finish moving
-  // CRITICAL TIMING for active player sync:
-  // 1. Animation lands → setAnimatingDiceIndices([]) (overlay gone, static dice visible)
-  // 2. Wait 100ms → setIsAnimatingFlyIn(false) (layout flips: newly-held dice transition to held row via CSS)
-  // 3. Wait 300ms → (held dice CSS transition complete, user sees final layout)
-  // 4. Wait 1000ms → setShowUnheldDice(false) (unheld dice disappear after user-requested 1s delay)
-  // Total: ~2600ms from animation start to unheld dice disappearing
+  // Handle animation complete - unheld dice fade out quickly after held dice move
+  // Timeline: fly-in done → 50ms → layout flip → 200ms CSS → 300ms delay → hide unheld
+  // Total: ~1750ms from roll start (1200ms fly-in + 550ms post)
   const handleAnimationComplete = useCallback(() => {
-    // If this gets called twice for any reason, don't stack timers.
     if (animationCompleteTimeoutRef.current) {
       clearTimeout(animationCompleteTimeoutRef.current);
       animationCompleteTimeoutRef.current = null;
     }
 
-    // Step 1: Stop rendering the DiceRollAnimation overlay (static dice now visible in pre-roll layout)
     setAnimatingDiceIndices([]);
 
-    // Step 2: After a short pause, flip the layout so held dice animate to their row
+    // Quick flip to held layout
     window.setTimeout(() => {
       setIsAnimatingFlyIn(false);
 
-      // Step 3 & 4: After held dice have moved (CSS transition ~300ms), wait 1000ms then hide unheld dice
+      // After held dice CSS transition (200ms), wait 300ms then hide unheld
       animationCompleteTimeoutRef.current = window.setTimeout(() => {
         setShowUnheldDice(false);
-      }, 300 + 1000); // 300ms for CSS transition + 1000ms user-requested delay
-    }, 100);
+      }, 200 + 300); // 200ms CSS + 300ms delay = 500ms
+    }, 50);
   }, []);
   
   // If showing "You are rolling" message, render that instead of dice
