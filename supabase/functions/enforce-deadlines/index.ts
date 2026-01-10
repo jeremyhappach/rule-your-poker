@@ -933,8 +933,17 @@ serve(async (req) => {
             .eq('game_id', gameId);
           
           const isHolmGame = game.game_type === 'holm-game';
+          const isDiceGame = game.game_type === 'horses' || game.game_type === 'ship-captain-crew';
           
-          if (isHolmGame) {
+          // Dice games (Horses, Ship Captain Crew) manage their own state via horses_state in the round
+          // and don't use the same round progression system. Skip the watchdog for these.
+          if (isDiceGame) {
+            console.log('[ENFORCE] Dice game detected, skipping awaiting_next_round watchdog (client manages state)', {
+              gameId,
+              gameType: game.game_type,
+            });
+            actionsTaken.push(`awaiting_next_round watchdog: Skipping dice game (${game.game_type}) - client manages state`);
+          } else if (isHolmGame) {
             // For Holm games: Start the round server-side (just like we do for 3-5-7)
             // This ensures the game progresses even when no clients are connected
             
