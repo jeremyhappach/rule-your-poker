@@ -220,11 +220,12 @@ export function DiceTableLayout({
   }, [allHeldNow, isAnimatingFlyIn]);
 
   // Handle animation complete - unheld dice will fade out AFTER held dice finish moving
-  // CRITICAL TIMING for Horses to match SCC:
+  // CRITICAL TIMING for active player sync:
   // 1. Animation lands → setAnimatingDiceIndices([]) (overlay gone, static dice visible)
-  // 2. Wait 300ms → setIsAnimatingFlyIn(false) (layout flips: newly-held dice transition to held row via CSS)
-  // 3. Wait 600ms → (held dice CSS transition complete, user sees final layout)
-  // 4. Wait 800ms → setShowUnheldDice(false) (unheld dice fade out)
+  // 2. Wait 100ms → setIsAnimatingFlyIn(false) (layout flips: newly-held dice transition to held row via CSS)
+  // 3. Wait 300ms → (held dice CSS transition complete, user sees final layout)
+  // 4. Wait 1000ms → setShowUnheldDice(false) (unheld dice disappear after user-requested 1s delay)
+  // Total: ~2600ms from animation start to unheld dice disappearing
   const handleAnimationComplete = useCallback(() => {
     // If this gets called twice for any reason, don't stack timers.
     if (animationCompleteTimeoutRef.current) {
@@ -239,11 +240,10 @@ export function DiceTableLayout({
     window.setTimeout(() => {
       setIsAnimatingFlyIn(false);
 
-      // Step 3 & 4: After held dice have moved (CSS transition ~300ms), fade out unheld dice
-      // Total dissolve delay = 100ms + 300ms = ~400ms (reduced from 5s+)
+      // Step 3 & 4: After held dice have moved (CSS transition ~300ms), wait 1000ms then hide unheld dice
       animationCompleteTimeoutRef.current = window.setTimeout(() => {
         setShowUnheldDice(false);
-      }, 300);
+      }, 300 + 1000); // 300ms for CSS transition + 1000ms user-requested delay
     }, 100);
   }, []);
   
@@ -585,7 +585,7 @@ export function DiceTableLayout({
             ? getUnheldPosition(unheldDisplayIdx, layoutUnheldDice.length)
             : getUnheldPosition(0, Math.max(1, layoutUnheldDice.length)));
 
-        // Hide unheld dice immediately when showUnheldDice is false (no fade, just disappear)
+        // Hide unheld dice when showUnheldDice is false (after 1s delay from held dice moving)
         const shouldHide = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
         
         // Don't render unheld dice at all when they should be hidden

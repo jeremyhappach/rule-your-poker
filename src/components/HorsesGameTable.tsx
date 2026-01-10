@@ -628,7 +628,8 @@ export function HorsesGameTable({
     // Increment roll animation key AFTER setting the new hand so fly-in uses new values
     setRollAnimationKey(prev => prev + 1);
 
-    // Animate for a moment then finalize
+    // Animate for extended duration to sync with observer animations
+    // (fly-in 1200ms + pause 100ms + held move 300ms + unheld delay 1000ms = ~2600ms)
     setTimeout(async () => {
       setIsRolling(false);
 
@@ -665,7 +666,7 @@ export function HorsesGameTable({
       } else {
         await saveMyState(newHand as HorsesHand, false);
       }
-    }, 500);
+    }, 2500);
   }, [isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
 
   // Handle toggle hold - SCC has auto-freeze for 6-5-4, humans cannot toggle SCC dice

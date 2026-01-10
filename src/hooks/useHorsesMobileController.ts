@@ -126,7 +126,8 @@ export interface UseHorsesMobileControllerArgs {
   gameType?: string; // 'horses' or 'ship-captain-crew'
 }
 
-const HORSES_ROLL_ANIMATION_MS = 350;
+// Extended to sync with observer animations (fly-in 1200ms + pause 100ms + held move 300ms + unheld delay 1000ms = ~2600ms)
+const HORSES_ROLL_ANIMATION_MS = 2500;
 const HORSES_POST_TURN_PAUSE_MS = 650;
 const HORSES_TURN_TIMER_SECONDS = 30; // Default turn timer for Horses
 const BOT_TURN_START_DELAY_MS = 500; // Delay before bots start their turn (was 1500ms)
