@@ -1,4 +1,5 @@
 import { useState, useLayoutEffect, useRef, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
@@ -586,6 +587,11 @@ export function DiceTableLayout({
         // Fade out unheld dice when showUnheldDice is false (but never fade held dice)
         const shouldFadeOut = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
 
+        // CRITICAL: When all dice just became held (early lock-in), do NOT animate unheld→held transition.
+        // Skip the transition by omitting transition classes for dice that just switched from unheld to held.
+        const justBecameHeld = allHeld && !isAnimatingFlyIn && !isHeldInLayout;
+        const shouldSkipTransition = justBecameHeld;
+
         const transform = isHeldInLayout
           ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
           : `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`;
@@ -593,7 +599,7 @@ export function DiceTableLayout({
         return (
           <div
             key={`die-${item.originalIndex}`}
-            className="absolute transition-all duration-300 ease-out"
+            className={cn("absolute", !shouldSkipTransition && "transition-all duration-300 ease-out")}
             style={{
               left: "50%",
               top: "50%",
