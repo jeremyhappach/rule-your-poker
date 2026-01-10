@@ -72,6 +72,13 @@ export interface HorsesStateFromDB {
   turnDeadline?: string | null;
 }
 
+export type DiceDebugEvent = {
+  t: number;
+  tag: string;
+  message: string;
+  data?: unknown;
+};
+
 async function updateHorsesState(roundId: string, state: HorsesStateFromDB): Promise<Error | null> {
   const { error } = await supabase
     .from("rounds")
@@ -199,6 +206,23 @@ export function useHorsesMobileController({
   const lastLocalEditAtRef = useRef<number>(0);
   const myTurnKeyRef = useRef<string | null>(null);
 
+  // In-app debug buffer (so we can debug on mobile without relying on console output)
+  const [debugEvents, setDebugEvents] = useState<DiceDebugEvent[]>([]);
+  const lastPreferDebugKeyRef = useRef<string>("");
+
+  const logDebug = useCallback((tag: string, message: string, data?: unknown) => {
+    if (!import.meta.env.DEV) return;
+    const evt: DiceDebugEvent = { t: Date.now(), tag, message, data };
+    setDebugEvents((prev) => {
+      const next = [...prev, evt];
+      return next.length > 120 ? next.slice(-120) : next;
+    });
+  }, []);
+
+  const clearDebugEvents = useCallback(() => {
+    setDebugEvents([]);
+  }, []);
+
   // Freeze layout at the START of the most recent roll (used when the turn completes)
   const heldMaskAtLastRollStartRef = useRef<boolean[] | null>(null);
   // Timer state for turn countdown
@@ -283,6 +307,7 @@ export function useHorsesMobileController({
     // While rolling (and shortly after interactions), don't let DB snapshots overwrite the felt.
     if (isRolling) {
       console.log(`[SYNC_DEBUG] Blocked sync: isRolling=true`);
+      logDebug("sync_blocked", "isRolling=true");
       return;
     }
 
@@ -290,7 +315,14 @@ export function useHorsesMobileController({
     // Must exceed the longest animation duration to prevent flicker during roll animations.
     const timeSinceEdit = Date.now() - lastLocalEditAtRef.current;
     if (timeSinceEdit < LOCAL_STATE_PROTECTION_MS) {
-      console.log(`[SYNC_DEBUG] Blocked sync: within protection window (${timeSinceEdit}ms < ${LOCAL_STATE_PROTECTION_MS}ms)`);
+      console.log(
+        `[SYNC_DEBUG] Blocked sync: within protection window (${timeSinceEdit}ms < ${LOCAL_STATE_PROTECTION_MS}ms)`,
+      );
+      logDebug(
+        "sync_blocked",
+        `withinWindow ${timeSinceEdit}ms < ${LOCAL_STATE_PROTECTION_MS}ms`,
+        { timeSinceEdit, LOCAL_STATE_PROTECTION_MS },
+      );
       return;
     }
 
@@ -304,16 +336,34 @@ export function useHorsesMobileController({
         Array.isArray((localHand as any)?.dice) && (localHand as any).dice.every((d: any) => !d?.value);
 
       if (typeof dbRollsRemaining === "number" && dbRollsRemaining > localRollsRemaining) {
-        console.log(`[SYNC_DEBUG] Blocked sync: dbRollsRemaining(${dbRollsRemaining}) > localRollsRemaining(${localRollsRemaining})`);
+        console.log(
+          `[SYNC_DEBUG] Blocked sync: dbRollsRemaining(${dbRollsRemaining}) > localRollsRemaining(${localRollsRemaining})`,
+        );
+        logDebug(
+          "sync_blocked",
+          `dbBehind dbRollsRemaining=${dbRollsRemaining} > localRollsRemaining=${localRollsRemaining}`,
+          { dbRollsRemaining, localRollsRemaining },
+        );
         return;
       }
       if (dbDiceBlank && !localDiceBlank) {
         console.log(`[SYNC_DEBUG] Blocked sync: dbDiceBlank but local has values`);
+        logDebug("sync_blocked", "dbDiceBlank but local has values");
         return;
       }
 
-      console.log(`[SYNC_DEBUG] *** APPLYING DB STATE *** dbDice=[${(myState.dice as any[]).map((d: any) => d?.value).join(',')}], dbRollsRemaining=${dbRollsRemaining}`);
-      console.log(`[SYNC_DEBUG] Local was: dice=[${(localHand.dice as any[]).map((d: any) => d?.value).join(',')}], rollsRemaining=${localRollsRemaining}`);
+      const dbVals = (myState.dice as any[]).map((d: any) => d?.value).join(",");
+      const localVals = (localHand.dice as any[]).map((d: any) => d?.value).join(",");
+      console.log(
+        `[SYNC_DEBUG] *** APPLYING DB STATE *** dbDice=[${dbVals}], dbRollsRemaining=${dbRollsRemaining}`,
+      );
+      console.log(`[SYNC_DEBUG] Local was: dice=[${localVals}], rollsRemaining=${localRollsRemaining}`);
+      logDebug("sync_apply", `db=[${dbVals}] rr=${dbRollsRemaining} (local=[${localVals}] rr=${localRollsRemaining})`, {
+        dbVals,
+        localVals,
+        dbRollsRemaining,
+        localRollsRemaining,
+      });
 
       // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
       if (isSCC) {
@@ -340,6 +390,7 @@ export function useHorsesMobileController({
     localHand.dice,
     isRolling,
     isSCC,
+    logDebug,
   ]);
 
   // Clear bot display state when turn changes to a non-bot (prevents dice flash)
@@ -892,18 +943,24 @@ export function useHorsesMobileController({
 
     // Roll immediately so the animation displays the NEW dice values (prevents old->new flash)
     const newHand = isSCC ? rollSCCDice(localHand as SCCHand) : rollDice(localHand as HorsesHand);
-    console.log(`[ROLL_DEBUG] newHand dice: [${(newHand.dice as any[]).map((d: any) => d.value).join(',')}], rollsRemaining=${newHand.rollsRemaining}`);
+    const newVals = (newHand.dice as any[]).map((d: any) => d.value).join(",");
+    console.log(`[ROLL_DEBUG] newHand dice: [${newVals}], rollsRemaining=${newHand.rollsRemaining}`);
+    logDebug("roll_start", `isFirstRoll=${isFirstRoll} anim=${animationDuration}ms dice=[${newVals}] rr=${newHand.rollsRemaining}`);
 
     // Mark interaction immediately so realtime/DB snapshots can't overwrite the felt during the roll animation.
     lastLocalEditAtRef.current = rollStartTime;
     setLocalHand(newHand);
     setIsRolling(true);
     console.log(`[ROLL_DEBUG] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
+    logDebug("roll_state", "setIsRolling(true)", { rollStartTime });
 
     setTimeout(async () => {
       const animationEndTime = Date.now();
-      console.log(`[ROLL_DEBUG] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`);
+      console.log(
+        `[ROLL_DEBUG] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`,
+      );
       console.log(`[ROLL_DEBUG] setIsRolling(false) being called NOW`);
+      logDebug("roll_timeout", `after ${animationEndTime - rollStartTime}ms -> setIsRolling(false)`);
       setIsRolling(false);
 
       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
@@ -944,6 +1001,7 @@ export function useHorsesMobileController({
     advanceToNextTurn,
     myPlayer?.id,
     isSCC,
+    logDebug,
   ]);
 
   const handleToggleHold = useCallback(
@@ -1505,8 +1563,20 @@ export function useHorsesMobileController({
 
       // Debug logging for preferLocal decision
       const timeSinceEdit = Date.now() - lastLocalEditAtRef.current;
+      const localVals = localDice.map((d: any) => d.value).join(",");
+      const dbVals = (dbDice || []).map((d: any) => d?.value).join(",");
+      const preferKey = `${preferLocal}|${isRolling}|${withinProtectionWindow}|${dbBehind}|${dbClearlyStale}|${awaitingDbSync}|${localRollsRemaining}|${dbRollsRemaining}|${localVals}|${dbVals}`;
+      if (preferKey !== lastPreferDebugKeyRef.current) {
+        lastPreferDebugKeyRef.current = preferKey;
+        logDebug(
+          "prefer_local",
+          `preferLocal=${preferLocal} isRolling=${isRolling} withinWindow=${withinProtectionWindow} (${timeSinceEdit}ms) local=[${localVals}] rr=${localRollsRemaining} db=[${dbVals}] rr=${dbRollsRemaining}`,
+          { preferLocal, isRolling, withinProtectionWindow, timeSinceEdit, dbBehind, dbClearlyStale, awaitingDbSync, localVals, dbVals, localRollsRemaining, dbRollsRemaining },
+        );
+      }
+
       console.log(`[PREFER_LOCAL_DEBUG] preferLocal=${preferLocal} | isRolling=${isRolling} | withinWindow=${withinProtectionWindow} (${timeSinceEdit}ms ago) | dbBehind=${dbBehind} | dbStale=${dbClearlyStale} | awaitingSync=${awaitingDbSync}`);
-      console.log(`[PREFER_LOCAL_DEBUG] localDice=[${localDice.map((d: any) => d.value).join(',')}] rollsRem=${localRollsRemaining} | dbDice=[${(dbDice || []).map((d: any) => d?.value).join(',')}] rollsRem=${dbRollsRemaining}`);
+      console.log(`[PREFER_LOCAL_DEBUG] localDice=[${localVals}] rollsRem=${localRollsRemaining} | dbDice=[${dbVals}] rollsRem=${dbRollsRemaining}`);
       if (!preferLocal) {
         console.log(`[PREFER_LOCAL_DEBUG] *** USING DB STATE *** (preferLocal=false)`);
       }
@@ -1671,6 +1741,9 @@ export function useHorsesMobileController({
     handleRoll,
     handleToggleHold,
     handleLockIn,
+    // Debug buffer
+    debugEvents,
+    clearDebugEvents,
     // Timer state
     timeLeft,
     maxTime: HORSES_TURN_TIMER_SECONDS,
