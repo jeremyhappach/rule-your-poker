@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface HorsesDieProps {
   value: number; // 1-6, 0 for unrolled
@@ -27,44 +27,23 @@ export function HorsesDie({
   // Track the displayed value during roll animation
   const [displayValue, setDisplayValue] = useState(value);
 
-  // Keep a stable interval while rolling so dice don't "settle" early.
-  // The previous implementation cycled for ~400ms then stopped, which looks like
-  // a mid-roll "switch" once we increased the overall roll animation duration.
-  const rollIntervalRef = useRef<number | null>(null);
-
+  // Animation effect: cycle through random values while isRolling && !isHeld
   useEffect(() => {
-    const shouldAnimate = isRolling && !isHeld;
+    if (isRolling && !isHeld) {
+      // Start cycling immediately
+      const interval = setInterval(() => {
+        setDisplayValue(Math.floor(Math.random() * 6) + 1);
+      }, 60);
 
-    if (shouldAnimate) {
-      if (rollIntervalRef.current == null) {
-        rollIntervalRef.current = window.setInterval(() => {
-          // Random value 1-6 for the cycling effect
-          setDisplayValue(Math.floor(Math.random() * 6) + 1);
-        }, 60);
-      }
-      return;
+      return () => clearInterval(interval);
     }
-
-    // Stop animating
-    if (rollIntervalRef.current != null) {
-      clearInterval(rollIntervalRef.current);
-      rollIntervalRef.current = null;
-    }
-
-    // When not rolling (or when held), always show the real value.
-    setDisplayValue(value);
-
-    return () => {
-      if (rollIntervalRef.current != null) {
-        clearInterval(rollIntervalRef.current);
-        rollIntervalRef.current = null;
-      }
-    };
   }, [isRolling, isHeld]);
 
-  // Keep display value synced with prop when NOT rolling
+  // Sync display value with prop when NOT rolling
   useEffect(() => {
-    if (!isRolling) setDisplayValue(value);
+    if (!isRolling) {
+      setDisplayValue(value);
+    }
   }, [value, isRolling]);
 
   const animating = isRolling && !isHeld;
