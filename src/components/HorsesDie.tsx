@@ -76,9 +76,9 @@ export function HorsesDie({
     lg: "w-[72px] h-[72px]",
   };
 
-  // Pip sizes - smaller for xs/sm to avoid looking too thick
+  // Pip sizes - readable at all sizes including xs for cargo display
   const dotSizeClasses = {
-    xs: "w-0.5 h-0.5",
+    xs: "w-1 h-1",
     sm: "w-1.5 h-1.5",
     md: "w-2.5 h-2.5",
     lg: "w-3.5 h-3.5",
@@ -87,15 +87,15 @@ export function HorsesDie({
   const dotSize = dotSizeClasses[size];
   // Larger center pip for case 1
   const largeDotSizeClasses = {
-    xs: "w-1 h-1",
+    xs: "w-1.5 h-1.5",
     sm: "w-2 h-2",
     md: "w-3 h-3",
     lg: "w-4 h-4",
   };
   const largeDotSize = largeDotSizeClasses[size];
 
-  // Tighter padding on tiny dice so pips don't feel oversized / cramped
-  const pipPadding = size === "xs" ? "p-1" : "p-2";
+  // Padding for pip layout
+  const pipPadding = size === "xs" ? "p-0.5" : "p-2";
 
   // Dot patterns for each die face
   const renderDots = () => {
