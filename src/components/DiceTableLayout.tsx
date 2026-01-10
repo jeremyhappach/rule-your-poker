@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef } from "react";
+import { useState, useLayoutEffect, useRef, useCallback } from "react";
 import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
@@ -222,20 +222,26 @@ export function DiceTableLayout({
   // 2. Wait 300ms → setIsAnimatingFlyIn(false) (layout flips: newly-held dice transition to held row via CSS)
   // 3. Wait 600ms → (held dice CSS transition complete, user sees final layout)
   // 4. Wait 800ms → setShowUnheldDice(false) (unheld dice fade out)
-  const handleAnimationComplete = () => {
+  const handleAnimationComplete = useCallback(() => {
+    // If this gets called twice for any reason, don't stack timers.
+    if (animationCompleteTimeoutRef.current) {
+      clearTimeout(animationCompleteTimeoutRef.current);
+      animationCompleteTimeoutRef.current = null;
+    }
+
     // Step 1: Stop rendering the DiceRollAnimation overlay (static dice now visible in pre-roll layout)
     setAnimatingDiceIndices([]);
-    
+
     // Step 2: After a short pause, flip the layout so held dice animate to their row
-    setTimeout(() => {
+    window.setTimeout(() => {
       setIsAnimatingFlyIn(false);
-      
+
       // Step 3 & 4: After held dice have moved (CSS transition ~300-400ms), fade out unheld dice
       animationCompleteTimeoutRef.current = window.setTimeout(() => {
         setShowUnheldDice(false);
       }, 800);
     }, 300);
-  };
+  }, []);
   
   // If showing "You are rolling" message, render that instead of dice
   if (showRollingMessage) {

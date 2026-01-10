@@ -36,12 +36,19 @@ export function DiceRollAnimation({
   isSCC = false,
   scatterYOffset = 50,
 }: DiceRollAnimationProps) {
-  const [phase, setPhase] = useState<"flying" | "landing" | "complete">("flying");
+  const [phase, setPhase] = useState<"flying" | "landing">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const completedRef = useRef(false);
-  
+  const completionTimeoutRef = useRef<number | null>(null);
+
+  // Avoid re-starting the animation when the parent re-renders and passes a new onComplete fn.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
   // Random tumble rotations and display sequences for each die (memoized to prevent switching)
   const [tumbleData] = useState(() =>
     animatingIndices.map(() => ({
@@ -53,10 +60,13 @@ export function DiceRollAnimation({
   );
 
   useEffect(() => {
-    // If the parent has already cleared indices, simply stop rendering (don't call onComplete again).
-    if (animatingIndices.length === 0) {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      return;
+    if (animatingIndices.length === 0) return;
+
+    // Cancel anything in-flight before starting a new run
+    if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    if (completionTimeoutRef.current) {
+      clearTimeout(completionTimeoutRef.current);
+      completionTimeoutRef.current = null;
     }
 
     completedRef.current = false;
@@ -79,12 +89,12 @@ export function DiceRollAnimation({
         return;
       }
 
-      // Land, then signal completion; keep rendering until parent clears indices (prevents 1-frame flicker).
+      // Land, then signal completion. Keep rendering until parent clears indices.
       setPhase("landing");
       if (!completedRef.current) {
         completedRef.current = true;
-        setTimeout(() => {
-          onComplete();
+        completionTimeoutRef.current = window.setTimeout(() => {
+          onCompleteRef.current();
         }, 100);
       }
     };
@@ -93,12 +103,15 @@ export function DiceRollAnimation({
 
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (completionTimeoutRef.current) {
+        clearTimeout(completionTimeoutRef.current);
+        completionTimeoutRef.current = null;
+      }
     };
-  }, [animatingIndices, onComplete]);
+    // IMPORTANT: depend only on length so parent rerenders don't restart the animation
+  }, [animatingIndices.length]);
 
-  if (animatingIndices.length === 0) {
-    return null;
-  }
+  if (animatingIndices.length === 0) return null;
 
   // Y offset is now passed in as a prop to match DiceTableLayout's unheldYOffset
 
