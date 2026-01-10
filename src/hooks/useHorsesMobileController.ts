@@ -131,6 +131,8 @@ const HORSES_FIRST_ROLL_ANIMATION_MS = 1300;
 // Subsequent rolls: sync with observer animations (fly-in 1200ms + pause 100ms + held move 300ms + unheld delay 1000ms = ~2600ms)
 const HORSES_ROLL_AGAIN_ANIMATION_MS = 2500;
 const HORSES_POST_TURN_PAUSE_MS = 650;
+// Local state protection window - must exceed the longest animation to prevent DB state from flashing stale dice
+const LOCAL_STATE_PROTECTION_MS = HORSES_ROLL_AGAIN_ANIMATION_MS + 200; // 2700ms
 const HORSES_TURN_TIMER_SECONDS = 30; // Default turn timer for Horses
 const BOT_TURN_START_DELAY_MS = 500; // Delay before bots start their turn (was 1500ms)
 
@@ -282,7 +284,8 @@ export function useHorsesMobileController({
     if (isRolling) return;
 
     // If the user just interacted, don't let a stale DB snapshot overwrite their felt.
-    if (Date.now() - lastLocalEditAtRef.current < 900) return;
+    // Must exceed the longest animation duration to prevent flicker during roll animations.
+    if (Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS) return;
 
     if (myState) {
       // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
@@ -1423,8 +1426,8 @@ export function useHorsesMobileController({
       const dbState = myPlayer ? horsesState?.playerStates?.[myPlayer.id] : null;
 
       // IMPORTANT: while the user is interacting (roll/hold), the DB state will lag behind.
-      // Prefer localHand briefly to avoid a "stale dice" flash when the roll animation ends.
-      const preferLocal = Date.now() - lastLocalEditAtRef.current < 900;
+      // Prefer localHand until the animation completes and DB has had time to sync.
+      const preferLocal = Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS;
 
       const dice = preferLocal ? localHand.dice : (dbState?.dice ?? localHand.dice);
       const rollsRemaining = preferLocal
