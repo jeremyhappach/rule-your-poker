@@ -35,33 +35,15 @@ export function HorsesMobileCardsTab({
   return (
     <div className="px-2 flex flex-col flex-1 relative">
 
-      {/* Dice display when rolling - horizontal line layout (not staggered for active player) */}
-      {showMyDice && (
-        <div className="flex items-center justify-center gap-1 mb-3">
-          {horses.localHand.dice.map((die, idx) => (
-            <HorsesDie
-              key={idx}
-              value={die.value}
-              isHeld={horses.localHand.rollsRemaining > 0 && die.isHeld}
-              isRolling={horses.isRolling && !die.isHeld}
-              canToggle={!isSCC && !horses.isRolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
-              onToggle={() => horses.handleToggleHold(idx)}
-              size="lg"
-              showWildHighlight={!isSCC}
-            />
-          ))}
-        </div>
-      )}
-      
-      {/* Action area (fixed height) */}
-      <div className="flex items-center justify-center min-h-[36px]">
+      {/* Action buttons (always above dice, centered) */}
+      <div className="flex items-center justify-center min-h-[36px] mb-3">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center items-center">
             <Button
               size="default"
               onClick={horses.handleRoll}
               disabled={horses.localHand.rollsRemaining <= 0 || horses.isRolling}
-              className="flex-1 max-w-[170px] text-sm font-bold h-9"
+              className="text-sm font-bold h-9 px-6"
             >
               <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
               Roll{horses.localHand.rollsRemaining === 3 ? "" : " Again"}
@@ -70,12 +52,12 @@ export function HorsesMobileCardsTab({
             {horses.localHand.rollsRemaining < 3 && horses.localHand.rollsRemaining > 0 && (
               <Button
                 variant="outline"
-                size="default"
+                size="icon"
                 onClick={horses.handleLockIn}
-                className="flex-1 max-w-[140px] text-sm font-bold h-9"
+                className="h-9 w-9"
+                title="Lock In"
               >
-                <Lock className="w-4 h-4 mr-2" />
-                Lock In
+                <Lock className="w-4 h-4" />
               </Button>
             )}
           </div>
@@ -93,6 +75,24 @@ export function HorsesMobileCardsTab({
           </Badge>
         )}
       </div>
+
+      {/* Dice display when rolling - horizontal line layout (below buttons) */}
+      {showMyDice && (
+        <div className="flex items-center justify-center gap-1 mb-3">
+          {horses.localHand.dice.map((die, idx) => (
+            <HorsesDie
+              key={idx}
+              value={die.value}
+              isHeld={horses.localHand.rollsRemaining > 0 && die.isHeld}
+              isRolling={horses.isRolling && !die.isHeld}
+              canToggle={!isSCC && !horses.isRolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
+              onToggle={() => horses.handleToggleHold(idx)}
+              size="lg"
+              showWildHighlight={!isSCC}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Auto-fold checkbox for reconnection */}
       {currentUserPlayer.auto_fold && (
