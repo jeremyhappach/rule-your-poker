@@ -239,7 +239,7 @@ export function DiceTableLayout({
       // Step 3 & 4: After held dice have moved (CSS transition ~300-400ms), fade out unheld dice
       animationCompleteTimeoutRef.current = window.setTimeout(() => {
         setShowUnheldDice(false);
-      }, 800);
+      }, 300);
     }, 300);
   }, []);
   

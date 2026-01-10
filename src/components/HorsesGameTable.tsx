@@ -745,9 +745,9 @@ export function HorsesGameTable({
       if (botProcessingRef.current.has(botId)) return;
       botProcessingRef.current.add(botId);
 
-      // Add 1.5 second delay before SCC bots start their turn (only during active gameplay)
+      // Add 500ms delay before SCC bots start their turn (only during active gameplay)
       if (isSCC && gamePhase === 'playing') {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         if (cancelled || botRunTokenRef.current !== token) return;
       }
 
@@ -858,7 +858,7 @@ export function HorsesGameTable({
           botRollKey++;
           
           // Delay before each roll for visibility
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 500));
 
           // Roll immediately so the fly-in animation "lands" on the NEW values (prevents old->new flash)
           const rolledHand = isSCCGame
@@ -872,7 +872,7 @@ export function HorsesGameTable({
             isRolling: true,
             rollKey: botRollKey,
           });
-          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
 
           if (cancelled || botRunTokenRef.current !== token) return;
 

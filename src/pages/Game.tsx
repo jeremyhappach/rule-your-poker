@@ -15,7 +15,6 @@ import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { GameOverCountdown } from "@/components/GameOverCountdown";
-import { SnapshotsDebugOverlay } from "@/components/SnapshotsDebugOverlay";
 
 
 
@@ -5859,8 +5858,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         )}
 
       </div>
-
-      {gameId && <SnapshotsDebugOverlay gameId={gameId} />}
 
       {/* Player click dialog for host */}
       <PlayerClickDialog

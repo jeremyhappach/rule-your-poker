@@ -22,7 +22,7 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
       const timer = setTimeout(() => {
         setVisible(false);
         onCompleteRef.current?.();
-      }, 1200);
+      }, 2000);
       return () => clearTimeout(timer);
     } else if (!show) {
       // Reset when show becomes false
