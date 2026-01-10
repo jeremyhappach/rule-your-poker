@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
 
 interface PotToPlayerAnimationProps {
@@ -297,13 +298,18 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
   const animDuration = isDiceGame ? '1.1s' : '3.2s';
 
-  return (
+  // If any ancestor has transform/filter, `position: fixed` can get trapped in that stacking context.
+  // Portal to <body> so the chip ALWAYS renders above the entire app UI.
+  if (typeof document === 'undefined') return null;
+
+  const chip = (
     <div
-      className="fixed z-[9999] pointer-events-none"
+      className="fixed pointer-events-none"
       style={{
         left: animation.fromX,
         top: animation.fromY,
         transform: 'translate(-50%, -50%)',
+        zIndex: 2147483647,
       }}
     >
       <div
@@ -347,6 +353,8 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       `}</style>
     </div>
   );
+
+  return createPortal(chip, document.body);
 };
 
 export default PotToPlayerAnimation;
