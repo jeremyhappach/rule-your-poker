@@ -568,7 +568,10 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       buck_position: buckPosition,
       all_decisions_in: false,
       last_round_result: null,
-      is_first_hand: false // CRITICAL: Clear flag after first hand is dealt
+      is_first_hand: false, // CRITICAL: Clear flag after first hand is dealt
+      // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
+      config_deadline: null,
+      ante_decision_deadline: null,
     })
     .eq('id', gameId);
 
