@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,6 +8,12 @@ import { cn, formatChipValue } from "@/lib/utils";
 import { Lock, RotateCcw, Bug } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
+
+// Active-player dice roll mask durations.
+// These are intentionally UI-owned so the active window ALWAYS animates long enough
+// to cover the felt/observer transitions.
+const ACTIVE_FIRST_ROLL_MS = 1300;
+const ACTIVE_ROLL_AGAIN_MS = 2500;
 
 interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };
@@ -24,10 +30,51 @@ export function HorsesMobileCardsTab({
 }: HorsesMobileCardsTabProps) {
   const [debugOpen, setDebugOpen] = useState(false);
 
+  // UI-owned rolling mask (do NOT rely solely on horses.isRolling; we need this to be
+  // consistent even if the controller state rehydrates during roll 3).
+  const [uiRolling, setUiRolling] = useState(false);
+  const uiRollingTimerRef = useRef<number | null>(null);
+  const heldSnapshotRef = useRef<boolean[] | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (uiRollingTimerRef.current != null) {
+        window.clearTimeout(uiRollingTimerRef.current);
+        uiRollingTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const startUiRollingMask = useCallback(() => {
+    const isFirstRoll = horses.localHand.rollsRemaining === 3;
+    const duration = isFirstRoll ? ACTIVE_FIRST_ROLL_MS : ACTIVE_ROLL_AGAIN_MS;
+
+    // Snapshot holds at the instant the roll starts so roll-3 doesn't get suppressed
+    // if the controller marks everything held when it locks in.
+    heldSnapshotRef.current = (horses.localHand.dice as any[]).map((d) => !!d?.isHeld);
+
+    setUiRolling(true);
+    if (uiRollingTimerRef.current != null) {
+      window.clearTimeout(uiRollingTimerRef.current);
+    }
+    uiRollingTimerRef.current = window.setTimeout(() => {
+      setUiRolling(false);
+      heldSnapshotRef.current = null;
+      uiRollingTimerRef.current = null;
+    }, duration);
+  }, [horses.localHand.dice, horses.localHand.rollsRemaining]);
+
+  const handleRollClick = useCallback(() => {
+    startUiRollingMask();
+    horses.handleRoll();
+  }, [horses, startUiRollingMask]);
+
+  const rolling = uiRolling || horses.isRolling;
+
   const isWaitingForYourTurn = horses.gamePhase === "playing" && !horses.isMyTurn;
   const hasCompleted = !!horses.myState?.isComplete;
   const myResult = horses.myState?.result ?? null;
-  
+
   // Show dice when it's my turn and I've rolled at least once
   const showMyDice = horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3;
 
@@ -65,8 +112,8 @@ export function HorsesMobileCardsTab({
           <div className="flex gap-2 justify-center items-center">
             <Button
               size="default"
-              onClick={horses.handleRoll}
-              disabled={horses.localHand.rollsRemaining <= 0 || horses.isRolling}
+              onClick={handleRollClick}
+              disabled={horses.localHand.rollsRemaining <= 0 || rolling}
               className="text-sm font-bold h-9 px-6"
             >
               <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
@@ -105,19 +152,19 @@ export function HorsesMobileCardsTab({
         <div className="flex items-center justify-center gap-1 mb-3">
           {horses.localHand.dice.map((die, idx) => {
             // On roll 3 (rollsRemaining=0), all dice are "locked in" so none should show held styling
-            // But for animation: if the die was held BEFORE this roll, it shouldn't animate
-            const showHeldStyling = horses.localHand.rollsRemaining > 0 && die.isHeld;
-            // For animation: dice that were NOT held before this roll should animate
-            // On final roll (rollsRemaining=0), we still want unheld dice to animate
-            const shouldAnimate = horses.isRolling && !die.isHeld;
-            
+            const showHeldStyling = horses.localHand.rollsRemaining > 0 && (die as any).isHeld;
+
+            // Animate dice that were NOT held at the start of this roll.
+            const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? (die as any).isHeld;
+            const shouldAnimate = rolling && !heldAtRollStart;
+
             return (
               <HorsesDie
                 key={idx}
-                value={die.value}
+                value={(die as any).value}
                 isHeld={showHeldStyling}
                 isRolling={shouldAnimate}
-                canToggle={!isSCC && !horses.isRolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
+                canToggle={!isSCC && !rolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
                 onToggle={() => horses.handleToggleHold(idx)}
                 size="lg"
                 showWildHighlight={!isSCC}
