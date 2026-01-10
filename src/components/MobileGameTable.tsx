@@ -49,9 +49,8 @@ import React, {
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
-import { MessageSquare, User, Clock } from "lucide-react";
+import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
-import { DiceDebugOverlay } from "./DiceDebugOverlay";
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
 // otherwise resets state and reintroduces the pot flash).
@@ -3649,13 +3648,24 @@ export const MobileGameTable = ({
           
           console.log(`${logPrefix} feltDice=${!!horsesController.feltDice}, diceArray=${diceArray?.map(d => d?.value)}, hasRolled=${hasRolled}, showResult=${showResult}, showDice=${showDice}, isMyTurn=${horsesController.isMyTurn}`);
           
-          // If it's my turn and I haven't rolled yet, show "You are rolling" message
+          // If it's my turn and I haven't rolled yet, show "You are rolling" message + Beat badge
           if (horsesController.isMyTurn && !hasRolled) {
             console.log(`${logPrefix} RENDER: You are rolling message`);
             // Track mount for debug overlay
             if (!feltBlockMounted) {
               setTimeout(() => setFeltBlockMounted(true), 0);
             }
+            
+            // Get winning result to show what we're trying to beat
+            const winningResultToBeat = horsesController.currentWinningResult;
+            const winningDice = horsesController.getWinningPlayerDice?.();
+            const isSCCGame = gameType === 'ship-captain-crew';
+            
+            // For SCC, get cargo dice (non-SCC dice with value > 0)
+            const cargoDice = isSCCGame && winningDice 
+              ? (winningDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0)
+              : null;
+            
             return (
               <div
                 className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2"
@@ -3664,6 +3674,36 @@ export const MobileGameTable = ({
                 <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
                   You are rolling
                 </p>
+                {/* Beat badge - show what hand to beat */}
+                {winningResultToBeat && (
+                  <div className="flex items-center justify-center gap-2 mt-1">
+                    <Target className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Beat:</span>
+                    {isSCCGame && cargoDice && cargoDice.length === 2 ? (
+                      // SCC: Show cargo dice
+                      <div className="flex items-center gap-1">
+                        {cargoDice.map((die, idx) => (
+                          <HorsesDie
+                            key={idx}
+                            value={die.value}
+                            isHeld={true}
+                            isRolling={false}
+                            canToggle={false}
+                            size="sm"
+                            showWildHighlight={false}
+                          />
+                        ))}
+                      </div>
+                    ) : gameType === 'horses' ? (
+                      // Horses: Show result display
+                      <HorsesHandResultDisplay 
+                        description={winningResultToBeat.description} 
+                        isWinning={true}
+                        size="sm"
+                      />
+                    ) : null}
+                  </div>
+                )}
               </div>
             );
           }
@@ -3713,10 +3753,33 @@ export const MobileGameTable = ({
                   </Badge>
                 </div>
               ) : horsesController.isMyTurn ? (
-                // My turn - show "You are rolling" message (dice are in player's card tab)
-                <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                  You are rolling
-                </p>
+                // My turn - show "You are rolling" message with Beat badge
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                    You are rolling
+                  </p>
+                  {/* Beat badge - show what hand to beat */}
+                  {horsesController.currentWinningResult && (
+                    <div className="flex items-center justify-center gap-2">
+                      <Target className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Beat:</span>
+                      {gameType === 'ship-captain-crew' && (() => {
+                        const winDice = horsesController.getWinningPlayerDice?.();
+                        const cargo = winDice ? (winDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0) : [];
+                        return cargo.length === 2 ? (
+                          <div className="flex items-center gap-1">
+                            {cargo.map((die, idx) => (
+                              <HorsesDie key={idx} value={die.value} isHeld={true} isRolling={false} canToggle={false} size="sm" showWildHighlight={false} />
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
+                      {gameType === 'horses' && (
+                        <HorsesHandResultDisplay description={horsesController.currentWinningResult.description} isWinning={true} size="sm" />
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : (
                 // Observer view - show staggered dice layout
                 <DiceTableLayout
@@ -4949,19 +5012,5 @@ export const MobileGameTable = ({
           </div>
         )}
       </div>
-      
-      {/* Dice Debug Overlay - triple-tap top-left corner to toggle */}
-      {isDiceGame && horsesController.enabled && (
-        <DiceDebugOverlay
-          gameType={gameType as 'horses' | 'ship-captain-crew'}
-          feltDice={(horsesController.feltDice as any)?.dice ?? null}
-          rollKey={(horsesController.feltDice as any)?.rollKey}
-          isMyTurn={horsesController.isMyTurn}
-          hasRolled={((horsesController.feltDice as any)?.dice as any[])?.some(d => d?.value > 0) ?? false}
-          showResult={!horsesController.feltDice && !!horsesController.currentTurnPlayerId && !!horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId)}
-          isRolling={horsesController.isRolling}
-          feltBlockMounted={feltBlockMounted}
-        />
-      )}
     </div>;
 };

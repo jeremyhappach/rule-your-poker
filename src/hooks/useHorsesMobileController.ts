@@ -1546,6 +1546,16 @@ export function useHorsesMobileController({
     [horsesState?.playerStates],
   );
 
+  // Get the current winning player's dice (for displaying "Beat:" badge)
+  const getWinningPlayerDice = useCallback((): (HorsesDieType | SCCDieType)[] | null => {
+    if (completedResults.length === 0) return null;
+    const winningEntry = completedResults.reduce((best, curr) =>
+      curr.result.rank > best.result.rank ? curr : best,
+    );
+    const state = horsesState?.playerStates?.[winningEntry.playerId];
+    return state?.dice ?? null;
+  }, [completedResults, horsesState?.playerStates]);
+
   return {
     enabled,
     anteAmount,
@@ -1565,6 +1575,7 @@ export function useHorsesMobileController({
     currentlyWinningPlayerIds,
     currentWinningResult,
     getPlayerHandResult,
+    getWinningPlayerDice,
     handleRoll,
     handleToggleHold,
     handleLockIn,
