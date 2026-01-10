@@ -185,6 +185,8 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   console.log('[HORSES] Round created:', roundData.id, 'pot:', potForRound);
 
   // STEP 2: Update game status/pointers BEFORE collecting antes
+  // CRITICAL: Clear config_deadline and ante_decision_deadline so the enforce-deadlines cron
+  // doesn't incorrectly process stale deadlines and mark players sitting_out mid-game.
   const { error: updateError } = await supabase
     .from('games')
     .update({
@@ -197,6 +199,9 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       last_round_result: null,
       game_over_at: null,
       is_first_hand: isFirstHand,
+      // Clear stale deadlines - dice games manage their own turn timers via horses_state.turnDeadline
+      config_deadline: null,
+      ante_decision_deadline: null,
     })
     .eq('id', gameId);
 
