@@ -451,7 +451,7 @@ export function DiceTableLayout({
         />
       )}
       
-      {/* Unheld dice - staggered scatter (hidden during fly-in animation) */}
+      {/* Unheld dice - staggered scatter (completely hidden during fly-in animation to prevent double-render) */}
       {unheldDice.map((item, displayIdx) => {
         const pos = unheldPositions[displayIdx];
         if (!pos) return null;
@@ -459,24 +459,25 @@ export function DiceTableLayout({
         const sccDie = item.die as SCCDieType;
         const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
         
-        // Hide this die if it's currently animating in
+        // Don't render this die at all if it's currently animating in
+        // This prevents the "double render" where animation dice and static dice both show
         const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
+        if (isThisDieAnimating) return null;
         
         return (
           <div
             key={`unheld-${item.originalIndex}`}
-            className="absolute transition-all duration-300 ease-out"
+            className="absolute"
             style={{
               left: '50%',
               top: '50%',
               transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + unheldYOffset}px)) rotate(${pos.rotate}deg)`,
-              opacity: isThisDieAnimating ? 0 : 1,
             }}
           >
             <HorsesDie
               value={item.die.value}
               isHeld={false}
-              isRolling={isRolling && !isAnimatingFlyIn}
+              isRolling={false}
               canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn && !isRolling}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
