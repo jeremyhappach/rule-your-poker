@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface HorsesDieProps {
   value: number; // 1-6, 0 for unrolled
@@ -26,50 +26,48 @@ export function HorsesDie({
 }: HorsesDieProps) {
   // Track the displayed value during roll animation
   const [displayValue, setDisplayValue] = useState(value);
-  const [animating, setAnimating] = useState(false);
 
-  // When rolling starts, cycle through random values for dramatic effect
+  // Keep a stable interval while rolling so dice don't "settle" early.
+  // The previous implementation cycled for ~400ms then stopped, which looks like
+  // a mid-roll "switch" once we increased the overall roll animation duration.
+  const rollIntervalRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (isRolling && !isHeld) {
-      setAnimating(true);
-      let frameCount = 0;
-      const maxFrames = 8; // ~400ms of cycling at 50ms intervals
-      let cancelled = false;
-      
-      const interval = setInterval(() => {
-        if (cancelled) return;
-        frameCount++;
-        if (frameCount >= maxFrames) {
-          clearInterval(interval);
-          // Don't set displayValue here - let the non-rolling branch handle it
-          // to avoid stale closure issues
-          setTimeout(() => {
-            if (!cancelled) setAnimating(false);
-          }, 150);
-        } else {
+    const shouldAnimate = isRolling && !isHeld;
+
+    if (shouldAnimate) {
+      if (rollIntervalRef.current == null) {
+        rollIntervalRef.current = window.setInterval(() => {
           // Random value 1-6 for the cycling effect
           setDisplayValue(Math.floor(Math.random() * 6) + 1);
-        }
-      }, 50);
-
-      return () => {
-        cancelled = true;
-        clearInterval(interval);
-      };
-    } else {
-      // When not rolling, always sync display value to prop
-      setDisplayValue(value);
-      setAnimating(false);
+        }, 60);
+      }
+      return;
     }
+
+    // Stop animating
+    if (rollIntervalRef.current != null) {
+      clearInterval(rollIntervalRef.current);
+      rollIntervalRef.current = null;
+    }
+
+    // When not rolling (or when held), always show the real value.
+    setDisplayValue(value);
+
+    return () => {
+      if (rollIntervalRef.current != null) {
+        clearInterval(rollIntervalRef.current);
+        rollIntervalRef.current = null;
+      }
+    };
   }, [isRolling, isHeld]);
 
   // Keep display value synced with prop when NOT rolling
-  // This fixes the stale closure issue where the animation would show old values
   useEffect(() => {
-    if (!isRolling && !animating) {
-      setDisplayValue(value);
-    }
-  }, [value, isRolling, animating]);
+    if (!isRolling) setDisplayValue(value);
+  }, [value, isRolling]);
+
+  const animating = isRolling && !isHeld;
 
   const sizeClasses = {
     xs: "w-7 h-7",
