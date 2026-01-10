@@ -666,6 +666,11 @@ export const DealerGameSetup = ({
     return null;
   }
 
+  // Hide modal immediately when submitting to prevent flicker on rapid selection
+  if (isSubmitting) {
+    return null;
+  }
+
   if (loadingDefaults) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
