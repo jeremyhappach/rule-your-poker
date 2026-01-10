@@ -105,6 +105,10 @@ export function DiceTableLayout({
   const prevRollKeyRef = useRef<string | number | undefined>(undefined);
   const animationCompleteTimeoutRef = useRef<number | null>(null);
   
+  // Track whether unheld dice should be visible (they disappear after animation lands until next roll)
+  // Unheld dice are only visible during the fly-in animation landing
+  const [showUnheldDice, setShowUnheldDice] = useState(true);
+  
   // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
   useLayoutEffect(() => {
@@ -126,6 +130,8 @@ export function DiceTableLayout({
       if (unheldIndices.length > 0) {
         setAnimatingDiceIndices(unheldIndices);
         setIsAnimatingFlyIn(true);
+        // Show unheld dice when animation starts (they'll animate in)
+        setShowUnheldDice(true);
       }
     }
 
@@ -136,10 +142,15 @@ export function DiceTableLayout({
     };
   }, [rollKey, animationOrigin, dice, heldMaskBeforeComplete]);
   
-  // Handle animation complete
+  // Handle animation complete - unheld dice will fade out after a brief moment
   const handleAnimationComplete = () => {
     setIsAnimatingFlyIn(false);
     setAnimatingDiceIndices([]);
+    // After animation lands, hide unheld dice (they'll reappear on next roll)
+    // Brief delay so user sees where they landed before they disappear
+    animationCompleteTimeoutRef.current = window.setTimeout(() => {
+      setShowUnheldDice(false);
+    }, 400);
   };
   
   // If showing "You are rolling" message, render that instead of dice
@@ -203,7 +214,8 @@ export function DiceTableLayout({
     Array.isArray(heldMaskBeforeComplete) &&
     heldMaskBeforeComplete.length >= dice.length;
 
-  if (allHeld && hasValidHeldMask) {
+  // CRITICAL: Don't early-return if we're currently animating - let animation run first
+  if (allHeld && hasValidHeldMask && !isAnimatingFlyIn) {
     const wasHeld = (originalIndex: number) => !!heldMaskBeforeComplete?.[originalIndex];
 
     const heldAtStartOfFinalRoll = orderedDice.filter((d) => wasHeld(d.originalIndex));
@@ -288,7 +300,8 @@ export function DiceTableLayout({
   }
 
   // Legacy fallback: we know only "how many" were held (not which ones). Use stable positions.
-  if (allHeld && previouslyHeldCount !== undefined) {
+  // CRITICAL: Don't early-return if we're currently animating
+  if (allHeld && previouslyHeldCount !== undefined && !isAnimatingFlyIn) {
     const prevHeldCount = Math.min(previouslyHeldCount, 5);
 
     const diceInHeldRow = orderedDice.slice(0, prevHeldCount);
@@ -371,7 +384,8 @@ export function DiceTableLayout({
   }
   
   // Fallback for all held without previouslyHeldCount: show all in scatter using stable positions
-  if (allHeld) {
+  // CRITICAL: Don't early-return if we're currently animating
+  if (allHeld && !isAnimatingFlyIn) {
     // Use STABLE positions based on originalIndex
     const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
     // 0 held means unheldYOffset = 5
@@ -500,6 +514,7 @@ export function DiceTableLayout({
       )}
       
       {/* Unheld dice - STABLE scatter positions based on originalIndex */}
+      {/* They fade out after animation lands and stay hidden until next roll */}
       {layoutUnheldDice.map((item) => {
         // Use stable position based on originalIndex (die keeps its spot)
         const pos = getStableUnheldPosition(item.originalIndex);
@@ -512,6 +527,9 @@ export function DiceTableLayout({
         const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
         if (isThisDieAnimating) return null;
         
+        // Fade out unheld dice when showUnheldDice is false
+        const shouldFadeOut = !showUnheldDice && !isAnimatingFlyIn;
+        
         return (
           <div
             key={`unheld-${item.originalIndex}`}
@@ -520,6 +538,8 @@ export function DiceTableLayout({
               left: '50%',
               top: '50%',
               transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + unheldYOffset}px)) rotate(${pos.rotate}deg)`,
+              opacity: shouldFadeOut ? 0 : 1,
+              pointerEvents: shouldFadeOut ? 'none' : 'auto',
             }}
           >
             <HorsesDie
