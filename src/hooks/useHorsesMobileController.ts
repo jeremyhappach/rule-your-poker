@@ -126,8 +126,10 @@ export interface UseHorsesMobileControllerArgs {
   gameType?: string; // 'horses' or 'ship-captain-crew'
 }
 
-// Extended to sync with observer animations (fly-in 1200ms + pause 100ms + held move 300ms + unheld delay 1000ms = ~2600ms)
-const HORSES_ROLL_ANIMATION_MS = 2500;
+// First roll: just fly-in animation (~1200ms + buffer)
+const HORSES_FIRST_ROLL_ANIMATION_MS = 1300;
+// Subsequent rolls: sync with observer animations (fly-in 1200ms + pause 100ms + held move 300ms + unheld delay 1000ms = ~2600ms)
+const HORSES_ROLL_AGAIN_ANIMATION_MS = 2500;
 const HORSES_POST_TURN_PAUSE_MS = 650;
 const HORSES_TURN_TIMER_SECONDS = 30; // Default turn timer for Horses
 const BOT_TURN_START_DELAY_MS = 500; // Delay before bots start their turn (was 1500ms)
@@ -842,6 +844,10 @@ export function useHorsesMobileController({
     if (!enabled) return;
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    // Determine if this is the first roll (rollsRemaining === 3 means first roll)
+    const isFirstRoll = localHand.rollsRemaining === 3;
+    const animationDuration = isFirstRoll ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+
     // Freeze layout to what it was at the START of this roll
     const heldMaskBeforeRoll = localHand.dice.map((d: any) => !!d.isHeld);
     heldMaskAtLastRollStartRef.current = heldMaskBeforeRoll;
@@ -886,7 +892,7 @@ export function useHorsesMobileController({
       } else {
         await saveMyState(newHand, false);
       }
-    }, HORSES_ROLL_ANIMATION_MS);
+    }, animationDuration);
   }, [
     enabled,
     isMyTurn,
