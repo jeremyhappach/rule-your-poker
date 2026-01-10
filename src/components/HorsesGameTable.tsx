@@ -170,6 +170,9 @@ export function HorsesGameTable({
   const botRunTokenRef = useRef(0);
   const initializingRef = useRef(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Roll animation tracking - increment on each roll to trigger fly-in animation
+  const [rollAnimationKey, setRollAnimationKey] = useState(0);
 
   // Prevent DB rehydration from overwriting the felt while the user is interacting.
   const lastLocalEditAtRef = useRef<number>(0);
@@ -180,6 +183,7 @@ export function HorsesGameTable({
     playerId: string;
     dice: HorsesDieType[];
     isRolling: boolean;
+    rollKey?: number;
   } | null>(null);
 
   // Get active players sorted by position
@@ -613,6 +617,8 @@ export function HorsesGameTable({
     const heldMaskBeforeRoll = localHand.dice.map((d) => d.isHeld);
 
     setIsRolling(true);
+    // Increment roll animation key to trigger fly-in animation
+    setRollAnimationKey(prev => prev + 1);
 
     // Animate for a moment then show result
     setTimeout(async () => {
@@ -843,11 +849,15 @@ export function HorsesGameTable({
           : (isSCCGame ? createInitialSCCHand() : createInitialHand());
 
         // Roll up to 3 times with visible animation
+        let botRollKey = Date.now(); // Use timestamp as unique key for each roll
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
           if (cancelled || botRunTokenRef.current !== token) return;
 
+          // Increment roll key for each roll
+          botRollKey++;
+          
           // Show "rolling" animation
-          setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: true });
+          setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: true, rollKey: botRollKey });
           await new Promise((resolve) => setTimeout(resolve, 800));
 
           if (cancelled || botRunTokenRef.current !== token) return;
@@ -859,8 +869,8 @@ export function HorsesGameTable({
             botHand = rollDice(botHand as HorsesHand);
           }
 
-          // Show result of roll
-          setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false });
+          // Show result of roll (with same rollKey so animation can complete)
+          setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false, rollKey: botRollKey });
 
            // Save intermediate state to DB so others can see (atomic per-player)
            await horsesSetPlayerState(currentRoundId, botId, {
@@ -1110,8 +1120,34 @@ export function HorsesGameTable({
       isRolling: false,
       heldMaskBeforeComplete: state.heldMaskBeforeComplete,
       heldCountBeforeComplete: state.heldCountBeforeComplete,
+      rollKey: botDisplayState?.rollKey,
     } : null;
   };
+  
+  // Calculate animation origin based on current player position (for observer view)
+  // This gives us a position offset from the center of the felt
+  const getAnimationOrigin = useCallback((): { x: number; y: number } | undefined => {
+    if (!currentPlayer || !activePlayers.length) return undefined;
+    
+    // Find the index of the current player in activePlayers
+    const playerIdx = activePlayers.findIndex(p => p.id === currentPlayer.id);
+    if (playerIdx === -1) return undefined;
+    
+    // Calculate angle position around the table (same formula as in render)
+    const totalPlayers = activePlayers.length;
+    const angle = (playerIdx / totalPlayers) * 2 * Math.PI - Math.PI / 2;
+    
+    // The felt container is at 50%, 48% of the parent. Player positions are at radiusX=40%, radiusY=28%
+    // Convert to pixel offsets from the center. Assume container ~400px wide, ~300px tall
+    // For the animation, we want dice to fly FROM player position TO scatter position
+    // The scatter positions are already in pixels relative to center, so we need player pos in same units
+    const radiusX = 80; // ~200px * 40%
+    const radiusY = 56; // ~200px * 28%
+    const x = radiusX * Math.cos(angle);
+    const y = radiusY * Math.sin(angle) - 40; // offset up a bit since player is above center
+    
+    return { x, y };
+  }, [currentPlayer, activePlayers]);
 
   return (
     <div
@@ -1473,6 +1509,8 @@ export function HorsesGameTable({
                         hideUnrolledDice={true}
                         heldMaskBeforeComplete={(diceState as any).heldMaskBeforeComplete}
                         previouslyHeldCount={(diceState as any).heldCountBeforeComplete}
+                        animationOrigin={getAnimationOrigin()}
+                        rollKey={(diceState as any).rollKey}
                       />
                     );
                   })()}

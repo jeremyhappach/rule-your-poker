@@ -178,6 +178,7 @@ export function useHorsesMobileController({
     isRolling: boolean;
     heldMaskBeforeComplete?: boolean[];
     heldCountBeforeComplete?: number;
+    rollKey?: number;
   } | null>(null);
   // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
@@ -1074,12 +1075,16 @@ export function useHorsesMobileController({
 
         // Track held mask at the START of each roll so we can freeze layout on completion.
         let heldMaskBeforeComplete: boolean[] | undefined;
+        
+        // Roll key for animation (increments each roll)
+        let botRollKey = Date.now();
 
         // Roll up to 3 times with visible animation
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
           if (cancelled) return;
 
           heldMaskBeforeComplete = botHand.dice.map((d: any) => !!d.isHeld);
+          botRollKey++;
 
           setBotDisplayState({
             playerId: botId,
@@ -1088,6 +1093,7 @@ export function useHorsesMobileController({
             isRolling: true,
             heldMaskBeforeComplete,
             heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
+            rollKey: botRollKey,
           });
           await new Promise((resolve) => setTimeout(resolve, 450));
           if (cancelled) return;
@@ -1101,6 +1107,7 @@ export function useHorsesMobileController({
             isRolling: false,
             heldMaskBeforeComplete,
             heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
+            rollKey: botRollKey,
           });
 
           await horsesSetPlayerState(currentRoundId, botId, {
@@ -1143,6 +1150,7 @@ export function useHorsesMobileController({
               isRolling: false,
               heldMaskBeforeComplete,
               heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
+              rollKey: botRollKey,
             });
 
             await horsesSetPlayerState(currentRoundId, botId, {
@@ -1180,6 +1188,7 @@ export function useHorsesMobileController({
           isRolling: false,
           heldMaskBeforeComplete,
           heldCountBeforeComplete,
+          rollKey: botRollKey,
         });
 
         await horsesSetPlayerState(currentRoundId, botId, {

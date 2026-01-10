@@ -1,6 +1,8 @@
+import { useState, useEffect, useRef } from "react";
 import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
+import { DiceRollAnimation } from "./DiceRollAnimation";
 
 interface DiceTableLayoutProps {
   dice: (HorsesDieType | SCCDieType)[];
@@ -24,6 +26,10 @@ interface DiceTableLayoutProps {
   heldMaskBeforeComplete?: boolean[];
   /** Legacy fallback: number of dice held before completion (can't preserve exact dice) */
   previouslyHeldCount?: number;
+  /** Origin position for dice fly-in animation (relative to container center, in pixels) */
+  animationOrigin?: { x: number; y: number };
+  /** Key that changes when a new roll starts (triggers fly-in animation) */
+  rollKey?: string | number;
 }
 
 // Staggered positions for unheld dice (as pixel offsets from center)
@@ -78,8 +84,46 @@ export function DiceTableLayout({
   hideUnrolledDice = false,
   heldMaskBeforeComplete,
   previouslyHeldCount,
+  animationOrigin,
+  rollKey,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
+  
+  // Track fly-in animation state
+  const [isAnimatingFlyIn, setIsAnimatingFlyIn] = useState(false);
+  const [animatingDiceIndices, setAnimatingDiceIndices] = useState<number[]>([]);
+  const prevRollKeyRef = useRef<string | number | undefined>(undefined);
+  const animationCompleteTimeoutRef = useRef<number | null>(null);
+  
+  // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
+  useEffect(() => {
+    if (rollKey !== undefined && rollKey !== prevRollKeyRef.current && animationOrigin) {
+      prevRollKeyRef.current = rollKey;
+      
+      // Find which dice are unheld (these should animate in)
+      const unheldIndices = dice
+        .map((d, i) => ({ d, i }))
+        .filter(({ d }) => !d.isHeld && d.value !== 0)
+        .map(({ i }) => i);
+      
+      if (unheldIndices.length > 0) {
+        setAnimatingDiceIndices(unheldIndices);
+        setIsAnimatingFlyIn(true);
+      }
+    }
+    
+    return () => {
+      if (animationCompleteTimeoutRef.current) {
+        clearTimeout(animationCompleteTimeoutRef.current);
+      }
+    };
+  }, [rollKey, animationOrigin, dice]);
+  
+  // Handle animation complete
+  const handleAnimationComplete = () => {
+    setIsAnimatingFlyIn(false);
+    setAnimatingDiceIndices([]);
+  };
   
   // If showing "You are rolling" message, render that instead of dice
   if (showRollingMessage) {
@@ -387,13 +431,29 @@ export function DiceTableLayout({
         );
       })}
       
-      {/* Unheld dice - staggered scatter */}
+      {/* Fly-in animation for unheld dice */}
+      {isAnimatingFlyIn && animationOrigin && (
+        <DiceRollAnimation
+          dice={dice}
+          animatingIndices={animatingDiceIndices}
+          targetPositions={animatingDiceIndices.map((_, idx) => unheldPositions[idx] || { x: 0, y: 0, rotate: 0 })}
+          originPosition={animationOrigin}
+          onComplete={handleAnimationComplete}
+          size={size}
+          isSCC={isSCC}
+        />
+      )}
+      
+      {/* Unheld dice - staggered scatter (hidden during fly-in animation) */}
       {unheldDice.map((item, displayIdx) => {
         const pos = unheldPositions[displayIdx];
         if (!pos) return null;
         
         const sccDie = item.die as SCCDieType;
         const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
+        
+        // Hide this die if it's currently animating in
+        const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
         
         return (
           <div
@@ -403,12 +463,13 @@ export function DiceTableLayout({
               left: '50%',
               top: '50%',
               transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + unheldYOffset}px)) rotate(${pos.rotate}deg)`,
+              opacity: isThisDieAnimating ? 0 : 1,
             }}
           >
             <HorsesDie
               value={item.die.value}
               isHeld={false}
-              isRolling={isRolling}
+              isRolling={isRolling && !isAnimatingFlyIn}
               canToggle={canToggle && !isObserver && !isSCC}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
