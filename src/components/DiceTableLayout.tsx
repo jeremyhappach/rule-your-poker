@@ -534,8 +534,9 @@ export function DiceTableLayout({
   return (
     <div className="relative" style={{ width: "200px", height: "120px" }}>
       {/* Fly-in animation overlay for unheld dice */}
-      {isAnimatingFlyIn && animationOrigin && (
+      {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
+          key={`dice-roll-${String(rollKey ?? 'no-key')}`}
           dice={dice}
           animatingIndices={animatingDiceIndices}
           targetPositions={animatingDiceIndices.map((_, displayIdx) =>
