@@ -97,38 +97,60 @@ export function DiceTableLayout({
   const [animatingDiceIndices, setAnimatingDiceIndices] = useState<number[]>([]);
   const prevRollKeyRef = useRef<string | number | undefined>(undefined);
   const animationCompleteTimeoutRef = useRef<number | null>(null);
-  
+
+  // Stable scatter positions for the CURRENT rollKey.
+  // This prevents unheld dice from jumping around when the active player toggles holds.
+  const stableScatterRollKeyRef = useRef<string | number | undefined>(undefined);
+  const stableScatterByDieRef = useRef<
+    Map<number, { x: number; y: number; rotate: number }>
+  >(new Map());
+
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
-  
+
   // Track whether unheld dice should be visible (they disappear after animation lands until next roll)
   // Unheld dice are only visible during the fly-in animation landing
   const [showUnheldDice, setShowUnheldDice] = useState(true);
-  
+
   // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
   useLayoutEffect(() => {
-    if (rollKey !== undefined && rollKey !== prevRollKeyRef.current && animationOrigin) {
+    if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
       prevRollKeyRef.current = rollKey;
 
-      // Find which dice were unheld at the START of the roll (these should animate in)
-      // IMPORTANT: use heldMaskBeforeComplete when available so SCC "auto-hold" dice
-      // still animate if they weren't held pre-roll.
       const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
-      const unheldIndices = dice
-        .map((d, i) => ({ d, i }))
-        .filter(({ d, i }) => {
-          const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
-          return !wasHeldAtRollStart && d.value !== 0;
-        })
-        .map(({ i }) => i);
 
-      if (unheldIndices.length > 0) {
-        // Track how many were held at the START of this roll (for Y offset calculation)
-        const heldAtRollStart = heldMask 
-          ? heldMask.filter(Boolean).length 
-          : dice.filter(d => d.isHeld).length;
-        setAnimationHeldCount(heldAtRollStart);
+      // Build an index order consistent with what we render (important for SCC).
+      const orderedIndices =
+        useSCCDisplayOrder && sccHand
+          ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
+          : dice.map((_, i) => i);
+
+      // Find which dice were unheld at the START of the roll.
+      const unheldIndices = orderedIndices.filter((i) => {
+        const d = dice[i];
+        if (!d) return false;
+        const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+        return !wasHeldAtRollStart && d.value !== 0;
+      });
+
+      // Track how many were held at the START of this roll (for Y offset calculation)
+      const heldAtRollStart = heldMask
+        ? heldMask.filter(Boolean).length
+        : dice.filter((d) => d.isHeld).length;
+      setAnimationHeldCount(heldAtRollStart);
+
+      // Freeze scatter positions for this rollKey (prevents reposition when holds change)
+      stableScatterRollKeyRef.current = rollKey;
+      const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
+      const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
+      unheldIndices.forEach((dieIndex, displayIdx) => {
+        nextStable.set(dieIndex, positions[displayIdx] || { x: 0, y: 0, rotate: 0 });
+      });
+      stableScatterByDieRef.current = nextStable;
+
+      // Trigger fly-in animation if we have an origin.
+      if (animationOrigin && unheldIndices.length > 0) {
         setAnimatingDiceIndices(unheldIndices);
         setIsAnimatingFlyIn(true);
         // Show unheld dice when animation starts (they'll animate in)
@@ -141,8 +163,15 @@ export function DiceTableLayout({
         clearTimeout(animationCompleteTimeoutRef.current);
       }
     };
-  }, [rollKey, animationOrigin, dice, heldMaskBeforeComplete]);
-  
+  }, [
+    rollKey,
+    animationOrigin,
+    dice,
+    heldMaskBeforeComplete,
+    useSCCDisplayOrder,
+    sccHand,
+  ]);
+
   // Handle animation complete - unheld dice will fade out after a brief moment
   const handleAnimationComplete = () => {
     setIsAnimatingFlyIn(false);
@@ -151,7 +180,7 @@ export function DiceTableLayout({
     // Longer delay so user sees where they landed before they disappear
     animationCompleteTimeoutRef.current = window.setTimeout(() => {
       setShowUnheldDice(false);
-    }, 800);
+    }, 1600);
   };
   
   // If showing "You are rolling" message, render that instead of dice
@@ -523,30 +552,36 @@ export function DiceTableLayout({
       {/* Unheld dice - positions based on count of unheld dice */}
       {/* They fade out after animation lands and stay hidden until next roll */}
       {layoutUnheldDice.map((item, displayIdx) => {
-        // Use position based on display index and total unheld count
-        const pos = getUnheldPosition(displayIdx, layoutUnheldDice.length);
-        
+        // Prefer stable, per-roll positions (prevents re-scatter when holds change mid-roll)
+        const stablePos =
+          stableScatterRollKeyRef.current === rollKey
+            ? stableScatterByDieRef.current.get(item.originalIndex)
+            : undefined;
+
+        // Fallback: position based on display index and total unheld count
+        const pos = stablePos ?? getUnheldPosition(displayIdx, layoutUnheldDice.length);
+
         const sccDie = item.die as SCCDieType;
-        const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
-        
+        const isSCCDie = isSCC && "isSCC" in sccDie && sccDie.isSCC;
+
         // Don't render this die at all if it's currently animating in
         // This prevents the "double render" where animation dice and static dice both show
         const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
         if (isThisDieAnimating) return null;
-        
+
         // Fade out unheld dice when showUnheldDice is false
         const shouldFadeOut = !showUnheldDice && !isAnimatingFlyIn;
-        
+
         return (
           <div
             key={`unheld-${item.originalIndex}`}
             className="absolute transition-all duration-300 ease-out"
             style={{
-              left: '50%',
-              top: '50%',
+              left: "50%",
+              top: "50%",
               transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + unheldYOffset}px)) rotate(${pos.rotate}deg)`,
               opacity: shouldFadeOut ? 0 : 1,
-              pointerEvents: shouldFadeOut ? 'none' : 'auto',
+              pointerEvents: shouldFadeOut ? "none" : "auto",
             }}
           >
             <HorsesDie
