@@ -178,6 +178,14 @@ export function HorsesGameTable({
   const lastLocalEditAtRef = useRef<number>(0);
   const myTurnKeyRef = useRef<string | null>(null);
 
+  // Animation timing constants
+  // First roll: just fly-in animation (~1200ms + buffer)
+  const FIRST_ROLL_ANIMATION_MS = 1300;
+  // Subsequent rolls: sync with observer animations (fly-in + held move + unheld delay)
+  const ROLL_AGAIN_ANIMATION_MS = 2500;
+  // Local state protection window - must exceed the longest animation to prevent DB state from flashing stale dice
+  const LOCAL_STATE_PROTECTION_MS = ROLL_AGAIN_ANIMATION_MS + 200; // 2700ms
+
   // Bot animation state - show intermediate dice/holds
   const [botDisplayState, setBotDisplayState] = useState<{
     playerId: string;
@@ -275,7 +283,9 @@ export function HorsesGameTable({
       myTurnKeyRef.current = myKey;
     }
 
-    if (Date.now() - lastLocalEditAtRef.current < 700) return;
+    // If the user just interacted, don't let a stale DB snapshot overwrite their felt.
+    // Must exceed the longest animation duration to prevent flicker during roll animations.
+    if (Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS) return;
 
     if (myState && isMyTurn) {
       // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
@@ -609,12 +619,6 @@ export function HorsesGameTable({
 
     await horsesAdvanceTurn(currentRoundId, expected);
   }, [currentRoundId, horsesState?.currentTurnPlayerId]);
-
-  // Animation timing constants
-  // First roll: just fly-in animation (~1200ms + buffer)
-  const FIRST_ROLL_ANIMATION_MS = 1300;
-  // Subsequent rolls: sync with observer animations (fly-in + held move + unheld delay)
-  const ROLL_AGAIN_ANIMATION_MS = 2500;
 
   // Handle roll dice
   const handleRoll = useCallback(async () => {
