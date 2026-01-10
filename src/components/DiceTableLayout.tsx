@@ -224,8 +224,11 @@ export function DiceTableLayout({
 
     const heldPositions = getHeldPositions(heldAtStartOfFinalRoll.length, dieWidth, gap);
     
-    // Use STABLE positions based on originalIndex (same as animation)
-    const getStablePos = (originalIndex: number) => UNHELD_POSITIONS_5[originalIndex] || { x: 0, y: 0, rotate: 0 };
+    // Position unheld dice based on COUNT (not original index)
+    const getUnheldPos = (displayIndex: number, totalUnheld: number) => {
+      const positions = UNHELD_POSITIONS[totalUnheld] || UNHELD_POSITIONS[5];
+      return positions[displayIndex] || { x: 0, y: 0, rotate: 0 };
+    };
 
     const heldYOffset = -35;
     // Y offset based on held count
@@ -265,10 +268,10 @@ export function DiceTableLayout({
           );
         })}
 
-        {/* Dice that were NOT held when the final roll started - use STABLE positions by originalIndex */}
-        {unheldAtStartOfFinalRoll.map((item) => {
-          // Use stable position based on originalIndex (matches animation landing)
-          const pos = getStablePos(item.originalIndex);
+        {/* Dice that were NOT held when the final roll started - use count-based positions */}
+        {unheldAtStartOfFinalRoll.map((item, displayIdx) => {
+          // Use position based on count of unheld dice (matches animation landing)
+          const pos = getUnheldPos(displayIdx, unheldAtStartOfFinalRoll.length);
 
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
