@@ -10,6 +10,7 @@ interface HorsesDieProps {
   size?: "xs" | "sm" | "md" | "lg";
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
   isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
+  forceWhiteBackground?: boolean; // Force white background (for Beat: badge cargo dice)
 }
 
 export function HorsesDie({
@@ -21,6 +22,7 @@ export function HorsesDie({
   size = "md",
   showWildHighlight = true,
   isSCCDie = false,
+  forceWhiteBackground = false,
 }: HorsesDieProps) {
   // Track the displayed value during roll animation
   const [displayValue, setDisplayValue] = useState(value);
@@ -217,11 +219,14 @@ export function HorsesDie({
         "flex items-center justify-center",
         // Rolling animation with shake + glow
         animating && "animate-dice-shake",
-        isHeld
-          ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
-          : isWildDie
-            ? "bg-card border-poker-gold shadow-md ring-2 ring-poker-gold/50"
-            : "bg-card border-border",
+        // Force white background for Beat: badge display
+        forceWhiteBackground
+          ? "bg-white border-gray-300"
+          : isHeld
+            ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
+            : isWildDie
+              ? "bg-card border-poker-gold shadow-md ring-2 ring-poker-gold/50"
+              : "bg-card border-border",
         canToggle && !isHeld && !isWildDie && "hover:border-primary/60 cursor-pointer active:scale-95",
         canToggle && !isHeld && isWildDie && "hover:border-poker-gold cursor-pointer active:scale-95",
         canToggle && isHeld && "hover:border-amber-600 cursor-pointer active:scale-95",
