@@ -172,15 +172,28 @@ export function DiceTableLayout({
     sccHand,
   ]);
 
-  // Handle animation complete - unheld dice will fade out after a brief moment
+  // Handle animation complete - unheld dice will fade out AFTER held dice finish moving
   const handleAnimationComplete = () => {
-    setIsAnimatingFlyIn(false);
+    // Animation has landed, but we need to keep the "pre-roll layout" active
+    // while the held dice animate to their held row (CSS transition ~300ms).
+    // After that, we can fade out the unheld dice.
+    
+    // Stop rendering the DiceRollAnimation overlay (dice are now in final positions)
     setAnimatingDiceIndices([]);
-    // After animation lands, hide unheld dice (they'll reappear on next roll)
-    // Longer delay so user sees where they landed before they disappear
-    animationCompleteTimeoutRef.current = window.setTimeout(() => {
-      setShowUnheldDice(false);
-    }, 1600);
+    
+    // Keep isAnimatingFlyIn TRUE for a bit so that:
+    // - usePreRollLayout stays true → dice don't jump positions yet
+    // - Held dice will animate via CSS to their new positions
+    // Then after that transition completes, we flip the layout and fade unheld dice.
+    
+    // Delay before transitioning layout: allow CSS transition to complete (~400ms buffer)
+    setTimeout(() => {
+      setIsAnimatingFlyIn(false);
+      // After layout flips, give user time to see the new layout before fading unheld dice
+      animationCompleteTimeoutRef.current = window.setTimeout(() => {
+        setShowUnheldDice(false);
+      }, 1200);
+    }, 400);
   };
   
   // If showing "You are rolling" message, render that instead of dice
@@ -234,11 +247,13 @@ export function DiceTableLayout({
   const heldCount = heldDice.length;
   const unheldCount = unheldDice.length;
   
-  // Special case: all 5 dice held (player's turn is complete)
+  // Special case: all visible dice are held (player's turn is complete)
   // Layout should freeze to exactly what it was at the START of the final roll:
   // - dice that were already held stay in the held row
   // - dice that were not held stay in scatter positions (but show held styling)
-  const allHeld = heldCount === 5;
+  // NOTE: Check if ALL orderedDice are held, not just if there are 5 held.
+  // This handles cases where hideUnrolledDice filtered some out.
+  const allHeld = orderedDice.length > 0 && orderedDice.every(d => d.die.isHeld);
 
   const hasValidHeldMask =
     Array.isArray(heldMaskBeforeComplete) &&
@@ -417,21 +432,35 @@ export function DiceTableLayout({
     );
   }
   
-  // Fallback for all held without previouslyHeldCount: show all in scatter using count-based positions
+  // Fallback for all held without previouslyHeldCount or heldMaskBeforeComplete:
+  // This happens when turn completes but we don't know which dice were held before.
+  // Show ALL 5 dice in stable scatter positions (as if 0 were held at start).
   // CRITICAL: Don't early-return if we're currently animating
   if (allHeld && !isAnimatingFlyIn) {
-    const getUnheldPos = (displayIndex: number, totalUnheld: number) => {
-      const positions = UNHELD_POSITIONS[totalUnheld] || UNHELD_POSITIONS[5];
+    // Use stable positions if we have them from a previous roll in this turn
+    // Otherwise fall back to UNHELD_POSITIONS based on actual dice count
+    const actualDiceCount = orderedDice.length;
+    
+    const getStableOrFallbackPos = (originalIndex: number, displayIndex: number) => {
+      // First try stable positions from the last roll
+      const stablePos = stableScatterByDieRef.current.get(originalIndex);
+      if (stablePos) return stablePos;
+      
+      // Fallback: use UNHELD_POSITIONS based on actual count (not always 5)
+      const positions = UNHELD_POSITIONS[actualDiceCount] || UNHELD_POSITIONS[5];
       return positions[displayIndex] || { x: 0, y: 0, rotate: 0 };
     };
 
-    // 0 held means push scatter area up
-    const yOffset = 5;
+    // When no dice were previously held, scatter area is higher (y=5)
+    // When some were held, scatter area is lower (y=50)
+    // Use stable ref to determine this - if stable positions exist and < total, some were held
+    const stableCount = stableScatterByDieRef.current.size;
+    const scatterYOffset = stableCount > 0 && stableCount < actualDiceCount ? 50 : 5;
 
     return (
       <div className="relative" style={{ width: '200px', height: '120px' }}>
         {orderedDice.map((item, displayIdx) => {
-          const pos = getUnheldPos(displayIdx, orderedDice.length);
+          const pos = getStableOrFallbackPos(item.originalIndex, displayIdx);
 
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
@@ -443,7 +472,7 @@ export function DiceTableLayout({
               style={{
                 left: '50%',
                 top: '50%',
-                transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + yOffset}px)) rotate(${pos.rotate}deg)`,
+                transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + scatterYOffset}px)) rotate(${pos.rotate}deg)`,
               }}
             >
               <HorsesDie
