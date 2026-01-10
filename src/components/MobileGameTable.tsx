@@ -3616,8 +3616,11 @@ export const MobileGameTable = ({
 
         {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
         {isDiceGame && horsesController.enabled && (() => {
+          const logPrefix = `[FELT_BLOCK_DEBUG ${gameType === 'ship-captain-crew' ? 'SCC' : 'HORSES'}]`;
+          
           // Don't show dice when game phase is complete or waiting
           if (horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') {
+            console.log(`${logPrefix} UNMOUNT: gamePhase=${horsesController.gamePhase}`);
             return null;
           }
           
@@ -3636,8 +3639,11 @@ export const MobileGameTable = ({
           // Check if dice have been rolled (at least one die has a value > 0)
           const hasRolled = diceArray?.some(d => d?.value > 0) ?? false;
           
+          console.log(`${logPrefix} feltDice=${!!horsesController.feltDice}, diceArray=${diceArray?.map(d => d?.value)}, hasRolled=${hasRolled}, showResult=${showResult}, showDice=${showDice}, isMyTurn=${horsesController.isMyTurn}`);
+          
           // If it's my turn and I haven't rolled yet, show "You are rolling" message
           if (horsesController.isMyTurn && !hasRolled) {
+            console.log(`${logPrefix} RENDER: You are rolling message`);
             return (
               <div
                 className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2"
@@ -3652,9 +3658,11 @@ export const MobileGameTable = ({
           
           // If observing someone else who hasn't rolled yet, show nothing
           if (!horsesController.isMyTurn && !hasRolled && !showResult) {
+            console.log(`${logPrefix} UNMOUNT: observer, hasRolled=${hasRolled}, showResult=${showResult}`);
             return null;
           }
 
+          console.log(`${logPrefix} RENDER: DiceTableLayout or result`);
           const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
 
           return (

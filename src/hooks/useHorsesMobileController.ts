@@ -129,6 +129,7 @@ export interface UseHorsesMobileControllerArgs {
 const HORSES_ROLL_ANIMATION_MS = 350;
 const HORSES_POST_TURN_PAUSE_MS = 650;
 const HORSES_TURN_TIMER_SECONDS = 30; // Default turn timer for Horses
+const BOT_TURN_START_DELAY_MS = 500; // Delay before bots start their turn (was 1500ms)
 
 export function useHorsesMobileController({
   enabled,
@@ -1001,10 +1002,10 @@ export function useHorsesMobileController({
     const run = async () => {
       setBotTurnActiveId(botId);
 
-      // Add 1.5 second delay before bots start their turn (only during active gameplay)
+      // Add delay before bots start their turn (only during active gameplay)
       // This allows the component to render and subscribe to state changes before the first roll
       if (gamePhase === 'playing') {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, BOT_TURN_START_DELAY_MS));
         if (cancelled) return;
       }
 
@@ -1105,7 +1106,7 @@ export function useHorsesMobileController({
           });
 
           // Let the fly-in animation play while we show "rolling"
-          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await new Promise((resolve) => setTimeout(resolve, BOT_TURN_START_DELAY_MS));
           if (cancelled) return;
 
           // Commit the rolled values without changing dice again (prevents flicker)
@@ -1402,7 +1403,12 @@ export function useHorsesMobileController({
   ]);
 
   const rawFeltDice = useMemo(() => {
-    if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) return null;
+    const logPrefix = `[FELT_DICE_DEBUG ${isSCC ? 'SCC' : 'HORSES'}]`;
+    
+    if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) {
+      console.log(`${logPrefix} returning null: enabled=${enabled}, gamePhase=${gamePhase}, currentTurnPlayerId=${currentTurnPlayerId}`);
+      return null;
+    }
 
     // IMPORTANT: avoid flashing unrolled dice during turn transitions.
     // Prefer the authoritative DB state for the current player, then fall back to local state.
@@ -1419,7 +1425,10 @@ export function useHorsesMobileController({
         : (typeof dbState?.rollsRemaining === "number" ? dbState.rollsRemaining : localHand.rollsRemaining);
 
       const isBlank = dice.every((d: any) => !d?.value);
-      if (isBlank && rollsRemaining === 3 && !isRolling) return null;
+      if (isBlank && rollsRemaining === 3 && !isRolling) {
+        console.log(`${logPrefix} MY TURN returning null: isBlank=${isBlank}, rollsRemaining=${rollsRemaining}, isRolling=${isRolling}`);
+        return null;
+      }
 
       return {
         dice,
@@ -1433,24 +1442,39 @@ export function useHorsesMobileController({
     // This prevents DB/realtime updates from causing flicker by overwriting the animation state.
     if (botTurnActiveId === currentTurnPlayerId && botDisplayState?.playerId === currentTurnPlayerId) {
       const isBlank = botDisplayState.dice.every((d: any) => !d?.value);
-      if (isBlank && !botDisplayState.isRolling) return null;
+      if (isBlank && !botDisplayState.isRolling) {
+        console.log(`${logPrefix} BOT ACTIVE returning null: isBlank=${isBlank}, isRolling=${botDisplayState.isRolling}`);
+        return null;
+      }
+      console.log(`${logPrefix} BOT ACTIVE returning botDisplayState: dice=${JSON.stringify(botDisplayState.dice.map(d => d.value))}, isRolling=${botDisplayState.isRolling}`);
       return botDisplayState;
     }
 
     // For non-active bot turns, still prefer botDisplayState if it matches
     if (currentTurnPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) {
       const isBlank = botDisplayState.dice.every((d: any) => !d?.value);
-      if (isBlank && !botDisplayState.isRolling) return null;
+      if (isBlank && !botDisplayState.isRolling) {
+        console.log(`${logPrefix} BOT NON-ACTIVE returning null: isBlank=${isBlank}, isRolling=${botDisplayState.isRolling}`);
+        return null;
+      }
+      console.log(`${logPrefix} BOT NON-ACTIVE returning botDisplayState: dice=${JSON.stringify(botDisplayState.dice.map(d => d.value))}, isRolling=${botDisplayState.isRolling}`);
       return botDisplayState;
     }
 
     // Fallback to DB state for human players (who aren't "me")
     const state = horsesState?.playerStates?.[currentTurnPlayerId];
-    if (!state) return null;
+    if (!state) {
+      console.log(`${logPrefix} FALLBACK returning null: no state for player ${currentTurnPlayerId}`);
+      return null;
+    }
 
     const isBlank = state.dice.every((d: any) => !d?.value);
-    if (isBlank && state.rollsRemaining === 3) return null;
+    if (isBlank && state.rollsRemaining === 3) {
+      console.log(`${logPrefix} FALLBACK returning null: isBlank=${isBlank}, rollsRemaining=${state.rollsRemaining}`);
+      return null;
+    }
 
+    console.log(`${logPrefix} FALLBACK returning DB state: dice=${JSON.stringify(state.dice.map((d: any) => d.value))}, rollsRemaining=${state.rollsRemaining}`);
     return {
       dice: state.dice,
       rollsRemaining: state.rollsRemaining,
