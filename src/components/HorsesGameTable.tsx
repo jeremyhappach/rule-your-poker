@@ -858,22 +858,33 @@ export function HorsesGameTable({
           
           // Delay before each roll for visibility
           await new Promise((resolve) => setTimeout(resolve, 2000));
-          
-          // Show "rolling" animation
-          setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: true, rollKey: botRollKey });
+
+          // Roll immediately so the fly-in animation "lands" on the NEW values (prevents old->new flash)
+          const rolledHand = isSCCGame
+            ? rollSCCDice(botHand as SCCHand)
+            : rollDice(botHand as HorsesHand);
+
+          // Show "rolling" animation (using rolled values so we don't flash old dice after animation)
+          setBotDisplayState({
+            playerId: botId,
+            dice: rolledHand.dice as HorsesDieType[],
+            isRolling: true,
+            rollKey: botRollKey,
+          });
           await new Promise((resolve) => setTimeout(resolve, 1500));
 
           if (cancelled || botRunTokenRef.current !== token) return;
 
-          // Roll the dice using appropriate game logic
-          if (isSCCGame) {
-            botHand = rollSCCDice(botHand as SCCHand);
-          } else {
-            botHand = rollDice(botHand as HorsesHand);
-          }
+          // Commit the rolled values without changing dice again
+          botHand = rolledHand;
 
           // Show result of roll (with same rollKey so animation can complete)
-          setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false, rollKey: botRollKey });
+          setBotDisplayState({
+            playerId: botId,
+            dice: botHand.dice as HorsesDieType[],
+            isRolling: false,
+            rollKey: botRollKey,
+          });
 
            // Save intermediate state to DB so others can see (atomic per-player)
            await horsesSetPlayerState(currentRoundId, botId, {
