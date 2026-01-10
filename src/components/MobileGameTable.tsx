@@ -2447,6 +2447,47 @@ export const MobileGameTable = ({
     return posToSlot[position] ?? 0;
   };
   
+  // Calculate animation origin for dice fly-in based on current turn player's position
+  // Returns pixel offset from center of the dice area
+  const getDiceAnimationOrigin = useCallback((): { x: number; y: number } | undefined => {
+    const turnPlayerId = horsesController.currentTurnPlayerId;
+    if (!turnPlayerId) return undefined;
+    
+    const turnPlayer = players.find(p => p.id === turnPlayerId);
+    if (!turnPlayer) return undefined;
+    
+    // For observers: use absolute position
+    // For seated players: use relative slot
+    let slotIndex: number;
+    if (!currentPlayer) {
+      slotIndex = getObserverSlotFromPosition(turnPlayer.position);
+    } else {
+      slotIndex = getClockwiseDistance(turnPlayer.position) - 1;
+    }
+    
+    // Map slot index to approximate pixel offsets from center
+    // Mobile layout is roughly 300px wide, 200px tall for the dice area
+    // Slot positions based on CSS layout:
+    // Slot 0: Bottom-left -> { x: -80, y: 60 }
+    // Slot 1: Middle-left -> { x: -100, y: 0 }
+    // Slot 2: Top-left -> { x: -80, y: -50 }
+    // Slot 3: Top-right -> { x: 80, y: -50 }
+    // Slot 4: Middle-right -> { x: 100, y: 0 }
+    // Slot 5: Bottom-right -> { x: 80, y: 60 }
+    // Slot -1: Bottom center (current player) -> { x: 0, y: 80 }
+    const slotPositions: Record<number, { x: number; y: number }> = {
+      [-1]: { x: 0, y: 80 },
+      0: { x: -80, y: 60 },
+      1: { x: -100, y: 0 },
+      2: { x: -80, y: -50 },
+      3: { x: 80, y: -50 },
+      4: { x: 100, y: 0 },
+      5: { x: 80, y: 60 },
+    };
+    
+    return slotPositions[slotIndex] ?? { x: 0, y: 60 };
+  }, [horsesController.currentTurnPlayerId, players, currentPlayer, getClockwiseDistance]);
+  
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn =
       (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
@@ -3678,6 +3719,8 @@ export const MobileGameTable = ({
                   hideUnrolledDice={true}
                   heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
                   previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
+                  animationOrigin={getDiceAnimationOrigin()}
+                  rollKey={(horsesController.feltDice as any)?.rollKey}
                 />
               )}
             </div>
