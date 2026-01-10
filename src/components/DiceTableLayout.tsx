@@ -39,12 +39,13 @@ interface DiceTableLayoutProps {
 // Legacy lookup for older code paths that don't use stable positions
 const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[]> = {
   // 5 unheld dice - rough pentagon using corners + center
+  // NOTE: Y positions shifted down so initial roll lands lower, matching where dice stay when 1+ are held
   5: [
-    { x: -48, y: -22, rotate: -15 },  // upper-left area
-    { x: 52, y: -18, rotate: 12 },    // upper-right area
-    { x: 3, y: 8, rotate: 5 },        // center-ish
-    { x: -45, y: 38, rotate: -8 },    // lower-left corner
-    { x: 48, y: 42, rotate: 11 },     // lower-right corner
+    { x: -48, y: 8, rotate: -15 },    // upper-left area (was -22)
+    { x: 52, y: 12, rotate: 12 },     // upper-right area (was -18)
+    { x: 3, y: 38, rotate: 5 },       // center-ish (was 8)
+    { x: -45, y: 68, rotate: -8 },    // lower-left corner (was 38)
+    { x: 48, y: 72, rotate: 11 },     // lower-right corner (was 42)
   ],
   // 4 unheld dice - rough rectangle using corners
   4: [
