@@ -51,8 +51,11 @@ export interface HorsesPlayerDiceState {
   rollsRemaining: number;
   isComplete: boolean;
   result?: HorsesHandResult | SCCHandResult;
+  /** Per-die mask of what was held BEFORE the last roll started (freeze layout on completion) */
+  heldMaskBeforeComplete?: boolean[];
+  /** Convenience count (legacy fallback for layouts that can't map exact dice) */
+  heldCountBeforeComplete?: number;
 }
-
 export interface HorsesStateFromDB {
   currentTurnPlayerId: string | null;
   playerStates: Record<string, HorsesPlayerDiceState>;
@@ -173,8 +176,9 @@ export function useHorsesMobileController({
     dice: HorsesDieType[];
     rollsRemaining: number;
     isRolling: boolean;
+    heldMaskBeforeComplete?: boolean[];
+    heldCountBeforeComplete?: number;
   } | null>(null);
-
   // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
   const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
@@ -188,6 +192,8 @@ export function useHorsesMobileController({
   const lastLocalEditAtRef = useRef<number>(0);
   const myTurnKeyRef = useRef<string | null>(null);
 
+  // Freeze layout at the START of the most recent roll (used when the turn completes)
+  const heldMaskAtLastRollStartRef = useRef<boolean[] | null>(null);
   // Timer state for turn countdown
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [turnAnnouncement, setTurnAnnouncement] = useState<string | null>(null);
@@ -464,15 +470,26 @@ export function useHorsesMobileController({
   ]);
 
   const saveMyState = useCallback(
-    async (hand: HorsesHand | SCCHand, completed: boolean, result?: HorsesHandResult | SCCHandResult) => {
+    async (
+      hand: HorsesHand | SCCHand,
+      completed: boolean,
+      result?: HorsesHandResult | SCCHandResult,
+      heldMaskBeforeComplete?: boolean[],
+    ) => {
       if (!enabled) return;
       if (!currentRoundId || !myPlayer) return;
+
+      const heldCountBeforeComplete = Array.isArray(heldMaskBeforeComplete)
+        ? heldMaskBeforeComplete.filter(Boolean).length
+        : undefined;
 
       const newPlayerState: HorsesPlayerDiceState = {
         dice: hand.dice as any,
         rollsRemaining: hand.rollsRemaining,
         isComplete: completed,
         result,
+        heldMaskBeforeComplete,
+        heldCountBeforeComplete,
       };
 
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
@@ -822,15 +839,17 @@ export function useHorsesMobileController({
     if (!enabled) return;
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    // Freeze layout to what it was at the START of this roll
+    const heldMaskBeforeRoll = localHand.dice.map((d: any) => !!d.isHeld);
+    heldMaskAtLastRollStartRef.current = heldMaskBeforeRoll;
+
     // Mark interaction immediately so realtime/DB snapshots can't overwrite the felt during the roll animation.
     lastLocalEditAtRef.current = Date.now();
     setIsRolling(true);
 
     setTimeout(async () => {
       // Use appropriate roll function based on game type
-      const newHand = isSCC 
-        ? rollSCCDice(localHand as SCCHand)
-        : rollDice(localHand as HorsesHand);
+      const newHand = isSCC ? rollSCCDice(localHand as SCCHand) : rollDice(localHand as HorsesHand);
       lastLocalEditAtRef.current = Date.now();
       setLocalHand(newHand);
       setIsRolling(false);
@@ -839,14 +858,14 @@ export function useHorsesMobileController({
       if (isSCC) {
         const sccHand = newHand as SCCHand;
         const result = evaluateSCCHand(sccHand);
-        
+
         // Midnight = qualified with cargo of 12 (best possible hand)
         if (result.isQualified && result.cargoSum === 12) {
           console.log('[SCC] Midnight rolled! Auto-locking...');
           const lockedHand = lockInSCCHand(sccHand);
           setLocalHand(lockedHand);
-          await saveMyState(lockedHand, true, result);
-          
+          await saveMyState(lockedHand, true, result, heldMaskBeforeRoll);
+
           setTimeout(() => {
             advanceToNextTurn(myPlayer?.id ?? null);
           }, HORSES_POST_TURN_PAUSE_MS);
@@ -856,10 +875,8 @@ export function useHorsesMobileController({
 
       if (newHand.rollsRemaining === 0) {
         // Use appropriate evaluation function based on game type
-        const result = isSCC 
-          ? evaluateSCCHand(newHand as SCCHand)
-          : evaluateHand((newHand as HorsesHand).dice);
-        await saveMyState(newHand, true, result);
+        const result = isSCC ? evaluateSCCHand(newHand as SCCHand) : evaluateHand((newHand as HorsesHand).dice);
+        await saveMyState(newHand, true, result, heldMaskBeforeRoll);
         setTimeout(() => {
           advanceToNextTurn(myPlayer?.id ?? null);
         }, HORSES_POST_TURN_PAUSE_MS);
@@ -867,7 +884,15 @@ export function useHorsesMobileController({
         await saveMyState(newHand, false);
       }
     }, HORSES_ROLL_ANIMATION_MS);
-  }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
+  }, [
+    enabled,
+    isMyTurn,
+    localHand,
+    saveMyState,
+    advanceToNextTurn,
+    myPlayer?.id,
+    isSCC,
+  ]);
 
   const handleToggleHold = useCallback(
     (index: number) => {
@@ -904,6 +929,10 @@ export function useHorsesMobileController({
     if (!enabled) return;
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
 
+    // Freeze layout to what it was at the START of the most recent roll.
+    const heldMaskBeforeComplete =
+      heldMaskAtLastRollStartRef.current ?? localHand.dice.map((d: any) => !!d.isHeld);
+
     // For SCC: can only lock in if qualified (has 6-5-4)
     if (isSCC) {
       const sccHand = localHand as SCCHand;
@@ -916,7 +945,7 @@ export function useHorsesMobileController({
       setLocalHand(lockedHand);
 
       const result = evaluateSCCHand(lockedHand);
-      await saveMyState(lockedHand, true, result);
+      await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
 
       setTimeout(() => {
         advanceToNextTurn(myPlayer?.id ?? null);
@@ -929,7 +958,7 @@ export function useHorsesMobileController({
     setLocalHand(lockedHand);
 
     const result = evaluateHand(lockedHand.dice);
-    await saveMyState(lockedHand, true, result);
+    await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
 
     setTimeout(() => {
       advanceToNextTurn(myPlayer?.id ?? null);
@@ -1043,28 +1072,35 @@ export function useHorsesMobileController({
             )
           : (isSCC ? createInitialSCCHand() : createInitialHand());
 
+        // Track held mask at the START of each roll so we can freeze layout on completion.
+        let heldMaskBeforeComplete: boolean[] | undefined;
+
         // Roll up to 3 times with visible animation
         for (let roll = 0; roll < 3 && botHand.rollsRemaining > 0; roll++) {
           if (cancelled) return;
+
+          heldMaskBeforeComplete = botHand.dice.map((d: any) => !!d.isHeld);
 
           setBotDisplayState({
             playerId: botId,
             dice: botHand.dice as HorsesDieType[],
             rollsRemaining: botHand.rollsRemaining,
             isRolling: true,
+            heldMaskBeforeComplete,
+            heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
           });
           await new Promise((resolve) => setTimeout(resolve, 450));
           if (cancelled) return;
 
           // Use appropriate roll function based on game type
-          botHand = isSCC 
-            ? rollSCCDice(botHand as SCCHand)
-            : rollDice(botHand as HorsesHand);
+          botHand = isSCC ? rollSCCDice(botHand as SCCHand) : rollDice(botHand as HorsesHand);
           setBotDisplayState({
             playerId: botId,
             dice: botHand.dice as HorsesDieType[],
             rollsRemaining: botHand.rollsRemaining,
             isRolling: false,
+            heldMaskBeforeComplete,
+            heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
           });
 
           await horsesSetPlayerState(currentRoundId, botId, {
@@ -1079,8 +1115,16 @@ export function useHorsesMobileController({
 
           // Use appropriate bot decision logic based on game type
           const shouldStop = isSCC
-            ? shouldSCCBotStopRolling(botHand as SCCHand, botHand.rollsRemaining, currentWinningResultRef.current as SCCHandResult | null)
-            : shouldBotStopRolling((botHand as HorsesHand).dice, botHand.rollsRemaining, currentWinningResultRef.current as HorsesHandResult | null);
+            ? shouldSCCBotStopRolling(
+                botHand as SCCHand,
+                botHand.rollsRemaining,
+                currentWinningResultRef.current as SCCHandResult | null,
+              )
+            : shouldBotStopRolling(
+                (botHand as HorsesHand).dice,
+                botHand.rollsRemaining,
+                currentWinningResultRef.current as HorsesHandResult | null,
+              );
           if (shouldStop) break;
 
           // For Horses only: apply hold decisions (SCC has auto-freeze, no manual holds)
@@ -1097,6 +1141,8 @@ export function useHorsesMobileController({
               dice: botHand.dice as HorsesDieType[],
               rollsRemaining: botHand.rollsRemaining,
               isRolling: false,
+              heldMaskBeforeComplete,
+              heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
             });
 
             await horsesSetPlayerState(currentRoundId, botId, {
@@ -1122,18 +1168,28 @@ export function useHorsesMobileController({
           botHand = lockInHand(botHand as HorsesHand);
           result = evaluateHand((botHand as HorsesHand).dice);
         }
+
+        const heldCountBeforeComplete = Array.isArray(heldMaskBeforeComplete)
+          ? heldMaskBeforeComplete.filter(Boolean).length
+          : undefined;
+
         setBotDisplayState({
           playerId: botId,
           dice: botHand.dice as HorsesDieType[],
           rollsRemaining: botHand.rollsRemaining,
           isRolling: false,
+          heldMaskBeforeComplete,
+          heldCountBeforeComplete,
         });
+
         await horsesSetPlayerState(currentRoundId, botId, {
           dice: botHand.dice as any,
           rollsRemaining: 0,
           isComplete: true,
           result,
-        });
+          heldMaskBeforeComplete,
+          heldCountBeforeComplete,
+        } as any);
 
         await new Promise((resolve) => setTimeout(resolve, 450));
         if (cancelled) return;
@@ -1376,7 +1432,13 @@ export function useHorsesMobileController({
     const isBlank = state.dice.every((d: any) => !d?.value);
     if (isBlank && state.rollsRemaining === 3) return null;
 
-    return { dice: state.dice, rollsRemaining: state.rollsRemaining, isRolling: false };
+    return {
+      dice: state.dice,
+      rollsRemaining: state.rollsRemaining,
+      isRolling: false,
+      heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+      heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
+    };
   }, [
     enabled,
     gamePhase,
