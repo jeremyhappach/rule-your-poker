@@ -21,7 +21,7 @@ interface DiceRollAnimationProps {
 }
 
 // Animation duration in ms
-const ANIMATION_DURATION = 600;
+const ANIMATION_DURATION = 1200;
 const START_SCALE = 0.25;
 
 export function DiceRollAnimation({

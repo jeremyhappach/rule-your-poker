@@ -1086,6 +1086,10 @@ export function useHorsesMobileController({
           heldMaskBeforeComplete = botHand.dice.map((d: any) => !!d.isHeld);
           botRollKey++;
 
+          // Delay before each roll for visibility
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          if (cancelled) return;
+
           setBotDisplayState({
             playerId: botId,
             dice: botHand.dice as HorsesDieType[],
@@ -1095,7 +1099,7 @@ export function useHorsesMobileController({
             heldCountBeforeComplete: heldMaskBeforeComplete.filter(Boolean).length,
             rollKey: botRollKey,
           });
-          await new Promise((resolve) => setTimeout(resolve, 450));
+          await new Promise((resolve) => setTimeout(resolve, 1500));
           if (cancelled) return;
 
           // Use appropriate roll function based on game type
@@ -1117,7 +1121,7 @@ export function useHorsesMobileController({
           });
           if (cancelled) return;
 
-          await new Promise((resolve) => setTimeout(resolve, 450));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           if (cancelled) return;
 
           // Use appropriate bot decision logic based on game type
@@ -1160,7 +1164,7 @@ export function useHorsesMobileController({
             });
             if (cancelled) return;
 
-            await new Promise((resolve) => setTimeout(resolve, 350));
+            await new Promise((resolve) => setTimeout(resolve, 2000));
             if (cancelled) return;
           }
         }

@@ -856,9 +856,12 @@ export function HorsesGameTable({
           // Increment roll key for each roll
           botRollKey++;
           
+          // Delay before each roll for visibility
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          
           // Show "rolling" animation
           setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: true, rollKey: botRollKey });
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          await new Promise((resolve) => setTimeout(resolve, 1500));
 
           if (cancelled || botRunTokenRef.current !== token) return;
 
@@ -879,7 +882,7 @@ export function HorsesGameTable({
              isComplete: false,
            });
 
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
 
           // Check if we should stop rolling based on current hand vs winning hand
           if (isSCCGame) {
