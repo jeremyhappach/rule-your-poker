@@ -40,42 +40,50 @@ export function DiceRollAnimation({
   const [flyProgress, setFlyProgress] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const completedRef = useRef(false);
   
   // Random tumble rotations and display sequences for each die (memoized to prevent switching)
-  const [tumbleData] = useState(() => 
+  const [tumbleData] = useState(() =>
     animatingIndices.map(() => ({
       rotations: Math.floor(Math.random() * 3) + 2, // 2-4 full rotations
       axis: Math.random() > 0.5 ? 1 : -1, // direction
       // Pre-generate a sequence of random values for tumbling display
       tumbleSequence: Array.from({ length: 8 }, () => Math.floor(Math.random() * 6) + 1),
-    }))
+    })),
   );
 
   useEffect(() => {
+    // If the parent has already cleared indices, simply stop rendering (don't call onComplete again).
     if (animatingIndices.length === 0) {
-      onComplete();
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
       return;
     }
 
+    completedRef.current = false;
+    setPhase("flying");
+    setFlyProgress(0);
+    startTimeRef.current = null;
+
     const animate = (timestamp: number) => {
-      if (!startTimeRef.current) {
-        startTimeRef.current = timestamp;
-      }
-      
+      if (!startTimeRef.current) startTimeRef.current = timestamp;
+
       const elapsed = timestamp - startTimeRef.current;
       const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
-      
+
       // Easing function: ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setFlyProgress(eased);
-      
+
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
-      } else {
-        setPhase("landing");
-        // Brief settling pause then complete
+        return;
+      }
+
+      // Land, then signal completion; keep rendering until parent clears indices (prevents 1-frame flicker).
+      setPhase("landing");
+      if (!completedRef.current) {
+        completedRef.current = true;
         setTimeout(() => {
-          setPhase("complete");
           onComplete();
         }, 100);
       }
@@ -84,13 +92,11 @@ export function DiceRollAnimation({
     animationRef.current = requestAnimationFrame(animate);
 
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [animatingIndices.length, onComplete]);
+  }, [animatingIndices, onComplete]);
 
-  if (phase === "complete" || animatingIndices.length === 0) {
+  if (animatingIndices.length === 0) {
     return null;
   }
 
