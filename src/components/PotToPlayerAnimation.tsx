@@ -258,20 +258,25 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       toY: winnerCoords.y,
     });
 
+    // Timing depends on game type - dice games are faster
+    const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
+    const animDuration = isDiceGame ? 1200 : 3300;
+    const clearDelay = isDiceGame ? 1500 : 3700;
+
     // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
     endTimeoutRef.current = window.setTimeout(() => {
       // Guard: only end the animation we started for this trigger.
       if (lastTriggerIdRef.current === triggerId) {
         onEndRef.current?.();
       }
-    }, 3300);
+    }, animDuration);
 
     // Clear animation after it completes
     clearTimeoutRef.current = window.setTimeout(() => {
       if (lastTriggerIdRef.current === triggerId) {
         setAnimation(null);
       }
-    }, 3700);
+    }, clearDelay);
 
     // NO cleanup that clears timers - we don't want deps changes to cancel timers
     // Timers are only cleared when a NEW triggerId arrives (handled above)
@@ -287,9 +292,13 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
 
   if (!animation) return null;
 
+  // Fast animation for dice games (1 bounce), slower for card games
+  const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
+  const animDuration = isDiceGame ? '1.1s' : '3.2s';
+
   return (
     <div
-      className="absolute z-[100] pointer-events-none"
+      className="absolute z-[200] pointer-events-none"
       style={{
         left: animation.fromX,
         top: animation.fromY,
@@ -299,7 +308,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       <div
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
-          animation: `${animationName} 3.2s ease-in-out forwards`,
+          animation: `${animationName} ${animDuration} ease-in-out forwards`,
         }}
       >
         <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
@@ -310,6 +319,16 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             transform: translate(0, 0) scale(1);
             opacity: 1;
           }
+          ${isDiceGame ? `
+          10% {
+            transform: translate(0, -6px) scale(1.05);
+            opacity: 1;
+          }
+          80% {
+            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
+            opacity: 1;
+          }
+          ` : `
           15% {
             transform: translate(0, -8px) scale(1.1);
             opacity: 1;
@@ -318,6 +337,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 1;
           }
+          `}
           100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(0);
             opacity: 0;

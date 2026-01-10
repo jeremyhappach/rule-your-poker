@@ -78,7 +78,7 @@ export function HorsesDie({
 
   // Pip sizes - readable at all sizes including xs for cargo display
   const dotSizeClasses = {
-    xs: "w-1 h-1",
+    xs: "w-1.5 h-1.5",
     sm: "w-1.5 h-1.5",
     md: "w-2.5 h-2.5",
     lg: "w-3.5 h-3.5",
@@ -87,7 +87,7 @@ export function HorsesDie({
   const dotSize = dotSizeClasses[size];
   // Larger center pip for case 1
   const largeDotSizeClasses = {
-    xs: "w-1.5 h-1.5",
+    xs: "w-2 h-2",
     sm: "w-2 h-2",
     md: "w-3 h-3",
     lg: "w-4 h-4",
