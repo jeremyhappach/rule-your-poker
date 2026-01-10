@@ -1510,10 +1510,11 @@ export function useHorsesMobileController({
 
     // If state is briefly unavailable (e.g. refetch/realtime gap), keep the last dice for a beat.
     // IMPORTANT: only reuse the cache if it's for the SAME player (prevents bot->you flash).
+    // Extended from 400ms to 800ms to prevent flicker during turn transitions in Horses.
     const cached = lastFeltDiceRef.current;
     if (
       cached?.playerId === currentTurnPlayerId &&
-      Date.now() - lastFeltDiceAtRef.current < 400
+      Date.now() - lastFeltDiceAtRef.current < 800
     ) {
       return cached.value;
     }
