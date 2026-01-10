@@ -2971,7 +2971,7 @@ export const MobileGameTable = ({
           />
         )}
         
-        {/* Turn Spotlight - Dice games (Horses/SCC) */}
+        {/* Turn Spotlight - Dice games (Horses/SCC) - DISABLED */}
         {isDiceGame && horsesController.enabled && (
           <TurnSpotlight
             currentTurnPosition={horsesController.currentTurnPlayer?.position ?? null}
@@ -2981,6 +2981,7 @@ export const MobileGameTable = ({
             containerRef={tableContainerRef}
             isVisible={horsesController.gamePhase === 'playing' && horsesController.currentTurnPlayerId !== null}
             useFullCoverage={true}
+            disabled={true}
           />
         )}
         

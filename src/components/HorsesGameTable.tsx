@@ -1196,7 +1196,7 @@ export function HorsesGameTable({
         />
       )}
       
-      {/* Turn Spotlight - shows during active dice rolling */}
+      {/* Turn Spotlight - DISABLED for dice games */}
       <TurnSpotlight
         currentTurnPosition={currentPlayer?.position ?? null}
         currentPlayerPosition={myPlayer?.position ?? null}
@@ -1205,6 +1205,7 @@ export function HorsesGameTable({
         containerRef={tableContainerRef}
         isVisible={gamePhase === "playing" && currentPlayer !== undefined}
         useFullCoverage={true}
+        disabled={true}
       />
       {isMobile ? (
         <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">

@@ -15,6 +15,8 @@ interface TurnSpotlightProps {
   isVisible: boolean;
   /** Use full rectangular coverage instead of ellipse clip (for dice games) */
   useFullCoverage?: boolean;
+  /** Disable the spotlight entirely (for dice games) */
+  disabled?: boolean;
 }
 
 /**
@@ -30,6 +32,7 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   containerRef,
   isVisible,
   useFullCoverage = false,
+  disabled = false,
 }) => {
   const [rotation, setRotation] = useState<number>(0);
   const [opacity, setOpacity] = useState<number>(0);
@@ -106,7 +109,7 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     setOpacity(1);
   }, [isVisible, currentTurnPosition, currentPlayerPosition, isObserver, getClockwiseDistance]);
 
-  if (!isVisible || currentTurnPosition === null) {
+  if (!isVisible || currentTurnPosition === null || disabled) {
     return null;
   }
 
