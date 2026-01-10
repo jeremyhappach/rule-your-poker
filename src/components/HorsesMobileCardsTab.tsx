@@ -103,18 +103,27 @@ export function HorsesMobileCardsTab({
       {/* Dice display when rolling - horizontal line layout (below buttons) */}
       {showMyDice && (
         <div className="flex items-center justify-center gap-1 mb-3">
-          {horses.localHand.dice.map((die, idx) => (
-            <HorsesDie
-              key={idx}
-              value={die.value}
-              isHeld={horses.localHand.rollsRemaining > 0 && die.isHeld}
-              isRolling={horses.isRolling && !die.isHeld}
-              canToggle={!isSCC && !horses.isRolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
-              onToggle={() => horses.handleToggleHold(idx)}
-              size="lg"
-              showWildHighlight={!isSCC}
-            />
-          ))}
+          {horses.localHand.dice.map((die, idx) => {
+            // On roll 3 (rollsRemaining=0), all dice are "locked in" so none should show held styling
+            // But for animation: if the die was held BEFORE this roll, it shouldn't animate
+            const showHeldStyling = horses.localHand.rollsRemaining > 0 && die.isHeld;
+            // For animation: dice that were NOT held before this roll should animate
+            // On final roll (rollsRemaining=0), we still want unheld dice to animate
+            const shouldAnimate = horses.isRolling && !die.isHeld;
+            
+            return (
+              <HorsesDie
+                key={idx}
+                value={die.value}
+                isHeld={showHeldStyling}
+                isRolling={shouldAnimate}
+                canToggle={!isSCC && !horses.isRolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
+                onToggle={() => horses.handleToggleHold(idx)}
+                size="lg"
+                showWildHighlight={!isSCC}
+              />
+            );
+          })}
         </div>
       )}
 
