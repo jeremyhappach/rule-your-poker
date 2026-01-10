@@ -4578,16 +4578,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount);
           
           // Priority 1: If no active human players, END SESSION completely
+          // NOTE: For dice games, this is too aggressive (a temporary sit-out/timeout can leave 0 active humans).
+          // In that case, keep the session open and return to waiting instead of flagging LAST HAND.
           if (activeHumanCount < 1) {
-            console.log('[ANTE] No active human players! Ending session.');
-            await supabase
-              .from('games')
-              .update({
-                status: 'game_over',
-                pending_session_end: true,
-                session_ended_at: new Date().toISOString()
-              })
-              .eq('id', gameId);
+            const isDiceGame = game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew';
+
+            if (isDiceGame) {
+              console.log('[ANTE] No active human players in dice game - returning to waiting_for_players (NOT ending session).');
+              await supabase
+                .from('games')
+                .update({
+                  status: 'waiting_for_players',
+                  awaiting_next_round: false,
+                  last_round_result: null,
+                  pending_session_end: false,
+                  session_ended_at: null,
+                })
+                .eq('id', gameId);
+            } else {
+              console.log('[ANTE] No active human players! Ending session.');
+              await supabase
+                .from('games')
+                .update({
+                  status: 'game_over',
+                  pending_session_end: true,
+                  session_ended_at: new Date().toISOString(),
+                })
+                .eq('id', gameId);
+            }
+
             anteProcessingRef.current = false;
             fetchGameData();
             return;
