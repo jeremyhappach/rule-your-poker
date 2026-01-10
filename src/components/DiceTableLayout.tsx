@@ -236,11 +236,11 @@ export function DiceTableLayout({
     window.setTimeout(() => {
       setIsAnimatingFlyIn(false);
 
-      // Step 3 & 4: After held dice have moved (CSS transition ~300-400ms), fade out unheld dice
+      // Step 3 & 4: After held dice have moved (CSS transition ~200ms), fade out unheld dice
       animationCompleteTimeoutRef.current = window.setTimeout(() => {
         setShowUnheldDice(false);
-      }, 300);
-    }, 300);
+      }, 150);
+    }, 150);
   }, []);
   
   // If showing "You are rolling" message, render that instead of dice
@@ -605,7 +605,7 @@ export function DiceTableLayout({
             <HorsesDie
               value={item.die.value}
               isHeld={isHeldInLayout}
-              isRolling={false}
+              isRolling={isRolling && !isHeldInLayout}
               canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn && !isRolling}
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={size}
