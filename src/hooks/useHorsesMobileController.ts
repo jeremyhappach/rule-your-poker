@@ -844,15 +844,15 @@ export function useHorsesMobileController({
     const heldMaskBeforeRoll = localHand.dice.map((d: any) => !!d.isHeld);
     heldMaskAtLastRollStartRef.current = heldMaskBeforeRoll;
 
+    // Roll immediately so the animation displays the NEW dice values (prevents old->new flash)
+    const newHand = isSCC ? rollSCCDice(localHand as SCCHand) : rollDice(localHand as HorsesHand);
+
     // Mark interaction immediately so realtime/DB snapshots can't overwrite the felt during the roll animation.
     lastLocalEditAtRef.current = Date.now();
+    setLocalHand(newHand);
     setIsRolling(true);
 
     setTimeout(async () => {
-      // Use appropriate roll function based on game type
-      const newHand = isSCC ? rollSCCDice(localHand as SCCHand) : rollDice(localHand as HorsesHand);
-      lastLocalEditAtRef.current = Date.now();
-      setLocalHand(newHand);
       setIsRolling(false);
 
       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
