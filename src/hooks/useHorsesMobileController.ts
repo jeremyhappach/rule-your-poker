@@ -55,6 +55,8 @@ export interface HorsesPlayerDiceState {
   heldMaskBeforeComplete?: boolean[];
   /** Convenience count (legacy fallback for layouts that can't map exact dice) */
   heldCountBeforeComplete?: number;
+  /** Changes every roll so all clients can trigger the fly-in animation deterministically */
+  rollKey?: number;
 }
 export interface HorsesStateFromDB {
   currentTurnPlayerId: string | null;
@@ -225,11 +227,14 @@ export function useHorsesMobileController({
 
   // Freeze layout at the START of the most recent roll (used when the turn completes)
   const heldMaskAtLastRollStartRef = useRef<boolean[] | null>(null);
+  // Changes every roll. Persisted into backend state so other clients can trigger animations.
+  const localRollKeyRef = useRef<number>(Date.now());
   // Timer state for turn countdown
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [turnAnnouncement, setTurnAnnouncement] = useState<string | null>(null);
   const clearAnnouncementTimerRef = useRef<number | null>(null);
   const timeoutProcessedRef = useRef<string | null>(null);
+
 
   const activePlayers = useMemo(
     () => players.filter((p) => !p.sitting_out).sort((a, b) => a.position - b.position),
@@ -614,6 +619,7 @@ export function useHorsesMobileController({
         result,
         heldMaskBeforeComplete,
         heldCountBeforeComplete,
+        rollKey: localRollKeyRef.current,
       };
 
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
@@ -964,6 +970,9 @@ export function useHorsesMobileController({
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
     const rollStartTime = Date.now();
+    // Unique per-roll key so all clients can trigger DiceTableLayout fly-in animations.
+    localRollKeyRef.current = rollStartTime;
+
     console.log(`[ROLL_DEBUG] ===== ROLL STARTED at ${new Date(rollStartTime).toISOString()} =====`);
 
     // Determine if this is the first roll (rollsRemaining === 3 means first roll)
@@ -1620,6 +1629,9 @@ export function useHorsesMobileController({
         ? localRollsRemaining
         : (typeof dbRollsRemaining === "number" ? dbRollsRemaining : localRollsRemaining);
 
+      const dbRollKey = typeof (dbState as any)?.rollKey === "number" ? (dbState as any).rollKey : undefined;
+      const rollKey = preferLocal ? localRollKeyRef.current : (dbRollKey ?? localRollKeyRef.current);
+
       const isBlank = dice.every((d: any) => !d?.value);
       if (isBlank && rollsRemaining === 3 && !isRolling) {
         console.log(`${logPrefix} MY TURN returning null: isBlank=${isBlank}, rollsRemaining=${rollsRemaining}, isRolling=${isRolling}`);
@@ -1631,6 +1643,7 @@ export function useHorsesMobileController({
         rollsRemaining,
         isRolling,
         canToggle: rollsRemaining < 3 && rollsRemaining > 0,
+        rollKey,
       };
     }
 
@@ -1677,6 +1690,7 @@ export function useHorsesMobileController({
       isRolling: false,
       heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
       heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
+      rollKey: (state as any).rollKey,
     };
   }, [
     enabled,
