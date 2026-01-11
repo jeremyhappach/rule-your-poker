@@ -260,10 +260,10 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       toY: rect.top + winnerCoords.y,
     });
 
-    // Timing depends on game type - dice games should be snappy
+    // Dice games should feel like 3-5-7 pacing: no bounce/linger, but not "blink fast".
     const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
-    const animDuration = isDiceGame ? 750 : 3300;
-    const clearDelay = isDiceGame ? 900 : 3700;
+    const animDuration = isDiceGame ? 1600 : 3300;
+    const clearDelay = isDiceGame ? 1800 : 3700;
 
     // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
     endTimeoutRef.current = window.setTimeout(() => {
@@ -294,9 +294,9 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
 
   if (!animation) return null;
 
-  // Fast animation for dice games, slower for card games
+  // Fast-ish for dice games, slower for card games
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
-  const animDuration = isDiceGame ? '0.7s' : '3.2s';
+  const animDuration = isDiceGame ? '1.6s' : '3.2s';
   const timingFn = isDiceGame ? 'linear' : 'ease-in-out';
 
   // If any ancestor has transform/filter, `position: fixed` can get trapped in that stacking context.
