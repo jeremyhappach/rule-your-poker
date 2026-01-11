@@ -3001,15 +3001,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[FETCH] Fetching game data...', { fetchSeq });
 
-    const { data: gameData, error: gameError } = await supabase
-      .from('games')
-      .select('*, rounds(*)')
-      .eq('id', gameId)
-      .maybeSingle();
+    // PARALLEL FETCH: Get game, players, and defaults all at once for speed
+    const [gameResult, playersResult, defaultsResult] = await Promise.all([
+      supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle(),
+      supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).order('position'),
+      supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single(),
+    ]);
+
+    const { data: gameData, error: gameError } = gameResult;
+    const { data: playersData, error: playersError } = playersResult;
+    const { data: gameDefaults } = defaultsResult;
 
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
-      console.log('[FETCH] Ignoring stale fetch response (post games query)', { fetchSeq, latest: fetchSeqRef.current });
+      console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
       return;
     }
 
@@ -3052,13 +3057,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
       return;
     }
-    
-    // Fetch allowBotDealers setting
-    const { data: gameDefaults } = await supabase
-      .from('game_defaults')
-      .select('allow_bot_dealers')
-      .eq('game_type', 'holm')
-      .single();
 
     if (!isStale()) {
       setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
@@ -3096,15 +3094,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       cachedRoundRef.current = null;
       maxRevealedRef.current = 0;
     }
-
-    const { data: playersData, error: playersError } = await supabase
-      .from('players')
-      .select(`
-        *,
-        profiles(username, aggression_level)
-      `)
-      .eq('game_id', gameId)
-      .order('position');
 
     if (playersError) {
       console.error('Failed to fetch players:', playersError);
