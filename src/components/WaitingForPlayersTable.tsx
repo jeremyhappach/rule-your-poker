@@ -4,10 +4,10 @@ import { MobileGameTable } from "./MobileGameTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
-
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -102,6 +102,7 @@ export const WaitingForPlayersTable = ({
 }: WaitingForPlayersTableProps) => {
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
+  const [isAddingBot, setIsAddingBot] = useState(false);
 
   const playersRef = useRef<Player[]>(players);
   useEffect(() => {
@@ -119,22 +120,22 @@ export const WaitingForPlayersTable = ({
       if (occupied.has(pos)) reservedBotPositionsRef.current.delete(pos);
     }
   }, [players]);
-  
+
   // Check if current user is seated
-  const currentPlayer = players.find(p => p.user_id === currentUserId);
+  const currentPlayer = players.find((p) => p.user_id === currentUserId);
   const isSeated = !!currentPlayer;
-  
+
   // Host is the first human player who joined (earliest created_at)
-  const humanPlayers = players.filter(p => !p.is_bot);
+  const humanPlayers = players.filter((p) => !p.is_bot);
   const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
     if (!a.created_at || !b.created_at) return 0;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
   const hostPlayer = sortedByJoinTime[0];
   const isHost = currentPlayer && hostPlayer?.user_id === currentUserId;
-  
+
   // Count seated players (active or waiting to play)
-  const seatedPlayerCount = players.filter(p => p.waiting === true || !p.sitting_out).length;
+  const seatedPlayerCount = players.filter((p) => p.waiting === true || !p.sitting_out).length;
   const hasEnoughPlayers = seatedPlayerCount >= 2;
   const hasOpenSeats = players.length < 7;
 
@@ -142,8 +143,24 @@ export const WaitingForPlayersTable = ({
   // Users may tap quickly to add multiple bots, so we queue requests and reserve positions locally
   // to prevent collisions before the next poll updates the players list.
   const enqueueAddBot = () => {
+    if (realMoney) {
+      toast.error("Bots are disabled for real money sessions");
+      return;
+    }
+    if (!isSeated) {
+      toast.error("Sit down first, then add a bot");
+      return;
+    }
+    if (!isHost) {
+      toast.error("Only the host can add bots");
+      return;
+    }
+
     const currentPlayers = playersRef.current;
-    if (currentPlayers.length >= 7) return;
+    if (currentPlayers.length >= 7) {
+      toast.error("Table is full");
+      return;
+    }
 
     addBotQueueRef.current += 1;
     void processAddBotQueue();
@@ -152,6 +169,7 @@ export const WaitingForPlayersTable = ({
   const processAddBotQueue = async () => {
     if (addBotProcessingRef.current) return;
     addBotProcessingRef.current = true;
+    setIsAddingBot(true);
 
     try {
       while (addBotQueueRef.current > 0) {
@@ -161,6 +179,7 @@ export const WaitingForPlayersTable = ({
       }
     } finally {
       addBotProcessingRef.current = false;
+      setIsAddingBot(false);
     }
   };
 
@@ -181,39 +200,38 @@ export const WaitingForPlayersTable = ({
     reservedBotPositionsRef.current.add(nextPosition);
 
     let succeeded = false;
+    let botNameForToast = "Bot";
 
     try {
       // Create bot profile with guaranteed-unique name using UUID suffix first time
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
-      
+
       // Use a short unique suffix from the bot ID to avoid collisions during rapid adds
-      const suffix = botId.replace(/-/g, '').slice(0, 6);
+      const suffix = botId.replace(/-/g, "").slice(0, 6);
       const botName = `Bot ${suffix}`;
+      botNameForToast = botName;
 
       // Insert bot profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: botId,
-          username: botName,
-          aggression_level: aggressionLevel,
-        });
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: botId,
+        username: botName,
+        aggression_level: aggressionLevel,
+      });
 
       if (profileError) {
         // If still collides (extremely rare), try with full suffix
-        if (profileError.code === '23505') {
-          const fullSuffix = botId.replace(/-/g, '').slice(0, 12);
+        if (profileError.code === "23505") {
+          const fullSuffix = botId.replace(/-/g, "").slice(0, 12);
           const fallbackName = `Bot ${fullSuffix}`;
-          
-          const { error: retryError } = await supabase
-            .from('profiles')
-            .insert({
-              id: botId,
-              username: fallbackName,
-              aggression_level: aggressionLevel,
-            });
-          
+          botNameForToast = fallbackName;
+
+          const { error: retryError } = await supabase.from("profiles").insert({
+            id: botId,
+            username: fallbackName,
+            aggression_level: aggressionLevel,
+          });
+
           if (retryError) {
             throw new Error(`Failed to create bot profile: ${retryError.message}`);
           }
@@ -223,27 +241,27 @@ export const WaitingForPlayersTable = ({
       }
 
       // Create bot player - active and ready to play (not sitting out)
-      const { error: playerError } = await supabase
-        .from('players')
-        .insert({
-          user_id: botId,
-          game_id: gameId,
-          position: nextPosition,
-          chips: 0,
-          is_bot: true,
-          status: 'active',
-          sitting_out: false,
-          waiting: true, // Waiting to start game
-        });
+      const { error: playerError } = await supabase.from("players").insert({
+        user_id: botId,
+        game_id: gameId,
+        position: nextPosition,
+        chips: 0,
+        is_bot: true,
+        status: "active",
+        sitting_out: false,
+        waiting: true, // Waiting to start game
+      });
 
       if (playerError) {
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
 
       succeeded = true;
+      toast.success(`${botNameForToast} joined`);
       return true;
     } catch (error: any) {
-      console.error('Error adding bot:', error);
+      console.error("Error adding bot:", error);
+      toast.error(error?.message ? `Bot add failed: ${error.message}` : "Bot add failed");
       return true; // keep queue moving, user can tap again
     } finally {
       // Only release reservation on failure; on success we'll release once players update.
