@@ -59,7 +59,7 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+    <div className="fixed inset-0 z-[1000] pointer-events-none overflow-hidden">
       {/* Single unified graphic: background + overlays + text all inside ONE SVG */}
       <svg
         className="absolute inset-0 h-full w-full animate-scale-in"

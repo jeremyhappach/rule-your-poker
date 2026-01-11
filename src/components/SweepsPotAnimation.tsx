@@ -31,7 +31,7 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-[200] pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 flex items-center justify-center z-[1000] pointer-events-none overflow-hidden">
       {/* Animated gold/rainbow background pulse */}
       <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/30 via-amber-400/40 to-yellow-500/30 animate-pulse" />
       
