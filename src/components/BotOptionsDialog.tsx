@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
+import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 
 interface BotPlayer {
   id: string;

@@ -62,6 +62,47 @@ type DeadlineDebugSnapshot = {
   rounds: any[];
 };
 
+// Helper to log sitting_out/sit_out_next_hand changes for debugging
+async function logSittingOutChange(
+  supabase: any,
+  playerId: string,
+  userId: string,
+  gameId: string,
+  username: string | null,
+  isBot: boolean,
+  fieldChanged: 'sitting_out' | 'sit_out_next_hand',
+  oldValue: boolean,
+  newValue: boolean,
+  reason: string,
+  sourceLocation: string,
+  additionalContext?: Record<string, unknown>
+): Promise<void> {
+  // Skip logging for bots
+  if (isBot) return;
+  // Only log if value is changing
+  if (oldValue === newValue) return;
+
+  try {
+    await supabase
+      .from('sitting_out_debug_log')
+      .insert({
+        player_id: playerId,
+        user_id: userId,
+        game_id: gameId,
+        username: username || null,
+        is_bot: isBot,
+        field_changed: fieldChanged,
+        old_value: oldValue,
+        new_value: newValue,
+        reason,
+        source_location: sourceLocation,
+        additional_context: additionalContext || null,
+      });
+  } catch (e) {
+    console.error('[ENFORCE] Failed to log sitting out change:', e);
+  }
+}
+
 function describeDeadline(deadlineIso: string | null | undefined, now: Date) {
   if (!deadlineIso) {
     return { iso: null, msFromNow: null, isExpired: false };
@@ -357,6 +398,22 @@ serve(async (req) => {
         const dealerPlayer = players?.find(p => p.position === game.dealer_position);
 
         if (dealerPlayer) {
+          // Log this status change for debugging (before the update)
+          await logSittingOutChange(
+            supabase,
+            dealerPlayer.id,
+            dealerPlayer.user_id,
+            gameId,
+            null, // We don't have username in this query
+            dealerPlayer.is_bot,
+            'sitting_out',
+            dealerPlayer.sitting_out,
+            true,
+            'Dealer timed out during config phase (edge function enforcement)',
+            'enforce-deadlines/index.ts:config_deadline',
+            { dealer_position: game.dealer_position, config_deadline: game.config_deadline }
+          );
+
           // Mark dealer as sitting out
           await supabase
             .from('players')
@@ -507,6 +564,24 @@ serve(async (req) => {
         const undecidedPlayers = players?.filter(p => !p.ante_decision && !p.sitting_out) || [];
         
         if (undecidedPlayers.length > 0) {
+          // Log each human player's status change for debugging
+          for (const player of undecidedPlayers) {
+            await logSittingOutChange(
+              supabase,
+              player.id,
+              player.user_id,
+              gameId,
+              null,
+              player.is_bot,
+              'sitting_out',
+              player.sitting_out,
+              true,
+              'Player did not respond to ante decision in time (edge function enforcement)',
+              'enforce-deadlines/index.ts:ante_deadline',
+              { ante_decision_deadline: game.ante_decision_deadline }
+            );
+          }
+
           const undecidedIds = undecidedPlayers.map(p => p.id);
           
           await supabase

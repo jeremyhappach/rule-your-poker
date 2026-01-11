@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
+import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { toast } from "sonner";
 
 type SelectionStep = 'category' | 'cards' | 'dice';
@@ -208,6 +209,28 @@ export const DealerGameSetup = ({
 
     try {
       console.log('[DEALER SETUP] Dealer timed out, marking as sitting out');
+
+      // Log this status change for debugging (before the update)
+      // Need to fetch the current player's user_id and username for logging
+      const { data: dealerPlayerData } = await supabase
+        .from('players')
+        .select('user_id, sitting_out, is_bot, profiles(username)')
+        .eq('id', dealerPlayerId)
+        .single();
+
+      if (dealerPlayerData && !dealerPlayerData.is_bot) {
+        await logSittingOutSet(
+          dealerPlayerId,
+          dealerPlayerData.user_id,
+          gameId,
+          dealerPlayerData.profiles?.username,
+          dealerPlayerData.is_bot,
+          dealerPlayerData.sitting_out,
+          'Dealer timed out during game setup/configuration',
+          'DealerGameSetup.tsx:handleDealerTimeout',
+          { dealer_position: dealerPosition, dealer_username: dealerUsername }
+        );
+      }
 
       // Mark dealer as sitting out
       const { error: sitOutError } = await supabase

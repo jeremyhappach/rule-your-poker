@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBotAlias } from "@/lib/botAlias";
 import { snapshotPlayerChips } from "@/lib/gameLogic";
+import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 import {
   HorsesHand,
   HorsesHandResult,
@@ -937,6 +938,19 @@ export function useHorsesMobileController({
           result,
         });
       }
+
+      // Log this status change for debugging (before the update)
+      await logSitOutNextHandSet(
+        currentTurnPlayerId,
+        currentTurnPlayer?.user_id || '',
+        gameId,
+        currentTurnPlayer?.profiles?.username,
+        currentTurnPlayer?.is_bot || false,
+        false, // old value - they weren't sitting out
+        'Player timed out during Horses turn, setting sit_out_next_hand=true',
+        'useHorsesMobileController.ts:handleTimeout',
+        { round_id: currentRoundId, forced_result: result }
+      );
 
       // Mark player to sit out next hand (disconnect/timeout penalty)
       await supabase.from("players").update({ sit_out_next_hand: true }).eq("id", currentTurnPlayerId);

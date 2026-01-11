@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 
 interface Player {
   id: string;
@@ -10,6 +11,7 @@ interface Player {
   sit_out_next_hand: boolean;
   is_bot: boolean;
   auto_fold: boolean;
+  profiles?: { username: string };
 }
 
 /**
@@ -29,10 +31,10 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
 }> {
   console.log('[PLAYER EVAL] ========== Evaluating player states for game:', gameId, '==========');
   
-  // Fetch all players for this game
+  // Fetch all players for this game with profile info for logging
   const { data: players, error } = await supabase
     .from('players')
-    .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, status, auto_fold')
+    .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, status, auto_fold, profiles(username)')
     .eq('game_id', gameId)
     .order('position');
   
@@ -79,6 +81,20 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
       } else {
         // For humans, set sitting_out=true and clear flags (they keep their seat for now)
         // A proper observer system would require nullable position column
+        
+        // Log this status change for debugging
+        await logSittingOutSet(
+          player.id,
+          player.user_id,
+          gameId,
+          player.profiles?.username,
+          player.is_bot,
+          player.sitting_out,
+          'Player had stand_up_next_hand=true, setting sitting_out=true',
+          'playerStateEvaluation.ts:evaluatePlayerStatesEndOfGame',
+          { position: player.position, stand_up_next_hand: true }
+        );
+        
         const { error: updateError } = await supabase
           .from('players')
           .update({
@@ -101,6 +117,19 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     if (player.sit_out_next_hand) {
       console.log('[PLAYER EVAL] Player', player.position, 'sitting out next hand');
       
+      // Log this status change for debugging
+      await logSittingOutSet(
+        player.id,
+        player.user_id,
+        gameId,
+        player.profiles?.username,
+        player.is_bot,
+        player.sitting_out,
+        'Player had sit_out_next_hand=true, converting to sitting_out=true',
+        'playerStateEvaluation.ts:evaluatePlayerStatesEndOfGame',
+        { position: player.position, sit_out_next_hand: true }
+      );
+      
       const { error: updateError } = await supabase
         .from('players')
         .update({
@@ -119,6 +148,19 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     // 3. auto_fold = true → sitting_out = true (player timed out and is auto-folding)
     if (player.auto_fold) {
       console.log('[PLAYER EVAL] Player', player.position, 'has auto_fold=true - sitting out');
+      
+      // Log this status change for debugging
+      await logSittingOutSet(
+        player.id,
+        player.user_id,
+        gameId,
+        player.profiles?.username,
+        player.is_bot,
+        player.sitting_out,
+        'Player had auto_fold=true (timed out), setting sitting_out=true',
+        'playerStateEvaluation.ts:evaluatePlayerStatesEndOfGame',
+        { position: player.position, auto_fold: true }
+      );
       
       const { error: updateError } = await supabase
         .from('players')
