@@ -31,7 +31,7 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-50 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 flex flex-col items-center justify-center z-[1000] pointer-events-none overflow-hidden">
       {/* Dark dramatic overlay */}
       <div className="absolute inset-0 bg-black/45" />
       

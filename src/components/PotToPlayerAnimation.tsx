@@ -310,7 +310,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
         left: animation.fromX,
         top: animation.fromY,
         transform: 'translate(-50%, -50%)',
-        zIndex: 2147483647,
+        zIndex: 200,
       }}
     >
       <div

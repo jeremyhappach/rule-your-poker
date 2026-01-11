@@ -25,7 +25,7 @@ export const BucksOnYouAnimation = ({ show, onComplete }: BucksOnYouAnimationPro
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none animate-[fadeOut_0.3s_ease-out_1.2s_forwards]">
+    <div className="absolute inset-0 flex items-center justify-center z-[1000] pointer-events-none animate-[fadeOut_0.3s_ease-out_1.2s_forwards]">
       {/* Dark red flash overlay - quick flash */}
       <div className="absolute inset-0 bg-red-900/30 animate-[pulse_0.1s_ease-in-out_3]" />
       
