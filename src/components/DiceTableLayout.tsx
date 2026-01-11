@@ -143,7 +143,22 @@ export function DiceTableLayout({
     }));
   }, [setStateGetter, isAnimatingFlyIn, showUnheldDice, isInCompletionTransition, hideFormerlyUnheld, animatingDiceIndices.length, dice, rollKey]);
 
+  // Schedules a timeout and logs actual fire time (catches timer drift / main-thread blocking)
+  const scheduleTimeout = useCallback(
+    (label: string, delayMs: number, cb: () => void) => {
+      const scheduledAt = Date.now();
+      logEvent(`${label}: scheduled ${delayMs}ms`);
+      return window.setTimeout(() => {
+        const actual = Date.now() - scheduledAt;
+        logEvent(`${label}: fired after ${actual}ms`);
+        cb();
+      }, delayMs);
+    },
+    [logEvent]
+  );
+
   // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
+
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
   useLayoutEffect(() => {
     // Reset completion transition when a new roll starts
@@ -225,19 +240,19 @@ export function DiceTableLayout({
       logEvent('ALL HELD: starting completion transition');
       setIsInCompletionTransition(true);
       setHideFormerlyUnheld(false);
-      
+
       // Quick transition: 200ms for CSS + 100ms buffer = 300ms total
-      completionTransitionTimeoutRef.current = window.setTimeout(() => {
+      completionTransitionTimeoutRef.current = scheduleTimeout('COMPLETION: hide formerly unheld', 200, () => {
         logEvent('HIDE FORMERLY UNHELD');
         setHideFormerlyUnheld(true);
-        setTimeout(() => {
+        scheduleTimeout('COMPLETION: done', 100, () => {
           logEvent('COMPLETION TRANSITION DONE');
           setIsInCompletionTransition(false);
-        }, 100);
-      }, 200);
+        });
+      });
     }
     prevAllHeldRef.current = allHeldNow;
-  }, [allHeldNow, isAnimatingFlyIn, logEvent]);
+  }, [allHeldNow, isAnimatingFlyIn, logEvent, scheduleTimeout]);
 
   // Handle animation complete - unheld dice fade out quickly after held dice move
   // Timeline: fly-in done → 50ms → layout flip → 200ms CSS → 300ms delay → hide unheld
@@ -252,17 +267,17 @@ export function DiceTableLayout({
     setAnimatingDiceIndices([]);
 
     // Quick flip to held layout
-    window.setTimeout(() => {
+    scheduleTimeout('FLY-IN: flip to held layout', 50, () => {
       logEvent('SET isAnimatingFlyIn=false');
       setIsAnimatingFlyIn(false);
 
       // After held dice CSS transition (200ms), wait 300ms then hide unheld
-      animationCompleteTimeoutRef.current = window.setTimeout(() => {
+      animationCompleteTimeoutRef.current = scheduleTimeout('FLY-IN: hide unheld dice', 200 + 300, () => {
         logEvent('SET showUnheldDice=false');
         setShowUnheldDice(false);
-      }, 200 + 300); // 200ms CSS + 300ms delay = 500ms
-    }, 50);
-  }, [logEvent]);
+      });
+    });
+  }, [logEvent, scheduleTimeout]);
   
   // If showing "You are rolling" message, render that instead of dice
   if (showRollingMessage) {

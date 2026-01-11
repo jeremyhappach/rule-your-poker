@@ -44,6 +44,15 @@ export function DiceRollAnimation({
   const completedRef = useRef(false);
   const completionTimeoutRef = useRef<number | null>(null);
 
+  // Granular timing instrumentation (helps detect main-thread stalls / timer drift)
+  const perfRef = useRef({
+    wallStart: 0,
+    perfStart: 0,
+    lastRafTs: 0,
+    frames: 0,
+    lastMilestone: -1,
+  });
+
   // Avoid re-starting the animation when the parent re-renders and passes a new onComplete fn.
   const onCompleteRef = useRef(onComplete);
   useEffect(() => {
@@ -63,7 +72,18 @@ export function DiceRollAnimation({
   useEffect(() => {
     if (animatingIndices.length === 0) return;
 
-    logTimingEvent(`[DiceRollAnimation] START: ${animatingIndices.length} dice, duration=${ANIMATION_DURATION}ms`);
+    // Reset per-run timing stats
+    perfRef.current = {
+      wallStart: Date.now(),
+      perfStart: typeof performance !== "undefined" ? performance.now() : 0,
+      lastRafTs: 0,
+      frames: 0,
+      lastMilestone: -1,
+    };
+
+    logTimingEvent(
+      `[DiceRollAnimation] START: ${animatingIndices.length} dice, duration=${ANIMATION_DURATION}ms`
+    );
 
     // Cancel anything in-flight before starting a new run
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -78,7 +98,18 @@ export function DiceRollAnimation({
     startTimeRef.current = null;
 
     const animate = (timestamp: number) => {
-      if (!startTimeRef.current) startTimeRef.current = timestamp;
+      if (!startTimeRef.current) {
+        startTimeRef.current = timestamp;
+        perfRef.current.lastRafTs = timestamp;
+      }
+
+      // Detect RAF gaps (usually means main thread was blocked)
+      const frameGap = timestamp - perfRef.current.lastRafTs;
+      if (perfRef.current.frames > 0 && frameGap > 150) {
+        logTimingEvent(`[DiceRollAnimation] RAF GAP: ${Math.round(frameGap)}ms`);
+      }
+      perfRef.current.lastRafTs = timestamp;
+      perfRef.current.frames += 1;
 
       const elapsed = timestamp - startTimeRef.current;
       const progress = Math.min(elapsed / ANIMATION_DURATION, 1);
@@ -86,6 +117,15 @@ export function DiceRollAnimation({
       // Easing function: ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setFlyProgress(eased);
+
+      // Milestone logging (0%, 25%, 50%, 75%, 100%)
+      const milestone = Math.min(4, Math.floor(progress * 4));
+      if (milestone > perfRef.current.lastMilestone) {
+        perfRef.current.lastMilestone = milestone;
+        logTimingEvent(
+          `[DiceRollAnimation] PROGRESS ${milestone * 25}% (elapsed=${Math.round(elapsed)}ms, frames=${perfRef.current.frames})`
+        );
+      }
 
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
@@ -96,9 +136,14 @@ export function DiceRollAnimation({
       setPhase("landing");
       if (!completedRef.current) {
         completedRef.current = true;
-        logTimingEvent(`[DiceRollAnimation] LANDED after ${ANIMATION_DURATION}ms, calling onComplete in 100ms`);
+        logTimingEvent(
+          `[DiceRollAnimation] LANDED (elapsed=${Math.round(elapsed)}ms, frames=${perfRef.current.frames}), calling onComplete in 100ms`
+        );
+
+        const scheduledAt = Date.now();
         completionTimeoutRef.current = window.setTimeout(() => {
-          logTimingEvent(`[DiceRollAnimation] CALLING onComplete`);
+          const actualDelay = Date.now() - scheduledAt;
+          logTimingEvent(`[DiceRollAnimation] CALLING onComplete (timerDelay=${actualDelay}ms)`);
           onCompleteRef.current();
         }, 100);
       }
