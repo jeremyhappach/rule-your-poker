@@ -90,29 +90,31 @@ export function getBotHoldDecision(context: BotDecisionContext): HoldDecision {
       const winningValue = currentWinningResult.highValue;
       
       // Find target: prefer going for higher count if close, else match count with higher value
+      // CRITICAL: Skip impossible targets (needing > 5 dice)
       let bestTarget = 6;
-      let bestScore = -1;
+      let bestScore = -Infinity;
       
       for (let v = 6; v >= 2; v--) {
         const currentCountForV = counts[v] + wildCount;
         
-        // Score: how many more dice do we need to beat/tie?
-        // Lower is better
+        // Calculate what we need to tie/beat
         let neededForTie: number;
-        let neededForBeat: number;
         
         if (v > winningValue) {
           // Higher value - need same count to beat
           neededForTie = winningCount;
-          neededForBeat = winningCount;
         } else if (v === winningValue) {
           // Same value - need same count to tie
           neededForTie = winningCount;
-          neededForBeat = winningCount + 1; // Can't beat with same value (max 5)
         } else {
-          // Lower value - need higher count to beat
+          // Lower value - need higher count to beat (e.g., 5 fives can NEVER beat 5 sixes)
           neededForTie = winningCount + 1;
-          neededForBeat = winningCount + 1;
+        }
+        
+        // CRITICAL FIX: If we need more than 5 dice, this target is IMPOSSIBLE
+        // Skip it entirely - don't even consider it
+        if (neededForTie > 5) {
+          continue;
         }
         
         const shortfall = Math.max(0, neededForTie - currentCountForV);
