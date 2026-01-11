@@ -120,7 +120,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
               <div className="space-y-2">
                 <h4 className="font-semibold">Gameplay</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li>Players decide one at a time, clockwise from the buck</li>
+                  <li>Players decide one at a time, clockwise starting with the buck</li>
                   <li>Choose to <strong>Stay</strong> (remain in hand) or <strong>Fold</strong> (exit hand)</li>
                   <li>Timer enforced - timeout = auto-fold</li>
                 </ul>
@@ -150,7 +150,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li>All cards revealed, remaining community cards exposed</li>
                   <li>Best 5-card hand wins the pot</li>
-                  <li>Loser(s) match the pot (capped at pot max)</li>
+                  <li>Loser(s) match the pot (capped at pot max); winner takes the pot</li>
                   <li>Buck passes, matched amount becomes new pot</li>
                   <li><strong>Tie between players:</strong> Both play Chucky together</li>
                 </ul>
