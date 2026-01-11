@@ -327,10 +327,10 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             opacity: 1;
           }
           ${isDiceGame ? `
-          /* Dice games: straight line, no bounce - matches 357 style */
-          85% {
+          /* Dice games: straight line from pot to player, no bounce/scale - matches 357 style */
+          100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
-            opacity: 1;
+            opacity: 0;
           }
           ` : `
           15% {
@@ -341,11 +341,11 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 1;
           }
-          `}
           100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(0);
             opacity: 0;
           }
+          `}
         }
       `}</style>
     </div>

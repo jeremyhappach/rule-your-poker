@@ -1775,6 +1775,9 @@ export function useHorsesMobileController({
     return state?.dice ?? null;
   }, [completedResults, horsesState?.playerStates]);
 
+  // Check if the current best hand is tied (multiple players share it)
+  const isCurrentWinningTied = currentlyWinningPlayerIds.length > 1;
+
   return {
     enabled,
     anteAmount,
@@ -1793,6 +1796,7 @@ export function useHorsesMobileController({
     winningPlayerIds,
     currentlyWinningPlayerIds,
     currentWinningResult,
+    isCurrentWinningTied,
     getPlayerHandResult,
     getWinningPlayerDice,
     handleRoll,

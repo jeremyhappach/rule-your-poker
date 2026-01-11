@@ -3703,6 +3703,10 @@ export const MobileGameTable = ({
                         size="sm"
                       />
                     ) : null}
+                    {/* Show "Tied" indicator when multiple players share the best hand */}
+                    {horsesController.isCurrentWinningTied && (
+                      <span className="text-xs font-medium text-amber-400">(Tied)</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -3777,6 +3781,10 @@ export const MobileGameTable = ({
                       })()}
                       {gameType === 'horses' && (
                         <HorsesHandResultDisplay description={horsesController.currentWinningResult.description} isWinning={true} size="sm" />
+                      )}
+                      {/* Show "Tied" indicator when multiple players share the best hand */}
+                      {horsesController.isCurrentWinningTied && (
+                        <span className="text-xs font-medium text-amber-400">(Tied)</span>
                       )}
                     </div>
                   )}
