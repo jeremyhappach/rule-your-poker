@@ -3240,9 +3240,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
-    // Apply results only if this fetch is still the most recent.
+    // ALWAYS update players, even if fetch is stale - players list should reflect latest data
+    // This is critical for the waiting phase where bots are added and need to appear immediately
+    setPlayers((playersData || []).sort((a, b) => a.position - b.position));
+
+    // Apply game state only if this fetch is still the most recent.
+    // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
     if (isStale()) {
-      console.log('[FETCH] Ignoring stale fetch results before state apply', { fetchSeq, latest: fetchSeqRef.current });
+      console.log('[FETCH] Ignoring stale fetch results for game state', { fetchSeq, latest: fetchSeqRef.current });
       return;
     }
 
@@ -3260,9 +3265,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-
-    // Sort players by position for consistent rendering
-    setPlayers((playersData || []).sort((a, b) => a.position - b.position));
     
     // Calculate time left ONLY if game is actively in progress AND not in transition
     // CRITICAL: Never set timeLeft during game_over to prevent unmounting GameOverCountdown
