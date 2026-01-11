@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
-import { logTimingEvent } from "@/hooks/useDiceTimingDebug";
 
 interface DiceRollAnimationProps {
   /** The dice to animate */
@@ -81,10 +80,6 @@ export function DiceRollAnimation({
       lastMilestone: -1,
     };
 
-    logTimingEvent(
-      `[DiceRollAnimation] START: ${animatingIndices.length} dice, duration=${ANIMATION_DURATION}ms`
-    );
-
     // Cancel anything in-flight before starting a new run
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     if (completionTimeoutRef.current) {
@@ -105,9 +100,6 @@ export function DiceRollAnimation({
 
       // Detect RAF gaps (usually means main thread was blocked)
       const frameGap = timestamp - perfRef.current.lastRafTs;
-      if (perfRef.current.frames > 0 && frameGap > 150) {
-        logTimingEvent(`[DiceRollAnimation] RAF GAP: ${Math.round(frameGap)}ms`);
-      }
       perfRef.current.lastRafTs = timestamp;
       perfRef.current.frames += 1;
 
@@ -118,15 +110,6 @@ export function DiceRollAnimation({
       const eased = 1 - Math.pow(1 - progress, 3);
       setFlyProgress(eased);
 
-      // Milestone logging (0%, 25%, 50%, 75%, 100%)
-      const milestone = Math.min(4, Math.floor(progress * 4));
-      if (milestone > perfRef.current.lastMilestone) {
-        perfRef.current.lastMilestone = milestone;
-        logTimingEvent(
-          `[DiceRollAnimation] PROGRESS ${milestone * 25}% (elapsed=${Math.round(elapsed)}ms, frames=${perfRef.current.frames})`
-        );
-      }
-
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
         return;
@@ -136,14 +119,8 @@ export function DiceRollAnimation({
       setPhase("landing");
       if (!completedRef.current) {
         completedRef.current = true;
-        logTimingEvent(
-          `[DiceRollAnimation] LANDED (elapsed=${Math.round(elapsed)}ms, frames=${perfRef.current.frames}), calling onComplete in 100ms`
-        );
 
-        const scheduledAt = Date.now();
         completionTimeoutRef.current = window.setTimeout(() => {
-          const actualDelay = Date.now() - scheduledAt;
-          logTimingEvent(`[DiceRollAnimation] CALLING onComplete (timerDelay=${actualDelay}ms)`);
           onCompleteRef.current();
         }, 100);
       }

@@ -142,7 +142,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   // Get active players for ante collection
   const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('id, chips, sitting_out')
+    .select('id, chips, sitting_out, sit_out_next_hand')
     .eq('game_id', gameId);
 
   if (playersError) {
@@ -150,7 +150,28 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     throw new Error('Failed to get players');
   }
 
-  const activePlayers = (players || []).filter((p) => !p.sitting_out);
+  // For rollovers (not first hand), clear sitting_out for players who don't have sit_out_next_hand set
+  if (!isFirstHand) {
+    const playersToReactivate = (players || []).filter(
+      (p) => p.sitting_out && !p.sit_out_next_hand
+    );
+    if (playersToReactivate.length > 0) {
+      const reactivateIds = playersToReactivate.map((p) => p.id);
+      console.log('[SCC] Reactivating players for rollover:', reactivateIds);
+      await supabase
+        .from('players')
+        .update({ sitting_out: false })
+        .in('id', reactivateIds);
+    }
+  }
+
+  // Re-fetch to get updated sitting_out status
+  const { data: freshPlayers } = await supabase
+    .from('players')
+    .select('id, chips, sitting_out')
+    .eq('game_id', gameId);
+
+  const activePlayers = (freshPlayers || []).filter((p) => !p.sitting_out);
   const anteAmount = game.ante_amount || 2;
 
   // Calculate pot: previous pot (for re-ante/tie) + new antes

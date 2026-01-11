@@ -4,7 +4,6 @@ import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
-import { useDiceTimingDebug, logTimingEvent } from "@/hooks/useDiceTimingDebug";
 
 interface DiceTableLayoutProps {
   dice: (HorsesDieType | SCCDieType)[];
@@ -95,9 +94,6 @@ export function DiceTableLayout({
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
   
-  // Timing debug
-  const { setStateGetter, logEvent } = useDiceTimingDebug('DiceTableLayout');
-  
   // Track fly-in animation state
   const [isAnimatingFlyIn, setIsAnimatingFlyIn] = useState(false);
   const [animatingDiceIndices, setAnimatingDiceIndices] = useState<number[]>([]);
@@ -129,32 +125,12 @@ export function DiceTableLayout({
   // This prevents the empty container from rendering during state transitions
   const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(dice);
   
-  // Register timing state getter
-  useEffect(() => {
-    setStateGetter(() => ({
-      isAnimatingFlyIn,
-      showUnheldDice,
-      isInCompletionTransition,
-      hideFormerlyUnheld,
-      animatingCount: animatingDiceIndices.length,
-      heldCount: dice.filter(d => d.isHeld).length,
-      unheldCount: dice.filter(d => !d.isHeld).length,
-      rollKey: String(rollKey ?? 'none'),
-    }));
-  }, [setStateGetter, isAnimatingFlyIn, showUnheldDice, isInCompletionTransition, hideFormerlyUnheld, animatingDiceIndices.length, dice, rollKey]);
-
-  // Schedules a timeout and logs actual fire time (catches timer drift / main-thread blocking)
+  // Schedules a timeout
   const scheduleTimeout = useCallback(
-    (label: string, delayMs: number, cb: () => void) => {
-      const scheduledAt = Date.now();
-      logEvent(`${label}: scheduled ${delayMs}ms`);
-      return window.setTimeout(() => {
-        const actual = Date.now() - scheduledAt;
-        logEvent(`${label}: fired after ${actual}ms`);
-        cb();
-      }, delayMs);
+    (delayMs: number, cb: () => void) => {
+      return window.setTimeout(cb, delayMs);
     },
-    [logEvent]
+    []
   );
 
   // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
@@ -172,7 +148,6 @@ export function DiceTableLayout({
     }
     
     if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
-      logEvent(`NEW ROLL: rollKey=${rollKey}`);
       prevRollKeyRef.current = rollKey;
 
       const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
@@ -208,7 +183,6 @@ export function DiceTableLayout({
 
       // Trigger fly-in animation if we have an origin.
       if (animationOrigin && unheldIndices.length > 0) {
-        logEvent(`START FLY-IN: ${unheldIndices.length} dice`);
         setAnimatingDiceIndices(unheldIndices);
         setIsAnimatingFlyIn(true);
         // Show unheld dice when animation starts (they'll animate in)
@@ -237,28 +211,24 @@ export function DiceTableLayout({
   const allHeldNow = dice.length > 0 && dice.every(d => d.isHeld);
   useLayoutEffect(() => {
     if (allHeldNow && !prevAllHeldRef.current && !isAnimatingFlyIn) {
-      logEvent('ALL HELD: starting completion transition');
       setIsInCompletionTransition(true);
       setHideFormerlyUnheld(false);
 
       // Quick transition: 200ms for CSS + 100ms buffer = 300ms total
-      completionTransitionTimeoutRef.current = scheduleTimeout('COMPLETION: hide formerly unheld', 200, () => {
-        logEvent('HIDE FORMERLY UNHELD');
+      completionTransitionTimeoutRef.current = scheduleTimeout(200, () => {
         setHideFormerlyUnheld(true);
-        scheduleTimeout('COMPLETION: done', 100, () => {
-          logEvent('COMPLETION TRANSITION DONE');
+        scheduleTimeout(100, () => {
           setIsInCompletionTransition(false);
         });
       });
     }
     prevAllHeldRef.current = allHeldNow;
-  }, [allHeldNow, isAnimatingFlyIn, logEvent, scheduleTimeout]);
+  }, [allHeldNow, isAnimatingFlyIn, scheduleTimeout]);
 
   // Handle animation complete - unheld dice fade out quickly after held dice move
   // Timeline: fly-in done → 50ms → layout flip → 200ms CSS → 300ms delay → hide unheld
   // Total: ~1750ms from roll start (1200ms fly-in + 550ms post)
   const handleAnimationComplete = useCallback(() => {
-    logEvent('FLY-IN COMPLETE (callback received)');
     if (animationCompleteTimeoutRef.current) {
       clearTimeout(animationCompleteTimeoutRef.current);
       animationCompleteTimeoutRef.current = null;
@@ -267,17 +237,15 @@ export function DiceTableLayout({
     setAnimatingDiceIndices([]);
 
     // Quick flip to held layout
-    scheduleTimeout('FLY-IN: flip to held layout', 50, () => {
-      logEvent('SET isAnimatingFlyIn=false');
+    scheduleTimeout(50, () => {
       setIsAnimatingFlyIn(false);
 
       // After held dice CSS transition (200ms), wait 300ms then hide unheld
-      animationCompleteTimeoutRef.current = scheduleTimeout('FLY-IN: hide unheld dice', 200 + 300, () => {
-        logEvent('SET showUnheldDice=false');
+      animationCompleteTimeoutRef.current = scheduleTimeout(200 + 300, () => {
         setShowUnheldDice(false);
       });
     });
-  }, [logEvent, scheduleTimeout]);
+  }, [scheduleTimeout]);
   
   // If showing "You are rolling" message, render that instead of dice
   if (showRollingMessage) {
