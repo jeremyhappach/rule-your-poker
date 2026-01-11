@@ -149,12 +149,20 @@ export function HorsesMobileCardsTab({
       {showMyDice && (
         <div className="flex items-center justify-center gap-1 mb-3">
           {horses.localHand.dice.map((die, idx) => {
-            // On roll 3 (rollsRemaining=0), all dice are "locked in" so none should show held styling
-            const showHeldStyling = horses.localHand.rollsRemaining > 0 && (die as any).isHeld;
-
-            // Animate dice that were NOT held at the start of this roll.
+            // Determine if this die was held at the START of the current roll
             const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? (die as any).isHeld;
+            
+            // Animate dice that were NOT held at the start of this roll.
             const shouldAnimate = rolling && !heldAtRollStart;
+
+            // For held styling:
+            // - Don't show held styling on dice that are currently animating (to allow the roll animation)
+            // - On roll 3 (rollsRemaining=0), all dice are "locked in" so none should show held styling
+            // - During animation, dice that weren't held at roll start should NOT show held styling
+            //   even if they are now held (e.g., SCC auto-held 6/5/4) - this allows the animation to play
+            const showHeldStyling = horses.localHand.rollsRemaining > 0 && 
+              (die as any).isHeld && 
+              !shouldAnimate; // Don't show held styling while animating
 
             return (
               <HorsesDie
