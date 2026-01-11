@@ -85,6 +85,14 @@ export const DealerGameSetup = ({
   const handleDealerTimeoutRef = useRef<() => void>(() => {});
   const configTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
+  // Mount delay to prevent brief flash during rapid status transitions
+  // The component waits 50ms before rendering to ensure parent isn't about to unmount it
+  const [mountReady, setMountReady] = useState(false);
+  useEffect(() => {
+    const mountTimer = setTimeout(() => setMountReady(true), 50);
+    return () => clearTimeout(mountTimer);
+  }, []);
+  
   // Config state - use strings for free text input with validation on save
   const [anteAmount, setAnteAmount] = useState("2");
   const [legValue, setLegValue] = useState("1");
@@ -691,6 +699,12 @@ export const DealerGameSetup = ({
 
   // Hide modal immediately when submitting to prevent flicker on rapid selection
   if (isSubmitting) {
+    return null;
+  }
+
+  // Delay mount to prevent brief flash during rapid status transitions
+  // If component unmounts within 50ms, user never sees any modal
+  if (!mountReady) {
     return null;
   }
 

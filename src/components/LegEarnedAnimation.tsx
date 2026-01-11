@@ -14,6 +14,7 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
+  const activeTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Keep ref updated
   onCompleteRef.current = onComplete;
@@ -32,17 +33,27 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       hasShownRef.current = true;
       setVisible(true);
       
+      // Clear any existing timer to prevent double-fires
+      if (activeTimerRef.current) {
+        clearTimeout(activeTimerRef.current);
+      }
+      
       // Hide after fly-in completes
-      const hideTimer = setTimeout(() => {
+      activeTimerRef.current = setTimeout(() => {
+        activeTimerRef.current = null;
         setVisible(false);
         onCompleteRef.current?.();
       }, animationDuration);
       
       return () => {
-        clearTimeout(hideTimer);
+        if (activeTimerRef.current) {
+          clearTimeout(activeTimerRef.current);
+          activeTimerRef.current = null;
+        }
       };
-    } else if (!show) {
-      // Reset when show becomes false
+    } else if (!show && !activeTimerRef.current) {
+      // Only reset when show becomes false AND no active timer (animation already completed)
+      // This prevents resetting mid-animation which could cause re-triggering
       hasShownRef.current = false;
     }
   }, [show, animationDuration]);
