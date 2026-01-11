@@ -359,6 +359,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // If an empty session was deleted (no longer exists in DB), leave the game route.
   const missingGameHandledRef = useRef(false);
+
+  // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
+  const fetchSeqRef = useRef(0);
   useEffect(() => {
     if (!gameId || !user) return;
 
@@ -2990,16 +2993,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Removed failsafe - countdown component now handles completion reliably
 
   const fetchGameData = async () => {
-    console.log('[FETCH] ========== STARTING FETCH ==========');
+    const fetchSeq = ++fetchSeqRef.current;
+    const isStale = () => fetchSeq !== fetchSeqRef.current;
+
+    console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
     if (!gameId || !user) return;
 
-    console.log('[FETCH] Fetching game data...');
+    console.log('[FETCH] Fetching game data...', { fetchSeq });
 
     const { data: gameData, error: gameError } = await supabase
       .from('games')
       .select('*, rounds(*)')
       .eq('id', gameId)
       .maybeSingle();
+
+    // If a newer fetch started while this one was in-flight, ignore this response.
+    if (isStale()) {
+      console.log('[FETCH] Ignoring stale fetch response (post games query)', { fetchSeq, latest: fetchSeqRef.current });
+      return;
+    }
 
     if (gameError) {
       const code = (gameError as any)?.code;
@@ -3047,8 +3059,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .select('allow_bot_dealers')
       .eq('game_type', 'holm')
       .single();
-    
-    setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
+
+    if (!isStale()) {
+      setAllowBotDealers((gameDefaults as any)?.allow_bot_dealers ?? false);
+    }
     
     // CRITICAL: Update refs for detecting changes via local state comparison
     const prevGameType = lastKnownGameTypeRef.current;
@@ -3187,10 +3201,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
-            setPlayerCards(cardsData.map(cd => ({
-              player_id: cd.player_id,
-              cards: cd.cards as unknown as CardType[]
-            })));
+            if (!isStale()) {
+              setPlayerCards(
+                cardsData.map((cd) => ({
+                  player_id: cd.player_id,
+                  cards: cd.cards as unknown as CardType[],
+                }))
+              );
+            }
           } else if (cardsError) {
             console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
           } else {
@@ -3201,7 +3219,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 prevPlayerCardsRoundId,
                 nextRoundId: roundData.id,
               });
-              setPlayerCards([]);
+              if (!isStale()) {
+                setPlayerCards([]);
+              }
             } else {
               console.log('[FETCH] No cards found for round, keeping existing cards (same round - likely timing)');
             }
@@ -3215,15 +3235,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } else if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') {
       // Only clear cards when explicitly NOT in active play states
       console.log('[FETCH] Clearing player cards (status:', gameData.status, ')');
-      setPlayerCards([]);
+      if (!isStale()) {
+        setPlayerCards([]);
+      }
+    }
+
+    // Apply results only if this fetch is still the most recent.
+    if (isStale()) {
+      console.log('[FETCH] Ignoring stale fetch results before state apply', { fetchSeq, latest: fetchSeqRef.current });
+      return;
     }
 
     setGame(gameData);
-    
+
     // CRITICAL: Update refs with current game state for realtime change detection
     lastKnownGameTypeRef.current = gameData.game_type;
     lastKnownRoundRef.current = gameData.current_round;
-    
+
     // CRITICAL: Update pause ref immediately when fetching game data
     // This ensures timer stops even if realtime updates aren't working for observers
     isPausedRef.current = gameData.is_paused;
@@ -3232,7 +3260,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
     }
-    
+
     // Sort players by position for consistent rendering
     setPlayers((playersData || []).sort((a, b) => a.position - b.position));
     
@@ -3320,7 +3348,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
     
-    setLoading(false);
+    if (!isStale()) {
+      setLoading(false);
+    }
   };
 
   // This function is called when 2+ players are seated in waiting status
