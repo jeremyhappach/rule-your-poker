@@ -82,7 +82,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
               <div className="space-y-2">
                 <h4 className="font-semibold">Winning & Scoring</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li><strong>Showdown:</strong> Multiple stayers → cards stay hidden, app determines winner secretly, loser(s) pay winner directly (capped at pot max)</li>
+                  <li><strong>Showdown:</strong> Multiple stayers → loser(s) pay winner directly (capped at pot max)</li>
                   <li><strong>Solo Stay:</strong> If only one player stays, they earn a leg</li>
                   <li><strong>Pussy Tax:</strong> If everyone folds, all players pay into the pot</li>
                   <li><strong>Win Condition:</strong> First player to reach required legs wins the pot and all player legs</li>
@@ -213,7 +213,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li>After all players roll, highest hand wins the pot</li>
                   <li>Ties go to the higher dice within the hand type</li>
-                  <li><strong>Tie:</strong> Pot splits evenly among tied players</li>
+                  <li><strong>Tie:</strong> Everyone re-antes and rolls again (pot carries over)</li>
                 </ul>
               </div>
             </TabsContent>
@@ -271,8 +271,8 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li>Highest cargo sum among qualified players wins</li>
                   <li>Qualified hands always beat NQ hands</li>
-                  <li><strong>Tie:</strong> Pot splits evenly among tied players</li>
-                  <li>If everyone NQs, pot splits among all players</li>
+                  <li><strong>Tie:</strong> Everyone re-antes and rolls again (pot carries over)</li>
+                  <li><strong>All NQ:</strong> Everyone re-antes and rolls again (pot carries over)</li>
                 </ul>
               </div>
             </TabsContent>
