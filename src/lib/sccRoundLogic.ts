@@ -17,7 +17,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -142,7 +142,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   // Get active players for ante collection
   const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('id, chips, sitting_out, sit_out_next_hand')
+    .select('id, user_id, position, is_bot, chips, sitting_out, sit_out_next_hand')
     .eq('game_id', gameId);
 
   if (playersError) {
@@ -168,11 +168,49 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   // Re-fetch to get updated sitting_out status
   const { data: freshPlayers } = await supabase
     .from('players')
-    .select('id, chips, sitting_out')
+    .select('id, user_id, position, is_bot, chips, sitting_out')
     .eq('game_id', gameId);
 
   const activePlayers = (freshPlayers || []).filter((p) => !p.sitting_out);
   const anteAmount = game.ante_amount || 2;
+
+  // Pre-initialize horses_state (reused column) so SCC can start even if the client can't UPDATE rounds (RLS-safe).
+  const sortedActive = [...activePlayers].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const dealerPos = (game as any)?.dealer_position as number | null; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const dealerIdx = dealerPos ? sortedActive.findIndex((p) => p.position === dealerPos) : -1;
+  const turnOrder = dealerIdx >= 0
+    ? Array.from({ length: sortedActive.length }, (_, i) => sortedActive[(dealerIdx + i + 1) % sortedActive.length].id)
+    : sortedActive.map((p) => p.id);
+
+  const firstTurnPlayer = sortedActive.find((p) => p.id === turnOrder[0]) ?? null;
+  const controllerUserId =
+    turnOrder
+      .map((id) => sortedActive.find((p) => p.id === id))
+      .find((p) => p && !p.is_bot)?.user_id ?? null;
+
+  const initialDice = [
+    { value: 0, isHeld: false, isSCC: false },
+    { value: 0, isHeld: false, isSCC: false },
+    { value: 0, isHeld: false, isSCC: false },
+    { value: 0, isHeld: false, isSCC: false },
+    { value: 0, isHeld: false, isSCC: false },
+  ];
+
+  const initialState: any = {
+    currentTurnPlayerId: turnOrder[0] ?? null,
+    playerStates: Object.fromEntries(
+      turnOrder.map((pid) => [
+        pid,
+        { dice: initialDice, rollsRemaining: 3, isComplete: false },
+      ]),
+    ),
+    gamePhase: 'playing',
+    turnOrder,
+    botControllerUserId: controllerUserId,
+    turnDeadline: firstTurnPlayer?.is_bot
+      ? null
+      : new Date(Date.now() + 30_000).toISOString(),
+  };
 
   // Calculate pot: previous pot (for re-ante/tie) + new antes
   const newAnteTotal = activePlayers.length * anteAmount;
@@ -189,7 +227,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       cards_dealt: 2, // SCC doesn't deal cards but constraint requires >= 2
       status: 'betting', // Use existing status; horses_state manages gamePhase
       pot: potForRound,
-      // horses_state will be initialized by the controller (reusing same field)
+      horses_state: initialState,
     })
     .select()
     .single();
