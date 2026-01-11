@@ -1640,12 +1640,19 @@ export function useHorsesMobileController({
         return null;
       }
 
+      // Include heldMaskBeforeComplete so DiceTableLayout can properly animate
+      // which dice were NOT held before the roll (including newly auto-held SCC dice)
+      const heldMaskForAnimation = heldMaskAtLastRollStartRef.current;
+      const heldCountForAnimation = heldMaskForAnimation?.filter(Boolean).length;
+
       return {
         dice,
         rollsRemaining,
         isRolling,
         canToggle: rollsRemaining < 3 && rollsRemaining > 0,
         rollKey,
+        heldMaskBeforeComplete: heldMaskForAnimation ?? undefined,
+        heldCountBeforeComplete: heldCountForAnimation,
       };
     }
 
