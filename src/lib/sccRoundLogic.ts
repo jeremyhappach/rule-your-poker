@@ -150,14 +150,14 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     throw new Error('Failed to get players');
   }
 
-  // For rollovers (not first hand), clear sitting_out for players who don't have sit_out_next_hand set
+  // For rollovers (not first hand), reactivate ALL sitting_out players for the tiebreaker
+  // A rollover is a continuation of the SAME hand, so sit_out_next_hand should NOT apply
+  // (it means "sit out the next GAME", not "sit out the rollover")
   if (!isFirstHand) {
-    const playersToReactivate = (players || []).filter(
-      (p) => p.sitting_out && !p.sit_out_next_hand
-    );
+    const playersToReactivate = (players || []).filter((p) => p.sitting_out);
     if (playersToReactivate.length > 0) {
       const reactivateIds = playersToReactivate.map((p) => p.id);
-      console.log('[SCC] Reactivating players for rollover:', reactivateIds);
+      console.log('[SCC] Reactivating ALL sitting_out players for rollover:', reactivateIds);
       await supabase
         .from('players')
         .update({ sitting_out: false })
