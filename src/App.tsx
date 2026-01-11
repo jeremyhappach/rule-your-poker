@@ -10,7 +10,6 @@ import Game from "./pages/Game";
 import HandEvalTest from "./pages/HandEvalTest";
 import HandEvalDebug from "./pages/HandEvalDebug";
 import DicePreview from "./pages/DicePreview";
-import { DiceTimingDebugPanel } from "./components/DiceTimingDebugPanel";
 
 const queryClient = new QueryClient(); // rebuild trigger
 
@@ -19,7 +18,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <DiceTimingDebugPanel />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
