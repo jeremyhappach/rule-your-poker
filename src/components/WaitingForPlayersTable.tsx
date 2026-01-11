@@ -7,7 +7,6 @@ import { Share2, Users, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
-import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
 
 
 // Keep bot aggression level distribution consistent with the rest of the app.
@@ -184,22 +183,16 @@ export const WaitingForPlayersTable = ({
     let succeeded = false;
 
     try {
-      // Create bot profile
+      // Create bot profile with guaranteed-unique name using UUID suffix first time
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
-      const { data: existingBotProfiles } = await supabase
-        .from('profiles')
-        .select('username')
-        .like('username', 'Bot %');
-
-      const existingUsernames = (existingBotProfiles ?? []).map((p) => p.username);
-      const nextNumber = getNextBotNumber(existingUsernames);
-
-      // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
-      let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
+      
+      // Use a short unique suffix from the bot ID to avoid collisions during rapid adds
+      const suffix = botId.replace(/-/g, '').slice(0, 6);
+      const botName = `Bot ${suffix}`;
 
       // Insert bot profile
-      let { error: profileError } = await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           id: botId,
@@ -207,20 +200,26 @@ export const WaitingForPlayersTable = ({
           aggression_level: aggressionLevel,
         });
 
-      if (profileError?.code === '23505') {
-        botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
-
-        ({ error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: botId,
-            username: botName,
-            aggression_level: aggressionLevel,
-          }));
-      }
-
       if (profileError) {
-        throw new Error(`Failed to create bot profile: ${profileError.message}`);
+        // If still collides (extremely rare), try with full suffix
+        if (profileError.code === '23505') {
+          const fullSuffix = botId.replace(/-/g, '').slice(0, 12);
+          const fallbackName = `Bot ${fullSuffix}`;
+          
+          const { error: retryError } = await supabase
+            .from('profiles')
+            .insert({
+              id: botId,
+              username: fallbackName,
+              aggression_level: aggressionLevel,
+            });
+          
+          if (retryError) {
+            throw new Error(`Failed to create bot profile: ${retryError.message}`);
+          }
+        } else {
+          throw new Error(`Failed to create bot profile: ${profileError.message}`);
+        }
       }
 
       // Create bot player - active and ready to play (not sitting out)
