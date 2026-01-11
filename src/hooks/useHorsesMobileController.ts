@@ -167,6 +167,9 @@ export function useHorsesMobileController({
     isSCC ? createInitialSCCHand() : createInitialHand()
   );
   
+  // Track when we last reset local state for a new turn (prevents stale state blocking sync)
+  const lastResetTurnKeyRef = useRef<string | null>(null);
+  
   // Track when to show the "No Qualify" animation for SCC games (any player)
   const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
   const [noQualifyPlayerName, setNoQualifyPlayerName] = useState<string | null>(null);
@@ -306,8 +309,22 @@ export function useHorsesMobileController({
     }
 
     const myKey = `${currentRoundId ?? "no-round"}:${currentTurnPlayerId ?? "no-turn"}`;
-    if (myTurnKeyRef.current !== myKey) {
+    
+    // CRITICAL FIX: When turn identity changes (new round or turn came back to us),
+    // reset local state immediately to accept the fresh DB state.
+    // This fixes the "frozen on rollover" bug where stale local state blocked sync.
+    const isNewTurn = myTurnKeyRef.current !== myKey;
+    if (isNewTurn) {
       myTurnKeyRef.current = myKey;
+      lastResetTurnKeyRef.current = myKey;
+      lastLocalEditAtRef.current = 0; // Clear protection window for fresh turn
+      heldMaskAtLastRollStartRef.current = null;
+      console.log(`[SYNC_DEBUG] New turn detected, clearing protection: ${myKey}`);
+      logDebug("new_turn", `Cleared protection for ${myKey}`);
+      
+      // Reset to fresh hand immediately - DB state will sync in below
+      const freshHand = isSCC ? createInitialSCCHand() : createInitialHand();
+      setLocalHand(freshHand);
     }
 
     // While rolling (and shortly after interactions), don't let DB snapshots overwrite the felt.
@@ -320,7 +337,7 @@ export function useHorsesMobileController({
     // If the user just interacted, don't let a stale DB snapshot overwrite their felt.
     // Must exceed the longest animation duration to prevent flicker during roll animations.
     const timeSinceEdit = Date.now() - lastLocalEditAtRef.current;
-    if (timeSinceEdit < LOCAL_STATE_PROTECTION_MS) {
+    if (timeSinceEdit < LOCAL_STATE_PROTECTION_MS && lastLocalEditAtRef.current > 0) {
       console.log(
         `[SYNC_DEBUG] Blocked sync: within protection window (${timeSinceEdit}ms < ${LOCAL_STATE_PROTECTION_MS}ms)`,
       );
@@ -335,61 +352,65 @@ export function useHorsesMobileController({
     if (myState) {
       // Extra guard: even after the time window, ignore DB snapshots that are clearly behind local.
       // This prevents "dice disappear" / "dice jump back" flashes when realtime/queries deliver an older state.
+      // BUT: Skip these guards if this is a fresh turn (isNewTurn) - we need to accept fresh DB state.
       const localRollsRemaining = localHand.rollsRemaining;
       const dbRollsRemaining = myState.rollsRemaining;
       const dbDiceBlank = Array.isArray(myState.dice) && myState.dice.every((d: any) => !d?.value);
       const localDiceBlank =
         Array.isArray((localHand as any)?.dice) && (localHand as any).dice.every((d: any) => !d?.value);
 
-      if (typeof dbRollsRemaining === "number" && dbRollsRemaining > localRollsRemaining) {
-        console.log(
-          `[SYNC_DEBUG] Blocked sync: dbRollsRemaining(${dbRollsRemaining}) > localRollsRemaining(${localRollsRemaining})`,
-        );
-        logDebug(
-          "sync_blocked",
-          `dbBehind dbRollsRemaining=${dbRollsRemaining} > localRollsRemaining=${localRollsRemaining}`,
-          { dbRollsRemaining, localRollsRemaining },
-        );
-        return;
-      }
-      if (dbDiceBlank && !localDiceBlank) {
-        console.log(`[SYNC_DEBUG] Blocked sync: dbDiceBlank but local has values`);
-        logDebug("sync_blocked", "dbDiceBlank but local has values");
-        return;
-      }
-
-      // CRITICAL: If DB reports the same rollsRemaining but the dice don't match local, it's an out-of-order snapshot.
-      // Never apply that to local UI (it causes the "dice switched" flicker). Wait until DB matches local,
-      // but cap the wait so we can recover from a real desync.
-      const dbMatchesLocal =
-        Array.isArray(myState.dice) &&
-        Array.isArray((localHand as any)?.dice) &&
-        myState.dice.length === (localHand as any).dice.length &&
-        myState.dice.every((d: any, i: number) => {
-          const l = (localHand as any).dice[i];
-          return (
-            (d?.value ?? 0) === (l?.value ?? 0) &&
-            !!d?.isHeld === !!l?.isHeld &&
-            (!!d?.isSCC === !!l?.isSCC)
+      // Only apply these guards if we've been in this turn for a while (not a fresh turn)
+      if (!isNewTurn && lastLocalEditAtRef.current > 0) {
+        if (typeof dbRollsRemaining === "number" && dbRollsRemaining > localRollsRemaining) {
+          console.log(
+            `[SYNC_DEBUG] Blocked sync: dbRollsRemaining(${dbRollsRemaining}) > localRollsRemaining(${localRollsRemaining})`,
           );
-        });
+          logDebug(
+            "sync_blocked",
+            `dbBehind dbRollsRemaining=${dbRollsRemaining} > localRollsRemaining=${localRollsRemaining}`,
+            { dbRollsRemaining, localRollsRemaining },
+          );
+          return;
+        }
+        if (dbDiceBlank && !localDiceBlank) {
+          console.log(`[SYNC_DEBUG] Blocked sync: dbDiceBlank but local has values`);
+          logDebug("sync_blocked", "dbDiceBlank but local has values");
+          return;
+        }
 
-      if (
-        typeof dbRollsRemaining === "number" &&
-        dbRollsRemaining === localRollsRemaining &&
-        !dbMatchesLocal &&
-        !localDiceBlank &&
-        timeSinceEdit < 10_000
-      ) {
-        console.log(
-          `[SYNC_DEBUG] Blocked sync: dbMismatch (same rollsRemaining=${dbRollsRemaining}) timeSinceEdit=${timeSinceEdit}ms`,
-        );
-        logDebug(
-          "sync_blocked",
-          `dbMismatch sameRR=${dbRollsRemaining} timeSinceEdit=${timeSinceEdit}ms`,
-          { dbRollsRemaining, localRollsRemaining, timeSinceEdit },
-        );
-        return;
+        // CRITICAL: If DB reports the same rollsRemaining but the dice don't match local, it's an out-of-order snapshot.
+        // Never apply that to local UI (it causes the "dice switched" flicker). Wait until DB matches local,
+        // but cap the wait so we can recover from a real desync.
+        const dbMatchesLocal =
+          Array.isArray(myState.dice) &&
+          Array.isArray((localHand as any)?.dice) &&
+          myState.dice.length === (localHand as any).dice.length &&
+          myState.dice.every((d: any, i: number) => {
+            const l = (localHand as any).dice[i];
+            return (
+              (d?.value ?? 0) === (l?.value ?? 0) &&
+              !!d?.isHeld === !!l?.isHeld &&
+              (!!d?.isSCC === !!l?.isSCC)
+            );
+          });
+
+        if (
+          typeof dbRollsRemaining === "number" &&
+          dbRollsRemaining === localRollsRemaining &&
+          !dbMatchesLocal &&
+          !localDiceBlank &&
+          timeSinceEdit < 10_000
+        ) {
+          console.log(
+            `[SYNC_DEBUG] Blocked sync: dbMismatch (same rollsRemaining=${dbRollsRemaining}) timeSinceEdit=${timeSinceEdit}ms`,
+          );
+          logDebug(
+            "sync_blocked",
+            `dbMismatch sameRR=${dbRollsRemaining} timeSinceEdit=${timeSinceEdit}ms`,
+            { dbRollsRemaining, localRollsRemaining, timeSinceEdit },
+          );
+          return;
+        }
       }
 
       const dbVals = (myState.dice as any[]).map((d: any) => d?.value).join(",");
