@@ -39,6 +39,7 @@ import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdow
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
+import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -5847,6 +5848,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </AlertDialogFooter>
       </AlertDialogContent>
       </AlertDialog>
+
+      {/* Debug Panel - shows player status, deadlines, session info */}
+      <DeadlineDebugPanel gameId={gameId} userId={user?.id} />
     </div>
     </VisualPreferencesProvider>
   );
