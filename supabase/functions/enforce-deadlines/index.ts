@@ -33,6 +33,118 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+type DeadlineDebugSource = 'client' | 'cron' | 'debug-ui' | 'unknown';
+
+type DeadlineDebugSnapshot = {
+  nowIso: string;
+  source: DeadlineDebugSource;
+  requestId: string | null;
+  debugLabel: string | null;
+  game: any;
+  deadlines: {
+    config: any;
+    ante: any;
+    roundDecision: any;
+    gameOver: any;
+  };
+  staleness: {
+    configDeadlineStale: boolean;
+    anteDeadlineStale: boolean;
+    roundDecisionDeadlineStale: boolean;
+    anyExpiredDeadline: boolean;
+  };
+  counts: {
+    humansActive: number;
+    humansTotal: number;
+    botsTotal: number;
+  };
+  players: any[];
+  rounds: any[];
+};
+
+function describeDeadline(deadlineIso: string | null | undefined, now: Date) {
+  if (!deadlineIso) {
+    return { iso: null, msFromNow: null, isExpired: false };
+  }
+
+  const t = new Date(deadlineIso).getTime();
+  const msFromNow = t - now.getTime();
+  return {
+    iso: deadlineIso,
+    msFromNow,
+    isExpired: msFromNow <= 0,
+  };
+}
+
+async function collectDeadlineDebug(
+  supabase: any,
+  gameId: string,
+  game: any,
+  now: Date,
+  source: DeadlineDebugSource,
+  requestId: string | null,
+  debugLabel: string | null
+): Promise<DeadlineDebugSnapshot> {
+  const nowIso = now.toISOString();
+
+  const { data: players } = await supabase
+    .from('players')
+    .select(
+      'id,user_id,is_bot,position,status,created_at,waiting,sitting_out,sit_out_next_hand,stand_up_next_hand,ante_decision,current_decision,decision_locked,auto_fold,auto_ante'
+    )
+    .eq('game_id', gameId);
+
+  const { data: rounds } = await supabase
+    .from('rounds')
+    .select('id,round_number,status,decision_deadline,current_turn_position,hand_number,created_at')
+    .eq('game_id', gameId)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  const config = describeDeadline(game?.config_deadline ?? null, now);
+  const ante = describeDeadline(game?.ante_decision_deadline ?? null, now);
+
+  const currentRound = (rounds ?? []).find((r: any) => r.round_number === game?.current_round) ?? null;
+  const roundDecision = describeDeadline(currentRound?.decision_deadline ?? null, now);
+  const gameOver = describeDeadline(game?.game_over_at ? new Date(new Date(game.game_over_at).getTime() + 8000).toISOString() : null, now);
+
+  const isConfigPhase = game?.status === 'configuring' || game?.status === 'game_selection' || game?.status === 'dealer_selection';
+  const isAntePhase = game?.status === 'ante_decision';
+  const isBettingPhase = game?.status === 'in_progress' || game?.status === 'betting';
+
+  const configDeadlineStale = !!game?.config_deadline && !isConfigPhase;
+  const anteDeadlineStale = !!game?.ante_decision_deadline && !isAntePhase;
+  const roundDecisionDeadlineStale = !!currentRound?.decision_deadline && !isBettingPhase;
+
+  const playersArr = players ?? [];
+  const humansTotal = playersArr.filter((p: any) => !p.is_bot).length;
+  const botsTotal = playersArr.filter((p: any) => p.is_bot).length;
+  const humansActive = playersArr.filter((p: any) => !p.is_bot && p.status === 'active' && !p.sitting_out).length;
+
+  const anyExpiredDeadline = [config, ante, roundDecision, gameOver].some((d: any) => d?.isExpired);
+
+  return {
+    nowIso,
+    source,
+    requestId,
+    debugLabel,
+    game,
+    deadlines: { config, ante, roundDecision, gameOver },
+    staleness: {
+      configDeadlineStale,
+      anteDeadlineStale,
+      roundDecisionDeadlineStale,
+      anyExpiredDeadline,
+    },
+    counts: {
+      humansActive,
+      humansTotal,
+      botsTotal,
+    },
+    players: playersArr,
+    rounds: rounds ?? [],
+  };
+}
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -73,7 +185,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, keyToUse);
 
-    let body;
+    let body: any;
     try {
       body = await req.json();
     } catch (parseErr) {
@@ -83,10 +195,15 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    
-    const { gameId } = body;
-    
-    console.log('[ENFORCE] Received gameId:', gameId, 'type:', typeof gameId);
+
+    const gameId: string | undefined = body?.gameId;
+    const debug: boolean = body?.debug === true;
+    const auditOnly: boolean = body?.auditOnly === true;
+    const source: DeadlineDebugSource = (body?.source ?? 'unknown') as DeadlineDebugSource;
+    const requestId: string | null = typeof body?.requestId === 'string' ? body.requestId : null;
+    const debugLabel: string | null = typeof body?.debugLabel === 'string' ? body.debugLabel : null;
+
+    console.log('[ENFORCE] Received', { gameId, source, requestId, debug, auditOnly, debugLabel, gameIdType: typeof gameId });
     
     if (!gameId) {
       return new Response(JSON.stringify({ error: 'gameId required' }), {
@@ -157,6 +274,39 @@ serve(async (req) => {
       });
     }
 
+    // Collect debug snapshot early so we can see game/player state BEFORE any enforcement.
+    let debugSnapshot: DeadlineDebugSnapshot | null = null;
+    if (debug || auditOnly) {
+      try {
+        debugSnapshot = await collectDeadlineDebug(supabase, gameId, game, now, source, requestId, debugLabel);
+        console.log('[DEADLINE-AUDIT]', JSON.stringify({
+          gameId,
+          ...debugSnapshot,
+        }, null, 2));
+      } catch (e) {
+        console.error('[DEADLINE-AUDIT] Failed to collect debug snapshot', { gameId, source, requestId, error: String(e) });
+      }
+    }
+
+    // Audit-only mode: return snapshot without mutating anything.
+    if (auditOnly) {
+      return new Response(JSON.stringify({
+        success: true,
+        auditOnly: true,
+        gameId,
+        gameStatus: game.status,
+        isPaused: !!game.is_paused,
+        actionsTaken: [],
+        debugSnapshot,
+        source,
+        requestId,
+        debugLabel,
+        timestamp: nowIso,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Skip ALL deadline enforcement if game is paused
     // This is critical - deadlines freeze when paused, resume when unpaused
     if (game.is_paused) {
@@ -167,6 +317,10 @@ serve(async (req) => {
         actionsTaken: [],
         gameStatus: game.status,
         isPaused: true,
+        debugSnapshot,
+        source,
+        requestId,
+        debugLabel,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -1189,6 +1343,10 @@ serve(async (req) => {
       actionsTaken,
       gameStatus: game.status,
       timestamp: nowIso,
+      debugSnapshot: (body?.debug === true ? debugSnapshot : undefined),
+      source: (body?.source ?? 'unknown'),
+      requestId: (typeof body?.requestId === 'string' ? body.requestId : null),
+      debugLabel: (typeof body?.debugLabel === 'string' ? body.debugLabel : null),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

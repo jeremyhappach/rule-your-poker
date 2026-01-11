@@ -15,9 +15,12 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastCallRef = useRef<number>(0);
+  const lastDebugSnapshotRef = useRef<number>(0);
   const [nearestDeadline, setNearestDeadline] = useState<Date | null>(null);
   const [humanPlayerCount, setHumanPlayerCount] = useState<number>(0);
   const [isPollingActive, setIsPollingActive] = useState(false);
+
+  const debugEnabled = typeof window !== 'undefined' && window.localStorage.getItem('debugDeadlines') === '1';
 
   // Cleanup function to clear all timers
   const clearTimers = useCallback(() => {
@@ -79,11 +82,24 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
 
       let data, error;
       try {
+        const includeDebug = debugEnabled && now - lastDebugSnapshotRef.current > 15000;
+        if (includeDebug) lastDebugSnapshotRef.current = now;
+
         const result = await supabase.functions.invoke('enforce-deadlines', {
-          body: { gameId },
+          body: {
+            gameId,
+            source: 'client',
+            requestId: `${gameId}:${now}`,
+            debug: includeDebug,
+            debugLabel: 'useDeadlineEnforcer',
+          },
         });
         data = result.data;
         error = result.error;
+
+        if (includeDebug && (data as any)?.debugSnapshot) {
+          console.log('[DEADLINE_DEBUG] Snapshot', (data as any).debugSnapshot);
+        }
       } catch {
         return;
       }
@@ -126,6 +142,14 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   // Schedule polling to start when deadline is imminent
   const schedulePolling = useCallback((deadline: Date, skipIfSingleHuman: boolean) => {
     clearTimers();
+
+    if (debugEnabled) {
+      console.log('[DEADLINE_ENFORCER] schedulePolling', {
+        gameId,
+        deadline: deadline.toISOString(),
+        skipIfSingleHuman,
+      });
+    }
     
     // If only 1 human player, skip all client-side polling
     // Bots never timeout, and cron handles disconnected human
@@ -146,7 +170,7 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
         startPolling();
       }, msUntilPollingStart);
     }
-  }, [clearTimers, startPolling]);
+  }, [clearTimers, startPolling, debugEnabled, gameId]);
 
   // Calculate the nearest deadline from game/round state
   const calculateNearestDeadline = useCallback((
