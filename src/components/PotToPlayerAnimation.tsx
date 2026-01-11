@@ -327,11 +327,8 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             opacity: 1;
           }
           ${isDiceGame ? `
-          10% {
-            transform: translate(0, -6px) scale(1.05);
-            opacity: 1;
-          }
-          80% {
+          /* Dice games: straight line, no bounce - matches 357 style */
+          85% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 1;
           }

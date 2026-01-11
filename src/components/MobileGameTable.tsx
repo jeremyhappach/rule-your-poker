@@ -3986,7 +3986,7 @@ export const MobileGameTable = ({
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[74%]' : 'top-[62%]'}`}>
+          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[76%]' : 'top-[65%]'}`}>
             <span className="text-red-400 text-sm mr-1">👿</span>
             {cachedChuckyCards.map((card, index) => {
               const isRevealed = index < cachedChuckyCardsRevealed;
