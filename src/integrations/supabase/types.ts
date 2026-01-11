@@ -769,6 +769,48 @@ export type Database = {
         }
         Relationships: []
       }
+      timing_debug_sessions: {
+        Row: {
+          app_route: string | null
+          client_info: Json | null
+          created_at: string
+          duration_ms: number | null
+          end_time: string | null
+          events: Json
+          id: string
+          label: string
+          snapshots: Json
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          app_route?: string | null
+          client_info?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          end_time?: string | null
+          events?: Json
+          id?: string
+          label?: string
+          snapshots?: Json
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          app_route?: string | null
+          client_info?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          end_time?: string | null
+          events?: Json
+          id?: string
+          label?: string
+          snapshots?: Json
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
