@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import noQualifyBg from "@/assets/no-qualify-bg.jpg";
 
 interface NoQualifyAnimationProps {
@@ -11,69 +11,128 @@ export const NoQualifyAnimation = ({ show, playerName, onComplete }: NoQualifyAn
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
-  
+
   // Keep ref updated
   onCompleteRef.current = onComplete;
 
   useEffect(() => {
+    let cancelled = false;
+    let timer: number | null = null;
+
+    const finish = () => {
+      setVisible(false);
+      onCompleteRef.current?.();
+    };
+
     if (show && !hasShownRef.current) {
       hasShownRef.current = true;
-      setVisible(true);
-      const timer = setTimeout(() => {
-        setVisible(false);
-        onCompleteRef.current?.();
-      }, 2000);
-      return () => clearTimeout(timer);
-    } else if (!show) {
-      // Reset when show becomes false
+
+      // Ensure the background image is ready before we show anything
+      const img = new Image();
+      img.src = noQualifyBg;
+
+      const start = () => {
+        if (cancelled) return;
+        setVisible(true);
+        timer = window.setTimeout(finish, 2000);
+      };
+
+      if (img.complete) {
+        start();
+      } else {
+        img.onload = start;
+        img.onerror = start;
+      }
+
+      return () => {
+        cancelled = true;
+        if (timer) window.clearTimeout(timer);
+      };
+    }
+
+    if (!show) {
       hasShownRef.current = false;
+      setVisible(false);
     }
   }, [show]);
 
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none overflow-hidden">
-      {/* Background image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center animate-scale-in"
-        style={{ 
-          backgroundImage: `url(${noQualifyBg})`,
-          filter: 'brightness(0.8) saturate(1.1)'
-        }}
-      />
-      
-      {/* Light red overlay - keeps face visible */}
-      <div className="absolute inset-0 bg-red-900/20" />
-      
-      {/* Subtle vignette effect */}
-      <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/40" />
-      
-      {/* NO QUALIFY text */}
-      <div className="flex flex-col items-center gap-2 animate-scale-in z-10">
-        {playerName && (
-          <div className="text-white/90 text-lg sm:text-xl font-bold mb-2 bg-black/60 px-4 py-1 rounded">
-            {playerName}
-          </div>
-        )}
-        <div className="bg-black/80 px-6 py-4 rounded-lg border-2 border-red-500/70 shadow-[0_0_30px_rgba(239,68,68,0.5)]">
-          <span className="text-red-500 font-black text-3xl sm:text-4xl md:text-5xl tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase">
+    <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+      {/* Single unified graphic: background + overlays + text all inside ONE SVG */}
+      <svg
+        className="absolute inset-0 h-full w-full animate-scale-in"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="xMidYMid slice"
+        aria-label="No qualify"
+      >
+        <defs>
+          <radialGradient id="nq_vignette" cx="50%" cy="50%" r="65%">
+            <stop offset="60%" stopColor="transparent" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.55)" />
+          </radialGradient>
+        </defs>
+
+        <image href={noQualifyBg} x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" />
+
+        {/* Light destructive tint */}
+        <rect x="0" y="0" width="100" height="100" style={{ fill: "hsl(var(--destructive) / 0.18)" }} />
+
+        {/* Vignette */}
+        <rect x="0" y="0" width="100" height="100" fill="url(#nq_vignette)" />
+
+        {/* Optional player name */}
+        {playerName ? (
+          <g>
+            <rect x="28" y="26" width="44" height="9" rx="2" style={{ fill: "hsl(var(--background) / 0.7)" }} />
+            <text
+              x="50"
+              y="32"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{
+                fill: "hsl(var(--foreground) / 0.9)",
+                fontSize: 4.2,
+                fontWeight: 800,
+                letterSpacing: 0.4,
+              }}
+            >
+              {playerName}
+            </text>
+          </g>
+        ) : null}
+
+        {/* Main badge */}
+        <g>
+          <rect
+            x="18"
+            y="40"
+            width="64"
+            height="20"
+            rx="3"
+            style={{
+              fill: "hsl(var(--background) / 0.78)",
+              stroke: "hsl(var(--destructive) / 0.7)",
+              strokeWidth: 0.9,
+            }}
+          />
+          <text
+            x="50"
+            y="50"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            style={{
+              fill: "hsl(var(--destructive))",
+              fontSize: 8,
+              fontWeight: 900,
+              letterSpacing: 1.2,
+            }}
+          >
             NO QRARIFY
-          </span>
-        </div>
-      </div>
-      
-      {/* Shake animation for dramatic effect */}
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-          20%, 40%, 60%, 80% { transform: translateX(2px); }
-        }
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-      `}</style>
+          </text>
+        </g>
+      </svg>
     </div>
   );
 };

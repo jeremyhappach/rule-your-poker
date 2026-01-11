@@ -260,10 +260,10 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       toY: rect.top + winnerCoords.y,
     });
 
-    // Timing depends on game type - dice games are faster
+    // Timing depends on game type - dice games should be snappy
     const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
-    const animDuration = isDiceGame ? 1200 : 3300;
-    const clearDelay = isDiceGame ? 1500 : 3700;
+    const animDuration = isDiceGame ? 750 : 3300;
+    const clearDelay = isDiceGame ? 900 : 3700;
 
     // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
     endTimeoutRef.current = window.setTimeout(() => {
@@ -294,9 +294,10 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
 
   if (!animation) return null;
 
-  // Fast animation for dice games (1 bounce), slower for card games
+  // Fast animation for dice games, slower for card games
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
-  const animDuration = isDiceGame ? '1.1s' : '3.2s';
+  const animDuration = isDiceGame ? '0.7s' : '3.2s';
+  const timingFn = isDiceGame ? 'linear' : 'ease-in-out';
 
   // If any ancestor has transform/filter, `position: fixed` can get trapped in that stacking context.
   // Portal to <body> so the chip ALWAYS renders above the entire app UI.
@@ -315,7 +316,7 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
       <div
         className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
         style={{
-          animation: `${animationName} ${animDuration} ease-in-out forwards`,
+          animation: `${animationName} ${animDuration} ${timingFn} forwards`,
         }}
       >
         <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
@@ -327,7 +328,11 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
             opacity: 1;
           }
           ${isDiceGame ? `
-          /* Dice games: straight line from pot to player, no bounce/scale - matches 357 style */
+          /* Dice games: straight line from pot to player (no bounce), then vanish into the stack */
+          92% {
+            transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
+            opacity: 1;
+          }
           100% {
             transform: translate(${animation.toX - animation.fromX}px, ${animation.toY - animation.fromY}px) scale(1);
             opacity: 0;
