@@ -419,6 +419,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     console.log('[PLAYER OPTIONS] Setting', option, 'to', value, 'for player', currentPlayer.id);
     
+    // Log sit_out_next_hand changes for debugging (only when setting to true)
+    if (option === 'sit_out_next_hand' && value === true) {
+      const { logSitOutNextHandSet } = await import('@/lib/sittingOutDebugLog');
+      await logSitOutNextHandSet(
+        currentPlayer.id,
+        currentPlayer.user_id,
+        gameId!,
+        currentPlayer.profiles?.username,
+        currentPlayer.is_bot,
+        currentPlayer.sit_out_next_hand,
+        'User manually toggled sit_out_next_hand via PlayerOptionsMenu',
+        'Game.tsx:handlePlayerOptionChange',
+        { game_status: game?.status, current_round: game?.current_round }
+      );
+    }
+    
     // Optimistic update
     setPlayerOptions(prev => ({
       ...prev,

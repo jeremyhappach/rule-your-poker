@@ -745,6 +745,54 @@ export type Database = {
           },
         ]
       }
+      sitting_out_debug_log: {
+        Row: {
+          additional_context: Json | null
+          created_at: string
+          field_changed: string
+          game_id: string
+          id: string
+          is_bot: boolean | null
+          new_value: boolean | null
+          old_value: boolean | null
+          player_id: string
+          reason: string
+          source_location: string | null
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          additional_context?: Json | null
+          created_at?: string
+          field_changed: string
+          game_id: string
+          id?: string
+          is_bot?: boolean | null
+          new_value?: boolean | null
+          old_value?: boolean | null
+          player_id: string
+          reason: string
+          source_location?: string | null
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          additional_context?: Json | null
+          created_at?: string
+          field_changed?: string
+          game_id?: string
+          id?: string
+          is_bot?: boolean | null
+          new_value?: boolean | null
+          old_value?: boolean | null
+          player_id?: string
+          reason?: string
+          source_location?: string | null
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           id: string
