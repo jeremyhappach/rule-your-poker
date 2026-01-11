@@ -28,19 +28,10 @@ export function DiceDebugOverlay({
     });
   };
 
+  // Don't render anything when closed - only render when open
+  // (the parent component provides the toggle button)
   if (!open) {
-    return (
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={() => onOpenChange(true)}
-        className="fixed bottom-3 right-3 z-[200] h-10 w-10 bg-background/80 backdrop-blur"
-        title="Open dice debug"
-      >
-        <Bug className="h-4 w-4" />
-      </Button>
-    );
+    return null;
   }
 
   // Show only last 30 events, newest first
