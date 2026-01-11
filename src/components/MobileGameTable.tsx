@@ -3309,23 +3309,23 @@ export const MobileGameTable = ({
           />
         )}
         
-        {/* Horses Win Pot Animation (winner takes pot at game end) */}
+        {/* Dice Win Pot Animation (Horses / Ship Captain Crew): straight pot → winner (no confetti) */}
         {horsesWinPotTriggerId && (
-          <HolmWinPotAnimation
+          <PotToPlayerAnimation
             triggerId={horsesWinPotTriggerId}
             amount={horsesWinPotAmount}
             winnerPosition={horsesWinWinnerPosition}
             currentPlayerPosition={currentPlayer?.position ?? null}
-            isCurrentPlayerWinner={currentPlayer?.position === horsesWinWinnerPosition}
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
+            gameType={gameType}
             onAnimationStart={() => {
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
-              console.log('[HORSES WIN] POT-OUT animation started');
+              console.log('[DICE WIN] POT-OUT animation started');
             }}
-            onAnimationComplete={() => {
-              console.log('[HORSES WIN] Animation complete');
+            onAnimationEnd={() => {
+              console.log('[DICE WIN] Animation complete');
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
               onHorsesWinPotAnimationComplete?.();
