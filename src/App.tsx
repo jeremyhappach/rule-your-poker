@@ -10,6 +10,7 @@ import Game from "./pages/Game";
 import HandEvalTest from "./pages/HandEvalTest";
 import HandEvalDebug from "./pages/HandEvalDebug";
 import DicePreview from "./pages/DicePreview";
+import DeadlineDebug from "./pages/DeadlineDebug";
 
 const queryClient = new QueryClient(); // rebuild trigger
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/test-hands" element={<HandEvalTest />} />
           <Route path="/debug-hands" element={<HandEvalDebug />} />
           <Route path="/dice-preview" element={<DicePreview />} />
+          <Route path="/debug-deadlines" element={<DeadlineDebug />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

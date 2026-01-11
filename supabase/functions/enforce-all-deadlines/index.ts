@@ -18,7 +18,8 @@ serve(async (req) => {
   }
 
   const startTime = Date.now();
-  console.log('[CRON-ENFORCE] Starting deadline enforcement scan');
+  const cronRunId = crypto.randomUUID();
+  console.log('[CRON-ENFORCE] Starting deadline enforcement scan', { cronRunId });
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -100,9 +101,9 @@ serve(async (req) => {
           let lastResponse: any = null;
 
           for (let attempt = 1; attempt <= 3; attempt++) {
-            const response = await supabase.functions.invoke('enforce-deadlines', {
-              body: { gameId: game.id },
-            });
+             const response = await supabase.functions.invoke('enforce-deadlines', {
+               body: { gameId: game.id, source: 'cron', requestId: cronRunId },
+             });
 
             lastResponse = response;
 
