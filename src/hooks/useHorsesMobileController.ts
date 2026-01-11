@@ -1028,12 +1028,14 @@ export function useHorsesMobileController({
       if (newHand.rollsRemaining === 0) {
         // Use appropriate evaluation function based on game type
         const result = isSCC ? evaluateSCCHand(newHand as SCCHand) : evaluateHand((newHand as HorsesHand).dice);
+        // Final roll: await to ensure state is saved before advancing turn
         await saveMyState(newHand, true, result, heldMaskBeforeRoll);
         setTimeout(() => {
           advanceToNextTurn(myPlayer?.id ?? null);
         }, HORSES_POST_TURN_PAUSE_MS);
       } else {
-        await saveMyState(newHand, false);
+        // Intermediate roll: fire-and-forget to avoid blocking UI
+        void saveMyState(newHand, false);
       }
     }, animationDuration);
   }, [
@@ -1240,7 +1242,7 @@ export function useHorsesMobileController({
           botRollKey++;
 
           // Delay before each roll for visibility
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 800));
           if (cancelled) return;
 
           // Roll immediately so the fly-in animation "lands" on the NEW values (prevents old->new flash)
@@ -1272,14 +1274,14 @@ export function useHorsesMobileController({
             rollKey: botRollKey,
           });
 
-          await horsesSetPlayerState(currentRoundId, botId, {
+          // Intermediate roll: fire-and-forget to avoid blocking animation timing
+          void horsesSetPlayerState(currentRoundId, botId, {
             dice: botHand.dice as any,
             rollsRemaining: botHand.rollsRemaining,
             isComplete: false,
           });
-          if (cancelled) return;
 
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 800));
           if (cancelled) return;
 
           // Use appropriate bot decision logic based on game type
@@ -1315,14 +1317,14 @@ export function useHorsesMobileController({
               rollKey: botRollKey,
             });
 
-            await horsesSetPlayerState(currentRoundId, botId, {
+            // Hold decision: fire-and-forget to avoid blocking animation timing
+            void horsesSetPlayerState(currentRoundId, botId, {
               dice: botHand.dice as any,
               rollsRemaining: botHand.rollsRemaining,
               isComplete: false,
             });
-            if (cancelled) return;
 
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            await new Promise((resolve) => setTimeout(resolve, 600));
             if (cancelled) return;
           }
         }
