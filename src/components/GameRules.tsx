@@ -253,6 +253,7 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                   <li>After qualifying (6-5-4), your remaining 2 dice are your <strong>cargo</strong></li>
                   <li>Your score is the <strong>sum</strong> of your cargo dice (max 12)</li>
                   <li>You can re-roll cargo dice to try for a higher score</li>
+                  <li><strong>Note:</strong> Both cargo dice must be held or re-rolled together — you cannot freeze individual cargo dice</li>
                   <li>Best possible cargo: 6 + 6 = <span className="text-primary font-medium">12</span></li>
                 </ul>
               </div>
