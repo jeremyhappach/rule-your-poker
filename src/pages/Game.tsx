@@ -5271,11 +5271,75 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive || horsesWinPotTriggerId) && (
           <>
             {game.status === 'dealer_selection' && (
-              <DealerSelection 
-                players={players}
-                onComplete={selectDealer}
-                isHost={isCreator}
-              />
+              <>
+                {/* Show game table as background during dealer selection */}
+                {isMobile ? (
+                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
+                    gameId={gameId}
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={0}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value ?? 0}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                    gameStatus={game.status}
+                    handContextId={null}
+                    chatBubbles={chatBubbles}
+                    allMessages={allMessages}
+                    onSendChat={sendChatMessage}
+                    isChatSending={isChatSending}
+                    getPositionForUserId={getPositionForUserId}
+                    onLeaveGameNow={handleLeaveGameNow}
+                    activeTab={mobileActiveTab}
+                    onActiveTabChange={setMobileActiveTab}
+                    hasUnreadMessages={mobileHasUnreadMessages}
+                    onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                    chatInputValue={mobileChatInput}
+                    onChatInputChange={setMobileChatInput}
+                  />
+                ) : (
+                  <GameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
+                    players={players}
+                    currentUserId={user?.id}
+                    pot={0}
+                    currentRound={0}
+                    allDecisionsIn={false}
+                    playerCards={[]}
+                    timeLeft={null}
+                    lastRoundResult={null}
+                    dealerPosition={game.dealer_position}
+                    legValue={game.leg_value ?? 0}
+                    legsToWin={game.legs_to_win || 3}
+                    potMaxEnabled={game.pot_max_enabled ?? true}
+                    potMaxValue={game.pot_max_value || 10}
+                    pendingSessionEnd={false}
+                    awaitingNextRound={false}
+                    onStay={() => {}}
+                    onFold={() => {}}
+                    onSelectSeat={handleSelectSeat}
+                    gameStatus={game.status}
+                    handContextId={null}
+                  />
+                )}
+                {/* DealerSelection overlay */}
+                <DealerSelection 
+                  players={players}
+                  onComplete={selectDealer}
+                  isHost={isCreator}
+                />
+              </>
             )}
             {(!is357WinAnimationActive && !horsesWinPotTriggerId && (
               game.status === 'game_selection' ||
