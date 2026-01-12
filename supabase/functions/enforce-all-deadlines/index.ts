@@ -41,7 +41,7 @@ serve(async (req) => {
     // Find all games that might have expired deadlines
     // These are games in active states with deadlines that could be expired
     // IMPORTANT: Include 'waiting_for_players' since games can transition there and still need cleanup
-    const activeStatuses = ['configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over', 'waiting_for_players'];
+    const activeStatuses = ['dealer_selection', 'configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over', 'waiting_for_players'];
     
     const { data: games, error: gamesError } = await supabase
       .from('games')

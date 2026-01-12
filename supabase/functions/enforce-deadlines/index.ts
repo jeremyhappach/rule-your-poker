@@ -149,7 +149,7 @@ async function collectDeadlineDebug(
   const roundDecision = describeDeadline(currentRound?.decision_deadline ?? null, now);
   const gameOver = describeDeadline(game?.game_over_at ? new Date(new Date(game.game_over_at).getTime() + 8000).toISOString() : null, now);
 
-  const isConfigPhase = game?.status === 'configuring' || game?.status === 'game_selection' || game?.status === 'dealer_selection';
+  const isConfigPhase = game?.status === 'dealer_selection' || game?.status === 'configuring' || game?.status === 'game_selection';
   const isAntePhase = game?.status === 'ante_decision';
   const isBettingPhase = game?.status === 'in_progress' || game?.status === 'betting';
 
@@ -367,9 +367,102 @@ serve(async (req) => {
       });
     }
 
+    // 0. HANDLE STALE dealer_selection GAMES (no config_deadline yet, but stuck)
+    // Games in dealer_selection that have been idle for >60 seconds should be cleaned up.
+    // The dealer_selection phase should complete within seconds (the spinning animation).
+    if (game.status === 'dealer_selection' && !game.config_deadline) {
+      const gameCreatedAt = new Date(game.created_at);
+      const gameUpdatedAt = new Date(game.updated_at);
+      const staleSince = Math.max(gameCreatedAt.getTime(), gameUpdatedAt.getTime());
+      const staleMs = now.getTime() - staleSince;
+      const DEALER_SELECTION_TIMEOUT_MS = 60000; // 60 seconds
+      
+      console.log('[ENFORCE] Checking stale dealer_selection game:', {
+        gameId,
+        updatedAt: game.updated_at,
+        staleMs,
+        timeoutMs: DEALER_SELECTION_TIMEOUT_MS,
+        isStale: staleMs > DEALER_SELECTION_TIMEOUT_MS,
+      });
+      
+      if (staleMs > DEALER_SELECTION_TIMEOUT_MS) {
+        console.log('[ENFORCE] dealer_selection game is STALE, cleaning up:', gameId);
+        
+        // Fetch players to check session history
+        const { data: players } = await supabase
+          .from('players')
+          .select('*')
+          .eq('game_id', gameId);
+        
+        // Re-fetch game to get latest total_hands
+        const { data: freshGame } = await supabase
+          .from('games')
+          .select('total_hands')
+          .eq('id', gameId)
+          .maybeSingle();
+        
+        const totalHands = (freshGame?.total_hands ?? 0) as number;
+        
+        // Also check game_results as backup
+        const { count: resultsCount } = await supabase
+          .from('game_results')
+          .select('id', { count: 'exact', head: true })
+          .eq('game_id', gameId);
+        
+        const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+        
+        console.log('[ENFORCE] Stale dealer_selection session check:', { totalHands, resultsCount, hasHistory });
+        
+        if (!hasHistory) {
+          // Delete empty session (FK-safe order)
+          const { data: roundRows } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId);
+          
+          const roundIds = (roundRows ?? []).map((r: any) => r.id).filter(Boolean);
+          
+          if (roundIds.length > 0) {
+            await supabase.from('player_cards').delete().in('round_id', roundIds);
+          }
+          
+          await supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId);
+          await supabase.from('chat_messages').delete().eq('game_id', gameId);
+          await supabase.from('rounds').delete().eq('game_id', gameId);
+          await supabase.from('players').delete().eq('game_id', gameId);
+          await supabase.from('games').delete().eq('id', gameId);
+          
+          actionsTaken.push('Stale dealer_selection: No history, deleted empty session');
+        } else {
+          await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              pending_session_end: false,
+              session_ended_at: nowIso,
+              game_over_at: nowIso,
+              config_deadline: null,
+              ante_decision_deadline: null,
+              config_complete: false,
+            })
+            .eq('id', gameId);
+          
+          actionsTaken.push('Stale dealer_selection: Has history, session ended');
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          actionsTaken,
+          gameStatus: hasHistory ? 'session_ended' : 'deleted',
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // 1. ENFORCE CONFIG DEADLINE (dealer setup timeout)
     // Check if config_deadline has expired for games in config phase
-    if ((game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
+    if ((game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
       const configDeadline = new Date(game.config_deadline);
       const msUntilDeadline = configDeadline.getTime() - now.getTime();
       
