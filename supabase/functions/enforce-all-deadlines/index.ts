@@ -43,11 +43,13 @@ serve(async (req) => {
     // IMPORTANT: Include 'waiting', 'waiting_for_players' since games can get stuck there and need cleanup
     const activeStatuses = ['waiting', 'dealer_selection', 'configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over', 'waiting_for_players'];
     
+    // NOTE: We now INCLUDE paused games so we can clean up stale paused sessions (>4 hours)
+    // The enforce-deadlines function will still skip normal deadline enforcement for paused games,
+    // but we add a separate check for stale paused games that should be ended.
     const { data: games, error: gamesError } = await supabase
       .from('games')
       .select('id, status, is_paused, config_deadline, ante_decision_deadline, updated_at')
-      .in('status', activeStatuses)
-      .eq('is_paused', false); // Skip paused games
+      .in('status', activeStatuses);
 
     if (gamesError) {
       console.error('[CRON-ENFORCE] Failed to fetch games:', gamesError);
@@ -63,8 +65,9 @@ serve(async (req) => {
     const now = new Date();
 
     // Process each game that might have an expired deadline
-    // Calculate staleness threshold (2 hours in ms)
-    const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
+    // Calculate staleness thresholds
+    const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours for waiting/in_progress
+    const PAUSED_STALE_THRESHOLD_MS = 4 * 60 * 60 * 1000; // 4 hours for paused games
     
     for (const game of games || []) {
       // Quick check: does this game have any deadline that might be expired?
@@ -86,6 +89,9 @@ serve(async (req) => {
       const isStaleWaiting = game.status === 'waiting' && msSinceUpdate > STALE_THRESHOLD_MS;
       const isStaleInProgress = game.status === 'in_progress' && msSinceUpdate > STALE_THRESHOLD_MS;
       
+      // Check for stale PAUSED games (>4 hours since last update)
+      const isStalePaused = game.is_paused && msSinceUpdate > PAUSED_STALE_THRESHOLD_MS;
+      
       const mightNeedEnforcement = 
         configDeadlineExpired || 
         anteDeadlineExpired || 
@@ -93,12 +99,13 @@ serve(async (req) => {
         isDealerSelectionStale || // Always check stale dealer_selection games
         isStaleWaiting || // Check stale waiting games for cleanup
         isStaleInProgress || // Check stale in_progress games for cleanup
-        game.status === 'in_progress' || 
-        game.status === 'betting' ||
-        game.status === 'game_over';
+        isStalePaused || // Check stale paused games for cleanup
+        (!game.is_paused && game.status === 'in_progress') || // Only check active in_progress for deadlines
+        (!game.is_paused && game.status === 'betting') ||
+        (!game.is_paused && game.status === 'game_over');
 
       if (!mightNeedEnforcement) {
-        results.push({ gameId: game.id, status: game.status, result: 'skipped_no_deadline' });
+        results.push({ gameId: game.id, status: game.status, result: game.is_paused ? 'skipped_paused' : 'skipped_no_deadline' });
         continue;
       }
       

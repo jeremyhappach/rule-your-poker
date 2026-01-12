@@ -348,10 +348,53 @@ serve(async (req) => {
       });
     }
 
-    // Skip ALL deadline enforcement if game is paused
-    // This is critical - deadlines freeze when paused, resume when unpaused
+    // 0. HANDLE STALE PAUSED GAMES (paused for >4 hours should be ended)
+    // This check runs BEFORE the normal "skip paused games" logic
+    const PAUSED_STALE_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 hours
     if (game.is_paused) {
-      console.log('[ENFORCE] Game is paused, skipping all deadline enforcement for game', gameId);
+      const gameUpdatedAt = new Date(game.updated_at);
+      const staleMs = now.getTime() - gameUpdatedAt.getTime();
+      
+      console.log('[ENFORCE] Checking stale paused game:', {
+        gameId,
+        updatedAt: game.updated_at,
+        staleMs,
+        timeoutMs: PAUSED_STALE_TIMEOUT_MS,
+        isStale: staleMs > PAUSED_STALE_TIMEOUT_MS,
+      });
+      
+      if (staleMs > PAUSED_STALE_TIMEOUT_MS) {
+        console.log('[ENFORCE] Paused game is STALE (>4 hours), ending session:', gameId);
+        
+        // End the session regardless of history (paused games with active play should always have history)
+        await supabase
+          .from('games')
+          .update({
+            status: 'session_ended',
+            pending_session_end: false,
+            session_ended_at: nowIso,
+            game_over_at: nowIso,
+            is_paused: false,
+            config_deadline: null,
+            ante_decision_deadline: null,
+            config_complete: false,
+          })
+          .eq('id', gameId);
+        
+        actionsTaken.push('Stale paused game (>4h): session ended');
+        
+        return new Response(JSON.stringify({
+          success: true,
+          actionsTaken,
+          gameStatus: 'session_ended',
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // Not stale - skip all deadline enforcement for paused games
+      // This is critical - deadlines freeze when paused, resume when unpaused
+      console.log('[ENFORCE] Game is paused (not stale), skipping deadline enforcement for game', gameId);
       return new Response(JSON.stringify({ 
         success: true, 
         message: 'Game is paused, no deadlines enforced',
