@@ -70,13 +70,18 @@ serve(async (req) => {
       
       // ALWAYS invoke enforce-deadlines for games in configuring/game_selection with a config_deadline
       // This ensures the deadline is checked even if it hasn't technically expired yet (clock sync issues)
-      const isConfigPhase = game.status === 'configuring' || game.status === 'game_selection';
+      const isConfigPhase = game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection';
       const hasConfigDeadline = !!game.config_deadline;
+      
+      // dealer_selection games without a config_deadline might be STALE and need cleanup
+      // The enforce-deadlines function has logic to handle these (>60 seconds idle = cleanup)
+      const isDealerSelectionStale = game.status === 'dealer_selection' && !game.config_deadline;
       
       const mightNeedEnforcement = 
         configDeadlineExpired || 
         anteDeadlineExpired || 
         (isConfigPhase && hasConfigDeadline) || // Always check config phase games with deadlines
+        isDealerSelectionStale || // Always check stale dealer_selection games
         game.status === 'in_progress' || 
         game.status === 'betting' ||
         game.status === 'game_over';
