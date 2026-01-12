@@ -460,6 +460,166 @@ serve(async (req) => {
       }
     }
 
+    // 0b. HANDLE STALE "waiting" GAMES (no activity for extended period)
+    // Games stuck in "waiting" status (waiting for more players) for >2 hours should be cleaned up.
+    const WAITING_GAME_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+    if (game.status === 'waiting') {
+      const gameUpdatedAt = new Date(game.updated_at);
+      const staleMs = now.getTime() - gameUpdatedAt.getTime();
+      
+      console.log('[ENFORCE] Checking stale waiting game:', {
+        gameId,
+        updatedAt: game.updated_at,
+        staleMs,
+        timeoutMs: WAITING_GAME_TIMEOUT_MS,
+        isStale: staleMs > WAITING_GAME_TIMEOUT_MS,
+      });
+      
+      if (staleMs > WAITING_GAME_TIMEOUT_MS) {
+        console.log('[ENFORCE] waiting game is STALE (>2 hours), cleaning up:', gameId);
+        
+        // Re-fetch game to get latest total_hands
+        const { data: freshGame } = await supabase
+          .from('games')
+          .select('total_hands')
+          .eq('id', gameId)
+          .maybeSingle();
+        
+        const totalHands = (freshGame?.total_hands ?? 0) as number;
+        
+        // Also check game_results as backup
+        const { count: resultsCount } = await supabase
+          .from('game_results')
+          .select('id', { count: 'exact', head: true })
+          .eq('game_id', gameId);
+        
+        const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+        
+        console.log('[ENFORCE] Stale waiting session check:', { totalHands, resultsCount, hasHistory });
+        
+        if (!hasHistory) {
+          // Delete empty session (FK-safe order)
+          const { data: roundRows } = await supabase
+            .from('rounds')
+            .select('id')
+            .eq('game_id', gameId);
+          
+          const roundIds = (roundRows ?? []).map((r: any) => r.id).filter(Boolean);
+          
+          if (roundIds.length > 0) {
+            await supabase.from('player_cards').delete().in('round_id', roundIds);
+          }
+          
+          await supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId);
+          await supabase.from('chat_messages').delete().eq('game_id', gameId);
+          await supabase.from('rounds').delete().eq('game_id', gameId);
+          await supabase.from('players').delete().eq('game_id', gameId);
+          await supabase.from('games').delete().eq('id', gameId);
+          
+          actionsTaken.push('Stale waiting game (>2h): No history, deleted empty session');
+        } else {
+          await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              pending_session_end: false,
+              session_ended_at: nowIso,
+              game_over_at: nowIso,
+              config_deadline: null,
+              ante_decision_deadline: null,
+              config_complete: false,
+            })
+            .eq('id', gameId);
+          
+          actionsTaken.push('Stale waiting game (>2h): Has history, session ended');
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          actionsTaken,
+          gameStatus: hasHistory ? 'session_ended' : 'deleted',
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // 0c. HANDLE STALE "in_progress" GAMES (no decision_deadline and no activity for extended period)
+    // Games stuck in "in_progress" without any decision deadlines for >2 hours should be cleaned up.
+    const IN_PROGRESS_STALE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+    if (game.status === 'in_progress') {
+      // Fetch current round to check for decision deadline
+      const { data: currentRound } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('round_number', game.current_round ?? 0)
+        .maybeSingle();
+      
+      const hasDecisionDeadline = !!currentRound?.decision_deadline;
+      
+      if (!hasDecisionDeadline) {
+        const gameUpdatedAt = new Date(game.updated_at);
+        const staleMs = now.getTime() - gameUpdatedAt.getTime();
+        
+        console.log('[ENFORCE] Checking stale in_progress game (no deadline):', {
+          gameId,
+          updatedAt: game.updated_at,
+          staleMs,
+          timeoutMs: IN_PROGRESS_STALE_TIMEOUT_MS,
+          isStale: staleMs > IN_PROGRESS_STALE_TIMEOUT_MS,
+          hasDecisionDeadline,
+        });
+        
+        if (staleMs > IN_PROGRESS_STALE_TIMEOUT_MS) {
+          console.log('[ENFORCE] in_progress game is STALE (>2h, no deadline), cleaning up:', gameId);
+          
+          // Re-fetch game to get latest total_hands
+          const { data: freshGame } = await supabase
+            .from('games')
+            .select('total_hands')
+            .eq('id', gameId)
+            .maybeSingle();
+          
+          const totalHands = (freshGame?.total_hands ?? 0) as number;
+          
+          // Also check game_results as backup
+          const { count: resultsCount } = await supabase
+            .from('game_results')
+            .select('id', { count: 'exact', head: true })
+            .eq('game_id', gameId);
+          
+          const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+          
+          console.log('[ENFORCE] Stale in_progress session check:', { totalHands, resultsCount, hasHistory });
+          
+          // For in_progress games, they usually have history, so end the session
+          await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              pending_session_end: false,
+              session_ended_at: nowIso,
+              game_over_at: nowIso,
+              config_deadline: null,
+              ante_decision_deadline: null,
+              config_complete: false,
+            })
+            .eq('id', gameId);
+          
+          actionsTaken.push('Stale in_progress game (>2h, no deadline): session ended');
+          
+          return new Response(JSON.stringify({
+            success: true,
+            actionsTaken,
+            gameStatus: 'session_ended',
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
     // 1. ENFORCE CONFIG DEADLINE (dealer setup timeout)
     // Check if config_deadline has expired for games in config phase
     if ((game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
