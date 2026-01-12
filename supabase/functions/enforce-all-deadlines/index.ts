@@ -40,12 +40,12 @@ serve(async (req) => {
 
     // Find all games that might have expired deadlines
     // These are games in active states with deadlines that could be expired
-    // IMPORTANT: Include 'waiting_for_players' since games can transition there and still need cleanup
-    const activeStatuses = ['dealer_selection', 'configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over', 'waiting_for_players'];
+    // IMPORTANT: Include 'waiting', 'waiting_for_players' since games can get stuck there and need cleanup
+    const activeStatuses = ['waiting', 'dealer_selection', 'configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over', 'waiting_for_players'];
     
     const { data: games, error: gamesError } = await supabase
       .from('games')
-      .select('id, status, is_paused, config_deadline, ante_decision_deadline')
+      .select('id, status, is_paused, config_deadline, ante_decision_deadline, updated_at')
       .in('status', activeStatuses)
       .eq('is_paused', false); // Skip paused games
 
@@ -63,6 +63,9 @@ serve(async (req) => {
     const now = new Date();
 
     // Process each game that might have an expired deadline
+    // Calculate staleness threshold (2 hours in ms)
+    const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
+    
     for (const game of games || []) {
       // Quick check: does this game have any deadline that might be expired?
       const configDeadlineExpired = game.config_deadline && new Date(game.config_deadline) < now;
@@ -77,11 +80,19 @@ serve(async (req) => {
       // The enforce-deadlines function has logic to handle these (>60 seconds idle = cleanup)
       const isDealerSelectionStale = game.status === 'dealer_selection' && !game.config_deadline;
       
+      // Check for stale "waiting" or "in_progress" games (>2 hours since last update)
+      const gameUpdatedAt = game.updated_at ? new Date(game.updated_at) : null;
+      const msSinceUpdate = gameUpdatedAt ? now.getTime() - gameUpdatedAt.getTime() : 0;
+      const isStaleWaiting = game.status === 'waiting' && msSinceUpdate > STALE_THRESHOLD_MS;
+      const isStaleInProgress = game.status === 'in_progress' && msSinceUpdate > STALE_THRESHOLD_MS;
+      
       const mightNeedEnforcement = 
         configDeadlineExpired || 
         anteDeadlineExpired || 
         (isConfigPhase && hasConfigDeadline) || // Always check config phase games with deadlines
         isDealerSelectionStale || // Always check stale dealer_selection games
+        isStaleWaiting || // Check stale waiting games for cleanup
+        isStaleInProgress || // Check stale in_progress games for cleanup
         game.status === 'in_progress' || 
         game.status === 'betting' ||
         game.status === 'game_over';
