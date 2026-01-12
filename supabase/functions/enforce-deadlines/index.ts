@@ -349,11 +349,13 @@ serve(async (req) => {
     }
 
     // 0. HANDLE STALE PAUSED GAMES (paused for >4 hours should be ended)
+    // EXCEPTION: Real money games can be paused indefinitely - do NOT auto-end them
     // This check runs BEFORE the normal "skip paused games" logic
     const PAUSED_STALE_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4 hours
     if (game.is_paused) {
       const gameUpdatedAt = new Date(game.updated_at);
       const staleMs = now.getTime() - gameUpdatedAt.getTime();
+      const isRealMoney = game.real_money === true;
       
       console.log('[ENFORCE] Checking stale paused game:', {
         gameId,
@@ -361,10 +363,12 @@ serve(async (req) => {
         staleMs,
         timeoutMs: PAUSED_STALE_TIMEOUT_MS,
         isStale: staleMs > PAUSED_STALE_TIMEOUT_MS,
+        isRealMoney,
       });
       
-      if (staleMs > PAUSED_STALE_TIMEOUT_MS) {
-        console.log('[ENFORCE] Paused game is STALE (>4 hours), ending session:', gameId);
+      // Only clean up stale PLAY MONEY paused games - real money games stay paused indefinitely
+      if (staleMs > PAUSED_STALE_TIMEOUT_MS && !isRealMoney) {
+        console.log('[ENFORCE] Paused PLAY MONEY game is STALE (>4 hours), ending session:', gameId);
         
         // End the session regardless of history (paused games with active play should always have history)
         await supabase
@@ -381,7 +385,7 @@ serve(async (req) => {
           })
           .eq('id', gameId);
         
-        actionsTaken.push('Stale paused game (>4h): session ended');
+        actionsTaken.push('Stale paused play-money game (>4h): session ended');
         
         return new Response(JSON.stringify({
           success: true,
