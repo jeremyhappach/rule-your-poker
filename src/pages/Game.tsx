@@ -5090,8 +5090,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         playerDeckColorMode={currentPlayer?.deck_color_mode}
         onModeChange={() => {}}
       />
-    <div className={`min-h-screen ${isMobile ? 'p-0' : 'p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
-      <div className={`${isMobile ? '' : 'max-w-7xl mx-auto space-y-6'}`}>
+    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
+      <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
         {!isMobile && (
           <div className="flex justify-between items-center">
