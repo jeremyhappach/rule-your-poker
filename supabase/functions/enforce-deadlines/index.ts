@@ -1709,24 +1709,50 @@ serve(async (req) => {
       const gameOverAt = new Date(game.game_over_at);
       const gameOverDeadline = new Date(gameOverAt.getTime() + 8000); // 8 seconds countdown
       const staleThreshold = new Date(gameOverAt.getTime() + 15000); // 15 seconds = definitely stale, no client handling it
-      
-      if (now > staleThreshold && !game.pending_session_end) {
+
+      // If this was the LAST HAND (pending_session_end=true), the session must be ended after the countdown.
+      // Previously we skipped all server-side progression when pending_session_end was set, which could leave
+      // sessions stuck in game_over forever when no client was connected.
+      if (now > gameOverDeadline && game.pending_session_end) {
+        console.log('[ENFORCE] game_over countdown expired with pending_session_end=true; ending session server-side', {
+          gameId,
+          sessionEndedAt: game.session_ended_at,
+        });
+
+        await supabase
+          .from('games')
+          .update({
+            status: 'session_ended',
+            session_ended_at: game.session_ended_at ?? nowIso,
+            pending_session_end: false,
+            game_over_at: nowIso,
+            // Clear stale deadlines so clients don't show old timers on rejoin
+            config_deadline: null,
+            ante_decision_deadline: null,
+            config_complete: false,
+            awaiting_next_round: false,
+          })
+          .eq('id', gameId);
+
+        actionsTaken.push('game_over: pending_session_end expired → session ended');
+      } else if (now > staleThreshold) {
+        // No client handled progression - enforce server-side
         console.log('[ENFORCE] Game over is STALE (>15s), no client handled progression - enforcing server-side for game', gameId);
-        
+
         // Fetch all players for state evaluation
         const { data: allPlayers, error: playersError } = await supabase
           .from('players')
           .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, auto_fold, status')
           .eq('game_id', gameId)
           .order('position');
-        
+
         if (playersError || !allPlayers) {
           console.error('[ENFORCE] Failed to fetch players for game_over evaluation:', playersError);
           actionsTaken.push('game_over stale: Failed to fetch players');
         } else {
           // STEP 1: Evaluate player states (mark auto_fold, sit_out_next_hand, stand_up_next_hand)
           console.log('[ENFORCE] Evaluating player states for stale game_over');
-          
+
           for (const player of allPlayers) {
             // stand_up_next_hand → delete bots, mark humans sitting_out
             if (player.stand_up_next_hand) {
@@ -1734,100 +1760,117 @@ serve(async (req) => {
                 await supabase.from('players').delete().eq('id', player.id);
                 console.log('[ENFORCE] Deleted bot with stand_up_next_hand:', player.id);
               } else {
-                await supabase.from('players').update({
-                  sitting_out: true,
-                  stand_up_next_hand: false,
-                  waiting: false
-                }).eq('id', player.id);
+                await supabase
+                  .from('players')
+                  .update({
+                    sitting_out: true,
+                    stand_up_next_hand: false,
+                    waiting: false,
+                  })
+                  .eq('id', player.id);
                 console.log('[ENFORCE] Marked human sitting_out (stand_up_next_hand):', player.id);
               }
               continue;
             }
-            
+
             // sit_out_next_hand → sitting_out
             if (player.sit_out_next_hand) {
-              await supabase.from('players').update({
-                sitting_out: true,
-                sit_out_next_hand: false,
-                waiting: false
-              }).eq('id', player.id);
+              await supabase
+                .from('players')
+                .update({
+                  sitting_out: true,
+                  sit_out_next_hand: false,
+                  waiting: false,
+                })
+                .eq('id', player.id);
               console.log('[ENFORCE] Marked player sitting_out (sit_out_next_hand):', player.id);
               continue;
             }
-            
+
             // auto_fold → sitting_out (player timed out during game)
             if (player.auto_fold) {
-              await supabase.from('players').update({
-                sitting_out: true,
-                waiting: false
-              }).eq('id', player.id);
+              await supabase
+                .from('players')
+                .update({
+                  sitting_out: true,
+                  waiting: false,
+                })
+                .eq('id', player.id);
               console.log('[ENFORCE] Marked player sitting_out (auto_fold timeout):', player.id);
               continue;
             }
-            
+
             // waiting → active
             if (player.waiting && !player.sitting_out) {
-              await supabase.from('players').update({
-                sitting_out: false,
-                waiting: false
-              }).eq('id', player.id);
+              await supabase
+                .from('players')
+                .update({
+                  sitting_out: false,
+                  waiting: false,
+                })
+                .eq('id', player.id);
               console.log('[ENFORCE] Activated waiting player:', player.id);
             }
           }
-          
+
           // STEP 2: Re-fetch players to count active/eligible
           const { data: freshPlayers } = await supabase
             .from('players')
             .select('id, sitting_out, is_bot, status, position')
             .eq('game_id', gameId);
-          
-          const activeHumans = (freshPlayers || []).filter(p => 
-            !p.sitting_out && p.status !== 'observer' && !p.is_bot
-          );
-          
+
+          const activeHumans = (freshPlayers || []).filter((p: any) => !p.sitting_out && p.status !== 'observer' && !p.is_bot);
+
           // Fetch allow_bot_dealers setting
           const { data: gameDefaults } = await supabase
             .from('game_defaults')
             .select('allow_bot_dealers')
             .eq('game_type', 'holm')
             .maybeSingle();
-          
+
           const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
-          
-          const eligibleDealers = (freshPlayers || []).filter(p =>
+
+          const eligibleDealers = (freshPlayers || []).filter((p: any) =>
             !p.sitting_out && p.status !== 'observer' && (allowBotDealers || !p.is_bot) && p.position !== null
           );
-          
+
           console.log('[ENFORCE] After evaluation - activeHumans:', activeHumans.length, 'eligibleDealers:', eligibleDealers.length);
-          
+
           // STEP 3: Decide what to do
           if (activeHumans.length === 0) {
             // No active human players - end session
             console.log('[ENFORCE] No active humans after game_over, ending session');
-            
+
             // Check if any hands were played
             const { data: gameData } = await supabase
               .from('games')
               .select('total_hands')
               .eq('id', gameId)
               .single();
-            
+
             const totalHands = gameData?.total_hands || 0;
-            
+
             const { count: resultsCount } = await supabase
               .from('game_results')
               .select('id', { count: 'exact', head: true })
               .eq('game_id', gameId);
-            
+
             const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
-            
+
             if (hasHistory) {
-              await supabase.from('games').update({
-                status: 'session_ended',
-                session_ended_at: nowIso,
-                pending_session_end: false,
-                game_over_at: nowIso
-              }).eq('id', gameId);
+              await supabase
+                .from('games')
+                .update({
+                  status: 'session_ended',
+                  session_ended_at: nowIso,
+                  pending_session_end: false,
+                  game_over_at: nowIso,
+                  config_deadline: null,
+                  ante_decision_deadline: null,
+                  config_complete: false,
+                  awaiting_next_round: false,
+                })
+                .eq('id', gameId);
               actionsTaken.push('game_over stale: No active humans, session ended');
             } else {
               // Delete empty session
@@ -1847,51 +1890,65 @@ serve(async (req) => {
           } else if (eligibleDealers.length === 0) {
             // Humans exist but no eligible dealers - end session
             console.log('[ENFORCE] No eligible dealers after game_over, ending session');
-            await supabase.from('games').update({
-              status: 'session_ended',
-              session_ended_at: nowIso,
-              pending_session_end: false,
-              game_over_at: nowIso
-            }).eq('id', gameId);
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                session_ended_at: nowIso,
+                pending_session_end: false,
+                game_over_at: nowIso,
+                config_deadline: null,
+                ante_decision_deadline: null,
+                config_complete: false,
+                awaiting_next_round: false,
+              })
+              .eq('id', gameId);
             actionsTaken.push('game_over stale: No eligible dealers, session ended');
           } else {
             // Have eligible dealers - rotate and start next hand configuration
             console.log('[ENFORCE] Rotating dealer and starting next hand configuration');
-            
-            const eligiblePositions = eligibleDealers.map(p => p.position as number).sort((a, b) => a - b);
+
+            const eligiblePositions = eligibleDealers.map((p: any) => p.position as number).sort((a: number, b: number) => a - b);
             const currentDealerPos = game.dealer_position || 0;
             const currentIndex = eligiblePositions.indexOf(currentDealerPos);
-            
+
             let nextDealerPos: number;
             if (currentIndex === -1) {
               nextDealerPos = eligiblePositions[0];
             } else {
               nextDealerPos = eligiblePositions[(currentIndex + 1) % eligiblePositions.length];
             }
-            
+
             // Calculate config deadline
             const configDeadline = new Date(Date.now() + 60 * 1000).toISOString(); // 60 seconds
-            
+
             // Transition to configuring with new dealer
-            await supabase.from('games').update({
-              status: 'configuring',
-              dealer_position: nextDealerPos,
-              config_deadline: configDeadline,
-              game_over_at: null,
-              awaiting_next_round: false,
-              config_complete: false
-            }).eq('id', gameId);
-            
+            await supabase
+              .from('games')
+              .update({
+                status: 'configuring',
+                dealer_position: nextDealerPos,
+                config_deadline: configDeadline,
+                game_over_at: null,
+                awaiting_next_round: false,
+                config_complete: false,
+              })
+              .eq('id', gameId);
+
             // Reset player ante decisions and flags for new hand
-            await supabase.from('players').update({
-              ante_decision: null,
-              current_decision: null,
-              decision_locked: false,
-              auto_fold: false,
-              pre_fold: false,
-              pre_stay: false
-            }).eq('game_id', gameId).eq('sitting_out', false);
-            
+            await supabase
+              .from('players')
+              .update({
+                ante_decision: null,
+                current_decision: null,
+                decision_locked: false,
+                auto_fold: false,
+                pre_fold: false,
+                pre_stay: false,
+              })
+              .eq('game_id', gameId)
+              .eq('sitting_out', false);
+
             actionsTaken.push(`game_over stale: Rotated dealer to position ${nextDealerPos}, started configuring`);
           }
         }

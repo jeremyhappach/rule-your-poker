@@ -360,9 +360,15 @@ export const DealerGameSetup = ({
         const { error: endError } = await supabase
           .from('games')
           .update({
-            status: 'game_over',
-            pending_session_end: true,
+            status: 'session_ended',
+            pending_session_end: false,
             session_ended_at: new Date().toISOString(),
+            game_over_at: new Date().toISOString(),
+            // Clear any old countdowns so rejoin doesn't show a stale 0s timer
+            config_deadline: null,
+            ante_decision_deadline: null,
+            awaiting_next_round: false,
+            config_complete: false,
           })
           .eq('id', gameId);
 
