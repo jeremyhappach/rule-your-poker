@@ -393,7 +393,7 @@ export const WaitingForPlayersTable = ({
   };
 
   return (
-    <div className="relative">
+    <div className="relative flex-1 overflow-hidden">
       {isMobile ? (
         <MobileGameTable
           {...emptyTableProps}
