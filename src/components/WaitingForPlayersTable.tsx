@@ -257,7 +257,7 @@ export const WaitingForPlayersTable = ({
       }
 
       succeeded = true;
-      toast.success(`${botNameForToast} joined`);
+      // No toast for bot additions - reduces notification noise
       return true;
     } catch (error: any) {
       console.error("Error adding bot:", error);
