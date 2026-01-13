@@ -132,8 +132,8 @@ export function HorsesPlayerArea({
               <Badge
                 variant={isWinningHand ? "default" : "secondary"}
                 className={cn(
-                  "mt-1 px-2 py-1",
-                  isWinningHand && "bg-green-600 text-white"
+                  "mt-1 px-2 py-1 text-white",
+                  isWinningHand && "bg-green-600"
                 )}
               >
                 {gameType === 'horses' ? (
@@ -191,8 +191,8 @@ export function HorsesPlayerArea({
             <Badge
               variant={isWinningHand ? "default" : "secondary"}
               className={cn(
-                "px-2 py-1",
-                isWinningHand && "bg-green-600 text-white"
+                "px-2 py-1 text-white",
+                isWinningHand && "bg-green-600"
               )}
             >
               {gameType === 'horses' ? (
