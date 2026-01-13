@@ -1426,14 +1426,50 @@ serve(async (req) => {
     // 5. ENFORCE AWAITING_NEXT_ROUND TIMEOUT (stuck game watchdog)
     // If a game has been stuck in awaiting_next_round=true for too long (>10 seconds),
     // it means client-side proceedToNextRound never fired. Auto-proceed server-side.
-    if (game.status === 'in_progress' && game.awaiting_next_round === true && game.next_round_number) {
+    // NOTE: We no longer require next_round_number to be set - the round can be inferred from current_round.
+    if (game.status === 'in_progress' && game.awaiting_next_round === true) {
       // Check how long the game has been in this state by looking at updated_at
       const gameUpdatedAt = new Date(game.updated_at);
       const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
       
       // If stuck for more than 10 seconds (giving client 4s + buffer)
       if (stuckDuration > 10000) {
-        console.log('[ENFORCE] ⚠️ Game stuck in awaiting_next_round for', Math.round(stuckDuration/1000), 'seconds - auto-proceeding');
+        console.log('[ENFORCE] ⚠️ Game stuck in awaiting_next_round for', Math.round(stuckDuration/1000), 'seconds - auto-proceeding', {
+          gameId,
+          pending_session_end: game.pending_session_end,
+          next_round_number: game.next_round_number,
+          current_round: game.current_round,
+        });
+        
+        // CRITICAL: If pending_session_end is true, END THE SESSION instead of starting a new round
+        if (game.pending_session_end) {
+          console.log('[ENFORCE] pending_session_end=true, ending session instead of starting next round');
+          
+          await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              session_ended_at: game.session_ended_at ?? nowIso,
+              pending_session_end: false,
+              awaiting_next_round: false,
+              next_round_number: null,
+              game_over_at: nowIso,
+              config_deadline: null,
+              ante_decision_deadline: null,
+              config_complete: false,
+            })
+            .eq('id', gameId);
+          
+          actionsTaken.push('awaiting_next_round watchdog: pending_session_end=true → session ended');
+          
+          return new Response(JSON.stringify({
+            success: true,
+            actionsTaken,
+            gameStatus: 'session_ended',
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
         
         // Clear result and reset awaiting flag atomically (same as client-side proceedToNextRound)
         const { data: updateResult, error: updateError } = await supabase
@@ -1452,7 +1488,8 @@ serve(async (req) => {
           console.log('[ENFORCE] awaiting_next_round already cleared by another process');
           actionsTaken.push('awaiting_next_round watchdog: Another process already handled it');
         } else {
-          const nextRoundNum = game.next_round_number;
+          // Use next_round_number if set, otherwise infer from current_round
+          const nextRoundNum = game.next_round_number || ((game.current_round || 0) + 1);
           console.log('[ENFORCE] Cleared awaiting state, now starting round', nextRoundNum);
           
           // Get fresh player data for starting the round
