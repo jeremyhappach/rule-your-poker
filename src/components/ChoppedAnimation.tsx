@@ -31,7 +31,7 @@ export const ChoppedAnimation = ({ show, onComplete }: ChoppedAnimationProps) =>
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 flex items-center justify-center z-[60] pointer-events-none overflow-hidden">
       {/* Cracked glass overlay */}
       <div className="absolute inset-0 bg-black/20" />
       
