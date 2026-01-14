@@ -5951,7 +5951,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       </AlertDialog>
 
       {/* Debug Panel - shows player status, deadlines, session info */}
+      {/* TEMPORARILY HIDDEN - uncomment to restore debug panel
       <DeadlineDebugPanel gameId={gameId} userId={user?.id} />
+      */}
     </div>
     </VisualPreferencesProvider>
   );
