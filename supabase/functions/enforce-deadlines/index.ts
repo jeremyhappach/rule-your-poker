@@ -1130,20 +1130,35 @@ serve(async (req) => {
                 if (currentTurnPlayer.is_bot) {
                   // Bot decision - 50% stay, 50% fold (simple logic for server-side)
                   const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
-                  await supabase
+                  // ATOMIC: Only update if decision_locked is still false to prevent race conditions
+                  const { data: botUpdateResult } = await supabase
                     .from('players')
                     .update({ current_decision: botDecision, decision_locked: true })
-                    .eq('id', currentTurnPlayer.id);
+                    .eq('id', currentTurnPlayer.id)
+                    .eq('decision_locked', false) // Atomic guard
+                    .select();
 
-                  actionsTaken.push(`Bot timeout: Made decision '${botDecision}' for bot at position ${currentTurnPlayer.position}`);
+                  if (botUpdateResult && botUpdateResult.length > 0) {
+                    actionsTaken.push(`Bot timeout: Made decision '${botDecision}' for bot at position ${currentTurnPlayer.position}`);
+                  } else {
+                    actionsTaken.push(`Bot timeout: Player at position ${currentTurnPlayer.position} already decided, skipping`);
+                  }
                 } else {
                   // Human player - auto-fold AND set auto_fold flag for future hands
-                  await supabase
+                  // ATOMIC: Only update if decision_locked is still false to prevent race conditions
+                  // This prevents overwriting a player's legitimate "stay" decision that arrived just before timeout
+                  const { data: humanUpdateResult } = await supabase
                     .from('players')
                     .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
-                    .eq('id', currentTurnPlayer.id);
+                    .eq('id', currentTurnPlayer.id)
+                    .eq('decision_locked', false) // Atomic guard - prevents race condition
+                    .select();
 
-                  actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position} and set auto_fold=true`);
+                  if (humanUpdateResult && humanUpdateResult.length > 0) {
+                    actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position} and set auto_fold=true`);
+                  } else {
+                    actionsTaken.push(`Decision timeout: Player at position ${currentTurnPlayer.position} already decided, skipping auto-fold`);
+                  }
                 }
               }
 
@@ -1245,24 +1260,38 @@ serve(async (req) => {
             console.log('[ENFORCE] 3-5-7 undecided players:', undecidedPlayers.map((p: any) => ({ pos: p.position, isBot: p.is_bot })));
 
             // Auto-fold all undecided players
+            // ATOMIC: Use decision_locked=false guard to prevent race conditions
+            // where player's legitimate decision arrives just before timeout
             for (const player of undecidedPlayers) {
               if (player.is_bot) {
                 // Bot decision - 50% stay, 50% fold
                 const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
-                await supabase
+                const { data: botUpdateResult } = await supabase
                   .from('players')
                   .update({ current_decision: botDecision, decision_locked: true })
-                  .eq('id', player.id);
+                  .eq('id', player.id)
+                  .eq('decision_locked', false) // Atomic guard
+                  .select();
 
-                actionsTaken.push(`3-5-7 Bot timeout: Made decision '${botDecision}' for bot at position ${player.position}`);
+                if (botUpdateResult && botUpdateResult.length > 0) {
+                  actionsTaken.push(`3-5-7 Bot timeout: Made decision '${botDecision}' for bot at position ${player.position}`);
+                } else {
+                  actionsTaken.push(`3-5-7 Bot timeout: Player at position ${player.position} already decided, skipping`);
+                }
               } else {
                 // Human player - auto-fold AND set auto_fold flag
-                await supabase
+                const { data: humanUpdateResult } = await supabase
                   .from('players')
                   .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
-                  .eq('id', player.id);
+                  .eq('id', player.id)
+                  .eq('decision_locked', false) // Atomic guard - prevents race condition
+                  .select();
 
-                actionsTaken.push(`3-5-7 Decision timeout: Auto-folded player at position ${player.position} and set auto_fold=true`);
+                if (humanUpdateResult && humanUpdateResult.length > 0) {
+                  actionsTaken.push(`3-5-7 Decision timeout: Auto-folded player at position ${player.position} and set auto_fold=true`);
+                } else {
+                  actionsTaken.push(`3-5-7 Decision timeout: Player at position ${player.position} already decided, skipping auto-fold`);
+                }
               }
             }
 
