@@ -414,6 +414,100 @@ serve(async (req) => {
       });
     }
 
+    // 0-GLOBAL. BOT-ONLY GAME CHECK: End session immediately if no active humans remain
+    // This is a CRITICAL check that prevents zombie bot-only games from running indefinitely.
+    // Previously, bot-only checks only happened during config phase timeouts or game_over watchdog,
+    // but games in 'in_progress' could loop forever with only bots (who just fold endlessly).
+    if (game.status === 'in_progress' || game.status === 'betting' || game.status === 'ante_decision') {
+      const { data: allPlayers } = await supabase
+        .from('players')
+        .select('id, user_id, is_bot, sitting_out, status')
+        .eq('game_id', gameId);
+      
+      const activeHumans = (allPlayers || []).filter((p: any) => 
+        !p.is_bot && 
+        !p.sitting_out && 
+        p.status === 'active'
+      );
+      
+      const activeBots = (allPlayers || []).filter((p: any) => 
+        p.is_bot && 
+        !p.sitting_out && 
+        p.status === 'active'
+      );
+      
+      console.log('[ENFORCE] Bot-only check:', {
+        gameId,
+        status: game.status,
+        activeHumans: activeHumans.length,
+        activeBots: activeBots.length,
+        totalPlayers: allPlayers?.length || 0,
+      });
+      
+      // If no active humans but there are active bots, end the session
+      if (activeHumans.length === 0 && activeBots.length > 0) {
+        console.log('[ENFORCE] ⚠️ BOT-ONLY GAME DETECTED - ending session immediately:', gameId);
+        
+        // End the session
+        await supabase
+          .from('games')
+          .update({
+            status: 'session_ended',
+            pending_session_end: false,
+            session_ended_at: nowIso,
+            game_over_at: nowIso,
+            config_deadline: null,
+            ante_decision_deadline: null,
+            awaiting_next_round: false,
+          })
+          .eq('id', gameId);
+        
+        actionsTaken.push('Bot-only game detected: No active humans, session ended immediately');
+        
+        return new Response(JSON.stringify({
+          success: true,
+          actionsTaken,
+          gameStatus: 'session_ended',
+          reason: 'bot_only_game',
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      // Also check if all humans are sitting out with auto_fold (they've gone AFK)
+      const humanPlayersWithAutoFold = (allPlayers || []).filter((p: any) => !p.is_bot);
+      const allHumansAFK = humanPlayersWithAutoFold.length > 0 && 
+        humanPlayersWithAutoFold.every((p: any) => p.sitting_out);
+      
+      if (allHumansAFK && activeBots.length > 0) {
+        console.log('[ENFORCE] ⚠️ ALL HUMANS SITTING OUT - ending session:', gameId);
+        
+        await supabase
+          .from('games')
+          .update({
+            status: 'session_ended',
+            pending_session_end: false,
+            session_ended_at: nowIso,
+            game_over_at: nowIso,
+            config_deadline: null,
+            ante_decision_deadline: null,
+            awaiting_next_round: false,
+          })
+          .eq('id', gameId);
+        
+        actionsTaken.push('All humans sitting out: Session ended');
+        
+        return new Response(JSON.stringify({
+          success: true,
+          actionsTaken,
+          gameStatus: 'session_ended',
+          reason: 'all_humans_afk',
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // 0. HANDLE STALE dealer_selection GAMES (no config_deadline yet, but stuck)
     // Games in dealer_selection that have been idle for >60 seconds should be cleaned up.
     // The dealer_selection phase should complete within seconds (the spinning animation).
