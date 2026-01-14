@@ -180,8 +180,8 @@ export function HorsesMobileCardsTab({
         </div>
       )}
 
-      {/* Auto-fold checkbox for reconnection - only show during active play, not after completion */}
-      {currentUserPlayer.auto_fold && horses.gamePhase === "playing" && !hasCompleted && (
+      {/* Auto-fold checkbox for reconnection - always show when auto_fold is true */}
+      {currentUserPlayer.auto_fold && (
         <div className="flex items-center justify-center mt-2">
           <label className="flex items-center gap-2 text-xs text-amber-500 cursor-pointer">
             <Checkbox

@@ -984,90 +984,95 @@ serve(async (req) => {
       // RECOVERY: Check for betting rounds with MISSING decision_deadline
       // This happens when all clients disconnect and the turn was never assigned.
       // We recover by assigning the turn to the next undecided player.
-      const { data: stuckBettingRounds } = await supabase
-        .from('rounds')
-        .select('*')
-        .eq('game_id', gameId)
-        .eq('status', 'betting')
-        .is('decision_deadline', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      const stuckBettingRound = stuckBettingRounds?.[0];
-      if (stuckBettingRound && game.all_decisions_in !== true) {
-        console.log('[ENFORCE] ⚠️ RECOVERY: Found betting round with NULL decision_deadline', {
-          roundId: stuckBettingRound.id,
-          roundNumber: stuckBettingRound.round_number,
-          currentTurnPosition: stuckBettingRound.current_turn_position,
-        });
-
-        // Fetch players to find next undecided player
-        const { data: players } = await supabase
-          .from('players')
+      // IMPORTANT: This recovery is ONLY for Holm (turn-based) games!
+      // Dice games (SCC, Horses) use simultaneous decisions and don't have current_turn_position.
+      // Applying turn-based recovery to dice games incorrectly sets auto_fold on players.
+      if (game.game_type === 'holm-game') {
+        const { data: stuckBettingRounds } = await supabase
+          .from('rounds')
           .select('*')
-          .eq('game_id', gameId);
+          .eq('game_id', gameId)
+          .eq('status', 'betting')
+          .is('decision_deadline', null)
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-        const activePlayers = players?.filter((p: any) => p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up') || [];
-        const undecidedPlayers = activePlayers.filter((p: any) => !p.decision_locked);
+        const stuckBettingRound = stuckBettingRounds?.[0];
+        if (stuckBettingRound && game.all_decisions_in !== true) {
+          console.log('[ENFORCE] ⚠️ RECOVERY: Found Holm betting round with NULL decision_deadline', {
+            roundId: stuckBettingRound.id,
+            roundNumber: stuckBettingRound.round_number,
+            currentTurnPosition: stuckBettingRound.current_turn_position,
+          });
 
-        console.log('[ENFORCE] RECOVERY: Active players:', activePlayers.length, 'Undecided:', undecidedPlayers.length);
+          // Fetch players to find next undecided player
+          const { data: players } = await supabase
+            .from('players')
+            .select('*')
+            .eq('game_id', gameId);
 
-        if (undecidedPlayers.length > 0) {
-          // Find next undecided player position
-          const sortedUndecided = undecidedPlayers.sort((a: any, b: any) => a.position - b.position);
-          
-          // If current_turn_position is set, find next after that; otherwise use first undecided
-          let nextPosition: number;
-          const currentPos = stuckBettingRound.current_turn_position;
-          if (currentPos) {
-            const higherPositions = sortedUndecided.filter((p: any) => p.position > currentPos);
-            nextPosition = higherPositions.length > 0 
-              ? higherPositions[0].position 
-              : sortedUndecided[0].position;
-          } else {
-            nextPosition = sortedUndecided[0].position;
-          }
+          const activePlayers = players?.filter((p: any) => p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up') || [];
+          const undecidedPlayers = activePlayers.filter((p: any) => !p.decision_locked);
 
-          // Fetch decision timer from game_defaults
-          const { data: gameDefaults } = await supabase
-            .from('game_defaults')
-            .select('decision_timer_seconds')
-            .eq('game_type', game.game_type === 'holm-game' ? 'holm' : game.game_type)
-            .maybeSingle();
+          console.log('[ENFORCE] RECOVERY: Active players:', activePlayers.length, 'Undecided:', undecidedPlayers.length);
 
-          const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
-          const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+          if (undecidedPlayers.length > 0) {
+            // Find next undecided player position
+            const sortedUndecided = undecidedPlayers.sort((a: any, b: any) => a.position - b.position);
+            
+            // If current_turn_position is set, find next after that; otherwise use first undecided
+            let nextPosition: number;
+            const currentPos = stuckBettingRound.current_turn_position;
+            if (currentPos) {
+              const higherPositions = sortedUndecided.filter((p: any) => p.position > currentPos);
+              nextPosition = higherPositions.length > 0 
+                ? higherPositions[0].position 
+                : sortedUndecided[0].position;
+            } else {
+              nextPosition = sortedUndecided[0].position;
+            }
 
-          console.log('[ENFORCE] RECOVERY: Setting turn to position', nextPosition, 'with deadline', newDeadline);
+            // Fetch decision timer from game_defaults
+            const { data: gameDefaults } = await supabase
+              .from('game_defaults')
+              .select('decision_timer_seconds')
+              .eq('game_type', 'holm')
+              .maybeSingle();
 
-          await supabase
-            .from('rounds')
-            .update({
-              current_turn_position: nextPosition,
-              decision_deadline: newDeadline,
-            })
-            .eq('id', stuckBettingRound.id);
+            const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
+            const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
 
-          actionsTaken.push(`RECOVERY: Stuck betting round - set turn to position ${nextPosition} with ${timerSeconds}s deadline`);
-        } else if (undecidedPlayers.length === 0 && activePlayers.length > 0) {
-          // All players have decided but round wasn't advanced - trigger showdown
-          console.log('[ENFORCE] RECOVERY: All players decided but round stuck in betting - advancing to showdown');
-          
-          const { data: lockResult } = await supabase
-            .from('games')
-            .update({ all_decisions_in: true })
-            .eq('id', gameId)
-            .eq('all_decisions_in', false)
-            .select();
+            console.log('[ENFORCE] RECOVERY: Setting turn to position', nextPosition, 'with deadline', newDeadline);
 
-          if (lockResult && lockResult.length > 0) {
             await supabase
               .from('rounds')
-              .update({ status: 'showdown' })
-              .eq('id', stuckBettingRound.id)
-              .eq('status', 'betting');
+              .update({
+                current_turn_position: nextPosition,
+                decision_deadline: newDeadline,
+              })
+              .eq('id', stuckBettingRound.id);
 
-            actionsTaken.push('RECOVERY: All decided but stuck - advanced to showdown');
+            actionsTaken.push(`RECOVERY: Stuck Holm betting round - set turn to position ${nextPosition} with ${timerSeconds}s deadline`);
+          } else if (undecidedPlayers.length === 0 && activePlayers.length > 0) {
+            // All players have decided but round wasn't advanced - trigger showdown
+            console.log('[ENFORCE] RECOVERY: All players decided but round stuck in betting - advancing to showdown');
+            
+            const { data: lockResult } = await supabase
+              .from('games')
+              .update({ all_decisions_in: true })
+              .eq('id', gameId)
+              .eq('all_decisions_in', false)
+              .select();
+
+            if (lockResult && lockResult.length > 0) {
+              await supabase
+                .from('rounds')
+                .update({ status: 'showdown' })
+                .eq('id', stuckBettingRound.id)
+                .eq('status', 'betting');
+
+              actionsTaken.push('RECOVERY: All decided but stuck - advanced to showdown');
+            }
           }
         }
       }
