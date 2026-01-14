@@ -79,7 +79,7 @@ export const MidnightAnimation: React.FC<MidnightAnimationProps> = ({
   return (
     <div
       className={cn(
-        "absolute inset-0 z-[200] pointer-events-none flex items-center justify-center overflow-hidden",
+        "absolute inset-0 z-[1000] pointer-events-none flex items-center justify-center overflow-hidden",
         phase === 'fadeout' && "transition-opacity duration-700 opacity-0"
       )}
       style={{
