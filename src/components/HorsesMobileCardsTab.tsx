@@ -185,11 +185,14 @@ export function HorsesMobileCardsTab({
         <div className="flex items-center justify-center mt-2">
           <label className="flex items-center gap-2 text-xs text-amber-500 cursor-pointer">
             <Checkbox
-              checked={!currentUserPlayer.auto_fold}
-              onCheckedChange={(checked) => onAutoFoldChange?.(!checked)}
+              checked={true}
+              onCheckedChange={(checked) => {
+                // Show this only when auto_fold is true; unchecking disables auto-fold.
+                if (checked === false) onAutoFoldChange?.(false);
+              }}
               className="h-4 w-4"
             />
-            <span>You're sitting out (uncheck to rejoin)</span>
+            <span>Auto-fold enabled (uncheck to rejoin)</span>
           </label>
         </div>
       )}
