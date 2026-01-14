@@ -79,7 +79,10 @@ export function HorsesMobileCardsTab({
   // Show "rolling against" when it's my turn and there's already a winning hand to beat
   const showRollingAgainst = horses.isMyTurn && horses.gamePhase === "playing" && horses.currentWinningResult;
 
-  const isSCC = gameType === 'ship-captain-crew';
+  const isSCC = gameType === "ship-captain-crew";
+
+  // roll label should never exceed 3 (and we hide the button after roll 3)
+  const rollNumber = Math.min(3, Math.max(1, 4 - horses.localHand.rollsRemaining));
 
   return (
     <div className="px-2 flex flex-col flex-1 relative">
@@ -146,7 +149,10 @@ export function HorsesMobileCardsTab({
       <div className="flex items-center justify-center min-h-[36px] mb-3">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           horses.localHand.rollsRemaining > 0 ? (
-            <div className="flex items-center">
+            <div className="flex items-center justify-center gap-2">
+              {/* Left spacer keeps the Roll button perfectly centered even when Lock appears */}
+              <div className="h-9 w-9" aria-hidden="true" />
+
               <Button
                 size="default"
                 onClick={handleRollClick}
@@ -154,36 +160,38 @@ export function HorsesMobileCardsTab({
                 className="text-sm font-bold h-9 px-6"
               >
                 <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
-                Roll {4 - horses.localHand.rollsRemaining}
+                Roll {rollNumber}
               </Button>
 
-              {horses.localHand.rollsRemaining < 3 && (
+              {horses.localHand.rollsRemaining < 3 ? (
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={horses.handleLockIn}
-                  className="h-9 w-9 ml-2"
+                  className="h-9 w-9"
                   title="Lock In"
                 >
                   <Lock className="w-4 h-4" />
                 </Button>
+              ) : (
+                // Right placeholder keeps layout stable on roll 1
+                <div className="h-9 w-9" aria-hidden="true" />
               )}
             </div>
           ) : (
-            <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-green-600 !text-white font-medium">
-              ✓ Locked In
-            </Badge>
+            // After roll 3, hide the Roll button entirely
+            <Badge className="text-sm px-3 py-1.5 font-medium">✓ Locked In</Badge>
           )
         ) : horses.gamePhase === "complete" && hasCompleted ? (
-          <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-green-600 !text-white font-medium">
+          <Badge className="text-sm px-3 py-1.5 font-medium">
             ✓ Locked: {myResult?.description ?? "Complete"}
           </Badge>
         ) : isWaitingForYourTurn ? (
-          <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-amber-600 !text-white font-medium">
+          <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
             Waiting — {horses.currentTurnPlayerName ? `${horses.currentTurnPlayerName}'s turn` : "Next turn"}
           </Badge>
         ) : (
-          <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-slate-600 !text-white font-medium">
+          <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
             Ready
           </Badge>
         )}
