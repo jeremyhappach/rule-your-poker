@@ -4644,15 +4644,15 @@ export const MobileGameTable = ({
                         : "scale-[1.7]")
                   : "scale-[2.0]";
 
-              // Reserve space - must fully contain scaled cards so they don't overlap actions
+              // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
                   ? "min-h-[130px]"
                   : (currentRound === 1
-                      ? "min-h-[140px]"
+                      ? "min-h-[155px]" // Slightly bigger for 3-5-7 R1 on tablet
                       : currentRound === 2
-                        ? "min-h-[120px]"
-                        : "min-h-[105px]");
+                        ? "min-h-[125px] pt-2" // Nudge down for R2
+                        : "min-h-[110px] pt-2"); // Nudge down for R3
 
               return (
                 <div className={cn(
