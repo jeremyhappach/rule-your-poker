@@ -104,10 +104,10 @@ export function HorsesMobileCardsTab({
         </>
       )}
 
-      {/* Dice display first (at top, away from chat) */}
-      {showMyDice && (
-        <div className="flex items-center justify-center gap-1 mb-3">
-          {horses.localHand.dice.map((die, idx) => {
+      {/* Dice area - always reserve space so button doesn't move */}
+      <div className="flex items-center justify-center gap-1 mb-3 min-h-[60px]">
+        {showMyDice ? (
+          horses.localHand.dice.map((die, idx) => {
             // Determine if this die was held at the START of the current roll
             const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? (die as any).isHeld;
             
@@ -135,11 +135,14 @@ export function HorsesMobileCardsTab({
                 showWildHighlight={!isSCC}
               />
             );
-          })}
-        </div>
-      )}
+          })
+        ) : (
+          // Placeholder to reserve space before first roll
+          <div className="h-[52px]" />
+        )}
+      </div>
 
-      {/* Action buttons (below dice, above player info - away from chat) */}
+      {/* Action buttons (always in same position below dice area) */}
       <div className="flex items-center justify-center min-h-[36px] mb-3">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           <div className="flex gap-2 justify-center items-center">
@@ -150,7 +153,7 @@ export function HorsesMobileCardsTab({
               className="text-sm font-bold h-9 px-6"
             >
               <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
-              Roll{horses.localHand.rollsRemaining === 3 ? "" : " Again"}
+              Roll {4 - horses.localHand.rollsRemaining}
             </Button>
 
             {horses.localHand.rollsRemaining < 3 && horses.localHand.rollsRemaining > 0 && (
