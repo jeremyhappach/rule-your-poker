@@ -883,6 +883,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }, 300); // 300ms balances responsiveness and batching
     };
 
+    // DICE SYNC: For dice games, observers were waiting on fetchGameData to receive horses_state updates.
+    // Instead, apply the realtime round payload immediately into `game.rounds` so UI/animations can start
+    // as soon as the realtime message arrives (no extra debounce/fetch latency).
+    const applyRoundRealtimePatch = (newRound: any) => {
+      const roundId = newRound?.id as string | undefined;
+      if (!roundId) return;
+
+      setGame((prev) => {
+        if (!prev?.rounds?.length) return prev;
+        const idx = prev.rounds.findIndex((r) => r.id === roundId);
+        if (idx === -1) return prev;
+
+        const nextRounds = [...prev.rounds];
+        nextRounds[idx] = { ...nextRounds[idx], ...(newRound as any) };
+        return { ...prev, rounds: nextRounds };
+      });
+    };
+
     // Fallback polling if realtime subscription drops.
     // This prevents "frozen" games when the realtime channel enters CHANNEL_ERROR.
     let fallbackPollInterval: ReturnType<typeof setInterval> | null = null;
@@ -1144,6 +1162,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         },
         (payload) => {
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
+
+          // If horses_state changed, patch it into local state immediately so dice animations can start
+          // as soon as the realtime event arrives (no waiting on fetchGameData).
+          if (payload.eventType === 'UPDATE' && payload.new && 'horses_state' in (payload.new as any)) {
+            applyRoundRealtimePatch(payload.new);
+            // Still refetch (debounced) to keep the rest of the game state consistent.
+            debouncedFetch();
+            return;
+          }
+
           // Immediate fetch for INSERT (new round started) or turn changes
           if (payload.eventType === 'INSERT') {
             console.log('[REALTIME] 🎴 NEW ROUND INSERTED - Immediate fetch for all clients!');
@@ -1235,6 +1263,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.log('[REALTIME] *** ROUND UPDATE RECEIVED ***', payload);
           console.log('[REALTIME] New turn position:', (payload.new as any).current_turn_position);
           console.log('[REALTIME] Round status:', (payload.new as any).status);
+
+          // Patch round data immediately (especially horses_state/rollKey) so dice animations don't lag.
+          if (payload.new) {
+            applyRoundRealtimePatch(payload.new);
+          }
+
           console.log('[REALTIME] Immediately refetching game data');
           fetchGameData();
         }
