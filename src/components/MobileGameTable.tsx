@@ -4644,15 +4644,15 @@ export const MobileGameTable = ({
                         : "scale-[1.7]")
                   : "scale-[2.0]";
 
-              // Reserve space - minimal padding below cards
+              // Reserve space - must fully contain scaled cards so they don't overlap actions
               const currentPlayerHandReserveClass =
-                gameType === "holm-game" 
-                  ? "min-h-[90px]" 
-                  : (currentRound === 1 
-                      ? "min-h-[100px]" 
-                      : currentRound === 2 
-                        ? "min-h-[85px]" 
-                        : "min-h-[75px]");
+                gameType === "holm-game"
+                  ? "min-h-[130px]"
+                  : (currentRound === 1
+                      ? "min-h-[140px]"
+                      : currentRound === 2
+                        ? "min-h-[120px]"
+                        : "min-h-[105px]");
 
               return (
                 <div className={cn(
@@ -4743,7 +4743,7 @@ export const MobileGameTable = ({
             })()}
             
             {/* Action area - BELOW cards (increased gap for tablet/desktop using mobile layout) */}
-            <div className="flex items-center justify-center min-h-[36px] mt-4 mb-3">
+            <div className="flex items-center justify-center min-h-[36px] mt-6 mb-3">
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                 <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
