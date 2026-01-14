@@ -406,29 +406,6 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     const botAggressionLevel = aggressionMap.get(bot.user_id) || 'normal';
     console.log('[BOT DECISIONS] Holm: Processing bot decision for position:', bot.position, 'aggression:', botAggressionLevel);
     
-    // CRITICAL: Check if all other players have already folded
-    // If so, this bot should AUTO-STAY (guaranteed win) - never fold when you're the last one!
-    const { data: allActivePlayers } = await supabase
-      .from('players')
-      .select('id, position, current_decision, decision_locked, is_bot')
-      .eq('game_id', gameId)
-      .eq('status', 'active')
-      .eq('sitting_out', false);
-    
-    const otherPlayers = (allActivePlayers || []).filter(p => p.id !== bot.id);
-    const allOthersFolded = otherPlayers.length > 0 && 
-      otherPlayers.every(p => p.current_decision === 'fold' && p.decision_locked);
-    
-    if (allOthersFolded) {
-      console.log('[BOT DECISIONS] ⚠️ All other players have folded! Bot at position', bot.position, 'AUTO-STAYING (guaranteed win)');
-      
-      // Add delay before bot makes decision (for visual effect)
-      await new Promise(resolve => setTimeout(resolve, decisionDelay * 1000));
-      
-      await makeDecision(gameId, bot.id, 'stay');
-      return true;
-    }
-    
     // Get this bot's cards
     const { data: playerCards } = await supabase
       .from('player_cards')
