@@ -819,6 +819,38 @@ export async function endHolmRound(gameId: string) {
     
     console.log('[HOLM END] Rounds pot update:', roundUpdateError ? `ERROR: ${roundUpdateError.message}` : 'SUCCESS');
 
+    // RECORD GAME RESULT for "everyone folded" case
+    // This tracks that a hand happened even though there was no winner
+    // The pot is carried forward, but we record the chip changes (pussy tax deductions)
+    const playerChipChanges: Record<string, number> = {};
+    if (pussyTaxAmount > 0) {
+      for (const player of activePlayers) {
+        const username = player.profiles?.username || player.user_id;
+        playerChipChanges[username] = -pussyTaxAmount;
+      }
+    }
+    
+    console.log('[HOLM END] Recording game_result for everyone-folded case');
+    const { error: resultError } = await supabase
+      .from('game_results')
+      .insert({
+        game_id: gameId,
+        hand_number: capturedRoundNumber,
+        winner_player_id: null,
+        winner_username: null,
+        pot_won: 0, // No pot won - carried forward
+        winning_hand_description: 'Everyone folded - Pussy Tax applied',
+        is_chopped: false,
+        player_chip_changes: playerChipChanges,
+        game_type: 'holm-game',
+      });
+    
+    if (resultError) {
+      console.error('[HOLM END] Failed to record everyone-folded result:', resultError);
+    } else {
+      console.log('[HOLM END] Successfully recorded everyone-folded game_result');
+    }
+
     console.log('[HOLM END] Pussy tax case completed with new pot:', newPot);
     return;
   }
