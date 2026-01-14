@@ -4628,91 +4628,7 @@ export const MobileGameTable = ({
             />
           ) : (
             <div className="px-2 flex flex-col flex-1">
-            {/* Action area - fixed height to prevent layout shift */}
-            <div className="flex items-center justify-center min-h-[36px]">
-              {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
-              {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
-                <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    onChange={(e) => {
-                      if (!e.target.checked && onAutoFoldChange) {
-                        onAutoFoldChange(currentPlayer.id, false);
-                      }
-                    }}
-                    className="w-5 h-5 rounded border-2 border-border accent-primary"
-                  />
-                  <span className="text-sm font-medium text-foreground">Auto-fold (will sit out next hand)</span>
-                </label>
-              ) : canDecide && !currentPlayer.auto_fold ? (
-                /* Action buttons */
-                <div className="flex gap-2 justify-center">
-                  <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
-                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
-                  </Button>
-                  <Button size="default" onClick={onStay} className="flex-1 max-w-[120px] bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-sm font-bold h-9">
-                    Stay
-                  </Button>
-                </div>
-              ) : currentPlayer.sitting_out && !currentPlayer.waiting ? (
-                /* Rejoin Next Hand button for sitting out players */
-                <RejoinNextHandButton playerId={currentPlayer.id} />
-              ) : hasDecided ? (
-                /* Decision feedback */
-                <Badge
-                  className={cn(
-                    "text-sm px-3 py-0.5 border-transparent",
-                    (pendingDecision || currentPlayer.current_decision) === "stay"
-                      ? "bg-poker-chip-green text-poker-chip-white"
-                      : "bg-poker-chip-red text-poker-chip-white",
-                  )}
-                >
-                  ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
-                </Badge>
-              ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold ? (
-                /* Holm pre-decision checkboxes - render in same spot as action buttons */
-                <div className="flex items-center justify-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={holmPreFold}
-                      onChange={(e) => {
-                        onHolmPreFoldChange?.(e.target.checked);
-                        if (e.target.checked) onHolmPreStayChange?.(false);
-                      }}
-                      className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
-                    />
-                    <span className="text-sm font-medium text-red-500">Fold</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={holmPreStay}
-                      onChange={(e) => {
-                        onHolmPreStayChange?.(e.target.checked);
-                        if (e.target.checked) onHolmPreFoldChange?.(false);
-                      }}
-                      className="w-5 h-5 rounded border-2 border-green-500 accent-green-500"
-                    />
-                    <span className="text-sm font-medium text-green-500">Stay</span>
-                  </label>
-                </div>
-              ) : currentPlayerCards.length === 0 && roundStatus === 'betting' ? (
-                /* Placeholder while waiting for cards - maintains layout stability */
-                <div className="flex gap-2 justify-center opacity-0 pointer-events-none">
-                  <Button variant="destructive" size="default" className="flex-1 max-w-[120px] text-sm font-bold h-9">
-                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
-                  </Button>
-                  <Button size="default" className="flex-1 max-w-[120px] bg-poker-chip-green text-white text-sm font-bold h-9">
-                    Stay
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-            
-            {/* Cards display - slight gap from action buttons */}
-            <div className="mt-1" />
+            {/* Cards display - FIRST (above action buttons) */}
             {(() => {
               const isWinner357InAnimation = gameType !== 'holm-game' && 
                 threeFiveSevenWinnerId === currentPlayer?.id && 
@@ -4826,8 +4742,91 @@ export const MobileGameTable = ({
               );
             })()}
             
-            {/* Player info - below cards */}
-            <div className={cn("flex flex-col gap-1 mt-2 pb-2")}>
+            {/* Action area - BELOW cards (slight gap from cards) */}
+            <div className="flex items-center justify-center min-h-[36px] mt-2 mb-3">
+              {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
+              {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
+                <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    onChange={(e) => {
+                      if (!e.target.checked && onAutoFoldChange) {
+                        onAutoFoldChange(currentPlayer.id, false);
+                      }
+                    }}
+                    className="w-5 h-5 rounded border-2 border-border accent-primary"
+                  />
+                  <span className="text-sm font-medium text-foreground">Auto-fold (will sit out next hand)</span>
+                </label>
+              ) : canDecide && !currentPlayer.auto_fold ? (
+                /* Action buttons */
+                <div className="flex gap-2 justify-center">
+                  <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
+                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
+                  </Button>
+                  <Button size="default" onClick={onStay} className="flex-1 max-w-[120px] bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-sm font-bold h-9">
+                    Stay
+                  </Button>
+                </div>
+              ) : currentPlayer.sitting_out && !currentPlayer.waiting ? (
+                /* Rejoin Next Hand button for sitting out players */
+                <RejoinNextHandButton playerId={currentPlayer.id} />
+              ) : hasDecided ? (
+                /* Decision feedback */
+                <Badge
+                  className={cn(
+                    "text-sm px-3 py-0.5 border-transparent",
+                    (pendingDecision || currentPlayer.current_decision) === "stay"
+                      ? "bg-poker-chip-green text-poker-chip-white"
+                      : "bg-poker-chip-red text-poker-chip-white",
+                  )}
+                >
+                  ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
+                </Badge>
+              ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold ? (
+                /* Holm pre-decision checkboxes - render in same spot as action buttons */
+                <div className="flex items-center justify-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={holmPreFold}
+                      onChange={(e) => {
+                        onHolmPreFoldChange?.(e.target.checked);
+                        if (e.target.checked) onHolmPreStayChange?.(false);
+                      }}
+                      className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
+                    />
+                    <span className="text-sm font-medium text-red-500">Fold</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={holmPreStay}
+                      onChange={(e) => {
+                        onHolmPreStayChange?.(e.target.checked);
+                        if (e.target.checked) onHolmPreFoldChange?.(false);
+                      }}
+                      className="w-5 h-5 rounded border-2 border-green-500 accent-green-500"
+                    />
+                    <span className="text-sm font-medium text-green-500">Stay</span>
+                  </label>
+                </div>
+              ) : currentPlayerCards.length === 0 && roundStatus === 'betting' ? (
+                /* Placeholder while waiting for cards - maintains layout stability */
+                <div className="flex gap-2 justify-center opacity-0 pointer-events-none">
+                  <Button variant="destructive" size="default" className="flex-1 max-w-[120px] text-sm font-bold h-9">
+                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
+                  </Button>
+                  <Button size="default" className="flex-1 max-w-[120px] bg-poker-chip-green text-white text-sm font-bold h-9">
+                    Stay
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+            
+            {/* Player info - below action buttons */}
+            <div className={cn("flex flex-col gap-1 pb-2")}>
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
