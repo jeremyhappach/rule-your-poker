@@ -86,7 +86,7 @@ export function HorsesMobileCardsTab({
 
   return (
     <div className="px-2 flex flex-col flex-1 relative">
-      {/* Debug overlay toggle + panel (DEV only) */}
+      {/* Debug overlay toggle + panel (DEV only) - TEMPORARILY HIDDEN
       {import.meta.env.DEV && (
         <>
           <button
@@ -106,6 +106,7 @@ export function HorsesMobileCardsTab({
           />
         </>
       )}
+      */}
 
       {/* Dice area - always reserve space so button doesn't move */}
       <div className="flex items-center justify-center gap-1 mb-3 min-h-[60px]">
