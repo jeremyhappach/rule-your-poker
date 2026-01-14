@@ -92,14 +92,16 @@ function isDieUnused(
   if (!allHeld) return false;
   
   if (isSCC) {
-    // SCC logic: If qualified, all dice are used. If not qualified, only SCC dice are used.
+    // SCC logic: If qualified, ALL dice are used (no red shading)
+    // Red shading only applies to non-qualifying hands
     if (isQualified === true) return false;
     
-    // If not qualified, only Ship (6), Captain (5), Crew (4) that were locked as SCC are used
+    // If not qualified, only Ship (6), Captain (5), Crew (4) that were locked as SCC are "used"
+    // All other dice are "unused" and should be shaded red
     const sccDie = die as SCCDieType;
     const isSCCDie = 'isSCC' in sccDie && sccDie.isSCC;
     
-    // Cargo dice (non-SCC) are unused when not qualified
+    // Non-SCC dice are unused when not qualified
     return !isSCCDie;
   }
   
