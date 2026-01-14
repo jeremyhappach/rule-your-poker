@@ -280,6 +280,11 @@ export function DiceTableLayout({
     if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
       prevRollKeyRef.current = rollKey;
 
+      // CRITICAL FIX: Immediately hide any OLD unheld dice from the previous roll.
+      // This prevents stale dice from roll 2 persisting on the felt during roll 3's animation.
+      // Without this, observers see old dice sitting there until the new animation completes.
+      setShowUnheldDice(false);
+
       const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
 
       // Build an index order consistent with what we render (important for SCC).
@@ -315,7 +320,7 @@ export function DiceTableLayout({
       if (animationOrigin && unheldIndices.length > 0) {
         setAnimatingDiceIndices(unheldIndices);
         setIsAnimatingFlyIn(true);
-        // Show unheld dice when animation starts (they'll animate in)
+        // Show unheld dice when animation starts (they'll animate in from player window)
         setShowUnheldDice(true);
       }
     }
