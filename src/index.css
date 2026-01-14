@@ -38,6 +38,7 @@ All colors MUST be HSL.
     --poker-chip-black: 0 0% 10%;
     --poker-chip-white: 0 0% 95%;
     --poker-gold: 45 100% 50%;
+    --poker-cargo: 199 92% 85%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -77,6 +78,7 @@ All colors MUST be HSL.
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    --poker-cargo: 199 80% 32%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

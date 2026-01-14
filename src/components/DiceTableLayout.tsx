@@ -92,16 +92,19 @@ function isDieUnused(
   if (!allHeld) return false;
   
   if (isSCC) {
-    // SCC logic: If qualified, ALL dice are used (no red shading)
-    // Red shading only applies to non-qualifying hands
-    if (isQualified === true) return false;
-    
-    // If not qualified, only Ship (6), Captain (5), Crew (4) that were locked as SCC are "used"
-    // All other dice are "unused" and should be shaded red
+    // SCC logic: red shading only on non-qualifying hands.
+    // IMPORTANT: Some caller paths don't provide isQualified, so we compute qualification from dice state.
+    const computedQualified =
+      isQualified ??
+      (Array.isArray(allDice) && allDice.some((d) => (d as SCCDieType).sccType === "crew")) ??
+      false;
+
+    // Qualifying hand: no unused dice (no red shading)
+    if (computedQualified) return false;
+
+    // Non-qualifying hand: only Ship/Captain/Crew dice are used; all others are unused (red)
     const sccDie = die as SCCDieType;
-    const isSCCDie = 'isSCC' in sccDie && sccDie.isSCC;
-    
-    // Non-SCC dice are unused when not qualified
+    const isSCCDie = "isSCC" in sccDie && sccDie.isSCC;
     return !isSCCDie;
   }
   
@@ -174,6 +177,30 @@ function isDieUnused(
   
   // This die is neither the target value nor a needed wild - it's unused
   return true;
+}
+
+/**
+ * SCC only: on a qualifying hand, cargo dice (non-SCC dice) should be shaded light blue when locked.
+ */
+function isCargoDie(
+  die: HorsesDieType | SCCDieType,
+  isSCC: boolean,
+  isQualified: boolean | undefined,
+  allHeld: boolean,
+  allDice?: (HorsesDieType | SCCDieType)[],
+): boolean {
+  if (!isSCC || !allHeld) return false;
+
+  const computedQualified =
+    isQualified ??
+    (Array.isArray(allDice) && allDice.some((d) => (d as SCCDieType).sccType === "crew")) ??
+    false;
+
+  if (!computedQualified) return false;
+
+  const sccDie = die as SCCDieType;
+  const isSCCDie = "isSCC" in sccDie && sccDie.isSCC;
+  return !isSCCDie;
 }
 
 export function DiceTableLayout({
@@ -473,6 +500,7 @@ export function DiceTableLayout({
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
+                isCargoDie={isCargoDie(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -506,6 +534,7 @@ export function DiceTableLayout({
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
+                isCargoDie={isCargoDie(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -551,6 +580,7 @@ export function DiceTableLayout({
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
+                isCargoDie={isCargoDie(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -599,6 +629,7 @@ export function DiceTableLayout({
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
+                isCargoDie={isCargoDie(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -729,6 +760,7 @@ export function DiceTableLayout({
               showWildHighlight={showWildHighlight && !isSCC}
               isSCCDie={isSCCDie}
               isUnusedDie={isDieUnused(item.die, isSCC, isQualified, allHeld, orderedDice.map(d => d.die))}
+              isCargoDie={isCargoDie(item.die, isSCC, isQualified, allHeld, orderedDice.map(d => d.die))}
             />
           </div>
         );

@@ -68,6 +68,7 @@ export default {
             white: "hsl(var(--poker-chip-white))",
           },
           gold: "hsl(var(--poker-gold))",
+          cargo: "hsl(var(--poker-cargo))",
         },
       },
       borderRadius: {
