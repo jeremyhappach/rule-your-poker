@@ -444,17 +444,11 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       )}
       {/* Header with Peoria Skyline Backdrop */}
       <div className="relative overflow-hidden rounded-xl border border-amber-700/30 h-[200px] sm:min-h-[240px] md:min-h-[280px]">
-        {/* Skyline Background - Desktop */}
-        <img 
-          src={peoriaSkyline} 
-          alt="Peoria Illinois Skyline"
-          className="absolute inset-0 w-full h-full object-cover hidden sm:block"
-        />
-        {/* Bridge Background - Mobile */}
+        {/* Bridge Background - All devices */}
         <img 
           src={peoriaBridgeMobile} 
           alt="I-74 Bridge Peoria Illinois"
-          className="absolute inset-0 w-full h-full object-cover sm:hidden"
+          className="absolute inset-0 w-full h-full object-cover"
         />
         {/* Gradient Overlay - lighter at top to show skyline, darker at bottom for text */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
