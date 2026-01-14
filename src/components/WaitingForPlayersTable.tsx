@@ -184,17 +184,34 @@ export const WaitingForPlayersTable = ({
   };
 
   const addSingleBot = async (): Promise<boolean> => {
-    const currentPlayers = playersRef.current;
-    if (currentPlayers.length >= 7) return false;
+    // CRITICAL: Fetch actual positions from DB to avoid stale state causing duplicate key errors
+    const { data: dbPlayers, error: fetchError } = await supabase
+      .from("players")
+      .select("position")
+      .eq("game_id", gameId);
 
-    // Find open positions (include locally reserved positions so rapid taps don't collide)
-    const occupiedPositions = new Set(currentPlayers.map((p) => p.position));
+    if (fetchError) {
+      console.error("Error fetching players for bot add:", fetchError);
+      toast.error("Failed to check available seats");
+      return false;
+    }
+
+    if ((dbPlayers?.length ?? 0) >= 7) {
+      toast.error("Table is full");
+      return false;
+    }
+
+    // Find open positions using fresh DB data + locally reserved positions
+    const occupiedPositions = new Set((dbPlayers ?? []).map((p) => p.position));
     for (const pos of reservedBotPositionsRef.current) occupiedPositions.add(pos);
 
     const allPositions = [1, 2, 3, 4, 5, 6, 7];
     const openPositions = allPositions.filter((pos) => !occupiedPositions.has(pos));
 
-    if (openPositions.length === 0) return false;
+    if (openPositions.length === 0) {
+      toast.error("No open seats available");
+      return false;
+    }
 
     const nextPosition = openPositions[Math.floor(Math.random() * openPositions.length)];
     reservedBotPositionsRef.current.add(nextPosition);
