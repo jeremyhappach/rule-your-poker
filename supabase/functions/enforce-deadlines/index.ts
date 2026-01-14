@@ -1514,6 +1514,49 @@ serve(async (req) => {
       }
     }
 
+    // 4D. ENFORCE POST-ROUND COMPLETION RECOVERY (DICE GAMES: HORSES / SHIP CAPTAIN CREW)
+    // Dice games rely on the client to start the next hand when awaiting_next_round=true.
+    // If the client disconnects after completing a round but before setting awaiting_next_round,
+    // the session can freeze indefinitely.
+    const isDiceGame = game.game_type === 'horses' || game.game_type === 'ship-captain-crew';
+    if (
+      game.status === 'in_progress' &&
+      isDiceGame &&
+      game.awaiting_next_round !== true
+    ) {
+      const { data: latestRounds } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const latestRound = latestRounds?.[0];
+
+      if (latestRound?.status === 'completed') {
+        const gameUpdatedAt = new Date(game.updated_at);
+        const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
+
+        // Give the client a moment to set awaiting_next_round; if it doesn't, recover.
+        if (stuckDuration > 10000) {
+          const nextRoundNum = (latestRound.round_number || (game.current_round || 0)) + 1;
+
+          await supabase
+            .from('games')
+            .update({
+              awaiting_next_round: true,
+              next_round_number: nextRoundNum,
+              all_decisions_in: true,
+            })
+            .eq('id', gameId);
+
+          actionsTaken.push(
+            `DICE post-round recovery: latest round ${latestRound.round_number} completed but awaiting_next_round missing, set awaiting_next_round for hand ${nextRoundNum}`
+          );
+        }
+      }
+    }
+
     // 5. ENFORCE AWAITING_NEXT_ROUND TIMEOUT (stuck game watchdog)
     // If a game has been stuck in awaiting_next_round=true for too long (>10 seconds),
     // it means client-side proceedToNextRound never fired. Auto-proceed server-side.
