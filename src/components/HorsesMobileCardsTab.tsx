@@ -170,20 +170,20 @@ export function HorsesMobileCardsTab({
               )}
             </div>
           ) : (
-            <Badge className="text-sm px-3 py-1.5 border-transparent bg-primary/30 text-white font-medium">
+            <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-green-600 !text-white font-medium">
               ✓ Locked In
             </Badge>
           )
         ) : horses.gamePhase === "complete" && hasCompleted ? (
-          <Badge className="text-sm px-3 py-1.5 border-transparent bg-primary/30 text-white font-medium">
+          <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-green-600 !text-white font-medium">
             ✓ Locked: {myResult?.description ?? "Complete"}
           </Badge>
         ) : isWaitingForYourTurn ? (
-          <Badge className="text-sm px-3 py-1.5 border-transparent bg-amber-600 text-white font-medium">
+          <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-amber-600 !text-white font-medium">
             Waiting — {horses.currentTurnPlayerName ? `${horses.currentTurnPlayerName}'s turn` : "Next turn"}
           </Badge>
         ) : (
-          <Badge className="text-sm px-3 py-1.5 border-transparent bg-secondary text-white font-medium">
+          <Badge variant="outline" className="text-sm px-3 py-1.5 !border-transparent !bg-slate-600 !text-white font-medium">
             Ready
           </Badge>
         )}
