@@ -104,7 +104,42 @@ export function HorsesMobileCardsTab({
         </>
       )}
 
-      {/* Action buttons (always above dice, centered) */}
+      {/* Dice display first (at top, away from chat) */}
+      {showMyDice && (
+        <div className="flex items-center justify-center gap-1 mb-3">
+          {horses.localHand.dice.map((die, idx) => {
+            // Determine if this die was held at the START of the current roll
+            const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? (die as any).isHeld;
+            
+            // Animate dice that were NOT held at the start of this roll.
+            const shouldAnimate = rolling && !heldAtRollStart;
+
+            // For held styling:
+            // - Don't show held styling on dice that are currently animating (to allow the roll animation)
+            // - On roll 3 (rollsRemaining=0), all dice are "locked in" so none should show held styling
+            // - During animation, dice that weren't held at roll start should NOT show held styling
+            //   even if they are now held (e.g., SCC auto-held 6/5/4) - this allows the animation to play
+            const showHeldStyling = horses.localHand.rollsRemaining > 0 && 
+              (die as any).isHeld && 
+              !shouldAnimate; // Don't show held styling while animating
+
+            return (
+              <HorsesDie
+                key={idx}
+                value={(die as any).value}
+                isHeld={showHeldStyling}
+                isRolling={shouldAnimate}
+                canToggle={!isSCC && !rolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
+                onToggle={() => horses.handleToggleHold(idx)}
+                size="lg"
+                showWildHighlight={!isSCC}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Action buttons (below dice, above player info - away from chat) */}
       <div className="flex items-center justify-center min-h-[36px] mb-3">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           <div className="flex gap-2 justify-center items-center">
@@ -144,41 +179,6 @@ export function HorsesMobileCardsTab({
           </Badge>
         )}
       </div>
-
-      {/* Dice display when rolling - horizontal line layout (below buttons) */}
-      {showMyDice && (
-        <div className="flex items-center justify-center gap-1 mb-3">
-          {horses.localHand.dice.map((die, idx) => {
-            // Determine if this die was held at the START of the current roll
-            const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? (die as any).isHeld;
-            
-            // Animate dice that were NOT held at the start of this roll.
-            const shouldAnimate = rolling && !heldAtRollStart;
-
-            // For held styling:
-            // - Don't show held styling on dice that are currently animating (to allow the roll animation)
-            // - On roll 3 (rollsRemaining=0), all dice are "locked in" so none should show held styling
-            // - During animation, dice that weren't held at roll start should NOT show held styling
-            //   even if they are now held (e.g., SCC auto-held 6/5/4) - this allows the animation to play
-            const showHeldStyling = horses.localHand.rollsRemaining > 0 && 
-              (die as any).isHeld && 
-              !shouldAnimate; // Don't show held styling while animating
-
-            return (
-              <HorsesDie
-                key={idx}
-                value={(die as any).value}
-                isHeld={showHeldStyling}
-                isRolling={shouldAnimate}
-                canToggle={!isSCC && !rolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
-                onToggle={() => horses.handleToggleHold(idx)}
-                size="lg"
-                showWildHighlight={!isSCC}
-              />
-            );
-          })}
-        </div>
-      )}
 
       {/* Auto-fold checkbox for reconnection - always show when auto_fold is true */}
       {currentUserPlayer.auto_fold && (
