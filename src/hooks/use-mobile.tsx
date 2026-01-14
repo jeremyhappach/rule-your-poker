@@ -3,6 +3,11 @@ import * as React from "react";
 const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
+  // TEMPORARY: Force mobile layout for all devices
+  // TODO: Remove this override once desktop layout issues are fixed
+  return true;
+
+  /* Original implementation - restore when ready:
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
 
   React.useEffect(() => {
@@ -16,4 +21,5 @@ export function useIsMobile() {
   }, []);
 
   return !!isMobile;
+  */
 }
