@@ -1354,6 +1354,130 @@ serve(async (req) => {
                     .eq('status', 'betting'); // Only update if still in betting status
 
                   actionsTaken.push('All players decided - all_decisions_in set to true, round status set to showdown (atomic lock acquired)');
+                  
+                  // SERVER-SIDE HOLM ROUND COMPLETION
+                  // When all decisions are in and we're processing server-side (no human client),
+                  // we need to complete the round ourselves. Check if this is a bot-only game
+                  // and handle the round completion.
+                  const humanPlayersInGame = freshActivePlayers.filter((p: any) => !p.is_bot);
+                  const isBotOnlyGame = humanPlayersInGame.length === 0;
+                  
+                  console.log('[ENFORCE] Holm round completion check:', {
+                    activePlayers: freshActivePlayers.length,
+                    humanPlayers: humanPlayersInGame.length,
+                    isBotOnlyGame,
+                  });
+                  
+                  if (isBotOnlyGame) {
+                    // Bot-only game - complete the round server-side
+                    const stayedPlayers = freshActivePlayers.filter((p: any) => p.current_decision === 'stay');
+                    
+                    console.log('[ENFORCE] Bot-only Holm game - completing round server-side:', {
+                      stayedCount: stayedPlayers.length,
+                      foldedCount: freshActivePlayers.length - stayedPlayers.length,
+                    });
+                    
+                    if (stayedPlayers.length === 0) {
+                      // EVERYONE FOLDED - Apply pussy tax and carry pot forward
+                      console.log('[ENFORCE] Everyone folded - applying pussy tax');
+                      
+                      const pussyTaxEnabled = game.pussy_tax_enabled ?? true;
+                      const pussyTaxAmount = pussyTaxEnabled ? (game.pussy_tax_value || 1) : 0;
+                      
+                      if (pussyTaxAmount > 0) {
+                        // Deduct pussy tax from all active players
+                        const playerIds = freshActivePlayers.map((p: any) => p.id);
+                        const { error: taxError } = await supabase.rpc('decrement_player_chips', {
+                          player_ids: playerIds,
+                          amount: pussyTaxAmount
+                        });
+                        
+                        if (taxError) {
+                          console.error('[ENFORCE] Pussy tax decrement error:', taxError);
+                          // Fallback to individual updates
+                          for (const player of freshActivePlayers) {
+                            await supabase
+                              .from('players')
+                              .update({ chips: player.chips - pussyTaxAmount })
+                              .eq('id', player.id);
+                          }
+                        }
+                      }
+                      
+                      const totalTaxCollected = pussyTaxAmount * freshActivePlayers.length;
+                      const newPot = (game.pot || 0) + totalTaxCollected;
+                      
+                      // Record game result for "everyone folded" case
+                      const playerChipChanges: Record<string, number> = {};
+                      if (pussyTaxAmount > 0) {
+                        for (const player of freshActivePlayers) {
+                          playerChipChanges[player.id] = -pussyTaxAmount;
+                        }
+                      }
+                      
+                      await supabase
+                        .from('game_results')
+                        .insert({
+                          game_id: gameId,
+                          hand_number: (currentRound as any).round_number || 1,
+                          winner_player_id: null,
+                          winner_username: null,
+                          pot_won: 0,
+                          winning_hand_description: 'Everyone folded - Pussy Tax applied (server-side)',
+                          is_chopped: false,
+                          player_chip_changes: playerChipChanges,
+                          game_type: 'holm-game',
+                        });
+                      
+                      // Update game with new pot and set awaiting_next_round
+                      await supabase
+                        .from('games')
+                        .update({
+                          pot: newPot,
+                          last_round_result: pussyTaxAmount > 0 ? 'Pussy Tax!' : 'Everyone folded!',
+                          awaiting_next_round: true,
+                        })
+                        .eq('id', gameId);
+                      
+                      // Mark round as completed
+                      await supabase
+                        .from('rounds')
+                        .update({ status: 'completed' })
+                        .eq('id', (currentRound as any).id);
+                      
+                      actionsTaken.push(`Server-side Holm completion: Everyone folded, pussy tax applied (${totalTaxCollected} collected), pot now ${newPot}`);
+                    } else {
+                      // Someone stayed in a bot-only game - this shouldn't loop forever
+                      // Since there's no human to watch, just end the session cleanly
+                      console.log('[ENFORCE] Bot-only Holm game with stayers - ending session');
+                      
+                      await supabase
+                        .from('games')
+                        .update({
+                          status: 'session_ended',
+                          pending_session_end: false,
+                          session_ended_at: nowIso,
+                          game_over_at: nowIso,
+                        })
+                        .eq('id', gameId);
+                      
+                      await supabase
+                        .from('rounds')
+                        .update({ status: 'completed' })
+                        .eq('id', (currentRound as any).id);
+                      
+                      actionsTaken.push('Server-side Holm completion: Bot-only game with stayers, session ended');
+                      
+                      return new Response(JSON.stringify({
+                        success: true,
+                        actionsTaken,
+                        gameStatus: 'session_ended',
+                        reason: 'bot_only_holm_showdown',
+                      }), {
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                      });
+                    }
+                  }
                 }
               } else {
                 // CRITICAL FIX: Only advance to UNDECIDED players
