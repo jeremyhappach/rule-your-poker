@@ -145,39 +145,45 @@ export function HorsesMobileCardsTab({
       {/* Action buttons (always in same position below dice area) */}
       <div className="flex items-center justify-center min-h-[36px] mb-3">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
-          <div className="flex gap-2 justify-center items-center">
-            <Button
-              size="default"
-              onClick={handleRollClick}
-              disabled={horses.localHand.rollsRemaining <= 0 || rolling}
-              className="text-sm font-bold h-9 px-6"
-            >
-              <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
-              Roll {4 - horses.localHand.rollsRemaining}
-            </Button>
-
-            {horses.localHand.rollsRemaining < 3 && horses.localHand.rollsRemaining > 0 && (
+          horses.localHand.rollsRemaining > 0 ? (
+            <div className="flex items-center">
               <Button
-                variant="outline"
-                size="icon"
-                onClick={horses.handleLockIn}
-                className="h-9 w-9"
-                title="Lock In"
+                size="default"
+                onClick={handleRollClick}
+                disabled={rolling}
+                className="text-sm font-bold h-9 px-6"
               >
-                <Lock className="w-4 h-4" />
+                <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
+                Roll {4 - horses.localHand.rollsRemaining}
               </Button>
-            )}
-          </div>
+
+              {horses.localHand.rollsRemaining < 3 && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={horses.handleLockIn}
+                  className="h-9 w-9 ml-2"
+                  title="Lock In"
+                >
+                  <Lock className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Badge className="text-sm px-3 py-1.5 border-transparent bg-primary/30 text-white font-medium">
+              ✓ Locked In
+            </Badge>
+          )
         ) : horses.gamePhase === "complete" && hasCompleted ? (
-          <Badge className="text-sm px-3 py-0.5 border-transparent bg-primary/20 text-white">
+          <Badge className="text-sm px-3 py-1.5 border-transparent bg-primary/30 text-white font-medium">
             ✓ Locked: {myResult?.description ?? "Complete"}
           </Badge>
         ) : isWaitingForYourTurn ? (
-          <Badge className="text-sm px-3 py-0.5 border-transparent bg-secondary text-white">
+          <Badge className="text-sm px-3 py-1.5 border-transparent bg-amber-600 text-white font-medium">
             Waiting — {horses.currentTurnPlayerName ? `${horses.currentTurnPlayerName}'s turn` : "Next turn"}
           </Badge>
         ) : (
-          <Badge className="text-sm px-3 py-0.5 border-transparent bg-secondary text-white">
+          <Badge className="text-sm px-3 py-1.5 border-transparent bg-secondary text-white font-medium">
             Ready
           </Badge>
         )}
