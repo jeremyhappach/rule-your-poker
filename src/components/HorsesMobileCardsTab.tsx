@@ -146,8 +146,8 @@ export function HorsesMobileCardsTab({
         )}
       </div>
 
-      {/* Action buttons (always in same position below dice area) */}
-      <div className="flex items-center justify-center min-h-[36px] mb-3">
+      {/* Action buttons (always in same position below dice area - increased gap for tablet/desktop) */}
+      <div className="flex items-center justify-center min-h-[36px] mt-2 mb-3">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           horses.localHand.rollsRemaining > 0 ? (
             <div className="flex items-center justify-center gap-2">

@@ -4742,8 +4742,8 @@ export const MobileGameTable = ({
               );
             })()}
             
-            {/* Action area - BELOW cards (slight gap from cards) */}
-            <div className="flex items-center justify-center min-h-[36px] mt-2 mb-3">
+            {/* Action area - BELOW cards (increased gap for tablet/desktop using mobile layout) */}
+            <div className="flex items-center justify-center min-h-[36px] mt-4 mb-3">
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                 <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
