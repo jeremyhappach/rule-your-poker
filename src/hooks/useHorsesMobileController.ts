@@ -1032,6 +1032,15 @@ export function useHorsesMobileController({
     console.log(`[ROLL_DEBUG] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
     logDebug("roll_state", "setIsRolling(true)", { rollStartTime });
 
+    // CRITICAL: Save state IMMEDIATELY so observers get rollKey right away and can start fly-in animation in sync.
+    // This fixes the 1-2 second desync where active player's animation was ahead of observers.
+    // For intermediate rolls, fire-and-forget to avoid blocking UI.
+    // For final rolls, we save again after animation completes to ensure result is persisted.
+    if (newHand.rollsRemaining > 0) {
+      // Intermediate roll: save immediately so observers sync their animation
+      void saveMyState(newHand, false, undefined, heldMaskBeforeRoll);
+    }
+
     setTimeout(async () => {
       const animationEndTime = Date.now();
       console.log(
@@ -1068,10 +1077,8 @@ export function useHorsesMobileController({
         setTimeout(() => {
           advanceToNextTurn(myPlayer?.id ?? null);
         }, HORSES_POST_TURN_PAUSE_MS);
-      } else {
-        // Intermediate roll: fire-and-forget to avoid blocking UI
-        void saveMyState(newHand, false);
       }
+      // Note: intermediate rolls already saved immediately above, no need to save again here
     }, animationDuration);
   }, [
     enabled,
