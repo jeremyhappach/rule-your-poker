@@ -508,6 +508,58 @@ serve(async (req) => {
       }
     }
 
+    // 0-GLOBAL-B. DEGENERATE GAME STATE CHECK: Detect repeated "everyone folded" rounds
+    // This catches cases where all players are on auto_fold or bankrupt, leading to
+    // endless rounds where everyone folds, pot grows, but game never resolves.
+    // Check if last N consecutive hands all resulted in "everyone folded"
+    if (game.status === 'in_progress') {
+      const CONSECUTIVE_FOLDS_THRESHOLD = 5; // End if 5+ consecutive hands with no winner
+      
+      const { data: recentResults } = await supabase
+        .from('game_results')
+        .select('winner_player_id, winning_hand_description')
+        .eq('game_id', gameId)
+        .order('hand_number', { ascending: false })
+        .limit(CONSECUTIVE_FOLDS_THRESHOLD);
+      
+      if (recentResults && recentResults.length >= CONSECUTIVE_FOLDS_THRESHOLD) {
+        // Check if ALL recent results have no winner (everyone folded)
+        const allEveryoneFolded = recentResults.every((r: any) => 
+          r.winner_player_id === null && 
+          (r.winning_hand_description?.toLowerCase().includes('everyone folded') || 
+           r.winning_hand_description?.toLowerCase().includes('pussy tax'))
+        );
+        
+        if (allEveryoneFolded) {
+          console.log('[ENFORCE] ⚠️ DEGENERATE GAME STATE - Last', CONSECUTIVE_FOLDS_THRESHOLD, 'hands all had everyone folding, ending session:', gameId);
+          
+          await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              pending_session_end: false,
+              session_ended_at: nowIso,
+              game_over_at: nowIso,
+              config_deadline: null,
+              ante_decision_deadline: null,
+              awaiting_next_round: false,
+            })
+            .eq('id', gameId);
+          
+          actionsTaken.push(`Degenerate game state: ${CONSECUTIVE_FOLDS_THRESHOLD} consecutive hands with everyone folding, session ended`);
+          
+          return new Response(JSON.stringify({
+            success: true,
+            actionsTaken,
+            gameStatus: 'session_ended',
+            reason: 'degenerate_game_state',
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
     // 0. HANDLE STALE dealer_selection GAMES (no config_deadline yet, but stuck)
     // Games in dealer_selection that have been idle for >60 seconds should be cleaned up.
     // The dealer_selection phase should complete within seconds (the spinning animation).
