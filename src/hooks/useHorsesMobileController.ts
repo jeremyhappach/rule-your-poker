@@ -1034,12 +1034,9 @@ export function useHorsesMobileController({
 
     // CRITICAL: Save state IMMEDIATELY so observers get rollKey right away and can start fly-in animation in sync.
     // This fixes the 1-2 second desync where active player's animation was ahead of observers.
-    // For intermediate rolls, fire-and-forget to avoid blocking UI.
-    // For final rolls, we save again after animation completes to ensure result is persisted.
-    if (newHand.rollsRemaining > 0) {
-      // Intermediate roll: save immediately so observers sync their animation
-      void saveMyState(newHand, false, undefined, heldMaskBeforeRoll);
-    }
+    // IMPORTANT: Do this for ALL rolls (including the final roll), otherwise observers can miss the last fly-in and
+    // "skip" straight to the result.
+    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll);
 
     setTimeout(async () => {
       const animationEndTime = Date.now();
@@ -1117,7 +1114,10 @@ export function useHorsesMobileController({
       // Otherwise the next realtime/DB sync can overwrite local holds and it feels like it "won't hold".
       const nextHand = toggleHold(localHand as HorsesHand, index);
       setLocalHand(nextHand);
-      void saveMyState(nextHand, false);
+
+      // Preserve the held-mask captured at the start of the last roll so observers' layout/animations
+      // don't get reset by realtime hold toggles between rolls.
+      void saveMyState(nextHand, false, undefined, heldMaskAtLastRollStartRef.current ?? undefined);
     },
     [enabled, isMyTurn, localHand, saveMyState, isSCC],
   );
