@@ -657,6 +657,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     [],
   );
 
+  // DICE SYNC: For dice games, observers wait on fetchGameData to receive horses_state updates.
+  // Instead, patch the realtime round payload directly into `game.rounds` so UI/animations start
+  // as soon as the realtime message arrives (no debounce/fetch latency).
+  const applyRoundRealtimePatch = useCallback((newRound: any) => {
+    const roundId = newRound?.id as string | undefined;
+    if (!roundId) return;
+
+    setGame((prev) => {
+      if (!prev?.rounds?.length) return prev;
+      const idx = prev.rounds.findIndex((r) => r.id === roundId);
+      if (idx === -1) return prev;
+
+      const nextRounds = [...prev.rounds];
+      nextRounds[idx] = { ...nextRounds[idx], ...(newRound as any) };
+      return { ...prev, rounds: nextRounds };
+    });
+  }, []);
+
   // CRITICAL: React Router does not remount this page when only :gameId changes.
   // If we keep lifted caches, a new game's first hand can render the last hand's cards.
   const prevGameIdRef = useRef<string | undefined>(undefined);
@@ -883,23 +901,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }, 300); // 300ms balances responsiveness and batching
     };
 
-    // DICE SYNC: For dice games, observers were waiting on fetchGameData to receive horses_state updates.
-    // Instead, apply the realtime round payload immediately into `game.rounds` so UI/animations can start
-    // as soon as the realtime message arrives (no extra debounce/fetch latency).
-    const applyRoundRealtimePatch = (newRound: any) => {
-      const roundId = newRound?.id as string | undefined;
-      if (!roundId) return;
-
-      setGame((prev) => {
-        if (!prev?.rounds?.length) return prev;
-        const idx = prev.rounds.findIndex((r) => r.id === roundId);
-        if (idx === -1) return prev;
-
-        const nextRounds = [...prev.rounds];
-        nextRounds[idx] = { ...nextRounds[idx], ...(newRound as any) };
-        return { ...prev, rounds: nextRounds };
-      });
-    };
 
     // Fallback polling if realtime subscription drops.
     // This prevents "frozen" games when the realtime channel enters CHANNEL_ERROR.
