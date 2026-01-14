@@ -79,29 +79,99 @@ const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[
 /**
  * Determines if a die is "unused" in the final hand determination.
  * For SCC: cargo dice (non-SCC) are unused when the hand is NOT qualified.
- * For Horses: all dice are always used (no unused dice).
+ * For Horses: only dice contributing to the of-a-kind hand are "used"; kickers are unused.
  */
 function isDieUnused(
   die: HorsesDieType | SCCDieType,
   isSCC: boolean,
   isQualified: boolean | undefined,
-  allHeld: boolean
+  allHeld: boolean,
+  allDice?: (HorsesDieType | SCCDieType)[]
 ): boolean {
   // Only mark dice as unused when the hand is complete (all held)
   if (!allHeld) return false;
   
-  // Only SCC games can have unused dice
-  if (!isSCC) return false;
+  if (isSCC) {
+    // SCC logic: If qualified, all dice are used. If not qualified, only SCC dice are used.
+    if (isQualified === true) return false;
+    
+    // If not qualified, only Ship (6), Captain (5), Crew (4) that were locked as SCC are used
+    const sccDie = die as SCCDieType;
+    const isSCCDie = 'isSCC' in sccDie && sccDie.isSCC;
+    
+    // Cargo dice (non-SCC) are unused when not qualified
+    return !isSCCDie;
+  }
   
-  // If qualified, all dice are used (SCC dice for qualification, cargo for score)
-  if (isQualified === true) return false;
+  // Horses logic: Only dice contributing to the of-a-kind hand are used
+  // Wilds (1s) can count toward the of-a-kind, so we need to determine which dice are "used"
+  if (!allDice || allDice.length === 0) return false;
   
-  // If not qualified, cargo dice (non-SCC) are unused
-  const sccDie = die as SCCDieType;
-  const isSCCDie = 'isSCC' in sccDie && sccDie.isSCC;
+  const values = allDice.map(d => d.value);
+  const currentValue = die.value;
   
-  // Cargo dice are unused when not qualified
-  return !isSCCDie;
+  // Count each value (1-6)
+  const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  values.forEach(v => { if (v >= 1 && v <= 6) counts[v]++; });
+  
+  const wildCount = counts[1]; // 1s are wild
+  
+  // Special case: All 1s (pure wilds) - all dice are used
+  if (wildCount === 5) return false;
+  
+  // Find the best of-a-kind value (highest value with most matches when combined with wilds)
+  let bestOfAKind = 0;
+  let bestValue = 0;
+  
+  for (let value = 6; value >= 2; value--) {
+    const totalWithWilds = Math.min(5, counts[value] + wildCount);
+    if (totalWithWilds > bestOfAKind) {
+      bestOfAKind = totalWithWilds;
+      bestValue = value;
+    } else if (totalWithWilds === bestOfAKind && value > bestValue) {
+      bestValue = value;
+    }
+  }
+  
+  // If no pairs or better, it's a high-card hand
+  if (bestOfAKind < 2) {
+    // High card: only the highest non-wild die is "used", all others are unused
+    const nonWildValues = values.filter(v => v !== 1);
+    if (nonWildValues.length === 0) return false; // All wilds, all used
+    const highCard = Math.max(...nonWildValues);
+    // Only the first occurrence of the high card is "used"
+    const highCardIndex = values.indexOf(highCard);
+    const currentIndex = values.indexOf(currentValue);
+    // Mark as unused if not the high card
+    return currentValue !== highCard || (currentIndex !== highCardIndex && values.filter(v => v === highCard).length === 1);
+  }
+  
+  // For of-a-kind hands:
+  // - Dice matching bestValue are used
+  // - Wilds (1s) are used UP TO the number needed to complete the of-a-kind
+  
+  // Dice matching the target value are always used
+  if (currentValue === bestValue) return false;
+  
+  // Wilds: count how many are needed to complete the of-a-kind
+  const naturalCount = counts[bestValue];
+  const wildsNeeded = bestOfAKind - naturalCount;
+  
+  // If this die is a wild (1), check if it's one of the "used" wilds
+  if (currentValue === 1 && wildsNeeded > 0) {
+    // Find the index of this die among all dice
+    const dieIndex = allDice.indexOf(die);
+    // Find indices of all wilds
+    const wildIndices = allDice
+      .map((d, i) => (d.value === 1 ? i : -1))
+      .filter(i => i !== -1);
+    // The first `wildsNeeded` wilds are used
+    const usedWildIndices = wildIndices.slice(0, wildsNeeded);
+    return !usedWildIndices.includes(dieIndex);
+  }
+  
+  // This die is neither the target value nor a needed wild - it's unused
+  return true;
 }
 
 export function DiceTableLayout({
@@ -400,7 +470,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
-                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -433,7 +503,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
-                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -478,7 +548,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
-                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -526,7 +596,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
-                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
               />
             </div>
           );
@@ -656,7 +726,7 @@ export function DiceTableLayout({
               size={size}
               showWildHighlight={showWildHighlight && !isSCC}
               isSCCDie={isSCCDie}
-              isUnusedDie={isDieUnused(item.die, isSCC, isQualified, allHeld)}
+              isUnusedDie={isDieUnused(item.die, isSCC, isQualified, allHeld, orderedDice.map(d => d.die))}
             />
           </div>
         );
