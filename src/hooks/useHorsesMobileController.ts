@@ -1688,6 +1688,7 @@ export function useHorsesMobileController({
         rollKey,
         heldMaskBeforeComplete: heldMaskForAnimation ?? undefined,
         heldCountBeforeComplete: heldCountForAnimation,
+        // isQualified not needed for active player - they're still rolling
       };
     }
 
@@ -1728,6 +1729,11 @@ export function useHorsesMobileController({
     }
 
     console.log(`${logPrefix} FALLBACK returning DB state: dice=${JSON.stringify(state.dice.map((d: any) => d.value))}, rollsRemaining=${state.rollsRemaining}`);
+    // Check if the SCC hand is qualified (for unused dice visual)
+    const isQualified = isSCC && state.result 
+      ? (state.result as any).isQualified 
+      : undefined;
+    
     return {
       dice: state.dice,
       rollsRemaining: state.rollsRemaining,
@@ -1735,6 +1741,7 @@ export function useHorsesMobileController({
       heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
       heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
       rollKey: (state as any).rollKey,
+      isQualified,
     };
   }, [
     enabled,

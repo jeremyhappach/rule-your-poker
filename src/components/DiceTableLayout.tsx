@@ -31,6 +31,8 @@ interface DiceTableLayoutProps {
   animationOrigin?: { x: number; y: number };
   /** Key that changes when a new roll starts (triggers fly-in animation) */
   rollKey?: string | number;
+  /** Whether the SCC hand is qualified (has Ship, Captain, Crew) - used to determine unused dice */
+  isQualified?: boolean;
 }
 
 // Staggered positions for unheld dice (as pixel offsets from center)
@@ -74,6 +76,34 @@ const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[
   0: [],
 };
 
+/**
+ * Determines if a die is "unused" in the final hand determination.
+ * For SCC: cargo dice (non-SCC) are unused when the hand is NOT qualified.
+ * For Horses: all dice are always used (no unused dice).
+ */
+function isDieUnused(
+  die: HorsesDieType | SCCDieType,
+  isSCC: boolean,
+  isQualified: boolean | undefined,
+  allHeld: boolean
+): boolean {
+  // Only mark dice as unused when the hand is complete (all held)
+  if (!allHeld) return false;
+  
+  // Only SCC games can have unused dice
+  if (!isSCC) return false;
+  
+  // If qualified, all dice are used (SCC dice for qualification, cargo for score)
+  if (isQualified === true) return false;
+  
+  // If not qualified, cargo dice (non-SCC) are unused
+  const sccDie = die as SCCDieType;
+  const isSCCDie = 'isSCC' in sccDie && sccDie.isSCC;
+  
+  // Cargo dice are unused when not qualified
+  return !isSCCDie;
+}
+
 export function DiceTableLayout({
   dice,
   isRolling = false,
@@ -91,6 +121,7 @@ export function DiceTableLayout({
   previouslyHeldCount,
   animationOrigin,
   rollKey,
+  isQualified,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
   
@@ -369,6 +400,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
               />
             </div>
           );
@@ -401,6 +433,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
               />
             </div>
           );
@@ -445,6 +478,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
               />
             </div>
           );
@@ -492,6 +526,7 @@ export function DiceTableLayout({
                 size={size}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true)}
               />
             </div>
           );
@@ -621,6 +656,7 @@ export function DiceTableLayout({
               size={size}
               showWildHighlight={showWildHighlight && !isSCC}
               isSCCDie={isSCCDie}
+              isUnusedDie={isDieUnused(item.die, isSCC, isQualified, allHeld)}
             />
           </div>
         );

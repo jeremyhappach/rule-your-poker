@@ -3819,6 +3819,7 @@ export const MobileGameTable = ({
                   previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
                   animationOrigin={getDiceAnimationOrigin()}
                   rollKey={(horsesController.feltDice as any)?.rollKey}
+                  isQualified={(horsesController.feltDice as any)?.isQualified}
                 />
               )}
             </div>
