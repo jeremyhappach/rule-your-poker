@@ -4647,7 +4647,7 @@ export const MobileGameTable = ({
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? "min-h-[130px]"
+                  ? "min-h-[145px] pt-1" // Slightly bigger container and nudge down for Holm
                   : (currentRound === 1
                       ? "min-h-[155px]" // Slightly bigger for 3-5-7 R1 on tablet
                       : currentRound === 2
