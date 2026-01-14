@@ -11,6 +11,7 @@ interface HorsesDieProps {
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
   isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
   forceWhiteBackground?: boolean; // Force white background (for Beat: badge cargo dice)
+  isUnusedDie?: boolean; // Whether this is an auto-locked die NOT used in final hand (reddish overlay for NQ cargo)
 }
 
 export function HorsesDie({
@@ -23,6 +24,7 @@ export function HorsesDie({
   showWildHighlight = true,
   isSCCDie = false,
   forceWhiteBackground = false,
+  isUnusedDie = false,
 }: HorsesDieProps) {
   // Track the displayed value during roll animation
   const [displayValue, setDisplayValue] = useState(value);
@@ -199,23 +201,30 @@ export function HorsesDie({
         // Force white background for Beat: badge display
         forceWhiteBackground
           ? "bg-white border-gray-300"
-          : isHeld
-            ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
-            : isWildDie
-              ? "bg-card border-poker-gold shadow-md ring-2 ring-poker-gold/50"
-              : "bg-card border-border",
+          : isUnusedDie
+            // Unused dice (auto-locked but not used in hand determination) - reddish semi-transparent
+            ? "bg-red-200/60 dark:bg-red-900/50 border-red-400/70 dark:border-red-600/60 opacity-75"
+            : isHeld
+              ? "bg-amber-200 dark:bg-amber-900 border-amber-500 dark:border-amber-400 shadow-md ring-2 ring-amber-400/50"
+              : isWildDie
+                ? "bg-card border-poker-gold shadow-md ring-2 ring-poker-gold/50"
+                : "bg-card border-border",
         canToggle && !isHeld && !isWildDie && "hover:border-primary/60 cursor-pointer active:scale-95",
         canToggle && !isHeld && isWildDie && "hover:border-poker-gold cursor-pointer active:scale-95",
         canToggle && isHeld && "hover:border-amber-600 cursor-pointer active:scale-95",
-        !canToggle && "cursor-default opacity-95",
+        !canToggle && "cursor-default",
+        // Don't apply full opacity reduction twice for unused dice
+        !canToggle && !isUnusedDie && "opacity-95",
       )}
       style={{
         // 3D edge effect with inset highlight and drop shadow
         boxShadow: animating 
           ? '0 0 12px 2px rgba(251, 191, 36, 0.6), inset 0 1px 2px rgba(255,255,255,0.4), 0 3px 6px rgba(0,0,0,0.3)' 
-          : isWildDie 
-            ? '0 0 8px 1px rgba(212, 175, 55, 0.5), inset 0 1px 2px rgba(255,255,255,0.3), 0 3px 6px rgba(0,0,0,0.25)' 
-            : 'inset 0 1px 2px rgba(255,255,255,0.4), 0 3px 6px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.1)',
+          : isUnusedDie
+            ? 'inset 0 1px 2px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.2)'
+            : isWildDie 
+              ? '0 0 8px 1px rgba(212, 175, 55, 0.5), inset 0 1px 2px rgba(255,255,255,0.3), 0 3px 6px rgba(0,0,0,0.25)' 
+              : 'inset 0 1px 2px rgba(255,255,255,0.4), 0 3px 6px rgba(0,0,0,0.3), 0 1px 0 rgba(0,0,0,0.1)',
       }}
     >
       {renderDots()}

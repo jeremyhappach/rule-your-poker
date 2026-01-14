@@ -1179,12 +1179,18 @@ export function HorsesGameTable({
       ? `complete-${currentTurnPlayerId}` 
       : `roll-${state.rollsRemaining}-${currentTurnPlayerId}`;
     
+    // Check if the SCC hand is qualified (for unused dice visual)
+    const isQualified = isSCC && state.result 
+      ? (state.result as SCCHandResult).isQualified 
+      : undefined;
+    
     return {
       dice: state.dice,
       isRolling: false,
       heldMaskBeforeComplete: state.heldMaskBeforeComplete,
       heldCountBeforeComplete: state.heldCountBeforeComplete,
       rollKey: stableRollKey,
+      isQualified,
     };
   };
   
@@ -1576,6 +1582,7 @@ export function HorsesGameTable({
                         previouslyHeldCount={(diceState as any).heldCountBeforeComplete}
                         animationOrigin={getAnimationOrigin()}
                         rollKey={(diceState as any).rollKey}
+                        isQualified={(diceState as any).isQualified}
                       />
                     );
                   })()}
