@@ -4649,7 +4649,7 @@ export const MobileGameTable = ({
                 gameType === "holm-game"
                   ? "min-h-[130px]"
                   : (currentRound === 1
-                      ? "min-h-[155px]" // Slightly bigger for 3-5-7 R1 on tablet
+                      ? "min-h-[165px] pt-2" // Bigger container + nudge down for 3-5-7 R1 on tablet
                       : currentRound === 2
                         ? "min-h-[125px] pt-2" // Nudge down for R2
                         : "min-h-[110px] pt-2"); // Nudge down for R3
