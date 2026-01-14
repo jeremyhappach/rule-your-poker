@@ -183,9 +183,11 @@ export function HorsesMobileCardsTab({
             // After roll 3, hide the Roll button entirely
             <Badge className="text-sm px-3 py-1.5 font-medium">✓ Locked In</Badge>
           )
-        ) : horses.gamePhase === "complete" && hasCompleted ? (
+        ) : horses.gamePhase === "complete" && hasCompleted && myResult ? (
+          // Only show "Locked: {description}" when game is actually complete AND we have a valid result
+          // This prevents showing stale "Locked: Complete" from previous round before new round initializes
           <Badge className="text-sm px-3 py-1.5 font-medium">
-            ✓ Locked: {myResult?.description ?? "Complete"}
+            ✓ Locked: {myResult.description}
           </Badge>
         ) : isWaitingForYourTurn ? (
           <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
