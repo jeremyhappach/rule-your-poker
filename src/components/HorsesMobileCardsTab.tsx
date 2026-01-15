@@ -43,6 +43,51 @@ export function HorsesMobileCardsTab({
     };
   }, []);
 
+  // Haptic feedback interval ref for cleanup
+  const hapticIntervalRef = useRef<number | null>(null);
+
+  const triggerRollHaptics = useCallback((durationMs: number) => {
+    // Check if vibration API is available
+    if (!navigator.vibrate) return;
+
+    // Clear any existing haptic interval
+    if (hapticIntervalRef.current != null) {
+      window.clearInterval(hapticIntervalRef.current);
+    }
+
+    // Initial strong vibration for the "throw"
+    navigator.vibrate(50);
+
+    // Create a rumbling pattern during the roll animation
+    // Vibrate every 80ms with varying intensity to simulate dice tumbling
+    let elapsed = 0;
+    const interval = 80;
+    hapticIntervalRef.current = window.setInterval(() => {
+      elapsed += interval;
+      if (elapsed >= durationMs - 100) {
+        // Final "landing" vibration
+        navigator.vibrate([30, 20, 40]);
+        if (hapticIntervalRef.current != null) {
+          window.clearInterval(hapticIntervalRef.current);
+          hapticIntervalRef.current = null;
+        }
+        return;
+      }
+      // Light rumble during roll
+      navigator.vibrate(15 + Math.floor(Math.random() * 10));
+    }, interval);
+  }, []);
+
+  // Clean up haptic interval on unmount
+  useEffect(() => {
+    return () => {
+      if (hapticIntervalRef.current != null) {
+        window.clearInterval(hapticIntervalRef.current);
+        hapticIntervalRef.current = null;
+      }
+    };
+  }, []);
+
   const startUiRollingMask = useCallback(() => {
     const isFirstRoll = horses.localHand.rollsRemaining === 3;
     const duration = isFirstRoll ? ACTIVE_FIRST_ROLL_MS : ACTIVE_ROLL_AGAIN_MS;
@@ -50,6 +95,9 @@ export function HorsesMobileCardsTab({
     // Snapshot holds at the instant the roll starts so roll-3 doesn't get suppressed
     // if the controller marks everything held when it locks in.
     heldSnapshotRef.current = (horses.localHand.dice as any[]).map((d) => !!d?.isHeld);
+
+    // Trigger haptic feedback for the duration of the roll animation
+    triggerRollHaptics(duration);
 
     setUiRolling(true);
     if (uiRollingTimerRef.current != null) {
@@ -60,7 +108,7 @@ export function HorsesMobileCardsTab({
       heldSnapshotRef.current = null;
       uiRollingTimerRef.current = null;
     }, duration);
-  }, [horses.localHand.dice, horses.localHand.rollsRemaining]);
+  }, [horses.localHand.dice, horses.localHand.rollsRemaining, triggerRollHaptics]);
 
   const handleRollClick = useCallback(() => {
     startUiRollingMask();
