@@ -1507,7 +1507,7 @@ export function useHorsesMobileController({
           .from("games")
           .update({
             awaiting_next_round: true,
-            last_round_result: "Roll Over",
+            last_round_result: "One tie all tie - rollover",
           })
           .eq("id", gameId);
         return;
