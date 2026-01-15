@@ -97,16 +97,14 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   // Get target position on pot box edge based on VISUAL slot position (closest edge to player)
   // Pot box position: Holm = bottom at 35%, Dice games = bottom at 36%, 3-5-7 = center at 50%
   // We calculate center and then offset to the nearest edge based on where the player chip starts
-  const getPotBoxTarget = (slotIndex: number, rect: DOMRect, gType: string | null | undefined): { x: number; y: number } => {
+  // All chips converge to the exact center of the pot
+  const getPotBoxTarget = (_slotIndex: number, rect: DOMRect, gType: string | null | undefined): { x: number; y: number } => {
     const centerX = rect.width / 2;
 
     const isHolm = gType === 'holm-game';
     const isDiceGame = gType === 'horses' || gType === 'ship-captain-crew';
 
     // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm/Dice, px-8 py-3 for 3-5-7)
-    // Holm/Dice: ~90px wide, ~32px tall
-    // 3-5-7: ~130px wide, ~56px tall
-    const potHalfWidth = (isHolm || isDiceGame) ? 50 : 70;
     const potHalfHeight = (isHolm || isDiceGame) ? 20 : 32;
 
     // Calculate pot center Y based on CSS positioning
@@ -124,27 +122,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     const potTopY = potBottomY - potHalfHeight * 2;
     const potCenterY = (potTopY + potBottomY) / 2;
 
-    // Target the closest edge based on VISUAL slot position (relative to current player)
-    // Add a small offset (5px) so chips stop just before the pot border
-    const edgeBuffer = -3; // Negative = travel INTO pot area slightly
-    switch (slotIndex) {
-      case -1: // Current player (bottom) - target bottom edge
-        return { x: centerX, y: potBottomY + edgeBuffer };
-      case 0: // Bottom-left - target bottom-left corner area
-        return { x: centerX - potHalfWidth * 0.5, y: potBottomY + edgeBuffer };
-      case 5: // Bottom-right - target bottom-right corner area
-        return { x: centerX + potHalfWidth * 0.5, y: potBottomY + edgeBuffer };
-      case 2: // Top-left - target top-left corner area
-        return { x: centerX - potHalfWidth * 0.5, y: potTopY - edgeBuffer };
-      case 3: // Top-right - target top-right corner area
-        return { x: centerX + potHalfWidth * 0.5, y: potTopY - edgeBuffer };
-      case 1: // Middle-left - target left edge
-        return { x: centerX - potHalfWidth - edgeBuffer, y: potCenterY };
-      case 4: // Middle-right - target right edge
-        return { x: centerX + potHalfWidth + edgeBuffer, y: potCenterY };
-      default:
-        return { x: centerX, y: potCenterY };
-    }
+    // All chips arrive at the exact center of the pot
+    return { x: centerX, y: potCenterY };
   };
 
   // Reset when game goes back to waiting phase (new game session)

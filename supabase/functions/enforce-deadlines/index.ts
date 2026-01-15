@@ -3020,7 +3020,7 @@ serve(async (req) => {
                   .from('games')
                   .update({
                     awaiting_next_round: true,
-                    last_round_result: 'Roll Over!',
+                    last_round_result: 'One tie all tie - rollover',
                     all_decisions_in: true,
                   })
                   .eq('id', gameId);
