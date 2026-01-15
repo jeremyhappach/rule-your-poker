@@ -40,6 +40,7 @@ import { usePlayerBalance } from "@/hooks/usePlayerBalance";
 import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog";
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 import { formatChipValue } from "@/lib/utils";
+import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -64,6 +65,9 @@ const Index = () => {
   const { balance, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [showAdminPlayerList, setShowAdminPlayerList] = useState(false);
+
+  // Track user's last seen timestamp
+  useLastSeenTracker(user?.id ?? null);
 
   // Refetch balance when dialog opens
   const handleBalanceButtonClick = () => {
