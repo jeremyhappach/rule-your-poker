@@ -50,23 +50,23 @@ interface PlayingCardProps {
 const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
   sm: {
     container: 'w-7 h-10 sm:w-8 sm:h-11',
-    rank: 'text-base sm:text-lg font-black',
-    suit: 'text-lg sm:text-xl',
+    rank: 'text-sm sm:text-base font-black',
+    suit: 'text-base sm:text-lg',
   },
   md: {
     container: 'w-8 h-11 sm:w-9 sm:h-12',
+    rank: 'text-base sm:text-lg font-black',
+    suit: 'text-lg sm:text-xl',
+  },
+  lg: {
+    container: 'w-10 h-14 sm:w-11 sm:h-15',
     rank: 'text-lg sm:text-xl font-black',
     suit: 'text-xl sm:text-2xl',
   },
-  lg: {
-    container: 'w-9 h-12 sm:w-10 sm:h-14',
+  xl: {
+    container: 'w-11 h-15 sm:w-12 sm:h-16',
     rank: 'text-xl sm:text-2xl font-black',
     suit: 'text-2xl sm:text-3xl',
-  },
-  xl: {
-    container: 'w-10 h-14 sm:w-11 sm:h-15',
-    rank: 'text-2xl sm:text-3xl font-black',
-    suit: 'text-3xl sm:text-4xl',
   },
 };
 

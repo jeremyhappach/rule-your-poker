@@ -4649,10 +4649,10 @@ export const MobileGameTable = ({
                 gameType === "holm-game"
                   ? "min-h-[130px]"
                   : (currentRound === 1
-                      ? "min-h-[165px] pt-2" // Bigger container + nudge down for 3-5-7 R1 on tablet
+                      ? "min-h-[180px] pt-1" // Bigger container for R1, reduced top padding to move up
                       : currentRound === 2
-                        ? "min-h-[125px] pt-2" // Nudge down for R2
-                        : "min-h-[110px] pt-2"); // Nudge down for R3
+                        ? "min-h-[125px] pt-1" // Reduced top padding to move up for R2
+                        : "min-h-[110px] pt-1"); // Reduced top padding to move up for R3
 
               return (
                 <div className={cn(
@@ -4742,8 +4742,8 @@ export const MobileGameTable = ({
               );
             })()}
             
-            {/* Action area - BELOW cards (increased gap for tablet/desktop using mobile layout) */}
-            <div className="flex items-center justify-center min-h-[36px] mt-2 mb-3">
+            {/* Action area - BELOW cards (reduced margins to move everything up) */}
+            <div className="flex items-center justify-center min-h-[36px] mt-1 mb-2">
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                 <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
@@ -4826,7 +4826,7 @@ export const MobileGameTable = ({
             </div>
             
             {/* Player info - below action buttons */}
-            <div className={cn("flex flex-col gap-1 pb-2")}>
+            <div className={cn("flex flex-col gap-1 pb-1")}>
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
