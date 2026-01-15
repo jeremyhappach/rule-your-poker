@@ -94,33 +94,34 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     return absoluteSlots[position] || { top: 50, left: 50 };
   };
 
-  // Get target position on pot box edge based on VISUAL slot position (closest edge to player)
-  // Pot box position: Holm = bottom at 35%, Dice games = bottom at 36%, 3-5-7 = center at 50%
-  // We calculate center and then offset to the nearest edge based on where the player chip starts
-  // All chips converge to the exact center of the pot
+  // Get target position at the CENTER of the pot box
+  // Pot box CSS positioning:
+  // - Holm: "top-[35%] -translate-y-full" = bottom edge at 35%
+  // - Dice games (Horses/SCC): "top-[28%] -translate-y-full" = bottom edge at 28%
+  // - 3-5-7: "top-1/2 -translate-y-1/2" = center at 50%
   const getPotBoxTarget = (_slotIndex: number, rect: DOMRect, gType: string | null | undefined): { x: number; y: number } => {
     const centerX = rect.width / 2;
 
     const isHolm = gType === 'holm-game';
     const isDiceGame = gType === 'horses' || gType === 'ship-captain-crew';
 
-    // Pot box approximate dimensions (measured from CSS: px-5 py-1.5 for Holm/Dice, px-8 py-3 for 3-5-7)
-    const potHalfHeight = (isHolm || isDiceGame) ? 20 : 32;
+    // Pot box approximate height (measured from CSS: py-1.5 for Holm/Dice ≈ 24px, py-3 for 3-5-7 ≈ 40px)
+    const potHeight = (isHolm || isDiceGame) ? 24 : 40;
 
-    // Calculate pot center Y based on CSS positioning
-    // Holm: "top-[35%] -translate-y-full" means bottom edge at 35%
-    // Dice games (Horses/SCC): "top-[36%] -translate-y-full" means bottom edge at 36%
-    // 3-5-7: "top-1/2 -translate-y-1/2" means center at 50%
-    let potBottomY: number;
+    // Calculate pot center Y based on actual CSS positioning
+    let potCenterY: number;
     if (isHolm) {
-      potBottomY = rect.height * 0.35;
+      // top-[35%] -translate-y-full means bottom edge at 35% of container
+      const potBottomY = rect.height * 0.35;
+      potCenterY = potBottomY - (potHeight / 2);
     } else if (isDiceGame) {
-      potBottomY = rect.height * 0.36;
+      // top-[28%] -translate-y-full means bottom edge at 28% of container
+      const potBottomY = rect.height * 0.28;
+      potCenterY = potBottomY - (potHeight / 2);
     } else {
-      potBottomY = rect.height * 0.5 + potHalfHeight;
+      // top-1/2 -translate-y-1/2 means center at 50%
+      potCenterY = rect.height * 0.5;
     }
-    const potTopY = potBottomY - potHalfHeight * 2;
-    const potCenterY = (potTopY + potBottomY) / 2;
 
     // All chips arrive at the exact center of the pot
     return { x: centerX, y: potCenterY };
