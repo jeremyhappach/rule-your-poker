@@ -701,6 +701,33 @@ export type Database = {
           },
         ]
       }
+      session_events: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          game_id: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          game_id: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          game_id?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       session_player_snapshots: {
         Row: {
           chips: number

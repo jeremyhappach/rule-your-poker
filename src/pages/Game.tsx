@@ -34,6 +34,7 @@ import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot } from "lucide-react";
+import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
@@ -3385,6 +3386,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
     
+    // Log session event
+    await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
+    
     // Set all seated players to active (sitting_out=false, waiting=false)
     await supabase
       .from('players')
@@ -3419,6 +3423,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Set config_deadline ATOMICALLY with status change to prevent race condition
     // where enforce-deadlines fires before DealerGameSetup component can set the deadline
     const configDeadline = new Date(Date.now() + 35000).toISOString(); // 35 seconds (5 sec buffer for component mount)
+    
+    // Log session events
+    await logStatusChanged(gameId, user?.id, 'dealer_selection', 'game_selection', `Dealer selected at position ${dealerPosition}`);
+    await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'selectDealer');
     
     const { error } = await supabase
       .from('games')
@@ -3620,6 +3628,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // No hands played - DELETE the empty session instead of marking completed
         console.log('[GAME OVER] No hands played, deleting empty session');
         
+        // Log session deletion BEFORE deleting
+        await logSessionDeleted(gameId, user?.id, 'No active humans and no game history', false);
+        
         // Get round IDs first for proper FK deletion
         const { data: roundRows } = await supabase
           .from('rounds')
@@ -3643,6 +3654,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Has game history - end session normally with game_over_at set
         // CRITICAL: Must set game_over_at so GameOverCountdown can complete and transition to session_ended
         console.log('[GAME OVER] Has game history, ending session');
+        
+        // Log session end
+        await logSessionEvent({ gameId, eventType: 'session_ended', eventData: { reason: 'No active humans' }, userId: user?.id });
+        
         await supabase
           .from('games')
           .update({
@@ -3745,6 +3760,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Set config_deadline ATOMICALLY with status change to prevent race condition
     // where enforce-deadlines fires before DealerGameSetup component can set the deadline
     const configDeadline = new Date(Date.now() + 35000).toISOString(); // 35 seconds (5 sec buffer for component mount)
+    
+    // Log session events for next game setup
+    await logStatusChanged(gameId, user?.id, 'game_over', 'game_selection', `Starting next game, dealer at position ${newDealerPosition}`);
+    await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'handleGameOverComplete');
     
     // Skip dealer_announcement, go directly to game_selection
     const { error } = await supabase

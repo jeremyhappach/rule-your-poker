@@ -10,6 +10,7 @@ import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
+import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { toast } from "sonner";
 
 type SelectionStep = 'category' | 'cards' | 'dice';
@@ -217,6 +218,13 @@ export const DealerGameSetup = ({
 
     try {
       console.log('[DEALER SETUP] Dealer timed out, marking as sitting out');
+      
+      // Log config timeout event
+      await logSessionEvent({
+        gameId,
+        eventType: 'config_timeout',
+        eventData: { dealer_position: dealerPosition, dealer_username: dealerUsername, is_bot: isBot },
+      });
 
       // Log this status change for debugging (before the update)
       // Need to fetch the current player's user_id and username for logging
@@ -327,6 +335,9 @@ export const DealerGameSetup = ({
 
         if (!hasHistory) {
           // No hands played - show 5s message then delete
+          // Log session deletion before deleting
+          await logSessionDeleted(gameId, undefined, 'Config timeout with no active humans and no history', false);
+          
           setShowDeletingEmptySession(true);
           setDeleteCountdown(5);
 

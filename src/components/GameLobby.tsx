@@ -10,6 +10,7 @@ import { SessionResults } from "@/components/SessionResults";
 import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
+import { logSessionCreated } from "@/lib/sessionEventLog";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { Settings, Info, Wrench } from "lucide-react";
@@ -261,13 +262,15 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     
     const recentNames = recentGames?.map(g => g.name).filter(Boolean) as string[] || [];
     
+    const sessionName = generateGameName(recentNames);
+    
     // Create game with waiting status
     const { data: game, error: gameError } = await supabase
       .from('games')
       .insert({
         buy_in: 100,
         status: 'waiting',
-        name: generateGameName(recentNames),
+        name: sessionName,
         real_money: realMoney
       })
       .select()
@@ -281,6 +284,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       });
       return;
     }
+    
+    // Log session creation event
+    await logSessionCreated(game.id, userId, sessionName);
 
     // Auto-seat host in a random position (1-7)
     const randomPosition = Math.floor(Math.random() * 7) + 1;
