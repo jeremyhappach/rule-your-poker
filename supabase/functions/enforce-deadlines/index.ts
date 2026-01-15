@@ -28,6 +28,140 @@ function shuffleDeck(deck: Card[]): Card[] {
   return shuffled;
 }
 
+// Holm hand evaluation (simplified for server-side use - no wild cards)
+const RANK_VALUES: Record<string, number> = {
+  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+  '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+};
+
+function evaluateHolmHand(cards: Card[]): { rank: string; value: number } {
+  if (cards.length === 0) return { rank: 'high-card', value: 0 };
+  
+  // Normalize cards
+  const validCards = cards.map(c => ({
+    suit: c.suit,
+    rank: String(c.rank).toUpperCase()
+  })).filter(c => RANK_VALUES[c.rank] !== undefined);
+  
+  if (validCards.length === 0) return { rank: 'high-card', value: 0 };
+  
+  const sortedCards = [...validCards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+  
+  // Count ranks
+  const rankCounts: Record<string, number> = {};
+  validCards.forEach(c => { rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1; });
+  
+  const groups = Object.entries(rankCounts)
+    .sort((a, b) => b[1] - a[1] || RANK_VALUES[b[0]] - RANK_VALUES[a[0]]);
+  
+  const bestRank = groups[0]?.[0];
+  const bestCount = groups[0]?.[1] || 0;
+  const secondRank = groups[1]?.[0];
+  const secondCount = groups[1]?.[1] || 0;
+  
+  // Check for flush
+  const suitCounts: Record<string, number> = {};
+  validCards.forEach(c => { suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1; });
+  const maxSuitCount = Math.max(...Object.values(suitCounts));
+  const isFlush = maxSuitCount >= 5;
+  
+  // Check for straight
+  const uniqueValues = [...new Set(validCards.map(c => RANK_VALUES[c.rank]))].sort((a, b) => b - a);
+  let isStraight = false;
+  let straightHigh = 0;
+  
+  for (let start = 14; start >= 5; start--) {
+    let hasAll = true;
+    for (let i = 0; i < 5; i++) {
+      if (!uniqueValues.includes(start - i)) {
+        hasAll = false;
+        break;
+      }
+    }
+    if (hasAll) {
+      isStraight = true;
+      straightHigh = start;
+      break;
+    }
+  }
+  
+  // Check for wheel (A-2-3-4-5)
+  if (!isStraight && uniqueValues.includes(14) && uniqueValues.includes(2) && 
+      uniqueValues.includes(3) && uniqueValues.includes(4) && uniqueValues.includes(5)) {
+    isStraight = true;
+    straightHigh = 5;
+  }
+  
+  // Check for straight flush
+  if (isFlush && isStraight) {
+    const flushSuit = Object.entries(suitCounts).find(([_, count]) => count >= 5)?.[0];
+    const flushCards = validCards.filter(c => c.suit === flushSuit);
+    const flushValues = [...new Set(flushCards.map(c => RANK_VALUES[c.rank]))].sort((a, b) => b - a);
+    
+    for (let start = 14; start >= 5; start--) {
+      let hasAll = true;
+      for (let i = 0; i < 5; i++) {
+        if (!flushValues.includes(start - i)) {
+          hasAll = false;
+          break;
+        }
+      }
+      if (hasAll) {
+        return { rank: 'straight-flush', value: 8000000000 + start };
+      }
+    }
+    // Check wheel in flush
+    if (flushValues.includes(14) && flushValues.includes(2) && flushValues.includes(3) &&
+        flushValues.includes(4) && flushValues.includes(5)) {
+      return { rank: 'straight-flush', value: 8000000000 + 5 };
+    }
+  }
+  
+  // Four of a kind
+  if (bestCount >= 4) {
+    return { rank: 'four-of-a-kind', value: 7000000000 + RANK_VALUES[bestRank] * 100 };
+  }
+  
+  // Full house
+  if (bestCount >= 3 && secondCount >= 2) {
+    return { rank: 'full-house', value: 6000000000 + RANK_VALUES[bestRank] * 100 + RANK_VALUES[secondRank] };
+  }
+  
+  // Flush
+  if (isFlush) {
+    const flushSuit = Object.entries(suitCounts).find(([_, count]) => count >= 5)?.[0];
+    const flushCards = validCards.filter(c => c.suit === flushSuit)
+      .sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+    return { rank: 'flush', value: 5000000000 + RANK_VALUES[flushCards[0].rank] * 100 };
+  }
+  
+  // Straight
+  if (isStraight) {
+    return { rank: 'straight', value: 4000000000 + straightHigh };
+  }
+  
+  // Three of a kind
+  if (bestCount >= 3) {
+    return { rank: 'three-of-a-kind', value: 3000000000 + RANK_VALUES[bestRank] * 100 };
+  }
+  
+  // Two pair
+  const pairs = groups.filter(([_, count]) => count >= 2);
+  if (pairs.length >= 2) {
+    const highPair = RANK_VALUES[pairs[0][0]];
+    const lowPair = RANK_VALUES[pairs[1][0]];
+    return { rank: 'two-pair', value: 2000000000 + highPair * 100 + lowPair };
+  }
+  
+  // Pair
+  if (bestCount >= 2) {
+    return { rank: 'pair', value: 1000000000 + RANK_VALUES[bestRank] * 100 };
+  }
+  
+  // High card
+  return { rank: 'high-card', value: RANK_VALUES[sortedCards[0].rank] };
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -1358,23 +1492,29 @@ serve(async (req) => {
                   // SERVER-SIDE HOLM ROUND COMPLETION
                   // When all decisions are in and we're processing server-side (no human client),
                   // we need to complete the round ourselves. Check if this is a bot-only game
-                  // and handle the round completion.
+                  // OR if all humans are in auto_fold mode (effectively AFK).
                   const humanPlayersInGame = freshActivePlayers.filter((p: any) => !p.is_bot);
                   const isBotOnlyGame = humanPlayersInGame.length === 0;
+                  const allHumansAutoFold = humanPlayersInGame.length > 0 && 
+                    humanPlayersInGame.every((p: any) => p.auto_fold === true);
+                  const shouldResolveServerSide = isBotOnlyGame || allHumansAutoFold;
                   
                   console.log('[ENFORCE] Holm round completion check:', {
                     activePlayers: freshActivePlayers.length,
                     humanPlayers: humanPlayersInGame.length,
                     isBotOnlyGame,
+                    allHumansAutoFold,
+                    shouldResolveServerSide,
                   });
                   
-                  if (isBotOnlyGame) {
-                    // Bot-only game - complete the round server-side
+                  if (shouldResolveServerSide) {
+                    // Bot-only game OR all humans auto-folding - complete the round server-side
                     const stayedPlayers = freshActivePlayers.filter((p: any) => p.current_decision === 'stay');
                     
-                    console.log('[ENFORCE] Bot-only Holm game - completing round server-side:', {
+                    console.log('[ENFORCE] Server-side Holm resolution - completing round:', {
                       stayedCount: stayedPlayers.length,
                       foldedCount: freshActivePlayers.length - stayedPlayers.length,
+                      reason: isBotOnlyGame ? 'bot_only' : 'all_humans_auto_fold',
                     });
                     
                     if (stayedPlayers.length === 0) {
@@ -1447,35 +1587,359 @@ serve(async (req) => {
                       
                       actionsTaken.push(`Server-side Holm completion: Everyone folded, pussy tax applied (${totalTaxCollected} collected), pot now ${newPot}`);
                     } else {
-                      // Someone stayed in a bot-only game - this shouldn't loop forever
-                      // Since there's no human to watch, just end the session cleanly
-                      console.log('[ENFORCE] Bot-only Holm game with stayers - ending session');
+                      // Someone stayed - need to run full Holm showdown server-side
+                      console.log('[ENFORCE] Running server-side Holm showdown with', stayedPlayers.length, 'stayer(s)');
                       
-                      await supabase
-                        .from('games')
-                        .update({
-                          status: 'session_ended',
-                          pending_session_end: false,
-                          session_ended_at: nowIso,
-                          game_over_at: nowIso,
-                        })
-                        .eq('id', gameId);
-                      
-                      await supabase
+                      // Fetch player cards and community cards for evaluation
+                      const { data: roundData } = await supabase
                         .from('rounds')
-                        .update({ status: 'completed' })
-                        .eq('id', (currentRound as any).id);
+                        .select('*')
+                        .eq('id', (currentRound as any).id)
+                        .single();
                       
-                      actionsTaken.push('Server-side Holm completion: Bot-only game with stayers, session ended');
+                      const communityCards: Card[] = (roundData?.community_cards as any[] || []).map((c: any) => ({
+                        suit: (c.suit || c.Suit) as Card['suit'],
+                        rank: String(c.rank || c.Rank).toUpperCase() as Card['rank']
+                      }));
                       
-                      return new Response(JSON.stringify({
-                        success: true,
-                        actionsTaken,
-                        gameStatus: 'session_ended',
-                        reason: 'bot_only_holm_showdown',
-                      }), {
-                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                      });
+                      const { data: allPlayerCards } = await supabase
+                        .from('player_cards')
+                        .select('*')
+                        .eq('round_id', (currentRound as any).id);
+                      
+                      const roundPot = roundData?.pot || game.pot || 0;
+                      
+                      if (stayedPlayers.length === 1) {
+                        // SINGLE STAYER VS CHUCKY
+                        const player = stayedPlayers[0];
+                        const playerCardsRow = allPlayerCards?.find((pc: any) => pc.player_id === player.id);
+                        const playerCards: Card[] = (playerCardsRow?.cards as any[] || []).map((c: any) => ({
+                          suit: (c.suit || c.Suit) as Card['suit'],
+                          rank: String(c.rank || c.Rank).toUpperCase() as Card['rank']
+                        }));
+                        
+                        // Deal Chucky's cards
+                        const usedCards = new Set<string>();
+                        communityCards.forEach(c => usedCards.add(`${c.suit}-${c.rank}`));
+                        (allPlayerCards || []).forEach((pc: any) => {
+                          (pc.cards as any[] || []).forEach((c: any) => {
+                            usedCards.add(`${(c.suit || c.Suit)}-${String(c.rank || c.Rank).toUpperCase()}`);
+                          });
+                        });
+                        
+                        const fullDeck = createDeck();
+                        const availableCards = fullDeck.filter(c => !usedCards.has(`${c.suit}-${c.rank}`));
+                        const shuffledAvailable = shuffleDeck(availableCards);
+                        const chuckyCardCount = game.chucky_cards || 4;
+                        const chuckyCards = shuffledAvailable.slice(0, chuckyCardCount);
+                        
+                        // Store Chucky's cards
+                        await supabase
+                          .from('rounds')
+                          .update({
+                            chucky_cards: chuckyCards as any,
+                            chucky_active: true,
+                            chucky_cards_revealed: chuckyCardCount,
+                            community_cards_revealed: 4
+                          })
+                          .eq('id', (currentRound as any).id);
+                        
+                        // Evaluate hands
+                        const playerAllCards = [...playerCards, ...communityCards];
+                        const chuckyAllCards = [...chuckyCards, ...communityCards];
+                        
+                        const playerEval = evaluateHolmHand(playerAllCards);
+                        const chuckyEval = evaluateHolmHand(chuckyAllCards);
+                        
+                        const playerWins = playerEval.value > chuckyEval.value;
+                        
+                        console.log('[ENFORCE] Chucky showdown:', {
+                          player: player.id,
+                          playerHand: playerEval.rank,
+                          playerValue: playerEval.value,
+                          chuckyHand: chuckyEval.rank,
+                          chuckyValue: chuckyEval.value,
+                          playerWins,
+                        });
+                        
+                        if (playerWins) {
+                          // Player beats Chucky - award pot, GAME OVER
+                          await supabase
+                            .from('players')
+                            .update({ chips: player.chips + roundPot })
+                            .eq('id', player.id);
+                          
+                          // Record game result
+                          await supabase.from('game_results').insert({
+                            game_id: gameId,
+                            hand_number: (game.total_hands || 0) + 1,
+                            winner_player_id: player.id,
+                            winner_username: player.id,
+                            pot_won: roundPot,
+                            winning_hand_description: `Beat Chucky with ${playerEval.rank} (server-side)`,
+                            is_chopped: false,
+                            player_chip_changes: { [player.id]: roundPot },
+                            game_type: 'holm-game',
+                          });
+                          
+                          // Reset players for new game
+                          await supabase
+                            .from('players')
+                            .update({ current_decision: null, decision_locked: false, ante_decision: null })
+                            .eq('game_id', gameId);
+                          
+                          // Set game_over
+                          await supabase
+                            .from('games')
+                            .update({
+                              status: 'game_over',
+                              game_over_at: nowIso,
+                              pot: 0,
+                              awaiting_next_round: false,
+                              buck_position: null,
+                              total_hands: (game.total_hands || 0) + 1,
+                              last_round_result: `Player beat Chucky! (server-side)`,
+                            })
+                            .eq('id', gameId);
+                          
+                          await supabase
+                            .from('rounds')
+                            .update({ status: 'completed' })
+                            .eq('id', (currentRound as any).id);
+                          
+                          actionsTaken.push(`Server-side Holm: Player beat Chucky with ${playerEval.rank}, pot ${roundPot} awarded, game over`);
+                        } else {
+                          // Chucky wins - player matches pot
+                          const potMatchAmount = game.pot_max_enabled
+                            ? Math.min(roundPot, game.pot_max_value)
+                            : roundPot;
+                          
+                          await supabase.rpc('decrement_player_chips', {
+                            player_ids: [player.id],
+                            amount: potMatchAmount
+                          });
+                          
+                          const newPot = roundPot + potMatchAmount;
+                          
+                          await supabase
+                            .from('games')
+                            .update({
+                              pot: newPot,
+                              last_round_result: `Chucky wins with ${chuckyEval.rank}!`,
+                              awaiting_next_round: true,
+                            })
+                            .eq('id', gameId);
+                          
+                          await supabase
+                            .from('rounds')
+                            .update({ status: 'completed', chucky_active: false })
+                            .eq('id', (currentRound as any).id);
+                          
+                          actionsTaken.push(`Server-side Holm: Chucky beat player with ${chuckyEval.rank}, pot now ${newPot}, awaiting next round`);
+                        }
+                      } else {
+                        // MULTIPLE STAYERS - Full showdown (no Chucky)
+                        console.log('[ENFORCE] Multi-player showdown with', stayedPlayers.length, 'players');
+                        
+                        // Evaluate all stayed players' hands
+                        const playerHands: { player: any; eval: { rank: string; value: number }; cards: Card[] }[] = [];
+                        
+                        for (const player of stayedPlayers) {
+                          const playerCardsRow = allPlayerCards?.find((pc: any) => pc.player_id === player.id);
+                          const playerCards: Card[] = (playerCardsRow?.cards as any[] || []).map((c: any) => ({
+                            suit: (c.suit || c.Suit) as Card['suit'],
+                            rank: String(c.rank || c.Rank).toUpperCase() as Card['rank']
+                          }));
+                          
+                          const allCards = [...playerCards, ...communityCards];
+                          const handEval = evaluateHolmHand(allCards);
+                          
+                          playerHands.push({ player, eval: handEval, cards: playerCards });
+                        }
+                        
+                        // Sort by hand value descending
+                        playerHands.sort((a, b) => b.eval.value - a.eval.value);
+                        
+                        const bestValue = playerHands[0].eval.value;
+                        const winners = playerHands.filter(ph => ph.eval.value === bestValue);
+                        
+                        console.log('[ENFORCE] Showdown result:', {
+                          winnersCount: winners.length,
+                          bestHand: playerHands[0].eval.rank,
+                          bestValue,
+                        });
+                        
+                        // Reveal all community cards
+                        await supabase
+                          .from('rounds')
+                          .update({ community_cards_revealed: 4, status: 'showdown' })
+                          .eq('id', (currentRound as any).id);
+                        
+                        if (winners.length === 1) {
+                          // Single winner
+                          const winner = winners[0];
+                          
+                          await supabase
+                            .from('players')
+                            .update({ chips: winner.player.chips + roundPot })
+                            .eq('id', winner.player.id);
+                          
+                          await supabase.from('game_results').insert({
+                            game_id: gameId,
+                            hand_number: (game.total_hands || 0) + 1,
+                            winner_player_id: winner.player.id,
+                            winner_username: winner.player.id,
+                            pot_won: roundPot,
+                            winning_hand_description: `${winner.eval.rank} (server-side showdown)`,
+                            is_chopped: false,
+                            player_chip_changes: { [winner.player.id]: roundPot },
+                            game_type: 'holm-game',
+                          });
+                          
+                          // Reset players
+                          await supabase
+                            .from('players')
+                            .update({ current_decision: null, decision_locked: false, ante_decision: null })
+                            .eq('game_id', gameId);
+                          
+                          // Game over
+                          await supabase
+                            .from('games')
+                            .update({
+                              status: 'game_over',
+                              game_over_at: nowIso,
+                              pot: 0,
+                              awaiting_next_round: false,
+                              total_hands: (game.total_hands || 0) + 1,
+                              last_round_result: `Winner: ${winner.eval.rank} (server-side)`,
+                            })
+                            .eq('id', gameId);
+                          
+                          await supabase
+                            .from('rounds')
+                            .update({ status: 'completed' })
+                            .eq('id', (currentRound as any).id);
+                          
+                          actionsTaken.push(`Server-side Holm showdown: Single winner with ${winner.eval.rank}, pot ${roundPot} awarded, game over`);
+                        } else {
+                          // TIE - Split pot and deal Chucky
+                          console.log('[ENFORCE] Tie between', winners.length, 'players - dealing Chucky');
+                          
+                          // Deal Chucky's cards
+                          const usedCards = new Set<string>();
+                          communityCards.forEach(c => usedCards.add(`${c.suit}-${c.rank}`));
+                          (allPlayerCards || []).forEach((pc: any) => {
+                            (pc.cards as any[] || []).forEach((c: any) => {
+                              usedCards.add(`${(c.suit || c.Suit)}-${String(c.rank || c.Rank).toUpperCase()}`);
+                            });
+                          });
+                          
+                          const fullDeck = createDeck();
+                          const availableCards = fullDeck.filter(c => !usedCards.has(`${c.suit}-${c.rank}`));
+                          const shuffledAvailable = shuffleDeck(availableCards);
+                          const chuckyCardCount = game.chucky_cards || 4;
+                          const chuckyCards = shuffledAvailable.slice(0, chuckyCardCount);
+                          
+                          const chuckyAllCards = [...chuckyCards, ...communityCards];
+                          const chuckyEval = evaluateHolmHand(chuckyAllCards);
+                          
+                          // Store Chucky's cards
+                          await supabase
+                            .from('rounds')
+                            .update({
+                              chucky_cards: chuckyCards as any,
+                              chucky_active: true,
+                              chucky_cards_revealed: chuckyCardCount,
+                            })
+                            .eq('id', (currentRound as any).id);
+                          
+                          // Check who beats Chucky
+                          const beatChucky = winners.filter(w => w.eval.value > chuckyEval.value);
+                          const loseToChucky = winners.filter(w => w.eval.value <= chuckyEval.value);
+                          
+                          if (beatChucky.length > 0) {
+                            // Some tied players beat Chucky - game ends
+                            const splitAmount = Math.floor(roundPot / beatChucky.length);
+                            
+                            for (const winner of beatChucky) {
+                              await supabase
+                                .from('players')
+                                .update({ chips: winner.player.chips + splitAmount })
+                                .eq('id', winner.player.id);
+                            }
+                            
+                            // Losers to Chucky still pay
+                            const potMatchAmount = game.pot_max_enabled
+                              ? Math.min(roundPot, game.pot_max_value)
+                              : roundPot;
+                            
+                            for (const loser of loseToChucky) {
+                              await supabase
+                                .from('players')
+                                .update({ chips: loser.player.chips - potMatchAmount })
+                                .eq('id', loser.player.id);
+                            }
+                            
+                            // Reset players
+                            await supabase
+                              .from('players')
+                              .update({ current_decision: null, decision_locked: false, ante_decision: null })
+                              .eq('game_id', gameId);
+                            
+                            // Game over
+                            await supabase
+                              .from('games')
+                              .update({
+                                status: 'game_over',
+                                game_over_at: nowIso,
+                                pot: 0,
+                                awaiting_next_round: false,
+                                total_hands: (game.total_hands || 0) + 1,
+                                last_round_result: `Tie resolved: ${beatChucky.length} beat Chucky (server-side)`,
+                              })
+                              .eq('id', gameId);
+                            
+                            await supabase
+                              .from('rounds')
+                              .update({ status: 'completed' })
+                              .eq('id', (currentRound as any).id);
+                            
+                            actionsTaken.push(`Server-side Holm tie: ${beatChucky.length}/${winners.length} beat Chucky, game over`);
+                          } else {
+                            // All tied players lose to Chucky - pot grows, continue
+                            const potMatchAmount = game.pot_max_enabled
+                              ? Math.min(roundPot, game.pot_max_value)
+                              : roundPot;
+                            
+                            let totalAdded = 0;
+                            for (const loser of loseToChucky) {
+                              await supabase
+                                .from('players')
+                                .update({ chips: loser.player.chips - potMatchAmount })
+                                .eq('id', loser.player.id);
+                              totalAdded += potMatchAmount;
+                            }
+                            
+                            const newPot = roundPot + totalAdded;
+                            
+                            await supabase
+                              .from('games')
+                              .update({
+                                pot: newPot,
+                                last_round_result: `Chucky beats all tied players!`,
+                                awaiting_next_round: true,
+                              })
+                              .eq('id', gameId);
+                            
+                            await supabase
+                              .from('rounds')
+                              .update({ status: 'completed', chucky_active: false })
+                              .eq('id', (currentRound as any).id);
+                            
+                            actionsTaken.push(`Server-side Holm tie: All ${winners.length} lose to Chucky, pot now ${newPot}`);
+                          }
+                        }
+                      }
                     }
                   }
                 }
