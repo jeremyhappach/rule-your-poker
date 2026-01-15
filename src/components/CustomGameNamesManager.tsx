@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Check, X, Tags } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, Tags, ChevronDown, ChevronRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface CustomGameName {
   id: string;
@@ -146,84 +147,94 @@ export const CustomGameNamesManager = () => {
     setEditingValue("");
   };
 
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 pb-2 border-b">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-2">
+      <CollapsibleTrigger className="flex items-center gap-2 pb-2 border-b w-full hover:bg-muted/30 rounded px-1 transition-colors">
+        {isOpen ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
         <Tags className="h-4 w-4 text-primary" />
         <h3 className="font-semibold">Custom Game Names</h3>
-      </div>
+        <span className="text-xs text-muted-foreground ml-auto">({names.length})</span>
+      </CollapsibleTrigger>
 
-      {/* Add new name */}
-      <div className="flex gap-2">
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New game name..."
-          className="flex-1"
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-        />
-        <Button
-          size="sm"
-          onClick={handleAdd}
-          disabled={isAdding || !newName.trim()}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* List of names */}
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : names.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No custom names yet</p>
-      ) : (
-        <div className="space-y-1 max-h-48 overflow-y-auto">
-          {names.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-2 p-2 rounded bg-muted/50"
-            >
-              {editingId === item.id ? (
-                <>
-                  <Input
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    className="flex-1 h-8"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleUpdate(item.id);
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleUpdate(item.id)}>
-                    <Check className="h-4 w-4 text-green-500" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={cancelEdit}>
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className={`flex-1 text-sm ${!item.is_active ? "text-muted-foreground line-through" : ""}`}>
-                    {item.name}
-                  </span>
-                  <Switch
-                    checked={item.is_active}
-                    onCheckedChange={() => handleToggleActive(item.id, item.is_active)}
-                    className="scale-75"
-                  />
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => startEdit(item)}>
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDeleteId(item.id)}>
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                  </Button>
-                </>
-              )}
-            </div>
-          ))}
+      <CollapsibleContent className="space-y-3">
+        {/* Add new name */}
+        <div className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="New game name..."
+            className="flex-1"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+          <Button
+            size="sm"
+            onClick={handleAdd}
+            disabled={isAdding || !newName.trim()}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
-      )}
+
+        {/* List of names */}
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : names.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No custom names yet</p>
+        ) : (
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {names.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 p-2 rounded bg-muted/50"
+              >
+                {editingId === item.id ? (
+                  <>
+                    <Input
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      className="flex-1 h-8"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleUpdate(item.id);
+                        if (e.key === "Escape") cancelEdit();
+                      }}
+                    />
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleUpdate(item.id)}>
+                      <Check className="h-4 w-4 text-green-500" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={cancelEdit}>
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className={`flex-1 text-sm ${!item.is_active ? "text-muted-foreground line-through" : ""}`}>
+                      {item.name}
+                    </span>
+                    <Switch
+                      checked={item.is_active}
+                      onCheckedChange={() => handleToggleActive(item.id, item.is_active)}
+                      className="scale-75"
+                    />
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => startEdit(item)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setDeleteId(item.id)}>
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CollapsibleContent>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
@@ -242,6 +253,6 @@ export const CustomGameNamesManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Collapsible>
   );
 };

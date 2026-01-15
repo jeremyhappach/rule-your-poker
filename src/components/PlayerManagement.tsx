@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { format } from "date-fns";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Profile {
   id: string;
@@ -24,6 +25,7 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     fetchProfiles();
@@ -103,84 +105,93 @@ export const PlayerManagement = ({ currentUserId }: PlayerManagementProps) => {
   }
 
   return (
-    <div className="space-y-2">
-      <div className="pb-1 border-b">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="space-y-2">
+      <CollapsibleTrigger className="flex items-center gap-2 pb-2 border-b w-full hover:bg-muted/30 rounded px-1 transition-colors">
+        {isOpen ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+        <Users className="h-4 w-4 text-primary" />
         <h3 className="font-semibold text-sm">Players</h3>
-      </div>
+        <span className="text-xs text-muted-foreground ml-auto">({profiles.length})</span>
+      </CollapsibleTrigger>
       
-      <ScrollArea className="h-[180px] rounded-md border p-2">
-        <div className="space-y-1">
-          {profiles.map((profile) => {
-            const isCurrentUser = profile.id === currentUserId;
-            const isUpdatingThis = updating === profile.id;
-            const isExpanded = expandedId === profile.id;
-            
-            return (
-              <div key={profile.id} className="space-y-0">
-                <div 
-                  onClick={() => toggleExpanded(profile.id)}
-                  className={`flex items-center justify-between py-1.5 px-2 rounded cursor-pointer transition-colors ${
-                    isCurrentUser ? 'bg-amber-500/10' : 'bg-muted/20 hover:bg-muted/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-1">
-                    {isExpanded ? (
-                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                    )}
-                    <span className="text-xs truncate max-w-[100px]">
-                      {profile.username}
-                      {isCurrentUser && <span className="text-amber-500 ml-1">•</span>}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
+      <CollapsibleContent>
+        <ScrollArea className="h-[180px] rounded-md border p-2">
+          <div className="space-y-1">
+            {profiles.map((profile) => {
+              const isCurrentUser = profile.id === currentUserId;
+              const isUpdatingThis = updating === profile.id;
+              const isExpanded = expandedId === profile.id;
+              
+              return (
+                <div key={profile.id} className="space-y-0">
+                  <div 
+                    onClick={() => toggleExpanded(profile.id)}
+                    className={`flex items-center justify-between py-1.5 px-2 rounded cursor-pointer transition-colors ${
+                      isCurrentUser ? 'bg-amber-500/10' : 'bg-muted/20 hover:bg-muted/40'
+                    }`}
+                  >
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-muted-foreground">Active</span>
-                      <Switch
-                        checked={profile.is_active}
-                        onCheckedChange={() => {}}
-                        onClick={(e) => toggleActive(profile.id, profile.is_active, e)}
-                        disabled={isCurrentUser || isUpdatingThis}
-                        className="scale-75 data-[state=checked]:bg-green-600"
-                      />
+                      {isExpanded ? (
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className="text-xs truncate max-w-[100px]">
+                        {profile.username}
+                        {isCurrentUser && <span className="text-amber-500 ml-1">•</span>}
+                      </span>
                     </div>
                     
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-muted-foreground">Admin</span>
-                      <Switch
-                        checked={profile.is_superuser}
-                        onCheckedChange={() => {}}
-                        onClick={(e) => toggleSuperuser(profile.id, profile.is_superuser, e)}
-                        disabled={isCurrentUser || isUpdatingThis}
-                        className="scale-75 data-[state=checked]:bg-amber-600"
-                      />
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground">Active</span>
+                        <Switch
+                          checked={profile.is_active}
+                          onCheckedChange={() => {}}
+                          onClick={(e) => toggleActive(profile.id, profile.is_active, e)}
+                          disabled={isCurrentUser || isUpdatingThis}
+                          className="scale-75 data-[state=checked]:bg-green-600"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground">Admin</span>
+                        <Switch
+                          checked={profile.is_superuser}
+                          onCheckedChange={() => {}}
+                          onClick={(e) => toggleSuperuser(profile.id, profile.is_superuser, e)}
+                          disabled={isCurrentUser || isUpdatingThis}
+                          className="scale-75 data-[state=checked]:bg-amber-600"
+                        />
+                      </div>
                     </div>
                   </div>
+                  
+                  {isExpanded && (
+                    <div className="ml-4 pl-3 py-2 border-l-2 border-muted space-y-1 text-xs text-muted-foreground">
+                      <div className="flex justify-between">
+                        <span>Email:</span>
+                        <span className="text-foreground">{profile.email || 'Not set'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Joined:</span>
+                        <span className="text-foreground">{formatDate(profile.created_at)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Last seen:</span>
+                        <span className="text-foreground">{formatDate(profile.last_seen_at)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                {isExpanded && (
-                  <div className="ml-4 pl-3 py-2 border-l-2 border-muted space-y-1 text-xs text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Email:</span>
-                      <span className="text-foreground">{profile.email || 'Not set'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Joined:</span>
-                      <span className="text-foreground">{formatDate(profile.created_at)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Last seen:</span>
-                      <span className="text-foreground">{formatDate(profile.last_seen_at)}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </ScrollArea>
-    </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
