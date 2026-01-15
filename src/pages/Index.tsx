@@ -373,8 +373,8 @@ const Index = () => {
         <GameLobby userId={user.id} />
       </div>
 
-      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="max-w-md max-h-[85vh]">
+        <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="max-w-md h-[85vh] max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
             <DialogDescription>
@@ -383,7 +383,7 @@ const Index = () => {
           </DialogHeader>
           
           {isAdmin ? (
-            <Tabs defaultValue="profile" className="w-full">
+            <Tabs defaultValue="profile" className="w-full flex flex-col flex-1 min-h-0">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="profile" className="flex items-center gap-1.5">
                   <UserCircle className="h-4 w-4" />
@@ -395,8 +395,8 @@ const Index = () => {
                 </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="profile">
-                <ScrollArea className="max-h-[55vh] pr-4 touch-auto overscroll-contain">
+              <TabsContent value="profile" className="flex-1 min-h-0">
+                <ScrollArea className="h-full pr-4 overscroll-contain">
                   <div className="space-y-6 pt-2">
                     {/* Visual Preferences Section */}
                     {user && <VisualPreferences userId={user.id} disabled={false} />}
@@ -465,8 +465,8 @@ const Index = () => {
                 </ScrollArea>
               </TabsContent>
               
-              <TabsContent value="admin">
-                <ScrollArea className="max-h-[55vh] pr-4 touch-auto overscroll-contain">
+              <TabsContent value="admin" className="flex-1 min-h-0">
+                <ScrollArea className="h-full pr-4 overscroll-contain">
                   <div className="space-y-4 pt-2">
                     {/* Under Maintenance Toggle */}
                     <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
@@ -567,7 +567,7 @@ const Index = () => {
               </TabsContent>
             </Tabs>
           ) : (
-            <ScrollArea className="max-h-[60vh] pr-4 touch-auto overscroll-contain">
+            <ScrollArea className="flex-1 min-h-0 pr-4 overscroll-contain">
               <div className="space-y-6">
                 {/* Maintenance Mode Warning for non-admins */}
                 {isMaintenanceMode && (
