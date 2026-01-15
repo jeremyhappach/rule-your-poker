@@ -246,6 +246,144 @@ function completeHorsesHand(dice: HorsesDiceValue[], rollsRemaining: number): Ho
   return currentDice.map(d => ({ ...d, isHeld: true }));
 }
 
+// ============== 3-5-7 HAND EVALUATION (with wild cards) ==============
+function evaluate357Hand(cards: Card[], roundNumber: number): { rank: string; value: number } {
+  if (cards.length === 0) return { rank: 'high-card', value: 0 };
+  
+  // Determine wild rank based on round (Round 1 = 3, Round 2 = 5, Round 3 = 7)
+  const wildRank = roundNumber === 1 ? '3' : roundNumber === 2 ? '5' : '7';
+  
+  // Normalize cards and identify wilds
+  const validCards = cards.map(c => ({
+    suit: c.suit,
+    rank: String(c.rank).toUpperCase()
+  })).filter(c => RANK_VALUES[c.rank] !== undefined);
+  
+  if (validCards.length === 0) return { rank: 'high-card', value: 0 };
+  
+  const wildCount = validCards.filter(c => c.rank === wildRank).length;
+  const nonWilds = validCards.filter(c => c.rank !== wildRank);
+  
+  // Count non-wild ranks
+  const rankCounts: Record<string, number> = {};
+  nonWilds.forEach(c => { rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1; });
+  
+  // For flush/straight calculations, we need to consider wild substitution
+  // Count suits among non-wilds
+  const suitCounts: Record<string, number> = {};
+  nonWilds.forEach(c => { suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1; });
+  
+  // Best flush suit (wilds can fill in)
+  const maxSuitCount = Math.max(...Object.values(suitCounts), 0) + wildCount;
+  const isFlush = maxSuitCount >= 5 && validCards.length >= 5;
+  
+  // Check for straight (with wilds filling gaps)
+  const uniqueValues = [...new Set(nonWilds.map(c => RANK_VALUES[c.rank]))].sort((a, b) => b - a);
+  let isStraight = false;
+  let straightHigh = 0;
+  
+  for (let start = 14; start >= 5; start--) {
+    let gaps = 0;
+    for (let i = 0; i < 5; i++) {
+      if (!uniqueValues.includes(start - i)) {
+        gaps++;
+      }
+    }
+    if (gaps <= wildCount && validCards.length >= 5) {
+      isStraight = true;
+      straightHigh = start;
+      break;
+    }
+  }
+  
+  // Check for wheel (A-2-3-4-5) with wilds
+  if (!isStraight && validCards.length >= 5) {
+    const wheelVals = [14, 2, 3, 4, 5];
+    const missing = wheelVals.filter(v => !uniqueValues.includes(v)).length;
+    if (missing <= wildCount) {
+      isStraight = true;
+      straightHigh = 5;
+    }
+  }
+  
+  // Calculate best of-a-kind with wilds
+  const groups = Object.entries(rankCounts)
+    .sort((a, b) => b[1] - a[1] || RANK_VALUES[b[0]] - RANK_VALUES[a[0]]);
+  
+  const bestNonWildRank = groups[0]?.[0];
+  const bestNonWildCount = groups[0]?.[1] || 0;
+  const secondRank = groups[1]?.[0];
+  const secondCount = groups[1]?.[1] || 0;
+  
+  // Best of-a-kind is natural count + wilds
+  const bestOfAKind = bestNonWildCount + wildCount;
+  
+  // Straight flush check
+  if (isFlush && isStraight && validCards.length >= 5) {
+    return { rank: 'straight-flush', value: 8000000000 + straightHigh };
+  }
+  
+  // Five of a kind (only possible with wilds)
+  if (bestOfAKind >= 5) {
+    return { rank: 'five-of-a-kind', value: 9000000000 + RANK_VALUES[bestNonWildRank] * 100 };
+  }
+  
+  // Four of a kind
+  if (bestOfAKind >= 4) {
+    return { rank: 'four-of-a-kind', value: 7000000000 + RANK_VALUES[bestNonWildRank] * 100 };
+  }
+  
+  // Full house (3 + 2, considering wilds can help one group)
+  if (bestNonWildCount + wildCount >= 3 && secondCount >= 2) {
+    return { rank: 'full-house', value: 6000000000 + RANK_VALUES[bestNonWildRank] * 100 + (RANK_VALUES[secondRank] || 0) };
+  }
+  if (bestNonWildCount >= 3 && secondCount + wildCount >= 2) {
+    return { rank: 'full-house', value: 6000000000 + RANK_VALUES[bestNonWildRank] * 100 + (RANK_VALUES[secondRank] || 0) };
+  }
+  
+  // Flush
+  if (isFlush) {
+    const flushSuit = Object.entries(suitCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const flushCards = nonWilds.filter(c => c.suit === flushSuit)
+      .sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+    const highCard = flushCards[0]?.rank || 'A';
+    return { rank: 'flush', value: 5000000000 + RANK_VALUES[highCard] * 100 };
+  }
+  
+  // Straight
+  if (isStraight) {
+    return { rank: 'straight', value: 4000000000 + straightHigh };
+  }
+  
+  // Three of a kind
+  if (bestOfAKind >= 3) {
+    return { rank: 'three-of-a-kind', value: 3000000000 + RANK_VALUES[bestNonWildRank] * 100 };
+  }
+  
+  // Two pair (wilds can help make second pair)
+  const pairs = groups.filter(([_, count]) => count >= 2);
+  if (pairs.length >= 2) {
+    const highPair = RANK_VALUES[pairs[0][0]];
+    const lowPair = RANK_VALUES[pairs[1][0]];
+    return { rank: 'two-pair', value: 2000000000 + highPair * 100 + lowPair };
+  }
+  if (pairs.length === 1 && wildCount >= 2) {
+    const highPair = RANK_VALUES[pairs[0][0]];
+    // Wilds form second pair at highest available
+    const highestOther = Math.max(...nonWilds.filter(c => c.rank !== pairs[0][0]).map(c => RANK_VALUES[c.rank]), 2);
+    return { rank: 'two-pair', value: 2000000000 + highPair * 100 + highestOther };
+  }
+  
+  // Pair
+  if (bestOfAKind >= 2) {
+    return { rank: 'pair', value: 1000000000 + RANK_VALUES[bestNonWildRank] * 100 };
+  }
+  
+  // High card
+  const sortedCards = [...validCards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+  return { rank: 'high-card', value: RANK_VALUES[sortedCards[0].rank] };
+}
+
 // ============== SCC DICE GAME EVALUATION ==============
 interface SCCDie {
   value: number;
@@ -2221,6 +2359,243 @@ serve(async (req) => {
                   .eq('status', 'betting');
 
                 actionsTaken.push('3-5-7: All players decided - all_decisions_in set to true, round status set to showdown');
+                
+                // SERVER-SIDE 3-5-7 ROUND COMPLETION
+                // When all decisions are in, check if we should resolve server-side (bot-only or all humans auto_fold)
+                const { data: fresh357Players } = await supabase
+                  .from('players')
+                  .select('*')
+                  .eq('game_id', gameId);
+                
+                const fresh357Active = fresh357Players?.filter((p: any) => p.status === 'active' && !p.sitting_out) || [];
+                const human357Players = fresh357Active.filter((p: any) => !p.is_bot);
+                const isBotOnly357 = human357Players.length === 0;
+                const allHumansAutoFold357 = human357Players.length > 0 && 
+                  human357Players.every((p: any) => p.auto_fold === true);
+                const shouldResolve357ServerSide = isBotOnly357 || allHumansAutoFold357;
+                
+                console.log('[ENFORCE] 3-5-7 round completion check:', {
+                  activePlayers: fresh357Active.length,
+                  humanPlayers: human357Players.length,
+                  isBotOnly357,
+                  allHumansAutoFold357,
+                  shouldResolve357ServerSide,
+                });
+                
+                if (shouldResolve357ServerSide) {
+                  const stayed357Players = fresh357Active.filter((p: any) => p.current_decision === 'stay');
+                  const legsToWin = game.legs_to_win || 3;
+                  const roundNumber = currentRound.round_number || 1;
+                  const legValue = game.leg_value || 1;
+                  const roundPot = currentRound.pot || game.pot || 0;
+                  
+                  console.log('[ENFORCE] Server-side 3-5-7 resolution:', {
+                    stayedCount: stayed357Players.length,
+                    roundNumber,
+                    roundPot,
+                    reason: isBotOnly357 ? 'bot_only' : 'all_humans_auto_fold',
+                  });
+                  
+                  if (stayed357Players.length === 0) {
+                    // EVERYONE FOLDED - Apply pussy tax
+                    console.log('[ENFORCE] 3-5-7: Everyone folded - applying pussy tax');
+                    
+                    const pussyTaxEnabled = game.pussy_tax_enabled ?? true;
+                    const pussyTaxAmount = pussyTaxEnabled ? (game.pussy_tax_value || 1) : 0;
+                    
+                    if (pussyTaxAmount > 0) {
+                      const playerIds = fresh357Active.map((p: any) => p.id);
+                      await supabase.rpc('decrement_player_chips', {
+                        player_ids: playerIds,
+                        amount: pussyTaxAmount
+                      });
+                    }
+                    
+                    const totalTaxCollected = pussyTaxAmount * fresh357Active.length;
+                    const newPot = (game.pot || 0) + totalTaxCollected;
+                    const nextRoundNum = (roundNumber % 3) + 1;
+                    
+                    await supabase.from('game_results').insert({
+                      game_id: gameId,
+                      hand_number: currentRound.hand_number || roundNumber,
+                      winner_player_id: null,
+                      winner_username: null,
+                      pot_won: 0,
+                      winning_hand_description: 'Everyone folded - Pussy Tax applied (server-side)',
+                      is_chopped: false,
+                      player_chip_changes: pussyTaxAmount > 0 ? Object.fromEntries(fresh357Active.map((p: any) => [p.id, -pussyTaxAmount])) : {},
+                      game_type: '3-5-7',
+                    });
+                    
+                    await supabase.from('games').update({
+                      pot: newPot,
+                      last_round_result: pussyTaxAmount > 0 ? 'Pussy Tax!' : 'Everyone folded!',
+                      awaiting_next_round: true,
+                      next_round_number: nextRoundNum,
+                    }).eq('id', gameId);
+                    
+                    await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                    
+                    actionsTaken.push(`3-5-7 server-side: Everyone folded, pussy tax ${totalTaxCollected} collected, pot now ${newPot}`);
+                    
+                  } else if (stayed357Players.length === 1) {
+                    // SOLO STAY - Player wins a leg
+                    const winner = stayed357Players[0];
+                    const newLegs = (winner.legs || 0) + 1;
+                    const newChips = winner.chips - legValue;
+                    
+                    console.log('[ENFORCE] 3-5-7: Solo stay - awarding leg to player', winner.id);
+                    
+                    await supabase.from('players').update({
+                      legs: newLegs,
+                      chips: newChips,
+                    }).eq('id', winner.id);
+                    
+                    if (newLegs >= legsToWin) {
+                      // Player won the game!
+                      await supabase.from('games').update({
+                        status: 'game_over',
+                        game_over_at: nowIso,
+                        pot: 0,
+                        awaiting_next_round: false,
+                        last_round_result: `Winner with ${newLegs} legs!`,
+                      }).eq('id', gameId);
+                      
+                      await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                      
+                      // Reset all players
+                      await supabase.from('players').update({
+                        current_decision: null,
+                        decision_locked: false,
+                        ante_decision: null,
+                      }).eq('game_id', gameId);
+                      
+                      actionsTaken.push(`3-5-7 server-side: Solo stay - player won game with ${newLegs} legs!`);
+                    } else {
+                      // Continue to next round
+                      const nextRoundNum = (roundNumber % 3) + 1;
+                      
+                      await supabase.from('games').update({
+                        last_round_result: 'Leg won!',
+                        awaiting_next_round: true,
+                        next_round_number: nextRoundNum,
+                      }).eq('id', gameId);
+                      
+                      await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                      
+                      actionsTaken.push(`3-5-7 server-side: Solo stay - leg awarded (now has ${newLegs}), next round ${nextRoundNum}`);
+                    }
+                    
+                  } else {
+                    // MULTI-STAY SHOWDOWN - Evaluate hands, winner gets pot, no leg awarded
+                    console.log('[ENFORCE] 3-5-7: Multi-player showdown with', stayed357Players.length, 'players');
+                    
+                    // Fetch player cards
+                    const { data: allPlayerCards } = await supabase
+                      .from('player_cards')
+                      .select('*')
+                      .eq('round_id', currentRound.id);
+                    
+                    // Evaluate all stayed players' hands with wild cards
+                    const playerHands: Array<{ player: any; eval: { rank: string; value: number }; cards: Card[] }> = [];
+                    
+                    for (const player of stayed357Players) {
+                      const playerCardsRow = allPlayerCards?.find((pc: any) => pc.player_id === player.id);
+                      const playerCards: Card[] = (playerCardsRow?.cards as any[] || []).map((c: any) => ({
+                        suit: (c.suit || c.Suit) as Card['suit'],
+                        rank: String(c.rank || c.Rank).toUpperCase() as Card['rank']
+                      }));
+                      
+                      const handEval = evaluate357Hand(playerCards, roundNumber);
+                      playerHands.push({ player, eval: handEval, cards: playerCards });
+                    }
+                    
+                    // Sort by hand value descending
+                    playerHands.sort((a, b) => b.eval.value - a.eval.value);
+                    
+                    const bestValue = playerHands[0].eval.value;
+                    const winners = playerHands.filter(ph => ph.eval.value === bestValue);
+                    
+                    console.log('[ENFORCE] 3-5-7 showdown result:', {
+                      winnersCount: winners.length,
+                      bestHand: playerHands[0].eval.rank,
+                      bestValue,
+                    });
+                    
+                    const nextRoundNum = (roundNumber % 3) + 1;
+                    
+                    if (winners.length === 1) {
+                      // Single winner - award pot
+                      const winner = winners[0];
+                      
+                      await supabase.from('players').update({
+                        chips: winner.player.chips + roundPot
+                      }).eq('id', winner.player.id);
+                      
+                      await supabase.from('game_results').insert({
+                        game_id: gameId,
+                        hand_number: currentRound.hand_number || roundNumber,
+                        winner_player_id: winner.player.id,
+                        winner_username: winner.player.id,
+                        pot_won: roundPot,
+                        winning_hand_description: `${winner.eval.rank} (server-side)`,
+                        is_chopped: false,
+                        player_chip_changes: { [winner.player.id]: roundPot },
+                        game_type: '3-5-7',
+                      });
+                      
+                      await supabase.from('games').update({
+                        pot: 0,
+                        last_round_result: `${winner.eval.rank} wins!`,
+                        awaiting_next_round: true,
+                        next_round_number: nextRoundNum,
+                      }).eq('id', gameId);
+                      
+                      await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                      
+                      actionsTaken.push(`3-5-7 server-side: ${winner.eval.rank} wins pot of ${roundPot}`);
+                      
+                    } else {
+                      // Tie - chop pot
+                      const splitAmount = Math.floor(roundPot / winners.length);
+                      const remainder = roundPot % winners.length;
+                      
+                      const chipChanges: Record<string, number> = {};
+                      for (let i = 0; i < winners.length; i++) {
+                        const winner = winners[i];
+                        const amount = splitAmount + (i === 0 ? remainder : 0);
+                        chipChanges[winner.player.id] = amount;
+                        
+                        await supabase.from('players').update({
+                          chips: winner.player.chips + amount
+                        }).eq('id', winner.player.id);
+                      }
+                      
+                      await supabase.from('game_results').insert({
+                        game_id: gameId,
+                        hand_number: currentRound.hand_number || roundNumber,
+                        winner_player_id: null,
+                        winner_username: null,
+                        pot_won: roundPot,
+                        winning_hand_description: `Chopped ${winners.length} ways with ${winners[0].eval.rank} (server-side)`,
+                        is_chopped: true,
+                        player_chip_changes: chipChanges,
+                        game_type: '3-5-7',
+                      });
+                      
+                      await supabase.from('games').update({
+                        pot: 0,
+                        last_round_result: `Chopped! ${winners.length}x ${winners[0].eval.rank}`,
+                        awaiting_next_round: true,
+                        next_round_number: nextRoundNum,
+                      }).eq('id', gameId);
+                      
+                      await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                      
+                      actionsTaken.push(`3-5-7 server-side: Chopped ${winners.length} ways, ${splitAmount} each`);
+                    }
+                  }
+                }
               }
             }
           }
