@@ -603,9 +603,11 @@ export type Database = {
           card_back_design: string
           created_at: string
           deck_color_mode: string
+          email: string | null
           id: string
           is_active: boolean
           is_superuser: boolean
+          last_seen_at: string | null
           table_layout: string
           username: string
         }
@@ -614,9 +616,11 @@ export type Database = {
           card_back_design?: string
           created_at?: string
           deck_color_mode?: string
+          email?: string | null
           id: string
           is_active?: boolean
           is_superuser?: boolean
+          last_seen_at?: string | null
           table_layout?: string
           username: string
         }
@@ -625,9 +629,11 @@ export type Database = {
           card_back_design?: string
           created_at?: string
           deck_color_mode?: string
+          email?: string | null
           id?: string
           is_active?: boolean
           is_superuser?: boolean
+          last_seen_at?: string | null
           table_layout?: string
           username?: string
         }
