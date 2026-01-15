@@ -27,7 +27,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert, History, Wrench } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
 import { MyGameHistory } from "@/components/MyGameHistory";
@@ -375,193 +376,278 @@ const Index = () => {
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="max-w-md max-h-[85vh]">
           <DialogHeader>
-            <DialogTitle>Profile Settings</DialogTitle>
+            <DialogTitle>Settings</DialogTitle>
             <DialogDescription>
-              Update your profile, password, or visual preferences
+              {isAdmin ? "Manage your profile and admin settings" : "Update your profile, password, or visual preferences"}
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="space-y-6">
-              {/* Maintenance Mode Warning for non-admins */}
-              {isMaintenanceMode && !isSuperuser && (
-                <div className="bg-amber-900/40 border border-amber-600/60 rounded-lg p-3 flex items-center gap-2">
-                  <Wrench className="h-5 w-5 text-amber-400 flex-shrink-0" />
-                  <p className="text-sm text-amber-200">
-                    Profile changes are disabled during maintenance.
-                  </p>
-                </div>
-              )}
+          {isAdmin ? (
+            <Tabs defaultValue="profile" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="profile" className="flex items-center gap-1.5">
+                  <UserCircle className="h-4 w-4" />
+                  Profile
+                </TabsTrigger>
+                <TabsTrigger value="admin" className="flex items-center gap-1.5">
+                  <ShieldAlert className="h-4 w-4" />
+                  Admin
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="profile">
+                <ScrollArea className="max-h-[55vh] pr-4">
+                  <div className="space-y-6 pt-2">
+                    {/* Visual Preferences Section */}
+                    {user && <VisualPreferences userId={user.id} disabled={false} />}
 
-              {/* Visual Preferences Section - First */}
-              {user && <VisualPreferences userId={user.id} disabled={isMaintenanceMode && !isSuperuser} />}
-
-              {/* Username Section */}
-              <div className="space-y-3">
-                <div className="pb-2 border-b">
-                  <h3 className="font-semibold">Username</h3>
-                  <p className="text-sm text-muted-foreground">Current: {currentUsername}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-username">New Username</Label>
-                  <Input
-                    id="new-username"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    placeholder="Enter new username"
-                    autoFocus={false}
-                    disabled={isMaintenanceMode && !isSuperuser}
-                  />
-                </div>
-                <Button 
-                  onClick={handleUpdateUsername} 
-                  disabled={isUpdating || !newUsername.trim() || (isMaintenanceMode && !isSuperuser)}
-                  className="w-full"
-                >
-                  Update Username
-                </Button>
-              </div>
-
-              {/* Password Section */}
-              <div className="space-y-3">
-                <div className="pb-2 border-b">
-                  <h3 className="font-semibold">Password</h3>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    autoFocus={false}
-                    disabled={isMaintenanceMode && !isSuperuser}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm Password</Label>
-                  <Input
-                    id="confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    autoFocus={false}
-                    disabled={isMaintenanceMode && !isSuperuser}
-                  />
-                </div>
-                <Button 
-                  onClick={handleUpdatePassword} 
-                  disabled={isUpdating || !newPassword || !confirmPassword || (isMaintenanceMode && !isSuperuser)}
-                  className="w-full"
-                >
-                  Update Password
-                </Button>
-              </div>
-
-              {/* Superuser Admin Section */}
-              {isSuperuser && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 pb-2 border-b">
-                    <ShieldAlert className="h-4 w-4 text-destructive" />
-                    <h3 className="font-semibold text-destructive">Admin Controls</h3>
-                  </div>
-                  
-                  {/* Under Maintenance Toggle */}
-                  <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="maintenance-mode" className="flex items-center gap-2">
-                        <Wrench className="h-4 w-4 text-amber-500" />
-                        Under Maintenance
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Blocks all non-admin users and ends active sessions immediately
-                      </p>
-                    </div>
-                    <Switch
-                      id="maintenance-mode"
-                      checked={isMaintenanceMode}
-                      onCheckedChange={async (enabled) => {
-                        setIsTogglingMaintenance(true);
-                        const success = await toggleMaintenanceMode(enabled);
-                        setIsTogglingMaintenance(false);
-                        if (success) {
-                          toast({
-                            title: enabled ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
-                            description: enabled ? "All active sessions have been ended" : "Users can now access the app",
-                          });
-                        } else {
-                          toast({
-                            title: "Error",
-                            description: "Failed to toggle maintenance mode",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      disabled={maintenanceLoading || isTogglingMaintenance}
-                      className="data-[state=checked]:bg-amber-600"
-                    />
-                  </div>
-
-                  {/* Allow Bot Dealers Toggle */}
-                  <div className="flex items-center justify-between py-2">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="allow-bot-dealers">Allow Bot Dealers</Label>
-                      <p className="text-xs text-muted-foreground">
-                        When enabled, bots can be dealers and will auto-configure games
-                      </p>
-                    </div>
-                    <Switch
-                      id="allow-bot-dealers"
-                      checked={allowBotDealers}
-                      onCheckedChange={handleToggleBotDealers}
-                      disabled={loadingBotDealersSetting}
-                    />
-                  </div>
-
-                  {/* Custom Game Names */}
-                  <CustomGameNamesManager />
-
-                  {/* Player Management */}
-                  {user && <PlayerManagement currentUserId={user.id} />}
-                  <p className="text-sm text-muted-foreground">
-                    Danger zone: These actions cannot be undone.
-                  </p>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                    {/* Username Section */}
+                    <div className="space-y-3">
+                      <div className="pb-2 border-b">
+                        <h3 className="font-semibold">Username</h3>
+                        <p className="text-sm text-muted-foreground">Current: {currentUsername}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-username">New Username</Label>
+                        <Input
+                          id="new-username"
+                          value={newUsername}
+                          onChange={(e) => setNewUsername(e.target.value)}
+                          placeholder="Enter new username"
+                          autoFocus={false}
+                        />
+                      </div>
                       <Button 
-                        variant="destructive" 
+                        onClick={handleUpdateUsername} 
+                        disabled={isUpdating || !newUsername.trim()}
                         className="w-full"
-                        disabled={isDeleting}
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        {isDeleting ? "Deleting..." : "Delete All Sessions"}
+                        Update Username
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete All Sessions?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete ALL active and historical game sessions, 
-                          including all player data, rounds, and game history. This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteAllSessions}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Yes, Delete All
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    </div>
+
+                    {/* Password Section */}
+                    <div className="space-y-3">
+                      <div className="pb-2 border-b">
+                        <h3 className="font-semibold">Password</h3>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password">New Password</Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Enter new password"
+                          autoFocus={false}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password">Confirm Password</Label>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirm new password"
+                          autoFocus={false}
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleUpdatePassword} 
+                        disabled={isUpdating || !newPassword || !confirmPassword}
+                        className="w-full"
+                      >
+                        Update Password
+                      </Button>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+              
+              <TabsContent value="admin">
+                <ScrollArea className="max-h-[55vh] pr-4">
+                  <div className="space-y-4 pt-2">
+                    {/* Under Maintenance Toggle */}
+                    <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="maintenance-mode" className="flex items-center gap-2">
+                          <Wrench className="h-4 w-4 text-amber-500" />
+                          Under Maintenance
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Blocks all non-admin users and ends active sessions immediately
+                        </p>
+                      </div>
+                      <Switch
+                        id="maintenance-mode"
+                        checked={isMaintenanceMode}
+                        onCheckedChange={async (enabled) => {
+                          setIsTogglingMaintenance(true);
+                          const success = await toggleMaintenanceMode(enabled);
+                          setIsTogglingMaintenance(false);
+                          if (success) {
+                            toast({
+                              title: enabled ? "Maintenance Mode Enabled" : "Maintenance Mode Disabled",
+                              description: enabled ? "All active sessions have been ended" : "Users can now access the app",
+                            });
+                          } else {
+                            toast({
+                              title: "Error",
+                              description: "Failed to toggle maintenance mode",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        disabled={maintenanceLoading || isTogglingMaintenance}
+                        className="data-[state=checked]:bg-amber-600"
+                      />
+                    </div>
+
+                    {/* Allow Bot Dealers Toggle */}
+                    <div className="flex items-center justify-between py-2">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="allow-bot-dealers">Allow Bot Dealers</Label>
+                        <p className="text-xs text-muted-foreground">
+                          When enabled, bots can be dealers and will auto-configure games
+                        </p>
+                      </div>
+                      <Switch
+                        id="allow-bot-dealers"
+                        checked={allowBotDealers}
+                        onCheckedChange={handleToggleBotDealers}
+                        disabled={loadingBotDealersSetting}
+                      />
+                    </div>
+
+                    {/* Custom Game Names */}
+                    <CustomGameNamesManager />
+
+                    {/* Player Management */}
+                    {user && <PlayerManagement currentUserId={user.id} />}
+                    
+                    {/* Danger Zone */}
+                    <div className="pt-2 border-t border-destructive/30">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Danger zone: These actions cannot be undone.
+                      </p>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="destructive" 
+                            className="w-full"
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            {isDeleting ? "Deleting..." : "Delete All Sessions"}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete All Sessions?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete ALL active and historical game sessions, 
+                              including all player data, rounds, and game history. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDeleteAllSessions}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Yes, Delete All
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-6">
+                {/* Maintenance Mode Warning for non-admins */}
+                {isMaintenanceMode && (
+                  <div className="bg-amber-900/40 border border-amber-600/60 rounded-lg p-3 flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-amber-400 flex-shrink-0" />
+                    <p className="text-sm text-amber-200">
+                      Profile changes are disabled during maintenance.
+                    </p>
+                  </div>
+                )}
+
+                {/* Visual Preferences Section */}
+                {user && <VisualPreferences userId={user.id} disabled={isMaintenanceMode} />}
+
+                {/* Username Section */}
+                <div className="space-y-3">
+                  <div className="pb-2 border-b">
+                    <h3 className="font-semibold">Username</h3>
+                    <p className="text-sm text-muted-foreground">Current: {currentUsername}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-username">New Username</Label>
+                    <Input
+                      id="new-username"
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      placeholder="Enter new username"
+                      autoFocus={false}
+                      disabled={isMaintenanceMode}
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleUpdateUsername} 
+                    disabled={isUpdating || !newUsername.trim() || isMaintenanceMode}
+                    className="w-full"
+                  >
+                    Update Username
+                  </Button>
                 </div>
-              )}
-            </div>
-          </ScrollArea>
+
+                {/* Password Section */}
+                <div className="space-y-3">
+                  <div className="pb-2 border-b">
+                    <h3 className="font-semibold">Password</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">New Password</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      autoFocus={false}
+                      disabled={isMaintenanceMode}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      autoFocus={false}
+                      disabled={isMaintenanceMode}
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleUpdatePassword} 
+                    disabled={isUpdating || !newPassword || !confirmPassword || isMaintenanceMode}
+                    className="w-full"
+                  >
+                    Update Password
+                  </Button>
+                </div>
+              </div>
+            </ScrollArea>
+          )}
         </DialogContent>
       </Dialog>
 
