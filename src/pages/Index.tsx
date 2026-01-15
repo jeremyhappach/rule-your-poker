@@ -396,7 +396,7 @@ const Index = () => {
               </TabsList>
               
               <TabsContent value="profile">
-                <ScrollArea className="max-h-[55vh] pr-4">
+                <ScrollArea className="max-h-[55vh] pr-4 touch-auto overscroll-contain">
                   <div className="space-y-6 pt-2">
                     {/* Visual Preferences Section */}
                     {user && <VisualPreferences userId={user.id} disabled={false} />}
@@ -466,7 +466,7 @@ const Index = () => {
               </TabsContent>
               
               <TabsContent value="admin">
-                <ScrollArea className="max-h-[55vh] pr-4">
+                <ScrollArea className="max-h-[55vh] pr-4 touch-auto overscroll-contain">
                   <div className="space-y-4 pt-2">
                     {/* Under Maintenance Toggle */}
                     <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
@@ -567,7 +567,7 @@ const Index = () => {
               </TabsContent>
             </Tabs>
           ) : (
-            <ScrollArea className="max-h-[60vh] pr-4">
+            <ScrollArea className="max-h-[60vh] pr-4 touch-auto overscroll-contain">
               <div className="space-y-6">
                 {/* Maintenance Mode Warning for non-admins */}
                 {isMaintenanceMode && (
