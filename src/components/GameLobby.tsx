@@ -87,6 +87,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [realMoney, setRealMoney] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
+  const [creatingGame, setCreatingGame] = useState(false);
   const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceMode();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -253,17 +254,21 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const createGame = async () => {
-    // Fetch last 50 game names to avoid duplicates
-    const { data: recentGames } = await supabase
-      .from('games')
-      .select('name')
-      .order('created_at', { ascending: false })
-      .limit(50);
+    // Prevent double-clicks
+    if (creatingGame) return;
+    setCreatingGame(true);
     
-    const recentNames = recentGames?.map(g => g.name).filter(Boolean) as string[] || [];
-    
-    const sessionName = generateGameName(recentNames);
-    
+    try {
+      // Fetch last 50 game names to avoid duplicates
+      const { data: recentGames } = await supabase
+        .from('games')
+        .select('name')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      const recentNames = recentGames?.map(g => g.name).filter(Boolean) as string[] || [];
+      
+      const sessionName = generateGameName(recentNames);
     // Create game with waiting status
     const { data: game, error: gameError } = await supabase
       .from('games')
@@ -320,10 +325,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         variant: "destructive",
       });
       return;
-    }
+      }
 
-    setShowCreateDialog(false);
-    navigate(`/game/${game.id}`);
+      setShowCreateDialog(false);
+      navigate(`/game/${game.id}`);
+    } finally {
+      setCreatingGame(false);
+    }
   };
 
   const joinGame = async (gameId: string) => {
@@ -802,8 +810,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={createGame}>
-              Create Game
+            <Button onClick={createGame} disabled={creatingGame}>
+              {creatingGame ? 'Creating...' : 'Create Game'}
             </Button>
           </DialogFooter>
         </DialogContent>
