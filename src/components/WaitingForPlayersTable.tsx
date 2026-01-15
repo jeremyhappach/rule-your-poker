@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
+import { logBotAdded } from "@/lib/sessionEventLog";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -272,6 +273,9 @@ export const WaitingForPlayersTable = ({
       if (playerError) {
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
+      
+      // Log bot addition event
+      await logBotAdded(gameId, currentUserId, nextPosition, botNameForToast);
 
       succeeded = true;
       // No toast for bot additions - reduces notification noise
