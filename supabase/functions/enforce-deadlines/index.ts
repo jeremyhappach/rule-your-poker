@@ -162,6 +162,175 @@ function evaluateHolmHand(cards: Card[]): { rank: string; value: number } {
   return { rank: 'high-card', value: RANK_VALUES[sortedCards[0].rank] };
 }
 
+// ============== HORSES DICE GAME EVALUATION ==============
+interface HorsesDiceValue {
+  value: number; // 1-6
+  isHeld: boolean;
+}
+
+interface HorsesHandResult {
+  rank: number;
+  description: string;
+  ofAKindCount: number;
+  highValue: number;
+}
+
+function evaluateHorsesHand(dice: HorsesDiceValue[]): HorsesHandResult {
+  const values = dice.map(d => d.value);
+  
+  // Count each value (1-6)
+  const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  values.forEach(v => counts[v]++);
+  
+  const wildCount = counts[1]; // 1s are wild
+  
+  // Special case: Five 1s (pure wilds) - best hand
+  if (wildCount === 5) {
+    return {
+      rank: 100,
+      description: "5 1s (Wilds!)",
+      ofAKindCount: 5,
+      highValue: 1,
+    };
+  }
+  
+  // For each non-wild value (6 down to 2), calculate best possible of-a-kind
+  let bestOfAKind = 0;
+  let bestValue = 0;
+  
+  for (let value = 6; value >= 2; value--) {
+    const totalWithWilds = counts[value] + wildCount;
+    if (totalWithWilds > bestOfAKind) {
+      bestOfAKind = totalWithWilds;
+      bestValue = value;
+    } else if (totalWithWilds === bestOfAKind && value > bestValue) {
+      bestValue = value;
+    }
+  }
+  
+  bestOfAKind = Math.min(bestOfAKind, 5);
+  
+  let rank: number;
+  let description: string;
+  
+  if (bestOfAKind >= 2) {
+    rank = (bestOfAKind * 10) + bestValue;
+    description = `${bestOfAKind} ${bestValue}s`;
+  } else {
+    const highCard = Math.max(...values.filter(v => v !== 1), 0) || Math.max(...values);
+    rank = 10 + highCard;
+    description = `${highCard} high`;
+  }
+  
+  return { rank, description, ofAKindCount: bestOfAKind, highValue: bestValue || Math.max(...values) };
+}
+
+function rollHorsesDie(): number {
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+function completeHorsesHand(dice: HorsesDiceValue[], rollsRemaining: number): HorsesDiceValue[] {
+  let currentDice = [...dice];
+  let rolls = rollsRemaining;
+  
+  // Roll all remaining rolls, holding nothing (simple server-side completion)
+  while (rolls > 0) {
+    currentDice = currentDice.map(die => ({
+      value: die.isHeld ? die.value : rollHorsesDie(),
+      isHeld: die.isHeld,
+    }));
+    rolls--;
+  }
+  
+  // Mark all as held when complete
+  return currentDice.map(d => ({ ...d, isHeld: true }));
+}
+
+// ============== SCC DICE GAME EVALUATION ==============
+interface SCCDie {
+  value: number;
+  isHeld: boolean;
+  isSCC: boolean;
+  sccType?: 'ship' | 'captain' | 'crew';
+}
+
+interface SCCHandResult {
+  rank: number;
+  description: string;
+  isQualified: boolean;
+  cargoSum: number;
+}
+
+function evaluateSCCHand(dice: SCCDie[]): SCCHandResult {
+  const hasShip = dice.some(d => d.sccType === 'ship');
+  const hasCaptain = dice.some(d => d.sccType === 'captain');
+  const hasCrew = dice.some(d => d.sccType === 'crew');
+  
+  if (!hasShip || !hasCaptain || !hasCrew) {
+    return { rank: 0, description: "NQ", isQualified: false, cargoSum: 0 };
+  }
+  
+  const cargoDice = dice.filter(d => !d.isSCC);
+  const cargoSum = cargoDice.reduce((sum, d) => sum + d.value, 0);
+  
+  return { rank: cargoSum, description: `${cargoSum}`, isQualified: true, cargoSum };
+}
+
+function rollSCCDie(): number {
+  return Math.floor(Math.random() * 6) + 1;
+}
+
+function completeSCCHand(dice: SCCDie[], rollsRemaining: number): SCCDie[] {
+  let currentDice = [...dice];
+  let rolls = rollsRemaining;
+  let hasShip = dice.some(d => d.sccType === 'ship');
+  let hasCaptain = dice.some(d => d.sccType === 'captain');
+  let hasCrew = dice.some(d => d.sccType === 'crew');
+  
+  while (rolls > 0) {
+    // Roll non-held dice
+    currentDice = currentDice.map(die => ({
+      ...die,
+      value: die.isHeld ? die.value : rollSCCDie(),
+    }));
+    
+    // Auto-freeze logic for SCC sequence
+    if (!hasShip) {
+      const shipIndex = currentDice.findIndex(d => d.value === 6 && !d.isSCC);
+      if (shipIndex !== -1) {
+        currentDice[shipIndex].isHeld = true;
+        currentDice[shipIndex].isSCC = true;
+        currentDice[shipIndex].sccType = 'ship';
+        hasShip = true;
+      }
+    }
+    
+    if (hasShip && !hasCaptain) {
+      const captainIndex = currentDice.findIndex(d => d.value === 5 && !d.isSCC);
+      if (captainIndex !== -1) {
+        currentDice[captainIndex].isHeld = true;
+        currentDice[captainIndex].isSCC = true;
+        currentDice[captainIndex].sccType = 'captain';
+        hasCaptain = true;
+      }
+    }
+    
+    if (hasShip && hasCaptain && !hasCrew) {
+      const crewIndex = currentDice.findIndex(d => d.value === 4 && !d.isSCC);
+      if (crewIndex !== -1) {
+        currentDice[crewIndex].isHeld = true;
+        currentDice[crewIndex].isSCC = true;
+        currentDice[crewIndex].sccType = 'crew';
+        hasCrew = true;
+      }
+    }
+    
+    rolls--;
+  }
+  
+  return currentDice.map(d => ({ ...d, isHeld: true }));
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -2323,6 +2492,229 @@ serve(async (req) => {
           );
         }
       }
+      
+      // 4E. FULL SERVER-SIDE DICE GAME RESOLUTION (when all humans are auto_fold or bot-only)
+      // Check if there's an active round with horses_state that needs resolution
+      if (latestRound && latestRound.status === 'betting' && latestRound.horses_state) {
+        const horsesState = latestRound.horses_state as any;
+        
+        // Get all players for this game
+        const { data: dicePlayers } = await supabase
+          .from('players')
+          .select('*')
+          .eq('game_id', gameId);
+        
+        const activeDicePlayers = dicePlayers?.filter((p: any) => !p.sitting_out) || [];
+        const humanDicePlayers = activeDicePlayers.filter((p: any) => !p.is_bot);
+        const isBotOnlyDiceGame = humanDicePlayers.length === 0;
+        const allHumansAutoFoldDice = humanDicePlayers.length > 0 && 
+          humanDicePlayers.every((p: any) => p.auto_fold === true);
+        const shouldResolveDiceServerSide = isBotOnlyDiceGame || allHumansAutoFoldDice;
+        
+        console.log('[ENFORCE] Dice game server-side check:', {
+          gameType: game.game_type,
+          gamePhase: horsesState.gamePhase,
+          humanPlayers: humanDicePlayers.length,
+          isBotOnly: isBotOnlyDiceGame,
+          allHumansAutoFold: allHumansAutoFoldDice,
+          shouldResolve: shouldResolveDiceServerSide,
+        });
+        
+        if (shouldResolveDiceServerSide && horsesState.gamePhase === 'playing') {
+          // Check if turn deadline has expired OR if current turn player needs resolution
+          const turnDeadline = horsesState.turnDeadline ? new Date(horsesState.turnDeadline) : null;
+          const turnExpired = turnDeadline && now > turnDeadline;
+          
+          // If no deadline set but we need server-side resolution, process anyway
+          if (turnExpired || !turnDeadline) {
+            console.log('[ENFORCE] 🎲 Server-side dice game resolution starting', {
+              reason: isBotOnlyDiceGame ? 'bot_only' : 'all_humans_auto_fold',
+              turnExpired,
+              currentTurnPlayerId: horsesState.currentTurnPlayerId,
+            });
+            
+            // Complete all player turns server-side
+            const turnOrder: string[] = horsesState.turnOrder || [];
+            const playerStates: Record<string, any> = { ...horsesState.playerStates };
+            let allTurnsComplete = true;
+            
+            // Process each player's turn
+            for (const playerId of turnOrder) {
+              const playerState = playerStates[playerId];
+              if (!playerState) continue;
+              
+              // If player hasn't completed their turn, complete it server-side
+              if (!playerState.isComplete) {
+                allTurnsComplete = false;
+                
+                // Roll remaining dice for this player
+                let dice = playerState.dice || [];
+                const rollsRemaining = playerState.rollsRemaining || 0;
+                
+                if (game.game_type === 'horses') {
+                  dice = completeHorsesHand(dice, rollsRemaining);
+                } else if (game.game_type === 'ship-captain-crew') {
+                  dice = completeSCCHand(dice, rollsRemaining);
+                }
+                
+                playerStates[playerId] = {
+                  ...playerState,
+                  dice,
+                  rollsRemaining: 0,
+                  isComplete: true,
+                };
+                
+                actionsTaken.push(`Dice server-side: Completed turn for player ${playerId}`);
+              }
+            }
+            
+            // Check if all turns are now complete
+            const allComplete = Object.values(playerStates).every((ps: any) => ps.isComplete);
+            
+            if (allComplete) {
+              console.log('[ENFORCE] All dice game turns complete, evaluating hands');
+              
+              // Evaluate all hands and determine winner
+              const evaluatedHands: Array<{ playerId: string; result: any }> = [];
+              
+              for (const playerId of turnOrder) {
+                const playerState = playerStates[playerId];
+                if (!playerState?.dice) continue;
+                
+                let result: any;
+                if (game.game_type === 'horses') {
+                  result = evaluateHorsesHand(playerState.dice);
+                } else if (game.game_type === 'ship-captain-crew') {
+                  result = evaluateSCCHand(playerState.dice);
+                }
+                
+                if (result) {
+                  evaluatedHands.push({ playerId, result });
+                }
+              }
+              
+              console.log('[ENFORCE] Evaluated dice hands:', evaluatedHands.map(h => ({ 
+                playerId: h.playerId, 
+                rank: h.result.rank, 
+                desc: h.result.description 
+              })));
+              
+              // Find winners (highest rank, or NQ handling for SCC)
+              let maxRank = -1;
+              const winnerIds: string[] = [];
+              
+              for (const hand of evaluatedHands) {
+                if (hand.result.rank > maxRank) {
+                  maxRank = hand.result.rank;
+                  winnerIds.length = 0;
+                  winnerIds.push(hand.playerId);
+                } else if (hand.result.rank === maxRank) {
+                  winnerIds.push(hand.playerId);
+                }
+              }
+              
+              const roundPot = latestRound.pot || game.pot || 0;
+              const isTie = winnerIds.length > 1 || 
+                (game.game_type === 'ship-captain-crew' && evaluatedHands.every(h => !h.result.isQualified));
+              
+              console.log('[ENFORCE] Dice game result:', {
+                winnerIds,
+                isTie,
+                roundPot,
+                maxRank,
+              });
+              
+              // Update horses_state with completion
+              const completedState = {
+                ...horsesState,
+                playerStates,
+                gamePhase: 'complete',
+              };
+              
+              await supabase
+                .from('rounds')
+                .update({ 
+                  horses_state: completedState,
+                  status: 'completed',
+                })
+                .eq('id', latestRound.id);
+              
+              if (isTie) {
+                // Tie - set awaiting_next_round for re-ante
+                await supabase
+                  .from('games')
+                  .update({
+                    awaiting_next_round: true,
+                    last_round_result: 'Roll Over!',
+                    all_decisions_in: true,
+                  })
+                  .eq('id', gameId);
+                
+                actionsTaken.push(`Dice server-side: Tie detected, set awaiting_next_round for re-ante`);
+              } else if (winnerIds.length === 1) {
+                // Single winner - award pot
+                const winnerId = winnerIds[0];
+                const winnerPlayer = activeDicePlayers.find((p: any) => p.id === winnerId);
+                const winnerHand = evaluatedHands.find(h => h.playerId === winnerId);
+                
+                if (winnerPlayer) {
+                  // Award pot to winner
+                  await supabase
+                    .from('players')
+                    .update({ chips: winnerPlayer.chips + roundPot })
+                    .eq('id', winnerId);
+                  
+                  // Record game result
+                  const playerChipChanges: Record<string, number> = { [winnerId]: roundPot };
+                  await supabase.from('game_results').insert({
+                    game_id: gameId,
+                    hand_number: latestRound.hand_number || game.total_hands || 1,
+                    winner_player_id: winnerId,
+                    winner_username: winnerId,
+                    pot_won: roundPot,
+                    winning_hand_description: `${winnerHand?.result?.description || 'Winner'} (server-side)`,
+                    is_chopped: false,
+                    player_chip_changes: playerChipChanges,
+                    game_type: game.game_type,
+                  });
+                  
+                  // Set game_over
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'game_over',
+                      game_over_at: nowIso,
+                      pot: 0,
+                      awaiting_next_round: false,
+                      last_round_result: winnerHand?.result?.description || 'Winner!',
+                    })
+                    .eq('id', gameId);
+                  
+                  actionsTaken.push(`Dice server-side: Winner ${winnerId} awarded ${roundPot} chips with ${winnerHand?.result?.description}`);
+                }
+              }
+            } else {
+              // Not all complete yet - update the horses_state with progress
+              // and advance to next incomplete player
+              const nextIncompletePlayer = turnOrder.find(pid => !playerStates[pid]?.isComplete);
+              
+              const updatedState = {
+                ...horsesState,
+                playerStates,
+                currentTurnPlayerId: nextIncompletePlayer || horsesState.currentTurnPlayerId,
+                turnDeadline: null, // Clear deadline for server-side resolution
+              };
+              
+              await supabase
+                .from('rounds')
+                .update({ horses_state: updatedState })
+                .eq('id', latestRound.id);
+              
+              actionsTaken.push(`Dice server-side: Advanced state, next player ${nextIncompletePlayer}`);
+            }
+          }
+        }
+      }
     }
 
     // 5. ENFORCE AWAITING_NEXT_ROUND TIMEOUT (stuck game watchdog)
@@ -2403,14 +2795,150 @@ serve(async (req) => {
           const isHolmGame = game.game_type === 'holm-game';
           const isDiceGame = game.game_type === 'horses' || game.game_type === 'ship-captain-crew';
           
-          // Dice games (Horses, Ship Captain Crew) manage their own state via horses_state in the round
-          // and don't use the same round progression system. Skip the watchdog for these.
+          // For dice games: Start a new round server-side when awaiting_next_round
+          // This enables full server-side resolution when all humans are auto_fold
           if (isDiceGame) {
-            console.log('[ENFORCE] Dice game detected, skipping awaiting_next_round watchdog (client manages state)', {
+            console.log('[ENFORCE] Dice game awaiting_next_round - starting new round server-side', {
               gameId,
               gameType: game.game_type,
             });
-            actionsTaken.push(`awaiting_next_round watchdog: Skipping dice game (${game.game_type}) - client manages state`);
+            
+            // Get active players (not sitting out)
+            const activeDicePlayers = freshPlayers?.filter((p: any) => 
+              !p.sitting_out
+            ) || [];
+            
+            if (activeDicePlayers.length >= 2) {
+              const newHandNumber = (game.total_hands || 0) + 1;
+              
+              // Build initial horses_state for the new round
+              const sortedActive = [...activeDicePlayers].sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
+              const dealerPos = game.dealer_position as number | null;
+              const dealerIdx = dealerPos ? sortedActive.findIndex((p: any) => p.position === dealerPos) : -1;
+              const turnOrder = dealerIdx >= 0
+                ? Array.from({ length: sortedActive.length }, (_, i) => sortedActive[(dealerIdx + i + 1) % sortedActive.length].id)
+                : sortedActive.map((p: any) => p.id);
+              
+              const firstTurnPlayer = sortedActive.find((p: any) => p.id === turnOrder[0]) ?? null;
+              
+              // Initial dice state (different for Horses vs SCC)
+              const initialDice = game.game_type === 'ship-captain-crew'
+                ? [
+                    { value: 0, isHeld: false, isSCC: false },
+                    { value: 0, isHeld: false, isSCC: false },
+                    { value: 0, isHeld: false, isSCC: false },
+                    { value: 0, isHeld: false, isSCC: false },
+                    { value: 0, isHeld: false, isSCC: false },
+                  ]
+                : [
+                    { value: 0, isHeld: false },
+                    { value: 0, isHeld: false },
+                    { value: 0, isHeld: false },
+                    { value: 0, isHeld: false },
+                    { value: 0, isHeld: false },
+                  ];
+              
+              const initialState: any = {
+                currentTurnPlayerId: turnOrder[0] ?? null,
+                playerStates: Object.fromEntries(
+                  turnOrder.map((pid: string) => [
+                    pid,
+                    { dice: initialDice, rollsRemaining: 3, isComplete: false },
+                  ]),
+                ),
+                gamePhase: 'playing',
+                turnOrder,
+                botControllerUserId: null,
+                turnDeadline: firstTurnPlayer?.is_bot
+                  ? null
+                  : new Date(Date.now() + 30_000).toISOString(),
+              };
+              
+              // Calculate pot for new round (re-ante)
+              const anteAmount = game.ante_amount || 2;
+              const newAnteTotal = activeDicePlayers.length * anteAmount;
+              const potForRound = (game.pot || 0) + newAnteTotal;
+              
+              // Clean up any existing round
+              const { data: existingDiceRound } = await supabase
+                .from('rounds')
+                .select('id')
+                .eq('game_id', gameId)
+                .eq('round_number', nextRoundNum)
+                .maybeSingle();
+              
+              if (existingDiceRound?.id) {
+                await supabase.from('player_cards').delete().eq('round_id', existingDiceRound.id);
+                await supabase.from('player_actions').delete().eq('round_id', existingDiceRound.id);
+                await supabase.from('rounds').delete().eq('id', existingDiceRound.id);
+              }
+              
+              // Create the round
+              const { data: newDiceRound, error: diceRoundError } = await supabase
+                .from('rounds')
+                .insert({
+                  game_id: gameId,
+                  round_number: nextRoundNum,
+                  hand_number: newHandNumber,
+                  cards_dealt: 2, // Constraint requires >= 2
+                  status: 'betting',
+                  pot: potForRound,
+                  horses_state: initialState,
+                })
+                .select()
+                .single();
+              
+              if (diceRoundError || !newDiceRound) {
+                console.error('[ENFORCE] Failed to create dice round:', diceRoundError);
+                actionsTaken.push(`awaiting_next_round watchdog: Failed to create dice round ${nextRoundNum}`);
+              } else {
+                // Collect antes
+                if (anteAmount > 0) {
+                  const playerIds = activeDicePlayers.map((p: any) => p.id);
+                  await supabase.rpc('decrement_player_chips', {
+                    player_ids: playerIds,
+                    amount: anteAmount,
+                  });
+                }
+                
+                // Update game state
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'in_progress',
+                    current_round: nextRoundNum,
+                    total_hands: newHandNumber,
+                    pot: potForRound,
+                    all_decisions_in: false,
+                    last_round_result: null,
+                    game_over_at: null,
+                    is_first_hand: false,
+                    config_deadline: null,
+                    ante_decision_deadline: null,
+                  })
+                  .eq('id', gameId);
+                
+                actionsTaken.push(`awaiting_next_round watchdog: Started ${game.game_type} round ${nextRoundNum} (hand #${newHandNumber}) with ${activeDicePlayers.length} players`);
+                console.log('[ENFORCE] ✅ Successfully started dice round server-side:', {
+                  gameId,
+                  gameType: game.game_type,
+                  roundNumber: nextRoundNum,
+                  handNumber: newHandNumber,
+                  playerCount: activeDicePlayers.length,
+                });
+              }
+            } else {
+              // Not enough players
+              await supabase
+                .from('games')
+                .update({
+                  status: 'waiting_for_players',
+                  awaiting_next_round: false,
+                  next_round_number: null
+                })
+                .eq('id', gameId);
+              actionsTaken.push(`awaiting_next_round watchdog: Not enough ${game.game_type} players, returning to waiting`);
+            }
           } else if (isHolmGame) {
             // For Holm games: Start the round server-side (just like we do for 3-5-7)
             // This ensures the game progresses even when no clients are connected
