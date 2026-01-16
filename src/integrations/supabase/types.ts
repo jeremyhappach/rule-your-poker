@@ -388,6 +388,39 @@ export type Database = {
         }
         Relationships: []
       }
+      performance_traces: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          id: string
+          metadata: Json | null
+          operation: string
+          session_id: string
+          table_name: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms: number
+          id?: string
+          metadata?: Json | null
+          operation: string
+          session_id: string
+          table_name?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          id?: string
+          metadata?: Json | null
+          operation?: string
+          session_id?: string
+          table_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_actions: {
         Row: {
           action_type: string
@@ -888,6 +921,42 @@ export type Database = {
           label?: string
           snapshots?: Json
           start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trace_sessions: {
+        Row: {
+          avg_duration_ms: number | null
+          ended_at: string | null
+          game_id: string | null
+          id: string
+          label: string | null
+          slowest_operation_ms: number | null
+          started_at: string
+          total_operations: number | null
+          user_id: string
+        }
+        Insert: {
+          avg_duration_ms?: number | null
+          ended_at?: string | null
+          game_id?: string | null
+          id?: string
+          label?: string | null
+          slowest_operation_ms?: number | null
+          started_at?: string
+          total_operations?: number | null
+          user_id: string
+        }
+        Update: {
+          avg_duration_ms?: number | null
+          ended_at?: string | null
+          game_id?: string | null
+          id?: string
+          label?: string | null
+          slowest_operation_ms?: number | null
+          started_at?: string
+          total_operations?: number | null
           user_id?: string
         }
         Relationships: []
