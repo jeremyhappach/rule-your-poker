@@ -49,6 +49,7 @@ import React, {
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
+import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 
@@ -426,6 +427,9 @@ export const MobileGameTable = ({
   // Z-index for player slots - higher in dice games to stay above spotlight
   const playerSlotZIndex = isDiceGame ? 'z-[105]' : 'z-10';
   
+  // Device size detection for tablet/desktop responsive sizing
+  const { isTablet, isDesktop } = useDeviceSize();
+
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
     enabled: isDiceGame,
@@ -2710,16 +2714,23 @@ export const MobileGameTable = ({
       </div>;
     
     const nameElement = (
-      <span className="text-[11px] truncate max-w-[70px] leading-none font-semibold text-white drop-shadow-md">
+      <span 
+        className={cn(
+          "truncate leading-none font-bold",
+          isTablet || isDesktop 
+            ? "text-sm max-w-[90px] bg-white text-black px-1.5 py-0.5 rounded" 
+            : "text-[11px] max-w-[70px] text-white drop-shadow-md font-semibold"
+        )}
+      >
         {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
         {/* Only show aggression level for card games, not dice games */}
         {!isDiceGame && player.is_bot && player.profiles?.aggression_level && (
-          <span className="text-purple-300 ml-0.5">
+          <span className={isTablet || isDesktop ? "text-purple-600 ml-0.5" : "text-purple-300 ml-0.5"}>
             ({getAggressionAbbreviation(player.profiles.aggression_level)})
           </span>
         )}
         {isCurrentUser && (
-          <span className="ml-1 text-[10px] font-medium text-white/70">
+          <span className={cn("ml-1 font-medium", isTablet || isDesktop ? "text-xs text-black/70" : "text-[10px] text-white/70")}>
             R{currentRound}
           </span>
         )}
@@ -3593,12 +3604,22 @@ export const MobileGameTable = ({
                 pointerEvents: shouldHidePot ? 'none' : 'auto'
               }}
             >
-              <div className={`relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60 ${
-                gameType === 'holm-game' || isDiceGame ? 'px-5 py-1.5' : is357MultiPlayerShowdown ? 'px-3 py-1' : 'px-8 py-3'
-              }`}>
-                <span className={`text-poker-gold font-bold ${
-                  gameType === 'holm-game' || isDiceGame ? 'text-xl' : is357MultiPlayerShowdown ? 'text-base' : 'text-3xl'
-                }`}>${formatChipValue(Math.round(
+              <div className={cn(
+                "relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60",
+                gameType === 'holm-game' || isDiceGame 
+                  ? (isTablet || isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
+                  : is357MultiPlayerShowdown 
+                    ? 'px-3 py-1' 
+                    : 'px-8 py-3'
+              )}>
+                <span className={cn(
+                  "text-poker-gold font-bold",
+                  gameType === 'holm-game' || isDiceGame 
+                    ? (isTablet || isDesktop ? 'text-3xl' : 'text-xl')
+                    : is357MultiPlayerShowdown 
+                      ? 'text-base' 
+                      : 'text-3xl'
+                )}>${formatChipValue(Math.round(
                   // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
                     ? threeFiveSevenWinPotAmount 
@@ -3995,8 +4016,15 @@ export const MobileGameTable = ({
         {/* Chucky's Hand - use cached values to persist through announcement */}
         {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div className={`absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center -space-x-[2px] transition-all duration-300 ${isHolmMultiPlayerShowdown ? 'top-[76%]' : 'top-[65%]'}`}>
-            <span className="text-red-400 text-sm mr-1">👿</span>
+          <div 
+            className={cn(
+              "absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center transition-all duration-300",
+              isHolmMultiPlayerShowdown ? 'top-[76%]' : 'top-[65%]',
+              isTablet || isDesktop ? '-space-x-1' : '-space-x-[2px]'
+            )}
+            style={{ transform: `translateX(-50%) scale(${isTablet ? 1.8 : isDesktop ? 2.0 : 1})` }}
+          >
+            <span className={cn("text-red-400 mr-1", isTablet || isDesktop ? "text-xl" : "text-sm")}>👿</span>
             {cachedChuckyCards.map((card, index) => {
               const isRevealed = index < cachedChuckyCardsRevealed;
               const isFourColor = deckColorMode === 'four_color';
@@ -4639,25 +4667,26 @@ export const MobileGameTable = ({
                 threeFiveSevenWinnerId === currentPlayer?.id && 
                 threeFiveSevenWinPhase !== 'idle';
 
-              // Card scaling - maximize use of vertical space (reduced R1 to prevent overlap)
+              // Card scaling - maximize use of vertical space
+              // TABLET: Much bigger 357 R1 cards and all cards scaled up
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[1.6]" // Smaller scale for R1 to reduce width
+                      ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[1.6]") // MUCH bigger R1 on tablet
                       : currentRound === 2
-                        ? "scale-[2.2]" // Bigger R2 cards on mobile
-                        : "scale-[2.1]") // Bigger R3 cards on mobile
-                  : "scale-[2.3]"; // Bigger Holm cards on mobile
+                        ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]") // Bigger R2 on tablet
+                        : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]")) // Bigger R3 on tablet
+                  : (isTablet || isDesktop ? "scale-[3.0]" : "scale-[2.3]"); // Bigger Holm cards on tablet
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? "min-h-[130px]" // Tighter reserve for Holm cards on mobile
+                  ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[130px]") // Bigger reserve for tablet
                   : (currentRound === 1
-                      ? "min-h-[120px]" // Reduced container height for R1 to move buttons up
+                      ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[120px]") // Bigger for tablet R1
                       : currentRound === 2
-                        ? "min-h-[105px]" // Tighter for R2
-                        : "min-h-[90px]"); // Tighter for R3
+                        ? (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[105px]") // Bigger for tablet R2
+                        : (isTablet || isDesktop ? "min-h-[140px]" : "min-h-[90px]")); // Bigger for tablet R3
 
               return (
                 <div className={cn(
