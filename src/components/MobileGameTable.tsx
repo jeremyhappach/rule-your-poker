@@ -4826,62 +4826,59 @@ export const MobileGameTable = ({
             </div>
             
             {/* Player info - below action buttons */}
-            <div className={cn("flex flex-col gap-0.5 pb-0")}>
-              <div className="flex items-center justify-center gap-3">
-                <p className="text-sm font-semibold text-foreground">
-                  {currentPlayer.profiles?.username || 'You'}
-                  {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
-                </p>
-                <div className="relative pr-6">
-                  {/* Show emoticon overlay OR chipstack value */}
-                  {emoticonOverlays[currentPlayer.id] ? (
-                    <span
-                      className="text-2xl animate-in fade-in zoom-in duration-200"
-                      style={{
-                        animation:
-                          emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500
-                            ? 'fadeOutEmoticon 0.5s ease-out forwards'
-                            : undefined,
-                      }}
-                    >
-                      {emoticonOverlays[currentPlayer.id].emoticon}
-                    </span>
-                  ) : (
-                    <span
-                      className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}
-                    >
-                      ${formatChipValue(
-                        Math.round(
-                          lockedChipsRef.current?.[currentPlayer.id] ??
-                            displayedChips[currentPlayer.id] ??
-                            currentPlayer.chips,
-                        ),
-                      )}
-                    </span>
-                  )}
-                  <ValueChangeFlash 
-                    value={0}
-                    prefix="+L"
-                    position="top-right"
-                    manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-                  />
-                  <ValueChangeFlash 
-                    value={0}
-                    prefix="+$"
-                    position="top-left"
-                    manualTrigger={winnerPotFlashTrigger?.playerId === currentPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
-                  />
-                </div>
-                {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && !isGameOver && !allDecisionsIn && roundStatus === 'betting' && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
-                    {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
-                  </Badge>}
-              </div>
-              
-              {/* Quick emoticon picker */}
+            <div className={cn("flex items-center justify-center gap-2 pb-0")}>
+              {/* Quick emoticon picker - left of player name */}
               <QuickEmoticonPicker 
                 onSelect={handleQuickEmoticon} 
                 disabled={isEmoticonSending || !currentPlayer}
               />
+              <p className="text-sm font-semibold text-foreground">
+                {currentPlayer.profiles?.username || 'You'}
+                {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
+              </p>
+              <div className="relative pr-6">
+                {/* Show emoticon overlay OR chipstack value */}
+                {emoticonOverlays[currentPlayer.id] ? (
+                  <span
+                    className="text-2xl animate-in fade-in zoom-in duration-200"
+                    style={{
+                      animation:
+                        emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500
+                          ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                          : undefined,
+                    }}
+                  >
+                    {emoticonOverlays[currentPlayer.id].emoticon}
+                  </span>
+                ) : (
+                  <span
+                    className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}
+                  >
+                    ${formatChipValue(
+                      Math.round(
+                        lockedChipsRef.current?.[currentPlayer.id] ??
+                          displayedChips[currentPlayer.id] ??
+                          currentPlayer.chips,
+                      ),
+                    )}
+                  </span>
+                )}
+                <ValueChangeFlash 
+                  value={0}
+                  prefix="+L"
+                  position="top-right"
+                  manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+                />
+                <ValueChangeFlash 
+                  value={0}
+                  prefix="+$"
+                  position="top-left"
+                  manualTrigger={winnerPotFlashTrigger?.playerId === currentPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+                />
+              </div>
+              {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && !isGameOver && !allDecisionsIn && roundStatus === 'betting' && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
+                  {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
+                </Badge>}
             </div>
             
             {/* Emoticon fade-out animation */}
