@@ -855,39 +855,45 @@ serve(async (req) => {
       });
     }
 
-    // 0-GLOBAL. BOT-ONLY GAME CHECK: End session immediately if no active humans remain
-    // This is a CRITICAL check that prevents zombie bot-only games from running indefinitely.
-    // Previously, bot-only checks only happened during config phase timeouts or game_over watchdog,
-    // but games in 'in_progress' could loop forever with only bots (who just fold endlessly).
+    // 0-GLOBAL. BOT-ONLY GAME CHECK: End session immediately if no humans remain at all
+    // This is a check that prevents zombie bot-only games from running indefinitely.
+    // IMPORTANT: We now check ONLY for humans who are NOT sitting_out. We do NOT check 
+    // the round-level 'status' field (active/folded/betting) because that changes during
+    // a hand. A human who folded this round is still participating in the session.
+    // The ONLY way a game becomes "bot-only" is if all humans have sitting_out=true.
     if (game.status === 'in_progress' || game.status === 'betting' || game.status === 'ante_decision') {
       const { data: allPlayers } = await supabase
         .from('players')
-        .select('id, user_id, is_bot, sitting_out, status')
+        .select('id, user_id, is_bot, sitting_out, status, auto_fold')
         .eq('game_id', gameId);
       
-      const activeHumans = (allPlayers || []).filter((p: any) => 
+      // A human is "present" if they exist and are NOT sitting out
+      // We explicitly do NOT check 'status' because that's round-specific
+      const presentHumans = (allPlayers || []).filter((p: any) => 
         !p.is_bot && 
-        !p.sitting_out && 
-        p.status === 'active'
+        !p.sitting_out
       );
       
-      const activeBots = (allPlayers || []).filter((p: any) => 
+      // Bots that are not sitting out
+      const presentBots = (allPlayers || []).filter((p: any) => 
         p.is_bot && 
-        !p.sitting_out && 
-        p.status === 'active'
+        !p.sitting_out
       );
       
       console.log('[ENFORCE] Bot-only check:', {
         gameId,
         status: game.status,
-        activeHumans: activeHumans.length,
-        activeBots: activeBots.length,
+        presentHumans: presentHumans.length,
+        presentBots: presentBots.length,
         totalPlayers: allPlayers?.length || 0,
+        humanDetails: presentHumans.map((p: any) => ({ id: p.id?.slice(0,8), status: p.status, auto_fold: p.auto_fold })),
       });
       
-      // If no active humans but there are active bots, end the session
-      if (activeHumans.length === 0 && activeBots.length > 0) {
-        console.log('[ENFORCE] ⚠️ BOT-ONLY GAME DETECTED - ending session immediately:', gameId);
+      // ONLY end session if there are ZERO present humans AND there are bots
+      // This is much more conservative - a human with auto_fold=true but sitting_out=false
+      // is still present and the session should continue
+      if (presentHumans.length === 0 && presentBots.length > 0) {
+        console.log('[ENFORCE] ⚠️ BOT-ONLY GAME DETECTED - all humans are sitting_out, ending session:', gameId);
         
         // End the session
         await supabase
@@ -903,7 +909,7 @@ serve(async (req) => {
           })
           .eq('id', gameId);
         
-        actionsTaken.push('Bot-only game detected: No active humans, session ended immediately');
+        actionsTaken.push('Bot-only game detected: All humans sitting_out, session ended');
         
         return new Response(JSON.stringify({
           success: true,
@@ -915,38 +921,8 @@ serve(async (req) => {
         });
       }
       
-      // Also check if all humans are sitting out with auto_fold (they've gone AFK)
-      const humanPlayersWithAutoFold = (allPlayers || []).filter((p: any) => !p.is_bot);
-      const allHumansAFK = humanPlayersWithAutoFold.length > 0 && 
-        humanPlayersWithAutoFold.every((p: any) => p.sitting_out);
-      
-      if (allHumansAFK && activeBots.length > 0) {
-        console.log('[ENFORCE] ⚠️ ALL HUMANS SITTING OUT - ending session:', gameId);
-        
-        await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            pending_session_end: false,
-            session_ended_at: nowIso,
-            game_over_at: nowIso,
-            config_deadline: null,
-            ante_decision_deadline: null,
-            awaiting_next_round: false,
-          })
-          .eq('id', gameId);
-        
-        actionsTaken.push('All humans sitting out: Session ended');
-        
-        return new Response(JSON.stringify({
-          success: true,
-          actionsTaken,
-          gameStatus: 'session_ended',
-          reason: 'all_humans_afk',
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      // NOTE: The "all humans sitting out" check is now handled above via presentHumans.length === 0
+      // We removed the redundant "allHumansAFK" check since sitting_out is the ONLY criteria now.
     }
 
     // 0-GLOBAL-B. DEGENERATE GAME STATE CHECK: Detect repeated "everyone folded" rounds
