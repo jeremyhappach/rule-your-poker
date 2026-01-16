@@ -84,6 +84,7 @@ interface WaitingForPlayersTableProps {
   getPositionForUserId?: (userId: string) => number | undefined;
   onLeaveGameNow?: () => void;
   realMoney?: boolean;
+  onBotAdded?: () => void;
 }
 
 export const WaitingForPlayersTable = ({
@@ -100,6 +101,7 @@ export const WaitingForPlayersTable = ({
   getPositionForUserId,
   onLeaveGameNow,
   realMoney = false,
+  onBotAdded,
 }: WaitingForPlayersTableProps) => {
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
@@ -281,7 +283,8 @@ export const WaitingForPlayersTable = ({
       await logBotAdded(gameId, currentUserId, nextPosition, botNameForToast);
 
       succeeded = true;
-      // No toast for bot additions - reduces notification noise
+      // Immediately notify parent to refetch - don't wait for realtime
+      onBotAdded?.();
       return true;
     } catch (error: any) {
       console.error("Error adding bot:", error);

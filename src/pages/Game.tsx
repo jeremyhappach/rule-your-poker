@@ -5315,6 +5315,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             getPositionForUserId={getPositionForUserId}
             onLeaveGameNow={handleLeaveGameNow}
             realMoney={game.real_money}
+            onBotAdded={fetchGameData}
           />
         )}
 
