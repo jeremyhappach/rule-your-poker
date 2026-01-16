@@ -1370,15 +1370,11 @@ export const MobileGameTable = ({
   
   // HOLM: Detect solo player vs Chucky showdown (1 player stayed)
   // Keep tabled cards visible through win animation + until next hand to avoid flicker.
-  // CRITICAL: Only trigger tabling AFTER community cards are fully revealed (4) to prevent
-  // showing tabled cards before the hidden community cards flip. The server sets all_decisions_in
-  // first, waits 2 seconds, then sets community_cards_revealed=4. We wait for the latter.
-  const communityFullyRevealed = (communityCardsRevealed ?? 0) >= 4;
+  // IMPORTANT: Holm showdown should table player cards BEFORE flipping the final 2 community cards,
+  // so we allow this state to become true as soon as all_decisions_in is set.
   const isSoloVsChuckyRaw = gameType === 'holm-game' && 
     stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || 
-     (allDecisionsIn && communityFullyRevealed) || 
-     (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
+    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
 
   useEffect(() => {
     if (isSoloVsChuckyRaw || holmWinPotTriggerId) {
@@ -3862,8 +3858,9 @@ export const MobileGameTable = ({
         {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}
         {gameType === 'holm-game' && isSoloVsChucky && (() => {
           // Find the solo player (use locked id so tabling persists even if decisions clear)
-          // Fallback to derived winner (lastRoundResult) when decisions have already been cleared.
-          const soloPlayerId = soloVsChuckyPlayerIdLocked || winnerPlayerId || players.find(p => p.current_decision === 'stay')?.id;
+          // NOTE: Do NOT fall back to winnerPlayerId here; it can be stale during hand transitions
+          // and can briefly table the wrong player's cards (causing flicker/incorrect tabling).
+          const soloPlayerId = soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id;
           const soloPlayer = soloPlayerId ? players.find(p => p.id === soloPlayerId) : null;
           if (!soloPlayer) return null;
           
