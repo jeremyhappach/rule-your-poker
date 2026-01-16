@@ -179,7 +179,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
       ante_decision_deadline?: string | null;
       game_over_at?: string | null;
     } | null,
-    roundDeadline?: string | null
+    roundDeadline?: string | null,
+    horsesTurnDeadline?: string | null
   ): Date | null => {
     const deadlines: Date[] = [];
     
@@ -191,6 +192,10 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     }
     if (roundDeadline) {
       deadlines.push(new Date(roundDeadline));
+    }
+    // Dice games use horses_state.turnDeadline instead of round decision_deadline
+    if (horsesTurnDeadline) {
+      deadlines.push(new Date(horsesTurnDeadline));
     }
     
     // Filter to only future deadlines
@@ -252,29 +257,38 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
 
         const { data: gameData } = await supabase
           .from('games')
-          .select('config_deadline, ante_decision_deadline, game_over_at, current_round')
+          .select('config_deadline, ante_decision_deadline, game_over_at, current_round, game_type')
           .eq('id', gameId)
           .single();
 
         if (!isMounted || !gameData) return;
 
         let roundDeadline: string | null = null;
+        let horsesTurnDeadline: string | null = null;
+        const isDiceGame = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
+        
         if (gameData.current_round !== null && gameData.current_round !== undefined) {
           const { data: roundData } = await supabase
             .from('rounds')
-            .select('decision_deadline')
+            .select('decision_deadline, horses_state')
             .eq('game_id', gameId)
             .eq('round_number', gameData.current_round)
             .single();
           
           roundDeadline = roundData?.decision_deadline ?? null;
+          // For dice games, get turnDeadline from horses_state
+          if (isDiceGame && roundData?.horses_state) {
+            horsesTurnDeadline = (roundData.horses_state as any)?.turnDeadline ?? null;
+          }
         }
 
-        const nearest = calculateNearestDeadline(gameData, roundDeadline);
+        const nearest = calculateNearestDeadline(gameData, roundDeadline, horsesTurnDeadline);
         if (isMounted) {
           setNearestDeadline(nearest);
           if (nearest) {
-            schedulePolling(nearest, currentHumanCount <= 1);
+            // For dice games with only 1 human, still poll because server handles turn enforcement
+            const skipPolling = isDiceGame ? false : currentHumanCount <= 1;
+            schedulePolling(nearest, skipPolling);
           }
         }
       } catch {
@@ -303,10 +317,9 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
             currentHumanCount = newCount;
             setHumanPlayerCount(newCount);
             
-            // If we went from multi-human to single-human, stop polling
-            if (newCount <= 1) {
-              clearTimers();
-            }
+            // NOTE: For dice games we don't stop polling on single-human 
+            // because server-side turn enforcement is needed.
+            // The schedulePolling logic handles this via isDiceGame check.
           }
         }
       )
@@ -331,18 +344,24 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
 
           // Get current round deadline if applicable
           let roundDeadline: string | null = null;
+          let horsesTurnDeadline: string | null = null;
+          const isDiceGame = newData.game_type === 'horses' || newData.game_type === 'ship-captain-crew';
+          
           if (newData.current_round !== null && newData.current_round !== undefined) {
             const { data: roundData } = await supabase
               .from('rounds')
-              .select('decision_deadline')
+              .select('decision_deadline, horses_state')
               .eq('game_id', gameId)
               .eq('round_number', newData.current_round)
               .single();
             
             roundDeadline = roundData?.decision_deadline ?? null;
+            if (isDiceGame && roundData?.horses_state) {
+              horsesTurnDeadline = (roundData.horses_state as any)?.turnDeadline ?? null;
+            }
           }
 
-          const nearest = calculateNearestDeadline(newData, roundDeadline);
+          const nearest = calculateNearestDeadline(newData, roundDeadline, horsesTurnDeadline);
           
           if (isMounted) {
             const previousDeadline = nearestDeadline;
@@ -351,7 +370,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
             // If deadline changed, reschedule polling
             if (nearest?.getTime() !== previousDeadline?.getTime()) {
               if (nearest) {
-                schedulePolling(nearest, currentHumanCount <= 1);
+                const skipPolling = isDiceGame ? false : currentHumanCount <= 1;
+                schedulePolling(nearest, skipPolling);
               } else {
                 // No more deadlines, stop polling
                 clearTimers();
@@ -377,29 +397,38 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           if (!isMounted) return;
           
           const roundData = payload.new as any;
-          if (!roundData?.decision_deadline) return;
+          // Trigger on decision_deadline OR horses_state changes (for turnDeadline)
+          if (!roundData?.decision_deadline && !roundData?.horses_state) return;
 
           // Re-fetch game data to calculate nearest deadline
           const { data: gameData } = await supabase
             .from('games')
-            .select('config_deadline, ante_decision_deadline, game_over_at, current_round')
+            .select('config_deadline, ante_decision_deadline, game_over_at, current_round, game_type')
             .eq('id', gameId)
             .single();
 
           if (!isMounted || !gameData) return;
 
+          const isDiceGame = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
+          
           // Only consider the current round's deadline
           let relevantRoundDeadline: string | null = null;
+          let horsesTurnDeadline: string | null = null;
+          
           if (gameData.current_round === roundData.round_number) {
-            relevantRoundDeadline = roundData.decision_deadline;
+            relevantRoundDeadline = roundData.decision_deadline ?? null;
+            if (isDiceGame && roundData.horses_state) {
+              horsesTurnDeadline = (roundData.horses_state as any)?.turnDeadline ?? null;
+            }
           }
 
-          const nearest = calculateNearestDeadline(gameData, relevantRoundDeadline);
+          const nearest = calculateNearestDeadline(gameData, relevantRoundDeadline, horsesTurnDeadline);
           
           if (isMounted) {
             setNearestDeadline(nearest);
             if (nearest) {
-              schedulePolling(nearest, currentHumanCount <= 1);
+              const skipPolling = isDiceGame ? false : currentHumanCount <= 1;
+              schedulePolling(nearest, skipPolling);
             } else {
               clearTimers();
             }

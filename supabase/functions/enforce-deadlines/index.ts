@@ -3046,12 +3046,30 @@ serve(async (req) => {
           const turnDeadline = horsesState.turnDeadline ? new Date(horsesState.turnDeadline) : null;
           const turnExpired = turnDeadline && now > turnDeadline;
           
-          // Auto-roll conditions:
-          // 1. Player is a bot (always auto-complete after deadline)
-          // 2. Player has auto_fold=true (auto-roll mode)
-          // 3. Turn deadline has expired (enforce timeout)
           const isBot = currentTurnPlayer?.is_bot === true;
           const isAutoRoll = currentTurnPlayer?.auto_fold === true;
+          
+          // RECOVERY: If it's a human's turn but turnDeadline is missing, set it now
+          // This handles cases where the client failed to set the deadline after advancing
+          if (!isBot && !turnDeadline) {
+            console.log('[ENFORCE] 🔧 RECOVERY: Setting missing turnDeadline for human player:', currentTurnPlayerId);
+            const recoveryDeadline = new Date(now.getTime() + 10_000).toISOString();
+            const recoveredState = {
+              ...horsesState,
+              turnDeadline: recoveryDeadline,
+            };
+            await supabase
+              .from('rounds')
+              .update({ horses_state: recoveredState })
+              .eq('id', latestRound.id);
+            actionsTaken.push(`Dice recovery: Set missing turnDeadline for human ${currentTurnPlayerId}`);
+            // Don't auto-complete yet - give them the new deadline
+          }
+          
+          // Auto-roll conditions:
+          // 1. Player is a bot (always auto-complete)
+          // 2. Player has auto_fold=true (auto-roll mode)
+          // 3. Turn deadline has expired (enforce timeout)
           const shouldAutoCompleteTurn = isBot || isAutoRoll || turnExpired;
           
           if (shouldAutoCompleteTurn) {
@@ -3153,8 +3171,8 @@ serve(async (req) => {
                 const nextIsBot = nextPlayer?.is_bot === true;
                 const nextIsAutoRoll = nextPlayer?.auto_fold === true;
                 
-                // Set deadline: 30 seconds for humans, 5 seconds for bots/auto-roll
-                const deadlineSecs = (nextIsBot || nextIsAutoRoll) ? 5 : 30;
+                // Set deadline: 10 seconds for humans, 5 seconds for bots/auto-roll (10s for testing)
+                const deadlineSecs = (nextIsBot || nextIsAutoRoll) ? 5 : 10;
                 const newDeadline = new Date(now.getTime() + deadlineSecs * 1000).toISOString();
                 
                 const advancedState = {
@@ -3543,7 +3561,7 @@ serve(async (req) => {
                 botControllerUserId: null,
                 turnDeadline: firstTurnPlayer?.is_bot
                   ? null
-                  : new Date(Date.now() + 30_000).toISOString(),
+                  : new Date(Date.now() + 10_000).toISOString(),
               };
               
               // Calculate pot for new round (re-ante)
