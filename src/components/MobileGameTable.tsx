@@ -1370,9 +1370,15 @@ export const MobileGameTable = ({
   
   // HOLM: Detect solo player vs Chucky showdown (1 player stayed)
   // Keep tabled cards visible through win animation + until next hand to avoid flicker.
+  // CRITICAL: Only trigger tabling AFTER community cards are fully revealed (4) to prevent
+  // showing tabled cards before the hidden community cards flip. The server sets all_decisions_in
+  // first, waits 2 seconds, then sets community_cards_revealed=4. We wait for the latter.
+  const communityFullyRevealed = (communityCardsRevealed ?? 0) >= 4;
   const isSoloVsChuckyRaw = gameType === 'holm-game' && 
     stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
+    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || 
+     (allDecisionsIn && communityFullyRevealed) || 
+     (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
 
   useEffect(() => {
     if (isSoloVsChuckyRaw || holmWinPotTriggerId) {
