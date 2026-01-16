@@ -2874,8 +2874,10 @@ serve(async (req) => {
         }
       }
       
-      // 4E. FULL SERVER-SIDE DICE GAME RESOLUTION (when all humans are auto_fold or bot-only)
-      // Check if there's an active round with horses_state that needs resolution
+      // 4E. PER-TURN DICE DEADLINE ENFORCEMENT
+      // When a specific player's turn deadline expires OR they have auto_fold=true (auto-roll),
+      // complete that player's turn server-side and advance to the next player.
+      // This handles individual player timeouts without requiring all humans to be auto_fold.
       if (latestRound && latestRound.status === 'betting' && latestRound.horses_state) {
         const horsesState = latestRound.horses_state as any;
         
@@ -2886,6 +2888,132 @@ serve(async (req) => {
           .eq('game_id', gameId);
         
         const activeDicePlayers = dicePlayers?.filter((p: any) => !p.sitting_out) || [];
+        
+        // Check if current turn player needs auto-roll enforcement
+        if (horsesState.gamePhase === 'playing' && horsesState.currentTurnPlayerId) {
+          const currentTurnPlayerId = horsesState.currentTurnPlayerId;
+          const currentTurnPlayer = dicePlayers?.find((p: any) => p.id === currentTurnPlayerId);
+          const turnDeadline = horsesState.turnDeadline ? new Date(horsesState.turnDeadline) : null;
+          const turnExpired = turnDeadline && now > turnDeadline;
+          
+          // Auto-roll conditions:
+          // 1. Player is a bot (always auto-complete after deadline)
+          // 2. Player has auto_fold=true (auto-roll mode)
+          // 3. Turn deadline has expired (enforce timeout)
+          const isBot = currentTurnPlayer?.is_bot === true;
+          const isAutoRoll = currentTurnPlayer?.auto_fold === true;
+          const shouldAutoCompleteTurn = isBot || isAutoRoll || turnExpired;
+          
+          if (shouldAutoCompleteTurn) {
+            const playerState = horsesState.playerStates?.[currentTurnPlayerId];
+            
+            // Only complete if the player hasn't already completed their turn
+            if (playerState && !playerState.isComplete) {
+              console.log('[ENFORCE] 🎲 Auto-rolling dice for player:', {
+                playerId: currentTurnPlayerId,
+                reason: isBot ? 'bot' : isAutoRoll ? 'auto_roll' : 'turn_expired',
+                rollsRemaining: playerState.rollsRemaining,
+              });
+              
+              // Complete this player's turn
+              let dice = playerState.dice || [];
+              const rollsRemaining = playerState.rollsRemaining || 0;
+              
+              if (rollsRemaining > 0) {
+                if (game.game_type === 'horses') {
+                  dice = completeHorsesHand(dice, rollsRemaining);
+                } else if (game.game_type === 'ship-captain-crew') {
+                  dice = completeSCCHand(dice, rollsRemaining);
+                }
+              } else {
+                // Mark all dice as held if no rolls remaining
+                dice = dice.map((d: any) => ({ ...d, isHeld: true }));
+              }
+              
+              // Evaluate the completed hand
+              let result: any;
+              if (game.game_type === 'horses') {
+                result = evaluateHorsesHand(dice);
+              } else if (game.game_type === 'ship-captain-crew') {
+                result = evaluateSCCHand(dice);
+              }
+              
+              // Update player state
+              const updatedPlayerStates = {
+                ...horsesState.playerStates,
+                [currentTurnPlayerId]: {
+                  ...playerState,
+                  dice,
+                  rollsRemaining: 0,
+                  isComplete: true,
+                  result,
+                },
+              };
+              
+              // Find next incomplete player in turn order
+              const turnOrder: string[] = horsesState.turnOrder || [];
+              const currentIndex = turnOrder.indexOf(currentTurnPlayerId);
+              let nextTurnPlayerId: string | null = null;
+              
+              for (let i = 1; i <= turnOrder.length; i++) {
+                const nextIdx = (currentIndex + i) % turnOrder.length;
+                const nextId = turnOrder[nextIdx];
+                if (!updatedPlayerStates[nextId]?.isComplete) {
+                  nextTurnPlayerId = nextId;
+                  break;
+                }
+              }
+              
+              // Check if all turns are now complete
+              const allTurnsComplete = turnOrder.every(pid => updatedPlayerStates[pid]?.isComplete);
+              
+              if (allTurnsComplete) {
+                // All done - transition to complete phase
+                console.log('[ENFORCE] 🎲 All dice turns complete after auto-roll');
+                
+                const completedState = {
+                  ...horsesState,
+                  playerStates: updatedPlayerStates,
+                  gamePhase: 'complete',
+                  currentTurnPlayerId: null,
+                  turnDeadline: null,
+                };
+                
+                await supabase
+                  .from('rounds')
+                  .update({ horses_state: completedState })
+                  .eq('id', latestRound.id);
+                
+                actionsTaken.push(`Dice auto-roll: Completed turn for ${currentTurnPlayerId}, all turns done`);
+              } else if (nextTurnPlayerId) {
+                // Advance to next player with fresh deadline
+                const nextPlayer = dicePlayers?.find((p: any) => p.id === nextTurnPlayerId);
+                const nextIsBot = nextPlayer?.is_bot === true;
+                const nextIsAutoRoll = nextPlayer?.auto_fold === true;
+                
+                // Set deadline: 30 seconds for humans, 5 seconds for bots/auto-roll
+                const deadlineSecs = (nextIsBot || nextIsAutoRoll) ? 5 : 30;
+                const newDeadline = new Date(now.getTime() + deadlineSecs * 1000).toISOString();
+                
+                const advancedState = {
+                  ...horsesState,
+                  playerStates: updatedPlayerStates,
+                  currentTurnPlayerId: nextTurnPlayerId,
+                  turnDeadline: newDeadline,
+                };
+                
+                await supabase
+                  .from('rounds')
+                  .update({ horses_state: advancedState })
+                  .eq('id', latestRound.id);
+                
+                actionsTaken.push(`Dice auto-roll: Completed turn for ${currentTurnPlayerId}, advancing to ${nextTurnPlayerId}`);
+              }
+            }
+          }
+        }
+        
+        // Continue to full resolution check below
         const humanDicePlayers = activeDicePlayers.filter((p: any) => !p.is_bot);
         const isBotOnlyDiceGame = humanDicePlayers.length === 0;
         const allHumansAutoFoldDice = humanDicePlayers.length > 0 && 

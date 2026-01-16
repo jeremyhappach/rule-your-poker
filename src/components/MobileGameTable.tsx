@@ -27,6 +27,7 @@ import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
+import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
@@ -2633,11 +2634,15 @@ export const MobileGameTable = ({
       </div>
     );
     
+    // Auto-roll indicator for dice games - show when human player has auto_fold enabled
+    const showAutoRollIndicator = isDiceGame && player.auto_fold && !player.is_bot;
+    
     const chipElement = <div className="relative flex items-center gap-1">
-        {/* Leg indicators - positioned inside toward table center */}
+        {/* Leg indicators - positioned inside toward table center (card games only) */}
         {legIndicator}
         
-        {/* Chat bubbles removed - now using flashing chat tab icon instead */}
+        {/* Auto-roll indicator for dice games - positioned like leg indicators */}
+        {showAutoRollIndicator && <AutoRollIndicator isRightSide={isRightSideSlot} />}
         
         {/* Dealer button - positioned OUTSIDE (away from table center), barely overlapping chip stack */}
         {/* Hide during 3-5-7 multi-player showdown (rounds 2-3) to reduce clutter */}
