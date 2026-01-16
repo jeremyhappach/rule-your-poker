@@ -3,7 +3,7 @@ import { GameTable } from "./GameTable";
 import { MobileGameTable } from "./MobileGameTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Share2, Users, Bot } from "lucide-react";
+import { Share2, Users, Bot, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
@@ -144,6 +144,9 @@ export const WaitingForPlayersTable = ({
   // Users may tap quickly to add multiple bots, so we queue requests and reserve positions locally
   // to prevent collisions before the next poll updates the players list.
   const enqueueAddBot = () => {
+    // Guard against double-tap / repeated clicks while a bot add is in-flight.
+    if (addBotProcessingRef.current || isAddingBot) return;
+
     if (realMoney) {
       toast.error("Bots are disabled for real money sessions");
       return;
@@ -357,6 +360,8 @@ export const WaitingForPlayersTable = ({
                     variant="outline"
                     size="sm"
                     type="button"
+                    disabled={isAddingBot}
+                    aria-busy={isAddingBot}
                     onClick={(e) => {
                       // On mobile Safari, :hover can “stick” after tap; keep styles stable and
                       // avoid leaving the button in a visually “disabled” looking state.
@@ -365,10 +370,19 @@ export const WaitingForPlayersTable = ({
                       if (startBtn) startBtn.focus();
                       enqueueAddBot();
                     }}
-                    className="border-amber-600 bg-transparent text-amber-300 hover:bg-amber-600/20 hover:text-amber-300 focus-visible:bg-amber-600/10 focus-visible:text-amber-300 active:bg-amber-600/20 active:text-amber-300"
+                    className="border-amber-600 bg-transparent text-amber-300 hover:bg-amber-600/20 hover:text-amber-300 focus-visible:bg-amber-600/10 focus-visible:text-amber-300 active:bg-amber-600/20 active:text-amber-300 disabled:opacity-70"
                   >
-                    <Bot className="w-4 h-4 mr-2" />
-                    Add Bot
+                    {isAddingBot ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Adding…
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="w-4 h-4 mr-2" />
+                        Add Bot
+                      </>
+                    )}
                   </Button>
                 )}
               </div>
