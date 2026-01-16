@@ -47,26 +47,28 @@ interface PlayingCardProps {
   isWild?: boolean;         // Card is a wild card (3-5-7 games)
 }
 
+// Card sizing: proper playing card aspect ratio (~2.5:3.5 or ~0.71)
+// Taller/narrower cards with larger face content
 const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
   sm: {
-    container: 'w-7 h-10 sm:w-8 sm:h-11',
-    rank: 'text-sm sm:text-base font-black',
-    suit: 'text-base sm:text-lg',
+    container: 'w-6 h-9 sm:w-7 sm:h-10',
+    rank: 'text-base sm:text-lg font-black',
+    suit: 'text-sm sm:text-base',
   },
   md: {
-    container: 'w-8 h-11 sm:w-9 sm:h-12',
-    rank: 'text-base sm:text-lg font-black',
-    suit: 'text-lg sm:text-xl',
+    container: 'w-7 h-10 sm:w-8 sm:h-12',
+    rank: 'text-lg sm:text-xl font-black',
+    suit: 'text-base sm:text-lg',
   },
   lg: {
-    container: 'w-10 h-14 sm:w-11 sm:h-15',
-    rank: 'text-lg sm:text-xl font-black',
-    suit: 'text-xl sm:text-2xl',
+    container: 'w-8 h-12 sm:w-9 sm:h-14',
+    rank: 'text-xl sm:text-2xl font-black',
+    suit: 'text-lg sm:text-xl',
   },
   xl: {
-    container: 'w-11 h-15 sm:w-12 sm:h-16',
-    rank: 'text-xl sm:text-2xl font-black',
-    suit: 'text-2xl sm:text-3xl',
+    container: 'w-9 h-14 sm:w-10 sm:h-16',
+    rank: 'text-2xl sm:text-3xl font-black',
+    suit: 'text-xl sm:text-2xl',
   },
 };
 
@@ -181,7 +183,7 @@ export const PlayingCard = ({
             {card.rank}
           </span>
           {!isFourColor && (
-            <span className={`${sizeClasses.suit} leading-none -mt-1.5`}>
+            <span className={`${sizeClasses.suit} leading-none mt-0`}>
               {normalizedSuit}
             </span>
           )}
@@ -222,7 +224,7 @@ export const PlayingCard = ({
         {card.rank}
       </span>
       {!isFourColor && (
-        <span className={`${sizeClasses.suit} leading-none -mt-1.5`}>
+        <span className={`${sizeClasses.suit} leading-none mt-0`}>
           {normalizedSuit}
         </span>
       )}
