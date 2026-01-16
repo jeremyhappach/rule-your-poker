@@ -119,6 +119,13 @@ export const PlayerHand = ({
   
   const displayCardCount = cards.length > 0 ? cards.length : (expectedCardCount || 0);
   const cardSize = getCardSize(displayCardCount);
+
+  // Round 1 (3-5-7) on mobile: cards were getting too wide when scaled.
+  // Override the base w/h to be slightly narrower + taller to match a more natural playing-card ratio.
+  const round1NarrowTallClass =
+    is357Game && currentRound === 1 && displayCardCount === 3
+      ? "w-10 h-16 sm:w-11 sm:h-[4.25rem]"
+      : "";
   
   // Calculate overlap based on card count and tightOverlap flag
   const getOverlapClass = () => {
@@ -161,8 +168,8 @@ export const PlayerHand = ({
               key={index}
               isHidden
               size={cardSize}
-              className={`${useFannedArc ? '-ml-4 first:ml-0' : overlapClass} animate-fade-in`}
-              style={{ 
+              className={`${useFannedArc ? '-ml-4 first:ml-0' : overlapClass} ${round1NarrowTallClass} animate-fade-in`}
+              style={{
                 transform: `rotate(${rotation}deg) translateY(${verticalOffset}px)`,
                 animationDelay: `${index * 150}ms`,
                 animationFillMode: 'backwards',
@@ -268,8 +275,8 @@ export const PlayerHand = ({
               isKicker={isKicker}
               isDimmed={isDimmed}
               isWild={!isUnused && isWild}
-              className={overlapClass}
-              style={{ 
+              className={`${overlapClass} ${round1NarrowTallClass}`}
+              style={{
                 transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
                 opacity: isUnused ? 0.4 : 1,
               }}
@@ -296,8 +303,8 @@ export const PlayerHand = ({
             isKicker={isKicker}
             isDimmed={isDimmed}
             isWild={isWild}
-            className={overlapClass}
-            style={{ 
+            className={`${overlapClass} ${round1NarrowTallClass}`}
+            style={{
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
             }}
           />
