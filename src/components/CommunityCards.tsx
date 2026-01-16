@@ -124,7 +124,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
 
   return (
     <div className="absolute top-[40%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[30]">
-      <div className={`flex ${tightOverlap ? '-space-x-3' : '-space-x-1'}`} style={{ perspective: '1000px' }}>
+      <div className={`flex ${tightOverlap ? '-space-x-1' : 'space-x-1'}`} style={{ perspective: '1000px' }}>
         {cards.map((card, index) => {
           const isVisible = dealtCards.has(index);
           const hasFlipped = flippedCards.has(index);
@@ -133,7 +133,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
           return (
             <div
               key={index}
-              className="w-9 h-12 sm:w-10 sm:h-14 relative"
+              className="w-8 h-12 sm:w-9 sm:h-14 relative"
               style={{ 
                 transformStyle: 'preserve-3d',
                 transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
