@@ -4625,6 +4625,11 @@ export const MobileGameTable = ({
               currentUserPlayer={currentPlayer as any}
               horses={horsesController}
               gameType={gameType}
+              onEmoticonSelect={handleQuickEmoticon}
+              isEmoticonSending={isEmoticonSending}
+              emoticonOverlays={emoticonOverlays}
+              winnerLegsFlashTrigger={winnerLegsFlashTrigger}
+              winnerPotFlashTrigger={winnerPotFlashTrigger}
             />
           ) : (
             <div className="px-2 flex flex-col flex-1">

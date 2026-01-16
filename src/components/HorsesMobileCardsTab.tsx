@@ -4,20 +4,30 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
 import { DiceDebugOverlay } from "./DiceDebugOverlay";
+import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
+import { ValueChangeFlash } from "./ValueChangeFlash";
 import { cn, formatChipValue } from "@/lib/utils";
 import { Lock, RotateCcw, Bug } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
+import { EmoticonOverlay } from "@/hooks/useChipStackEmoticons";
 
 // Active-player dice roll mask durations (matches useHorsesMobileController constants)
 const ACTIVE_FIRST_ROLL_MS = 1300;   // Roll 1: ~1.3s
 const ACTIVE_ROLL_AGAIN_MS = 1800;   // Rolls 2/3: ~1.8s
 
 interface HorsesMobileCardsTabProps {
-  currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean };
+  currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean; sitting_out?: boolean; waiting?: boolean };
   horses: ReturnType<typeof useHorsesMobileController>;
   onAutoFoldChange?: (autoFold: boolean) => void;
   gameType?: string | null;
+  // Emoticon props for consistency with card games
+  onEmoticonSelect?: (emoticon: string) => void;
+  isEmoticonSending?: boolean;
+  emoticonOverlays?: Record<string, EmoticonOverlay>;
+  // Flash triggers for win animations
+  winnerLegsFlashTrigger?: { playerId: string; id: string; amount: number } | null;
+  winnerPotFlashTrigger?: { playerId: string; id: string; amount: number } | null;
 }
 
 export function HorsesMobileCardsTab({
@@ -25,6 +35,11 @@ export function HorsesMobileCardsTab({
   horses,
   onAutoFoldChange,
   gameType,
+  onEmoticonSelect,
+  isEmoticonSending,
+  emoticonOverlays,
+  winnerLegsFlashTrigger,
+  winnerPotFlashTrigger,
 }: HorsesMobileCardsTabProps) {
   const [debugOpen, setDebugOpen] = useState(false);
 
@@ -265,24 +280,82 @@ export function HorsesMobileCardsTab({
         </div>
       )}
 
-      {/* Player info (bottom) - moved down with more spacing */}
-      <div className={cn("flex flex-col gap-1 mt-auto pt-3 pb-2")}
-      >
-        <div className="flex items-center justify-center gap-3">
-          <p className="text-sm font-semibold text-foreground">{currentUserPlayer.profiles?.username || "You"}</p>
-          <span className={cn(
-            "text-lg font-bold",
-            currentUserPlayer.chips < 0 ? "text-destructive" : "text-poker-gold"
-          )}>
-            ${formatChipValue(Math.round(currentUserPlayer.chips))}
-          </span>
-          {horses.isMyTurn && horses.gamePhase === "playing" && (
-            <Badge variant="outline" className="text-xs">
-              Rolls: {horses.localHand.rollsRemaining}
-            </Badge>
+      {/* Player info (bottom) - consistent with card games layout */}
+      <div className={cn("flex items-center justify-center gap-2 mt-auto pt-3 pb-2")}>
+        {/* Quick emoticon picker - left of player name */}
+        {onEmoticonSelect && (
+          <QuickEmoticonPicker 
+            onSelect={onEmoticonSelect} 
+            disabled={isEmoticonSending || !currentUserPlayer}
+          />
+        )}
+        <p className="text-sm font-semibold text-foreground">
+          {currentUserPlayer.profiles?.username || 'You'}
+          {(currentUserPlayer.auto_fold || currentUserPlayer.sitting_out) && !currentUserPlayer.waiting ? (
+            <span className="ml-1 text-destructive font-bold">(sitting out)</span>
+          ) : currentUserPlayer.waiting ? (
+            <span className="ml-1 text-yellow-500">(waiting)</span>
+          ) : (
+            <span className="ml-1 text-green-500">(active)</span>
           )}
+        </p>
+        <div className="relative pr-6">
+          {/* Show emoticon overlay OR chipstack value */}
+          {emoticonOverlays && emoticonOverlays[currentUserPlayer.id] ? (
+            <span
+              className="text-2xl animate-in fade-in zoom-in duration-200"
+              style={{
+                animation:
+                  emoticonOverlays[currentUserPlayer.id].expiresAt - Date.now() < 500
+                    ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                    : undefined,
+              }}
+            >
+              {emoticonOverlays[currentUserPlayer.id].emoticon}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "text-lg font-bold",
+                currentUserPlayer.chips < 0 ? "text-destructive" : "text-poker-gold"
+              )}
+            >
+              ${formatChipValue(Math.round(currentUserPlayer.chips))}
+            </span>
+          )}
+          <ValueChangeFlash 
+            value={0}
+            prefix="+L"
+            position="top-right"
+            manualTrigger={winnerLegsFlashTrigger?.playerId === currentUserPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+          />
+          <ValueChangeFlash 
+            value={0}
+            prefix="+$"
+            position="top-left"
+            manualTrigger={winnerPotFlashTrigger?.playerId === currentUserPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+          />
         </div>
+        {horses.isMyTurn && horses.gamePhase === "playing" && (
+          <Badge variant="outline" className="text-xs">
+            Rolls: {horses.localHand.rollsRemaining}
+          </Badge>
+        )}
       </div>
+      
+      {/* Emoticon fade-out animation */}
+      <style>{`
+        @keyframes fadeOutEmoticon {
+          from {
+            opacity: 1;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: scale(0.8);
+          }
+        }
+      `}</style>
     </div>
   );
 }
