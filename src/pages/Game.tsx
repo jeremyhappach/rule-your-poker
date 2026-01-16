@@ -1054,10 +1054,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 300ms');
                 fetchGameData();
               }, 300);
-              setTimeout(() => {
-                console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 700ms');
-                fetchGameData();
-              }, 700);
               handled = true;
             }
           }
