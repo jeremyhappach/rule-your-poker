@@ -2989,10 +2989,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
           }
           
-          console.log('[AWAITING_NEXT_ROUND] Proceed function completed successfully');
-          
-          // Refetch after a short delay
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Refetch immediately - realtime should handle updates, but refetch as backup
           await fetchGameData();
           
           console.log('[AWAITING_NEXT_ROUND] Game data refetched');
@@ -4894,8 +4891,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         await proceedToNextRound(gameId);
       }
       
-      // Refetch after a short delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Refetch immediately
       await fetchGameData();
       
       console.log('[DEBUG PROCEED] Done');

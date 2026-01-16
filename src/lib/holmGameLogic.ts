@@ -10,9 +10,9 @@ import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
 export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
   
-  // Longer delay to ensure DB write has propagated before reading
-  // Previous 100ms was causing race conditions where decision_locked wasn't visible yet
-  await new Promise(resolve => setTimeout(resolve, 300));
+  // Brief delay to ensure DB write has propagated before reading
+  // Reduced from 300ms - DB writes propagate quickly
+  await new Promise(resolve => setTimeout(resolve, 50));
   
   const { data: game } = await supabase
     .from('games')

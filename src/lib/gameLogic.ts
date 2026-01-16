@@ -188,71 +188,42 @@ export async function startRound(gameId: string, roundNumber: number) {
   const betAmount = legValue; // Bet amount per round equals leg value
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
 
-  // If starting round 1, ensure all old rounds are deleted
+  // If starting round 1, ensure all old rounds are deleted - FIRE AND FORGET to avoid blocking
   if (roundNumber === 1) {
-    console.log('[START_ROUND] Cleaning up old rounds for round 1');
+    console.log('[START_ROUND] Cleaning up old rounds for round 1 (fire-and-forget)');
     
-    // First, mark any active rounds as completed
-    await supabase
-      .from('rounds')
-      .update({ status: 'completed' })
-      .eq('game_id', gameId)
-      .neq('status', 'completed');
-    
-    // Delete all rounds for this game to start fresh
-    let retries = 0;
-    const maxRetries = 5;
-    
-    while (retries < maxRetries) {
-      const { data: oldRounds } = await supabase
-        .from('rounds')
-        .select('id')
-        .eq('game_id', gameId);
+    // Fire-and-forget: Mark active rounds as completed and delete old data
+    // Don't block on cleanup - the safety checks below handle duplicates
+    void (async () => {
+      try {
+        await supabase
+          .from('rounds')
+          .update({ status: 'completed' })
+          .eq('game_id', gameId)
+          .neq('status', 'completed');
+        
+        const { data: oldRounds } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameId);
 
-      if (!oldRounds || oldRounds.length === 0) {
-        console.log('[START_ROUND] No old rounds to delete');
-        break;
+        if (oldRounds && oldRounds.length > 0) {
+          await supabase
+            .from('player_cards')
+            .delete()
+            .in('round_id', oldRounds.map(r => r.id));
+
+          await supabase
+            .from('rounds')
+            .delete()
+            .eq('game_id', gameId);
+          
+          console.log('[START_ROUND] Background cleanup completed:', oldRounds.length, 'old rounds');
+        }
+      } catch (err) {
+        console.error('[START_ROUND] Background cleanup error (non-fatal):', err);
       }
-
-      console.log('[START_ROUND] Deleting', oldRounds.length, 'old rounds');
-
-      // Delete player cards for old rounds
-      await supabase
-        .from('player_cards')
-        .delete()
-        .in('round_id', oldRounds.map(r => r.id));
-
-      // Delete old rounds
-      const { error: roundsDeleteError } = await supabase
-        .from('rounds')
-        .delete()
-        .eq('game_id', gameId);
-
-      if (roundsDeleteError) {
-        console.error('[START_ROUND] Error deleting rounds:', roundsDeleteError);
-        retries++;
-        await new Promise(resolve => setTimeout(resolve, 200 * retries));
-        continue;
-      }
-
-      // Verify deletion succeeded
-      const { data: checkRounds } = await supabase
-        .from('rounds')
-        .select('id')
-        .eq('game_id', gameId);
-
-      if (!checkRounds || checkRounds.length === 0) {
-        console.log('[START_ROUND] Successfully deleted all rounds');
-        break;
-      }
-
-      retries++;
-      await new Promise(resolve => setTimeout(resolve, 200 * retries));
-    }
-
-    if (retries >= maxRetries) {
-      throw new Error('Failed to delete old rounds after multiple attempts');
-    }
+    })();
   }
 
   // Reset all players to active for the new round (folding only applies to current round)

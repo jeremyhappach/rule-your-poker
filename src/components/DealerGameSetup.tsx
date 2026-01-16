@@ -272,7 +272,7 @@ export const DealerGameSetup = ({
       const deleteEmptySession = async () => {
         console.log('[DEALER SETUP] Deleting empty session (no hands played)');
 
-        // Delete in FK-safe order
+        // Delete in FK-safe order, but parallelize where possible
         const { data: roundRows } = await supabase
           .from('rounds')
           .select('id')
@@ -280,19 +280,21 @@ export const DealerGameSetup = ({
 
         const roundIds = (roundRows ?? []).map((r: any) => r.id).filter(Boolean);
 
-        if (roundIds.length > 0) {
-          const { error } = await supabase.from('player_cards').delete().in('round_id', roundIds);
+        // Parallel delete: these 3 don't depend on each other
+        const parallelDeletes = [
+          roundIds.length > 0 
+            ? supabase.from('player_cards').delete().in('round_id', roundIds)
+            : Promise.resolve({ error: null }),
+          supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId),
+          supabase.from('chat_messages').delete().eq('game_id', gameId),
+        ];
+        
+        const results = await Promise.all(parallelDeletes);
+        for (const { error } of results) {
           if (error) throw error;
         }
 
-        {
-          const { error } = await supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId);
-          if (error) throw error;
-        }
-        {
-          const { error } = await supabase.from('chat_messages').delete().eq('game_id', gameId);
-          if (error) throw error;
-        }
+        // Sequential deletes (FK dependencies): rounds -> players -> games
         {
           const { error } = await supabase.from('rounds').delete().eq('game_id', gameId);
           if (error) throw error;
