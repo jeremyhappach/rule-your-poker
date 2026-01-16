@@ -143,7 +143,7 @@ const HORSES_ROLL_AGAIN_ANIMATION_MS = 1800;   // Rolls 2/3: ~1.8s (was 2500 - t
 const HORSES_POST_TURN_PAUSE_MS = 400;         // Pause after lock-in before advancing (was 650)
 // Local state protection: prevent DB overwrites during animation
 const LOCAL_STATE_PROTECTION_MS = HORSES_ROLL_AGAIN_ANIMATION_MS + 200;
-const HORSES_TURN_TIMER_SECONDS = 10;
+const HORSES_TURN_TIMER_SECONDS = 30;
 const BOT_TURN_START_DELAY_MS = 400;           // Bot start delay (was 500)
 
 export function useHorsesMobileController({

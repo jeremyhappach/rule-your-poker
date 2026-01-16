@@ -3006,7 +3006,7 @@ serve(async (req) => {
         const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
 
         // Give the client a moment to set awaiting_next_round; if it doesn't, recover.
-        if (stuckDuration > 10000) {
+        if (stuckDuration > 30000) {
           const nextRoundNum = (latestRound.round_number || (game.current_round || 0)) + 1;
 
           await supabase
@@ -3053,7 +3053,7 @@ serve(async (req) => {
           // This handles cases where the client failed to set the deadline after advancing
           if (!isBot && !turnDeadline) {
             console.log('[ENFORCE] 🔧 RECOVERY: Setting missing turnDeadline for human player:', currentTurnPlayerId);
-            const recoveryDeadline = new Date(now.getTime() + 10_000).toISOString();
+            const recoveryDeadline = new Date(now.getTime() + 30_000).toISOString();
             const recoveredState = {
               ...horsesState,
               turnDeadline: recoveryDeadline,
@@ -3171,8 +3171,8 @@ serve(async (req) => {
                 const nextIsBot = nextPlayer?.is_bot === true;
                 const nextIsAutoRoll = nextPlayer?.auto_fold === true;
                 
-                // Set deadline: 10 seconds for humans, 5 seconds for bots/auto-roll (10s for testing)
-                const deadlineSecs = (nextIsBot || nextIsAutoRoll) ? 5 : 10;
+                // Set deadline: 30 seconds for humans, 5 seconds for bots/auto-roll
+                const deadlineSecs = (nextIsBot || nextIsAutoRoll) ? 5 : 30;
                 const newDeadline = new Date(now.getTime() + deadlineSecs * 1000).toISOString();
                 
                 const advancedState = {
@@ -3437,7 +3437,7 @@ serve(async (req) => {
       const stuckDuration = now.getTime() - gameUpdatedAt.getTime();
       
       // If stuck for more than 10 seconds (giving client 4s + buffer)
-      if (stuckDuration > 10000) {
+      if (stuckDuration > 30000) {
         console.log('[ENFORCE] ⚠️ Game stuck in awaiting_next_round for', Math.round(stuckDuration/1000), 'seconds - auto-proceeding', {
           gameId,
           pending_session_end: game.pending_session_end,
@@ -3561,7 +3561,7 @@ serve(async (req) => {
                 botControllerUserId: null,
                 turnDeadline: firstTurnPlayer?.is_bot
                   ? null
-                  : new Date(Date.now() + 10_000).toISOString(),
+                  : new Date(Date.now() + 30_000).toISOString(),
               };
               
               // Calculate pot for new round (re-ante)
