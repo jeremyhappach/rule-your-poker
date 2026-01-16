@@ -4638,7 +4638,7 @@ export const MobileGameTable = ({
               const currentPlayerHandScaleClass =
                 gameType !== "holm-game"
                   ? (currentRound === 1
-                      ? "scale-[1.9]"
+                      ? "scale-[1.6]" // Smaller scale for R1 to reduce width
                       : currentRound === 2
                         ? "scale-[1.8]"
                         : "scale-[1.7]")
@@ -4649,7 +4649,7 @@ export const MobileGameTable = ({
                 gameType === "holm-game"
                   ? "min-h-[130px]"
                   : (currentRound === 1
-                      ? "min-h-[165px] pt-0" // Taller container for R1, no top padding to move up
+                      ? "min-h-[120px]" // Reduced container height for R1 to move buttons up
                       : currentRound === 2
                         ? "min-h-[125px] pt-1" // Reduced top padding to move up for R2
                         : "min-h-[110px] pt-1"); // Reduced top padding to move up for R3
