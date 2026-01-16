@@ -4642,12 +4642,12 @@ export const MobileGameTable = ({
                       : currentRound === 2
                         ? "scale-[1.8]"
                         : "scale-[1.7]")
-                  : "scale-[2.0]";
+                  : "scale-[2.3]"; // Bigger Holm cards on mobile
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? "min-h-[130px]"
+                  ? "min-h-[150px]" // Bigger reserve for larger Holm cards
                   : (currentRound === 1
                       ? "min-h-[120px]" // Reduced container height for R1 to move buttons up
                       : currentRound === 2
