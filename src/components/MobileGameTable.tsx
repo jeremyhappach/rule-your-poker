@@ -4649,7 +4649,7 @@ export const MobileGameTable = ({
                 gameType === "holm-game"
                   ? "min-h-[130px]"
                   : (currentRound === 1
-                      ? "min-h-[180px] pt-1" // Bigger container for R1, reduced top padding to move up
+                      ? "min-h-[165px] pt-0" // Taller container for R1, no top padding to move up
                       : currentRound === 2
                         ? "min-h-[125px] pt-1" // Reduced top padding to move up for R2
                         : "min-h-[110px] pt-1"); // Reduced top padding to move up for R3
@@ -4709,7 +4709,7 @@ export const MobileGameTable = ({
                       <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                     </div>
                   ) : currentPlayerCards.length > 0 ? (
-                    <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                    <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")}>
                       <div
                         className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                       >
@@ -4743,7 +4743,7 @@ export const MobileGameTable = ({
             })()}
             
             {/* Action area - BELOW cards (reduced margins to move everything up) */}
-            <div className="flex items-center justify-center min-h-[36px] mt-1 mb-2">
+            <div className="flex items-center justify-center min-h-[36px] mt-0 mb-1">
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                 <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
@@ -4826,7 +4826,7 @@ export const MobileGameTable = ({
             </div>
             
             {/* Player info - below action buttons */}
-            <div className={cn("flex flex-col gap-1 pb-1")}>
+            <div className={cn("flex flex-col gap-0.5 pb-0")}>
               <div className="flex items-center justify-center gap-3">
                 <p className="text-sm font-semibold text-foreground">
                   {currentPlayer.profiles?.username || 'You'}
