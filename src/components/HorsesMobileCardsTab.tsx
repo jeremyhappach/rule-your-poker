@@ -275,7 +275,7 @@ export function HorsesMobileCardsTab({
               }}
               className="h-4 w-4"
             />
-            <span>Auto-fold enabled (uncheck to rejoin)</span>
+            <span>Auto-roll enabled (uncheck to rejoin)</span>
           </label>
         </div>
       )}
