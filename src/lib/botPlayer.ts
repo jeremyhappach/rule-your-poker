@@ -519,22 +519,28 @@ export async function makeBotAnteDecisions(gameId: string) {
 
   console.log('[BOT ANTE] Bots to evaluate:', botsToAnte.length);
 
-  // Only bots that are NOT sitting out will ante up
-  // Bots that are sitting_out should stay sitting out (don't override with sitting_out: false)
-  for (const bot of botsToAnte) {
-    if (bot.sitting_out) {
-      console.log('[BOT ANTE] Bot', bot.id, 'is sitting out, skipping ante');
-      await supabase
-        .from('players')
-        .update({ ante_decision: 'sit_out' })
-        .eq('id', bot.id);
-    } else {
-      console.log('[BOT ANTE] Bot', bot.id, 'anting up');
-      await supabase
-        .from('players')
-        .update({ ante_decision: 'ante_up' })
-        .eq('id', bot.id);
-    }
+  // BATCH: Split bots into those anteing up vs sitting out
+  const anteUpBots = botsToAnte.filter(b => !b.sitting_out);
+  const sitOutBots = botsToAnte.filter(b => b.sitting_out);
+  
+  // Batch update all anteing bots
+  if (anteUpBots.length > 0) {
+    const anteUpIds = anteUpBots.map(b => b.id);
+    console.log('[BOT ANTE] Batch anteing up', anteUpIds.length, 'bots');
+    await supabase
+      .from('players')
+      .update({ ante_decision: 'ante_up' })
+      .in('id', anteUpIds);
+  }
+  
+  // Batch update all sitting out bots
+  if (sitOutBots.length > 0) {
+    const sitOutIds = sitOutBots.map(b => b.id);
+    console.log('[BOT ANTE] Batch sitting out', sitOutIds.length, 'bots');
+    await supabase
+      .from('players')
+      .update({ ante_decision: 'sit_out' })
+      .in('id', sitOutIds);
   }
 
   console.log('[BOT ANTE] All bot ante decisions made');

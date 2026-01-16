@@ -538,7 +538,9 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     })
     .eq('game_id', gameId);
 
-  // Deal 4 cards to each player
+  // BATCH: Deal 4 cards to each player in a single insert
+  const playerCardInserts: Array<{ player_id: string; round_id: string; cards: any }> = [];
+  
   for (const player of players) {
     const playerCards = [
       deck[cardIndex++],
@@ -547,13 +549,24 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       deck[cardIndex++]
     ];
 
-    await supabase
+    playerCardInserts.push({
+      player_id: player.id,
+      round_id: roundId,
+      cards: playerCards as any
+    });
+  }
+  
+  // Single batch insert for all player cards
+  if (playerCardInserts.length > 0) {
+    const { error: cardsError } = await supabase
       .from('player_cards')
-      .insert({
-        player_id: player.id,
-        round_id: roundId,
-        cards: playerCards as any
-      });
+      .insert(playerCardInserts);
+    
+    if (cardsError) {
+      console.error('[HOLM] Error batch inserting cards:', cardsError);
+      throw new Error(`Failed to deal cards: ${cardsError.message}`);
+    }
+    console.log('[HOLM] Batch dealt cards to', playerCardInserts.length, 'players');
   }
 
   // Update game status AND current_round for Holm games

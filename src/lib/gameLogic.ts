@@ -309,15 +309,27 @@ export async function startRound(gameId: string, roundNumber: number) {
     } else {
       console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
       
-      for (const player of activePlayers) {
-        initialPot += anteAmount;
-        
-        console.log('[START_ROUND] Charging player', player.id, 'position', player.position, 'ante of $', anteAmount, 'chips before:', player.chips);
-        
-        await supabase
-          .from('players')
-          .update({ chips: player.chips - anteAmount })
-          .eq('id', player.id);
+      // Calculate total pot from active players
+      initialPot = activePlayers.length * anteAmount;
+      
+      // BATCH: Charge all antes in a single RPC call instead of sequential updates
+      const playerIds = activePlayers.map(p => p.id);
+      console.log('[START_ROUND] Batch charging', playerIds.length, 'players $', anteAmount, 'each');
+      
+      const { error: anteError } = await supabase.rpc('decrement_player_chips', {
+        player_ids: playerIds,
+        amount: anteAmount
+      });
+      
+      if (anteError) {
+        console.error('[START_ROUND] Error batch charging antes:', anteError);
+        // Fallback to sequential if RPC fails
+        for (const player of activePlayers) {
+          await supabase
+            .from('players')
+            .update({ chips: player.chips - anteAmount })
+            .eq('id', player.id);
+        }
       }
       
       console.log('[START_ROUND] Total ante pot:', initialPot);
@@ -508,6 +520,9 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   const newCardsToDeal = roundNumber === 1 ? 3 : 2; // Round 1 gets 3, rounds 2 & 3 get 2 new cards
 
+  // BATCH: Prepare all player cards for a single insert
+  const playerCardInserts: Array<{ player_id: string; round_id: string; cards: any }> = [];
+  
   for (const player of activePlayers) {
     // Get existing cards from previous round (if any)
     const existingCards = previousRoundCards.get(player.id) || [];
@@ -517,13 +532,24 @@ export async function startRound(gameId: string, roundNumber: number) {
     cardIndex += newCardsToDeal;
     const playerCards = [...existingCards, ...newCards];
 
-    await supabase
+    playerCardInserts.push({
+      player_id: player.id,
+      round_id: round.id,
+      cards: playerCards as any
+    });
+  }
+  
+  // Single batch insert for all player cards
+  if (playerCardInserts.length > 0) {
+    const { error: cardsError } = await supabase
       .from('player_cards')
-      .insert({
-        player_id: player.id,
-        round_id: round.id,
-        cards: playerCards as any
-      });
+      .insert(playerCardInserts);
+    
+    if (cardsError) {
+      console.error('[START_ROUND] Error batch inserting cards:', cardsError);
+      throw new Error(`Failed to deal cards: ${cardsError.message}`);
+    }
+    console.log('[START_ROUND] Batch dealt cards to', playerCardInserts.length, 'players');
   }
 
   // ============ IMMEDIATE 357 CHECK FOR ROUND 1 ============
