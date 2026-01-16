@@ -13,6 +13,7 @@ import { generateGameName } from "@/lib/gameNames";
 import { logSessionCreated } from "@/lib/sessionEventLog";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
+import { PerfSession } from "@/lib/perf";
 import { Settings, Info, Wrench } from "lucide-react";
 import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
@@ -153,10 +154,14 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const fetchGames = async () => {
-    const { data: gamesData, error } = await supabase
-      .from('games')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const perf = new PerfSession("GameLobby.fetchGames", 300);
+
+    const { data: gamesData, error } = await perf.step("games.select", () =>
+      supabase
+        .from("games")
+        .select("*")
+        .order("created_at", { ascending: false })
+    );
 
     if (error) {
       toast({
@@ -164,167 +169,194 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         description: "Failed to fetch games",
         variant: "destructive",
       });
+      perf.done({ error: error.message });
       return;
     }
 
+    const perGameMs: Record<string, number> = {};
+
     // Fetch player info for each game
-    const gamesWithPlayers = await Promise.all(
-      (gamesData || []).map(async (game) => {
-        const { data: playersData } = await supabase
-          .from('players')
-          .select(`
-            id,
-            user_id,
-            position,
-            chips,
-            legs,
-            is_bot,
-            sitting_out,
-            created_at,
-            profiles(username)
-          `)
-          .eq('game_id', game.id)
-          .order('position');
+    const gamesWithPlayers = await perf.step("games.enrich", async () =>
+      Promise.all(
+        (gamesData || []).map(async (game) => {
+          const gameStart = performance.now();
 
-        // For ended sessions, get participant count from snapshots (includes departed players)
-        let snapshotPlayerCount = 0;
-        if (game.status === 'session_ended') {
-          const { data: snapshots } = await supabase
-            .from('session_player_snapshots')
-            .select('user_id, player_id, is_bot')
-            .eq('game_id', game.id);
-          
-          if (snapshots && snapshots.length > 0) {
-            // De-dupe: humans by user_id, bots by player_id
-            const uniqueKeys = new Set<string>();
-            snapshots.forEach((snap) => {
-              const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
-              uniqueKeys.add(key);
-            });
-            snapshotPlayerCount = uniqueKeys.size;
+          const { data: playersData } = await supabase
+            .from("players")
+            .select(
+              `
+                id,
+                user_id,
+                position,
+                chips,
+                legs,
+                is_bot,
+                sitting_out,
+                created_at,
+                profiles(username)
+              `
+            )
+            .eq("game_id", game.id)
+            .order("position");
+
+          // For ended sessions, get participant count from snapshots (includes departed players)
+          let snapshotPlayerCount = 0;
+          if (game.status === "session_ended") {
+            const { data: snapshots } = await supabase
+              .from("session_player_snapshots")
+              .select("user_id, player_id, is_bot")
+              .eq("game_id", game.id);
+
+            if (snapshots && snapshots.length > 0) {
+              // De-dupe: humans by user_id, bots by player_id
+              const uniqueKeys = new Set<string>();
+              snapshots.forEach((snap) => {
+                const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
+                uniqueKeys.add(key);
+              });
+              snapshotPlayerCount = uniqueKeys.size;
+            }
           }
-        }
 
-        // Host is the first human player who joined (earliest created_at)
-        const humanPlayers = playersData?.filter(p => !p.is_bot) || [];
-        const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-        });
-        const hostPlayer = sortedByJoinTime[0];
-        const host_username = hostPlayer?.profiles?.username || 'Unknown';
-        
-        const isCreator = hostPlayer?.user_id === userId;
-        const isPlayer = playersData?.some(p => p.user_id === userId) || false;
-        
-        // Calculate duration
-        const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
-        
-        // Use snapshot count for ended sessions, current players otherwise
-        const playerCount = game.status === 'session_ended' && snapshotPlayerCount > 0
-          ? snapshotPlayerCount
-          : (playersData?.length || 0);
-        
-        return {
-          ...game,
-          player_count: playerCount,
-          is_creator: isCreator,
-          is_player: isPlayer,
-          host_username,
-          duration_minutes: durationMinutes,
-          players: playersData?.map(p => ({
-            id: p.id,
-            username: p.is_bot 
-              ? getBotAlias(playersData.map(pd => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })), p.user_id)
-              : (p.profiles?.username || 'Unknown'),
-            chips: p.chips,
-            legs: p.legs,
-            is_bot: p.is_bot,
-            sitting_out: p.sitting_out,
-          })) || [],
-        };
-      })
+          // Host is the first human player who joined (earliest created_at)
+          const humanPlayers = playersData?.filter((p) => !p.is_bot) || [];
+          const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
+            return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          });
+          const hostPlayer = sortedByJoinTime[0];
+          const host_username = hostPlayer?.profiles?.username || "Unknown";
+
+          const isCreator = hostPlayer?.user_id === userId;
+          const isPlayer = playersData?.some((p) => p.user_id === userId) || false;
+
+          // Calculate duration
+          const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
+
+          // Use snapshot count for ended sessions, current players otherwise
+          const playerCount =
+            game.status === "session_ended" && snapshotPlayerCount > 0
+              ? snapshotPlayerCount
+              : (playersData?.length || 0);
+
+          perGameMs[String(game.id).slice(0, 8)] = Math.round(performance.now() - gameStart);
+
+          return {
+            ...game,
+            player_count: playerCount,
+            is_creator: isCreator,
+            is_player: isPlayer,
+            host_username,
+            duration_minutes: durationMinutes,
+            players:
+              playersData?.map((p) => ({
+                id: p.id,
+                username: p.is_bot
+                  ? getBotAlias(
+                      playersData.map((pd) => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })),
+                      p.user_id
+                    )
+                  : (p.profiles?.username || "Unknown"),
+                chips: p.chips,
+                legs: p.legs,
+                is_bot: p.is_bot,
+                sitting_out: p.sitting_out,
+              })) || [],
+          };
+        })
+      )
     );
 
     setGames(gamesWithPlayers);
     setLoading(false);
+    perf.done({ gameCount: gamesData?.length ?? 0, perGameMs });
   };
 
   const createGame = async () => {
     // Prevent double-clicks
     if (creatingGame) return;
     setCreatingGame(true);
-    
+
+    const perf = new PerfSession("GameLobby.createGame", 300);
+
     try {
       // Fetch last 50 game names to avoid duplicates
-      const { data: recentGames } = await supabase
-        .from('games')
-        .select('name')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      
-      const recentNames = recentGames?.map(g => g.name).filter(Boolean) as string[] || [];
-      
+      const { data: recentGames } = await perf.step("games.recentNames", () =>
+        supabase
+          .from("games")
+          .select("name")
+          .order("created_at", { ascending: false })
+          .limit(50)
+      );
+
+      const recentNames = (recentGames?.map((g) => g.name).filter(Boolean) as string[]) || [];
+
       const sessionName = generateGameName(recentNames);
-    // Create game with waiting status
-    const { data: game, error: gameError } = await supabase
-      .from('games')
-      .insert({
-        buy_in: 100,
-        status: 'waiting',
-        name: sessionName,
-        real_money: realMoney
-      })
-      .select()
-      .single();
 
-    if (gameError) {
-      toast({
-        title: "Error",
-        description: "Failed to create game",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Log session creation event
-    await logSessionCreated(game.id, userId, sessionName);
+      // Create game with waiting status
+      const { data: game, error: gameError } = await perf.step("games.insert", () =>
+        supabase
+          .from("games")
+          .insert({
+            buy_in: 100,
+            status: "waiting",
+            name: sessionName,
+            real_money: realMoney,
+          })
+          .select()
+          .single()
+      );
 
-    // Auto-seat host in a random position (1-7)
-    const randomPosition = Math.floor(Math.random() * 7) + 1;
-    
-    // Fetch user's profile to get their deck_color_mode preference
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('deck_color_mode')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    const { error: playerError } = await supabase
-      .from('players')
-      .insert({
-        game_id: game.id,
-        user_id: userId,
-        chips: 0,
-        position: randomPosition,
-        sitting_out: false,
-        waiting: true, // Ready to play when game starts
-        deck_color_mode: userProfile?.deck_color_mode || null
-      });
+      if (gameError) {
+        toast({
+          title: "Error",
+          description: "Failed to create game",
+          variant: "destructive",
+        });
+        perf.done({ error: gameError.message });
+        return;
+      }
 
-    if (playerError) {
-      console.error('Error seating host:', playerError);
-      // Clean up the game if we couldn't seat the host
-      await supabase.from('games').delete().eq('id', game.id);
-      toast({
-        title: "Error",
-        description: "Failed to create game",
-        variant: "destructive",
-      });
-      return;
+      // Log session creation event
+      await perf.step("session_events.insert", () => logSessionCreated(game.id, userId, sessionName));
+
+      // Auto-seat host in a random position (1-7)
+      const randomPosition = Math.floor(Math.random() * 7) + 1;
+
+      // Fetch user's profile to get their deck_color_mode preference
+      const { data: userProfile } = await perf.step("profiles.select", () =>
+        supabase.from("profiles").select("deck_color_mode").eq("id", userId).maybeSingle()
+      );
+
+      const { error: playerError } = await perf.step("players.insert", () =>
+        supabase.from("players").insert({
+          game_id: game.id,
+          user_id: userId,
+          chips: 0,
+          position: randomPosition,
+          sitting_out: false,
+          waiting: true, // Ready to play when game starts
+          deck_color_mode: userProfile?.deck_color_mode || null,
+        })
+      );
+
+      if (playerError) {
+        console.error("Error seating host:", playerError);
+
+        // Clean up the game if we couldn't seat the host
+        await perf.step("games.cleanupDelete", () => supabase.from("games").delete().eq("id", game.id));
+
+        toast({
+          title: "Error",
+          description: "Failed to create game",
+          variant: "destructive",
+        });
+        perf.done({ error: playerError.message });
+        return;
       }
 
       setShowCreateDialog(false);
       navigate(`/game/${game.id}`);
+      perf.done({ ok: true });
     } finally {
       setCreatingGame(false);
     }

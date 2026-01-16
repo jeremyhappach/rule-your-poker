@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
 import { logBotAdded } from "@/lib/sessionEventLog";
+import { PerfSession } from "@/lib/perf";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -190,20 +191,23 @@ export const WaitingForPlayersTable = ({
   };
 
   const addSingleBot = async (): Promise<boolean> => {
+    const perf = new PerfSession("WaitingForPlayersTable.addSingleBot", 300);
+
     // CRITICAL: Fetch actual positions from DB to avoid stale state causing duplicate key errors
-    const { data: dbPlayers, error: fetchError } = await supabase
-      .from("players")
-      .select("position")
-      .eq("game_id", gameId);
+    const { data: dbPlayers, error: fetchError } = await perf.step("players.selectPositions", () =>
+      supabase.from("players").select("position").eq("game_id", gameId)
+    );
 
     if (fetchError) {
       console.error("Error fetching players for bot add:", fetchError);
       toast.error("Failed to check available seats");
+      perf.done({ error: fetchError.message });
       return false;
     }
 
     if ((dbPlayers?.length ?? 0) >= 7) {
       toast.error("Table is full");
+      perf.done({ error: "table_full" });
       return false;
     }
 
@@ -216,6 +220,7 @@ export const WaitingForPlayersTable = ({
 
     if (openPositions.length === 0) {
       toast.error("No open seats available");
+      perf.done({ error: "no_open_seats" });
       return false;
     }
 
@@ -236,11 +241,13 @@ export const WaitingForPlayersTable = ({
       botNameForToast = botName;
 
       // Insert bot profile
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: botId,
-        username: botName,
-        aggression_level: aggressionLevel,
-      });
+      const { error: profileError } = await perf.step("profiles.insert", () =>
+        supabase.from("profiles").insert({
+          id: botId,
+          username: botName,
+          aggression_level: aggressionLevel,
+        })
+      );
 
       if (profileError) {
         // If still collides (extremely rare), try with full suffix
@@ -249,11 +256,13 @@ export const WaitingForPlayersTable = ({
           const fallbackName = `Bot ${fullSuffix}`;
           botNameForToast = fallbackName;
 
-          const { error: retryError } = await supabase.from("profiles").insert({
-            id: botId,
-            username: fallbackName,
-            aggression_level: aggressionLevel,
-          });
+          const { error: retryError } = await perf.step("profiles.insert.retry", () =>
+            supabase.from("profiles").insert({
+              id: botId,
+              username: fallbackName,
+              aggression_level: aggressionLevel,
+            })
+          );
 
           if (retryError) {
             throw new Error(`Failed to create bot profile: ${retryError.message}`);
@@ -264,31 +273,35 @@ export const WaitingForPlayersTable = ({
       }
 
       // Create bot player - active and ready to play (not sitting out)
-      const { error: playerError } = await supabase.from("players").insert({
-        user_id: botId,
-        game_id: gameId,
-        position: nextPosition,
-        chips: 0,
-        is_bot: true,
-        status: "active",
-        sitting_out: false,
-        waiting: true, // Waiting to start game
-      });
+      const { error: playerError } = await perf.step("players.insert", () =>
+        supabase.from("players").insert({
+          user_id: botId,
+          game_id: gameId,
+          position: nextPosition,
+          chips: 0,
+          is_bot: true,
+          status: "active",
+          sitting_out: false,
+          waiting: true, // Waiting to start game
+        })
+      );
 
       if (playerError) {
         throw new Error(`Failed to add bot: ${playerError.message}`);
       }
-      
+
       // Log bot addition event
-      await logBotAdded(gameId, currentUserId, nextPosition, botNameForToast);
+      await perf.step("session_events.insert", () => logBotAdded(gameId, currentUserId, nextPosition, botNameForToast));
 
       succeeded = true;
       // Immediately notify parent to refetch - don't wait for realtime
       onBotAdded?.();
+      perf.done({ ok: true, nextPosition });
       return true;
     } catch (error: any) {
       console.error("Error adding bot:", error);
       toast.error(error?.message ? `Bot add failed: ${error.message}` : "Bot add failed");
+      perf.done({ error: error?.message ?? "unknown" });
       return true; // keep queue moving, user can tap again
     } finally {
       // Only release reservation on failure; on success we'll release once players update.
