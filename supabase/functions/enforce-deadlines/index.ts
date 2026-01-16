@@ -229,17 +229,111 @@ function rollHorsesDie(): number {
   return Math.floor(Math.random() * 6) + 1;
 }
 
-function completeHorsesHand(dice: HorsesDiceValue[], rollsRemaining: number): HorsesDiceValue[] {
+/**
+ * Bot decision logic for Horses - determines which dice to hold
+ * Always holds 1s (wilds) and dice matching the target value
+ */
+function getBotHorsesHoldDecision(
+  currentDice: HorsesDiceValue[],
+  currentWinningResult: HorsesHandResult | null
+): { diceToHold: boolean[]; targetValue: number } {
+  // Count each value
+  const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  currentDice.forEach(d => counts[d.value]++);
+  
+  const wildCount = counts[1];
+  
+  // Calculate best possible hand for each target value (6 down to 2)
+  const possibleHands: { value: number; count: number; rank: number }[] = [];
+  for (let v = 6; v >= 2; v--) {
+    const totalCount = Math.min(counts[v] + wildCount, 5);
+    let rank: number;
+    if (totalCount === 5) rank = 50 + (v - 2);
+    else if (totalCount === 4) rank = 40 + (v - 2);
+    else if (totalCount === 3) rank = 30 + (v - 2);
+    else if (totalCount === 2) rank = 20 + (v - 2);
+    else rank = 10 + v;
+    possibleHands.push({ value: v, count: totalCount, rank });
+  }
+  
+  possibleHands.sort((a, b) => b.rank - a.rank);
+  
+  let targetValue: number;
+  
+  if (!currentWinningResult) {
+    // No winning hand yet - go for best possible
+    targetValue = possibleHands[0].value;
+  } else {
+    // Need to beat or tie current winning hand
+    const neededRank = currentWinningResult.rank;
+    const currentBest = possibleHands[0];
+    
+    if (currentBest.rank >= neededRank) {
+      targetValue = currentBest.value;
+    } else {
+      // Find target that can beat winning hand
+      const winningCount = currentWinningResult.ofAKindCount;
+      const winningValue = currentWinningResult.highValue;
+      
+      let bestTarget = 6;
+      let bestScore = -Infinity;
+      
+      for (let v = 6; v >= 2; v--) {
+        const currentCountForV = counts[v] + wildCount;
+        
+        let neededForTie: number;
+        if (v > winningValue) neededForTie = winningCount;
+        else if (v === winningValue) neededForTie = winningCount;
+        else neededForTie = winningCount + 1;
+        
+        // Skip impossible targets (needing > 5 dice)
+        if (neededForTie > 5) continue;
+        
+        const shortfall = Math.max(0, neededForTie - currentCountForV);
+        const score = (5 - shortfall) * 10 + v;
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestTarget = v;
+        }
+      }
+      
+      targetValue = bestTarget;
+    }
+  }
+  
+  // Hold 1s (wilds) and dice matching target value
+  const diceToHold = currentDice.map(d => d.value === 1 || d.value === targetValue);
+  
+  return { diceToHold, targetValue };
+}
+
+function completeHorsesHand(
+  dice: HorsesDiceValue[], 
+  rollsRemaining: number,
+  currentWinningResult: HorsesHandResult | null = null
+): HorsesDiceValue[] {
   let currentDice = [...dice];
   let rolls = rollsRemaining;
   
-  // Roll all remaining rolls, holding nothing (simple server-side completion)
+  // Use bot logic to decide which dice to hold each roll
   while (rolls > 0) {
-    currentDice = currentDice.map(die => ({
-      value: die.isHeld ? die.value : rollHorsesDie(),
-      isHeld: die.isHeld,
+    // Get bot decision on what to hold
+    const decision = getBotHorsesHoldDecision(currentDice, currentWinningResult);
+    
+    // Apply hold decisions and roll non-held dice
+    currentDice = currentDice.map((die, i) => ({
+      value: decision.diceToHold[i] ? die.value : rollHorsesDie(),
+      isHeld: decision.diceToHold[i],
     }));
+    
     rolls--;
+    
+    // Check if we achieved 5 of a kind - can stop early
+    const result = evaluateHorsesHand(currentDice);
+    if (result.ofAKindCount === 5) {
+      break;
+    }
   }
   
   // Mark all as held when complete
@@ -418,7 +512,57 @@ function rollSCCDie(): number {
   return Math.floor(Math.random() * 6) + 1;
 }
 
-function completeSCCHand(dice: SCCDie[], rollsRemaining: number): SCCDie[] {
+/**
+ * Bot decision logic for SCC - determines whether to stop rolling
+ * Strategy: If winning or tied with cargo 8+, stop. Otherwise keep rolling.
+ */
+function shouldSCCBotStopRolling(
+  currentDice: SCCDie[],
+  rollsRemaining: number,
+  currentWinningResult: SCCHandResult | null
+): boolean {
+  // If out of rolls, must stop
+  if (rollsRemaining === 0) return true;
+  
+  // Check if qualified
+  const hasShip = currentDice.some(d => d.sccType === 'ship');
+  const hasCaptain = currentDice.some(d => d.sccType === 'captain');
+  const hasCrew = currentDice.some(d => d.sccType === 'crew');
+  
+  if (!hasShip || !hasCaptain || !hasCrew) {
+    return false; // Not qualified - must keep rolling
+  }
+  
+  // Calculate our cargo sum
+  const cargoDice = currentDice.filter(d => !d.isSCC);
+  const ourCargo = cargoDice.reduce((sum, d) => sum + d.value, 0);
+  
+  // If no current winner, use first player logic
+  if (!currentWinningResult || !currentWinningResult.isQualified) {
+    // Hold at 8+, re-roll at 7 and below
+    return ourCargo >= 8;
+  }
+  
+  // Compare to winning hand
+  const winningCargo = currentWinningResult.cargoSum;
+  
+  if (ourCargo > winningCargo) {
+    // Winning - hold at 8+
+    return ourCargo >= 8;
+  } else if (ourCargo === winningCargo) {
+    // Tied - hold at 8+
+    return ourCargo >= 8;
+  } else {
+    // Losing - must re-roll
+    return false;
+  }
+}
+
+function completeSCCHand(
+  dice: SCCDie[], 
+  rollsRemaining: number,
+  currentWinningResult: SCCHandResult | null = null
+): SCCDie[] {
   let currentDice = [...dice];
   let rolls = rollsRemaining;
   let hasShip = dice.some(d => d.sccType === 'ship');
@@ -426,6 +570,12 @@ function completeSCCHand(dice: SCCDie[], rollsRemaining: number): SCCDie[] {
   let hasCrew = dice.some(d => d.sccType === 'crew');
   
   while (rolls > 0) {
+    // Check if bot should stop rolling (qualified with good cargo)
+    if (shouldSCCBotStopRolling(currentDice, rolls, currentWinningResult)) {
+      console.log('[SCC Bot] Stopping early - qualified with good cargo');
+      break;
+    }
+    
     // Roll non-held dice
     currentDice = currentDice.map(die => ({
       ...die,
@@ -2915,15 +3065,27 @@ serve(async (req) => {
                 rollsRemaining: playerState.rollsRemaining,
               });
               
-              // Complete this player's turn
+              // Complete this player's turn - get current winning result for bot logic
               let dice = playerState.dice || [];
               const rollsRemaining = playerState.rollsRemaining || 0;
               
+              // Find the current best result from completed players for bot decision context
+              let currentWinningResult: any = null;
+              const playerStates = horsesState.playerStates || {};
+              for (const [pid, pState] of Object.entries(playerStates)) {
+                const ps = pState as any;
+                if (ps.isComplete && ps.result) {
+                  if (!currentWinningResult || ps.result.rank > currentWinningResult.rank) {
+                    currentWinningResult = ps.result;
+                  }
+                }
+              }
+              
               if (rollsRemaining > 0) {
                 if (game.game_type === 'horses') {
-                  dice = completeHorsesHand(dice, rollsRemaining);
+                  dice = completeHorsesHand(dice, rollsRemaining, currentWinningResult);
                 } else if (game.game_type === 'ship-captain-crew') {
-                  dice = completeSCCHand(dice, rollsRemaining);
+                  dice = completeSCCHand(dice, rollsRemaining, currentWinningResult);
                 }
               } else {
                 // Mark all dice as held if no rolls remaining
@@ -3047,7 +3209,9 @@ serve(async (req) => {
             const playerStates: Record<string, any> = { ...horsesState.playerStates };
             let allTurnsComplete = true;
             
-            // Process each player's turn
+            // Process each player's turn in order, tracking current best result
+            let currentWinningResult: any = null;
+            
             for (const playerId of turnOrder) {
               const playerState = playerStates[playerId];
               if (!playerState) continue;
@@ -3056,14 +3220,22 @@ serve(async (req) => {
               if (!playerState.isComplete) {
                 allTurnsComplete = false;
                 
-                // Roll remaining dice for this player
+                // Roll remaining dice for this player using bot logic with context
                 let dice = playerState.dice || [];
                 const rollsRemaining = playerState.rollsRemaining || 0;
                 
                 if (game.game_type === 'horses') {
-                  dice = completeHorsesHand(dice, rollsRemaining);
+                  dice = completeHorsesHand(dice, rollsRemaining, currentWinningResult);
                 } else if (game.game_type === 'ship-captain-crew') {
-                  dice = completeSCCHand(dice, rollsRemaining);
+                  dice = completeSCCHand(dice, rollsRemaining, currentWinningResult);
+                }
+                
+                // Evaluate the hand and update current winning result
+                let result: any;
+                if (game.game_type === 'horses') {
+                  result = evaluateHorsesHand(dice);
+                } else if (game.game_type === 'ship-captain-crew') {
+                  result = evaluateSCCHand(dice);
                 }
                 
                 playerStates[playerId] = {
@@ -3071,9 +3243,20 @@ serve(async (req) => {
                   dice,
                   rollsRemaining: 0,
                   isComplete: true,
+                  result,
                 };
                 
+                // Update current winning result for next player's context
+                if (!currentWinningResult || result.rank > currentWinningResult.rank) {
+                  currentWinningResult = result;
+                }
+                
                 actionsTaken.push(`Dice server-side: Completed turn for player ${playerId}`);
+              } else if (playerState.result) {
+                // Already completed - use their result for context
+                if (!currentWinningResult || playerState.result.rank > currentWinningResult.rank) {
+                  currentWinningResult = playerState.result;
+                }
               }
             }
             
