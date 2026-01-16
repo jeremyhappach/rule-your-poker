@@ -1474,10 +1474,14 @@ export const MobileGameTable = ({
   const hasWinResult =
     typeof lastRoundResult === "string" && /(beat|wins|won)/i.test(lastRoundResult);
 
+  // Rabbit hunt should only show when ALL players folded (not during solo vs Chucky showdown)
+  // soloVsChuckyTableLocked prevents the brief flicker when stayedPlayersCount temporarily becomes 0
   const shouldShowRabbitHuntLabel =
     shouldShowHolmCommunityCards &&
     rabbitHunt &&
     stayedPlayersCount === 0 &&
+    !soloVsChuckyTableLocked &&
+    !isSoloVsChucky &&
     revealedForRabbitUi > 2 &&
     !hasWinResult;
 
@@ -2987,7 +2991,9 @@ export const MobileGameTable = ({
               !allDecisionsIn && 
               !awaitingNextRound && 
               currentTurnPosition !== null &&
-              !isWaitingPhase
+              !isWaitingPhase &&
+              !isSoloVsChucky &&
+              !soloVsChuckyTableLocked
             }
           />
         )}
