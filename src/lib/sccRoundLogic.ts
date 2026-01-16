@@ -209,7 +209,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     botControllerUserId: controllerUserId,
     turnDeadline: firstTurnPlayer?.is_bot
       ? null
-      : new Date(Date.now() + 30_000).toISOString(),
+      : new Date(Date.now() + 10_000).toISOString(),
   };
 
   // Calculate pot: previous pot (for re-ante/tie) + new antes

@@ -143,7 +143,7 @@ const HORSES_ROLL_AGAIN_ANIMATION_MS = 1800;   // Rolls 2/3: ~1.8s (was 2500 - t
 const HORSES_POST_TURN_PAUSE_MS = 400;         // Pause after lock-in before advancing (was 650)
 // Local state protection: prevent DB overwrites during animation
 const LOCAL_STATE_PROTECTION_MS = HORSES_ROLL_AGAIN_ANIMATION_MS + 200;
-const HORSES_TURN_TIMER_SECONDS = 30;
+const HORSES_TURN_TIMER_SECONDS = 10;
 const BOT_TURN_START_DELAY_MS = 400;           // Bot start delay (was 500)
 
 export function useHorsesMobileController({
@@ -659,32 +659,10 @@ export function useHorsesMobileController({
 
       const newState = await horsesAdvanceTurn(currentRoundId, expected);
       
-      // After advancing, set deadline for the new player (if human)
+      // NOTE: The horses_advance_turn RPC now atomically sets turnDeadline for the next player.
+      // No need for follow-up update - the RPC handles it to prevent race conditions.
       if (newState?.currentTurnPlayerId && newState.gamePhase === "playing") {
-        const nextPlayer = players.find((p) => p.id === newState.currentTurnPlayerId);
-        if (nextPlayer && !nextPlayer.is_bot) {
-          const newDeadline = new Date(Date.now() + HORSES_TURN_TIMER_SECONDS * 1000).toISOString();
-          await supabase
-            .from("rounds")
-            .update({
-              horses_state: {
-                ...newState,
-                turnDeadline: newDeadline,
-              },
-            } as any)
-            .eq("id", currentRoundId);
-        } else if (nextPlayer?.is_bot) {
-          // Clear deadline for bot turns
-          await supabase
-            .from("rounds")
-            .update({
-              horses_state: {
-                ...newState,
-                turnDeadline: null,
-              },
-            } as any)
-            .eq("id", currentRoundId);
-        }
+        console.log("[HORSES] Turn advanced to:", newState.currentTurnPlayerId, "deadline:", newState.turnDeadline);
       }
     },
     [enabled, currentRoundId, horsesState?.currentTurnPlayerId, players],
