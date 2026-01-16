@@ -53,7 +53,7 @@ const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: st
   sm: {
     container: 'w-6 h-9 sm:w-7 sm:h-10',
     rank: 'text-base sm:text-lg font-black',
-    suit: 'text-sm sm:text-base',
+    suit: 'text-base sm:text-lg', // Bigger suit for mobile visibility
   },
   md: {
     container: 'w-7 h-10 sm:w-8 sm:h-12',
