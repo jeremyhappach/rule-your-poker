@@ -428,20 +428,23 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
       console.log('[BOT DECISIONS] Holm bot using universal fold probability:', foldProbability, '%');
     }
     
-    // Add delay before bot makes decision
-    await new Promise(resolve => setTimeout(resolve, decisionDelay * 1000));
-    
-    // Decide to stay or fold based on calculated probability
+    // Non-blocking delay before bot makes decision - fire and forget
+    // This allows the caller to return immediately while bot "thinks"
     const shouldFold = Math.random() * 100 < foldProbability;
     const decision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
     
-    console.log('[BOT DECISIONS] Bot at position', bot.position, 'deciding:', decision);
+    console.log('[BOT DECISIONS] Bot at position', bot.position, 'will decide:', decision, 'after', decisionDelay, 's');
     
-    await makeDecision(gameId, bot.id, decision);
-    // NOTE: makeDecision already calls checkHolmRoundComplete internally for Holm games
-    // DO NOT call it again here - that causes double turn advancement!
+    setTimeout(async () => {
+      try {
+        await makeDecision(gameId, bot.id, decision);
+        // NOTE: makeDecision already calls checkHolmRoundComplete internally for Holm games
+      } catch (err) {
+        console.error('[BOT DECISIONS] Error in delayed bot decision:', err);
+      }
+    }, decisionDelay * 1000);
     
-    // Return true to indicate a decision was made (caller may need to refetch)
+    // Return true to indicate a decision was scheduled
     return true;
   }
   
