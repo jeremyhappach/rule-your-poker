@@ -170,12 +170,29 @@ export async function recordGameResult(
 export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
   
-  // Fetch game configuration
-  const { data: gameConfig } = await supabase
-    .from('games')
-    .select('ante_amount, leg_value, status, current_round')
-    .eq('id', gameId)
-    .single();
+  // PARALLEL: Fetch game config and players simultaneously
+  const [gameConfigResult, playersResult, gameDefaultsResult] = await Promise.all([
+    supabase
+      .from('games')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot')
+      .eq('id', gameId)
+      .single(),
+    supabase
+      .from('players')
+      .select('*')
+      .eq('game_id', gameId)
+      .order('position'),
+    supabase
+      .from('game_defaults')
+      .select('decision_timer_seconds')
+      .eq('game_type', '3-5-7')
+      .maybeSingle()
+  ]);
+  
+  const gameConfig = gameConfigResult.data;
+  const players = playersResult.data;
+  const playersError = playersResult.error;
+  const gameDefaults = gameDefaultsResult.data;
   
   // Prevent starting if already in progress with this round
   if (gameConfig?.status === 'in_progress' && gameConfig?.current_round === roundNumber) {
@@ -185,39 +202,26 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   const anteAmount = gameConfig?.ante_amount || 1;
   const legValue = gameConfig?.leg_value || 1;
-  const betAmount = legValue; // Bet amount per round equals leg value
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
+  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
 
   // If starting round 1, ensure all old rounds are deleted - FIRE AND FORGET to avoid blocking
   if (roundNumber === 1) {
     console.log('[START_ROUND] Cleaning up old rounds for round 1 (fire-and-forget)');
     
-    // Fire-and-forget: Mark active rounds as completed and delete old data
-    // Don't block on cleanup - the safety checks below handle duplicates
+    // Fire-and-forget: Don't block on cleanup
     void (async () => {
       try {
-        await supabase
-          .from('rounds')
-          .update({ status: 'completed' })
-          .eq('game_id', gameId)
-          .neq('status', 'completed');
-        
         const { data: oldRounds } = await supabase
           .from('rounds')
           .select('id')
           .eq('game_id', gameId);
 
         if (oldRounds && oldRounds.length > 0) {
-          await supabase
-            .from('player_cards')
-            .delete()
-            .in('round_id', oldRounds.map(r => r.id));
-
-          await supabase
-            .from('rounds')
-            .delete()
-            .eq('game_id', gameId);
-          
+          await Promise.all([
+            supabase.from('player_cards').delete().in('round_id', oldRounds.map(r => r.id)),
+            supabase.from('rounds').delete().eq('game_id', gameId)
+          ]);
           console.log('[START_ROUND] Background cleanup completed:', oldRounds.length, 'old rounds');
         }
       } catch (err) {
@@ -226,29 +230,18 @@ export async function startRound(gameId: string, roundNumber: number) {
     })();
   }
 
-  // Reset all players to active for the new round (folding only applies to current round)
-  const { error: playerResetError } = await supabase
+  // Reset all players to active for the new round - FIRE AND FORGET (non-blocking)
+  void supabase
     .from('players')
     .update({ 
       current_decision: null,
       decision_locked: false,
       status: 'active'
     })
-    .eq('game_id', gameId);
-  
-  if (playerResetError) {
-    console.error('[START_ROUND] Failed to reset players:', playerResetError);
-    throw new Error(`Failed to reset players: ${playerResetError.message}`);
-  }
-  
-  console.log('[START_ROUND] Players reset for round', roundNumber);
-
-  // Get all players
-  const { data: players, error: playersError } = await supabase
-    .from('players')
-    .select('*')
     .eq('game_id', gameId)
-    .order('position');
+    .then(({ error }) => {
+      if (error) console.error('[START_ROUND] Failed to reset players:', error);
+    });
 
   if (playersError) {
     console.error('Error fetching players:', playersError);
@@ -339,14 +332,7 @@ export async function startRound(gameId: string, roundNumber: number) {
     console.log('[START_ROUND] Deleted existing round');
   }
 
-  // Fetch game_defaults for decision timer
-  const { data: gameDefaults } = await supabase
-    .from('game_defaults')
-    .select('decision_timer_seconds')
-    .eq('game_type', '3-5-7')
-    .maybeSingle();
-  
-  const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
+  // timerSeconds already fetched in parallel at start
   console.log('[START_ROUND] Using decision timer:', timerSeconds, 'seconds');
 
   // CRITICAL: Update game state BEFORE creating round to prevent race conditions

@@ -4604,36 +4604,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[ANTE] Anted players (from DB):', antedPlayers.length, 'Sitting out:', sittingOutPlayers.length, 'Total players:', freshPlayers.length);
 
-    // Increment sitting_out_hands for players who are sitting out
-    // Remove players who have been sitting out for 14+ consecutive games
-    for (const player of sittingOutPlayers) {
+    // BATCH: Handle sitting out players in parallel (fire-and-forget for non-critical counters)
+    const sittingOutUpdates = sittingOutPlayers.map(player => {
       const newSittingOutHands = (player.sitting_out_hands || 0) + 1;
-      
       if (newSittingOutHands >= 14) {
-        // Remove the player from the game
         console.log(`[ANTE] Removing player ${player.id} (${player.position}) after 14 consecutive games sitting out`);
-        await supabase
-          .from('players')
-          .delete()
-          .eq('id', player.id);
+        return supabase.from('players').delete().eq('id', player.id);
       } else {
-        // Increment the counter
-        await supabase
-          .from('players')
-          .update({ sitting_out_hands: newSittingOutHands })
-          .eq('id', player.id);
+        return supabase.from('players').update({ sitting_out_hands: newSittingOutHands }).eq('id', player.id);
       }
-    }
-
-    // Reset sitting_out_hands for players who anted up
-    for (const player of antedPlayers) {
-      if (player.sitting_out_hands > 0) {
-        await supabase
-          .from('players')
-          .update({ sitting_out_hands: 0 })
-          .eq('id', player.id);
-      }
-    }
+    });
+    
+    // BATCH: Reset sitting_out_hands for anted players (only those with > 0)
+    const playersToReset = antedPlayers.filter(p => p.sitting_out_hands > 0).map(p => p.id);
+    const resetPromise = playersToReset.length > 0 
+      ? supabase.from('players').update({ sitting_out_hands: 0 }).in('id', playersToReset)
+      : Promise.resolve();
+    
+    // Execute all in parallel - don't await, fire-and-forget for counter updates
+    void Promise.all([...sittingOutUpdates, resetPromise]).catch(err => 
+      console.error('[ANTE] Non-critical sitting out update error:', err)
+    );
 
     // Check if we have enough active players (need at least 2)
     if (antedPlayers.length < 2) {
@@ -4765,10 +4756,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Without this, future ante processing in the same session would be blocked!
       anteProcessingRef.current = false;
       
-      // Multiple fetches with increasing delays to catch all card data
-      setTimeout(() => fetchGameData(), 500);
-      setTimeout(() => fetchGameData(), 1500);
-      setTimeout(() => fetchGameData(), 3000);
+      // Single fetch after round start - realtime will handle subsequent updates
+      setTimeout(() => fetchGameData(), 300);
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
       // If round start fails, reset status
