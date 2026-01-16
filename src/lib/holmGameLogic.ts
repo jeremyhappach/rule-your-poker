@@ -855,29 +855,8 @@ export async function endHolmRound(gameId: string) {
     return;
   }
 
-  // For single player vs Chucky, reveal all 4 community cards now
-  // For multi-player showdown, we'll reveal the hidden cards AFTER exposing player cards
-  if (stayedPlayers.length === 1) {
-    // Single player - reveal all 4 community cards first
-    console.log('[HOLM END] Single player - revealing all 4 community cards...', {
-      roundId: capturedRoundId,
-      currentlyRevealed: round.community_cards_revealed,
-      targetRevealed: 4
-    });
-    
-    const { error: revealError } = await supabase
-      .from('rounds')
-      .update({ community_cards_revealed: 4 })
-      .eq('id', capturedRoundId);
-    
-    if (revealError) {
-      console.error('[HOLM END] ERROR revealing community cards:', revealError);
-    }
-    
-    // Brief pause to allow UI to update with community cards
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-  // For multi-player, keep community_cards_revealed at 2 for now
+  // For both single player vs Chucky and multi-player showdown,
+  // we reveal the hidden community cards AFTER exposing player cards
 
   // Case 2: Only one player stayed - play against Chucky
   if (stayedPlayers.length === 1) {
