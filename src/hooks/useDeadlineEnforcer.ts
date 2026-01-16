@@ -286,8 +286,9 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
         if (isMounted) {
           setNearestDeadline(nearest);
           if (nearest) {
-            // For dice games with only 1 human, still poll because server handles turn enforcement
-            const skipPolling = isDiceGame ? false : currentHumanCount <= 1;
+            // Skip polling if only 1 human - server cron handles disconnected players
+            // For dice games, client-side bot controller handles bot turns with animations
+            const skipPolling = currentHumanCount <= 1;
             schedulePolling(nearest, skipPolling);
           }
         }
@@ -370,7 +371,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
             // If deadline changed, reschedule polling
             if (nearest?.getTime() !== previousDeadline?.getTime()) {
               if (nearest) {
-                const skipPolling = isDiceGame ? false : currentHumanCount <= 1;
+                // Skip polling if only 1 human - server cron handles disconnected players
+                const skipPolling = currentHumanCount <= 1;
                 schedulePolling(nearest, skipPolling);
               } else {
                 // No more deadlines, stop polling
@@ -427,7 +429,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
           if (isMounted) {
             setNearestDeadline(nearest);
             if (nearest) {
-              const skipPolling = isDiceGame ? false : currentHumanCount <= 1;
+              // Skip polling if only 1 human - server cron handles disconnected players
+              const skipPolling = currentHumanCount <= 1;
               schedulePolling(nearest, skipPolling);
             } else {
               clearTimers();
