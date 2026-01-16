@@ -35,6 +35,7 @@ import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot } from "lucide-react";
 import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
+import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
@@ -3024,9 +3025,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const fetchGameData = async () => {
     const fetchSeq = ++fetchSeqRef.current;
     const isStale = () => fetchSeq !== fetchSeqRef.current;
+    const fetchSpan = startSpan('fetchGameData');
 
     console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
-    if (!gameId || !user) return;
+    if (!gameId || !user) {
+      fetchSpan.end({ skipped: 'no gameId or user' });
+      return;
+    }
 
     console.log('[FETCH] Fetching game data...', { fetchSeq });
 
@@ -3371,6 +3376,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!isStale()) {
       setLoading(false);
     }
+    fetchSpan.end({ status: gameData?.status, round: gameData?.current_round });
   };
 
   // This function is called when 2+ players are seated in waiting status
@@ -3378,6 +3384,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
 
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
+    traceMilestone('game_start_from_waiting');
     
     // Log session event
     await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
