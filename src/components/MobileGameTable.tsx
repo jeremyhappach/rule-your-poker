@@ -4640,8 +4640,8 @@ export const MobileGameTable = ({
                   ? (currentRound === 1
                       ? "scale-[1.6]" // Smaller scale for R1 to reduce width
                       : currentRound === 2
-                        ? "scale-[1.8]"
-                        : "scale-[1.7]")
+                        ? "scale-[2.0]" // Bigger R2 cards on mobile
+                        : "scale-[1.9]") // Bigger R3 cards on mobile
                   : "scale-[2.3]"; // Bigger Holm cards on mobile
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
@@ -4651,8 +4651,8 @@ export const MobileGameTable = ({
                   : (currentRound === 1
                       ? "min-h-[120px]" // Reduced container height for R1 to move buttons up
                       : currentRound === 2
-                        ? "min-h-[125px] pt-1" // Reduced top padding to move up for R2
-                        : "min-h-[110px] pt-1"); // Reduced top padding to move up for R3
+                        ? "min-h-[115px]" // Tighter for R2
+                        : "min-h-[100px]"); // Tighter for R3
 
               return (
                 <div className={cn(
