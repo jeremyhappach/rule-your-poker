@@ -7,7 +7,7 @@ export class PerfSession {
     private readonly warnAfterMs: number = 300,
   ) {}
 
-  async step<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  async step<T>(name: string, fn: () => T | PromiseLike<T>): Promise<T> {
     const t0 = performance.now();
     try {
       return await fn();
