@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ChatMessage {
@@ -21,22 +21,36 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   const [isSending, setIsSending] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<{ username: string } | null>(null);
 
+  // Keep latest players/profile in refs so we don't refetch chat history every time players updates.
+  const playersRef = useRef<any[]>(players);
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+
+  const currentUserProfileRef = useRef<{ username: string } | null>(null);
+  useEffect(() => {
+    currentUserProfileRef.current = currentUserProfile;
+  }, [currentUserProfile]);
+
+  // Cache usernames for observers (not seated players) so we don't re-query per message.
+  const observerUsernameCacheRef = useRef<Map<string, string>>(new Map());
+
   // Fetch current user's profile for observers
   useEffect(() => {
     const fetchProfile = async () => {
       if (!currentUserId) return;
-      
+
       const { data } = await supabase
         .from('profiles')
         .select('username')
         .eq('id', currentUserId)
         .single();
-      
+
       if (data) {
         setCurrentUserProfile(data);
       }
     };
-    
+
     fetchProfile();
   }, [currentUserId]);
 
@@ -51,14 +65,34 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     if (player?.profiles?.username) {
       return player.profiles.username;
     }
-    
+
     // Check if it's the current user (observer)
     if (userId === currentUserId && currentUserProfile?.username) {
       return `${currentUserProfile.username} (observer)`;
     }
-    
+
+    const cached = observerUsernameCacheRef.current.get(userId);
+    if (cached) return cached;
+
     return 'Unknown';
   }, [players, currentUserId, currentUserProfile]);
+
+  const getOrFetchObserverUsername = useCallback(async (userId: string): Promise<string | null> => {
+    const cached = observerUsernameCacheRef.current.get(userId);
+    if (cached) return cached;
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!data?.username) return null;
+
+    const name = `${data.username} (observer)`;
+    observerUsernameCacheRef.current.set(userId, name);
+    return name;
+  }, []);
 
   // Get position for a user_id from players list
   const getPositionForUserId = useCallback((userId: string): number | undefined => {
@@ -70,20 +104,20 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   const uploadImage = async (file: File, userId: string): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${Date.now()}.${fileExt}`;
-    
+
     const { error: uploadError } = await supabase.storage
       .from('chat-images')
       .upload(fileName, file);
-    
+
     if (uploadError) {
       console.error('Error uploading image:', uploadError);
       return null;
     }
-    
+
     const { data: { publicUrl } } = supabase.storage
       .from('chat-images')
       .getPublicUrl(fileName);
-    
+
     return publicUrl;
   };
 
@@ -129,25 +163,21 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
 
   // Add a new bubble with expiration
   const addBubble = useCallback(async (msg: ChatMessage) => {
+    const currentPlayers = playersRef.current;
+
     // Check if user is a player or observer
-    const player = players.find(p => p.user_id === msg.user_id);
+    const player = currentPlayers.find(p => p.user_id === msg.user_id);
+
     let username: string;
-    
     if (player?.profiles?.username) {
       username = player.profiles.username;
+    } else if (msg.user_id === currentUserId && currentUserProfileRef.current?.username) {
+      username = `${currentUserProfileRef.current.username} (observer)`;
     } else {
-      // User is an observer - fetch their profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', msg.user_id)
-        .single();
-      
-      username = profile?.username 
-        ? `${profile.username} (observer)` 
-        : 'Unknown';
+      // User is an observer - fetch their profile ONCE (cached)
+      username = (await getOrFetchObserverUsername(msg.user_id)) ?? 'Unknown';
     }
-    
+
     const bubble: ChatBubble = {
       ...msg,
       username,
@@ -167,7 +197,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
       if (prev.some(m => m.id === msg.id)) return prev;
       return [...prev, msgWithUsername];
     });
-  }, [players]);
+  }, [currentUserId, getOrFetchObserverUsername]);
 
   // Clean up expired bubbles
   useEffect(() => {
@@ -178,7 +208,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch all messages for this session on mount
+  // Fetch all messages for this session on mount (do NOT refetch on every players update)
   useEffect(() => {
     if (!gameId) return;
 
@@ -189,35 +219,58 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         .eq('game_id', gameId)
         .order('created_at', { ascending: true });
 
-      if (!error && data) {
-        // For each message, check if user is a player or observer
-        const messagesWithUsernames = await Promise.all(data.map(async (msg) => {
-          const player = players.find(p => p.user_id === msg.user_id);
-          
-          if (player?.profiles?.username) {
-            return { ...msg, username: player.profiles.username };
+      if (error || !data) return;
+
+      const currentPlayers = playersRef.current;
+      const currentProfile = currentUserProfileRef.current;
+
+      // Batch-fetch usernames for any observer IDs we haven't cached yet.
+      const seatedUserIds = new Set<string>(currentPlayers.map(p => p.user_id));
+      const unknownObserverIds = Array.from(new Set(data.map(m => m.user_id)))
+        .filter(uid => uid && !seatedUserIds.has(uid) && !observerUsernameCacheRef.current.has(uid) && uid !== currentUserId);
+
+      if (unknownObserverIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('id', unknownObserverIds);
+
+        (profiles ?? []).forEach((p) => {
+          if (p?.id && p?.username) {
+            observerUsernameCacheRef.current.set(p.id, `${p.username} (observer)`);
           }
-          
-          // User is an observer - fetch their profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', msg.user_id)
-            .single();
-          
-          const username = profile?.username 
-            ? `${profile.username} (observer)` 
-            : 'Unknown';
-          
-          return { ...msg, username };
-        }));
-        
-        setAllMessages(messagesWithUsernames);
+        });
       }
+
+      const messagesWithUsernames = data.map((msg) => {
+        const player = currentPlayers.find(p => p.user_id === msg.user_id);
+        if (player?.profiles?.username) return { ...msg, username: player.profiles.username };
+
+        if (msg.user_id === currentUserId && currentProfile?.username) {
+          return { ...msg, username: `${currentProfile.username} (observer)` };
+        }
+
+        const cached = observerUsernameCacheRef.current.get(msg.user_id);
+        return { ...msg, username: cached ?? 'Unknown' };
+      });
+
+      setAllMessages(messagesWithUsernames);
     };
 
     fetchMessages();
-  }, [gameId, players]);
+  }, [gameId, currentUserId]);
+
+  // When players list updates, patch existing messages with now-known player usernames (no refetch)
+  useEffect(() => {
+    if (!players?.length) return;
+    setAllMessages((prev) =>
+      prev.map((m) => {
+        const player = players.find((p) => p.user_id === m.user_id);
+        if (player?.profiles?.username) return { ...m, username: player.profiles.username };
+        return m;
+      })
+    );
+  }, [players]);
 
   // Subscribe to realtime chat messages
   useEffect(() => {

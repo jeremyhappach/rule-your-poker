@@ -156,10 +156,26 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const fetchGames = async () => {
     const perf = new PerfSession("GameLobby.fetchGames", 300);
 
+    // Fetch games + their current players in ONE query (avoid N+1).
     const { data: gamesData, error } = await perf.step("games.select", () =>
       supabase
         .from("games")
-        .select("*")
+        .select(
+          `
+            *,
+            players:players(
+              id,
+              user_id,
+              position,
+              chips,
+              legs,
+              is_bot,
+              sitting_out,
+              created_at,
+              profiles(username)
+            )
+          `
+        )
         .order("created_at", { ascending: false })
     );
 
@@ -173,102 +189,87 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       return;
     }
 
-    const perGameMs: Record<string, number> = {};
+    // Batch fetch snapshots for ended sessions (so we can include departed players in counts)
+    const endedGameIds = (gamesData || [])
+      .filter((g: any) => g.status === "session_ended")
+      .map((g: any) => g.id);
 
-    // Fetch player info for each game
+    const snapshotCounts: Record<string, number> = {};
+
+    if (endedGameIds.length > 0) {
+      const { data: snapshots, error: snapError } = await perf.step("snapshots.select", () =>
+        supabase
+          .from("session_player_snapshots")
+          .select("game_id, user_id, player_id, is_bot")
+          .in("game_id", endedGameIds)
+      );
+
+      if (!snapError && snapshots?.length) {
+        const perGameKeys = new Map<string, Set<string>>();
+        for (const snap of snapshots as any[]) {
+          const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
+          const set = perGameKeys.get(snap.game_id) ?? new Set<string>();
+          set.add(key);
+          perGameKeys.set(snap.game_id, set);
+        }
+        for (const [gid, set] of perGameKeys.entries()) {
+          snapshotCounts[gid] = set.size;
+        }
+      }
+    }
+
     const gamesWithPlayers = await perf.step("games.enrich", async () =>
-      Promise.all(
-        (gamesData || []).map(async (game) => {
-          const gameStart = performance.now();
+      (gamesData || []).map((game: any) => {
+        const playersData = (game.players ?? []) as any[];
 
-          const { data: playersData } = await supabase
-            .from("players")
-            .select(
-              `
-                id,
-                user_id,
-                position,
-                chips,
-                legs,
-                is_bot,
-                sitting_out,
-                created_at,
-                profiles(username)
-              `
-            )
-            .eq("game_id", game.id)
-            .order("position");
+        // Host is the first human player who joined (earliest created_at)
+        const humanPlayers = playersData.filter((p) => !p.is_bot);
+        const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        });
+        const hostPlayer = sortedByJoinTime[0];
+        const host_username = hostPlayer?.profiles?.username || "Unknown";
 
-          // For ended sessions, get participant count from snapshots (includes departed players)
-          let snapshotPlayerCount = 0;
-          if (game.status === "session_ended") {
-            const { data: snapshots } = await supabase
-              .from("session_player_snapshots")
-              .select("user_id, player_id, is_bot")
-              .eq("game_id", game.id);
+        const isCreator = hostPlayer?.user_id === userId;
+        const isPlayer = playersData.some((p) => p.user_id === userId);
 
-            if (snapshots && snapshots.length > 0) {
-              // De-dupe: humans by user_id, bots by player_id
-              const uniqueKeys = new Set<string>();
-              snapshots.forEach((snap) => {
-                const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
-                uniqueKeys.add(key);
-              });
-              snapshotPlayerCount = uniqueKeys.size;
-            }
-          }
+        // Calculate duration
+        const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
 
-          // Host is the first human player who joined (earliest created_at)
-          const humanPlayers = playersData?.filter((p) => !p.is_bot) || [];
-          const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
-            return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-          });
-          const hostPlayer = sortedByJoinTime[0];
-          const host_username = hostPlayer?.profiles?.username || "Unknown";
+        // Use snapshot count for ended sessions, current players otherwise
+        const playerCount =
+          game.status === "session_ended" && snapshotCounts[game.id] !== undefined
+            ? snapshotCounts[game.id]
+            : playersData.length;
 
-          const isCreator = hostPlayer?.user_id === userId;
-          const isPlayer = playersData?.some((p) => p.user_id === userId) || false;
-
-          // Calculate duration
-          const durationMinutes = Math.floor((Date.now() - new Date(game.created_at).getTime()) / (1000 * 60));
-
-          // Use snapshot count for ended sessions, current players otherwise
-          const playerCount =
-            game.status === "session_ended" && snapshotPlayerCount > 0
-              ? snapshotPlayerCount
-              : (playersData?.length || 0);
-
-          perGameMs[String(game.id).slice(0, 8)] = Math.round(performance.now() - gameStart);
-
-          return {
-            ...game,
-            player_count: playerCount,
-            is_creator: isCreator,
-            is_player: isPlayer,
-            host_username,
-            duration_minutes: durationMinutes,
-            players:
-              playersData?.map((p) => ({
-                id: p.id,
-                username: p.is_bot
-                  ? getBotAlias(
-                      playersData.map((pd) => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })),
-                      p.user_id
-                    )
-                  : (p.profiles?.username || "Unknown"),
-                chips: p.chips,
-                legs: p.legs,
-                is_bot: p.is_bot,
-                sitting_out: p.sitting_out,
-              })) || [],
-          };
-        })
-      )
+        return {
+          ...game,
+          player_count: playerCount,
+          is_creator: isCreator,
+          is_player: isPlayer,
+          host_username,
+          duration_minutes: durationMinutes,
+          players:
+            playersData.map((p) => ({
+              id: p.id,
+              username: p.is_bot
+                ? getBotAlias(
+                    playersData.map((pd) => ({ user_id: pd.user_id, is_bot: pd.is_bot, created_at: pd.created_at })),
+                    p.user_id
+                  )
+                : (p.profiles?.username || "Unknown"),
+              chips: p.chips,
+              legs: p.legs,
+              is_bot: p.is_bot,
+              sitting_out: p.sitting_out,
+            })) || [],
+        };
+      })
     );
 
     setGames(gamesWithPlayers);
     setLoading(false);
-    perf.done({ gameCount: gamesData?.length ?? 0, perGameMs });
+    perf.done({ gameCount: gamesData?.length ?? 0 });
   };
 
   const createGame = async () => {
