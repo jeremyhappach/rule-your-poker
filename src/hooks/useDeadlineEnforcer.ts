@@ -126,7 +126,9 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     }
   }, [gameId, clearTimers]);
 
-  // Start active polling (every 3 seconds)
+  // Start active polling - REDUCED FREQUENCY
+  // Server cron runs every 10 seconds, so client polling is just a backup for near-deadline situations
+  // Poll every 10 seconds to avoid hammering the edge function from multiple clients
   const startPolling = useCallback(() => {
     if (intervalRef.current) return; // Already polling
     
@@ -135,8 +137,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     // Call immediately
     enforceDeadlines();
     
-    // Then poll every 3 seconds
-    intervalRef.current = setInterval(enforceDeadlines, 3000);
+    // Then poll every 10 seconds (was 3 seconds - way too aggressive with multiple clients)
+    intervalRef.current = setInterval(enforceDeadlines, 10000);
   }, [enforceDeadlines]);
 
   // Schedule polling to start when deadline is imminent
@@ -159,13 +161,14 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
     
     const now = new Date();
     const msUntilDeadline = deadline.getTime() - now.getTime();
-    const msUntilPollingStart = msUntilDeadline - 15000; // Start 15 seconds before deadline
+    // Only start polling 5 seconds before deadline (was 15 seconds - too early)
+    const msUntilPollingStart = msUntilDeadline - 5000;
     
     if (msUntilPollingStart <= 0) {
-      // Deadline is within 15 seconds, start polling immediately
+      // Deadline is within 5 seconds, start polling immediately
       startPolling();
     } else {
-      // Schedule polling to start 15 seconds before deadline
+      // Schedule polling to start 5 seconds before deadline
       timeoutRef.current = setTimeout(() => {
         startPolling();
       }, msUntilPollingStart);
