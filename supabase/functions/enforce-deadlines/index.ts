@@ -2317,8 +2317,32 @@ serve(async (req) => {
               }
             }
 
-            // If we auto-folded anyone, set all_decisions_in and update round status
-            if (undecidedPlayers.length > 0) {
+            // Check if all active players have made decisions (either they just did via auto-fold above,
+            // or they already decided before the deadline expired)
+            // FIX: Previously this only ran when undecidedPlayers.length > 0, which caused games to get stuck
+            // when all players had already folded before the deadline expired.
+            const { data: freshPlayersFor357 } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', gameId);
+            
+            const activePlayers357 = freshPlayersFor357?.filter((p: any) =>
+              p.status === 'active' &&
+              !p.sitting_out &&
+              p.ante_decision === 'ante_up'
+            ) || [];
+            
+            const allDecisionsLocked = activePlayers357.length > 0 && 
+              activePlayers357.every((p: any) => p.decision_locked === true);
+            
+            console.log('[ENFORCE] 3-5-7 decision check:', {
+              undecidedCount: undecidedPlayers.length,
+              activeCount: activePlayers357.length,
+              allDecisionsLocked,
+            });
+            
+            // Proceed if all decisions are in (regardless of whether we just auto-folded anyone)
+            if (allDecisionsLocked && activePlayers357.length >= 1) {
               // Use atomic guard
               const { data: lockResult, error: lockError } = await supabase
                 .from('games')
@@ -2327,7 +2351,13 @@ serve(async (req) => {
                 .eq('all_decisions_in', false)
                 .select();
 
-              if (!lockError && lockResult && lockResult.length > 0) {
+              // Proceed if we just set all_decisions_in, OR if it was already set but round is still in betting
+              // (handles case where previous resolution attempt failed mid-execution)
+              const shouldProceedWithResolution = 
+                (!lockError && lockResult && lockResult.length > 0) || // Just locked it
+                (currentRound.status === 'betting'); // Still in betting - needs resolution
+              
+              if (shouldProceedWithResolution) {
                 await supabase
                   .from('rounds')
                   .update({ status: 'showdown' })
