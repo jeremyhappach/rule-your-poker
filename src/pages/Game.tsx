@@ -908,9 +908,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     let fallbackPollInterval: ReturnType<typeof setInterval> | null = null;
     const startFallbackPolling = () => {
       if (fallbackPollInterval) return;
+      // Poll every 5 seconds when fallback is needed (not 1.5s which hammers DB)
       fallbackPollInterval = setInterval(() => {
         fetchGameData();
-      }, 1500);
+      }, 5000);
     };
     const stopFallbackPolling = () => {
       if (!fallbackPollInterval) return;
@@ -1605,10 +1606,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       playerCardsCount: playerCards.length
     });
     
-    // Poll more frequently (250ms) for critical transitions, 500ms otherwise
-    // Host/observer waiting for players polls every 1 second (less aggressive)
-    const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 1000 : 
-      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState || holmNoRound) ? 250 : 500;
+    // Poll at reasonable intervals - NOT 250ms which hammers the DB
+    // Critical states poll every 2 seconds, normal states every 3 seconds
+    const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 3000 : 
+      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState || holmNoRound) ? 2000 : 3000;
     
     const intervalId = setInterval(async () => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
@@ -1677,8 +1678,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     };
     
-    // Poll every 750ms as aggressive fallback (critical for round sync)
-    const pollInterval = setInterval(syncPoll, 750);
+    // Poll every 3 seconds as fallback for round sync (not 750ms which hammers DB)
+    const pollInterval = setInterval(syncPoll, 3000);
     
     // Also sync immediately on mount
     syncPoll();
@@ -1951,11 +1952,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Check immediately
     checkAnteDecisions();
 
-    // Poll every 1 second as fallback for faster ante detection AND deadline enforcement
+    // Poll every 3 seconds as fallback for ante detection (not 1 second which hammers DB)
     const pollInterval = setInterval(() => {
-      console.log('[ANTE POLL] Polling for ante decisions...');
       checkAnteDecisions();
-    }, 1000);
+    }, 3000);
 
     return () => clearInterval(pollInterval);
   }, [game?.status, game?.is_paused, gameId]);
@@ -2223,9 +2223,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         await fetchGameData();
       };
       
-      // Start polling every 300ms
+      // Start polling every 2 seconds (not 300ms which hammers DB)
       healingPoll(); // Immediate first attempt
-      roundHealingRef.current = setInterval(healingPoll, 300);
+      roundHealingRef.current = setInterval(healingPoll, 2000);
       
       return () => {
         if (roundHealingRef.current) {
@@ -4091,8 +4091,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Execute immediately
     checkAndProceed();
 
-    // Then poll every 800ms (more aggressive than previous 1200ms)
-    poll357IntervalRef.current = window.setInterval(checkAndProceed, 800);
+    // Then poll every 2 seconds (not 800ms which hammers DB)
+    poll357IntervalRef.current = window.setInterval(checkAndProceed, 2000);
 
     // Hard stop after 15 seconds (reduced from 25s)
     poll357StopTimerRef.current = window.setTimeout(() => {

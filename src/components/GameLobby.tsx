@@ -96,10 +96,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     fetchGames();
     checkSuperuser();
 
-    // Polling fallback for realtime reliability - poll every 1 second for faster updates
+    // Polling fallback for realtime reliability - poll every 10 seconds (NOT 1 second - that hammers DB)
     const pollingInterval = setInterval(() => {
       fetchGames();
-    }, 1000);
+    }, 10000);
 
     const gamesChannel = supabase
       .channel('games-lobby-channel')
@@ -110,14 +110,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'games'
         },
-        (payload) => {
-          console.log('[LOBBY REALTIME] Games table changed:', payload);
+        () => {
+          // Realtime triggered - fetch updates
           fetchGames();
         }
       )
-      .subscribe((status) => {
-        console.log('[LOBBY REALTIME] Games channel status:', status);
-      });
+      .subscribe();
 
     // Also subscribe to players table to update player counts in real-time
     const playersChannel = supabase
@@ -129,14 +127,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'players'
         },
-        (payload) => {
-          console.log('[LOBBY REALTIME] Players table changed:', payload);
+        () => {
+          // Realtime triggered - fetch updates
           fetchGames();
         }
       )
-      .subscribe((status) => {
-        console.log('[LOBBY REALTIME] Players channel status:', status);
-      });
+      .subscribe();
 
     return () => {
       clearInterval(pollingInterval);
