@@ -1,31 +1,186 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/**
+ * CRON-BASED COMPREHENSIVE DEADLINE ENFORCER
+ * 
+ * This edge function is designed to be called by a cron job.
+ * It handles ALL game maintenance and progression when no clients are connected:
+ * 
+ * 1. Stale game cleanup (stuck sessions, empty games, etc.)
+ * 2. Bot-only game detection and session ending
+ * 3. Degenerate game state detection
+ * 4. Hand evaluation and game progression for abandoned/bot-only games
+ * 5. Game over countdown handling
+ * 6. Config/ante/decision deadline enforcement (as backup to client)
+ */
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-/**
- * This edge function is designed to be called by a cron job.
- * It scans ALL active games and enforces deadlines for each one.
- * This ensures deadlines are enforced even when no clients are connected.
- */
+// ============== CARD UTILITIES ==============
+interface Card {
+  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  rank: string;
+}
+
+function createDeck(): Card[] {
+  const suits: Card['suit'][] = ['hearts', 'diamonds', 'clubs', 'spades'];
+  const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  const deck: Card[] = [];
+  for (const suit of suits) {
+    for (const rank of ranks) {
+      deck.push({ suit, rank });
+    }
+  }
+  return deck;
+}
+
+function shuffleDeck(deck: Card[]): Card[] {
+  const shuffled = [...deck];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Holm hand evaluation
+const RANK_VALUES: Record<string, number> = {
+  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+  '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+};
+
+function evaluateHolmHand(cards: Card[]): { rank: string; value: number } {
+  if (cards.length === 0) return { rank: 'high-card', value: 0 };
+  
+  const validCards = cards.map(c => ({
+    suit: c.suit,
+    rank: String(c.rank).toUpperCase()
+  })).filter(c => RANK_VALUES[c.rank] !== undefined);
+  
+  if (validCards.length === 0) return { rank: 'high-card', value: 0 };
+  
+  const sortedCards = [...validCards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+  
+  const rankCounts: Record<string, number> = {};
+  validCards.forEach(c => { rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1; });
+  
+  const groups = Object.entries(rankCounts)
+    .sort((a, b) => b[1] - a[1] || RANK_VALUES[b[0]] - RANK_VALUES[a[0]]);
+  
+  const bestRank = groups[0]?.[0];
+  const bestCount = groups[0]?.[1] || 0;
+  const secondRank = groups[1]?.[0];
+  const secondCount = groups[1]?.[1] || 0;
+  
+  const suitCounts: Record<string, number> = {};
+  validCards.forEach(c => { suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1; });
+  const maxSuitCount = Math.max(...Object.values(suitCounts));
+  const isFlush = maxSuitCount >= 5;
+  
+  const uniqueValues = [...new Set(validCards.map(c => RANK_VALUES[c.rank]))].sort((a, b) => b - a);
+  let isStraight = false;
+  let straightHigh = 0;
+  
+  for (let start = 14; start >= 5; start--) {
+    let hasAll = true;
+    for (let i = 0; i < 5; i++) {
+      if (!uniqueValues.includes(start - i)) {
+        hasAll = false;
+        break;
+      }
+    }
+    if (hasAll) {
+      isStraight = true;
+      straightHigh = start;
+      break;
+    }
+  }
+  
+  if (!isStraight && uniqueValues.includes(14) && uniqueValues.includes(2) && 
+      uniqueValues.includes(3) && uniqueValues.includes(4) && uniqueValues.includes(5)) {
+    isStraight = true;
+    straightHigh = 5;
+  }
+  
+  if (isFlush && isStraight) {
+    const flushSuit = Object.entries(suitCounts).find(([_, count]) => count >= 5)?.[0];
+    const flushCards = validCards.filter(c => c.suit === flushSuit);
+    const flushValues = [...new Set(flushCards.map(c => RANK_VALUES[c.rank]))].sort((a, b) => b - a);
+    
+    for (let start = 14; start >= 5; start--) {
+      let hasAll = true;
+      for (let i = 0; i < 5; i++) {
+        if (!flushValues.includes(start - i)) {
+          hasAll = false;
+          break;
+        }
+      }
+      if (hasAll) {
+        return { rank: 'straight-flush', value: 8000000000 + start };
+      }
+    }
+    if (flushValues.includes(14) && flushValues.includes(2) && flushValues.includes(3) &&
+        flushValues.includes(4) && flushValues.includes(5)) {
+      return { rank: 'straight-flush', value: 8000000000 + 5 };
+    }
+  }
+  
+  if (bestCount >= 4) {
+    return { rank: 'four-of-a-kind', value: 7000000000 + RANK_VALUES[bestRank] * 100 };
+  }
+  
+  if (bestCount >= 3 && secondCount >= 2) {
+    return { rank: 'full-house', value: 6000000000 + RANK_VALUES[bestRank] * 100 + RANK_VALUES[secondRank] };
+  }
+  
+  if (isFlush) {
+    const flushSuit = Object.entries(suitCounts).find(([_, count]) => count >= 5)?.[0];
+    const flushCards = validCards.filter(c => c.suit === flushSuit)
+      .sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
+    return { rank: 'flush', value: 5000000000 + RANK_VALUES[flushCards[0].rank] * 100 };
+  }
+  
+  if (isStraight) {
+    return { rank: 'straight', value: 4000000000 + straightHigh };
+  }
+  
+  if (bestCount >= 3) {
+    return { rank: 'three-of-a-kind', value: 3000000000 + RANK_VALUES[bestRank] * 100 };
+  }
+  
+  const pairs = groups.filter(([_, count]) => count >= 2);
+  if (pairs.length >= 2) {
+    const highPair = RANK_VALUES[pairs[0][0]];
+    const lowPair = RANK_VALUES[pairs[1][0]];
+    return { rank: 'two-pair', value: 2000000000 + highPair * 100 + lowPair };
+  }
+  
+  if (bestCount >= 2) {
+    return { rank: 'pair', value: 1000000000 + RANK_VALUES[bestRank] * 100 };
+  }
+  
+  return { rank: 'high-card', value: RANK_VALUES[sortedCards[0].rank] };
+}
+
+// ============== MAIN HANDLER ==============
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   const startTime = Date.now();
   const cronRunId = crypto.randomUUID();
-  console.log('[CRON-ENFORCE] Starting deadline enforcement scan', { cronRunId });
+  console.log('[CRON-ENFORCE] Starting comprehensive deadline enforcement scan', { cronRunId });
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
-
     const keyToUse = serviceRoleKey || anonKey;
 
     if (!supabaseUrl || !keyToUse || keyToUse.length === 0) {
@@ -37,18 +192,15 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, keyToUse);
+    const now = new Date();
+    const nowIso = now.toISOString();
 
-    // Find all games that might have expired deadlines
-    // These are games in active states with deadlines that could be expired
-    // IMPORTANT: Include 'waiting', 'waiting_for_players' since games can get stuck there and need cleanup
+    // Fetch all active games
     const activeStatuses = ['waiting', 'dealer_selection', 'configuring', 'game_selection', 'ante_decision', 'in_progress', 'betting', 'game_over', 'waiting_for_players'];
     
-    // NOTE: We now INCLUDE paused games so we can clean up stale paused sessions (>4 hours)
-    // The enforce-deadlines function will still skip normal deadline enforcement for paused games,
-    // but we add a separate check for stale paused games that should be ended.
     const { data: games, error: gamesError } = await supabase
       .from('games')
-      .select('id, status, is_paused, config_deadline, ante_decision_deadline, updated_at')
+      .select('*')
       .in('status', activeStatuses);
 
     if (gamesError) {
@@ -62,117 +214,883 @@ serve(async (req) => {
     console.log('[CRON-ENFORCE] Found', games?.length || 0, 'active games to check');
 
     const results: { gameId: string; status: string; result: string }[] = [];
-    const now = new Date();
 
-    // Process each game that might have an expired deadline
-    // Calculate staleness thresholds
-    const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours for waiting/in_progress
-    const PAUSED_STALE_THRESHOLD_MS = 4 * 60 * 60 * 1000; // 4 hours for paused games
-    
+    // Staleness thresholds
+    const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
+    const PAUSED_STALE_THRESHOLD_MS = 4 * 60 * 60 * 1000; // 4 hours
+    const DEALER_SELECTION_TIMEOUT_MS = 60000; // 60 seconds
+    const AWAITING_NEXT_ROUND_THRESHOLD_MS = 10000; // 10 seconds
+
     for (const game of games || []) {
-      // Quick check: does this game have any deadline that might be expired?
-      const configDeadlineExpired = game.config_deadline && new Date(game.config_deadline) < now;
-      const anteDeadlineExpired = game.ante_decision_deadline && new Date(game.ante_decision_deadline) < now;
-      
-      // ALWAYS invoke enforce-deadlines for games in configuring/game_selection with a config_deadline
-      // This ensures the deadline is checked even if it hasn't technically expired yet (clock sync issues)
-      const isConfigPhase = game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection';
-      const hasConfigDeadline = !!game.config_deadline;
-      
-      // dealer_selection games without a config_deadline might be STALE and need cleanup
-      // The enforce-deadlines function has logic to handle these (>60 seconds idle = cleanup)
-      const isDealerSelectionStale = game.status === 'dealer_selection' && !game.config_deadline;
-      
-      // Check for stale "waiting" or "in_progress" games (>2 hours since last update)
+      const actionsTaken: string[] = [];
       const gameUpdatedAt = game.updated_at ? new Date(game.updated_at) : null;
       const msSinceUpdate = gameUpdatedAt ? now.getTime() - gameUpdatedAt.getTime() : 0;
-      const isStaleWaiting = game.status === 'waiting' && msSinceUpdate > STALE_THRESHOLD_MS;
-      const isStaleInProgress = game.status === 'in_progress' && msSinceUpdate > STALE_THRESHOLD_MS;
-      
-      // Check for stale PAUSED games (>4 hours since last update)
-      const isStalePaused = game.is_paused && msSinceUpdate > PAUSED_STALE_THRESHOLD_MS;
-      
-      const mightNeedEnforcement = 
-        configDeadlineExpired || 
-        anteDeadlineExpired || 
-        (isConfigPhase && hasConfigDeadline) || // Always check config phase games with deadlines
-        isDealerSelectionStale || // Always check stale dealer_selection games
-        isStaleWaiting || // Check stale waiting games for cleanup
-        isStaleInProgress || // Check stale in_progress games for cleanup
-        isStalePaused || // Check stale paused games for cleanup
-        (!game.is_paused && game.status === 'in_progress') || // Only check active in_progress for deadlines
-        (!game.is_paused && game.status === 'betting') ||
-        (!game.is_paused && game.status === 'game_over');
 
-      if (!mightNeedEnforcement) {
-        results.push({ gameId: game.id, status: game.status, result: game.is_paused ? 'skipped_paused' : 'skipped_no_deadline' });
-        continue;
-      }
-      
-      console.log('[CRON-ENFORCE] Processing game:', game.id, {
-        status: game.status,
-        configDeadline: game.config_deadline,
-        configDeadlineExpired,
-        anteDeadlineExpired,
-      });
-
-      // Call the enforce-deadlines function for this game
       try {
-        console.log('[CRON-ENFORCE] Invoking enforce-deadlines for game:', game.id);
-
-        const invokeWithRetry = async () => {
-          let lastResponse: any = null;
-
-          for (let attempt = 1; attempt <= 3; attempt++) {
-             const response = await supabase.functions.invoke('enforce-deadlines', {
-               body: { gameId: game.id, source: 'cron', requestId: cronRunId },
-             });
-
-            lastResponse = response;
-
-            if (!response.error) return response;
-
-            const msg = String(response.error?.message ?? '');
-            const isTransient =
-              msg.includes('502') ||
-              msg.toLowerCase().includes('bad gateway') ||
-              msg.includes('503') ||
-              msg.toLowerCase().includes('service unavailable') ||
-              msg.toLowerCase().includes('edge function returned a non-2xx') ||
-              msg.toLowerCase().includes('timeout');
-
-            if (!isTransient || attempt === 3) return response;
-
-            const waitMs = 400 * attempt;
-            console.log('[CRON-ENFORCE] Transient enforce-deadlines error; retrying', {
-              gameId: game.id,
-              attempt,
-              waitMs,
-              msg,
-            });
-            await new Promise((r) => setTimeout(r, waitMs));
+        // ============= HANDLE STALE PAUSED GAMES =============
+        if (game.is_paused) {
+          const isRealMoney = game.real_money === true;
+          
+          if (msSinceUpdate > PAUSED_STALE_THRESHOLD_MS && !isRealMoney) {
+            console.log('[CRON-ENFORCE] Stale paused PLAY MONEY game, ending session:', game.id);
+            
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                pending_session_end: false,
+                session_ended_at: nowIso,
+                game_over_at: nowIso,
+                is_paused: false,
+                config_deadline: null,
+                ante_decision_deadline: null,
+                config_complete: false,
+              })
+              .eq('id', game.id);
+            
+            actionsTaken.push('Stale paused play-money game (>4h): session ended');
+          } else {
+            results.push({ gameId: game.id, status: game.status, result: 'skipped_paused' });
+            continue;
           }
-
-          return lastResponse;
-        };
-
-        const response = await invokeWithRetry();
-
-        if (response.error) {
-          console.error('[CRON-ENFORCE] Error enforcing deadlines for game', game.id, ':', response.error);
-          results.push({ gameId: game.id, status: game.status, result: `error: ${response.error.message}` });
-        } else {
-          const actionsTaken = response.data?.actionsTaken || [];
-          console.log('[CRON-ENFORCE] Enforcement result for game', game.id, ':', actionsTaken);
-          results.push({
-            gameId: game.id,
-            status: game.status,
-            result: actionsTaken.length > 0 ? actionsTaken.join('; ') : 'no_action_needed',
-          });
+          
+          results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') || 'no_action' });
+          continue;
         }
-      } catch (err) {
-        console.error('[CRON-ENFORCE] Exception enforcing deadlines for game', game.id, ':', err);
-        results.push({ gameId: game.id, status: game.status, result: `exception: ${err}` });
+
+        // ============= BOT-ONLY GAME CHECK =============
+        if (game.status === 'in_progress' || game.status === 'betting' || game.status === 'ante_decision') {
+          const { data: allPlayers } = await supabase
+            .from('players')
+            .select('id, user_id, is_bot, sitting_out, status, auto_fold')
+            .eq('game_id', game.id);
+          
+          const presentHumans = (allPlayers || []).filter((p: any) => !p.is_bot && !p.sitting_out);
+          const presentBots = (allPlayers || []).filter((p: any) => p.is_bot && !p.sitting_out);
+          
+          if (presentHumans.length === 0 && presentBots.length > 0) {
+            console.log('[CRON-ENFORCE] ⚠️ BOT-ONLY GAME DETECTED, ending session:', game.id);
+            
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                pending_session_end: false,
+                session_ended_at: nowIso,
+                game_over_at: nowIso,
+                config_deadline: null,
+                ante_decision_deadline: null,
+                awaiting_next_round: false,
+              })
+              .eq('id', game.id);
+            
+            actionsTaken.push('Bot-only game: All humans sitting_out, session ended');
+            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+            continue;
+          }
+        }
+
+        // ============= DEGENERATE GAME STATE CHECK =============
+        if (game.status === 'in_progress') {
+          const CONSECUTIVE_FOLDS_THRESHOLD = 5;
+          
+          const { data: recentResults } = await supabase
+            .from('game_results')
+            .select('winner_player_id, winning_hand_description')
+            .eq('game_id', game.id)
+            .order('hand_number', { ascending: false })
+            .limit(CONSECUTIVE_FOLDS_THRESHOLD);
+          
+          if (recentResults && recentResults.length >= CONSECUTIVE_FOLDS_THRESHOLD) {
+            const allEveryoneFolded = recentResults.every((r: any) => 
+              r.winner_player_id === null && 
+              (r.winning_hand_description?.toLowerCase().includes('everyone folded') || 
+               r.winning_hand_description?.toLowerCase().includes('pussy tax'))
+            );
+            
+            if (allEveryoneFolded) {
+              console.log('[CRON-ENFORCE] ⚠️ DEGENERATE GAME STATE, ending session:', game.id);
+              
+              await supabase
+                .from('games')
+                .update({
+                  status: 'session_ended',
+                  pending_session_end: false,
+                  session_ended_at: nowIso,
+                  game_over_at: nowIso,
+                  config_deadline: null,
+                  ante_decision_deadline: null,
+                  awaiting_next_round: false,
+                })
+                .eq('id', game.id);
+              
+              actionsTaken.push(`Degenerate game: ${CONSECUTIVE_FOLDS_THRESHOLD} consecutive hands everyone folded, session ended`);
+              results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+              continue;
+            }
+          }
+        }
+
+        // ============= STALE DEALER_SELECTION CLEANUP =============
+        if (game.status === 'dealer_selection' && !game.config_deadline) {
+          const gameCreatedAt = new Date(game.created_at);
+          const staleSince = Math.max(gameCreatedAt.getTime(), gameUpdatedAt?.getTime() || 0);
+          const staleMs = now.getTime() - staleSince;
+          
+          if (staleMs > DEALER_SELECTION_TIMEOUT_MS) {
+            console.log('[CRON-ENFORCE] Stale dealer_selection game, cleaning up:', game.id);
+            
+            const totalHands = game.total_hands || 0;
+            const { count: resultsCount } = await supabase
+              .from('game_results')
+              .select('id', { count: 'exact', head: true })
+              .eq('game_id', game.id);
+            
+            const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+            
+            if (!hasHistory) {
+              // Delete empty session
+              const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
+              const roundIds = (roundRows ?? []).map((r: any) => r.id);
+              if (roundIds.length > 0) {
+                await supabase.from('player_cards').delete().in('round_id', roundIds);
+              }
+              await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
+              await supabase.from('chat_messages').delete().eq('game_id', game.id);
+              await supabase.from('rounds').delete().eq('game_id', game.id);
+              await supabase.from('players').delete().eq('game_id', game.id);
+              await supabase.from('games').delete().eq('id', game.id);
+              
+              actionsTaken.push('Stale dealer_selection: No history, deleted empty session');
+            } else {
+              await supabase
+                .from('games')
+                .update({
+                  status: 'session_ended',
+                  pending_session_end: false,
+                  session_ended_at: nowIso,
+                  game_over_at: nowIso,
+                  config_deadline: null,
+                  ante_decision_deadline: null,
+                  config_complete: false,
+                })
+                .eq('id', game.id);
+              
+              actionsTaken.push('Stale dealer_selection: Has history, session ended');
+            }
+            
+            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') || 'no_action' });
+            continue;
+          }
+        }
+
+        // ============= STALE WAITING GAME CLEANUP =============
+        if (game.status === 'waiting' && msSinceUpdate > STALE_THRESHOLD_MS) {
+          console.log('[CRON-ENFORCE] Stale waiting game (>2h), cleaning up:', game.id);
+          
+          const totalHands = game.total_hands || 0;
+          const { count: resultsCount } = await supabase
+            .from('game_results')
+            .select('id', { count: 'exact', head: true })
+            .eq('game_id', game.id);
+          
+          const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+          
+          if (!hasHistory) {
+            const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
+            const roundIds = (roundRows ?? []).map((r: any) => r.id);
+            if (roundIds.length > 0) {
+              await supabase.from('player_cards').delete().in('round_id', roundIds);
+            }
+            await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
+            await supabase.from('chat_messages').delete().eq('game_id', game.id);
+            await supabase.from('rounds').delete().eq('game_id', game.id);
+            await supabase.from('players').delete().eq('game_id', game.id);
+            await supabase.from('games').delete().eq('id', game.id);
+            
+            actionsTaken.push('Stale waiting (>2h): No history, deleted');
+          } else {
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                pending_session_end: false,
+                session_ended_at: nowIso,
+                game_over_at: nowIso,
+                config_deadline: null,
+                ante_decision_deadline: null,
+                config_complete: false,
+              })
+              .eq('id', game.id);
+            
+            actionsTaken.push('Stale waiting (>2h): Has history, session ended');
+          }
+          
+          results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') || 'no_action' });
+          continue;
+        }
+
+        // ============= STALE IN_PROGRESS CLEANUP =============
+        if (game.status === 'in_progress') {
+          const { data: currentRound } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('game_id', game.id)
+            .eq('round_number', game.current_round ?? 0)
+            .maybeSingle();
+          
+          const hasDecisionDeadline = !!currentRound?.decision_deadline;
+          
+          if (!hasDecisionDeadline && msSinceUpdate > STALE_THRESHOLD_MS) {
+            console.log('[CRON-ENFORCE] Stale in_progress (>2h, no deadline), ending:', game.id);
+            
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                pending_session_end: false,
+                session_ended_at: nowIso,
+                game_over_at: nowIso,
+                config_deadline: null,
+                ante_decision_deadline: null,
+                config_complete: false,
+              })
+              .eq('id', game.id);
+            
+            actionsTaken.push('Stale in_progress (>2h, no deadline): session ended');
+            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+            continue;
+          }
+        }
+
+        // ============= AWAITING_NEXT_ROUND WATCHDOG =============
+        if (game.awaiting_next_round === true && (game.status === 'in_progress' || game.status === 'betting')) {
+          const stuckDuration = msSinceUpdate;
+          
+          if (stuckDuration > AWAITING_NEXT_ROUND_THRESHOLD_MS) {
+            console.log('[CRON-ENFORCE] awaiting_next_round watchdog triggered for game:', game.id);
+            
+            // Start next round server-side
+            if (game.game_type === 'holm-game') {
+              const { data: activePlayers } = await supabase
+                .from('players')
+                .select('*')
+                .eq('game_id', game.id)
+                .eq('ante_decision', 'ante_up')
+                .eq('sitting_out', false);
+              
+              if (activePlayers && activePlayers.length >= 2) {
+                const { data: gameDefaults } = await supabase
+                  .from('game_defaults')
+                  .select('decision_timer_seconds')
+                  .eq('game_type', 'holm')
+                  .maybeSingle();
+                
+                const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
+                const decisionDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+                
+                // Create new round
+                const newRoundNumber = (game.current_round || 0) + 1;
+                
+                // Delete any existing round with same number
+                const { data: existingRound } = await supabase
+                  .from('rounds')
+                  .select('id')
+                  .eq('game_id', game.id)
+                  .eq('round_number', newRoundNumber)
+                  .maybeSingle();
+                
+                if (existingRound?.id) {
+                  await supabase.from('player_cards').delete().eq('round_id', existingRound.id);
+                  await supabase.from('player_actions').delete().eq('round_id', existingRound.id);
+                  await supabase.from('rounds').delete().eq('id', existingRound.id);
+                }
+                
+                // Deal cards
+                const deck = shuffleDeck(createDeck());
+                let deckIndex = 0;
+                
+                // Deal 4 community cards (face down initially)
+                const communityCards = deck.slice(deckIndex, deckIndex + 4);
+                deckIndex += 4;
+                
+                // Deal player cards (4 each)
+                const playerCardInserts: any[] = [];
+                
+                // Insert round first
+                const { data: newRound, error: roundError } = await supabase
+                  .from('rounds')
+                  .insert({
+                    game_id: game.id,
+                    round_number: newRoundNumber,
+                    hand_number: (game.total_hands || 0) + 1,
+                    cards_dealt: 4,
+                    pot: game.pot || 0,
+                    status: 'betting',
+                    decision_deadline: decisionDeadline,
+                    community_cards: communityCards,
+                    community_cards_revealed: 0,
+                    current_turn_position: activePlayers.sort((a: any, b: any) => a.position - b.position)[0].position,
+                  })
+                  .select()
+                  .single();
+                
+                if (!roundError && newRound) {
+                  // Deal cards to each player
+                  for (const player of activePlayers) {
+                    const playerCards = deck.slice(deckIndex, deckIndex + 4);
+                    deckIndex += 4;
+                    
+                    playerCardInserts.push({
+                      round_id: newRound.id,
+                      player_id: player.id,
+                      cards: playerCards,
+                    });
+                  }
+                  
+                  await supabase.from('player_cards').insert(playerCardInserts);
+                  
+                  // Update game
+                  await supabase
+                    .from('games')
+                    .update({
+                      current_round: newRoundNumber,
+                      awaiting_next_round: false,
+                      all_decisions_in: false,
+                    })
+                    .eq('id', game.id);
+                  
+                  // Reset player decisions
+                  await supabase
+                    .from('players')
+                    .update({ current_decision: null, decision_locked: false })
+                    .eq('game_id', game.id)
+                    .eq('ante_decision', 'ante_up');
+                  
+                  actionsTaken.push(`Watchdog: Started Holm round ${newRoundNumber} with ${activePlayers.length} players`);
+                }
+              }
+            }
+          }
+        }
+
+        // ============= ALL DECISIONS IN - SHOWDOWN =============
+        if ((game.status === 'in_progress' || game.status === 'betting') && game.all_decisions_in === true) {
+          console.log('[CRON-ENFORCE] Processing showdown for game:', game.id);
+          
+          const { data: currentRound } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('game_id', game.id)
+            .eq('round_number', game.current_round ?? 0)
+            .maybeSingle();
+          
+          if (currentRound && currentRound.status === 'betting') {
+            const { data: players } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', game.id);
+            
+            const stayedPlayers = players?.filter((p: any) => 
+              p.status === 'active' && 
+              !p.sitting_out && 
+              p.ante_decision === 'ante_up' && 
+              p.current_decision === 'stay'
+            ) || [];
+            
+            const foldedPlayers = players?.filter((p: any) => 
+              p.status === 'active' && 
+              !p.sitting_out && 
+              p.ante_decision === 'ante_up' && 
+              p.current_decision === 'fold'
+            ) || [];
+            
+            console.log('[CRON-ENFORCE] Showdown: stayers=', stayedPlayers.length, 'folders=', foldedPlayers.length);
+            
+            if (stayedPlayers.length === 0) {
+              // Everyone folded - apply pussy tax if enabled
+              const pussyTaxEnabled = game.pussy_tax_enabled;
+              const pussyTaxValue = game.pussy_tax_value || 0;
+              
+              let totalTaxCollected = 0;
+              const playerChipChanges: Record<string, number> = {};
+              
+              if (pussyTaxEnabled && pussyTaxValue > 0) {
+                for (const player of foldedPlayers) {
+                  await supabase.rpc('decrement_player_chips', {
+                    player_ids: [player.id],
+                    amount: pussyTaxValue
+                  });
+                  totalTaxCollected += pussyTaxValue;
+                  playerChipChanges[player.id] = -pussyTaxValue;
+                }
+              }
+              
+              const newPot = (game.pot || 0) + totalTaxCollected;
+              
+              // Record result
+              await supabase.from('game_results').insert({
+                game_id: game.id,
+                hand_number: (game.total_hands || 0) + 1,
+                winner_player_id: null,
+                winner_username: null,
+                pot_won: 0,
+                winning_hand_description: pussyTaxEnabled ? `Everyone folded! Pussy Tax: $${totalTaxCollected}` : 'Everyone folded!',
+                is_chopped: false,
+                player_chip_changes: playerChipChanges,
+                game_type: game.game_type,
+              });
+              
+              await supabase
+                .from('games')
+                .update({
+                  pot: newPot,
+                  last_round_result: totalTaxCollected > 0 ? 'Pussy Tax!' : 'Everyone folded!',
+                  awaiting_next_round: true,
+                  all_decisions_in: false,
+                  total_hands: (game.total_hands || 0) + 1,
+                })
+                .eq('id', game.id);
+              
+              await supabase
+                .from('rounds')
+                .update({ status: 'completed' })
+                .eq('id', currentRound.id);
+              
+              actionsTaken.push(`Showdown: Everyone folded, pussy tax collected: ${totalTaxCollected}`);
+            } else if (stayedPlayers.length >= 1) {
+              // Run showdown
+              const communityCards: Card[] = ((currentRound.community_cards as any[]) || []).map((c: any) => ({
+                suit: (c.suit || c.Suit) as Card['suit'],
+                rank: String(c.rank || c.Rank).toUpperCase()
+              }));
+              
+              const { data: allPlayerCards } = await supabase
+                .from('player_cards')
+                .select('*')
+                .eq('round_id', currentRound.id);
+              
+              const roundPot = currentRound.pot || game.pot || 0;
+              
+              if (stayedPlayers.length === 1) {
+                // Single stayer vs Chucky
+                const player = stayedPlayers[0];
+                const playerCardsRow = allPlayerCards?.find((pc: any) => pc.player_id === player.id);
+                const playerCards: Card[] = ((playerCardsRow?.cards as any[]) || []).map((c: any) => ({
+                  suit: (c.suit || c.Suit) as Card['suit'],
+                  rank: String(c.rank || c.Rank).toUpperCase()
+                }));
+                
+                // Deal Chucky's cards
+                const usedCards = new Set<string>();
+                communityCards.forEach(c => usedCards.add(`${c.suit}-${c.rank}`));
+                (allPlayerCards || []).forEach((pc: any) => {
+                  ((pc.cards as any[]) || []).forEach((c: any) => {
+                    usedCards.add(`${(c.suit || c.Suit)}-${String(c.rank || c.Rank).toUpperCase()}`);
+                  });
+                });
+                
+                const fullDeck = createDeck();
+                const availableCards = fullDeck.filter(c => !usedCards.has(`${c.suit}-${c.rank}`));
+                const shuffledAvailable = shuffleDeck(availableCards);
+                const chuckyCardCount = game.chucky_cards || 4;
+                const chuckyCards = shuffledAvailable.slice(0, chuckyCardCount);
+                
+                await supabase
+                  .from('rounds')
+                  .update({
+                    chucky_cards: chuckyCards as any,
+                    chucky_active: true,
+                    chucky_cards_revealed: chuckyCardCount,
+                    community_cards_revealed: 4,
+                  })
+                  .eq('id', currentRound.id);
+                
+                const playerAllCards = [...playerCards, ...communityCards];
+                const chuckyAllCards = [...chuckyCards, ...communityCards];
+                
+                const playerEval = evaluateHolmHand(playerAllCards);
+                const chuckyEval = evaluateHolmHand(chuckyAllCards);
+                
+                const playerWins = playerEval.value > chuckyEval.value;
+                
+                if (playerWins) {
+                  await supabase
+                    .from('players')
+                    .update({ chips: player.chips + roundPot })
+                    .eq('id', player.id);
+                  
+                  await supabase.from('game_results').insert({
+                    game_id: game.id,
+                    hand_number: (game.total_hands || 0) + 1,
+                    winner_player_id: player.id,
+                    pot_won: roundPot,
+                    winning_hand_description: `Beat Chucky with ${playerEval.rank}`,
+                    is_chopped: false,
+                    player_chip_changes: { [player.id]: roundPot },
+                    game_type: game.game_type,
+                  });
+                  
+                  await supabase
+                    .from('players')
+                    .update({ current_decision: null, decision_locked: false, ante_decision: null })
+                    .eq('game_id', game.id);
+                  
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'game_over',
+                      game_over_at: nowIso,
+                      pot: 0,
+                      awaiting_next_round: false,
+                      all_decisions_in: false,
+                      total_hands: (game.total_hands || 0) + 1,
+                      last_round_result: `Player beat Chucky!`,
+                    })
+                    .eq('id', game.id);
+                  
+                  await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                  
+                  actionsTaken.push(`Showdown: Player beat Chucky with ${playerEval.rank}, won ${roundPot}`);
+                } else {
+                  // Chucky wins
+                  const potMatchAmount = game.pot_max_enabled
+                    ? Math.min(roundPot, game.pot_max_value)
+                    : roundPot;
+                  
+                  await supabase.rpc('decrement_player_chips', {
+                    player_ids: [player.id],
+                    amount: potMatchAmount
+                  });
+                  
+                  const newPot = roundPot + potMatchAmount;
+                  
+                  await supabase
+                    .from('games')
+                    .update({
+                      pot: newPot,
+                      last_round_result: `Chucky wins with ${chuckyEval.rank}!`,
+                      awaiting_next_round: true,
+                      all_decisions_in: false,
+                      total_hands: (game.total_hands || 0) + 1,
+                    })
+                    .eq('id', game.id);
+                  
+                  await supabase.from('rounds').update({ status: 'completed', chucky_active: false }).eq('id', currentRound.id);
+                  
+                  actionsTaken.push(`Showdown: Chucky beat player with ${chuckyEval.rank}, pot now ${newPot}`);
+                }
+              } else {
+                // Multiple stayers - full showdown
+                const playerHands: { player: any; eval: { rank: string; value: number } }[] = [];
+                
+                for (const player of stayedPlayers) {
+                  const playerCardsRow = allPlayerCards?.find((pc: any) => pc.player_id === player.id);
+                  const playerCards: Card[] = ((playerCardsRow?.cards as any[]) || []).map((c: any) => ({
+                    suit: (c.suit || c.Suit) as Card['suit'],
+                    rank: String(c.rank || c.Rank).toUpperCase()
+                  }));
+                  
+                  const allCards = [...playerCards, ...communityCards];
+                  const handEval = evaluateHolmHand(allCards);
+                  
+                  playerHands.push({ player, eval: handEval });
+                }
+                
+                playerHands.sort((a, b) => b.eval.value - a.eval.value);
+                
+                const bestValue = playerHands[0].eval.value;
+                const winners = playerHands.filter(ph => ph.eval.value === bestValue);
+                
+                await supabase
+                  .from('rounds')
+                  .update({ community_cards_revealed: 4, status: 'showdown' })
+                  .eq('id', currentRound.id);
+                
+                if (winners.length === 1) {
+                  const winner = winners[0];
+                  
+                  await supabase
+                    .from('players')
+                    .update({ chips: winner.player.chips + roundPot })
+                    .eq('id', winner.player.id);
+                  
+                  await supabase.from('game_results').insert({
+                    game_id: game.id,
+                    hand_number: (game.total_hands || 0) + 1,
+                    winner_player_id: winner.player.id,
+                    pot_won: roundPot,
+                    winning_hand_description: `${winner.eval.rank}`,
+                    is_chopped: false,
+                    player_chip_changes: { [winner.player.id]: roundPot },
+                    game_type: game.game_type,
+                  });
+                  
+                  await supabase
+                    .from('players')
+                    .update({ current_decision: null, decision_locked: false, ante_decision: null })
+                    .eq('game_id', game.id);
+                  
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'game_over',
+                      game_over_at: nowIso,
+                      pot: 0,
+                      awaiting_next_round: false,
+                      all_decisions_in: false,
+                      total_hands: (game.total_hands || 0) + 1,
+                      last_round_result: `Winner: ${winner.eval.rank}`,
+                    })
+                    .eq('id', game.id);
+                  
+                  await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                  
+                  actionsTaken.push(`Showdown: Single winner with ${winner.eval.rank}, won ${roundPot}`);
+                } else {
+                  // Tie - split pot and game over
+                  const splitAmount = Math.floor(roundPot / winners.length);
+                  const playerChipChanges: Record<string, number> = {};
+                  
+                  for (const winner of winners) {
+                    await supabase
+                      .from('players')
+                      .update({ chips: winner.player.chips + splitAmount })
+                      .eq('id', winner.player.id);
+                    playerChipChanges[winner.player.id] = splitAmount;
+                  }
+                  
+                  await supabase.from('game_results').insert({
+                    game_id: game.id,
+                    hand_number: (game.total_hands || 0) + 1,
+                    winner_player_id: winners[0].player.id,
+                    pot_won: roundPot,
+                    winning_hand_description: `Chopped: ${winners.length}-way split with ${winners[0].eval.rank}`,
+                    is_chopped: true,
+                    player_chip_changes: playerChipChanges,
+                    game_type: game.game_type,
+                  });
+                  
+                  await supabase
+                    .from('players')
+                    .update({ current_decision: null, decision_locked: false, ante_decision: null })
+                    .eq('game_id', game.id);
+                  
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'game_over',
+                      game_over_at: nowIso,
+                      pot: 0,
+                      awaiting_next_round: false,
+                      all_decisions_in: false,
+                      total_hands: (game.total_hands || 0) + 1,
+                      last_round_result: `Chopped: ${winners.length}-way split`,
+                    })
+                    .eq('id', game.id);
+                  
+                  await supabase.from('rounds').update({ status: 'completed' }).eq('id', currentRound.id);
+                  
+                  actionsTaken.push(`Showdown: ${winners.length}-way chop with ${winners[0].eval.rank}`);
+                }
+              }
+            }
+          }
+        }
+
+        // ============= GAME OVER COUNTDOWN =============
+        if (game.status === 'game_over' && game.game_over_at) {
+          const gameOverAt = new Date(game.game_over_at);
+          const gameOverDeadline = new Date(gameOverAt.getTime() + 8000);
+          const staleThreshold = new Date(gameOverAt.getTime() + 15000);
+          
+          if (now > gameOverDeadline && game.pending_session_end) {
+            console.log('[CRON-ENFORCE] game_over with pending_session_end, ending session:', game.id);
+            
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                session_ended_at: game.session_ended_at ?? nowIso,
+                pending_session_end: false,
+                game_over_at: nowIso,
+                config_deadline: null,
+                ante_decision_deadline: null,
+                config_complete: false,
+                awaiting_next_round: false,
+              })
+              .eq('id', game.id);
+            
+            actionsTaken.push('game_over: pending_session_end → session ended');
+          } else if (now > staleThreshold && !game.pending_session_end) {
+            console.log('[CRON-ENFORCE] game_over stale (>15s), evaluating:', game.id);
+            
+            const { data: allPlayers } = await supabase
+              .from('players')
+              .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, auto_fold, status')
+              .eq('game_id', game.id)
+              .order('position');
+            
+            if (allPlayers) {
+              // Evaluate player states
+              for (const player of allPlayers) {
+                if (player.stand_up_next_hand) {
+                  if (player.is_bot) {
+                    await supabase.from('players').delete().eq('id', player.id);
+                  } else {
+                    await supabase
+                      .from('players')
+                      .update({ sitting_out: true, stand_up_next_hand: false, waiting: false })
+                      .eq('id', player.id);
+                  }
+                  continue;
+                }
+                
+                if (player.sit_out_next_hand) {
+                  await supabase
+                    .from('players')
+                    .update({ sitting_out: true, sit_out_next_hand: false, waiting: false })
+                    .eq('id', player.id);
+                  continue;
+                }
+                
+                if (player.auto_fold) {
+                  await supabase
+                    .from('players')
+                    .update({ sitting_out: true, waiting: false })
+                    .eq('id', player.id);
+                  continue;
+                }
+                
+                if (player.waiting && !player.sitting_out) {
+                  await supabase
+                    .from('players')
+                    .update({ sitting_out: false, waiting: false })
+                    .eq('id', player.id);
+                }
+              }
+              
+              // Re-fetch and decide
+              const { data: freshPlayers } = await supabase
+                .from('players')
+                .select('id, sitting_out, is_bot, status, position')
+                .eq('game_id', game.id);
+              
+              const activeHumans = (freshPlayers || []).filter((p: any) => !p.sitting_out && p.status !== 'observer' && !p.is_bot);
+              
+              const { data: gameDefaults } = await supabase
+                .from('game_defaults')
+                .select('allow_bot_dealers')
+                .eq('game_type', 'holm')
+                .maybeSingle();
+              
+              const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
+              
+              const eligibleDealers = (freshPlayers || []).filter((p: any) =>
+                !p.sitting_out && p.status !== 'observer' && (allowBotDealers || !p.is_bot) && p.position !== null
+              );
+              
+              if (activeHumans.length === 0) {
+                const hasHistory = (game.total_hands || 0) > 0;
+                
+                if (hasHistory) {
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'session_ended',
+                      session_ended_at: nowIso,
+                      pending_session_end: false,
+                      game_over_at: nowIso,
+                      config_deadline: null,
+                      ante_decision_deadline: null,
+                      config_complete: false,
+                      awaiting_next_round: false,
+                    })
+                    .eq('id', game.id);
+                  actionsTaken.push('game_over stale: No active humans, session ended');
+                } else {
+                  // Delete empty session
+                  const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
+                  const roundIds = (roundRows ?? []).map((r: any) => r.id);
+                  if (roundIds.length > 0) {
+                    await supabase.from('player_cards').delete().in('round_id', roundIds);
+                    await supabase.from('player_actions').delete().in('round_id', roundIds);
+                  }
+                  await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
+                  await supabase.from('chat_messages').delete().eq('game_id', game.id);
+                  await supabase.from('rounds').delete().eq('game_id', game.id);
+                  await supabase.from('players').delete().eq('game_id', game.id);
+                  await supabase.from('games').delete().eq('id', game.id);
+                  actionsTaken.push('game_over stale: No humans, no history - deleted');
+                }
+              } else if (eligibleDealers.length === 0) {
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'session_ended',
+                    session_ended_at: nowIso,
+                    pending_session_end: false,
+                    game_over_at: nowIso,
+                    config_deadline: null,
+                    ante_decision_deadline: null,
+                    config_complete: false,
+                    awaiting_next_round: false,
+                  })
+                  .eq('id', game.id);
+                actionsTaken.push('game_over stale: No eligible dealers, session ended');
+              } else {
+                // Rotate dealer and start next hand
+                const eligiblePositions = eligibleDealers.map((p: any) => p.position as number).sort((a, b) => a - b);
+                const currentDealerPos = game.dealer_position || 0;
+                const currentIndex = eligiblePositions.indexOf(currentDealerPos);
+                
+                const nextDealerPos = currentIndex === -1
+                  ? eligiblePositions[0]
+                  : eligiblePositions[(currentIndex + 1) % eligiblePositions.length];
+                
+                const configDeadline = new Date(Date.now() + 60 * 1000).toISOString();
+                
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'configuring',
+                    dealer_position: nextDealerPos,
+                    config_deadline: configDeadline,
+                    game_over_at: null,
+                    awaiting_next_round: false,
+                    config_complete: false,
+                  })
+                  .eq('id', game.id);
+                
+                await supabase
+                  .from('players')
+                  .update({
+                    ante_decision: null,
+                    current_decision: null,
+                    decision_locked: false,
+                    auto_fold: false,
+                    pre_fold: false,
+                    pre_stay: false,
+                  })
+                  .eq('game_id', game.id)
+                  .eq('sitting_out', false);
+                
+                actionsTaken.push(`game_over stale: Rotated dealer to position ${nextDealerPos}`);
+              }
+            }
+          }
+        }
+
+        // Record result
+        results.push({
+          gameId: game.id,
+          status: game.status,
+          result: actionsTaken.length > 0 ? actionsTaken.join('; ') : 'no_action_needed',
+        });
+
+      } catch (gameErr) {
+        console.error('[CRON-ENFORCE] Error processing game', game.id, ':', gameErr);
+        results.push({ gameId: game.id, status: game.status, result: `error: ${gameErr}` });
       }
     }
 
