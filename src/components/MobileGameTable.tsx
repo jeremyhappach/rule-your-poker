@@ -4647,7 +4647,7 @@ export const MobileGameTable = ({
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? "min-h-[150px]" // Bigger reserve for larger Holm cards
+                  ? "min-h-[130px]" // Tighter reserve for Holm cards on mobile
                   : (currentRound === 1
                       ? "min-h-[120px]" // Reduced container height for R1 to move buttons up
                       : currentRound === 2
@@ -4657,7 +4657,7 @@ export const MobileGameTable = ({
               return (
                 <div className={cn(
                   "flex flex-col items-center",
-                  gameType !== "holm-game" ? "gap-0" : "gap-2",
+                  gameType !== "holm-game" ? "gap-0" : "gap-0",
                 )}>
                   {/* Show cards button for 3-5-7 winner */}
                   {isWinner357InAnimation ? (
