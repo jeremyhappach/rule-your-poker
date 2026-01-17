@@ -217,20 +217,33 @@ export function HorsesMobileCardsTab({
       </div>
 
       {/* Action buttons (always in same position below dice area) */}
-      <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
+      {/* TABLET: Larger buttons with more height/width */}
+      <div className={cn(
+        "flex items-center justify-center",
+        isTablet || isDesktop ? "min-h-[64px] mt-2 mb-2" : "min-h-[36px] mt-1 mb-1"
+      )}>
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           horses.localHand.rollsRemaining > 0 ? (
-            <div className="flex items-center justify-center gap-2">
+            <div className={cn(
+              "flex items-center justify-center",
+              isTablet || isDesktop ? "gap-4" : "gap-2"
+            )}>
               {/* Left spacer keeps the Roll button perfectly centered even when Lock appears */}
-              <div className="h-9 w-9" aria-hidden="true" />
+              <div className={cn(isTablet || isDesktop ? "h-14 w-14" : "h-9 w-9")} aria-hidden="true" />
 
               <Button
                 size="default"
                 onClick={handleRollClick}
                 disabled={rolling}
-                className="text-sm font-bold h-9 px-6"
+                className={cn(
+                  "font-bold",
+                  isTablet || isDesktop ? "text-xl h-14 px-10" : "text-sm h-9 px-6"
+                )}
               >
-                <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
+                <RotateCcw className={cn(
+                  "mr-2 animate-slow-pulse-red",
+                  isTablet || isDesktop ? "w-6 h-6" : "w-4 h-4"
+                )} />
                 Roll {rollNumber}
               </Button>
 
@@ -239,14 +252,14 @@ export function HorsesMobileCardsTab({
                   variant="outline"
                   size="icon"
                   onClick={horses.handleLockIn}
-                  className="h-9 w-9"
+                  className={cn(isTablet || isDesktop ? "h-14 w-14" : "h-9 w-9")}
                   title="Lock In"
                 >
-                  <Lock className="w-4 h-4" />
+                  <Lock className={cn(isTablet || isDesktop ? "w-6 h-6" : "w-4 h-4")} />
                 </Button>
               ) : (
                 // Right placeholder keeps layout stable on roll 1
-                <div className="h-9 w-9" aria-hidden="true" />
+                <div className={cn(isTablet || isDesktop ? "h-14 w-14" : "h-9 w-9")} aria-hidden="true" />
               )}
             </div>
           ) : (

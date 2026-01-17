@@ -438,8 +438,8 @@ export function DiceTableLayout({
     lg: isTablet ? 92 : 72,
   };
   const dieWidth = dieSizes[effectiveSize];
-  // TABLET: Less gap in held row (was 16, now 8) to reduce excessive spacing
-  const gap = isTablet ? 8 : 6;
+  // TABLET: Minimal gap in held row - almost no padding
+  const gap = isTablet ? 2 : 6;
   
   // For SCC games, use display order if available
   let orderedDice: { die: HorsesDieType | SCCDieType; originalIndex: number }[] = [];
@@ -550,7 +550,7 @@ export function DiceTableLayout({
                 isRolling={false}
                 canToggle={false}
                 onToggle={() => onToggleHold?.(item.originalIndex)}
-                size={size}
+                size={effectiveSize}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
@@ -584,7 +584,7 @@ export function DiceTableLayout({
                 isRolling={false}
                 canToggle={false}
                 onToggle={() => onToggleHold?.(item.originalIndex)}
-                size={size}
+                size={effectiveSize}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
@@ -630,7 +630,7 @@ export function DiceTableLayout({
                 isRolling={false}
                 canToggle={false}
                 onToggle={() => onToggleHold?.(item.originalIndex)}
-                size={size}
+                size={effectiveSize}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
@@ -679,7 +679,7 @@ export function DiceTableLayout({
                 isRolling={false}
                 canToggle={false}
                 onToggle={() => onToggleHold?.(item.originalIndex)}
-                size={size}
+                size={effectiveSize}
                 showWildHighlight={showWildHighlight && !isSCC}
                 isSCCDie={isSCCDie}
                 isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}

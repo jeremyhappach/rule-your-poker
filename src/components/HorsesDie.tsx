@@ -61,12 +61,13 @@ export function HorsesDie({
   };
 
   // Pip sizes - readable at all sizes including xs for cargo display
+  // NOTE: xl uses explicit pixel values since Tailwind doesn't have w-4.5 etc.
   const dotSizeClasses = {
     xs: "w-1.5 h-1.5",
     sm: "w-1.5 h-1.5",
     md: "w-2.5 h-2.5",
     lg: "w-3.5 h-3.5",
-    xl: "w-4.5 h-4.5",  // TABLET: Larger pips
+    xl: "w-[18px] h-[18px]",  // TABLET: Larger pips (~4.5 = 18px)
   };
 
   const dotSize = dotSizeClasses[size];
@@ -76,7 +77,7 @@ export function HorsesDie({
     sm: "w-2 h-2",
     md: "w-3 h-3",
     lg: "w-4 h-4",
-    xl: "w-5 h-5",  // TABLET: Larger center pip
+    xl: "w-[20px] h-[20px]",  // TABLET: Larger center pip (~5 = 20px)
   };
   const largeDotSize = largeDotSizeClasses[size];
 
