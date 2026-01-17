@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
+import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { DiceDebugOverlay } from "./DiceDebugOverlay";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { ValueChangeFlash } from "./ValueChangeFlash";
@@ -137,8 +138,25 @@ export function HorsesMobileCardsTab({
   const hasCompleted = !!horses.myState?.isComplete;
   const myResult = horses.myState?.result ?? null;
 
-  // Show dice when it's my turn and I've rolled at least once
-  const showMyDice = horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3;
+  // Check if we're in a completed turn hold period for the current player
+  const isInMyCompletedHold = horses.completedTurnHold && 
+    horses.completedTurnHold.playerId === horses.myPlayer?.id &&
+    Date.now() < horses.completedTurnHold.expiresAt;
+  
+  // Get hold dice if in hold period
+  const holdDice = isInMyCompletedHold ? horses.completedTurnHold?.dice : null;
+  const holdResult = isInMyCompletedHold ? horses.completedTurnHold?.result : null;
+
+  // Show dice when it's my turn and I've rolled at least once, OR during hold period
+  const showMyDice = (horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3);
+  
+  // Show completed hold dice (after locking in, before transitioning to badge)
+  const showHoldDice = isInMyCompletedHold && holdDice && holdDice.length > 0;
+  
+  // Check if hold period just started showing result badge (last 1.5 seconds of hold)
+  const showHoldResultBadge = isInMyCompletedHold && holdResult && 
+    horses.completedTurnHold && 
+    (horses.completedTurnHold.expiresAt - Date.now() < 1500);
 
   // Show "rolling against" when it's my turn and there's already a winning hand to beat
   const showRollingAgainst = horses.isMyTurn && horses.gamePhase === "playing" && horses.currentWinningResult;
@@ -180,7 +198,42 @@ export function HorsesMobileCardsTab({
         "flex items-center justify-center mb-1",
         isTablet || isDesktop ? "gap-2 min-h-[100px]" : "gap-1 min-h-[60px]"
       )}>
-        {showMyDice ? (
+        {/* Show hold result badge in last 1.5 seconds of hold period */}
+        {showHoldResultBadge && holdResult ? (
+          <div className="flex flex-col items-center gap-2 animate-in fade-in duration-300">
+            <Badge 
+              variant="secondary" 
+              className={cn(
+                "font-bold",
+                isTablet || isDesktop ? "text-xl px-6 py-3" : "text-lg px-4 py-2",
+                horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '') && "bg-green-600 text-white"
+              )}
+            >
+              {gameType === 'horses' ? (
+                <HorsesHandResultDisplay 
+                  description={holdResult.description} 
+                  isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
+                  size={isTablet || isDesktop ? "md" : "sm"}
+                />
+              ) : (
+                holdResult.description
+              )}
+            </Badge>
+          </div>
+        ) : showHoldDice && holdDice ? (
+          // Show hold dice during first 1.5 seconds of hold period (no flicker)
+          holdDice.map((die: any, idx: number) => (
+            <HorsesDie
+              key={idx}
+              value={die.value}
+              isHeld={false}
+              isRolling={false}
+              canToggle={false}
+              size={isTablet || isDesktop ? "xl" : "lg"}
+              showWildHighlight={!isSCC}
+            />
+          ))
+        ) : showMyDice ? (
           horses.localHand.dice.map((die, idx) => {
             // Determine if this die was held at the START of the current roll
             const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? (die as any).isHeld;
