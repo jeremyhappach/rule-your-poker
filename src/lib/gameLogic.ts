@@ -170,18 +170,13 @@ export async function recordGameResult(
 export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Starting round', roundNumber, 'for game', gameId);
   
-  // PARALLEL: Fetch game config and players simultaneously
-  const [gameConfigResult, playersResult, gameDefaultsResult] = await Promise.all([
+  // PARALLEL: Fetch game config + defaults (players are fetched AFTER we reset statuses)
+  const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
       .select('ante_amount, leg_value, status, current_round, total_hands, pot')
       .eq('id', gameId)
       .single(),
-    supabase
-      .from('players')
-      .select('*')
-      .eq('game_id', gameId)
-      .order('position'),
     supabase
       .from('game_defaults')
       .select('decision_timer_seconds')
@@ -190,10 +185,8 @@ export async function startRound(gameId: string, roundNumber: number) {
   ]);
   
   const gameConfig = gameConfigResult.data;
-  const players = playersResult.data;
-  const playersError = playersResult.error;
   const gameDefaults = gameDefaultsResult.data;
-  
+
   // Prevent starting if already in progress with this round
   if (gameConfig?.status === 'in_progress' && gameConfig?.current_round === roundNumber) {
     console.log('[START_ROUND] Round', roundNumber, 'already in progress, skipping');
@@ -230,50 +223,44 @@ export async function startRound(gameId: string, roundNumber: number) {
     })();
   }
 
-  // Reset all players to active for the new round - MUST await to ensure players are reset before dealing cards
+  // Reset all players to active for the new round (must happen BEFORE we decide who gets dealt in later rounds)
   const { error: resetError } = await supabase
     .from('players')
-    .update({ 
+    .update({
       current_decision: null,
       decision_locked: false,
       status: 'active'
     })
     .eq('game_id', gameId);
-  
+
   if (resetError) {
     console.error('[START_ROUND] Failed to reset players:', resetError);
   }
 
-  // CRITICAL FIX: For Round 1 (including re-ante), refetch players AFTER the reset
-  // The initial fetch at the top of this function has stale status data from the previous hand
-  let currentPlayers = players;
-  if (roundNumber === 1) {
-    const { data: freshPlayers, error: refetchError } = await supabase
-      .from('players')
-      .select('*')
-      .eq('game_id', gameId)
-      .order('position');
-    
-    if (refetchError) {
-      console.error('[START_ROUND] Failed to refetch players after reset:', refetchError);
-    } else if (freshPlayers) {
-      currentPlayers = freshPlayers;
-      console.log('[START_ROUND] Refetched players after reset, count:', freshPlayers.length);
-    }
-  }
+  // CRITICAL: Fetch players AFTER the reset so we don't use stale fold/decision state (fixes missing cards in rounds 1-3)
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('*')
+    .eq('game_id', gameId)
+    .order('position');
 
-  if (playersError && !currentPlayers) {
-    console.error('Error fetching players:', playersError);
+  if (playersError) {
+    console.error('[START_ROUND] Error fetching players:', playersError);
     throw new Error(`Failed to fetch players: ${playersError.message}`);
   }
-  
-  if (!currentPlayers || currentPlayers.length === 0) {
-    throw new Error('No active players found in game');
+
+  if (!players || players.length === 0) {
+    throw new Error('No players found in game');
   }
 
-  // For all rounds, filter to non-sitting-out players with active status
-  // After the reset above, all non-sitting-out players should have status='active'
-  const activePlayers = currentPlayers.filter(p => p.status === 'active' && !p.sitting_out);
+  // Deal to all non-sitting-out players. Status can be stale if reset failed; sitting_out is the true exclusion.
+  const activePlayers = players.filter(p => !p.sitting_out);
+  console.log('[START_ROUND] Players eligible for dealing:', {
+    roundNumber,
+    totalPlayers: players.length,
+    activeCount: activePlayers.length,
+    active: activePlayers.map(p => ({ id: p.id, position: p.position, status: p.status, sitting_out: p.sitting_out }))
+  });
   let initialPot = 0;
   
   // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
