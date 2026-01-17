@@ -1654,9 +1654,16 @@ export function useHorsesMobileController({
   const rawFeltDice = useMemo(() => {
     const logPrefix = `[FELT_DICE_DEBUG ${isSCC ? 'SCC' : 'HORSES'}]`;
     
-    // If we have a completed turn hold that's still valid, use it to prevent flicker
+    // If we have a completed turn hold for the CURRENT USER, don't show on felt
+    // (their dice should stay in their active player area, not on the felt)
     if (completedTurnHold && Date.now() < completedTurnHold.expiresAt) {
-      console.log(`${logPrefix} returning completedTurnHold: playerId=${completedTurnHold.playerId}`);
+      // If this is the current user's hold, return null - dice shown in player area instead
+      if (completedTurnHold.playerId === myPlayer?.id) {
+        console.log(`${logPrefix} returning null for my completed hold - shown in player area`);
+        return null;
+      }
+      // For OTHER players' completed holds, show their dice on felt
+      console.log(`${logPrefix} returning completedTurnHold for other player: playerId=${completedTurnHold.playerId}`);
       return {
         playerId: completedTurnHold.playerId,
         dice: completedTurnHold.dice,
@@ -1937,5 +1944,7 @@ export function useHorsesMobileController({
     showMidnightAnimation,
     midnightPlayerName,
     handleMidnightAnimationComplete,
+    // Completed turn hold state (for showing dice before transitioning to badge)
+    completedTurnHold,
   };
 }
