@@ -2964,10 +2964,20 @@ export const MobileGameTable = ({
     }}>
 
         {/* Table felt background - wide horizontal ellipse */}
-        <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner" style={{
+        <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden" style={{
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
-      }} />
+      }}>
+          {/* Bridge overlay on felt during waiting phase */}
+          {isWaitingPhase && (
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-15 pointer-events-none"
+              style={{
+                backgroundImage: `url('/lovable-uploads/7ca746e0-8bcb-4dcd-9d87-407f9457deb8.png')`,
+              }}
+            />
+          )}
+        </div>
 
 
 
