@@ -417,7 +417,8 @@ export const MobileGameTable = ({
     getTableColors,
     getFourColorSuit,
     getCardBackColors,
-    getEffectiveDeckColorMode
+    getEffectiveDeckColorMode,
+    showBridgeOnWaiting
   } = useVisualPreferences();
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
@@ -2970,7 +2971,7 @@ export const MobileGameTable = ({
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }}>
           {/* Bridge overlay on felt during waiting phase - visible, moved up, clipped to table */}
-          {isWaitingPhase && (
+          {isWaitingPhase && showBridgeOnWaiting && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
