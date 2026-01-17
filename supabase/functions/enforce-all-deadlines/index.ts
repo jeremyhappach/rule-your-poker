@@ -645,7 +645,7 @@ serve(async (req) => {
                 .from('games')
                 .update({
                   pot: newPot,
-                  last_round_result: totalTaxCollected > 0 ? 'Pussy Tax!' : 'Everyone folded!',
+                  last_round_result: totalTaxCollected > 0 ? 'Pussy Tax' : 'Everyone folded!',
                   awaiting_next_round: true,
                   all_decisions_in: false,
                   total_hands: (game.total_hands || 0) + 1,
