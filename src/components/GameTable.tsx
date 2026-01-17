@@ -174,7 +174,7 @@ export const GameTable = ({
   onHolmPreFoldChange,
   onHolmPreStayChange,
 }: GameTableProps) => {
-  const { getTableColors, showBridgeOnWaiting } = useVisualPreferences();
+  const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
   
   // DEBUG: Log community cards prop to diagnose rendering issues
@@ -974,8 +974,8 @@ export const GameTable = ({
         <div className="absolute inset-0 rounded-[50%] shadow-inner overflow-hidden" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }}>
-          {/* Bridge overlay on felt during waiting phase - visible, moved up, clipped to table */}
-          {isWaitingPhase && showBridgeOnWaiting && (
+          {/* Bridge overlay on felt during waiting phase - shown when bridge felt is selected */}
+          {isWaitingPhase && tableColors.showBridge && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
