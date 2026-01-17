@@ -19,6 +19,7 @@ import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils"
 import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { formatChipValue } from "@/lib/utils";
+import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useState, useMemo, useLayoutEffect, useEffect, useRef, useCallback } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { supabase } from "@/integrations/supabase/client";
@@ -970,16 +971,27 @@ export const GameTable = ({
         }}
       >
         {/* Table edge wood effect */}
-        <div className="absolute inset-0 rounded-[50%] shadow-inner" style={{
+        <div className="absolute inset-0 rounded-[50%] shadow-inner overflow-hidden" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
-        }} />
-        
-        {/* Game name on felt */}
-        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-          <span className="text-white/30 font-bold text-sm sm:text-base md:text-lg uppercase tracking-wider">
-            {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : '3-5-7'}
-          </span>
+        }}>
+          {/* Bridge overlay on felt during waiting phase */}
+          {isWaitingPhase && (
+            <img 
+              src={peoriaBridgeMobile}
+              alt="I-74 Bridge"
+              className="absolute inset-0 w-full h-full object-cover opacity-15 pointer-events-none"
+            />
+          )}
         </div>
+        
+        {/* Game name on felt - hide during waiting phase */}
+        {!isWaitingPhase && (
+          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
+            <span className="text-white/30 font-bold text-sm sm:text-base md:text-lg uppercase tracking-wider">
+              {gameType === 'holm-game' ? 'Holm' : gameType === 'horses' ? 'Horses' : '3-5-7'}
+            </span>
+          </div>
+        )}
         
         <div className="relative h-full">
           {/* Chopped Animation - when Chucky beats you */}

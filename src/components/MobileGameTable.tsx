@@ -40,6 +40,7 @@ import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
+import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import React, {
   useState,
   useEffect,
@@ -2970,11 +2971,10 @@ export const MobileGameTable = ({
       }}>
           {/* Bridge overlay on felt during waiting phase */}
           {isWaitingPhase && (
-            <div 
-              className="absolute inset-0 bg-cover bg-center opacity-15 pointer-events-none"
-              style={{
-                backgroundImage: `url('/lovable-uploads/7ca746e0-8bcb-4dcd-9d87-407f9457deb8.png')`,
-              }}
+            <img 
+              src={peoriaBridgeMobile}
+              alt="I-74 Bridge"
+              className="absolute inset-0 w-full h-full object-cover opacity-15 pointer-events-none"
             />
           )}
         </div>
