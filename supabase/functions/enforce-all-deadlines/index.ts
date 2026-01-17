@@ -262,11 +262,12 @@ serve(async (req) => {
         if (game.status === 'in_progress' || game.status === 'betting' || game.status === 'ante_decision') {
           const { data: allPlayers } = await supabase
             .from('players')
-            .select('id, user_id, is_bot, sitting_out, status, auto_fold')
+            .select('id, user_id, is_bot, sitting_out, status, auto_fold, chips')
             .eq('game_id', game.id);
           
           const presentHumans = (allPlayers || []).filter((p: any) => !p.is_bot && !p.sitting_out);
           const presentBots = (allPlayers || []).filter((p: any) => p.is_bot && !p.sitting_out);
+          const activePlayers = (allPlayers || []).filter((p: any) => !p.sitting_out);
           
           if (presentHumans.length === 0 && presentBots.length > 0) {
             console.log('[CRON-ENFORCE] ⚠️ BOT-ONLY GAME DETECTED, ending session:', game.id);
@@ -287,6 +288,73 @@ serve(async (req) => {
             actionsTaken.push('Bot-only game: All humans sitting_out, session ended');
             results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
             continue;
+          }
+          
+          // ============= ALL AUTO-FOLD CHECK =============
+          // Check if all active players are in auto_fold mode - this would cause infinite pussy tax
+          if (activePlayers.length >= 2) {
+            const allInAutoFold = activePlayers.every((p: any) => p.auto_fold === true);
+            
+            if (allInAutoFold) {
+              console.log('[CRON-ENFORCE] ⚠️ ALL PLAYERS IN AUTO-FOLD DETECTED:', game.id);
+              
+              const isRealMoney = game.real_money === true;
+              
+              if (isRealMoney) {
+                // Real money game: Pause the session
+                console.log('[CRON-ENFORCE] Real money game - PAUSING session');
+                
+                await supabase
+                  .from('games')
+                  .update({
+                    is_paused: true,
+                    config_deadline: null,
+                    ante_decision_deadline: null,
+                  })
+                  .eq('id', game.id);
+                
+                actionsTaken.push('All players in auto-fold: Real money game paused');
+              } else {
+                // Non-real money game: Split pot evenly and end session
+                console.log('[CRON-ENFORCE] Play money game - Splitting pot and ending session');
+                
+                const currentPot = game.pot || 0;
+                
+                if (currentPot > 0 && activePlayers.length > 0) {
+                  // Calculate split amount (integer division, remainder stays in void)
+                  const splitAmount = Math.floor(currentPot / activePlayers.length);
+                  
+                  // Update each player's chips
+                  for (const player of activePlayers) {
+                    await supabase
+                      .from('players')
+                      .update({ chips: (player.chips || 0) + splitAmount })
+                      .eq('id', player.id);
+                  }
+                  
+                  actionsTaken.push(`Pot of $${currentPot} split evenly: $${splitAmount} to each of ${activePlayers.length} players`);
+                }
+                
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'session_ended',
+                    pending_session_end: false,
+                    session_ended_at: nowIso,
+                    game_over_at: nowIso,
+                    pot: 0,
+                    config_deadline: null,
+                    ante_decision_deadline: null,
+                    awaiting_next_round: false,
+                  })
+                  .eq('id', game.id);
+                
+                actionsTaken.push('All players in auto-fold: Play money game - pot split and session ended');
+              }
+              
+              results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+              continue;
+            }
           }
         }
 
