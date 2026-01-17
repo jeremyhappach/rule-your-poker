@@ -375,8 +375,7 @@ serve(async (req) => {
 
     // ============= 3. ENFORCE DECISION DEADLINE (stay/fold) =============
     if (game.status === 'in_progress' || game.status === 'betting') {
-      // Only handle Holm turn-based decisions here
-      // Dice games (SCC, Horses) and game progression handled by cron
+      // ============= 3A. HOLM GAME TURN TIMEOUTS =============
       if (game.game_type === 'holm-game') {
         const { data: overdueRounds } = await supabase
           .from('rounds')
@@ -430,9 +429,6 @@ serve(async (req) => {
                     .select();
 
                   if (!humanUpdateResult || humanUpdateResult.length === 0) {
-                    // Another client already processed this player.
-                    // IMPORTANT: Do NOT return early — we may still need to advance the turn
-                    // if the other client only locked the player but didn't update the round.
                     console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
                     actionsTaken.push('Skipped - player already processed');
                   } else {
@@ -469,8 +465,6 @@ serve(async (req) => {
                     .maybeSingle();
 
                   const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
-                  // CRITICAL: Use current server time (Date.now()) plus full timer for the NEW deadline
-                  // This ensures the next player gets a full timer from THIS moment
                   const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
                   console.log('[ENFORCE-CLIENT] Setting new deadline for next player:', {
                     nextPosition: nextPlayer.position,
@@ -479,8 +473,6 @@ serve(async (req) => {
                     oldDeadline: currentRound.decision_deadline,
                   });
 
-                  // CRITICAL: Use optimistic locking - only update if the deadline matches what we saw
-                  // This prevents race conditions where multiple clients both try to advance the turn
                   const { data: turnAdvanceResult } = await supabase
                     .from('rounds')
                     .update({
@@ -488,12 +480,10 @@ serve(async (req) => {
                       decision_deadline: newDeadline,
                     })
                     .eq('id', currentRound.id)
-                    .eq('decision_deadline', currentRound.decision_deadline) // Optimistic lock!
+                    .eq('decision_deadline', currentRound.decision_deadline)
                     .select();
 
                   if (!turnAdvanceResult || turnAdvanceResult.length === 0) {
-                    // Another caller likely updated the round between our SELECT and UPDATE.
-                    // IMPORTANT: Do NOT assume the deadline is now valid — re-check and self-heal.
                     console.log('[ENFORCE-CLIENT] Turn advance skipped - deadline was already updated by another client');
 
                     const { data: latestRound, error: latestRoundError } = await supabase
@@ -506,10 +496,6 @@ serve(async (req) => {
                       console.warn('[ENFORCE-CLIENT] Failed to re-fetch round after optimistic lock miss:', latestRoundError);
                     }
 
-                    // If the round is STILL overdue (or has a null deadline), push it forward so the next player
-                    // does not get instantly auto-folded.
-                    // CRITICAL: Use FRESH server time for this comparison, not the stale `nowIso` from request start.
-                    // Otherwise a deadline set 500ms ago by another client would still appear "overdue".
                     const latestDeadline = (latestRound as any)?.decision_deadline as string | null | undefined;
                     const freshNowIso = new Date().toISOString();
                     const isStillOverdue = !latestDeadline || latestDeadline < freshNowIso;
@@ -547,7 +533,6 @@ serve(async (req) => {
                   actionsTaken.push(`Turn advanced to position ${nextPlayer.position}`);
                 } else {
                   // All players decided - set all_decisions_in flag
-                  // (Showdown/hand evaluation handled by cron for bot-only, by client for humans connected)
                   const { data: lockResult } = await supabase
                     .from('games')
                     .update({ all_decisions_in: true })
@@ -558,6 +543,165 @@ serve(async (req) => {
                   if (lockResult && lockResult.length > 0) {
                     actionsTaken.push('All players decided - flagged for showdown');
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // ============= 3B. DICE GAME (HORSES/SCC) TURN TIMEOUTS =============
+      if (game.game_type === 'horses' || game.game_type === 'ship-captain-crew') {
+        // Get the current round
+        const { data: currentRound } = await supabase
+          .from('rounds')
+          .select('*')
+          .eq('game_id', gameId)
+          .order('round_number', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (currentRound) {
+          const horsesState = currentRound.horses_state as any;
+          
+          // Check if there's a turn deadline that has expired
+          if (horsesState?.turnDeadline && horsesState?.gamePhase === 'playing') {
+            const turnDeadline = new Date(horsesState.turnDeadline);
+            
+            if (now > turnDeadline) {
+              console.log('[ENFORCE-CLIENT] 🎲 DICE GAME turn deadline expired', {
+                gameId,
+                gameType: game.game_type,
+                currentPlayer: horsesState.currentTurnPlayerId,
+                turnDeadline: horsesState.turnDeadline,
+              });
+
+              const currentPlayerId = horsesState.currentTurnPlayerId;
+              const turnOrder = (horsesState.turnOrder || []) as string[];
+              const playerStates = horsesState.playerStates || {};
+
+              // Get player info
+              const { data: players } = await supabase
+                .from('players')
+                .select('id, user_id, is_bot, sitting_out, position, profiles(username)')
+                .eq('game_id', gameId);
+
+              const currentPlayer = players?.find((p: any) => p.id === currentPlayerId);
+
+              if (currentPlayer && !currentPlayer.sitting_out) {
+                // Auto-complete the timed-out player's turn with their current dice
+                const currentPlayerState = playerStates[currentPlayerId] || {};
+                
+                // If they haven't rolled yet, give them random dice
+                let finalDice = currentPlayerState.dice || [];
+                if (!finalDice.length || finalDice.every((d: any) => d.value === 0)) {
+                  // Generate random dice for them
+                  finalDice = Array(5).fill(null).map(() => ({
+                    value: Math.floor(Math.random() * 6) + 1,
+                    isHeld: true
+                  }));
+                } else {
+                  // Lock all their current dice
+                  finalDice = finalDice.map((d: any) => ({ ...d, isHeld: true }));
+                }
+
+                // Evaluate the hand
+                const diceValues = finalDice.map((d: any) => d.value);
+                const valueCounts: Record<number, number> = {};
+                diceValues.forEach((v: number) => {
+                  valueCounts[v] = (valueCounts[v] || 0) + 1;
+                });
+
+                let bestOfAKind = 0;
+                let bestValue = 0;
+                for (const [val, count] of Object.entries(valueCounts)) {
+                  const numVal = parseInt(val);
+                  const numCount = count as number;
+                  if (numCount > bestOfAKind || (numCount === bestOfAKind && numVal > bestValue)) {
+                    bestOfAKind = numCount;
+                    bestValue = numVal;
+                  }
+                }
+
+                const result = {
+                  ofAKindCount: bestOfAKind,
+                  highValue: bestValue,
+                  rank: bestOfAKind * 10 + bestValue,
+                  description: `${bestOfAKind} ${bestValue}${bestOfAKind > 1 ? 's' : ''}`
+                };
+
+                // Mark player as complete
+                const updatedPlayerState = {
+                  ...currentPlayerState,
+                  dice: finalDice,
+                  rollsRemaining: 0,
+                  isComplete: true,
+                  result,
+                  heldMaskBeforeComplete: finalDice.map((d: any) => d.isHeld),
+                  heldCountBeforeComplete: finalDice.filter((d: any) => d.isHeld).length,
+                };
+
+                // Find next player in turn order
+                const currentIndex = turnOrder.indexOf(currentPlayerId);
+                let nextPlayerId: string | null = null;
+                let allComplete = true;
+
+                for (let i = 1; i <= turnOrder.length; i++) {
+                  const checkIdx = (currentIndex + i) % turnOrder.length;
+                  const checkId = turnOrder[checkIdx];
+                  const checkState = checkId === currentPlayerId ? updatedPlayerState : playerStates[checkId];
+                  if (!checkState?.isComplete) {
+                    nextPlayerId = checkId;
+                    allComplete = false;
+                    break;
+                  }
+                }
+
+                // Build updated horses state
+                const newPlayerStates = {
+                  ...playerStates,
+                  [currentPlayerId]: updatedPlayerState,
+                };
+
+                let newHorsesState: any;
+                if (allComplete || !nextPlayerId) {
+                  // All players done - mark game phase as complete
+                  newHorsesState = {
+                    ...horsesState,
+                    playerStates: newPlayerStates,
+                    currentTurnPlayerId: null,
+                    turnDeadline: null,
+                    gamePhase: 'complete',
+                  };
+                  actionsTaken.push(`Dice timeout: ${(currentPlayer.profiles as any)?.username || 'Player'} auto-completed, round complete`);
+                } else {
+                  // Move to next player
+                  const nextPlayer = players?.find((p: any) => p.id === nextPlayerId);
+                  const nextDeadline = nextPlayer?.is_bot ? null : new Date(Date.now() + 30000).toISOString();
+                  
+                  newHorsesState = {
+                    ...horsesState,
+                    playerStates: newPlayerStates,
+                    currentTurnPlayerId: nextPlayerId,
+                    turnDeadline: nextDeadline,
+                  };
+                  actionsTaken.push(`Dice timeout: ${(currentPlayer.profiles as any)?.username || 'Player'} auto-completed, advancing to next player`);
+                }
+
+                // Update round with optimistic locking on turnDeadline
+                const { data: updateResult } = await supabase
+                  .from('rounds')
+                  .update({ 
+                    horses_state: newHorsesState,
+                    status: allComplete ? 'completed' : 'betting',
+                  })
+                  .eq('id', currentRound.id)
+                  .eq('horses_state->>turnDeadline', horsesState.turnDeadline)
+                  .select();
+
+                if (!updateResult || updateResult.length === 0) {
+                  console.log('[ENFORCE-CLIENT] Dice turn advance skipped - another client already processed');
+                  actionsTaken.push('Skipped - another client processed dice turn');
                 }
               }
             }

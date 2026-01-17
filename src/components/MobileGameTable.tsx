@@ -2904,16 +2904,20 @@ export const MobileGameTable = ({
           );
         }
       }
-      // For Horses: show the result display as before
-      return (
-        <div className="flex items-center justify-center">
-          <HorsesHandResultDisplay 
-            description={effectiveHorsesResult.description} 
-            isWinning={isHorsesCurrentlyWinning}
-            size="sm"
-          />
-        </div>
-      );
+      // For Horses: show the result display as before (with null safety)
+      if (effectiveHorsesResult?.description) {
+        return (
+          <div className="flex items-center justify-center">
+            <HorsesHandResultDisplay 
+              description={effectiveHorsesResult.description} 
+              isWinning={isHorsesCurrentlyWinning}
+              size="sm"
+            />
+          </div>
+        );
+      }
+      // Fallback if no description available
+      return null;
     })();
     
     // Hide chip stack when player has a horses/dice result

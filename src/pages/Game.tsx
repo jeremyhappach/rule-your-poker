@@ -663,18 +663,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Instead, patch the realtime round payload directly into `game.rounds` so UI/animations start
   // as soon as the realtime message arrives (no debounce/fetch latency).
   const applyRoundRealtimePatch = useCallback((newRound: any) => {
-    const roundId = newRound?.id as string | undefined;
-    if (!roundId) return;
+    try {
+      const roundId = newRound?.id as string | undefined;
+      if (!roundId) return;
 
-    setGame((prev) => {
-      if (!prev?.rounds?.length) return prev;
-      const idx = prev.rounds.findIndex((r) => r.id === roundId);
-      if (idx === -1) return prev;
+      // Validate horses_state has expected structure before applying patch
+      if (newRound.horses_state) {
+        const hs = newRound.horses_state;
+        // If horses_state is malformed (missing turnOrder or playerStates), skip patch
+        if (hs.gamePhase && hs.gamePhase !== 'waiting' && (!hs.turnOrder || !hs.playerStates)) {
+          console.warn('[REALTIME] Skipping malformed horses_state patch', hs);
+          return;
+        }
+      }
 
-      const nextRounds = [...prev.rounds];
-      nextRounds[idx] = { ...nextRounds[idx], ...(newRound as any) };
-      return { ...prev, rounds: nextRounds };
-    });
+      setGame((prev) => {
+        if (!prev?.rounds?.length) return prev;
+        const idx = prev.rounds.findIndex((r) => r.id === roundId);
+        if (idx === -1) return prev;
+
+        const nextRounds = [...prev.rounds];
+        nextRounds[idx] = { ...nextRounds[idx], ...(newRound as any) };
+        return { ...prev, rounds: nextRounds };
+      });
+    } catch (err) {
+      console.error('[REALTIME] Error in applyRoundRealtimePatch:', err);
+    }
   }, []);
 
   // CRITICAL: React Router does not remount this page when only :gameId changes.
