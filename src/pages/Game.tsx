@@ -14,7 +14,6 @@ import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
-import { GameOverCountdown } from "@/components/GameOverCountdown";
 
 
 
@@ -5527,29 +5526,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       gameStatus={game.status}
                       handContextId={handContextKey}
                     />
-                    {/* Desktop game over countdown - ONLY for Holm games */}
-                    {game.game_over_at && game.game_type === 'holm-game' && (
-                      <GameOverCountdown
-                        winnerMessage={game.last_round_result}
-                        nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
-                        onComplete={handleGameOverComplete}
-                        gameOverAt={game.game_over_at}
-                        isSessionEnded={game.status === 'session_ended'}
-                        pendingSessionEnd={game.pending_session_end || false}
-                      />
-                    )}
                   </>
-                )}
-                {/* Mobile game over countdown - ONLY for Holm games */}
-                {isMobile && game.game_over_at && game.game_type === 'holm-game' && (
-                  <GameOverCountdown
-                    winnerMessage={game.last_round_result}
-                    nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
-                    onComplete={handleGameOverComplete}
-                    gameOverAt={game.game_over_at}
-                    isSessionEnded={game.status === 'session_ended'}
-                    pendingSessionEnd={game.pending_session_end || false}
-                  />
                 )}
               </div>
             ) : null}
