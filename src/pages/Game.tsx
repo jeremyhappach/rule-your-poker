@@ -398,7 +398,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
 
     checkGameExists();
-    const interval = window.setInterval(checkGameExists, 3000);
+    // Increased from 3s to 10s - this is just a safety net for deleted games, not primary sync
+    const interval = window.setInterval(checkGameExists, 10000);
 
     return () => {
       cancelled = true;
@@ -862,13 +863,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Fetch game defaults for decision timer
+  // Fetch game defaults for decision timer - CACHED to reduce DB queries
+  const gameDefaultsCacheRef = useRef<Record<string, number>>({});
   useEffect(() => {
     const fetchGameDefaults = async () => {
       if (!game?.game_type) return;
       
       // Map game_type to defaults table format (holm-game -> holm, 3-5-7-game -> 3-5-7)
       const defaultsGameType = game.game_type === 'holm-game' ? 'holm' : '3-5-7';
+      
+      // Check memory cache first
+      if (gameDefaultsCacheRef.current[defaultsGameType]) {
+        const cachedValue = gameDefaultsCacheRef.current[defaultsGameType];
+        console.log('[GAME DEFAULTS] Using cached decision_timer_seconds:', cachedValue, 'for', defaultsGameType);
+        setDecisionTimerSeconds(cachedValue);
+        decisionTimerRef.current = cachedValue;
+        return;
+      }
+      
+      // Check localStorage cache (persists across page refreshes)
+      const cacheKey = `game_defaults_timer_${defaultsGameType}`;
+      const cachedStr = localStorage.getItem(cacheKey);
+      if (cachedStr) {
+        const cached = parseInt(cachedStr, 10);
+        if (!isNaN(cached)) {
+          console.log('[GAME DEFAULTS] Using localStorage cached decision_timer_seconds:', cached, 'for', defaultsGameType);
+          setDecisionTimerSeconds(cached);
+          decisionTimerRef.current = cached;
+          gameDefaultsCacheRef.current[defaultsGameType] = cached;
+          return;
+        }
+      }
       
       const { data, error } = await supabase
         .from('game_defaults')
@@ -880,6 +905,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[GAME DEFAULTS] Loaded decision_timer_seconds:', data.decision_timer_seconds, 'for', defaultsGameType);
         setDecisionTimerSeconds(data.decision_timer_seconds);
         decisionTimerRef.current = data.decision_timer_seconds;
+        // Cache in memory and localStorage
+        gameDefaultsCacheRef.current[defaultsGameType] = data.decision_timer_seconds;
+        localStorage.setItem(cacheKey, String(data.decision_timer_seconds));
       } else {
         console.log('[GAME DEFAULTS] No defaults found for', defaultsGameType, ', using fallback of 30 seconds', error);
       }
@@ -1050,11 +1078,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               
               if (debounceTimer) clearTimeout(debounceTimer);
               fetchGameData();
-              // Extra delayed fetches to catch any race conditions with player updates
-              setTimeout(() => {
-                console.log('[REALTIME] 🎮 STATUS CHANGED - Delayed refetch after 300ms');
-                fetchGameData();
-              }, 300);
+              // NOTE: Removed redundant 300ms setTimeout refetch - it was causing excessive queries
               handled = true;
             }
           }
@@ -1142,11 +1166,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] 🎮 PLAYER BECAME ACTIVE - IMMEDIATE FETCH FOR CARDS!');
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
-            // Extra delayed fetch to catch cards that may be dealt after status update
-            setTimeout(() => {
-              console.log('[REALTIME] 🎮 PLAYER BECAME ACTIVE - Delayed refetch after 1s');
-              fetchGameData();
-            }, 1000);
+            // NOTE: Removed redundant 1s setTimeout refetch - it was causing excessive queries
           } else {
             debouncedFetch();
           }
@@ -1210,76 +1230,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
   }, [gameId, user]);
 
-  // Timer countdown effect
-  // Subscribe to real-time updates for rounds to catch turn changes and NEW ROUNDS immediately
-  useEffect(() => {
-    if (!gameId || !game) return;
-
-    console.log('[REALTIME] Setting up realtime subscription for rounds (INSERT + UPDATE)');
-    
-    const channel = supabase
-      .channel(`rounds-${gameId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'rounds',
-          filter: `game_id=eq.${gameId}`
-        },
-        (payload) => {
-          console.log('[REALTIME] *** NEW ROUND CREATED ***', payload);
-          const newRoundNumber = (payload.new as any)?.round_number;
-          console.log('[REALTIME] 🎲🎲🎲 NEW ROUND:', newRoundNumber, '- CRITICAL SYNC NEEDED!');
-          
-          // CRITICAL: Update ref immediately to prevent desync
-          if (newRoundNumber !== undefined && newRoundNumber !== null) {
-            lastKnownRoundRef.current = newRoundNumber;
-          }
-          
-          // CRITICAL FIX: Do NOT clear any state here - clearing before fetch causes community cards disappearance
-          // Let the new round data replace old data atomically through fetchGameData
-          // Cache clearing is handled by isNewHolmHand detection AFTER new data arrives
-          
-          // Immediate fetch
-          fetchGameData();
-          
-          // Delayed fetch to catch cards that are dealt after round creation
-          setTimeout(() => {
-            console.log('[REALTIME] 🎲 NEW ROUND - Delayed fetch for cards');
-            fetchGameData();
-          }, 300);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rounds',
-          filter: `game_id=eq.${gameId}`
-        },
-        (payload) => {
-          console.log('[REALTIME] *** ROUND UPDATE RECEIVED ***', payload);
-          console.log('[REALTIME] New turn position:', (payload.new as any).current_turn_position);
-          console.log('[REALTIME] Round status:', (payload.new as any).status);
-
-          // Patch round data immediately (especially horses_state/rollKey) so dice animations don't lag.
-          if (payload.new) {
-            applyRoundRealtimePatch(payload.new);
-          }
-
-          console.log('[REALTIME] Immediately refetching game data');
-          fetchGameData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      console.log('[REALTIME] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [gameId, game?.id]);
+  // NOTE: Duplicate rounds subscription was REMOVED to reduce query volume.
+  // The main `game-${gameId}` channel already listens to rounds table changes (lines 1155-1188).
+  // Having two channels caused every round event to trigger fetchGameData twice.
 
   // Broadcast channel for ephemeral UI events (like "Show Cards" in 3-5-7)
   const showCardsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
