@@ -133,7 +133,8 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
           const showFront = index < 2 || hasFlipped;
           
           // Use standard PlayingCard sizes - let the component handle proportions
-          const cardSize = isTablet || isDesktop ? 'lg' : 'md';
+          // TABLET: Use 'xl' for larger community cards on the felt
+          const cardSize = isTablet || isDesktop ? 'xl' : 'md';
           
           return (
             <div
