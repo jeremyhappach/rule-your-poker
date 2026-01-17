@@ -3768,7 +3768,7 @@ export const MobileGameTable = ({
                       <HorsesHandResultDisplay 
                         description={winningResultToBeat.description} 
                         isWinning={true}
-                        size="sm"
+                        size={isTablet ? "md" : "sm"}
                       />
                     ) : null}
                     {/* Show "Tied" indicator when multiple players share the best hand */}
@@ -3876,7 +3876,7 @@ export const MobileGameTable = ({
                         <HorsesHandResultDisplay
                           description={horsesController.currentWinningResult.description}
                           isWinning={true}
-                          size="sm"
+                          size={isTablet ? "md" : "sm"}
                         />
                       )}
                       {/* Show "Tied" indicator when multiple players share the best hand */}
