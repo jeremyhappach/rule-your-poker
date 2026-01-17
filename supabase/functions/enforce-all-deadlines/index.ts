@@ -529,9 +529,9 @@ serve(async (req) => {
           }
           
           if (stuckDuration > AWAITING_NEXT_ROUND_THRESHOLD_MS) {
-            console.log('[CRON-ENFORCE] awaiting_next_round watchdog triggered for game:', game.id);
+            console.log('[CRON-ENFORCE] awaiting_next_round watchdog triggered for game:', game.id, 'type:', game.game_type);
             
-            // Start next round server-side
+            // ============= HOLM GAME ROUND TRANSITION =============
             if (game.game_type === 'holm-game') {
               const { data: activePlayers } = await supabase
                 .from('players')
@@ -630,7 +630,370 @@ serve(async (req) => {
                   
                   actionsTaken.push(`Watchdog: Started Holm round ${newRoundNumber} with ${activePlayers.length} players`);
                 }
+              } else {
+                // Not enough players - end session
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'session_ended',
+                    session_ended_at: nowIso,
+                    game_over_at: nowIso,
+                    awaiting_next_round: false,
+                  })
+                  .eq('id', game.id);
+                actionsTaken.push('Watchdog: Holm <2 players, session ended');
               }
+            }
+            
+            // ============= 3-5-7 GAME ROUND TRANSITION =============
+            else if (game.game_type === '3-5-7') {
+              const nextRoundNum = game.next_round_number;
+              
+              if (nextRoundNum && nextRoundNum >= 1 && nextRoundNum <= 3) {
+                // Get active players
+                const { data: players } = await supabase
+                  .from('players')
+                  .select('*')
+                  .eq('game_id', game.id)
+                  .eq('status', 'active')
+                  .eq('sitting_out', false)
+                  .order('position');
+                
+                if (players && players.length >= 2) {
+                  const { data: gameDefaults } = await supabase
+                    .from('game_defaults')
+                    .select('decision_timer_seconds')
+                    .eq('game_type', '3-5-7')
+                    .maybeSingle();
+                  
+                  const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 10;
+                  const decisionDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+                  
+                  // Cards to deal based on round (3, 5, or 7)
+                  const cardsToDeal = nextRoundNum === 1 ? 3 : nextRoundNum === 2 ? 5 : 7;
+                  
+                  // Get next round number in DB
+                  const { data: latestRound } = await supabase
+                    .from('rounds')
+                    .select('round_number')
+                    .eq('game_id', game.id)
+                    .order('round_number', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                  
+                  const newRoundNumber = (latestRound?.round_number || 0) + 1;
+                  
+                  // Deal cards
+                  const deck = shuffleDeck(createDeck());
+                  let deckIndex = 0;
+                  
+                  // Create round
+                  const { data: newRound, error: roundError } = await supabase
+                    .from('rounds')
+                    .insert({
+                      game_id: game.id,
+                      round_number: newRoundNumber,
+                      hand_number: (game.total_hands || 0) + 1,
+                      cards_dealt: cardsToDeal,
+                      pot: game.pot || 0,
+                      status: 'betting',
+                      decision_deadline: decisionDeadline,
+                      current_turn_position: players[0].position,
+                    })
+                    .select()
+                    .single();
+                  
+                  if (!roundError && newRound) {
+                    // Deal cards to each player
+                    const playerCardInserts: any[] = [];
+                    for (const player of players) {
+                      const playerCards = deck.slice(deckIndex, deckIndex + cardsToDeal);
+                      deckIndex += cardsToDeal;
+                      
+                      playerCardInserts.push({
+                        round_id: newRound.id,
+                        player_id: player.id,
+                        cards: playerCards,
+                      });
+                    }
+                    
+                    await supabase.from('player_cards').insert(playerCardInserts);
+                    
+                    // Update game
+                    await supabase
+                      .from('games')
+                      .update({
+                        current_round: newRoundNumber,
+                        awaiting_next_round: false,
+                        next_round_number: null,
+                        last_round_result: null,
+                        all_decisions_in: false,
+                        status: 'in_progress',
+                      })
+                      .eq('id', game.id);
+                    
+                    // Reset player decisions
+                    await supabase
+                      .from('players')
+                      .update({ current_decision: null, decision_locked: false, status: 'active' })
+                      .eq('game_id', game.id);
+                    
+                    actionsTaken.push(`Watchdog: Started 3-5-7 round ${nextRoundNum} (${cardsToDeal} cards) with ${players.length} players`);
+                  }
+                } else {
+                  // Not enough players
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'session_ended',
+                      session_ended_at: nowIso,
+                      game_over_at: nowIso,
+                      awaiting_next_round: false,
+                    })
+                    .eq('id', game.id);
+                  actionsTaken.push('Watchdog: 3-5-7 <2 players, session ended');
+                }
+              } else {
+                // No next round configured or game complete - clear flag
+                await supabase
+                  .from('games')
+                  .update({ awaiting_next_round: false, last_round_result: null })
+                  .eq('id', game.id);
+                actionsTaken.push('Watchdog: 3-5-7 no next round, cleared flag');
+              }
+            }
+            
+            // ============= HORSES DICE GAME ROUND TRANSITION =============
+            else if (game.game_type === 'horses') {
+              const { data: players } = await supabase
+                .from('players')
+                .select('*')
+                .eq('game_id', game.id)
+                .eq('status', 'active')
+                .eq('sitting_out', false)
+                .order('position');
+              
+              if (players && players.length >= 2) {
+                const anteAmount = game.ante_amount || 2;
+                
+                // Get next round number
+                const { data: latestRound } = await supabase
+                  .from('rounds')
+                  .select('round_number')
+                  .eq('game_id', game.id)
+                  .order('round_number', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                
+                const newRoundNumber = (latestRound?.round_number || 0) + 1;
+                const newHandNumber = (game.total_hands || 0) + 1;
+                
+                // Build turn order (clockwise from dealer)
+                const sortedPlayers = [...players].sort((a: any, b: any) => a.position - b.position);
+                const dealerPos = game.dealer_position;
+                const dealerIdx = dealerPos ? sortedPlayers.findIndex((p: any) => p.position === dealerPos) : -1;
+                const turnOrder = dealerIdx >= 0
+                  ? Array.from({ length: sortedPlayers.length }, (_, i) => sortedPlayers[(dealerIdx + i + 1) % sortedPlayers.length].id)
+                  : sortedPlayers.map((p: any) => p.id);
+                
+                const firstPlayer = sortedPlayers.find((p: any) => p.id === turnOrder[0]);
+                const controllerUserId = turnOrder
+                  .map((id: string) => sortedPlayers.find((p: any) => p.id === id))
+                  .find((p: any) => p && !p.is_bot)?.user_id ?? null;
+                
+                const initialDice = [
+                  { value: 0, isHeld: false },
+                  { value: 0, isHeld: false },
+                  { value: 0, isHeld: false },
+                  { value: 0, isHeld: false },
+                  { value: 0, isHeld: false },
+                ];
+                
+                const horsesState = {
+                  currentTurnPlayerId: turnOrder[0] ?? null,
+                  playerStates: Object.fromEntries(
+                    turnOrder.map((pid: string) => [
+                      pid,
+                      { dice: initialDice, rollsRemaining: 3, isComplete: false },
+                    ]),
+                  ),
+                  gamePhase: 'playing',
+                  turnOrder,
+                  botControllerUserId: controllerUserId,
+                  turnDeadline: firstPlayer?.is_bot ? null : new Date(Date.now() + 30_000).toISOString(),
+                };
+                
+                // Collect antes
+                const potForRound = (game.pot || 0) + (anteAmount * players.length);
+                await supabase.rpc('decrement_player_chips', {
+                  player_ids: players.map((p: any) => p.id),
+                  amount: anteAmount,
+                });
+                
+                // Create round
+                const { error: roundError } = await supabase
+                  .from('rounds')
+                  .insert({
+                    game_id: game.id,
+                    round_number: newRoundNumber,
+                    hand_number: newHandNumber,
+                    cards_dealt: 2, // Constraint requires >= 2
+                    status: 'betting',
+                    pot: potForRound,
+                    horses_state: horsesState,
+                  });
+                
+                if (!roundError) {
+                  // Update game
+                  await supabase
+                    .from('games')
+                    .update({
+                      current_round: newRoundNumber,
+                      total_hands: newHandNumber,
+                      pot: potForRound,
+                      awaiting_next_round: false,
+                      last_round_result: null,
+                      status: 'in_progress',
+                    })
+                    .eq('id', game.id);
+                  
+                  actionsTaken.push(`Watchdog: Started Horses round ${newRoundNumber} with ${players.length} players`);
+                }
+              } else {
+                // Not enough players
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'session_ended',
+                    session_ended_at: nowIso,
+                    game_over_at: nowIso,
+                    awaiting_next_round: false,
+                  })
+                  .eq('id', game.id);
+                actionsTaken.push('Watchdog: Horses <2 players, session ended');
+              }
+            }
+            
+            // ============= SHIP-CAPTAIN-CREW DICE GAME ROUND TRANSITION =============
+            else if (game.game_type === 'ship-captain-crew') {
+              const { data: players } = await supabase
+                .from('players')
+                .select('*')
+                .eq('game_id', game.id)
+                .eq('status', 'active')
+                .eq('sitting_out', false)
+                .order('position');
+              
+              if (players && players.length >= 2) {
+                const anteAmount = game.ante_amount || 2;
+                
+                // Get next round number
+                const { data: latestRound } = await supabase
+                  .from('rounds')
+                  .select('round_number')
+                  .eq('game_id', game.id)
+                  .order('round_number', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                
+                const newRoundNumber = (latestRound?.round_number || 0) + 1;
+                const newHandNumber = (game.total_hands || 0) + 1;
+                
+                // Build turn order (clockwise from dealer)
+                const sortedPlayers = [...players].sort((a: any, b: any) => a.position - b.position);
+                const dealerPos = game.dealer_position;
+                const dealerIdx = dealerPos ? sortedPlayers.findIndex((p: any) => p.position === dealerPos) : -1;
+                const turnOrder = dealerIdx >= 0
+                  ? Array.from({ length: sortedPlayers.length }, (_, i) => sortedPlayers[(dealerIdx + i + 1) % sortedPlayers.length].id)
+                  : sortedPlayers.map((p: any) => p.id);
+                
+                const firstPlayer = sortedPlayers.find((p: any) => p.id === turnOrder[0]);
+                const controllerUserId = turnOrder
+                  .map((id: string) => sortedPlayers.find((p: any) => p.id === id))
+                  .find((p: any) => p && !p.is_bot)?.user_id ?? null;
+                
+                // SCC uses isSCC flag on dice
+                const initialDice = [
+                  { value: 0, isHeld: false, isSCC: false },
+                  { value: 0, isHeld: false, isSCC: false },
+                  { value: 0, isHeld: false, isSCC: false },
+                  { value: 0, isHeld: false, isSCC: false },
+                  { value: 0, isHeld: false, isSCC: false },
+                ];
+                
+                const sccState = {
+                  currentTurnPlayerId: turnOrder[0] ?? null,
+                  playerStates: Object.fromEntries(
+                    turnOrder.map((pid: string) => [
+                      pid,
+                      { dice: initialDice, rollsRemaining: 3, isComplete: false },
+                    ]),
+                  ),
+                  gamePhase: 'playing',
+                  turnOrder,
+                  botControllerUserId: controllerUserId,
+                  turnDeadline: firstPlayer?.is_bot ? null : new Date(Date.now() + 30_000).toISOString(),
+                };
+                
+                // Collect antes
+                const potForRound = (game.pot || 0) + (anteAmount * players.length);
+                await supabase.rpc('decrement_player_chips', {
+                  player_ids: players.map((p: any) => p.id),
+                  amount: anteAmount,
+                });
+                
+                // Create round
+                const { error: roundError } = await supabase
+                  .from('rounds')
+                  .insert({
+                    game_id: game.id,
+                    round_number: newRoundNumber,
+                    hand_number: newHandNumber,
+                    cards_dealt: 2, // Constraint requires >= 2
+                    status: 'betting',
+                    pot: potForRound,
+                    horses_state: sccState, // SCC reuses horses_state column
+                  });
+                
+                if (!roundError) {
+                  // Update game
+                  await supabase
+                    .from('games')
+                    .update({
+                      current_round: newRoundNumber,
+                      total_hands: newHandNumber,
+                      pot: potForRound,
+                      awaiting_next_round: false,
+                      last_round_result: null,
+                      status: 'in_progress',
+                    })
+                    .eq('id', game.id);
+                  
+                  actionsTaken.push(`Watchdog: Started SCC round ${newRoundNumber} with ${players.length} players`);
+                }
+              } else {
+                // Not enough players
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'session_ended',
+                    session_ended_at: nowIso,
+                    game_over_at: nowIso,
+                    awaiting_next_round: false,
+                  })
+                  .eq('id', game.id);
+                actionsTaken.push('Watchdog: SCC <2 players, session ended');
+              }
+            }
+            
+            // ============= UNKNOWN GAME TYPE - JUST CLEAR FLAG =============
+            else {
+              console.log('[CRON-ENFORCE] Unknown game type, clearing awaiting_next_round:', game.game_type);
+              await supabase
+                .from('games')
+                .update({ awaiting_next_round: false })
+                .eq('id', game.id);
+              actionsTaken.push(`Watchdog: Unknown game type ${game.game_type}, cleared flag`);
             }
           }
         }
