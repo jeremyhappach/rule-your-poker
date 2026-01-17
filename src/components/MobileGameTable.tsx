@@ -2969,8 +2969,8 @@ export const MobileGameTable = ({
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }}>
-          {/* Bridge overlay on felt during waiting phase - shown when bridge felt is selected */}
-          {isWaitingPhase && tableColors.showBridge && (
+          {/* Bridge overlay on felt - shown when bridge felt is selected */}
+          {tableColors.showBridge && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
@@ -2979,7 +2979,7 @@ export const MobileGameTable = ({
                 backgroundRepeat: 'no-repeat',
                 // Position the bridge higher in the container (lower % = higher position)
                 backgroundPosition: 'center 35%',
-                opacity: 0.4,
+                opacity: isWaitingPhase ? 0.45 : 0.28,
               }}
             />
           )}
