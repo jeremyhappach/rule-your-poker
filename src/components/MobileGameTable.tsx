@@ -4758,13 +4758,13 @@ export const MobileGameTable = ({
                       : currentRound === 2
                         ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]") // Bigger R2 on tablet
                         : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]")) // Bigger R3 on tablet
-                  : (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.3]"); // Holm cards on tablet - reduced from 3.5
+                  : (isTablet || isDesktop ? "scale-[3.2]" : "scale-[2.3]"); // Holm cards on tablet - bigger
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               // TABLET: Increased card height reserve, reduced padding elsewhere to keep overall layout compact
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[130px]") // Holm tablet - reduced from 260px
+                  ? (isTablet || isDesktop ? "min-h-[210px]" : "min-h-[130px]") // Holm tablet - taller cards
                   : (currentRound === 1
                       ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]") // Taller for tablet R1
                       : currentRound === 2
@@ -4863,7 +4863,7 @@ export const MobileGameTable = ({
             {/* TABLET: Reduced spacing to compensate for taller cards */}
             <div className={cn(
               "flex items-center justify-center",
-              isTablet ? "min-h-[56px] mt-2 mb-2" : "min-h-[36px] mt-0 mb-1"
+              isTablet ? "min-h-[56px] mt-0 mb-1" : "min-h-[36px] mt-0 mb-1"
             )}>
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
