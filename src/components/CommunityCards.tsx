@@ -132,54 +132,31 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
           const hasFlipped = flippedCards.has(index);
           const showFront = index < 2 || hasFlipped;
           
+          // Use standard PlayingCard sizes - let the component handle proportions
+          const cardSize = isTablet || isDesktop ? 'lg' : 'md';
+          
           return (
             <div
               key={index}
-              className={`relative ${isTablet || isDesktop ? 'w-14 h-[84px]' : 'w-8 h-12 sm:w-9 sm:h-14'}`}
               style={{ 
-                transformStyle: 'preserve-3d',
                 transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
                 transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
                 opacity: isVisible ? 1 : 0,
               }}
             >
               {showFront ? (
-              <PlayingCard
+                <PlayingCard
                   card={card}
-                  size="lg"
+                  size={cardSize}
                   isHighlighted={highlightedIndices.includes(index)}
                   isKicker={kickerIndices.includes(index)}
                   isDimmed={hasHighlights && !highlightedIndices.includes(index) && !kickerIndices.includes(index)}
-                  className="absolute inset-0"
-                  style={{
-                    backfaceVisibility: 'hidden',
-                    transform: 'rotateY(0deg)',
-                    transition: 'transform 1.2s ease-in-out',
-                  }}
                 />
               ) : (
-                <>
                 <PlayingCard
-                    isHidden
-                    size="lg"
-                    className="absolute inset-0"
-                    style={{
-                      backfaceVisibility: 'hidden',
-                      transform: 'rotateY(0deg)',
-                      transition: 'transform 1.2s ease-in-out',
-                    }}
-                  />
-                <PlayingCard
-                    card={card}
-                    size="lg"
-                    className="absolute inset-0"
-                    style={{
-                      backfaceVisibility: 'hidden',
-                      transform: 'rotateY(-180deg)',
-                      transition: 'transform 1.2s ease-in-out',
-                    }}
-                  />
-                </>
+                  isHidden
+                  size={cardSize}
+                />
               )}
             </div>
           );
