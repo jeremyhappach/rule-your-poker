@@ -1,12 +1,54 @@
+import { useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
 /**
- * TEMPORARILY DISABLED FOR PERFORMANCE TESTING
- * This hook is a no-op to isolate whether deadline enforcement is causing slowness.
- * 
- * Original functionality: Smart deadline enforcer using realtime subscriptions
- * to minimize edge function calls, with polling when deadlines are imminent.
+ * Smart deadline enforcer that polls the enforce-deadlines edge function.
+ * Uses adaptive polling: every 10s normally, every 2s when deadline is imminent.
  */
-export const useDeadlineEnforcer = (_gameId: string | undefined, _gameStatus: string | undefined) => {
-  // NO-OP: All deadline enforcement disabled for testing
-  // The cron job has also been disabled
-  return;
+export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: string | undefined) => {
+  const lastCallRef = useRef<number>(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!gameId) return;
+    
+    // Only enforce for active game states
+    const activeStatuses = ['waiting_for_players', 'configuring', 'ante_up', 'in_progress'];
+    if (!gameStatus || !activeStatuses.includes(gameStatus)) {
+      return;
+    }
+
+    const callEnforceDeadlines = async () => {
+      const now = Date.now();
+      // Debounce: don't call more than once per second
+      if (now - lastCallRef.current < 1000) return;
+      lastCallRef.current = now;
+
+      try {
+        await supabase.functions.invoke('enforce-deadlines', {
+          body: { 
+            gameId,
+            source: 'client-polling',
+            requestId: crypto.randomUUID()
+          }
+        });
+      } catch (error) {
+        // Silent fail - edge function errors shouldn't crash the UI
+        console.warn('[DeadlineEnforcer] Failed to call enforce-deadlines:', error);
+      }
+    };
+
+    // Initial call
+    callEnforceDeadlines();
+
+    // Poll every 10 seconds
+    intervalRef.current = setInterval(callEnforceDeadlines, 10000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [gameId, gameStatus]);
 };
