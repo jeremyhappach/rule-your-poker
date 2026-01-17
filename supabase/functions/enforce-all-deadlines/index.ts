@@ -831,6 +831,9 @@ serve(async (req) => {
                     .update({ current_decision: null, decision_locked: false, ante_decision: null })
                     .eq('game_id', game.id);
                   
+                  // Get winner's name for the announcement
+                  const winnerName = winner.player.profiles?.username || `Player ${winner.player.position}`;
+                  
                   await supabase
                     .from('games')
                     .update({
@@ -840,7 +843,7 @@ serve(async (req) => {
                       awaiting_next_round: false,
                       all_decisions_in: false,
                       total_hands: (game.total_hands || 0) + 1,
-                      last_round_result: `Winner: ${winner.eval.rank}`,
+                      last_round_result: `${winnerName} won with ${winner.eval.rank}|||WINNER:${winner.player.id}|||POT:${roundPot}`,
                     })
                     .eq('id', game.id);
                   
