@@ -7,7 +7,7 @@ interface HorsesDieProps {
   canToggle: boolean;
   isRolling?: boolean;
   onToggle?: () => void;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   showWildHighlight?: boolean; // Whether 1s should be highlighted as wild (default true for Horses, false for SCC)
   isSCCDie?: boolean; // Whether this is a frozen Ship/Captain/Crew die (gold highlight)
   forceWhiteBackground?: boolean; // Force white background (for Beat: badge cargo dice)
@@ -57,6 +57,7 @@ export function HorsesDie({
     sm: "w-9 h-9",
     md: "w-12 h-12",
     lg: "w-[72px] h-[72px]",
+    xl: "w-[96px] h-[96px]",  // TABLET: Larger dice for active player
   };
 
   // Pip sizes - readable at all sizes including xs for cargo display
@@ -65,6 +66,7 @@ export function HorsesDie({
     sm: "w-1.5 h-1.5",
     md: "w-2.5 h-2.5",
     lg: "w-3.5 h-3.5",
+    xl: "w-4.5 h-4.5",  // TABLET: Larger pips
   };
 
   const dotSize = dotSizeClasses[size];
@@ -74,11 +76,12 @@ export function HorsesDie({
     sm: "w-2 h-2",
     md: "w-3 h-3",
     lg: "w-4 h-4",
+    xl: "w-5 h-5",  // TABLET: Larger center pip
   };
   const largeDotSize = largeDotSizeClasses[size];
 
   // Padding for pip layout
-  const pipPadding = size === "xs" ? "p-0.5" : "p-2";
+  const pipPadding = size === "xs" ? "p-0.5" : size === "xl" ? "p-3" : "p-2";
 
   // Dot patterns for each die face
   const renderDots = () => {

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 interface HorsesHandResultDisplayProps {
   description: string; // e.g., "3 6s", "5 1s (Wilds!)", "6 high"
@@ -72,6 +73,11 @@ export function HorsesHandResultDisplay({
   isWinning = false,
   size = "sm",
 }: HorsesHandResultDisplayProps) {
+  const { isTablet, isDesktop } = useDeviceSize();
+  
+  // TABLET: Scale up all badges 2x
+  const effectiveSize = (isTablet || isDesktop) && size === "sm" ? "md" : size;
+  
   // Match "X Ys" pattern (e.g., "3 6s", "5 1s")
   const ofAKindMatch = description.match(/^(\d+)\s+(\d+)s/);
   
@@ -92,8 +98,8 @@ export function HorsesHandResultDisplay({
           className={cn(
             "tabular-nums leading-none",
             isWinning 
-              ? (size === "sm" ? "text-xl font-extrabold text-white" : "text-2xl font-extrabold text-white")
-              : (size === "sm" ? "text-sm font-bold text-black" : "text-base font-bold text-black")
+              ? (effectiveSize === "sm" ? "text-xl font-extrabold text-white" : "text-2xl font-extrabold text-white")
+              : (effectiveSize === "sm" ? "text-sm font-bold text-black" : "text-base font-bold text-black")
           )}
           style={isWinning ? { textShadow: "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000" } : undefined}
         >
@@ -104,7 +110,7 @@ export function HorsesHandResultDisplay({
         <div 
           className={cn(
             "relative inline-flex items-center justify-center",
-            size === "sm" ? "w-6 h-6" : "w-7 h-7",
+            effectiveSize === "sm" ? "w-6 h-6" : "w-7 h-7",
             "rounded border",
             "bg-white",
             isWild ? "border-poker-gold" : "border-gray-400"
@@ -113,7 +119,7 @@ export function HorsesHandResultDisplay({
             boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.5), 0 2px 4px rgba(0,0,0,0.25), 0 1px 0 rgba(0,0,0,0.1)',
           }}
         >
-          <DieFacePips value={dieValue} isWild={isWild} size={size} />
+          <DieFacePips value={dieValue} isWild={isWild} size={effectiveSize} />
         </div>
       </div>
     );
@@ -136,7 +142,7 @@ export function HorsesHandResultDisplay({
         <div 
           className={cn(
             "relative inline-flex items-center justify-center",
-            size === "sm" ? "w-6 h-6" : "w-7 h-7",
+            effectiveSize === "sm" ? "w-6 h-6" : "w-7 h-7",
             "rounded border",
             "bg-white border-gray-400"
           )}
@@ -144,11 +150,11 @@ export function HorsesHandResultDisplay({
             boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.5), 0 2px 4px rgba(0,0,0,0.25), 0 1px 0 rgba(0,0,0,0.1)',
           }}
         >
-          <DieFacePips value={dieValue} isWild={false} size={size} />
+          <DieFacePips value={dieValue} isWild={false} size={effectiveSize} />
         </div>
         
         {/* "H" for high */}
-        <span className="text-[10px] font-medium text-black">H</span>
+        <span className={cn(isTablet || isDesktop ? "text-xs" : "text-[10px]", "font-medium text-black")}>H</span>
       </div>
     );
   }
@@ -156,7 +162,7 @@ export function HorsesHandResultDisplay({
   // Fallback: just show the text description
   return (
     <span className={cn(
-      size === "sm" ? "text-sm" : "text-base",
+      effectiveSize === "sm" ? "text-sm" : "text-base",
       isWinning && "text-green-400"
     )}>
       {description}
