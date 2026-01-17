@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Palette } from 'lucide-react';
 import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode } from '@/hooks/useVisualPreferences';
@@ -26,10 +25,9 @@ interface VisualPreferencesProps {
 }
 
 export function VisualPreferences({ userId, onSave, disabled = false }: VisualPreferencesProps) {
-  const [tableLayout, setTableLayout] = useState('classic');
+  const [tableLayout, setTableLayout] = useState('bridge');
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
-  const [showBridgeOnWaiting, setShowBridgeOnWaiting] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -45,10 +43,9 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
       .maybeSingle();
     
     if (data) {
-      setTableLayout((data as any).table_layout || 'classic');
+      setTableLayout((data as any).table_layout || 'bridge');
       setCardBackDesign((data as any).card_back_design || 'red');
       setDeckColorMode((data as any).deck_color_mode || 'two_color');
-      setShowBridgeOnWaiting((data as any).show_bridge_on_waiting !== false); // default true
     }
     setLoading(false);
   };
@@ -61,7 +58,6 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
         table_layout: tableLayout,
         card_back_design: cardBackDesign,
         deck_color_mode: deckColorMode,
-        show_bridge_on_waiting: showBridgeOnWaiting,
       } as any)
       .eq('id', userId);
 
@@ -136,19 +132,28 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
       {/* Table Layout */}
       <div className="space-y-3">
         <Label>Table Felt Color</Label>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           {TABLE_LAYOUTS.map((layout) => (
             <div key={layout.id} className="flex flex-col items-center gap-1">
               <button
                 type="button"
                 onClick={() => setTableLayout(layout.id)}
-                className={`w-12 h-12 rounded-lg cursor-pointer border-2 transition-all ${
+                className={`w-12 h-12 rounded-lg cursor-pointer border-2 transition-all overflow-hidden ${
                   tableLayout === layout.id 
                     ? 'border-primary ring-2 ring-primary ring-offset-2' 
                     : 'border-transparent hover:border-muted-foreground/50'
                 }`}
                 style={{ backgroundColor: layout.color }}
-              />
+              >
+                {(layout as any).showBridge && (
+                  <img 
+                    src={peoriaBridgeMobile} 
+                    alt="Bridge" 
+                    className="w-full h-full object-cover opacity-40"
+                    style={{ objectPosition: 'center 35%' }}
+                  />
+                )}
+              </button>
               <span className="text-xs text-center">{layout.name.split(' ')[0]}</span>
             </div>
           ))}
@@ -195,46 +200,6 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
               <span className="text-xs text-center">{card.name.split(' ')[0]}</span>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Bridge on Waiting Table */}
-      <div className="space-y-3">
-        <Label>Waiting Table Background</Label>
-        <div 
-          className={`p-3 rounded-lg border-2 transition-all cursor-pointer ${
-            showBridgeOnWaiting 
-              ? 'border-primary ring-2 ring-primary ring-offset-2' 
-              : 'border-muted hover:border-muted-foreground/50'
-          }`}
-          onClick={() => setShowBridgeOnWaiting(!showBridgeOnWaiting)}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-16 h-10 rounded-[50%/45%] overflow-hidden border border-amber-900"
-                style={{ backgroundColor: '#1a1a1a' }}
-              >
-                {showBridgeOnWaiting && (
-                  <img 
-                    src={peoriaBridgeMobile} 
-                    alt="Bridge preview" 
-                    className="w-full h-full object-cover opacity-40"
-                    style={{ objectPosition: 'center 35%' }}
-                  />
-                )}
-              </div>
-              <div>
-                <div className="font-medium text-sm">I-74 Bridge</div>
-                <div className="text-xs text-muted-foreground">Show bridge on waiting table</div>
-              </div>
-            </div>
-            <Switch 
-              checked={showBridgeOnWaiting} 
-              onCheckedChange={setShowBridgeOnWaiting}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
         </div>
       </div>
 

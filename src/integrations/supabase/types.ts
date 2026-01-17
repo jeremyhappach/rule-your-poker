@@ -641,7 +641,6 @@ export type Database = {
           is_active: boolean
           is_superuser: boolean
           last_seen_at: string | null
-          show_bridge_on_waiting: boolean
           table_layout: string
           username: string
         }
@@ -655,7 +654,6 @@ export type Database = {
           is_active?: boolean
           is_superuser?: boolean
           last_seen_at?: string | null
-          show_bridge_on_waiting?: boolean
           table_layout?: string
           username: string
         }
@@ -669,7 +667,6 @@ export type Database = {
           is_active?: boolean
           is_superuser?: boolean
           last_seen_at?: string | null
-          show_bridge_on_waiting?: boolean
           table_layout?: string
           username?: string
         }

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 
 export const TABLE_LAYOUTS = [
+  { id: 'bridge', name: 'I-74 Bridge', color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f', showBridge: true },
   { id: 'classic', name: 'Classic Green', color: '#1a5c3a', darkColor: '#0f3d26', border: '#78350f' },
   { id: 'blue', name: 'Casino Blue', color: '#1a3c5c', darkColor: '#0f2640', border: '#78350f' },
   { id: 'red', name: 'Vegas Red', color: '#5c1a2a', darkColor: '#3d0f1a', border: '#78350f' },
@@ -38,7 +39,7 @@ interface VisualPreferencesContextType {
   showBridgeOnWaiting: boolean;
   sessionDeckColorMode: DeckColorMode | null;
   setSessionDeckColorMode: (mode: DeckColorMode | null) => void;
-  getTableColors: () => { color: string; darkColor: string; border: string };
+  getTableColors: () => { color: string; darkColor: string; border: string; showBridge?: boolean };
   getCardBackColors: () => { color: string; darkColor: string };
   getCardBackId: () => string;
   getFourColorSuit: (suit: string) => { bg: string; name: string } | null;
@@ -55,11 +56,13 @@ export function VisualPreferencesProvider({
   children: ReactNode; 
   userId: string | undefined;
 }) {
-  const [tableLayout, setTableLayout] = useState('black');
+  const [tableLayout, setTableLayout] = useState('bridge');
   const [cardBackDesign, setCardBackDesign] = useState('hawks');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('two_color');
-  const [showBridgeOnWaiting, setShowBridgeOnWaiting] = useState(true);
   const [sessionDeckColorMode, setSessionDeckColorMode] = useState<DeckColorMode | null>(null);
+  
+  // Derive showBridgeOnWaiting from tableLayout
+  const showBridgeOnWaiting = tableLayout === 'bridge';
 
   const fetchPreferences = async () => {
     if (!userId) return;
@@ -71,10 +74,9 @@ export function VisualPreferencesProvider({
       .maybeSingle();
     
     if (data) {
-      setTableLayout((data as any).table_layout || 'classic');
+      setTableLayout((data as any).table_layout || 'bridge');
       setCardBackDesign((data as any).card_back_design || 'red');
       setDeckColorMode((data as any).deck_color_mode || 'two_color');
-      setShowBridgeOnWaiting((data as any).show_bridge_on_waiting !== false); // default true
     }
   };
 
@@ -84,7 +86,7 @@ export function VisualPreferencesProvider({
 
   const getTableColors = () => {
     const layout = TABLE_LAYOUTS.find(l => l.id === tableLayout) || TABLE_LAYOUTS[0];
-    return { color: layout.color, darkColor: layout.darkColor, border: layout.border };
+    return { color: layout.color, darkColor: layout.darkColor, border: layout.border, showBridge: (layout as any).showBridge };
   };
 
   const getCardBackColors = () => {
@@ -129,13 +131,13 @@ export function useVisualPreferences() {
   if (!context) {
     // Return defaults if not in provider
     return {
-      tableLayout: 'black',
+      tableLayout: 'bridge',
       cardBackDesign: 'hawks',
       deckColorMode: 'two_color' as DeckColorMode,
       showBridgeOnWaiting: true,
       sessionDeckColorMode: null as DeckColorMode | null,
       setSessionDeckColorMode: () => {},
-      getTableColors: () => ({ color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f' }),
+      getTableColors: () => ({ color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f', showBridge: true }),
       getCardBackColors: () => ({ color: '#CF0A2C', darkColor: '#FFD100' }),
       getCardBackId: () => 'red',
       getFourColorSuit: () => null,
