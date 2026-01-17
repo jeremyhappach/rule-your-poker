@@ -461,7 +461,15 @@ serve(async (req) => {
                     .maybeSingle();
 
                   const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
-                  const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+                  // CRITICAL: Use 'now' (established at request start) plus full timer, not Date.now()
+                  // This prevents race conditions where processing time eats into the next player's timer
+                  const newDeadline = new Date(now.getTime() + timerSeconds * 1000).toISOString();
+                  console.log('[ENFORCE-CLIENT] Setting new deadline for next player:', {
+                    nextPosition: nextPlayer.position,
+                    timerSeconds,
+                    newDeadline,
+                    nowTime: now.toISOString(),
+                  });
 
                   await supabase
                     .from('rounds')
