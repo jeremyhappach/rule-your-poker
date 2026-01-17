@@ -59,11 +59,11 @@ const UNHELD_POSITIONS: Record<number, { x: number; y: number; rotate: number }[
     { x: -54, y: 40, rotate: -6 },    // lower-left
     { x: 52, y: 45, rotate: 9 },      // lower-right
   ],
-  // 3 unheld dice - loose triangle (bottom corners + top center)
+  // 3 unheld dice - tighter triangle (lower to avoid overlap with held row)
   3: [
-    { x: 5, y: -22, rotate: 8 },      // top center-ish
-    { x: -48, y: 40, rotate: -10 },   // lower-left
-    { x: 52, y: 43, rotate: 6 },      // lower-right
+    { x: 0, y: 5, rotate: 8 },        // center (moved down from -22)
+    { x: -38, y: 32, rotate: -10 },   // lower-left (tighter)
+    { x: 38, y: 35, rotate: 6 },      // lower-right (tighter)
   ],
   // 2 unheld dice - rough diagonal
   2: [
