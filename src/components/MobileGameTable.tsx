@@ -4063,7 +4063,7 @@ export const MobileGameTable = ({
               <div
                 ref={communityCardsWrapperRef}
                 className={`absolute left-1/2 transform -translate-x-1/2 z-[110] transition-all duration-300 ${
-                  isTablet || isDesktop ? 'scale-[1.9]' : 'scale-[1.8]'
+                  isTablet || isDesktop ? 'scale-[1.5]' : 'scale-[1.8]'
                 } ${
                   isHolmMultiPlayerShowdown
                     ? "top-[62%] -translate-y-1/2"
@@ -4760,13 +4760,13 @@ export const MobileGameTable = ({
                       : currentRound === 2
                         ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]") // Bigger R2 on tablet
                         : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]")) // Bigger R3 on tablet
-                  : (isTablet || isDesktop ? "scale-[3.0]" : "scale-[2.3]"); // Holm cards on tablet - scaled down
+                  : (isTablet || isDesktop ? "scale-[2.4]" : "scale-[2.3]"); // Holm cards on tablet - smaller to match 357 proportions
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               // TABLET: Adjusted card height reserve for smaller scale
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[130px]") // Holm tablet - adjusted for smaller scale
+                  ? (isTablet || isDesktop ? "min-h-[170px]" : "min-h-[130px]") // Holm tablet - smaller reserve for smaller scale
                   : (currentRound === 1
                       ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]") // Taller for tablet R1
                       : currentRound === 2
