@@ -203,6 +203,18 @@ export function useHorsesMobileController({
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
   const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
 
+  // TURN COMPLETION HOLD: When a player completes their turn, we hold their dice visible
+  // for 3 seconds before transitioning to the next player. This prevents flicker.
+  const [completedTurnHold, setCompletedTurnHold] = useState<{
+    playerId: string;
+    dice: (HorsesDieType | SCCDieType)[];
+    result: HorsesHandResult | SCCHandResult;
+    heldMaskBeforeComplete?: boolean[];
+    rollKey?: number;
+    expiresAt: number;
+  } | null>(null);
+  const completedTurnHoldTimerRef = useRef<number | null>(null);
+  const lastCompletedTurnKeyRef = useRef<string | null>(null);
 
   // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
   const lastFeltDiceRef = useRef<{ playerId: string | null; value: any } | null>(null);
@@ -687,8 +699,53 @@ export function useHorsesMobileController({
         window.clearTimeout(clearAnnouncementTimerRef.current);
         clearAnnouncementTimerRef.current = null;
       }
+      if (completedTurnHoldTimerRef.current) {
+        window.clearTimeout(completedTurnHoldTimerRef.current);
+        completedTurnHoldTimerRef.current = null;
+      }
     };
   }, []);
+
+  // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
+  // and hold it visible for 3 seconds. This creates a smooth transition without flicker.
+  useEffect(() => {
+    if (!enabled || gamePhase !== "playing") return;
+    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
+
+    const holdKey = `${currentRoundId}:${currentTurnPlayerId}`;
+    if (lastCompletedTurnKeyRef.current === holdKey) return; // Already holding this turn
+    lastCompletedTurnKeyRef.current = holdKey;
+
+    // Capture the completed player's dice state for the hold period
+    const holdDuration = 3000; // 3 seconds to display dice before transition
+    const expiresAt = Date.now() + holdDuration;
+
+    setCompletedTurnHold({
+      playerId: currentTurnPlayerId,
+      dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
+      result: currentTurnState.result,
+      heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
+      rollKey: currentTurnState.rollKey,
+      expiresAt,
+    });
+
+    // Clear the hold after the duration
+    if (completedTurnHoldTimerRef.current) {
+      window.clearTimeout(completedTurnHoldTimerRef.current);
+    }
+    completedTurnHoldTimerRef.current = window.setTimeout(() => {
+      setCompletedTurnHold(null);
+      completedTurnHoldTimerRef.current = null;
+    }, holdDuration);
+  }, [
+    enabled,
+    gamePhase,
+    currentRoundId,
+    currentTurnPlayerId,
+    currentTurnState?.isComplete,
+    currentTurnState?.result,
+  ]);
 
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
@@ -1597,6 +1654,20 @@ export function useHorsesMobileController({
   const rawFeltDice = useMemo(() => {
     const logPrefix = `[FELT_DICE_DEBUG ${isSCC ? 'SCC' : 'HORSES'}]`;
     
+    // If we have a completed turn hold that's still valid, use it to prevent flicker
+    if (completedTurnHold && Date.now() < completedTurnHold.expiresAt) {
+      console.log(`${logPrefix} returning completedTurnHold: playerId=${completedTurnHold.playerId}`);
+      return {
+        playerId: completedTurnHold.playerId,
+        dice: completedTurnHold.dice,
+        rollsRemaining: 0,
+        isRolling: false,
+        heldMaskBeforeComplete: completedTurnHold.heldMaskBeforeComplete,
+        rollKey: completedTurnHold.rollKey,
+        isCompletedHold: true,
+      };
+    }
+    
     if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) {
       console.log(`${logPrefix} returning null: enabled=${enabled}, gamePhase=${gamePhase}, currentTurnPlayerId=${currentTurnPlayerId}`);
       return null;
@@ -1760,6 +1831,8 @@ export function useHorsesMobileController({
     currentTurnPlayer?.is_bot,
     botDisplayState,
     botTurnActiveId,
+    completedTurnHold,
+    isSCC,
   ]);
 
   useEffect(() => {

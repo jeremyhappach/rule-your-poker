@@ -3677,8 +3677,10 @@ export const MobileGameTable = ({
           const logPrefix = `[FELT_BLOCK_DEBUG ${gameType === 'ship-captain-crew' ? 'SCC' : 'HORSES'}]`;
           
           // Don't show dice when game phase is complete or waiting
-          if (horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') {
-            console.log(`${logPrefix} UNMOUNT: gamePhase=${horsesController.gamePhase}`);
+          // EXCEPTION: If we're in a completed turn hold period, show the dice
+          const isInHoldPeriod = !!(horsesController.feltDice as any)?.isCompletedHold;
+          if ((horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') && !isInHoldPeriod) {
+            console.log(`${logPrefix} UNMOUNT: gamePhase=${horsesController.gamePhase}, isInHoldPeriod=${isInHoldPeriod}`);
             // Track unmount for debug overlay
             if (feltBlockMounted) {
               setTimeout(() => setFeltBlockMounted(false), 0);
