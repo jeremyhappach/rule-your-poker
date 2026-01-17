@@ -3731,12 +3731,23 @@ export const MobileGameTable = ({
                 </p>
                 {/* Beat badge - show what hand to beat */}
                 {winningResultToBeat && (
-                  <div className="flex items-center justify-center gap-2 mt-1">
-                    <Target className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Beat:</span>
+                  <div className={cn(
+                    "flex items-center justify-center gap-2 mt-1",
+                    isTablet && "gap-3 mt-2"
+                  )}>
+                    <Target className={cn(
+                      "text-muted-foreground",
+                      isTablet ? "w-6 h-6" : "w-3 h-3"
+                    )} />
+                    <span className={cn(
+                      "text-muted-foreground",
+                      isTablet ? "text-base" : "text-xs"
+                    )}>
+                      Beat:
+                    </span>
                     {isSCCGame && cargoDice && cargoDice.length === 2 ? (
                       // SCC: Show cargo dice
-                      <div className="flex items-center gap-1">
+                      <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
                         {cargoDice.map((die, idx) => (
                           <HorsesDie
                             key={idx}
@@ -3744,7 +3755,7 @@ export const MobileGameTable = ({
                             isHeld={false}
                             isRolling={false}
                             canToggle={false}
-                            size="sm"
+                            size={isTablet ? "md" : "sm"}
                             showWildHighlight={false}
                             forceWhiteBackground={true}
                           />
@@ -3760,7 +3771,12 @@ export const MobileGameTable = ({
                     ) : null}
                     {/* Show "Tied" indicator when multiple players share the best hand */}
                     {horsesController.isCurrentWinningTied && (
-                      <span className="text-xs font-medium text-amber-400">(Tied)</span>
+                      <span className={cn(
+                        "font-medium text-amber-400",
+                        isTablet ? "text-base" : "text-xs"
+                      )}>
+                        (Tied)
+                      </span>
                     )}
                   </div>
                 )}
@@ -3820,26 +3836,55 @@ export const MobileGameTable = ({
                   </p>
                   {/* Beat badge - show what hand to beat */}
                   {horsesController.currentWinningResult && (
-                    <div className="flex items-center justify-center gap-2">
-                      <Target className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Beat:</span>
+                    <div className={cn(
+                      "flex items-center justify-center gap-2",
+                      isTablet && "gap-3"
+                    )}>
+                      <Target className={cn(
+                        "text-muted-foreground",
+                        isTablet ? "w-6 h-6" : "w-3 h-3"
+                      )} />
+                      <span className={cn(
+                        "text-muted-foreground",
+                        isTablet ? "text-base" : "text-xs"
+                      )}>
+                        Beat:
+                      </span>
                       {gameType === 'ship-captain-crew' && (() => {
                         const winDice = horsesController.getWinningPlayerDice?.();
                         const cargo = winDice ? (winDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0) : [];
                         return cargo.length === 2 ? (
-                          <div className="flex items-center gap-1">
+                          <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
                             {cargo.map((die, idx) => (
-                              <HorsesDie key={idx} value={die.value} isHeld={false} isRolling={false} canToggle={false} size="sm" showWildHighlight={false} forceWhiteBackground={true} />
+                              <HorsesDie
+                                key={idx}
+                                value={die.value}
+                                isHeld={false}
+                                isRolling={false}
+                                canToggle={false}
+                                size={isTablet ? "md" : "sm"}
+                                showWildHighlight={false}
+                                forceWhiteBackground={true}
+                              />
                             ))}
                           </div>
                         ) : null;
                       })()}
                       {gameType === 'horses' && (
-                        <HorsesHandResultDisplay description={horsesController.currentWinningResult.description} isWinning={true} size="sm" />
+                        <HorsesHandResultDisplay
+                          description={horsesController.currentWinningResult.description}
+                          isWinning={true}
+                          size="sm"
+                        />
                       )}
                       {/* Show "Tied" indicator when multiple players share the best hand */}
                       {horsesController.isCurrentWinningTied && (
-                        <span className="text-xs font-medium text-amber-400">(Tied)</span>
+                        <span className={cn(
+                          "font-medium text-amber-400",
+                          isTablet ? "text-base" : "text-xs"
+                        )}>
+                          (Tied)
+                        </span>
                       )}
                     </div>
                   )}

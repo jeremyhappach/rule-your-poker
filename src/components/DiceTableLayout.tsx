@@ -324,7 +324,13 @@ export function DiceTableLayout({
       const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
       const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
       unheldIndices.forEach((dieIndex, displayIdx) => {
-        nextStable.set(dieIndex, positions[displayIdx] || { x: 0, y: 0, rotate: 0 });
+        const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
+        // IMPORTANT: Match the exact tablet scatter scaling used by getUnheldPosition.
+        // Otherwise, dice will "snap" back into the tighter mobile formation after the fly-in lands.
+        const stablePos = isTablet
+          ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
+          : basePos;
+        nextStable.set(dieIndex, stablePos);
       });
       stableScatterByDieRef.current = nextStable;
 
@@ -438,8 +444,8 @@ export function DiceTableLayout({
     lg: isTablet ? 92 : 72,
   };
   const dieWidth = dieSizes[effectiveSize];
-  // TABLET: Minimal gap in held row - almost no padding
-  const gap = isTablet ? 2 : 6;
+  // TABLET: Pack held dice as tightly as possible (user requested near-zero padding)
+  const gap = isTablet ? 0 : 6;
   
   // For SCC games, use display order if available
   let orderedDice: { die: HorsesDieType | SCCDieType; originalIndex: number }[] = [];
@@ -836,11 +842,12 @@ export function DiceTableLayout({
 // Calculate held dice positions (horizontal line, centered)
 function getHeldPositions(count: number, dieWidth: number, gap: number): { x: number; y: number }[] {
   if (count === 0) return [];
-  
-  const tightGap = Math.max(2, gap - 4);
+
+  // Allow truly tight packing on tablet (gap can be 0). Keep legacy behavior on other sizes.
+  const tightGap = Math.max(0, gap - 4);
   const totalWidth = count * dieWidth + (count - 1) * tightGap;
   const startX = -totalWidth / 2 + dieWidth / 2;
-  
+
   return Array.from({ length: count }, (_, i) => ({
     x: startX + i * (dieWidth + tightGap),
     y: 0,
