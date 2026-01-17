@@ -28,7 +28,7 @@ import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundCom
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
@@ -3580,6 +3580,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (eligibleDealerCount < 1 || activePlayerCount < 2) {
       console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount, '- reverting to waiting');
       gameOverTransitionRef.current = false;
+      
+      // Remove sitting out players - they need to re-select seats
+      await removeSittingOutPlayersOnWaiting(gameId);
+      
       // Revert to waiting status
       await supabase
         .from('games')
@@ -4595,6 +4599,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             // Revert to waiting status
             console.log('[ANTE] Not enough players - reverting to waiting');
+            
+            // Remove sitting out players - they need to re-select seats
+            await removeSittingOutPlayersOnWaiting(gameId);
+            
             await supabase
               .from('games')
               .update({ 
