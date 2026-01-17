@@ -2675,18 +2675,25 @@ export const MobileGameTable = ({
           {isTheirTurn && playerDecision !== 'stay' && (
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
           )}
-          <div className="relative w-12 h-12" data-chip-center={player.position}>
+          <div className={cn("relative", isTablet ? "w-16 h-16" : "w-12 h-12")} data-chip-center={player.position}>
             {/* Background chip circle - dimmed when folded */}
-            <div className={`
-              absolute inset-0 w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50
-              ${chipBgColor}
-              ${playerDecision === 'fold' ? 'opacity-50' : ''}
-              ${isTheirTurn && playerDecision !== 'stay' ? 'animate-turn-pulse' : ''}
-              ${isClickable ? 'active:scale-95' : ''}
-            `}>
+            {/* TABLET: Bigger chip circles for other players */}
+            <div className={cn(
+              "absolute inset-0 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50",
+              isTablet ? "w-16 h-16" : "w-12 h-12",
+              chipBgColor,
+              playerDecision === 'fold' && 'opacity-50',
+              isTheirTurn && playerDecision !== 'stay' && 'animate-turn-pulse',
+              isClickable && 'active:scale-95'
+            )}>
               {/* Show chip value when no emoticon */}
+              {/* TABLET: Bigger text */}
               {!emoticonOverlays[player.id] && (
-                <span className={`text-sm font-bold leading-none ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+                <span className={cn(
+                  "font-bold leading-none",
+                  isTablet ? "text-base" : "text-sm",
+                  (lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'
+                )}>
                   ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
                 </span>
               )}
@@ -2706,10 +2713,17 @@ export const MobileGameTable = ({
               />
             </div>
             {/* Emoticon overlay - NOT affected by fold dimming */}
+            {/* TABLET: Bigger emoticon overlay */}
             {emoticonOverlays[player.id] && (
-              <div className="absolute inset-0 w-12 h-12 rounded-full flex items-center justify-center z-10">
+              <div className={cn(
+                "absolute inset-0 rounded-full flex items-center justify-center z-10",
+                isTablet ? "w-16 h-16" : "w-12 h-12"
+              )}>
                 <span 
-                  className="text-xl animate-in fade-in zoom-in duration-200"
+                  className={cn(
+                    "animate-in fade-in zoom-in duration-200",
+                    isTablet ? "text-2xl" : "text-xl"
+                  )}
                   style={{
                     animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500 
                       ? 'fadeOutEmoticon 0.5s ease-out forwards' 
@@ -4700,14 +4714,15 @@ export const MobileGameTable = ({
                   : (isTablet || isDesktop ? "scale-[3.0]" : "scale-[2.3]"); // Bigger Holm cards on tablet
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
+              // TABLET: Increased card height reserve, reduced padding elsewhere to keep overall layout compact
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[130px]") // Bigger reserve for tablet
+                  ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[130px]") // Taller reserve for tablet
                   : (currentRound === 1
-                      ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[120px]") // Bigger for tablet R1
+                      ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]") // Taller for tablet R1
                       : currentRound === 2
-                        ? (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[105px]") // Bigger for tablet R2
-                        : (isTablet || isDesktop ? "min-h-[140px]" : "min-h-[90px]")); // Bigger for tablet R3
+                        ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]") // Taller for tablet R2
+                        : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]")); // Taller for tablet R3
 
               return (
                 <div className={cn(
@@ -4798,10 +4813,10 @@ export const MobileGameTable = ({
             })()}
             
             {/* Action area - BELOW cards (reduced margins to move everything up) */}
-            {/* TABLET: More spacing below cards, bigger buttons */}
+            {/* TABLET: Reduced spacing to compensate for taller cards */}
             <div className={cn(
               "flex items-center justify-center",
-              isTablet ? "min-h-[56px] mt-4 mb-3" : "min-h-[36px] mt-0 mb-1"
+              isTablet ? "min-h-[56px] mt-2 mb-2" : "min-h-[36px] mt-0 mb-1"
             )}>
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
@@ -4828,15 +4843,15 @@ export const MobileGameTable = ({
                   )}>Auto-fold (will sit out next hand)</span>
                 </label>
               ) : canDecide && !currentPlayer.auto_fold ? (
-                /* Action buttons - TABLET: Bigger */
-                <div className="flex gap-2 justify-center">
+                /* Action buttons - TABLET: Wider with maintained gap */
+                <div className={cn("flex justify-center", isTablet ? "gap-4" : "gap-2")}>
                   <Button 
                     variant="destructive" 
                     size="default" 
                     onClick={onFold} 
                     className={cn(
-                      "flex-1 font-bold",
-                      isTablet ? "max-w-[180px] text-lg h-14" : "max-w-[120px] text-sm h-9"
+                      "font-bold",
+                      isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"
                     )}
                   >
                     {gameType === 'holm-game' ? 'Fold' : 'Drop'}
@@ -4845,8 +4860,8 @@ export const MobileGameTable = ({
                     size="default" 
                     onClick={onStay} 
                     className={cn(
-                      "flex-1 bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold",
-                      isTablet ? "max-w-[180px] text-lg h-14" : "max-w-[120px] text-sm h-9"
+                      "bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold",
+                      isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"
                     )}
                   >
                     Stay

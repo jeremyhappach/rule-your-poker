@@ -430,14 +430,14 @@ export function DiceTableLayout({
   }
   
   // Get die dimensions based on size (reduced for less overlap)
-  // TABLET: Larger container and adjusted positions
+  // TABLET: Larger container and adjusted positions with more spacing to prevent overlap
   const dieSizes = {
     sm: isTablet ? 52 : 36,
     md: isTablet ? 64 : 48,
     lg: isTablet ? 88 : 72,
   };
   const dieWidth = dieSizes[effectiveSize];
-  const gap = isTablet ? 10 : 6;
+  const gap = isTablet ? 16 : 6;
   
   // For SCC games, use display order if available
   let orderedDice: { die: HorsesDieType | SCCDieType; originalIndex: number }[] = [];
@@ -504,9 +504,18 @@ export function DiceTableLayout({
     const heldPositions = getHeldPositions(heldAtStartOfFinalRoll.length, dieWidth, gap);
     
     // Position unheld dice based on COUNT (not original index)
+    // TABLET: Scale positions by 1.4x to prevent overlap with larger dice
     const getUnheldPos = (displayIndex: number, totalUnheld: number) => {
       const positions = UNHELD_POSITIONS[totalUnheld] || UNHELD_POSITIONS[5];
-      return positions[displayIndex] || { x: 0, y: 0, rotate: 0 };
+      const basePos = positions[displayIndex] || { x: 0, y: 0, rotate: 0 };
+      if (isTablet) {
+        return {
+          x: basePos.x * 1.4,
+          y: basePos.y * 1.3,
+          rotate: basePos.rotate
+        };
+      }
+      return basePos;
     };
 
     const heldYOffset = -35;
@@ -514,7 +523,7 @@ export function DiceTableLayout({
     const scatterYOffset = 50;
 
     return (
-      <div className="relative" style={{ width: '200px', height: '120px' }}>
+      <div className="relative" style={{ width: isTablet ? '300px' : '200px', height: isTablet ? '180px' : '120px' }}>
         {/* Dice that were held before the final roll started */}
         {heldAtStartOfFinalRoll.map((item, displayIdx) => {
           const pos = heldPositions[displayIdx];
@@ -690,9 +699,19 @@ export function DiceTableLayout({
   
   // Get positions based on COUNT of unheld dice (not originalIndex)
   // Each roll, dice get new positions based on how many are being rolled
+  // TABLET: Scale positions by 1.4x to prevent overlap with larger dice
   const getUnheldPosition = (displayIndex: number, totalUnheld: number) => {
     const positions = UNHELD_POSITIONS[totalUnheld] || UNHELD_POSITIONS[5];
-    return positions[displayIndex] || { x: 0, y: 0, rotate: 0 };
+    const basePos = positions[displayIndex] || { x: 0, y: 0, rotate: 0 };
+    // For tablets, spread positions further apart to prevent overlap
+    if (isTablet) {
+      return {
+        x: basePos.x * 1.4,
+        y: basePos.y * 1.3,
+        rotate: basePos.rotate
+      };
+    }
+    return basePos;
   };
   
   // Held dice go at the top (tighter to pot)
@@ -734,7 +753,7 @@ export function DiceTableLayout({
           )}
           originPosition={animationOrigin}
           onComplete={handleAnimationComplete}
-          size={size}
+          size={effectiveSize}
           isSCC={isSCC}
           scatterYOffset={unheldYOffset}
         />
