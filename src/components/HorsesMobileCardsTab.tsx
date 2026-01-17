@@ -172,7 +172,7 @@ export function HorsesMobileCardsTab({
       */}
 
       {/* Dice area - always reserve space so button doesn't move */}
-      <div className="flex items-center justify-center gap-1 mb-3 min-h-[60px]">
+      <div className="flex items-center justify-center gap-1 mb-1 min-h-[60px]">
         {showMyDice ? (
           horses.localHand.dice.map((die, idx) => {
             // Determine if this die was held at the START of the current roll
@@ -209,8 +209,8 @@ export function HorsesMobileCardsTab({
         )}
       </div>
 
-      {/* Action buttons (always in same position below dice area - increased gap for tablet/desktop) */}
-      <div className="flex items-center justify-center min-h-[36px] mt-2 mb-3">
+      {/* Action buttons (always in same position below dice area) */}
+      <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           horses.localHand.rollsRemaining > 0 ? (
             <div className="flex items-center justify-center gap-2">
@@ -280,8 +280,8 @@ export function HorsesMobileCardsTab({
         </div>
       )}
 
-      {/* Player info (bottom) - consistent with card games layout - moved up slightly */}
-      <div className={cn("flex items-center justify-center gap-2 mt-auto pt-1 pb-4")}>
+      {/* Player info (bottom) - consistent with card games layout */}
+      <div className={cn("flex items-center justify-center gap-2 mt-auto pt-0 pb-2")}>
         {/* Quick emoticon picker - left of player name */}
         {onEmoticonSelect && (
           <QuickEmoticonPicker 
