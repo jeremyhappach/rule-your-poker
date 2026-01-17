@@ -974,12 +974,12 @@ export const GameTable = ({
         <div className="absolute inset-0 rounded-[50%] shadow-inner overflow-hidden" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }}>
-          {/* Bridge overlay on felt during waiting phase */}
+          {/* Bridge overlay on felt during waiting phase - positioned in upper portion */}
           {isWaitingPhase && (
             <img 
               src={peoriaBridgeMobile}
               alt="I-74 Bridge"
-              className="absolute inset-0 w-full h-full object-cover opacity-15 pointer-events-none"
+              className="absolute inset-x-0 top-0 h-3/4 w-full object-cover object-top opacity-15 pointer-events-none"
             />
           )}
         </div>

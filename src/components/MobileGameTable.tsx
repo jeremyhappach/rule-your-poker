@@ -2969,12 +2969,12 @@ export const MobileGameTable = ({
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
       }}>
-          {/* Bridge overlay on felt during waiting phase */}
+          {/* Bridge overlay on felt during waiting phase - positioned in upper portion */}
           {isWaitingPhase && (
             <img 
               src={peoriaBridgeMobile}
               alt="I-74 Bridge"
-              className="absolute inset-0 w-full h-full object-cover opacity-15 pointer-events-none"
+              className="absolute inset-x-0 top-0 h-3/4 w-full object-cover object-top opacity-15 pointer-events-none"
             />
           )}
         </div>
