@@ -5527,8 +5527,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       gameStatus={game.status}
                       handContextId={handContextKey}
                     />
-                    {/* Desktop game over countdown - BLOCKED during 357 win animation, Horses win animation, or Horses/SCC games (no countdown) */}
-                    {game.game_over_at && !is357WinAnimationActive && !horsesWinPotTriggerId && game.game_type !== 'horses' && game.game_type !== 'ship-captain-crew' && (
+                    {/* Desktop game over countdown - ONLY for Holm games */}
+                    {game.game_over_at && game.game_type === 'holm-game' && (
                       <GameOverCountdown
                         winnerMessage={game.last_round_result}
                         nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
@@ -5540,8 +5540,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     )}
                   </>
                 )}
-                {/* Mobile game over countdown - BLOCKED during 357 win animation, Horses win animation, or Horses/SCC games (no countdown) */}
-                {isMobile && game.game_over_at && !is357WinAnimationActive && !horsesWinPotTriggerId && game.game_type !== 'horses' && game.game_type !== 'ship-captain-crew' && (
+                {/* Mobile game over countdown - ONLY for Holm games */}
+                {isMobile && game.game_over_at && game.game_type === 'holm-game' && (
                   <GameOverCountdown
                     winnerMessage={game.last_round_result}
                     nextDealer={nextDealerPlayer || { id: '', position: game.dealer_position || 1, profiles: { username: `Seat ${game.dealer_position || 1}` } }}
