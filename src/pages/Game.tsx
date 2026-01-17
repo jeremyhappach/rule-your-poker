@@ -398,8 +398,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
 
     checkGameExists();
-    // Increased from 3s to 10s - this is just a safety net for deleted games, not primary sync
-    const interval = window.setInterval(checkGameExists, 10000);
+    // Poll every 3 seconds to check if game still exists
+    const interval = window.setInterval(checkGameExists, 3000);
 
     return () => {
       cancelled = true;
