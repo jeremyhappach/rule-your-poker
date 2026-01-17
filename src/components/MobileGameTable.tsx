@@ -3733,15 +3733,15 @@ export const MobileGameTable = ({
                 {winningResultToBeat && (
                   <div className={cn(
                     "flex items-center justify-center gap-2 mt-1",
-                    isTablet && "gap-3 mt-2"
+                    isTablet && "gap-4 mt-3"
                   )}>
                     <Target className={cn(
                       "text-muted-foreground",
-                      isTablet ? "w-6 h-6" : "w-3 h-3"
+                      isTablet ? "w-10 h-10" : "w-3 h-3"
                     )} />
                     <span className={cn(
                       "text-muted-foreground",
-                      isTablet ? "text-base" : "text-xs"
+                      isTablet ? "text-xl font-medium" : "text-xs"
                     )}>
                       Beat:
                     </span>
@@ -3838,15 +3838,15 @@ export const MobileGameTable = ({
                   {horsesController.currentWinningResult && (
                     <div className={cn(
                       "flex items-center justify-center gap-2",
-                      isTablet && "gap-3"
+                      isTablet && "gap-4"
                     )}>
                       <Target className={cn(
                         "text-muted-foreground",
-                        isTablet ? "w-6 h-6" : "w-3 h-3"
+                        isTablet ? "w-10 h-10" : "w-3 h-3"
                       )} />
                       <span className={cn(
                         "text-muted-foreground",
-                        isTablet ? "text-base" : "text-xs"
+                        isTablet ? "text-xl font-medium" : "text-xs"
                       )}>
                         Beat:
                       </span>
@@ -4756,13 +4756,13 @@ export const MobileGameTable = ({
                       : currentRound === 2
                         ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]") // Bigger R2 on tablet
                         : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]")) // Bigger R3 on tablet
-                  : (isTablet || isDesktop ? "scale-[3.0]" : "scale-[2.3]"); // Bigger Holm cards on tablet
+                  : (isTablet || isDesktop ? "scale-[3.5]" : "scale-[2.3]"); // Much bigger Holm cards on tablet
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               // TABLET: Increased card height reserve, reduced padding elsewhere to keep overall layout compact
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[130px]") // Taller reserve for tablet
+                  ? (isTablet || isDesktop ? "min-h-[260px]" : "min-h-[130px]") // Much taller reserve for tablet Holm
                   : (currentRound === 1
                       ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]") // Taller for tablet R1
                       : currentRound === 2

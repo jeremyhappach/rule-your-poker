@@ -843,8 +843,8 @@ export function DiceTableLayout({
 function getHeldPositions(count: number, dieWidth: number, gap: number): { x: number; y: number }[] {
   if (count === 0) return [];
 
-  // Allow truly tight packing on tablet (gap can be 0). Keep legacy behavior on other sizes.
-  const tightGap = Math.max(0, gap - 4);
+  // Allow truly tight packing on tablet (gap can be 0 or negative for overlap).
+  const tightGap = gap <= 0 ? -2 : Math.max(0, gap - 4);
   const totalWidth = count * dieWidth + (count - 1) * tightGap;
   const startX = -totalWidth / 2 + dieWidth / 2;
 

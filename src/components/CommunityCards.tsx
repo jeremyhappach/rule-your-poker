@@ -135,7 +135,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
           return (
             <div
               key={index}
-              className={`relative ${isTablet || isDesktop ? 'w-12 h-18' : 'w-8 h-12 sm:w-9 sm:h-14'}`}
+              className={`relative ${isTablet || isDesktop ? 'w-14 h-[84px]' : 'w-8 h-12 sm:w-9 sm:h-14'}`}
               style={{ 
                 transformStyle: 'preserve-3d',
                 transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
