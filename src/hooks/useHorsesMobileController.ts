@@ -919,6 +919,14 @@ export function useHorsesMobileController({
         return;
       }
 
+      // IMPORTANT: If player has initiated roll 3 (rollsRemaining === 0), don't time them out
+      // They're in the middle of their final roll animation
+      if (playerState && playerState.rollsRemaining === 0 && !playerState.isComplete) {
+        console.log("[HORSES] Player in roll 3 animation, skipping timeout:", currentTurnPlayerId);
+        // Don't advance, just wait - the roll will complete and lock in automatically
+        return;
+      }
+
       // If player hasn't rolled yet, give them a forced roll result
       let result;
       if (!playerState || playerState.rollsRemaining === 3) {
