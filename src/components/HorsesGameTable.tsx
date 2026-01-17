@@ -342,6 +342,18 @@ export function HorsesGameTable({
   const announcedTurnsRef = useRef<Set<string>>(new Set());
   const currentTurnState = horsesState?.playerStates?.[currentTurnPlayerId || ""] ?? null;
 
+  // TURN COMPLETION HOLD: When a player completes their turn, we hold their dice visible
+  // for 3 seconds before transitioning to the next player. This prevents flicker.
+  const [completedTurnHold, setCompletedTurnHold] = useState<{
+    playerId: string;
+    dice: (HorsesDieType | SCCDieType)[];
+    result: HorsesHandResult | SCCHandResult;
+    heldMaskBeforeComplete?: boolean[];
+    expiresAt: number;
+  } | null>(null);
+  const completedTurnHoldTimerRef = useRef<number | null>(null);
+  const lastCompletedTurnKeyRef = useRef<string | null>(null);
+
   // No Qualify animation state for SCC games (any player)
   const [showNoQualifyAnimation, setShowNoQualifyAnimation] = useState(false);
   const [noQualifyPlayerName, setNoQualifyPlayerName] = useState<string | null>(null);
@@ -435,8 +447,51 @@ export function HorsesGameTable({
         window.clearTimeout(clearAnnouncementTimerRef.current);
         clearAnnouncementTimerRef.current = null;
       }
+      if (completedTurnHoldTimerRef.current) {
+        window.clearTimeout(completedTurnHoldTimerRef.current);
+        completedTurnHoldTimerRef.current = null;
+      }
     };
   }, []);
+
+  // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
+  // and hold it visible for 3 seconds. This creates a smooth transition without flicker.
+  useEffect(() => {
+    if (gamePhase !== "playing") return;
+    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
+
+    const holdKey = `${currentRoundId}:${currentTurnPlayerId}`;
+    if (lastCompletedTurnKeyRef.current === holdKey) return; // Already holding this turn
+    lastCompletedTurnKeyRef.current = holdKey;
+
+    // Capture the completed player's dice state for the hold period
+    const holdDuration = 3000; // 3 seconds to display dice before transition
+    const expiresAt = Date.now() + holdDuration;
+
+    setCompletedTurnHold({
+      playerId: currentTurnPlayerId,
+      dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
+      result: currentTurnState.result,
+      heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
+      expiresAt,
+    });
+
+    // Clear the hold after the duration
+    if (completedTurnHoldTimerRef.current) {
+      window.clearTimeout(completedTurnHoldTimerRef.current);
+    }
+    completedTurnHoldTimerRef.current = window.setTimeout(() => {
+      setCompletedTurnHold(null);
+      completedTurnHoldTimerRef.current = null;
+    }, holdDuration);
+  }, [
+    gamePhase,
+    currentRoundId,
+    currentTurnPlayerId,
+    currentTurnState?.isComplete,
+    currentTurnState?.result,
+  ]);
 
   useEffect(() => {
     if (gamePhase !== "playing") return;
@@ -1163,10 +1218,28 @@ export function HorsesGameTable({
   // Get dice to display for current turn (bot or from DB)
   // CRITICAL: When a bot locks in early, we need to preserve the heldMaskBeforeComplete
   // so the layout doesn't revert from the correct frozen position.
-  const getCurrentTurnDice = () => {
+  // ALSO: Use the completedTurnHold state if we're in the hold period to prevent flicker
+  const getCurrentTurnDice = useCallback(() => {
+    // If we have a completed turn hold and it matches the current (or recently completed) player,
+    // use the held state to prevent flicker during turn transitions
+    if (completedTurnHold && Date.now() < completedTurnHold.expiresAt) {
+      // If the turn hasn't advanced yet, or we're still in the hold window
+      if (completedTurnHold.playerId === currentTurnPlayerId || !currentTurnPlayerId) {
+        const holdResult = completedTurnHold.result as SCCHandResult;
+        return {
+          dice: completedTurnHold.dice,
+          isRolling: false,
+          heldMaskBeforeComplete: completedTurnHold.heldMaskBeforeComplete,
+          rollKey: `hold-${completedTurnHold.playerId}`,
+          isQualified: isSCC ? holdResult?.isQualified : undefined,
+          isCompletedHold: true, // Flag to indicate this is the hold state
+        };
+      }
+    }
+
     // Prefer bot display state if it matches the current turn player
     if (currentPlayer?.is_bot && botDisplayState?.playerId === currentTurnPlayerId) {
-      return botDisplayState;
+      return { ...botDisplayState, isCompletedHold: false };
     }
 
     // Fall back to DB state - this includes the heldMaskBeforeComplete for frozen layout
@@ -1180,7 +1253,7 @@ export function HorsesGameTable({
       : `roll-${state.rollsRemaining}-${currentTurnPlayerId}`;
     
     // Check if the SCC hand is qualified (for unused dice visual)
-    const isQualified = isSCC && state.result 
+    const isQualifiedVal = isSCC && state.result 
       ? (state.result as SCCHandResult).isQualified 
       : undefined;
     
@@ -1190,9 +1263,10 @@ export function HorsesGameTable({
       heldMaskBeforeComplete: state.heldMaskBeforeComplete,
       heldCountBeforeComplete: state.heldCountBeforeComplete,
       rollKey: stableRollKey,
-      isQualified,
+      isQualified: isQualifiedVal,
+      isCompletedHold: false,
     };
-  };
+  }, [completedTurnHold, currentTurnPlayerId, currentPlayer?.is_bot, botDisplayState, horsesState?.playerStates, isSCC]);
   
   // Calculate animation origin based on current player position (for observer view)
   // This gives us a position offset from the center of the felt
@@ -1317,14 +1391,17 @@ export function HorsesGameTable({
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex gap-2">
                       {(() => {
-                        // Waiting / no current player yet
-                        if (gamePhase !== "playing" || !currentPlayer) {
+                        // Check if we're in a completed turn hold period (show dice during hold)
+                        const isInHoldPeriod = completedTurnHold && Date.now() < completedTurnHold.expiresAt;
+                        
+                        // Waiting / no current player yet (but show dice if in hold period)
+                        if ((gamePhase !== "playing" || !currentPlayer) && !isInHoldPeriod) {
                           // Don't show placeholder dice before game starts
                           return null;
                         }
 
                         // My turn - show "You are rolling" message
-                        if (isMyTurn) {
+                        if (isMyTurn && !isInHoldPeriod) {
                           const hasRolled = localHand.rollsRemaining < 3;
                           if (!hasRolled) {
                             return (
@@ -1341,7 +1418,7 @@ export function HorsesGameTable({
                           );
                         }
 
-                        // Someone else's turn - show their dice
+                        // Someone else's turn - show their dice (or hold period dice)
                         const diceState = getCurrentTurnDice();
                         if (!diceState) return null;
                         
@@ -1558,7 +1635,9 @@ export function HorsesGameTable({
               })}
 
               {/* Dice on the felt center - for other players watching someone roll */}
-              {gamePhase === "playing" && currentPlayer && !isMyTurn && (
+              {/* Also show during the completedTurnHold period to prevent flicker */}
+              {((gamePhase === "playing" && currentPlayer && !isMyTurn) || 
+                (completedTurnHold && Date.now() < completedTurnHold.expiresAt)) && (
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
                   {(() => {
                     const diceState = getCurrentTurnDice();
