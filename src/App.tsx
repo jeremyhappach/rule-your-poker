@@ -11,9 +11,6 @@ import HandEvalTest from "./pages/HandEvalTest";
 import HandEvalDebug from "./pages/HandEvalDebug";
 import DicePreview from "./pages/DicePreview";
 import DeadlineDebug from "./pages/DeadlineDebug";
-import { PerformanceTracerPanel } from "./components/PerformanceTracerPanel";
-// Initialize Supabase instrumentation for tracing
-import "./lib/supabaseTracer";
 
 const queryClient = new QueryClient();
 
@@ -22,7 +19,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <PerformanceTracerPanel />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
