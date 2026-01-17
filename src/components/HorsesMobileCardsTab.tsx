@@ -280,8 +280,8 @@ export function HorsesMobileCardsTab({
         </div>
       )}
 
-      {/* Player info (bottom) - consistent with card games layout */}
-      <div className={cn("flex items-center justify-center gap-2 mt-auto pt-3 pb-2")}>
+      {/* Player info (bottom) - consistent with card games layout - moved up slightly */}
+      <div className={cn("flex items-center justify-center gap-2 mt-auto pt-1 pb-4")}>
         {/* Quick emoticon picker - left of player name */}
         {onEmoticonSelect && (
           <QuickEmoticonPicker 

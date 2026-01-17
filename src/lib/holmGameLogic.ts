@@ -1845,10 +1845,12 @@ async function handleMultiPlayerShowdown(
       // Winners split the pot
       const splitAmount = Math.floor(roundPot / playersBeatChucky.length);
       let winnerNames: string[] = [];
+      let winnerIds: string[] = [];
       
       for (const winner of playersBeatChucky) {
         const winnerUsername = getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id);
         winnerNames.push(winnerUsername);
+        winnerIds.push(winner.player.id);
         
         await supabase
           .from('players')
@@ -1869,6 +1871,28 @@ async function handleMultiPlayerShowdown(
           .update({ chips: loser.player.chips - potMatchAmount })
           .eq('id', loser.player.id);
       }
+      
+      // Record game result for hand history (for tie case, record first winner but indicate chopped)
+      const winnerAllCards = [...playersBeatChucky[0].cards, ...communityCards];
+      const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
+      const playerChipChanges: Record<string, number> = {};
+      for (const winner of playersBeatChucky) {
+        playerChipChanges[winner.player.id] = splitAmount;
+      }
+      
+      await recordGameResult(
+        gameId,
+        (game.total_hands || 0) + 1,
+        playersBeatChucky[0].player.id,
+        winnerNames.join(' and '),
+        winnerHandDesc,
+        roundPot,
+        playerChipChanges,
+        playersBeatChucky.length > 1 // is_chopped = true if multiple winners
+      );
+      
+      // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
+      await snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
       
       // Reset all players for new game
       console.log('[HOLM TIE] Resetting player states for new game');
@@ -1910,7 +1934,7 @@ async function handleMultiPlayerShowdown(
           game_over_at: null, // NULL - frontend celebration will set this after completing
           // dealer_position is NOT updated here - rotation happens after player state evaluation
           buck_position: null,
-          total_hands: 0,
+          total_hands: (game.total_hands || 0) + 1,
           pot: 0,
           awaiting_next_round: false // Set to false since game is over, not awaiting next round
         })
