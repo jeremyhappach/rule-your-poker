@@ -429,9 +429,21 @@ serve(async (req) => {
                     .eq('decision_locked', false)
                     .select();
 
-                  if (humanUpdateResult && humanUpdateResult.length > 0) {
-                    actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`);
+                  if (!humanUpdateResult || humanUpdateResult.length === 0) {
+                    // Another client already processed this player - skip
+                    console.log('[ENFORCE-CLIENT] Skipping - player already processed by another client');
+                    return new Response(JSON.stringify({ 
+                      success: true, 
+                      actionsTaken: ['Skipped - player already processed'],
+                      gameStatus: game.status,
+                      timestamp: nowIso,
+                      source,
+                      requestId,
+                    }), {
+                      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    });
                   }
+                  actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`);
                 }
 
                 // Advance turn to next undecided player
@@ -461,23 +473,41 @@ serve(async (req) => {
                     .maybeSingle();
 
                   const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
-                  // CRITICAL: Use 'now' (established at request start) plus full timer, not Date.now()
-                  // This prevents race conditions where processing time eats into the next player's timer
-                  const newDeadline = new Date(now.getTime() + timerSeconds * 1000).toISOString();
+                  // CRITICAL: Use current server time (Date.now()) plus full timer for the NEW deadline
+                  // This ensures the next player gets a full timer from THIS moment
+                  const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
                   console.log('[ENFORCE-CLIENT] Setting new deadline for next player:', {
                     nextPosition: nextPlayer.position,
                     timerSeconds,
                     newDeadline,
-                    nowTime: now.toISOString(),
+                    oldDeadline: currentRound.decision_deadline,
                   });
 
-                  await supabase
+                  // CRITICAL: Use optimistic locking - only update if the deadline matches what we saw
+                  // This prevents race conditions where multiple clients both try to advance the turn
+                  const { data: turnAdvanceResult } = await supabase
                     .from('rounds')
                     .update({
                       current_turn_position: nextPlayer.position,
                       decision_deadline: newDeadline,
                     })
-                    .eq('id', currentRound.id);
+                    .eq('id', currentRound.id)
+                    .eq('decision_deadline', currentRound.decision_deadline) // Optimistic lock!
+                    .select();
+
+                  if (!turnAdvanceResult || turnAdvanceResult.length === 0) {
+                    console.log('[ENFORCE-CLIENT] Turn advance skipped - deadline was already updated by another client');
+                    return new Response(JSON.stringify({ 
+                      success: true, 
+                      actionsTaken: ['Skipped - another client already advanced turn'],
+                      gameStatus: game.status,
+                      timestamp: nowIso,
+                      source,
+                      requestId,
+                    }), {
+                      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    });
+                  }
 
                   actionsTaken.push(`Turn advanced to position ${nextPlayer.position}`);
                 } else {
