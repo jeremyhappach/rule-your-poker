@@ -72,7 +72,7 @@ export function HorsesPlayerArea({
 
       {/* Compact mode: just show username initial + result */}
       {showCompactResult && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 animate-in fade-in duration-150">
           <span className="text-xs font-medium text-muted-foreground truncate max-w-[50px]">
             {username}
           </span>
@@ -96,7 +96,7 @@ export function HorsesPlayerArea({
             </div>
           )}
           {myStatus === 'done' && handResult && (
-            <>
+            <div className="animate-in fade-in duration-150">
               {diceValues && (
                 <div className="flex gap-1">
                   {gameType === 'ship-captain-crew' ? (
@@ -145,14 +145,14 @@ export function HorsesPlayerArea({
                   handResult.description
                 )}
               </Badge>
-            </>
+            </div>
           )}
         </div>
       )}
 
       {/* For other players: show completed dice (non-compact, non-Horses) */}
       {!showCompactResult && !isCurrentUser && hasTurnCompleted && diceValues && (
-        <div className="flex gap-1">
+        <div className="flex gap-1 animate-in fade-in duration-150">
           {gameType === 'ship-captain-crew' ? (
             getSCCDisplayOrder({ dice: diceValues as SCCDieType[] } as SCCHand).map(({ die, originalIndex }) => (
               <HorsesDie
@@ -191,7 +191,7 @@ export function HorsesPlayerArea({
             <Badge
               variant={isWinningHand ? "default" : "secondary"}
               className={cn(
-                "px-2 py-1 text-white",
+                "px-2 py-1 text-white animate-in fade-in duration-150",
                 isWinningHand && "bg-green-600"
               )}
             >
