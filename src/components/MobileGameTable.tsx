@@ -4122,7 +4122,10 @@ export const MobileGameTable = ({
           <div 
             className={cn(
               "absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center transition-all duration-300",
-              isHolmMultiPlayerShowdown ? 'top-[76%]' : 'top-[65%]',
+              // Tablet needs extra downward offset to avoid community card overlap
+              isHolmMultiPlayerShowdown 
+                ? (isTablet ? 'top-[80%]' : 'top-[76%]') 
+                : (isTablet ? 'top-[70%]' : 'top-[65%]'),
               isTablet || isDesktop ? '-space-x-1' : '-space-x-[2px]'
             )}
             style={{ transform: `translateX(-50%) scale(${isTablet ? 1.8 : isDesktop ? 2.0 : 1})` }}
