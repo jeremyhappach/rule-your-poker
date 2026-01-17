@@ -430,20 +430,16 @@ serve(async (req) => {
                     .select();
 
                   if (!humanUpdateResult || humanUpdateResult.length === 0) {
-                    // Another client already processed this player - skip
-                    console.log('[ENFORCE-CLIENT] Skipping - player already processed by another client');
-                    return new Response(JSON.stringify({ 
-                      success: true, 
-                      actionsTaken: ['Skipped - player already processed'],
-                      gameStatus: game.status,
-                      timestamp: nowIso,
-                      source,
-                      requestId,
-                    }), {
-                      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                    });
+                    // Another client already processed this player.
+                    // IMPORTANT: Do NOT return early — we may still need to advance the turn
+                    // if the other client only locked the player but didn't update the round.
+                    console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
+                    actionsTaken.push('Skipped - player already processed');
+                  } else {
+                    actionsTaken.push(
+                      `Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`
+                    );
                   }
-                  actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`);
                 }
 
                 // Advance turn to next undecided player

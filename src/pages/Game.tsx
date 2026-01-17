@@ -2428,81 +2428,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setDecisionDeadline(null);
       
       if (isHolmGame) {
-        // In Holm, auto-fold the player whose timer expired
+        // In Holm, do NOT make a local DB decision here (it races with other clients + backend enforcement).
+        // Instead, ask the backend enforcer to process the overdue deadline.
         (async () => {
-          // CRITICAL: Fetch fresh game and round data to verify state
-          const { data: freshGame } = await supabase
-            .from('games')
-            .select('is_paused')
-            .eq('id', gameId!)
-            .single();
-          
-          // Check pause state from database (not local state which may be stale)
-          if (freshGame?.is_paused) {
-            console.log('[TIMER EXPIRED HOLM] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
-            autoFoldingRef.current = false;
-            fetchGameData(); // Sync local state
-            return;
-          }
-          
-          // CRITICAL: Fetch latest round by round_number DESC, NOT game.current_round which may be stale
-          const { data: freshRound } = await supabase
-            .from('rounds')
-            .select('*')
-            .eq('game_id', gameId!)
-            .order('round_number', { ascending: false })
-            .limit(1)
-            .single();
-            
-          if (!freshRound) {
-            console.log('[TIMER EXPIRED HOLM] Fresh round not found');
+          if (!gameId) {
             autoFoldingRef.current = false;
             return;
           }
-          
-          // Verify the turn hasn't changed since timer started
-          if (freshRound.current_turn_position !== timerTurnPosition) {
-            console.log('[TIMER EXPIRED HOLM] *** TURN HAS CHANGED - SKIPPING AUTO-FOLD ***', {
-              expected: timerTurnPosition,
-              actual: freshRound.current_turn_position
+
+          try {
+            console.log('[TIMER EXPIRED HOLM] Invoking enforce-deadlines');
+            await supabase.functions.invoke('enforce-deadlines', {
+              body: {
+                gameId,
+                source: 'client-timer-expired',
+                requestId: crypto.randomUUID(),
+              },
             });
+          } catch (err) {
+            console.warn('[TIMER EXPIRED HOLM] enforce-deadlines failed:', err);
+          } finally {
             autoFoldingRef.current = false;
-            // Refetch to sync with new turn
+            // Force a quick refresh so the UI picks up the new decision_deadline/turn
             fetchGameData();
-            return;
           }
-          
-          const { data: currentTurnPlayer } = await supabase
-            .from('players')
-            .select('*')
-            .eq('game_id', gameId!)
-            .eq('position', timerTurnPosition)
-            .single();
-            
-          if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
-            console.log('[TIMER EXPIRED HOLM] Auto-folding player at position', currentTurnPlayer.position);
-
-            // Mark as timed-out so UI shows (folding) and they can sit out next hand.
-            // Only apply to humans; bots already have their own decision logic.
-            if (!currentTurnPlayer.is_bot) {
-              await supabase
-                .from('players')
-                .update({ auto_fold: true })
-                .eq('id', currentTurnPlayer.id);
-            }
-
-            await makeDecision(gameId!, currentTurnPlayer.id, 'fold');
-            // NOTE: makeDecision already calls checkHolmRoundComplete internally
-            console.log('[TIMER EXPIRED HOLM] *** Realtime will trigger refetch after auto-fold ***');
-          } else {
-            console.log('[TIMER EXPIRED HOLM] Player already decided or not found');
-          }
-          
-          autoFoldingRef.current = false;
-        })().catch(err => {
-          console.error('[TIMER EXPIRED HOLM] Error auto-folding:', err);
-          autoFoldingRef.current = false;
-        });
+        })();
       } else {
         // For 3-5-7 games, also check pause state from database
         (async () => {
@@ -2518,7 +2468,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             fetchGameData();
             return;
           }
-          
+
           await autoFoldUndecided(gameId!);
           fetchGameData();
           autoFoldingRef.current = false;
