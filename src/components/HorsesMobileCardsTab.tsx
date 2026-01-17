@@ -367,7 +367,7 @@ export function HorsesMobileCardsTab({
         )}
         <p className={cn(
           "font-semibold text-foreground",
-          isTablet || isDesktop ? "text-lg" : "text-sm"
+          isTablet || isDesktop ? "text-xl" : "text-sm"
         )}>
           {currentUserPlayer.profiles?.username || 'You'}
           {(currentUserPlayer.auto_fold || currentUserPlayer.sitting_out) && !currentUserPlayer.waiting ? (
