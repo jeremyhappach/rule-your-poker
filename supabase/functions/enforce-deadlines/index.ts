@@ -508,8 +508,11 @@ serve(async (req) => {
 
                     // If the round is STILL overdue (or has a null deadline), push it forward so the next player
                     // does not get instantly auto-folded.
+                    // CRITICAL: Use FRESH server time for this comparison, not the stale `nowIso` from request start.
+                    // Otherwise a deadline set 500ms ago by another client would still appear "overdue".
                     const latestDeadline = (latestRound as any)?.decision_deadline as string | null | undefined;
-                    const isStillOverdue = !latestDeadline || latestDeadline < nowIso;
+                    const freshNowIso = new Date().toISOString();
+                    const isStillOverdue = !latestDeadline || latestDeadline < freshNowIso;
 
                     if ((latestRound as any)?.status === 'betting' && isStillOverdue) {
                       const healedDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
