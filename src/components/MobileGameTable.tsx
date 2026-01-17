@@ -4758,13 +4758,13 @@ export const MobileGameTable = ({
                       : currentRound === 2
                         ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]") // Bigger R2 on tablet
                         : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]")) // Bigger R3 on tablet
-                  : (isTablet || isDesktop ? "scale-[3.5]" : "scale-[2.3]"); // Much bigger Holm cards on tablet
+                  : (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.3]"); // Holm cards on tablet - reduced from 3.5
 
               // Reserve space - must fully contain scaled cards so they don't overflow on tablet
               // TABLET: Increased card height reserve, reduced padding elsewhere to keep overall layout compact
               const currentPlayerHandReserveClass =
                 gameType === "holm-game"
-                  ? (isTablet || isDesktop ? "min-h-[260px]" : "min-h-[130px]") // Much taller reserve for tablet Holm
+                  ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[130px]") // Holm tablet - reduced from 260px
                   : (currentRound === 1
                       ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]") // Taller for tablet R1
                       : currentRound === 2
