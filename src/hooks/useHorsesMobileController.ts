@@ -908,6 +908,17 @@ export function useHorsesMobileController({
       // Get current player state
       const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
 
+      // IMPORTANT: If player has already completed their turn, do NOT mark them as timed out!
+      // This prevents false timeout penalties when the player locked in but timer display lagged
+      if (playerState?.isComplete) {
+        console.log("[HORSES] Player already completed turn, skipping timeout penalty:", currentTurnPlayerId);
+        // Just advance to next turn without penalty
+        setTimeout(() => {
+          advanceToNextTurn(currentTurnPlayerId);
+        }, HORSES_POST_TURN_PAUSE_MS);
+        return;
+      }
+
       // If player hasn't rolled yet, give them a forced roll result
       let result;
       if (!playerState || playerState.rollsRemaining === 3) {
@@ -927,7 +938,7 @@ export function useHorsesMobileController({
           isComplete: true,
           result,
         });
-      } else if (!playerState.isComplete) {
+      } else {
         // Had rolled but didn't lock in - evaluate current dice
         result = evaluateHand(playerState.dice);
         await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
