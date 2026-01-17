@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useDeviceSize } from '@/hooks/useDeviceSize';
 
 const EMOTICONS = [
   '😀', '😂', '😍', '🤔', '😎', '😢', '😡', '🤯',
@@ -17,6 +18,7 @@ interface QuickEmoticonPickerProps {
 
 export const QuickEmoticonPicker = ({ onSelect, disabled = false }: QuickEmoticonPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { isTablet } = useDeviceSize();
 
   const handleEmoticonClick = (emoticon: string) => {
     onSelect(emoticon);
@@ -31,14 +33,16 @@ export const QuickEmoticonPicker = ({ onSelect, disabled = false }: QuickEmotico
             variant="ghost"
             size="icon"
             disabled={disabled}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-primary/20"
+            className={`text-muted-foreground hover:text-foreground hover:bg-primary/20 ${
+              isTablet ? 'h-12 w-12' : 'h-8 w-8'
+            }`}
             title="Send emoticon"
           >
-            <Smile className="h-5 w-5" />
+            <Smile className={isTablet ? 'h-8 w-8' : 'h-5 w-5'} />
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-64 p-2 bg-background border-border z-50" 
+          className={`p-2 bg-background border-border z-50 ${isTablet ? 'w-80' : 'w-64'}`}
           side="top"
           align="center"
         >
@@ -47,7 +51,9 @@ export const QuickEmoticonPicker = ({ onSelect, disabled = false }: QuickEmotico
               <button
                 key={emoticon}
                 onClick={() => handleEmoticonClick(emoticon)}
-                className="text-xl hover:bg-primary/20 rounded p-1 transition-colors"
+                className={`hover:bg-primary/20 rounded p-1 transition-colors ${
+                  isTablet ? 'text-2xl' : 'text-xl'
+                }`}
               >
                 {emoticon}
               </button>

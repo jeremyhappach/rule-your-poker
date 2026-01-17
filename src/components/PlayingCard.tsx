@@ -1,6 +1,7 @@
 import { Card as CardType, Suit } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
+import { useDeviceSize } from "@/hooks/useDeviceSize";
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
@@ -49,6 +50,7 @@ interface PlayingCardProps {
 
 // Card sizing: proper playing card aspect ratio (~2.5:3.5 or ~0.71)
 // Taller/narrower cards with larger face content
+// TABLET: Tighter padding between rank/suit, slightly bigger text
 const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
   sm: {
     container: 'w-6 h-9 sm:w-7 sm:h-10',
@@ -72,6 +74,30 @@ const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: st
   },
 };
 
+// TABLET: Enhanced sizes with tighter spacing
+const TABLET_SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
+  sm: {
+    container: 'w-7 h-10',
+    rank: 'text-lg font-black leading-none',
+    suit: 'text-lg leading-none -mt-0.5',
+  },
+  md: {
+    container: 'w-9 h-13',
+    rank: 'text-xl font-black leading-none',
+    suit: 'text-lg leading-none -mt-0.5',
+  },
+  lg: {
+    container: 'w-10 h-15',
+    rank: 'text-2xl font-black leading-none',
+    suit: 'text-xl leading-none -mt-0.5',
+  },
+  xl: {
+    container: 'w-11 h-17',
+    rank: 'text-3xl font-black leading-none',
+    suit: 'text-2xl leading-none -mt-0.5',
+  },
+};
+
 export const PlayingCard = ({
   card,
   isHidden = false,
@@ -87,11 +113,13 @@ export const PlayingCard = ({
   isWild = false,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
+  const { isTablet } = useDeviceSize();
   const cardBackColors = getCardBackColors();
   const cardBackId = getCardBackId();
   const teamLogo = TEAM_LOGOS[cardBackId] || null;
   
-  const sizeClasses = SIZE_CLASSES[size];
+  // TABLET: Use enhanced size classes with tighter padding
+  const sizeClasses = isTablet ? TABLET_SIZE_CLASSES[size] : SIZE_CLASSES[size];
   
   // Normalize suit to handle corrupted data with text suit names
   const normalizedSuit = card ? normalizeSuit(card.suit) : null;

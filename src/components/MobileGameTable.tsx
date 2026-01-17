@@ -3627,18 +3627,18 @@ export const MobileGameTable = ({
               <div className={cn(
                 "relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60",
                 gameType === 'holm-game' || isDiceGame 
-                  ? (isTablet || isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
+                  ? (isTablet ? 'px-10 py-4' : isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
                   : is357MultiPlayerShowdown 
-                    ? 'px-3 py-1' 
-                    : 'px-8 py-3'
+                    ? (isTablet ? 'px-5 py-2' : 'px-3 py-1')
+                    : (isTablet ? 'px-10 py-4' : 'px-8 py-3')
               )}>
                 <span className={cn(
                   "text-poker-gold font-bold",
                   gameType === 'holm-game' || isDiceGame 
-                    ? (isTablet || isDesktop ? 'text-3xl' : 'text-xl')
+                    ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
                     : is357MultiPlayerShowdown 
-                      ? 'text-base' 
-                      : 'text-3xl'
+                      ? (isTablet ? 'text-xl' : 'text-base')
+                      : (isTablet ? 'text-4xl' : 'text-3xl')
                 )}>${formatChipValue(Math.round(
                   // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
@@ -4798,10 +4798,17 @@ export const MobileGameTable = ({
             })()}
             
             {/* Action area - BELOW cards (reduced margins to move everything up) */}
-            <div className="flex items-center justify-center min-h-[36px] mt-0 mb-1">
+            {/* TABLET: More spacing below cards, bigger buttons */}
+            <div className={cn(
+              "flex items-center justify-center",
+              isTablet ? "min-h-[56px] mt-4 mb-3" : "min-h-[36px] mt-0 mb-1"
+            )}>
               {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
               {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
-                <label className="flex items-center gap-3 cursor-pointer rounded-lg px-4 py-2 border border-border bg-transparent">
+                <label className={cn(
+                  "flex items-center gap-3 cursor-pointer rounded-lg border border-border bg-transparent",
+                  isTablet ? "px-6 py-3" : "px-4 py-2"
+                )}>
                   <input
                     type="checkbox"
                     checked={true}
@@ -4810,17 +4817,38 @@ export const MobileGameTable = ({
                         onAutoFoldChange(currentPlayer.id, false);
                       }
                     }}
-                    className="w-5 h-5 rounded border-2 border-border accent-primary"
+                    className={cn(
+                      "rounded border-2 border-border accent-primary",
+                      isTablet ? "w-7 h-7" : "w-5 h-5"
+                    )}
                   />
-                  <span className="text-sm font-medium text-foreground">Auto-fold (will sit out next hand)</span>
+                  <span className={cn(
+                    "font-medium text-foreground",
+                    isTablet ? "text-lg" : "text-sm"
+                  )}>Auto-fold (will sit out next hand)</span>
                 </label>
               ) : canDecide && !currentPlayer.auto_fold ? (
-                /* Action buttons */
+                /* Action buttons - TABLET: Bigger */
                 <div className="flex gap-2 justify-center">
-                  <Button variant="destructive" size="default" onClick={onFold} className="flex-1 max-w-[120px] text-sm font-bold h-9">
+                  <Button 
+                    variant="destructive" 
+                    size="default" 
+                    onClick={onFold} 
+                    className={cn(
+                      "flex-1 font-bold",
+                      isTablet ? "max-w-[180px] text-lg h-14" : "max-w-[120px] text-sm h-9"
+                    )}
+                  >
                     {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                   </Button>
-                  <Button size="default" onClick={onStay} className="flex-1 max-w-[120px] bg-poker-chip-green hover:bg-poker-chip-green/80 text-white text-sm font-bold h-9">
+                  <Button 
+                    size="default" 
+                    onClick={onStay} 
+                    className={cn(
+                      "flex-1 bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold",
+                      isTablet ? "max-w-[180px] text-lg h-14" : "max-w-[120px] text-sm h-9"
+                    )}
+                  >
                     Stay
                   </Button>
                 </div>
@@ -4881,13 +4909,17 @@ export const MobileGameTable = ({
             </div>
             
             {/* Player info - below action buttons */}
-            <div className={cn("flex items-center justify-center gap-2 pb-0")}>
+            {/* TABLET: Bigger font for name and chips */}
+            <div className={cn("flex items-center justify-center gap-2 pb-0", isTablet && "gap-3 mt-2")}>
               {/* Quick emoticon picker - left of player name */}
               <QuickEmoticonPicker 
                 onSelect={handleQuickEmoticon} 
                 disabled={isEmoticonSending || !currentPlayer}
               />
-              <p className="text-sm font-semibold text-foreground">
+              <p className={cn(
+                "font-semibold text-foreground",
+                isTablet ? "text-xl" : "text-sm"
+              )}>
                 {currentPlayer.profiles?.username || 'You'}
                 {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
               </p>
@@ -4895,7 +4927,10 @@ export const MobileGameTable = ({
                 {/* Show emoticon overlay OR chipstack value */}
                 {emoticonOverlays[currentPlayer.id] ? (
                   <span
-                    className="text-2xl animate-in fade-in zoom-in duration-200"
+                    className={cn(
+                      "animate-in fade-in zoom-in duration-200",
+                      isTablet ? "text-3xl" : "text-2xl"
+                    )}
                     style={{
                       animation:
                         emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500
@@ -4907,7 +4942,11 @@ export const MobileGameTable = ({
                   </span>
                 ) : (
                   <span
-                    className={`text-lg font-bold ${(lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}
+                    className={cn(
+                      "font-bold",
+                      isTablet ? "text-2xl" : "text-lg",
+                      (lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'
+                    )}
                   >
                     ${formatChipValue(
                       Math.round(

@@ -19,6 +19,7 @@ import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
+import { useDeviceSize } from "@/hooks/useDeviceSize";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,6 +91,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [creatingGame, setCreatingGame] = useState(false);
   const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceMode();
+  const { isTablet } = useDeviceSize();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -515,10 +517,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
               onClick={() => setShowRulesDialog(true)} 
               size="sm"
               variant="ghost"
-              className="h-10 w-10 p-0 text-amber-300 hover:text-amber-100 hover:bg-amber-600/20 -mt-2"
+              className={`p-0 text-amber-300 hover:text-amber-100 hover:bg-amber-600/20 -mt-2 ${
+                isTablet ? 'h-16 w-16' : 'h-10 w-10'
+              }`}
               title="Game Rules"
             >
-              <Info className="h-6 w-6" />
+              <Info className={isTablet ? 'h-10 w-10' : 'h-6 w-6'} />
             </Button>
           </div>
           
