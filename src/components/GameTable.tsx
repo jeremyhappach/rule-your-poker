@@ -980,7 +980,8 @@ export const GameTable = ({
               className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: `url(${peoriaBridgeMobile})`,
-                backgroundSize: '100% auto',
+                // Desktop/tablet has wider aspect ratio - use cover to ensure bridge fills container
+                backgroundSize: 'cover',
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: 'center 35%',
                 opacity: isWaitingPhase ? 0.45 : 0.28,

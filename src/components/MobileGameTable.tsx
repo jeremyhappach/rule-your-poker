@@ -2975,7 +2975,8 @@ export const MobileGameTable = ({
               className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: `url(${peoriaBridgeMobile})`,
-                backgroundSize: '100% auto',
+                // Tablets/desktops have wider aspect ratio - use cover to fill; phones use width-based sizing
+                backgroundSize: (isTablet || isDesktop) ? 'cover' : '100% auto',
                 backgroundRepeat: 'no-repeat',
                 // Position the bridge higher in the container (lower % = higher position)
                 backgroundPosition: 'center 35%',
