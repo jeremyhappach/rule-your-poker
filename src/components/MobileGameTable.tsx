@@ -2974,7 +2974,7 @@ export const MobileGameTable = ({
             <img 
               src={peoriaBridgeMobile}
               alt="I-74 Bridge"
-              className="absolute inset-x-0 top-0 h-3/4 w-full object-cover object-top opacity-15 pointer-events-none"
+              className="absolute inset-x-0 top-0 h-1/2 w-full object-cover object-top opacity-15 pointer-events-none"
             />
           )}
         </div>
