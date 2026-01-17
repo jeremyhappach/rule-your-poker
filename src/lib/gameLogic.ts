@@ -244,21 +244,36 @@ export async function startRound(gameId: string, roundNumber: number) {
     console.error('[START_ROUND] Failed to reset players:', resetError);
   }
 
-  if (playersError) {
+  // CRITICAL FIX: For Round 1 (including re-ante), refetch players AFTER the reset
+  // The initial fetch at the top of this function has stale status data from the previous hand
+  let currentPlayers = players;
+  if (roundNumber === 1) {
+    const { data: freshPlayers, error: refetchError } = await supabase
+      .from('players')
+      .select('*')
+      .eq('game_id', gameId)
+      .order('position');
+    
+    if (refetchError) {
+      console.error('[START_ROUND] Failed to refetch players after reset:', refetchError);
+    } else if (freshPlayers) {
+      currentPlayers = freshPlayers;
+      console.log('[START_ROUND] Refetched players after reset, count:', freshPlayers.length);
+    }
+  }
+
+  if (playersError && !currentPlayers) {
     console.error('Error fetching players:', playersError);
     throw new Error(`Failed to fetch players: ${playersError.message}`);
   }
   
-  if (!players || players.length === 0) {
+  if (!currentPlayers || currentPlayers.length === 0) {
     throw new Error('No active players found in game');
   }
 
-  // CRITICAL FIX: For rounds 2+, include ALL non-sitting-out players (not just status === 'active')
-  // because players who folded in round 1 should still get cards in round 2
-  // For round 1, use status === 'active' since that's the fresh state
-  const activePlayers = roundNumber === 1 
-    ? players.filter(p => p.status === 'active' && !p.sitting_out)
-    : players.filter(p => !p.sitting_out);
+  // For all rounds, filter to non-sitting-out players with active status
+  // After the reset above, all non-sitting-out players should have status='active'
+  const activePlayers = currentPlayers.filter(p => p.status === 'active' && !p.sitting_out);
   let initialPot = 0;
   
   // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
