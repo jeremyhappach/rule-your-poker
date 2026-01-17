@@ -74,25 +74,25 @@ const SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: st
   },
 };
 
-// TABLET: Enhanced sizes with tighter spacing
+// TABLET: Enhanced sizes with tighter spacing (using valid Tailwind classes)
 const TABLET_SIZE_CLASSES: Record<CardSize, { container: string; rank: string; suit: string }> = {
   sm: {
-    container: 'w-7 h-10',
+    container: 'w-8 h-12',
     rank: 'text-lg font-black leading-none',
     suit: 'text-lg leading-none -mt-0.5',
   },
   md: {
-    container: 'w-9 h-13',
+    container: 'w-10 h-14',
     rank: 'text-xl font-black leading-none',
     suit: 'text-lg leading-none -mt-0.5',
   },
   lg: {
-    container: 'w-10 h-15',
+    container: 'w-12 h-16',
     rank: 'text-2xl font-black leading-none',
     suit: 'text-xl leading-none -mt-0.5',
   },
   xl: {
-    container: 'w-11 h-17',
+    container: 'w-14 h-20',
     rank: 'text-3xl font-black leading-none',
     suit: 'text-2xl leading-none -mt-0.5',
   },
