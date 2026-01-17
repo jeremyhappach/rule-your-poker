@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 interface HorsesHandResultDisplayProps {
-  description: string; // e.g., "3 6s", "5 1s (Wilds!)", "6 high"
+  description: string | undefined; // e.g., "3 6s", "5 1s (Wilds!)", "6 high"
   isWinning?: boolean;
   size?: "sm" | "md";
 }
@@ -74,6 +74,9 @@ export function HorsesHandResultDisplay({
   size = "sm",
 }: HorsesHandResultDisplayProps) {
   const { isTablet, isDesktop } = useDeviceSize();
+  
+  // Null safety - return nothing if description is missing
+  if (!description) return null;
   
   // TABLET: Scale up all badges 2x
   const effectiveSize = (isTablet || isDesktop) && size === "sm" ? "md" : size;
