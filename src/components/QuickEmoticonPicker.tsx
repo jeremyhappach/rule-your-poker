@@ -18,12 +18,14 @@ interface QuickEmoticonPickerProps {
 
 export const QuickEmoticonPicker = ({ onSelect, disabled = false }: QuickEmoticonPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { isTablet } = useDeviceSize();
+  const { isTablet, isDesktop } = useDeviceSize();
 
   const handleEmoticonClick = (emoticon: string) => {
     onSelect(emoticon);
     setIsOpen(false);
   };
+
+  const isLargeScreen = isTablet || isDesktop;
 
   return (
     <div className="flex items-center justify-center py-1">
@@ -34,15 +36,15 @@ export const QuickEmoticonPicker = ({ onSelect, disabled = false }: QuickEmotico
             size="icon"
             disabled={disabled}
             className={`text-muted-foreground hover:text-foreground hover:bg-primary/20 ${
-              isTablet ? 'h-12 w-12' : 'h-8 w-8'
+              isLargeScreen ? 'h-14 w-14' : 'h-8 w-8'
             }`}
             title="Send emoticon"
           >
-            <Smile className={isTablet ? 'h-8 w-8' : 'h-5 w-5'} />
+            <Smile className={isLargeScreen ? 'h-9 w-9' : 'h-5 w-5'} />
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className={`p-2 bg-background border-border z-50 ${isTablet ? 'w-80' : 'w-64'}`}
+          className={`p-2 bg-background border-border z-50 ${isLargeScreen ? 'w-96' : 'w-64'}`}
           side="top"
           align="center"
         >
@@ -52,7 +54,7 @@ export const QuickEmoticonPicker = ({ onSelect, disabled = false }: QuickEmotico
                 key={emoticon}
                 onClick={() => handleEmoticonClick(emoticon)}
                 className={`hover:bg-primary/20 rounded p-1 transition-colors ${
-                  isTablet ? 'text-2xl' : 'text-xl'
+                  isLargeScreen ? 'text-3xl' : 'text-xl'
                 }`}
               >
                 {emoticon}
