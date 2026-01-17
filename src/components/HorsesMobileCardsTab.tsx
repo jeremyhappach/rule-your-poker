@@ -321,9 +321,18 @@ export function HorsesMobileCardsTab({
           )
         ) : horses.gamePhase === "complete" && hasCompleted && myResult ? (
           // Only show "Locked: {description}" when game is actually complete AND we have a valid result
-          // This prevents showing stale "Locked: Complete" from previous round before new round initializes
+          // This prevents showing stale results from previous round before new round initializes
           <Badge className="text-sm px-3 py-1.5 font-medium">
             ✓ Locked: {myResult.description}
+          </Badge>
+        ) : horses.gamePhase === "playing" && !horses.isMyTurn && hasCompleted && myResult ? (
+          // Persist YOUR hand rank after you finish your turn (while waiting for others).
+          <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
+            Your hand: {gameType === 'horses' ? (
+              <HorsesHandResultDisplay description={myResult.description} size={isTablet || isDesktop ? 'md' : 'sm'} />
+            ) : (
+              myResult.description
+            )}
           </Badge>
         ) : isWaitingForYourTurn ? (
           <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
