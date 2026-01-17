@@ -11,6 +11,7 @@ import { Lock, RotateCcw, Bug } from "lucide-react";
 import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { EmoticonOverlay } from "@/hooks/useChipStackEmoticons";
+import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 // Active-player dice roll mask durations (matches useHorsesMobileController constants)
 const ACTIVE_FIRST_ROLL_MS = 1300;   // Roll 1: ~1.3s
@@ -42,7 +43,7 @@ export function HorsesMobileCardsTab({
   winnerPotFlashTrigger,
 }: HorsesMobileCardsTabProps) {
   const [debugOpen, setDebugOpen] = useState(false);
-
+  const { isTablet, isDesktop } = useDeviceSize();
   // UI-owned rolling mask (do NOT rely solely on horses.isRolling; we need this to be
   // consistent even if the controller state rehydrates during roll 3).
   const [uiRolling, setUiRolling] = useState(false);
@@ -144,6 +145,8 @@ export function HorsesMobileCardsTab({
 
   const isSCC = gameType === "ship-captain-crew";
 
+  // TABLET: Use larger dice for active player
+  const diceSize = isTablet || isDesktop ? "lg" : "lg";
   // roll label should never exceed 3 (and we hide the button after roll 3)
   const rollNumber = Math.min(3, Math.max(1, 4 - horses.localHand.rollsRemaining));
 
@@ -172,7 +175,11 @@ export function HorsesMobileCardsTab({
       */}
 
       {/* Dice area - always reserve space so button doesn't move */}
-      <div className="flex items-center justify-center gap-1 mb-1 min-h-[60px]">
+      {/* TABLET: Larger dice area to accommodate bigger dice */}
+      <div className={cn(
+        "flex items-center justify-center mb-1",
+        isTablet || isDesktop ? "gap-2 min-h-[100px]" : "gap-1 min-h-[60px]"
+      )}>
         {showMyDice ? (
           horses.localHand.dice.map((die, idx) => {
             // Determine if this die was held at the START of the current roll
@@ -198,14 +205,14 @@ export function HorsesMobileCardsTab({
                 isRolling={shouldAnimate}
                 canToggle={!isSCC && !rolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
                 onToggle={() => horses.handleToggleHold(idx)}
-                size="lg"
+                size={isTablet || isDesktop ? "xl" : "lg"}
                 showWildHighlight={!isSCC}
               />
             );
           })
         ) : (
           // Placeholder to reserve space before first roll
-          <div className="h-[52px]" />
+          <div className={isTablet || isDesktop ? "h-[100px]" : "h-[52px]"} />
         )}
       </div>
 

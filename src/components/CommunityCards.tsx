@@ -1,6 +1,7 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 interface CommunityCardsProps {
   cards: CardType[];
@@ -12,6 +13,7 @@ interface CommunityCardsProps {
 }
 
 export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false, tightOverlap = false }: CommunityCardsProps) => {
+  const { isTablet, isDesktop } = useDeviceSize();
   const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
   
   // Use refs to track state synchronously to prevent flashing during hand transitions
@@ -133,7 +135,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
           return (
             <div
               key={index}
-              className="w-8 h-12 sm:w-9 sm:h-14 relative"
+              className={`relative ${isTablet || isDesktop ? 'w-12 h-18' : 'w-8 h-12 sm:w-9 sm:h-14'}`}
               style={{ 
                 transformStyle: 'preserve-3d',
                 transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
