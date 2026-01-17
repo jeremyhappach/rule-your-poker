@@ -492,10 +492,46 @@ serve(async (req) => {
                     .select();
 
                   if (!turnAdvanceResult || turnAdvanceResult.length === 0) {
+                    // Another caller likely updated the round between our SELECT and UPDATE.
+                    // IMPORTANT: Do NOT assume the deadline is now valid — re-check and self-heal.
                     console.log('[ENFORCE-CLIENT] Turn advance skipped - deadline was already updated by another client');
-                    return new Response(JSON.stringify({ 
-                      success: true, 
-                      actionsTaken: ['Skipped - another client already advanced turn'],
+
+                    const { data: latestRound, error: latestRoundError } = await supabase
+                      .from('rounds')
+                      .select('id, status, round_number, current_turn_position, decision_deadline')
+                      .eq('id', currentRound.id)
+                      .maybeSingle();
+
+                    if (latestRoundError) {
+                      console.warn('[ENFORCE-CLIENT] Failed to re-fetch round after optimistic lock miss:', latestRoundError);
+                    }
+
+                    // If the round is STILL overdue (or has a null deadline), push it forward so the next player
+                    // does not get instantly auto-folded.
+                    const latestDeadline = (latestRound as any)?.decision_deadline as string | null | undefined;
+                    const isStillOverdue = !latestDeadline || latestDeadline < nowIso;
+
+                    if ((latestRound as any)?.status === 'betting' && isStillOverdue) {
+                      const healedDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+                      const { data: healRes } = await supabase
+                        .from('rounds')
+                        .update({ decision_deadline: healedDeadline })
+                        .eq('id', currentRound.id)
+                        .eq('decision_deadline', latestDeadline ?? null)
+                        .select();
+
+                      if (healRes && healRes.length > 0) {
+                        actionsTaken.push(`Healed overdue deadline for position ${(latestRound as any)?.current_turn_position ?? nextPlayer.position}`);
+                      } else {
+                        actionsTaken.push('Skipped - another client advanced turn (deadline already changed)');
+                      }
+                    } else {
+                      actionsTaken.push('Skipped - another client advanced turn');
+                    }
+
+                    return new Response(JSON.stringify({
+                      success: true,
+                      actionsTaken,
                       gameStatus: game.status,
                       timestamp: nowIso,
                       source,
