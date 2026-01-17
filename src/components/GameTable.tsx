@@ -980,11 +980,11 @@ export const GameTable = ({
               className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: `url(${peoriaBridgeMobile})`,
-                backgroundSize: 'cover',
+                backgroundSize: '100% auto',
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center 72%',
+                // Position the bridge higher in the container (lower % = higher position)
+                backgroundPosition: 'center 35%',
                 opacity: 0.4,
-                transform: 'translateY(-28%)',
               }}
             />
           )}
