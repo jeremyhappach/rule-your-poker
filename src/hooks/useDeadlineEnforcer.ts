@@ -20,8 +20,8 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
 
     const callEnforceDeadlines = async () => {
       const now = Date.now();
-      // Debounce: don't call more than once per second
-      if (now - lastCallRef.current < 1000) return;
+      // Debounce: don't call more than once every 3 seconds to prevent rapid-fire after turn changes
+      if (now - lastCallRef.current < 3000) return;
       lastCallRef.current = now;
 
       try {
