@@ -974,8 +974,8 @@ export const GameTable = ({
         <div className="absolute inset-0 rounded-[50%] shadow-inner overflow-hidden" style={{
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }}>
-          {/* Bridge overlay on felt during waiting phase - shown when bridge felt is selected */}
-          {isWaitingPhase && tableColors.showBridge && (
+          {/* Bridge overlay on felt - shown when bridge felt is selected */}
+          {tableColors.showBridge && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
@@ -983,7 +983,7 @@ export const GameTable = ({
                 backgroundSize: '100% auto',
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: 'center 35%',
-                opacity: 0.4,
+                opacity: isWaitingPhase ? 0.45 : 0.28,
               }}
             />
           )}
