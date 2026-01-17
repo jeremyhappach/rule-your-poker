@@ -2972,31 +2972,33 @@ export const MobileGameTable = ({
 
 
         
-        {/* Game name on felt - single line for dice games */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-          {isDiceGame ? (
-            // Single line format: "$200 SHIP" or "$5 HORSES"
-            <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-              ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : 'HORSES'}
-            </span>
-          ) : (
-            <>
+        {/* Game name on felt - single line for dice games - hide during waiting phase */}
+        {!isWaitingPhase && (
+          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
+            {isDiceGame ? (
+              // Single line format: "$200 SHIP" or "$5 HORSES"
               <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+                ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : 'HORSES'}
               </span>
-              {/* Only show No Limit/Max for non-dice games */}
-              <span className="text-white/40 text-xs font-medium">
-                {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
-              </span>
-              {/* Only show legs for 3-5-7 games (not holm) */}
-              {gameType !== 'holm-game' && (
-                <span className="text-white/40 text-xs font-medium">
-                  {legsToWin} legs to win
+            ) : (
+              <>
+                <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                  {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
                 </span>
-              )}
-            </>
-          )}
-        </div>
+                {/* Only show No Limit/Max for non-dice games */}
+                <span className="text-white/40 text-xs font-medium">
+                  {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+                </span>
+                {/* Only show legs for 3-5-7 games (not holm) */}
+                {gameType !== 'holm-game' && (
+                  <span className="text-white/40 text-xs font-medium">
+                    {legsToWin} legs to win
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        )}
         
         
         {/* Turn Spotlight - Holm games and Dice games */}
