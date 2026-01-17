@@ -354,7 +354,10 @@ export function HorsesMobileCardsTab({
       )}
 
       {/* Player info (bottom) - consistent with card games layout */}
-      <div className={cn("flex items-center justify-center gap-2 mt-auto pt-0 pb-2")}>
+      <div className={cn(
+        "flex items-center justify-center mt-auto pt-0 pb-2",
+        isTablet || isDesktop ? "gap-3" : "gap-2"
+      )}>
         {/* Quick emoticon picker - left of player name */}
         {onEmoticonSelect && (
           <QuickEmoticonPicker 
@@ -362,7 +365,10 @@ export function HorsesMobileCardsTab({
             disabled={isEmoticonSending || !currentUserPlayer}
           />
         )}
-        <p className="text-sm font-semibold text-foreground">
+        <p className={cn(
+          "font-semibold text-foreground",
+          isTablet || isDesktop ? "text-lg" : "text-sm"
+        )}>
           {currentUserPlayer.profiles?.username || 'You'}
           {(currentUserPlayer.auto_fold || currentUserPlayer.sitting_out) && !currentUserPlayer.waiting ? (
             <span className="ml-1 text-destructive font-bold">(sitting out)</span>
@@ -376,7 +382,10 @@ export function HorsesMobileCardsTab({
           {/* Show emoticon overlay OR chipstack value */}
           {emoticonOverlays && emoticonOverlays[currentUserPlayer.id] ? (
             <span
-              className="text-2xl animate-in fade-in zoom-in duration-200"
+              className={cn(
+                "animate-in fade-in zoom-in duration-200",
+                isTablet || isDesktop ? "text-3xl" : "text-2xl"
+              )}
               style={{
                 animation:
                   emoticonOverlays[currentUserPlayer.id].expiresAt - Date.now() < 500
@@ -389,7 +398,8 @@ export function HorsesMobileCardsTab({
           ) : (
             <span
               className={cn(
-                "text-lg font-bold",
+                "font-bold",
+                isTablet || isDesktop ? "text-xl" : "text-lg",
                 currentUserPlayer.chips < 0 ? "text-destructive" : "text-poker-gold"
               )}
             >
@@ -410,7 +420,7 @@ export function HorsesMobileCardsTab({
           />
         </div>
         {horses.isMyTurn && horses.gamePhase === "playing" && (
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className={isTablet || isDesktop ? "text-sm" : "text-xs"}>
             Rolls: {horses.localHand.rollsRemaining}
           </Badge>
         )}
