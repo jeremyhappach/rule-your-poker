@@ -1,4 +1,5 @@
 import { formatChipValue } from '@/lib/utils';
+import { useDeviceSize } from '@/hooks/useDeviceSize';
 
 interface ChipStackProps {
   amount: number;
@@ -8,6 +9,8 @@ interface ChipStackProps {
 }
 
 export const ChipStack = ({ amount, size = 'md', variant = 'default', playerStatus }: ChipStackProps) => {
+  const { isTablet } = useDeviceSize();
+  
   const getChipColor = (value: number) => {
     if (variant === 'leg') return 'bg-black';
     if (value >= 100) return 'bg-poker-chip-black';
@@ -28,10 +31,11 @@ export const ChipStack = ({ amount, size = 'md', variant = 'default', playerStat
     }
   };
 
+  // TABLET: Double the size of chip stacks
   const sizeClasses = {
-    sm: 'w-8 h-8 text-xs',
-    md: 'w-10 h-10 text-sm',
-    lg: 'w-12 h-12 text-base'
+    sm: isTablet ? 'w-16 h-16 text-base' : 'w-8 h-8 text-xs',
+    md: isTablet ? 'w-20 h-20 text-lg' : 'w-10 h-10 text-sm',
+    lg: isTablet ? 'w-24 h-24 text-xl' : 'w-12 h-12 text-base'
   };
 
   return (

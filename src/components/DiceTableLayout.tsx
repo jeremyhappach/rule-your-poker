@@ -4,6 +4,7 @@ import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
+import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 interface DiceTableLayoutProps {
   dice: (HorsesDieType | SCCDieType)[];
@@ -223,6 +224,10 @@ export function DiceTableLayout({
   isQualified,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
+  const { isTablet } = useDeviceSize();
+  
+  // TABLET: Use larger dice size
+  const effectiveSize = isTablet ? "lg" : size;
   
   // Track fly-in animation state
   const [isAnimatingFlyIn, setIsAnimatingFlyIn] = useState(false);
@@ -425,13 +430,14 @@ export function DiceTableLayout({
   }
   
   // Get die dimensions based on size (reduced for less overlap)
+  // TABLET: Larger container and adjusted positions
   const dieSizes = {
-    sm: 36,
-    md: 48,
-    lg: 72,
+    sm: isTablet ? 52 : 36,
+    md: isTablet ? 64 : 48,
+    lg: isTablet ? 88 : 72,
   };
-  const dieWidth = dieSizes[size];
-  const gap = 6;
+  const dieWidth = dieSizes[effectiveSize];
+  const gap = isTablet ? 10 : 6;
   
   // For SCC games, use display order if available
   let orderedDice: { die: HorsesDieType | SCCDieType; originalIndex: number }[] = [];
@@ -716,7 +722,7 @@ export function DiceTableLayout({
   });
 
   return (
-    <div className="relative" style={{ width: "200px", height: "120px" }}>
+    <div className="relative" style={{ width: isTablet ? "300px" : "200px", height: isTablet ? "180px" : "120px" }}>
       {/* Fly-in animation overlay for unheld dice */}
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
@@ -793,7 +799,7 @@ export function DiceTableLayout({
               isRolling={isRolling && !isHeldInLayout}
               canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn && !isRolling}
               onToggle={() => onToggleHold?.(item.originalIndex)}
-              size={size}
+              size={effectiveSize}
               showWildHighlight={showWildHighlight && !isSCC}
               isSCCDie={isSCCDie}
               isUnusedDie={isDieUnused(item.die, isSCC, isQualified, allHeld, orderedDice.map(d => d.die))}
