@@ -976,14 +976,15 @@ export const GameTable = ({
         }}>
           {/* Bridge overlay on felt - shown when bridge felt is selected */}
           {tableColors.showBridge && (
-            <div
-              className="absolute inset-0 pointer-events-none"
+            <img
+              src={peoriaBridgeMobile}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 pointer-events-none w-full h-full object-cover"
               style={{
-                backgroundImage: `url(${peoriaBridgeMobile})`,
-                // Avoid `cover` here (it can crop the bridge out on tablet aspect ratios)
-                backgroundSize: '112% auto',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center 58%',
+                // Use <img> + object-fit instead of CSS background-image to avoid tablet-specific
+                // background sizing/positioning quirks that can make the bridge appear missing.
+                objectPosition: 'center 60%',
                 opacity: isWaitingPhase ? 0.45 : 0.36,
               }}
             />
