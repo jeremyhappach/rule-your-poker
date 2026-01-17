@@ -1319,79 +1319,123 @@ export async function endRound(gameId: string) {
       });
 
       if (hands.length > 0) {
-        // Find winner
-        const winner = hands.reduce((best, current) => 
-          current.evaluation.value > best.evaluation.value ? current : best
-        );
-
-        console.log('[endRound] SHOWDOWN: Winner determined:', {
-          winnerId: winner.playerId,
-          winnerRank: winner.evaluation.rank,
-          winnerValue: winner.evaluation.value
+        // Find the best hand value
+        const bestValue = Math.max(...hands.map(h => h.evaluation.value));
+        
+        // Find ALL players with the best hand (to detect ties)
+        const winners = hands.filter(h => h.evaluation.value === bestValue);
+        
+        console.log('[endRound] SHOWDOWN: Best hands found:', {
+          bestValue,
+          winnerCount: winners.length,
+          winners: winners.map(w => ({ playerId: w.playerId, rank: w.evaluation.rank }))
         });
 
-        const { data: winningPlayer } = await supabase
-          .from('players')
-          .select('*, profiles(username)')
-          .eq('id', winner.playerId)
-          .single();
-
-        if (winningPlayer) {
-          const winnerUsername = winningPlayer.is_bot 
-            ? getBotAlias(allPlayers, winningPlayer.user_id) 
-            : (winningPlayer.profiles?.username || `Player ${winningPlayer.position}`);
-          const handName = formatHandRank(winner.evaluation.rank);
-          
-          const currentPot = game.pot || 0;
-          let totalWinnings = 0;
-          
-          // Charge each loser and accumulate (pot stays for game winner)
-          const loserIds: string[] = [];
-          let amountPerLoser = 0;
-          for (const player of playersWhoStayed) {
-            if (player.id !== winner.playerId) {
-              let amountToCharge;
-              if (potMaxEnabled) {
-                // With pot max: charge current pot value, capped at pot max
-                amountToCharge = Math.min(currentPot, potMaxValue);
-              } else {
-                // No pot max: charge entire current pot value
-                amountToCharge = currentPot;
-              }
-              totalWinnings += amountToCharge;
-              amountPerLoser = amountToCharge; // All losers pay same amount
-              loserIds.push(player.id);
-              
-              await supabase
-                .from('players')
-                .update({ 
-                  chips: player.chips - amountToCharge
-                })
-                .eq('id', player.id);
+        if (winners.length > 1) {
+          // TIE - no money changes hands, just show the tie message
+          const tiedPlayerNames: string[] = [];
+          for (const w of winners) {
+            const player = playersWhoStayed.find(p => p.id === w.playerId);
+            if (player) {
+              const name = player.is_bot 
+                ? getBotAlias(allPlayers, player.user_id) 
+                : (player.profiles?.username || `Player ${player.position}`);
+              tiedPlayerNames.push(name);
             }
           }
+          const handName = formatHandRank(winners[0].evaluation.rank);
+          resultMessage = `${tiedPlayerNames.join(' and ')} tied with ${handName} - no money changes hands`;
           
-          // Award showdown winnings to winner (pot remains for game winner)
-          await supabase
-            .from('players')
-            .update({ 
-              chips: winningPlayer.chips + totalWinnings
-            })
-            .eq('id', winner.playerId);
-          
-          // Include metadata for chip transfer animation (similar to Holm format)
-          const showdownResult = `${winnerUsername} won with ${handName}|||WINNER:${winner.playerId}|||LOSERS:${loserIds.join(',')}|||AMOUNT:${amountPerLoser}`;
-          
-          console.log('[endRound] SHOWDOWN: Result determined:', {
-            winner: winnerUsername,
-            winnings: totalWinnings,
-            handName,
-            resultMessage: showdownResult
+          console.log('[endRound] SHOWDOWN: TIE detected, no chips transferred:', {
+            tiedPlayers: tiedPlayerNames,
+            handName
           });
-          
-          resultMessage = showdownResult;
         } else {
-          console.log('[endRound] SHOWDOWN: ERROR - No winning player found');
+          // Single winner - transfer chips
+          const winner = winners[0];
+
+          console.log('[endRound] SHOWDOWN: Single winner determined:', {
+            winnerId: winner.playerId,
+            winnerRank: winner.evaluation.rank,
+            winnerValue: winner.evaluation.value
+          });
+
+          const { data: winningPlayer } = await supabase
+            .from('players')
+            .select('*, profiles(username)')
+            .eq('id', winner.playerId)
+            .single();
+
+          if (winningPlayer) {
+            const winnerUsername = winningPlayer.is_bot 
+              ? getBotAlias(allPlayers, winningPlayer.user_id) 
+              : (winningPlayer.profiles?.username || `Player ${winningPlayer.position}`);
+            const handName = formatHandRank(winner.evaluation.rank);
+            
+            const currentPot = game.pot || 0;
+            let totalWinnings = 0;
+            
+            // Charge each loser and accumulate (pot stays for game winner)
+            const loserIds: string[] = [];
+            let amountPerLoser = 0;
+            for (const player of playersWhoStayed) {
+              if (player.id !== winner.playerId) {
+                let amountToCharge;
+                if (potMaxEnabled) {
+                  // With pot max: charge current pot value, capped at pot max
+                  amountToCharge = Math.min(currentPot, potMaxValue);
+                } else {
+                  // No pot max: charge entire current pot value
+                  amountToCharge = currentPot;
+                }
+                totalWinnings += amountToCharge;
+                amountPerLoser = amountToCharge; // All losers pay same amount
+                loserIds.push(player.id);
+                
+                // Deduct from loser with error logging
+                const { error: loserError } = await supabase
+                  .from('players')
+                  .update({ 
+                    chips: player.chips - amountToCharge
+                  })
+                  .eq('id', player.id);
+                
+                if (loserError) {
+                  console.error('[endRound] SHOWDOWN: ERROR deducting from loser:', player.id, loserError);
+                } else {
+                  console.log('[endRound] SHOWDOWN: Deducted', amountToCharge, 'from player', player.id);
+                }
+              }
+            }
+            
+            // Award showdown winnings to winner (pot remains for game winner)
+            const { error: winnerError } = await supabase
+              .from('players')
+              .update({ 
+                chips: winningPlayer.chips + totalWinnings
+              })
+              .eq('id', winner.playerId);
+            
+            if (winnerError) {
+              console.error('[endRound] SHOWDOWN: ERROR awarding to winner:', winner.playerId, winnerError);
+            } else {
+              console.log('[endRound] SHOWDOWN: Awarded', totalWinnings, 'to winner', winner.playerId);
+            }
+            
+            // Include metadata for chip transfer animation (similar to Holm format)
+            const showdownResult = `${winnerUsername} won with ${handName}|||WINNER:${winner.playerId}|||LOSERS:${loserIds.join(',')}|||AMOUNT:${amountPerLoser}`;
+            
+            console.log('[endRound] SHOWDOWN: Result determined:', {
+              winner: winnerUsername,
+              winnings: totalWinnings,
+              handName,
+              resultMessage: showdownResult
+            });
+            
+            resultMessage = showdownResult;
+          } else {
+            console.log('[endRound] SHOWDOWN: ERROR - No winning player found');
+          }
         }
       } else {
         console.log('[endRound] SHOWDOWN: ERROR - No hands to evaluate');
@@ -1433,6 +1477,8 @@ export async function endRound(gameId: string) {
     return; // Exit after showdown handling
   } else {
     // Everyone folded - apply pussy tax if enabled
+    console.log('[endRound] EVERYONE FOLDED - applying pussy tax logic');
+    
     if (pussyTaxEnabled) {
       // Reset player statuses so chip animations are visible
       await supabase
@@ -1443,8 +1489,13 @@ export async function endRound(gameId: string) {
         })
         .eq('game_id', gameId);
       
+      // Only charge active (non-sitting-out) players
+      const activePlayersForTax = allPlayers.filter(p => !p.sitting_out);
+      const playerIds = activePlayersForTax.map(p => p.id);
+      
+      console.log('[endRound] Charging pussy tax to', playerIds.length, 'active players, amount:', pussyTaxValue);
+      
       // Use atomic relative decrement to prevent race conditions / double charges
-      const playerIds = allPlayers.map(p => p.id);
       const { error: taxError } = await supabase.rpc('decrement_player_chips', {
         player_ids: playerIds,
         amount: pussyTaxValue
@@ -1453,24 +1504,34 @@ export async function endRound(gameId: string) {
       if (taxError) {
         console.error('[357 END] Pussy tax decrement error:', taxError);
         // Fallback to individual updates if RPC doesn't exist
-        for (const player of allPlayers) {
-          await supabase
+        for (const player of activePlayersForTax) {
+          const { error: fallbackError } = await supabase
             .from('players')
             .update({ chips: player.chips - pussyTaxValue })
             .eq('id', player.id);
+          if (fallbackError) {
+            console.error('[357 END] Fallback pussy tax error for player:', player.id, fallbackError);
+          }
         }
       }
-      const taxCollected = pussyTaxValue * allPlayers.length;
+      const taxCollected = pussyTaxValue * activePlayersForTax.length;
       
       // Add pussy tax to pot
-      await supabase
+      const { error: potError } = await supabase
         .from('games')
         .update({ 
           pot: (game.pot || 0) + taxCollected
         })
         .eq('id', gameId);
       
-      resultMessage = `PUSSY TAX!`;
+      if (potError) {
+        console.error('[357 END] Error updating pot with pussy tax:', potError);
+      }
+      
+      console.log('[endRound] Pussy tax applied:', { taxCollected, newPot: (game.pot || 0) + taxCollected });
+      
+      // Use consistent message that frontend expects (case-insensitive check)
+      resultMessage = 'Pussy Tax';
     } else {
       resultMessage = 'Everyone folded - no winner';
     }
