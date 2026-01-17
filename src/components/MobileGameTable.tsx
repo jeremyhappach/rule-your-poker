@@ -2911,15 +2911,22 @@ export const MobileGameTable = ({
         {/* During showdown with hidden chips, show name above cards for bottom positions only */}
         {hideChipForShowdown && isBottomPosition && nameElement}
         {/* Hide chip stack during showdown OR when player has dice result */}
-        {!hideChipForShowdown && !hideChipForHorses && (
-          <div data-seat-chip-position={player.position} className="relative">
-            <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
-              {chipElement}
-            </MobilePlayerTimer>
-          </div>
-        )}
-        {/* Show dice result in place of chip stack */}
-        {hideChipForHorses && horsesResultElement}
+        {/* Wrap in container with opacity transition for smoother swap */}
+        <div className="relative transition-opacity duration-150">
+          {!hideChipForShowdown && !hideChipForHorses && (
+            <div data-seat-chip-position={player.position} className="relative">
+              <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
+                {chipElement}
+              </MobilePlayerTimer>
+            </div>
+          )}
+          {/* Show dice result in place of chip stack */}
+          {hideChipForHorses && (
+            <div className="animate-in fade-in duration-150">
+              {horsesResultElement}
+            </div>
+          )}
+        </div>
         {/* Emoticon overlay when chip is hidden during showdown */}
         {emoticonOverlayElement}
         {/* Name below chipstack for upper corners in regular mode */}

@@ -255,6 +255,12 @@ export function DiceTableLayout({
   // This prevents the empty container from rendering during state transitions
   const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(dice);
   
+  // Stabilization period after roll 3 completes - hold the current visual state
+  // to prevent flickering during the isComplete transition
+  const [isStabilizing, setIsStabilizing] = useState(false);
+  const stabilizationTimeoutRef = useRef<number | null>(null);
+  const prevIsCompleteRef = useRef(false);
+  
   // Schedules a timeout
   const scheduleTimeout = useCallback(
     (delayMs: number, cb: () => void) => {
@@ -332,6 +338,9 @@ export function DiceTableLayout({
       if (completionTransitionTimeoutRef.current) {
         clearTimeout(completionTransitionTimeoutRef.current);
       }
+      if (stabilizationTimeoutRef.current) {
+        clearTimeout(stabilizationTimeoutRef.current);
+      }
     };
   }, [
     rollKey,
@@ -360,7 +369,27 @@ export function DiceTableLayout({
     prevAllHeldRef.current = allHeldNow;
   }, [allHeldNow, isAnimatingFlyIn, scheduleTimeout]);
 
-  // Handle animation complete - unheld dice fade out quickly after held dice move
+  // Stabilization: when isComplete transition happens (all dice become held),
+  // enter a brief stabilization period where we force-use cached dice to prevent flicker
+  useLayoutEffect(() => {
+    const isComplete = allHeldNow && !isAnimatingFlyIn;
+    
+    if (isComplete && !prevIsCompleteRef.current) {
+      // Just became complete - start stabilization period
+      setIsStabilizing(true);
+      
+      if (stabilizationTimeoutRef.current) {
+        clearTimeout(stabilizationTimeoutRef.current);
+      }
+      
+      // Hold stable state for 150ms to let parent components settle
+      stabilizationTimeoutRef.current = window.setTimeout(() => {
+        setIsStabilizing(false);
+      }, 150);
+    }
+    
+    prevIsCompleteRef.current = isComplete;
+  }, [allHeldNow, isAnimatingFlyIn]);
   // Timeline: fly-in done → 50ms → layout flip → 200ms CSS → 300ms delay → hide unheld
   // Total: ~1750ms from roll start (1200ms fly-in + 550ms post)
   const handleAnimationComplete = useCallback(() => {
@@ -408,11 +437,14 @@ export function DiceTableLayout({
   let orderedDice: { die: HorsesDieType | SCCDieType; originalIndex: number }[] = [];
   
   // Determine which dice source to use - prefer current if valid, fallback to cached
+  // During stabilization period, ALWAYS use cached dice to prevent flicker
   const hasValidCurrentDice = dice.length > 0 && dice.some(d => d.value > 0);
-  const effectiveDice = hasValidCurrentDice ? dice : lastValidDiceRef.current;
+  const effectiveDice = isStabilizing 
+    ? lastValidDiceRef.current 
+    : (hasValidCurrentDice ? dice : lastValidDiceRef.current);
   
-  // Update cache when we have valid dice
-  if (hasValidCurrentDice) {
+  // Update cache when we have valid dice (but not during stabilization)
+  if (hasValidCurrentDice && !isStabilizing) {
     lastValidDiceRef.current = dice;
   }
   
