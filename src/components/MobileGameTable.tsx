@@ -2975,12 +2975,14 @@ export const MobileGameTable = ({
               className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: `url(${peoriaBridgeMobile})`,
-                // Tablets/desktops have wider aspect ratio - use cover to fill; phones use width-based sizing
-                backgroundSize: (isTablet || isDesktop) ? 'cover' : '100% auto',
+                // Tablet is wider, so keep width-based sizing (avoid `cover` cropping the bridge out)
+                // and slightly zoom so the bridge reads clearly.
+                backgroundSize: (isTablet || isDesktop) ? '112% auto' : '100% auto',
                 backgroundRepeat: 'no-repeat',
-                // Position the bridge higher in the container (lower % = higher position)
-                backgroundPosition: 'center 35%',
-                opacity: isWaitingPhase ? 0.45 : 0.28,
+                // On tablet, the bridge sits lower in frame; push it down so it lands inside the ellipse.
+                backgroundPosition: (isTablet || isDesktop) ? 'center 58%' : 'center 35%',
+                // Slightly higher opacity on larger screens where the felt reads darker.
+                opacity: isWaitingPhase ? 0.45 : (isTablet || isDesktop ? 0.36 : 0.28),
               }}
             />
           )}
