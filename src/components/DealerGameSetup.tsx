@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition } from "@/lib/playerStateEvaluation";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting } from "@/lib/playerStateEvaluation";
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { toast } from "sonner";
@@ -394,6 +394,10 @@ export const DealerGameSetup = ({
       // Priority 2: Check if we can continue (need 1+ eligible dealer AND 2+ active players)
       if (activePlayerCount < 2 || eligibleDealerCount < 1) {
         console.log('[DEALER SETUP] Not enough players, reverting to waiting');
+        
+        // Remove sitting out players - they need to re-select seats
+        await removeSittingOutPlayersOnWaiting(gameId);
+        
         // Revert to waiting status
         const { error: waitError } = await supabase
           .from('games')
