@@ -440,9 +440,18 @@ serve(async (req) => {
             .maybeSingle();
           
           const hasDecisionDeadline = !!currentRound?.decision_deadline;
+          const deadlineTime = hasDecisionDeadline ? new Date(currentRound.decision_deadline).getTime() : 0;
+          const msSinceDeadline = hasDecisionDeadline ? now.getTime() - deadlineTime : 0;
           
-          if (!hasDecisionDeadline && msSinceUpdate > STALE_THRESHOLD_MS) {
-            console.log('[CRON-ENFORCE] Stale in_progress (>2h, no deadline), ending:', game.id);
+          // Clean up if: no deadline and stale for 2h, OR deadline expired 30+ minutes ago
+          const isStaleWithoutDeadline = !hasDecisionDeadline && msSinceUpdate > STALE_THRESHOLD_MS;
+          const isStaleWithExpiredDeadline = hasDecisionDeadline && msSinceDeadline > (30 * 60 * 1000); // 30 min past deadline
+          
+          if (isStaleWithoutDeadline || isStaleWithExpiredDeadline) {
+            const reason = isStaleWithoutDeadline 
+              ? 'Stale in_progress (>2h, no deadline)' 
+              : 'Stale in_progress (deadline expired >30 min ago)';
+            console.log(`[CRON-ENFORCE] ${reason}, ending:`, game.id);
             
             await supabase
               .from('games')
@@ -451,13 +460,14 @@ serve(async (req) => {
                 pending_session_end: false,
                 session_ended_at: nowIso,
                 game_over_at: nowIso,
+                awaiting_next_round: false,
                 config_deadline: null,
                 ante_decision_deadline: null,
                 config_complete: false,
               })
               .eq('id', game.id);
             
-            actionsTaken.push('Stale in_progress (>2h, no deadline): session ended');
+            actionsTaken.push(`${reason}: session ended`);
             results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
             continue;
           }
@@ -466,6 +476,57 @@ serve(async (req) => {
         // ============= AWAITING_NEXT_ROUND WATCHDOG =============
         if (game.awaiting_next_round === true && (game.status === 'in_progress' || game.status === 'betting')) {
           const stuckDuration = msSinceUpdate;
+          
+          // If stuck for more than 30 minutes, clean up the game
+          const STUCK_GAME_CLEANUP_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+          if (stuckDuration > STUCK_GAME_CLEANUP_THRESHOLD_MS) {
+            console.log('[CRON-ENFORCE] Game stuck in awaiting_next_round for >30 min, cleaning up:', game.id);
+            
+            const totalHands = game.total_hands || 0;
+            const { count: resultsCount } = await supabase
+              .from('game_results')
+              .select('id', { count: 'exact', head: true })
+              .eq('game_id', game.id);
+            
+            const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+            
+            if (hasHistory) {
+              // End session if there's history
+              await supabase
+                .from('games')
+                .update({
+                  status: 'session_ended',
+                  pending_session_end: false,
+                  session_ended_at: nowIso,
+                  game_over_at: nowIso,
+                  awaiting_next_round: false,
+                  config_deadline: null,
+                  ante_decision_deadline: null,
+                  config_complete: false,
+                })
+                .eq('id', game.id);
+              
+              actionsTaken.push('Stuck awaiting_next_round (>30 min): Has history, session ended');
+            } else {
+              // Delete if no history
+              const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
+              const roundIds = (roundRows ?? []).map((r: any) => r.id);
+              if (roundIds.length > 0) {
+                await supabase.from('player_cards').delete().in('round_id', roundIds);
+                await supabase.from('player_actions').delete().in('round_id', roundIds);
+              }
+              await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
+              await supabase.from('chat_messages').delete().eq('game_id', game.id);
+              await supabase.from('rounds').delete().eq('game_id', game.id);
+              await supabase.from('players').delete().eq('game_id', game.id);
+              await supabase.from('games').delete().eq('id', game.id);
+              
+              actionsTaken.push('Stuck awaiting_next_round (>30 min): No history, deleted');
+            }
+            
+            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') || 'no_action' });
+            continue;
+          }
           
           if (stuckDuration > AWAITING_NEXT_ROUND_THRESHOLD_MS) {
             console.log('[CRON-ENFORCE] awaiting_next_round watchdog triggered for game:', game.id);
