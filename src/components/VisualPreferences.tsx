@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Palette } from 'lucide-react';
 import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode } from '@/hooks/useVisualPreferences';
@@ -9,6 +10,7 @@ import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
 import hawksLogo from '@/assets/hawks-logo.png';
+import peoriaBridgeMobile from '@/assets/peoria-bridge-mobile.jpg';
 
 const TEAM_LOGOS: Record<string, string> = {
   bulls: bullsLogo,
@@ -27,6 +29,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
   const [tableLayout, setTableLayout] = useState('classic');
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
+  const [showBridgeOnWaiting, setShowBridgeOnWaiting] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +48,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
       setTableLayout((data as any).table_layout || 'classic');
       setCardBackDesign((data as any).card_back_design || 'red');
       setDeckColorMode((data as any).deck_color_mode || 'two_color');
+      setShowBridgeOnWaiting((data as any).show_bridge_on_waiting !== false); // default true
     }
     setLoading(false);
   };
@@ -57,6 +61,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
         table_layout: tableLayout,
         card_back_design: cardBackDesign,
         deck_color_mode: deckColorMode,
+        show_bridge_on_waiting: showBridgeOnWaiting,
       } as any)
       .eq('id', userId);
 
@@ -190,6 +195,46 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
               <span className="text-xs text-center">{card.name.split(' ')[0]}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Bridge on Waiting Table */}
+      <div className="space-y-3">
+        <Label>Waiting Table Background</Label>
+        <div 
+          className={`p-3 rounded-lg border-2 transition-all cursor-pointer ${
+            showBridgeOnWaiting 
+              ? 'border-primary ring-2 ring-primary ring-offset-2' 
+              : 'border-muted hover:border-muted-foreground/50'
+          }`}
+          onClick={() => setShowBridgeOnWaiting(!showBridgeOnWaiting)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-16 h-10 rounded-[50%/45%] overflow-hidden border border-amber-900"
+                style={{ backgroundColor: '#1a1a1a' }}
+              >
+                {showBridgeOnWaiting && (
+                  <img 
+                    src={peoriaBridgeMobile} 
+                    alt="Bridge preview" 
+                    className="w-full h-full object-cover opacity-40"
+                    style={{ objectPosition: 'center 35%' }}
+                  />
+                )}
+              </div>
+              <div>
+                <div className="font-medium text-sm">I-74 Bridge</div>
+                <div className="text-xs text-muted-foreground">Show bridge on waiting table</div>
+              </div>
+            </div>
+            <Switch 
+              checked={showBridgeOnWaiting} 
+              onCheckedChange={setShowBridgeOnWaiting}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       </div>
 

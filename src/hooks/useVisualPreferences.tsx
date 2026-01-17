@@ -35,6 +35,7 @@ interface VisualPreferencesContextType {
   tableLayout: string;
   cardBackDesign: string;
   deckColorMode: DeckColorMode;
+  showBridgeOnWaiting: boolean;
   sessionDeckColorMode: DeckColorMode | null;
   setSessionDeckColorMode: (mode: DeckColorMode | null) => void;
   getTableColors: () => { color: string; darkColor: string; border: string };
@@ -57,6 +58,7 @@ export function VisualPreferencesProvider({
   const [tableLayout, setTableLayout] = useState('black');
   const [cardBackDesign, setCardBackDesign] = useState('hawks');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('two_color');
+  const [showBridgeOnWaiting, setShowBridgeOnWaiting] = useState(true);
   const [sessionDeckColorMode, setSessionDeckColorMode] = useState<DeckColorMode | null>(null);
 
   const fetchPreferences = async () => {
@@ -72,6 +74,7 @@ export function VisualPreferencesProvider({
       setTableLayout((data as any).table_layout || 'classic');
       setCardBackDesign((data as any).card_back_design || 'red');
       setDeckColorMode((data as any).deck_color_mode || 'two_color');
+      setShowBridgeOnWaiting((data as any).show_bridge_on_waiting !== false); // default true
     }
   };
 
@@ -106,6 +109,7 @@ export function VisualPreferencesProvider({
       tableLayout,
       cardBackDesign,
       deckColorMode,
+      showBridgeOnWaiting,
       sessionDeckColorMode,
       setSessionDeckColorMode,
       getTableColors,
@@ -128,6 +132,7 @@ export function useVisualPreferences() {
       tableLayout: 'black',
       cardBackDesign: 'hawks',
       deckColorMode: 'two_color' as DeckColorMode,
+      showBridgeOnWaiting: true,
       sessionDeckColorMode: null as DeckColorMode | null,
       setSessionDeckColorMode: () => {},
       getTableColors: () => ({ color: '#1a1a1a', darkColor: '#0a0a0a', border: '#78350f' }),

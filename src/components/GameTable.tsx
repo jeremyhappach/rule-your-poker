@@ -174,7 +174,7 @@ export const GameTable = ({
   onHolmPreFoldChange,
   onHolmPreStayChange,
 }: GameTableProps) => {
-  const { getTableColors } = useVisualPreferences();
+  const { getTableColors, showBridgeOnWaiting } = useVisualPreferences();
   const tableColors = getTableColors();
   
   // DEBUG: Log community cards prop to diagnose rendering issues
@@ -975,14 +975,13 @@ export const GameTable = ({
           boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), inset 0 0 20px rgba(0,0,0,0.5)'
         }}>
           {/* Bridge overlay on felt during waiting phase - visible, moved up, clipped to table */}
-          {isWaitingPhase && (
+          {isWaitingPhase && showBridgeOnWaiting && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: `url(${peoriaBridgeMobile})`,
                 backgroundSize: '100% auto',
                 backgroundRepeat: 'no-repeat',
-                // Position the bridge higher in the container (lower % = higher position)
                 backgroundPosition: 'center 35%',
                 opacity: 0.4,
               }}
