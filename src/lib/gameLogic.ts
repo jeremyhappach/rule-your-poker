@@ -230,18 +230,19 @@ export async function startRound(gameId: string, roundNumber: number) {
     })();
   }
 
-  // Reset all players to active for the new round - FIRE AND FORGET (non-blocking)
-  void supabase
+  // Reset all players to active for the new round - MUST await to ensure players are reset before dealing cards
+  const { error: resetError } = await supabase
     .from('players')
     .update({ 
       current_decision: null,
       decision_locked: false,
       status: 'active'
     })
-    .eq('game_id', gameId)
-    .then(({ error }) => {
-      if (error) console.error('[START_ROUND] Failed to reset players:', error);
-    });
+    .eq('game_id', gameId);
+  
+  if (resetError) {
+    console.error('[START_ROUND] Failed to reset players:', resetError);
+  }
 
   if (playersError) {
     console.error('Error fetching players:', playersError);
@@ -252,8 +253,12 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error('No active players found in game');
   }
 
-  // Calculate pot based on active players who are not sitting out, and ante for round 1
-  const activePlayers = players.filter(p => p.status === 'active' && !p.sitting_out);
+  // CRITICAL FIX: For rounds 2+, include ALL non-sitting-out players (not just status === 'active')
+  // because players who folded in round 1 should still get cards in round 2
+  // For round 1, use status === 'active' since that's the fresh state
+  const activePlayers = roundNumber === 1 
+    ? players.filter(p => p.status === 'active' && !p.sitting_out)
+    : players.filter(p => !p.sitting_out);
   let initialPot = 0;
   
   // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
