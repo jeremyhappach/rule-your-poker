@@ -498,6 +498,194 @@ serve(async (req) => {
           continue;
         }
 
+        // ============= HORSES/SCC COMPLETED ROUND PROCESSING =============
+        // Detect when a dice game has a completed round waiting for winner evaluation
+        if ((game.game_type === 'horses' || game.game_type === 'ship-captain-crew') && 
+            (game.status === 'in_progress' || game.status === 'ante_decision' || game.status === 'betting')) {
+          
+          // Find the latest round for this game
+          const { data: latestRound } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('game_id', game.id)
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (latestRound) {
+            const horsesState = latestRound.horses_state as any;
+            
+            // Check if round is complete but game hasn't processed winner yet
+            if ((latestRound.status === 'completed' || horsesState?.gamePhase === 'complete') && 
+                !game.awaiting_next_round) {
+              
+              console.log('[CRON-ENFORCE] 🎲 DICE GAME STUCK: Round complete but game not updated', {
+                gameId: game.id,
+                gameType: game.game_type,
+                gameStatus: game.status,
+                roundStatus: latestRound.status,
+                gamePhase: horsesState?.gamePhase,
+              });
+              
+              const playerStates = horsesState?.playerStates || {};
+              const turnOrder = (horsesState?.turnOrder || []) as string[];
+              const roundPot = latestRound.pot || game.pot || 0;
+              
+              // Determine winner based on hand results
+              let bestPlayer: { playerId: string; result: any } | null = null;
+              let isTie = false;
+              const tieBreakPlayers: { playerId: string; result: any }[] = [];
+              
+              for (const playerId of turnOrder) {
+                const state = playerStates[playerId];
+                if (!state?.isComplete || !state?.result) continue;
+                
+                const result = state.result;
+                
+                if (!bestPlayer) {
+                  bestPlayer = { playerId, result };
+                  tieBreakPlayers.push({ playerId, result });
+                } else {
+                  // Compare hands: higher rank wins, then highValue for ties
+                  if (result.rank > bestPlayer.result.rank) {
+                    bestPlayer = { playerId, result };
+                    tieBreakPlayers.length = 0;
+                    tieBreakPlayers.push({ playerId, result });
+                    isTie = false;
+                  } else if (result.rank === bestPlayer.result.rank) {
+                    // Same rank - compare highValue
+                    if (result.highValue > bestPlayer.result.highValue) {
+                      bestPlayer = { playerId, result };
+                      tieBreakPlayers.length = 0;
+                      tieBreakPlayers.push({ playerId, result });
+                      isTie = false;
+                    } else if (result.highValue === bestPlayer.result.highValue) {
+                      tieBreakPlayers.push({ playerId, result });
+                      isTie = tieBreakPlayers.length > 1;
+                    }
+                  }
+                }
+              }
+              
+              // Get player profiles for username lookup
+              const { data: allPlayers } = await supabase
+                .from('players')
+                .select('id, user_id, chips, legs, is_bot, profiles(username)')
+                .eq('game_id', game.id);
+              
+              const playerMap = new Map((allPlayers || []).map((p: any) => [p.id, p]));
+              
+              if (isTie && tieBreakPlayers.length > 1) {
+                // CHOP - split the pot
+                const winners = tieBreakPlayers.filter(p => 
+                  p.result.rank === bestPlayer!.result.rank && 
+                  p.result.highValue === bestPlayer!.result.highValue
+                );
+                
+                const shareAmount = Math.floor(roundPot / winners.length);
+                const remainder = roundPot % winners.length;
+                const playerChipChanges: Record<string, number> = {};
+                const winnerNames: string[] = [];
+                
+                for (let i = 0; i < winners.length; i++) {
+                  const winner = winners[i];
+                  const player = playerMap.get(winner.playerId);
+                  if (player) {
+                    const winAmount = shareAmount + (i === 0 ? remainder : 0);
+                    await supabase
+                      .from('players')
+                      .update({ chips: player.chips + winAmount })
+                      .eq('id', winner.playerId);
+                    playerChipChanges[winner.playerId] = winAmount;
+                    winnerNames.push((player.profiles as any)?.username || 'Player');
+                  }
+                }
+                
+                await supabase.from('game_results').insert({
+                  game_id: game.id,
+                  hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
+                  winner_player_id: null,
+                  winner_username: winnerNames.join(' & '),
+                  pot_won: roundPot,
+                  winning_hand_description: `CHOP: ${bestPlayer!.result.description}`,
+                  is_chopped: true,
+                  player_chip_changes: playerChipChanges,
+                  game_type: game.game_type,
+                });
+                
+                await supabase
+                  .from('games')
+                  .update({
+                    pot: 0,
+                    last_round_result: `CHOPPED: ${winnerNames.join(' & ')}`,
+                    awaiting_next_round: true,
+                    total_hands: (game.total_hands || 0) + 1,
+                    status: 'in_progress',
+                  })
+                  .eq('id', game.id);
+                
+                await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
+                
+                actionsTaken.push(`Dice game: ${winners.length}-way chop with ${bestPlayer!.result.description}, pot ${roundPot}`);
+              } else if (bestPlayer) {
+                // Single winner
+                const winnerPlayer = playerMap.get(bestPlayer.playerId);
+                const winnerUsername = (winnerPlayer?.profiles as any)?.username || 'Player';
+                
+                // Award pot
+                if (winnerPlayer) {
+                  await supabase
+                    .from('players')
+                    .update({ chips: winnerPlayer.chips + roundPot })
+                    .eq('id', bestPlayer.playerId);
+                }
+                
+                await supabase.from('game_results').insert({
+                  game_id: game.id,
+                  hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
+                  winner_player_id: bestPlayer.playerId,
+                  winner_username: winnerUsername,
+                  pot_won: roundPot,
+                  winning_hand_description: bestPlayer.result.description,
+                  is_chopped: false,
+                  player_chip_changes: { [bestPlayer.playerId]: roundPot },
+                  game_type: game.game_type,
+                });
+                
+                await supabase
+                  .from('games')
+                  .update({
+                    pot: 0,
+                    last_round_result: `${winnerUsername} wins with ${bestPlayer.result.description}!`,
+                    awaiting_next_round: true,
+                    total_hands: (game.total_hands || 0) + 1,
+                    status: 'in_progress',
+                  })
+                  .eq('id', game.id);
+                
+                await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
+                
+                actionsTaken.push(`Dice game: ${winnerUsername} wins with ${bestPlayer.result.description}, pot ${roundPot}`);
+              } else {
+                // No valid results found - just move to awaiting_next_round
+                console.log('[CRON-ENFORCE] Dice game: No valid results found, forcing transition');
+                
+                await supabase
+                  .from('games')
+                  .update({
+                    awaiting_next_round: true,
+                    status: 'in_progress',
+                  })
+                  .eq('id', game.id);
+                
+                await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
+                
+                actionsTaken.push('Dice game: No results, forced awaiting_next_round');
+              }
+            }
+          }
+        }
+
         // ============= STALE IN_PROGRESS CLEANUP =============
         if (game.status === 'in_progress') {
           const { data: currentRound } = await supabase
