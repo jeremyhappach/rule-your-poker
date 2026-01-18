@@ -319,17 +319,22 @@ export function HorsesMobileCardsTab({
             // After roll 3, hide the Roll button entirely
             <Badge className="text-sm px-3 py-1.5 font-medium">✓ Locked In</Badge>
           )
-        ) : horses.gamePhase === "complete" && hasCompleted && myResult ? (
-          // Only show "Locked: {description}" when game is actually complete AND we have a valid result
-          // This prevents showing stale results from previous round before new round initializes
-          <Badge className="text-sm px-3 py-1.5 font-medium">
-            ✓ Locked: {myResult.description}
-          </Badge>
-        ) : horses.gamePhase === "playing" && !horses.isMyTurn && hasCompleted && myResult ? (
-          // Persist YOUR hand rank after you finish your turn (while waiting for others).
-          <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
-            Your hand: {gameType === 'horses' ? (
-              <HorsesHandResultDisplay description={myResult.description} size={isTablet || isDesktop ? 'md' : 'sm'} />
+        ) : hasCompleted && myResult ? (
+          // Styled result badge persists from turn completion through game end (including win animations)
+          <Badge 
+            variant="secondary" 
+            className={cn(
+              "font-bold",
+              isTablet || isDesktop ? "text-xl px-6 py-3" : "text-lg px-4 py-2",
+              horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '') && "bg-green-600 text-white"
+            )}
+          >
+            {gameType === 'horses' ? (
+              <HorsesHandResultDisplay 
+                description={myResult.description} 
+                isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
+                size={isTablet || isDesktop ? "md" : "sm"}
+              />
             ) : (
               myResult.description
             )}
