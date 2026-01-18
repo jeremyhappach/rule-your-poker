@@ -258,95 +258,134 @@ serve(async (req) => {
     }
 
     // ============= 2. ENFORCE ANTE DECISION DEADLINE =============
-    if (game.status === 'ante_decision' && game.ante_decision_deadline) {
-      const anteDeadline = new Date(game.ante_decision_deadline);
-      if (now > anteDeadline) {
-        console.log('[ENFORCE-CLIENT] Ante deadline expired for game', gameId);
+    if (game.status === 'ante_decision') {
+      const { data: players } = await supabase
+        .from('players')
+        .select('*')
+        .eq('game_id', gameId);
+      
+      // CRITICAL FIX: Bots should ALWAYS ante up immediately, regardless of deadline
+      // This prevents the race condition where client-side makeBotAnteDecisions doesn't fire
+      const undecidedBots = players?.filter((p: any) => 
+        p.is_bot && !p.ante_decision && !p.sitting_out
+      ) || [];
+      
+      if (undecidedBots.length > 0) {
+        console.log('[ENFORCE-CLIENT] 🤖 Auto-anteing', undecidedBots.length, 'bots for game', gameId);
         
-        const { data: players } = await supabase
+        const botIds = undecidedBots.map((p: any) => p.id);
+        await supabase
           .from('players')
-          .select('*')
-          .eq('game_id', gameId);
+          .update({ ante_decision: 'ante_up' })
+          .in('id', botIds);
         
-        // Find undecided players and auto-sit them out
-        const undecidedPlayers = players?.filter((p: any) => !p.ante_decision && !p.sitting_out) || [];
-        
-        if (undecidedPlayers.length > 0) {
-          for (const player of undecidedPlayers) {
-            await logSittingOutChange(
-              supabase,
-              player.id,
-              player.user_id,
-              gameId,
-              null,
-              player.is_bot,
-              'sitting_out',
-              player.sitting_out,
-              true,
-              'Player did not respond to ante decision in time',
-              'enforce-deadlines/client:ante_deadline',
-              { ante_decision_deadline: game.ante_decision_deadline }
-            );
-          }
-
-          const undecidedIds = undecidedPlayers.map((p: any) => p.id);
+        actionsTaken.push(`Bot ante: Auto-anted ${botIds.length} bots`);
+      }
+      
+      // Now check if deadline has expired for HUMANS
+      if (game.ante_decision_deadline) {
+        const anteDeadline = new Date(game.ante_decision_deadline);
+        if (now > anteDeadline) {
+          console.log('[ENFORCE-CLIENT] Ante deadline expired for game', gameId);
           
-          await supabase
+          // Re-fetch players after bot ante updates
+          const { data: freshPlayers } = await supabase
             .from('players')
-            .update({
-              ante_decision: 'sit_out',
-              sitting_out: true,
-              waiting: false,
-            })
-            .in('id', undecidedIds);
+            .select('*')
+            .eq('game_id', gameId);
           
-          actionsTaken.push(`Ante timeout: Auto-sat-out ${undecidedIds.length} undecided players`);
-        }
-        
-        // Re-fetch players after updates
-        const { data: freshPlayers } = await supabase
-          .from('players')
-          .select('*')
-          .eq('game_id', gameId);
-        
-        const antedUpPlayers = freshPlayers?.filter((p: any) => p.ante_decision === 'ante_up' && !p.sitting_out) || [];
-        
-        console.log('[ENFORCE-CLIENT] After ante timeout: anted_up=', antedUpPlayers.length);
-        
-        if (antedUpPlayers.length >= 2) {
-          await supabase
-            .from('games')
-            .update({ ante_decision_deadline: null })
-            .eq('id', gameId);
+          // Find undecided HUMAN players and auto-sit them out (bots already handled above)
+          const undecidedHumans = freshPlayers?.filter((p: any) => 
+            !p.is_bot && !p.ante_decision && !p.sitting_out
+          ) || [];
           
-          actionsTaken.push(`Ante timeout: ${antedUpPlayers.length} players anted up, ready to start`);
-        } else {
-          // Not enough players
-          const currentDealer = freshPlayers?.find((p: any) => p.position === game.dealer_position);
-          const dealerIsActive = currentDealer && !currentDealer.sitting_out;
-          
-          if (!dealerIsActive) {
-            const eligibleDealers = freshPlayers?.filter((p: any) => 
-              !p.is_bot && !p.sitting_out
-            ).sort((a: any, b: any) => a.position - b.position) || [];
+          if (undecidedHumans.length > 0) {
+            for (const player of undecidedHumans) {
+              await logSittingOutChange(
+                supabase,
+                player.id,
+                player.user_id,
+                gameId,
+                null,
+                player.is_bot,
+                'sitting_out',
+                player.sitting_out,
+                true,
+                'Player did not respond to ante decision in time',
+                'enforce-deadlines/client:ante_deadline',
+                { ante_decision_deadline: game.ante_decision_deadline }
+              );
+            }
+
+            const undecidedIds = undecidedHumans.map((p: any) => p.id);
             
-            if (eligibleDealers.length >= 1) {
-              const currentPos = game.dealer_position || 1;
-              const higherPositions = eligibleDealers.filter((p: any) => p.position > currentPos);
-              const nextDealer = higherPositions.length > 0 
-                ? higherPositions[0] 
-                : eligibleDealers[0];
+            await supabase
+              .from('players')
+              .update({
+                ante_decision: 'sit_out',
+                sitting_out: true,
+                waiting: false,
+              })
+              .in('id', undecidedIds);
+            
+            actionsTaken.push(`Ante timeout: Auto-sat-out ${undecidedIds.length} undecided human players`);
+          }
+          
+          // Re-fetch players after updates
+          const { data: finalPlayers } = await supabase
+            .from('players')
+            .select('*')
+            .eq('game_id', gameId);
+          
+          const antedUpPlayers = finalPlayers?.filter((p: any) => p.ante_decision === 'ante_up' && !p.sitting_out) || [];
+          
+          console.log('[ENFORCE-CLIENT] After ante timeout: anted_up=', antedUpPlayers.length);
+          
+          if (antedUpPlayers.length >= 2) {
+            await supabase
+              .from('games')
+              .update({ ante_decision_deadline: null })
+              .eq('id', gameId);
+            
+            actionsTaken.push(`Ante timeout: ${antedUpPlayers.length} players anted up, ready to start`);
+          } else {
+            // Not enough players
+            const currentDealer = finalPlayers?.find((p: any) => p.position === game.dealer_position);
+            const dealerIsActive = currentDealer && !currentDealer.sitting_out;
+            
+            if (!dealerIsActive) {
+              const eligibleDealers = finalPlayers?.filter((p: any) => 
+                !p.is_bot && !p.sitting_out
+              ).sort((a: any, b: any) => a.position - b.position) || [];
               
-              await supabase
-                .from('games')
-                .update({
-                  status: 'waiting_for_players',
-                  ante_decision_deadline: null,
-                  dealer_position: nextDealer.position,
-                })
-                .eq('id', gameId);
-              
-              actionsTaken.push(`Ante timeout: Dealer sat out, rotated to position ${nextDealer.position}`);
+              if (eligibleDealers.length >= 1) {
+                const currentPos = game.dealer_position || 1;
+                const higherPositions = eligibleDealers.filter((p: any) => p.position > currentPos);
+                const nextDealer = higherPositions.length > 0 
+                  ? higherPositions[0] 
+                  : eligibleDealers[0];
+                
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'waiting_for_players',
+                    ante_decision_deadline: null,
+                    dealer_position: nextDealer.position,
+                  })
+                  .eq('id', gameId);
+                
+                actionsTaken.push(`Ante timeout: Dealer sat out, rotated to position ${nextDealer.position}`);
+              } else {
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'waiting_for_players',
+                    ante_decision_deadline: null,
+                  })
+                  .eq('id', gameId);
+                
+                actionsTaken.push('Ante timeout: No active players, returning to waiting_for_players');
+              }
             } else {
               await supabase
                 .from('games')
@@ -356,18 +395,8 @@ serve(async (req) => {
                 })
                 .eq('id', gameId);
               
-              actionsTaken.push('Ante timeout: No active players, returning to waiting_for_players');
+              actionsTaken.push(`Ante timeout: Only ${antedUpPlayers.length} player(s) anted up, returning to waiting_for_players`);
             }
-          } else {
-            await supabase
-              .from('games')
-              .update({
-                status: 'waiting_for_players',
-                ante_decision_deadline: null,
-              })
-              .eq('id', gameId);
-            
-            actionsTaken.push(`Ante timeout: Only ${antedUpPlayers.length} player(s) anted up, returning to waiting_for_players`);
           }
         }
       }
