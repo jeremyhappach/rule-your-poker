@@ -709,54 +709,58 @@ export function HorsesGameTable({
       : rollDice(localHand as HorsesHand);
     console.log(`[ROLL_DEBUG_DESKTOP] newHand dice: [${(newHand.dice as any[]).map((d: any) => d.value).join(',')}], rollsRemaining=${newHand.rollsRemaining}`);
 
-    setIsRolling(true);
-    lastLocalEditAtRef.current = rollStartTime;
-    setLocalHand(newHand);
-    console.log(`[ROLL_DEBUG_DESKTOP] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
-    // Increment roll animation key AFTER setting the new hand so fly-in uses new values
-    setRollAnimationKey(prev => prev + 1);
+     setIsRolling(true);
+     lastLocalEditAtRef.current = rollStartTime;
+     setLocalHand(newHand);
+     console.log(`[ROLL_DEBUG_DESKTOP] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
+     // Increment roll animation key AFTER setting the new hand so fly-in uses new values
+     setRollAnimationKey(prev => prev + 1);
 
-    // Animate for appropriate duration based on roll type
-    setTimeout(async () => {
-      const animationEndTime = Date.now();
-      console.log(`[ROLL_DEBUG_DESKTOP] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`);
-      console.log(`[ROLL_DEBUG_DESKTOP] setIsRolling(false) being called NOW`);
-      setIsRolling(false);
+     // CRITICAL: Save state IMMEDIATELY so observers get rollKey right away and can start fly-in animation in sync.
+     // Do this for ALL rolls (including the final roll), otherwise observers can miss the last fly-in and
+     // "skip" straight to the result.
+     void saveMyState(newHand, false, undefined, heldMaskBeforeRoll);
 
-      // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
-      if (isSCC) {
-        const sccHand = newHand as SCCHand;
-        const result = evaluateSCCHand(sccHand);
-        
-        // Midnight = qualified with cargo of 12 (best possible hand)
-        if (result.isQualified && result.cargoSum === 12) {
-          console.log('[SCC] Midnight rolled! Auto-locking...');
-          const lockedHand = lockInSCCHand(sccHand);
-          setLocalHand(lockedHand);
-          await saveMyState(lockedHand as any, true, result, heldMaskBeforeRoll);
-          
-          setTimeout(() => {
-            advanceToNextTurn(myPlayer?.id ?? null);
-          }, 1500);
-          return;
-        }
-      }
+     // Animate for appropriate duration based on roll type
+     setTimeout(async () => {
+       const animationEndTime = Date.now();
+       console.log(`[ROLL_DEBUG_DESKTOP] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`);
+       console.log(`[ROLL_DEBUG_DESKTOP] setIsRolling(false) being called NOW`);
+       setIsRolling(false);
 
-      // Save to DB
-      if (newHand.rollsRemaining === 0) {
-        // Auto-lock when out of rolls - pass held mask from before this roll
-        const result = isSCC 
-          ? evaluateSCCHand(newHand as SCCHand)
-          : evaluateHand((newHand as HorsesHand).dice);
-        await saveMyState(newHand as HorsesHand, true, result, heldMaskBeforeRoll);
+       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
+       if (isSCC) {
+         const sccHand = newHand as SCCHand;
+         const result = evaluateSCCHand(sccHand);
+         
+         // Midnight = qualified with cargo of 12 (best possible hand)
+         if (result.isQualified && result.cargoSum === 12) {
+           console.log('[SCC] Midnight rolled! Auto-locking...');
+           const lockedHand = lockInSCCHand(sccHand);
+           setLocalHand(lockedHand);
+           await saveMyState(lockedHand as any, true, result, heldMaskBeforeRoll);
+           
+           setTimeout(() => {
+             advanceToNextTurn(myPlayer?.id ?? null);
+           }, 1500);
+           return;
+         }
+       }
 
-        setTimeout(() => {
-          advanceToNextTurn(myPlayer?.id ?? null);
-        }, 1500);
-      } else {
-        await saveMyState(newHand as HorsesHand, false);
-      }
-    }, animationDuration);
+       // Save to DB
+       if (newHand.rollsRemaining === 0) {
+         // Auto-lock when out of rolls - pass held mask from before this roll
+         const result = isSCC 
+           ? evaluateSCCHand(newHand as SCCHand)
+           : evaluateHand((newHand as HorsesHand).dice);
+         await saveMyState(newHand as HorsesHand, true, result, heldMaskBeforeRoll);
+
+         setTimeout(() => {
+           advanceToNextTurn(myPlayer?.id ?? null);
+         }, 1500);
+       }
+       // Note: intermediate rolls already saved immediately above, no need to save again here
+     }, animationDuration);
   }, [isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
 
   // Handle toggle hold - SCC has auto-freeze for 6-5-4, humans cannot toggle SCC dice

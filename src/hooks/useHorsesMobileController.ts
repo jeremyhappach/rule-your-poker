@@ -1375,7 +1375,10 @@ export function useHorsesMobileController({
             dice: botHand.dice as any,
             rollsRemaining: botHand.rollsRemaining,
             isComplete: false,
-          });
+            heldMaskBeforeComplete,
+            heldCountBeforeComplete: heldMaskBeforeComplete?.filter(Boolean).length,
+            rollKey: botRollKey,
+          } as any);
 
           await new Promise((resolve) => setTimeout(resolve, 800));
           if (cancelled) return;
@@ -1418,7 +1421,10 @@ export function useHorsesMobileController({
               dice: botHand.dice as any,
               rollsRemaining: botHand.rollsRemaining,
               isComplete: false,
-            });
+              heldMaskBeforeComplete,
+              heldCountBeforeComplete: heldMaskBeforeComplete?.filter(Boolean).length,
+              rollKey: botRollKey,
+            } as any);
 
             await new Promise((resolve) => setTimeout(resolve, 600));
             if (cancelled) return;
@@ -1458,6 +1464,7 @@ export function useHorsesMobileController({
           result,
           heldMaskBeforeComplete,
           heldCountBeforeComplete,
+          rollKey: botRollKey,
         } as any);
 
         await new Promise((resolve) => setTimeout(resolve, 450));

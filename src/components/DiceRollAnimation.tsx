@@ -20,6 +20,8 @@ interface DiceRollAnimationProps {
   isSCC?: boolean;
   /** Y offset for the scatter area (must match DiceTableLayout's unheldYOffset) */
   scatterYOffset?: number;
+  /** Run identifier to force a new animation even when animatingIndices are identical */
+  runKey?: string | number;
 }
 
 // Animation duration in ms (reduced for snappier feel)
@@ -47,6 +49,7 @@ export function DiceRollAnimation({
   size = "sm",
   isSCC = false,
   scatterYOffset = 50,
+  runKey,
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
@@ -151,7 +154,7 @@ export function DiceRollAnimation({
     };
     // IMPORTANT: depend on the signature so parent rerenders don't restart the animation,
     // but real animation runs (different dice indices) do.
-  }, [animKey]);
+  }, [animKey, runKey]);
 
   if (animatingIndices.length === 0) return null;
   if (tumbleData.length < animatingIndices.length) return null;
@@ -179,9 +182,9 @@ export function DiceRollAnimation({
         // Blend tumble rotation into final rotation
         const currentRotation = totalTumbleRotation + finalRotation * flyProgress;
         
-        // During flight, show pre-generated tumbling values (based on progress)
-        // As we approach landing, show the final value
-        const showFinalValue = flyProgress > 0.7;
+        // During flight, show pre-generated tumbling values.
+        // Only switch to the final value once it's available (value > 0) and we're close to landing.
+        const showFinalValue = flyProgress > 0.7 && die.value > 0;
         // Use progress to pick from pre-generated sequence (prevents random switching)
         const sequenceIndex = Math.floor(flyProgress * (tumble.tumbleSequence.length - 1));
         const displayValue = showFinalValue ? die.value : tumble.tumbleSequence[sequenceIndex];
