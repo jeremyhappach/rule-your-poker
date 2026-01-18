@@ -452,24 +452,22 @@ export function DiceTableLayout({
     
     prevIsCompleteRef.current = isComplete;
   }, [allHeldNow, isAnimatingFlyIn]);
-  // Timeline: fly-in done → 50ms → layout flip → 200ms CSS → 300ms delay → hide unheld
-  // Total: ~1750ms from roll start (1200ms fly-in + 550ms post)
+  // Timeline: fly-in done → immediately flip layout → 200ms CSS → 300ms delay → hide unheld
+  // CRITICAL FIX: Clear animation state atomically to prevent dice hopping during the gap
   const handleAnimationComplete = useCallback(() => {
     if (animationCompleteTimeoutRef.current) {
       clearTimeout(animationCompleteTimeoutRef.current);
       animationCompleteTimeoutRef.current = null;
     }
 
+    // CRITICAL: Set both states together to prevent a gap where dice are neither animating
+    // nor properly positioned. The 50ms delay was causing dice to briefly render at stale positions.
     setAnimatingDiceIndices([]);
+    setIsAnimatingFlyIn(false);
 
-    // Quick flip to held layout
-    scheduleTimeout(50, () => {
-      setIsAnimatingFlyIn(false);
-
-      // After held dice CSS transition (200ms), wait 300ms then hide unheld
-      animationCompleteTimeoutRef.current = scheduleTimeout(200 + 300, () => {
-        setShowUnheldDice(false);
-      });
+    // After held dice CSS transition (200ms), wait 300ms then hide unheld
+    animationCompleteTimeoutRef.current = scheduleTimeout(200 + 300, () => {
+      setShowUnheldDice(false);
     });
   }, [scheduleTimeout]);
   
@@ -829,11 +827,15 @@ export function DiceTableLayout({
         const heldPos = heldPositionByOriginalIndex.get(item.originalIndex);
         const isHeldInLayout = !!heldPos;
 
-        // Prefer stable, per-roll positions (prevents re-scatter when holds change mid-roll)
-        const stablePos =
-          stableScatterRollKeyRef.current === rollKey
-            ? stableScatterByDieRef.current.get(item.originalIndex)
-            : undefined;
+        // CRITICAL FIX: Only use stable scatter positions if they're for THIS rollKey.
+        // After animation completes, if rollKey hasn't changed but dice have been re-held,
+        // we should NOT revert them to stale scatter positions.
+        const hasValidStablePos =
+          stableScatterRollKeyRef.current === rollKey &&
+          stableScatterByDieRef.current.has(item.originalIndex);
+        const stablePos = hasValidStablePos
+          ? stableScatterByDieRef.current.get(item.originalIndex)
+          : undefined;
 
         // For scatter positions, we need the die's index among *layoutUnheldDice*
         const unheldDisplayIdx = layoutUnheldDice.findIndex((d) => d.originalIndex === item.originalIndex);

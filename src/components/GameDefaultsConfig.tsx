@@ -29,6 +29,7 @@ interface GameDefaults {
   pussy_tax_value: number;
   rabbit_hunt: boolean;
   reveal_at_showdown: boolean;
+  make_it_take_it: boolean;
 }
 
 interface GameDefaultsConfigProps {
@@ -185,6 +186,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             pussy_tax_value: defaultConfig.pussy_tax_value,
             rabbit_hunt: defaultConfig.rabbit_hunt,
             reveal_at_showdown: defaultConfig.reveal_at_showdown,
+            make_it_take_it: defaultConfig.make_it_take_it,
           })
           .eq('game_type', defaultConfig.game_type);
 
@@ -428,6 +430,17 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
                         <Switch
                           checked={holmDefaults.rabbit_hunt ?? false}
                           onCheckedChange={(checked) => updateDefault('holm', 'rabbit_hunt', checked)}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Make It Take It</Label>
+                          <p className="text-xs text-muted-foreground">Winner of each hand becomes next dealer</p>
+                        </div>
+                        <Switch
+                          checked={holmDefaults.make_it_take_it ?? false}
+                          onCheckedChange={(checked) => updateDefault('holm', 'make_it_take_it', checked)}
                         />
                       </div>
                     </div>

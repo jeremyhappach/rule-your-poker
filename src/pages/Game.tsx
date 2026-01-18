@@ -28,7 +28,7 @@ import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundCom
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting } from "@/lib/playerStateEvaluation";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
@@ -3610,12 +3610,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    // STEP 3: Rotate dealer to next eligible position
-    // CRITICAL: Dealer rotation happens HERE after player state evaluation
-    // This ensures waiting players (now active) are eligible for dealer
-    const currentDealerPosition = gameData?.dealer_position || 1;
-    const newDealerPosition = await rotateDealerPosition(gameId, currentDealerPosition);
-    console.log('[GAME OVER] Dealer rotation after player state evaluation:', currentDealerPosition, '->', newDealerPosition);
+    // STEP 3: Determine next dealer - check "make it take it" first, then fallback to rotation
+    // First, fetch the most recent winner from game_results
+    const { data: lastResult } = await supabase
+      .from('game_results')
+      .select('winner_player_id')
+      .eq('game_id', gameId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    const lastWinnerPlayerId = lastResult?.winner_player_id || null;
+    console.log('[GAME OVER] Last winner player_id:', lastWinnerPlayerId);
+    
+    // Check if "make it take it" is enabled and winner is eligible
+    const makeItTakeItPosition = await getMakeItTakeItDealer(gameId, lastWinnerPlayerId);
+    
+    let newDealerPosition: number;
+    if (makeItTakeItPosition !== null) {
+      console.log('[GAME OVER] Using "make it take it" dealer:', makeItTakeItPosition);
+      newDealerPosition = makeItTakeItPosition;
+    } else {
+      // Normal rotation
+      const currentDealerPosition = gameData?.dealer_position || 1;
+      newDealerPosition = await rotateDealerPosition(gameId, currentDealerPosition);
+      console.log('[GAME OVER] Dealer rotation after player state evaluation:', currentDealerPosition, '->', newDealerPosition);
+    }
 
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
     

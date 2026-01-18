@@ -336,6 +336,79 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
 }
 
 /**
+ * Check if "make it take it" is enabled and return winner's position if they're eligible to deal.
+ * If winner is not eligible (sitting out), falls back to random eligible dealer.
+ * Returns null if "make it take it" is disabled.
+ */
+export async function getMakeItTakeItDealer(
+  gameId: string,
+  winnerPlayerId: string | null
+): Promise<number | null> {
+  // Fetch the make_it_take_it setting from game_defaults
+  const { data: gameDefaults } = await supabase
+    .from('game_defaults')
+    .select('make_it_take_it')
+    .eq('game_type', 'holm')
+    .single();
+  
+  const makeItTakeIt = (gameDefaults as any)?.make_it_take_it ?? false;
+  console.log('[MAKE IT TAKE IT] Setting enabled:', makeItTakeIt);
+  
+  if (!makeItTakeIt) {
+    return null; // Feature disabled, use normal rotation
+  }
+  
+  if (!winnerPlayerId) {
+    console.log('[MAKE IT TAKE IT] No winner provided, falling back to random');
+    return null;
+  }
+  
+  // Get the winner's player info
+  const { data: winnerPlayer, error: winnerError } = await supabase
+    .from('players')
+    .select('position, sitting_out, is_bot, status')
+    .eq('id', winnerPlayerId)
+    .single();
+  
+  if (winnerError || !winnerPlayer) {
+    console.log('[MAKE IT TAKE IT] Could not find winner player, falling back to random');
+    return null;
+  }
+  
+  // Check if winner is eligible to deal (not sitting out, not observer)
+  const isEligible = !winnerPlayer.sitting_out && winnerPlayer.status !== 'observer' && winnerPlayer.position !== null;
+  console.log('[MAKE IT TAKE IT] Winner eligible:', isEligible, 'position:', winnerPlayer.position);
+  
+  if (isEligible) {
+    console.log('[MAKE IT TAKE IT] Winner is eligible, setting them as dealer at position:', winnerPlayer.position);
+    return winnerPlayer.position;
+  }
+  
+  // Winner is not eligible (sitting out), pick a random eligible dealer
+  console.log('[MAKE IT TAKE IT] Winner is sitting out, picking random eligible dealer');
+  
+  // Get all eligible dealers
+  const { data: eligiblePlayers, error: eligibleError } = await supabase
+    .from('players')
+    .select('position')
+    .eq('game_id', gameId)
+    .eq('sitting_out', false)
+    .not('position', 'is', null)
+    .neq('status', 'observer');
+  
+  if (eligibleError || !eligiblePlayers || eligiblePlayers.length === 0) {
+    console.log('[MAKE IT TAKE IT] No eligible dealers found');
+    return null;
+  }
+  
+  const randomIndex = Math.floor(Math.random() * eligiblePlayers.length);
+  const randomDealer = eligiblePlayers[randomIndex].position;
+  console.log('[MAKE IT TAKE IT] Random dealer selected:', randomDealer);
+  
+  return randomDealer;
+}
+
+/**
  * Handle rejoin request from a sitting-out player
  */
 export async function handlePlayerRejoin(playerId: string): Promise<boolean> {
