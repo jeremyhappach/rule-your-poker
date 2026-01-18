@@ -349,6 +349,7 @@ export function HorsesGameTable({
     dice: (HorsesDieType | SCCDieType)[];
     result: HorsesHandResult | SCCHandResult;
     heldMaskBeforeComplete?: boolean[];
+    rollKey?: string | number;
     expiresAt: number;
   } | null>(null);
   const completedTurnHoldTimerRef = useRef<number | null>(null);
@@ -474,6 +475,7 @@ export function HorsesGameTable({
       dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
       result: currentTurnState.result,
       heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
+      rollKey: (currentTurnState as any).rollKey,
       expiresAt,
     });
 
@@ -1230,7 +1232,8 @@ export function HorsesGameTable({
           dice: completedTurnHold.dice,
           isRolling: false,
           heldMaskBeforeComplete: completedTurnHold.heldMaskBeforeComplete,
-          rollKey: `hold-${completedTurnHold.playerId}`,
+          // Preserve the *real* rollKey so DiceTableLayout doesn't think a new roll started during the hold.
+          rollKey: completedTurnHold.rollKey ?? `complete-${completedTurnHold.playerId}`,
           isQualified: isSCC ? holdResult?.isQualified : undefined,
           isCompletedHold: true, // Flag to indicate this is the hold state
         };
@@ -1256,23 +1259,27 @@ export function HorsesGameTable({
       return null;
     }
     
-    // Generate a stable rollKey from the DB state to prevent layout jumps
-    // Use the state's completion status + roll count as a stable identifier
-    const stableRollKey = state.isComplete 
-      ? `complete-${currentTurnPlayerId}` 
+    // Prefer the authoritative per-roll key if available (prevents re-animations/stutter)
+    const stateRollKey = (state as any).rollKey as string | number | undefined;
+
+    // Backwards-compatible fallback for older rows that don't have rollKey persisted
+    const fallbackRollKey = state.isComplete
+      ? `complete-${currentTurnPlayerId}`
       : `roll-${state.rollsRemaining}-${currentTurnPlayerId}`;
-    
+
+    const effectiveRollKey = stateRollKey ?? fallbackRollKey;
+
     // Check if the SCC hand is qualified (for unused dice visual)
-    const isQualifiedVal = isSCC && state.result 
-      ? (state.result as SCCHandResult).isQualified 
+    const isQualifiedVal = isSCC && state.result
+      ? (state.result as SCCHandResult).isQualified
       : undefined;
-    
+
     return {
       dice: state.dice,
       isRolling: false,
       heldMaskBeforeComplete: state.heldMaskBeforeComplete,
       heldCountBeforeComplete: state.heldCountBeforeComplete,
-      rollKey: stableRollKey,
+      rollKey: effectiveRollKey,
       isQualified: isQualifiedVal,
       isCompletedHold: false,
     };
