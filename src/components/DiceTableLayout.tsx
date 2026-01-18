@@ -329,72 +329,75 @@ export function DiceTableLayout({
 
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
   useLayoutEffect(() => {
-    // Reset completion transition when a new roll starts
-    if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
-      setIsInCompletionTransition(false);
-      setHideFormerlyUnheld(false);
-      if (completionTransitionTimeoutRef.current) {
-        clearTimeout(completionTransitionTimeoutRef.current);
-        completionTransitionTimeoutRef.current = null;
+    // While a fly-in is in progress, ignore prop churn (DB updates, hold toggles) to avoid refires/stutter.
+    if (!isAnimatingFlyIn) {
+      // Reset completion transition when a new roll starts
+      if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
+        setIsInCompletionTransition(false);
+        setHideFormerlyUnheld(false);
+        if (completionTransitionTimeoutRef.current) {
+          clearTimeout(completionTransitionTimeoutRef.current);
+          completionTransitionTimeoutRef.current = null;
+        }
       }
-    }
-    
-    if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
-      prevRollKeyRef.current = rollKey;
 
-      // CRITICAL FIX: We used to immediately hide OLD unheld dice from the previous roll here.
-      // However, rollKey can also change during the completed-turn hold (when all dice are held).
-      // Hiding in that scenario causes a visible stutter. We now only hide when we are *actually*
-      // going to run a fly-in (see below).
+      if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
+        prevRollKeyRef.current = rollKey;
 
-      const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
+        // CRITICAL FIX: We used to immediately hide OLD unheld dice from the previous roll here.
+        // However, rollKey can also change during the completed-turn hold (when all dice are held).
+        // Hiding in that scenario causes a visible stutter. We now only hide when we are *actually*
+        // going to run a fly-in (see below).
 
-      // Build an index order consistent with what we render (important for SCC).
-      const orderedIndices =
-        useSCCDisplayOrder && sccHand
-          ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
-          : dice.map((_, i) => i);
+        const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
 
-      // Find which dice were unheld at the START of the roll.
-      const unheldIndices = orderedIndices.filter((i) => {
-        const d = dice[i];
-        if (!d) return false;
-        const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
-        return !wasHeldAtRollStart && d.value !== 0;
-      });
+        // Build an index order consistent with what we render (important for SCC).
+        const orderedIndices =
+          useSCCDisplayOrder && sccHand
+            ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
+            : dice.map((_, i) => i);
 
-      // Track how many were held at the START of this roll (for Y offset calculation)
-      const heldAtRollStart = heldMask
-        ? heldMask.filter(Boolean).length
-        : dice.filter((d) => d.isHeld).length;
-      setAnimationHeldCount(heldAtRollStart);
+        // Find which dice were unheld at the START of the roll.
+        const unheldIndices = orderedIndices.filter((i) => {
+          const d = dice[i];
+          if (!d) return false;
+          const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+          return !wasHeldAtRollStart && d.value !== 0;
+        });
 
-      // Freeze scatter positions for this rollKey (prevents reposition when holds change)
-      stableScatterRollKeyRef.current = rollKey;
-      const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
-      const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
-      unheldIndices.forEach((dieIndex, displayIdx) => {
-        const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
-        // IMPORTANT: Match the exact tablet scatter scaling used by getUnheldPosition.
-        // Otherwise, dice will "snap" back into the tighter mobile formation after the fly-in lands.
-        const stablePos = isTablet
-          ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
-          : basePos;
-        nextStable.set(dieIndex, stablePos);
-      });
-      stableScatterByDieRef.current = nextStable;
+        // Track how many were held at the START of this roll (for Y offset calculation)
+        const heldAtRollStart = heldMask
+          ? heldMask.filter(Boolean).length
+          : dice.filter((d) => d.isHeld).length;
+        setAnimationHeldCount(heldAtRollStart);
 
-      // Trigger fly-in animation if we have an origin.
-      if (animationOrigin && unheldIndices.length > 0) {
-        // Hide any previously-rendered unheld dice from the prior roll *only* when we are about to animate.
-        // This avoids stutter when rollKey changes while all dice are held (e.g., completion hold).
-        setShowUnheldDice(false);
+        // Freeze scatter positions for this rollKey (prevents reposition when holds change)
+        stableScatterRollKeyRef.current = rollKey;
+        const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
+        const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
+        unheldIndices.forEach((dieIndex, displayIdx) => {
+          const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
+          // IMPORTANT: Match the exact tablet scatter scaling used by getUnheldPosition.
+          // Otherwise, dice will "snap" back into the tighter mobile formation after the fly-in lands.
+          const stablePos = isTablet
+            ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
+            : basePos;
+          nextStable.set(dieIndex, stablePos);
+        });
+        stableScatterByDieRef.current = nextStable;
 
-        setAnimatingDiceIndices(unheldIndices);
-        setIsAnimatingFlyIn(true);
+        // Trigger fly-in animation if we have an origin.
+        if (animationOrigin && unheldIndices.length > 0) {
+          // Hide any previously-rendered unheld dice from the prior roll *only* when we are about to animate.
+          // This avoids stutter when rollKey changes while all dice are held (e.g., completion hold).
+          setShowUnheldDice(false);
 
-        // Show unheld dice when animation starts (they'll animate in from player window)
-        setShowUnheldDice(true);
+          setAnimatingDiceIndices(unheldIndices);
+          setIsAnimatingFlyIn(true);
+
+          // Show unheld dice when animation starts (they'll animate in from player window)
+          setShowUnheldDice(true);
+        }
       }
     }
 
@@ -416,6 +419,8 @@ export function DiceTableLayout({
     heldMaskBeforeComplete,
     useSCCDisplayOrder,
     sccHand,
+    isAnimatingFlyIn,
+    isTablet,
   ]);
 
   // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly
@@ -596,7 +601,7 @@ export function DiceTableLayout({
           return (
             <div
               key={`held-${item.originalIndex}`}
-              className="absolute transition-all duration-300 ease-out"
+              className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
                 top: '50%',
@@ -630,7 +635,7 @@ export function DiceTableLayout({
           return (
             <div
               key={`scatter-held-${item.originalIndex}`}
-              className="absolute transition-all duration-300 ease-out"
+              className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
                 top: '50%',
@@ -676,7 +681,7 @@ export function DiceTableLayout({
           return (
             <div
               key={`held-${item.originalIndex}`}
-              className="absolute transition-all duration-300 ease-out"
+              className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
                 top: '50%',
@@ -725,7 +730,7 @@ export function DiceTableLayout({
           return (
             <div
               key={`die-${item.originalIndex}`}
-              className="absolute transition-all duration-300 ease-out"
+              className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
                 top: '50%',
@@ -868,7 +873,10 @@ export function DiceTableLayout({
         return (
           <div
             key={`die-${item.originalIndex}`}
-            className={cn("absolute", !shouldSkipTransition && "transition-all duration-300 ease-out")}
+            className={cn(
+              "absolute will-change-transform",
+              !shouldSkipTransition && "transition-transform duration-300 ease-out",
+            )}
             style={{
               left: "50%",
               top: "50%",

@@ -200,7 +200,7 @@ export function HorsesDie({
       className={cn(
         sizeClasses[size],
         "rounded-lg border-2 relative",
-        "transition-all duration-150",
+        "transition-[transform,background-color,border-color,box-shadow,opacity] duration-150",
         "flex items-center justify-center",
         // Rolling animation with shake + glow
         animating && "animate-dice-shake",
