@@ -40,7 +40,8 @@ export function HorsesPlayerArea({
   isBot,
 }: HorsesPlayerAreaProps) {
   // For Horses: hide username/seat when showing completed hand result to save space
-  const showCompactResult = gameType === 'horses' && hasTurnCompleted && handResult;
+  // CRITICAL: Only show compact result when we have a valid description to prevent flicker
+  const showCompactResult = gameType === 'horses' && hasTurnCompleted && handResult && handResult.description;
 
   return (
     <div
@@ -71,13 +72,14 @@ export function HorsesPlayerArea({
       )}
 
       {/* Compact mode: just show username initial + result */}
+      {/* CRITICAL: No animate-in here - prevents mount/remount flicker when isWinning changes */}
       {showCompactResult && (
-        <div className="flex items-center gap-2 animate-in fade-in duration-150">
+        <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground truncate max-w-[50px]">
             {username}
           </span>
           <HorsesHandResultDisplay 
-            description={handResult.description} 
+            description={handResult!.description} 
             isWinning={isWinningHand}
           />
         </div>
@@ -185,13 +187,14 @@ export function HorsesPlayerArea({
       )}
 
       {/* Hand result or status for other players (non-compact) */}
+      {/* CRITICAL: Only render when we have a valid description to prevent mount/unmount flicker */}
       {!showCompactResult && !isCurrentUser && (
         <div className="min-h-[24px] flex items-center">
-          {hasTurnCompleted && handResult ? (
+          {hasTurnCompleted && handResult && handResult.description ? (
             <Badge
               variant={isWinningHand ? "default" : "secondary"}
               className={cn(
-                "px-2 py-1 text-white animate-in fade-in duration-150",
+                "px-2 py-1 text-white",
                 isWinningHand && "bg-green-600"
               )}
             >
