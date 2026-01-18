@@ -1426,13 +1426,15 @@ export function HorsesGameTable({
                         const hasRolled = diceState.dice.some(d => d.value !== 0);
                         if (!hasRolled) return null;
 
+                        // Don't show held styling for spectators viewing other players' dice -
+                        // it causes visual stutter when isHeld changes during turn completion
                         return diceState.dice
                           .filter(die => die.value !== 0)
                           .map((die, idx) => (
                             <HorsesDie
                               key={idx}
                               value={die.value}
-                              isHeld={die.isHeld}
+                              isHeld={false}
                               isRolling={diceState.isRolling}
                               canToggle={false}
                               onToggle={() => {}}
