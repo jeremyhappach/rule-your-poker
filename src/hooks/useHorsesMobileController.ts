@@ -202,7 +202,7 @@ export function useHorsesMobileController({
 
   // OBSERVER DISPLAY STATE: When watching another human player roll, we capture their dice
   // state at the moment of rollKey change and hold it during the animation. This mirrors
-  // how botDisplayState works - the display state is decoupled from DB updates during animation.
+  // how botDisplayState works - display state is decoupled from DB updates during animation.
   // This is the key fix for human vs human dice animation issues.
   const [observerDisplayState, setObserverDisplayState] = useState<{
     playerId: string;

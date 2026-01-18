@@ -399,15 +399,17 @@ export function DiceTableLayout({
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
 
-      // Hide any previously-rendered unheld dice from the prior roll *only* when we are about to animate.
+      // Hide previously-rendered unheld dice while the fly-in animation runs.
+      // They will be shown again when handleAnimationComplete fires.
       setShowUnheldDice(false);
 
       setAnimatingDiceIndices(unheldIndices);
       setIsAnimatingFlyIn(true);
       setFlyInRunId((v) => v + 1);
 
-      // Show unheld dice when animation starts (they'll animate in from player window)
-      setShowUnheldDice(true);
+      // NOTE: Do NOT set showUnheldDice(true) here synchronously - React batches it and
+      // the false state is never committed. The animation overlay renders the flying dice,
+      // and handleAnimationComplete will restore showUnheldDice=true when done.
     }
 
     return () => {
@@ -484,9 +486,10 @@ export function DiceTableLayout({
     setAnimatingDiceIndices([]);
     setIsAnimatingFlyIn(false);
 
-    // Keep unheld dice visible after landing.
-    // (Previously we hid them here, which is the root cause of the "scatter dice disappear" bug.)
-  }, [scheduleTimeout]);
+    // Restore visibility of unheld dice now that animation has landed.
+    // This was previously set to false when the animation started.
+    setShowUnheldDice(true);
+  }, []);
   
   // If showing "You are rolling" message, render that instead of dice
   if (showRollingMessage) {
