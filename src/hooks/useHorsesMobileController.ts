@@ -1854,9 +1854,12 @@ export function useHorsesMobileController({
       return null;
     }
 
+    const rollKey = typeof (state as any).rollKey === "number" ? (state as any).rollKey : undefined;
     const isBlank = state.dice.every((d: any) => !d?.value);
-    
-    if (isBlank && state.rollsRemaining === 3) {
+
+    // If a roll has started (rollKey exists), keep a non-null feltDice even if values haven't propagated yet.
+    // This prevents observer view gaps when rollKey arrives before dice values.
+    if (isBlank && state.rollsRemaining === 3 && rollKey === undefined) {
       console.log(`${logPrefix} FALLBACK returning null: isBlank=${isBlank}, rollsRemaining=${state.rollsRemaining}`);
       return null;
     }
