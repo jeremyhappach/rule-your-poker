@@ -213,8 +213,10 @@ export function useHorsesMobileController({
     heldCountBeforeComplete?: number;
     rollKey?: number;
   } | null>(null);
+
   const observerRollingTimerRef = useRef<number | null>(null);
   const lastObservedRollKeyRef = useRef<Record<string, number>>({});
+
   // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
   const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
