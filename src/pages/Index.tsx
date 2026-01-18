@@ -215,6 +215,74 @@ const Index = () => {
     }
   };
 
+  const handleDeleteFakeMoneyOnly = async () => {
+    if (!isSuperuser) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Get all fake money game IDs first
+      const { data: fakeMoneyGames, error: fetchError } = await supabase
+        .from('games')
+        .select('id')
+        .eq('real_money', false);
+      
+      if (fetchError) throw fetchError;
+      
+      if (!fakeMoneyGames || fakeMoneyGames.length === 0) {
+        toast({
+          title: "Info",
+          description: "No fake money sessions to delete",
+        });
+        setIsDeleting(false);
+        return;
+      }
+      
+      const gameIds = fakeMoneyGames.map(g => g.id);
+      
+      // Get all round IDs for these games first
+      const { data: rounds } = await supabase
+        .from('rounds')
+        .select('id')
+        .in('game_id', gameIds);
+      
+      const roundIds = rounds?.map(r => r.id) || [];
+      
+      // Delete player_cards for fake money games
+      if (roundIds.length > 0) {
+        await supabase.from('player_cards').delete().in('round_id', roundIds);
+        await supabase.from('player_actions').delete().in('round_id', roundIds);
+      }
+      
+      // Delete rounds for fake money games
+      await supabase.from('rounds').delete().in('game_id', gameIds);
+      
+      // Delete players for fake money games
+      await supabase.from('players').delete().in('game_id', gameIds);
+      
+      // Delete fake money games
+      const { error } = await supabase.from('games').delete().in('id', gameIds);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: `Deleted ${gameIds.length} fake money session(s)`,
+      });
+      
+      // Refresh the page to update the game list
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete fake money sessions",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -535,36 +603,69 @@ const Index = () => {
                       <p className="text-sm text-muted-foreground mb-3">
                         Danger zone: These actions cannot be undone.
                       </p>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="destructive" 
-                            className="w-full"
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            {isDeleting ? "Deleting..." : "Delete All Sessions"}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete All Sessions?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete ALL active and historical game sessions, 
-                              including all player data, rounds, and game history. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleDeleteAllSessions}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      <div className="space-y-2">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              className="w-full border-amber-600/50 text-amber-400 hover:bg-amber-900/30"
+                              disabled={isDeleting}
                             >
-                              Yes, Delete All
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              {isDeleting ? "Deleting..." : "Delete Fake Money Sessions"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Fake Money Sessions?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete all FAKE MONEY game sessions only. 
+                                Real money sessions will be preserved. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleDeleteFakeMoneyOnly}
+                                className="bg-amber-600 text-white hover:bg-amber-500"
+                              >
+                                Yes, Delete Fake Money Only
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="destructive" 
+                              className="w-full"
+                              disabled={isDeleting}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              {isDeleting ? "Deleting..." : "Delete All Sessions"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete All Sessions?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete ALL active and historical game sessions, 
+                                including all player data, rounds, and game history. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleDeleteAllSessions}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Yes, Delete All
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
                 </ScrollArea>
