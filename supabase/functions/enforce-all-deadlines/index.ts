@@ -1254,9 +1254,10 @@ serve(async (req) => {
           }
         }
 
-        // ============= ALL DECISIONS IN - SHOWDOWN =============
-        if ((game.status === 'in_progress' || game.status === 'betting') && game.all_decisions_in === true) {
-          console.log('[CRON-ENFORCE] Processing showdown for game:', game.id);
+        // ============= ALL DECISIONS IN - SHOWDOWN (HOLM GAMES ONLY) =============
+        // CRITICAL: Only process Holm showdowns here - 357/horses/scc handle their own showdowns
+        if ((game.status === 'in_progress' || game.status === 'betting') && game.all_decisions_in === true && game.game_type === 'holm-game') {
+          console.log('[CRON-ENFORCE] Processing HOLM showdown for game:', game.id);
           
           const { data: currentRound } = await supabase
             .from('rounds')

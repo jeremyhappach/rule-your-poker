@@ -4659,9 +4659,12 @@ export const MobileGameTable = ({
             )
           ) ? (
             /* Game Over state - result message */
+            /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {lastRoundResult.split('|||')[0]}
+                {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
+                  ? '🏆 Game Complete!' 
+                  : lastRoundResult.split('|||')[0]}
               </p>
             </div>
           ) : !isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && 
@@ -4669,9 +4672,12 @@ export const MobileGameTable = ({
              !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
              (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) ? (
             /* Result message - in bottom section */
+            /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {lastRoundResult.split('|||')[0]}
+                {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
+                  ? '🏆 Game Complete!' 
+                  : lastRoundResult.split('|||')[0]}
               </p>
             </div>
           ) : reAnteMessage ? (
