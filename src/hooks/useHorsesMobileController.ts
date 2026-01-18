@@ -212,6 +212,8 @@ export function useHorsesMobileController({
     heldMaskBeforeComplete?: boolean[];
     heldCountBeforeComplete?: number;
     rollKey?: number;
+    /** Signature of the dice at the moment the rollKey changed (pre-roll snapshot). */
+    preRollSig?: string;
   } | null>(null);
 
   const observerRollingTimerRef = useRef<number | null>(null);
@@ -1831,10 +1833,21 @@ export function useHorsesMobileController({
     // during the animation period, preventing flicker and dice disappearing.
     if (observerDisplayState?.playerId === currentTurnPlayerId) {
       const dbState = horsesState?.playerStates?.[currentTurnPlayerId];
-      const dbIsBlank = !!dbState?.dice?.every?.((d: any) => !d?.value);
+      const dbDice = (dbState?.dice as any[] | undefined) ?? undefined;
 
-      // Prefer DB dice once they are present (fixes "stale dice then flip" caused by out-of-order updates).
-      const dice = !dbIsBlank && dbState?.dice ? (dbState.dice as any) : observerDisplayState.dice;
+      const dbSig = Array.isArray(dbDice)
+        ? dbDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|")
+        : null;
+
+      // Prefer DB dice ONLY once they diverge from the pre-roll snapshot.
+      // During a re-roll, DB often keeps the previous roll's values for a moment; showing them causes
+      // the exact "old dice land then snap" issue.
+      const shouldUseDb =
+        Array.isArray(dbDice) &&
+        dbDice.length > 0 &&
+        (!observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig);
+
+      const dice = shouldUseDb ? ((dbDice as any) ?? observerDisplayState.dice) : observerDisplayState.dice;
 
       console.log(
         `${logPrefix} OBSERVER DISPLAY returning observerDisplayState: dice=${JSON.stringify((dice as any[]).map((d: any) => d.value))}, isRolling=${observerDisplayState.isRolling}, rollKey=${observerDisplayState.rollKey}`,
@@ -1953,14 +1966,26 @@ export function useHorsesMobileController({
         }
 
         // Start protected observer display state.
+        // IMPORTANT: At roll start, DB often still contains the *previous* roll values.
+        // We mask the re-rolled (unheld) dice to value=0 so observers never see old values "land".
+        const preRollDice = (state.dice as any[]) ?? [];
+        const preRollSig = preRollDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
+
+        const maskedDice = preRollDice.map((d) => {
+          const isHeld = !!d?.isHeld;
+          if (isHeld) return d;
+          return { ...d, value: 0 };
+        });
+
         setObserverDisplayState({
           playerId: currentTurnPlayerId,
-          dice: state.dice as (HorsesDieType | SCCDieType)[],
+          dice: maskedDice as (HorsesDieType | SCCDieType)[],
           rollsRemaining: state.rollsRemaining,
           isRolling: true,
           heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
           heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
           rollKey: newRollKey,
+          preRollSig,
         });
 
         // End rolling state after the animation window. Do NOT clear the display state.
@@ -1985,6 +2010,12 @@ export function useHorsesMobileController({
       const nextDice = state.dice as any[];
       const nextSig = nextDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
       const prevSig = (prev.dice as any[]).map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
+
+      // While the roll animation is running, do NOT replace our masked dice with the pre-roll values.
+      // Only accept updates once the DB dice actually change vs the roll-start snapshot.
+      if (prev.isRolling && prev.preRollSig && nextSig === prev.preRollSig) {
+        return prev;
+      }
 
       if (nextSig === prevSig) return prev;
 
