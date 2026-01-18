@@ -1206,7 +1206,7 @@ serve(async (req) => {
                 .order('position');
               
               if (players && players.length >= 2) {
-                const anteAmount = game.ante_amount || 2;
+                const anteAmount = game.ante_amount || 1;
                 
                 // Get next round number
                 const { data: latestRound } = await supabase
@@ -1317,7 +1317,7 @@ serve(async (req) => {
                 .order('position');
               
               if (players && players.length >= 2) {
-                const anteAmount = game.ante_amount || 2;
+                const anteAmount = game.ante_amount || 1;
                 
                 // Get next round number
                 const { data: latestRound } = await supabase
