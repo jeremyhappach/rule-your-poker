@@ -1246,6 +1246,16 @@ export function HorsesGameTable({
     const state = horsesState?.playerStates?.[currentTurnPlayerId || ""];
     if (!state) return null;
     
+    // CRITICAL: If it's a bot's turn and the DB state shows isComplete=true with rollsRemaining=0,
+    // this is likely STALE data from the previous round (before the bot started rolling this turn).
+    // Don't render stale completed dice - wait for botDisplayState to be set with fresh data.
+    // We detect staleness by checking: it's a bot, they haven't started rolling yet (no botDisplayState),
+    // and the DB shows a completed state which would be from a prior round.
+    if (currentPlayer?.is_bot && state.isComplete && !botDisplayState) {
+      // This is stale data - the bot hasn't started their new turn yet
+      return null;
+    }
+    
     // Generate a stable rollKey from the DB state to prevent layout jumps
     // Use the state's completion status + roll count as a stable identifier
     const stableRollKey = state.isComplete 
