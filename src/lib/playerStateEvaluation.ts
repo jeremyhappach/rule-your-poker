@@ -340,10 +340,18 @@ export async function rotateDealerPosition(gameId: string, currentDealerPosition
  * If winner is not eligible (sitting out), falls back to random eligible dealer.
  * Returns null if "make it take it" is disabled.
  */
+/**
+ * Check if "make it take it" is enabled and return winner's position if they're eligible to deal.
+ * Bots cannot be dealers - if a bot wins:
+ *   - If only 1 eligible human dealer, return their position
+ *   - If multiple eligible human dealers, return 'selection' to trigger dealer selection
+ * Returns null if "make it take it" is disabled.
+ * Returns 'selection' if dealer selection animation should be triggered.
+ */
 export async function getMakeItTakeItDealer(
   gameId: string,
   winnerPlayerId: string | null
-): Promise<number | null> {
+): Promise<number | 'selection' | null> {
   // Fetch the make_it_take_it setting from system_settings (global setting)
   const { data: settingData } = await supabase
     .from('system_settings')
@@ -359,7 +367,7 @@ export async function getMakeItTakeItDealer(
   }
   
   if (!winnerPlayerId) {
-    console.log('[MAKE IT TAKE IT] No winner provided, falling back to random');
+    console.log('[MAKE IT TAKE IT] No winner provided, falling back to normal rotation');
     return null;
   }
   
@@ -371,8 +379,14 @@ export async function getMakeItTakeItDealer(
     .single();
   
   if (winnerError || !winnerPlayer) {
-    console.log('[MAKE IT TAKE IT] Could not find winner player, falling back to random');
+    console.log('[MAKE IT TAKE IT] Could not find winner player, falling back to normal rotation');
     return null;
+  }
+  
+  // If winner is a bot, find eligible human dealers
+  if (winnerPlayer.is_bot) {
+    console.log('[MAKE IT TAKE IT] Winner is a bot - bots cannot be dealers');
+    return await findEligibleHumanDealer(gameId);
   }
   
   // Check if winner is eligible to deal (not sitting out, not observer)
@@ -384,28 +398,39 @@ export async function getMakeItTakeItDealer(
     return winnerPlayer.position;
   }
   
-  // Winner is not eligible (sitting out), pick a random eligible dealer
-  console.log('[MAKE IT TAKE IT] Winner is sitting out, picking random eligible dealer');
-  
-  // Get all eligible dealers
+  // Winner is not eligible (sitting out), find eligible human dealers
+  console.log('[MAKE IT TAKE IT] Winner is sitting out, finding eligible human dealer');
+  return await findEligibleHumanDealer(gameId);
+}
+
+/**
+ * Helper to find eligible human dealers for make it take it.
+ * Returns position if only 1 eligible, 'selection' if multiple, null if none.
+ */
+async function findEligibleHumanDealer(gameId: string): Promise<number | 'selection' | null> {
+  // Get all eligible human dealers (not bots, not sitting out, not observers)
   const { data: eligiblePlayers, error: eligibleError } = await supabase
     .from('players')
     .select('position')
     .eq('game_id', gameId)
     .eq('sitting_out', false)
+    .eq('is_bot', false)
     .not('position', 'is', null)
     .neq('status', 'observer');
   
   if (eligibleError || !eligiblePlayers || eligiblePlayers.length === 0) {
-    console.log('[MAKE IT TAKE IT] No eligible dealers found');
+    console.log('[MAKE IT TAKE IT] No eligible human dealers found');
     return null;
   }
   
-  const randomIndex = Math.floor(Math.random() * eligiblePlayers.length);
-  const randomDealer = eligiblePlayers[randomIndex].position;
-  console.log('[MAKE IT TAKE IT] Random dealer selected:', randomDealer);
+  if (eligiblePlayers.length === 1) {
+    console.log('[MAKE IT TAKE IT] Only 1 eligible human dealer, selecting them:', eligiblePlayers[0].position);
+    return eligiblePlayers[0].position;
+  }
   
-  return randomDealer;
+  // Multiple eligible dealers - trigger dealer selection animation
+  console.log('[MAKE IT TAKE IT] Multiple eligible human dealers:', eligiblePlayers.length, '- triggering selection');
+  return 'selection';
 }
 
 /**
