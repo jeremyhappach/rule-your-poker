@@ -616,6 +616,28 @@ export const MobileGameTable = ({
       prevHandContextRef.current = handContextId;
     }
   }, [handContextId, potMemoryKey, pot]);
+  
+  // CRITICAL FIX: Clear stale pot memory when entering dealer config phases (new game starting)
+  // This prevents the $6 pot bug where old pot values carry over to a new game
+  const prevGameStatusForMemoryRef = useRef(gameStatus);
+  useEffect(() => {
+    const dealerConfigPhases = ['configuring', 'ante_decision', 'game_selection', 'dealer_selection'];
+    const isEnteringDealerConfig = dealerConfigPhases.includes(gameStatus || '') && 
+                                    !dealerConfigPhases.includes(prevGameStatusForMemoryRef.current || '');
+    
+    if (isEnteringDealerConfig) {
+      console.log('[POT_MEMORY] Entering dealer config phase, clearing stale pot memory:', {
+        prevStatus: prevGameStatusForMemoryRef.current,
+        newStatus: gameStatus,
+        clearedMemory: displayedPotMemoryByGameId.get(potMemoryKey),
+      });
+      displayedPotMemoryByGameId.delete(potMemoryKey);
+      // Also reset displayedPot to 0 for fresh game start
+      setDisplayedPot(0);
+    }
+    
+    prevGameStatusForMemoryRef.current = gameStatus;
+  }, [gameStatus, potMemoryKey]);
 
   const isAnteAnimatingRef = useRef(false);
 
@@ -1025,11 +1047,36 @@ export const MobileGameTable = ({
   }, [players]);
   
   // Cleanup stale displayedChips when not animating and no lock
+  // CRITICAL FIX: Also force-clear displayedChips after a short delay to ensure DB sync
+  // This fixes the chip display bug after rollover where chips show wrong values
   useEffect(() => {
     if (!isAnteAnimatingRef.current && !lockedChipsRef.current && Object.keys(displayedChips).length > 0) {
       setDisplayedChips({});
     }
   }, [players, displayedChips]);
+  
+  // CRITICAL FIX: Force sync chips to DB values when entering in_progress status
+  // This ensures chip displays are correct after rollover/re-ante
+  const prevStatusForChipSyncRef = useRef(gameStatus);
+  useEffect(() => {
+    const wasConfigPhase = ['configuring', 'ante_decision'].includes(prevStatusForChipSyncRef.current || '');
+    const isNowInProgress = gameStatus === 'in_progress';
+    
+    if (wasConfigPhase && isNowInProgress) {
+      // Small delay to let ante animation complete, then force sync
+      const syncTimer = setTimeout(() => {
+        if (!isAnteAnimatingRef.current) {
+          console.log('[CHIP_SYNC] Force clearing displayedChips after status transition');
+          lockedChipsRef.current = null;
+          setDisplayedChips({});
+        }
+      }, 2000);
+      
+      return () => clearTimeout(syncTimer);
+    }
+    
+    prevStatusForChipSyncRef.current = gameStatus;
+  }, [gameStatus]);
   
   // FIX: Reset animation completion states when game transitions from game_over
   const prevGameStatusRef = useRef(gameStatus);
