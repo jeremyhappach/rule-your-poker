@@ -4066,6 +4066,8 @@ export const MobileGameTable = ({
               ) : (
                 // Observer view - show staggered dice layout
                 <DiceTableLayout
+                  // Force a remount when the dice "owner" changes so no internal refs leak between players.
+                  key={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
                   dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
                     const showHeldVisual =
                       typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;

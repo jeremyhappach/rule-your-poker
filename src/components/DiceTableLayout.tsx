@@ -294,7 +294,13 @@ export function DiceTableLayout({
     }
 
     // Reset cached dice + per-roll layout caches
-    lastValidDiceRef.current = dice;
+    // IMPORTANT: On owner change, props can still briefly contain the *previous* player's dice.
+    // If we seed lastValidDiceRef with that, the next roll may "land" using stale dice and then snap.
+    // Instead, reset to a blank baseline; we'll repopulate once we see real (value>0) dice.
+    lastValidDiceRef.current = Array.from({ length: dice.length || 5 }, () => ({
+      value: 0,
+      isHeld: false,
+    })) as any;
     stableScatterRollKeyRef.current = undefined;
     stableScatterByDieRef.current = new Map();
     prevRollKeyRef.current = undefined;

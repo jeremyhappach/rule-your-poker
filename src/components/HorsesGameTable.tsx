@@ -1712,6 +1712,8 @@ export function HorsesGameTable({
 
                     return (
                       <DiceTableLayout
+                        // Force a remount when turn owner changes so no cached dice leak between players.
+                        key={currentTurnPlayerId ?? "no-turn"}
                         dice={diceState.dice as (HorsesDieType | SCCDieType)[]}
                         isRolling={false} // CRITICAL: Observers should NEVER see rumbling - only the active player window rumbles
                         canToggle={false}
