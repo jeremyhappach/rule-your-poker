@@ -480,6 +480,17 @@ export const MobileGameTable = ({
   // When horsesController.currentWinningResult briefly becomes undefined during state transitions,
   // we keep showing the cached value to prevent visual jitter
   const cachedWinningResultRef = useRef<{ description: string; dice: any[] | null } | null>(null);
+
+  // CRITICAL FIX: Sticky cache for the entire felt block content.
+  // During brief state gaps (gamePhase flips to waiting/complete, currentTurnPlayerId null, etc.)
+  // the felt block used to return null (unmount) which causes visible flicker.
+  // We reuse the last rendered node for a short grace period.
+  const cachedFeltBlockNodeRef = useRef<{
+    at: number;
+    turnPlayerId: string | null;
+    node: any;
+  } | null>(null);
+
   // Buck's on you animation state
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
@@ -3702,17 +3713,53 @@ export const MobileGameTable = ({
         {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
         {isDiceGame && horsesController.enabled && (() => {
           const logPrefix = `[FELT_BLOCK_DEBUG ${gameType === 'ship-captain-crew' ? 'SCC' : 'HORSES'}]`;
+
+          const FELT_STICKY_MS = 1200;
+
+          const getCachedFeltNode = () => {
+            const cached = cachedFeltBlockNodeRef.current;
+            if (!cached) return null;
+
+            const withinGrace = Date.now() - cached.at < FELT_STICKY_MS;
+            const currentTurnId = horsesController.currentTurnPlayerId ?? null;
+            // Only reuse cached node if we're still on the same turn, or if current turn is briefly null.
+            const sameTurn = currentTurnId === null || currentTurnId === cached.turnPlayerId;
+
+            return withinGrace && sameTurn ? cached.node : null;
+          };
+
+          const cacheFeltNode = (node: any) => {
+            cachedFeltBlockNodeRef.current = {
+              at: Date.now(),
+              turnPlayerId: horsesController.currentTurnPlayerId ?? null,
+              node,
+            };
+            return node;
+          };
           
           // Don't show dice when game phase is complete or waiting
           // EXCEPTION: If we're in a completed turn hold period, show the dice
           const isInHoldPeriod = !!(horsesController.feltDice as any)?.isCompletedHold;
           if ((horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') && !isInHoldPeriod) {
-            console.log(`${logPrefix} UNMOUNT: gamePhase=${horsesController.gamePhase}, isInHoldPeriod=${isInHoldPeriod}`);
-            // Track unmount for debug overlay
-            if (feltBlockMounted) {
-              setTimeout(() => setFeltBlockMounted(false), 0);
+            console.log(`${logPrefix} STICKY: gamePhase=${horsesController.gamePhase}, isInHoldPeriod=${isInHoldPeriod}`);
+
+            const cachedNode = getCachedFeltNode();
+            if (cachedNode) {
+              // Keep debug overlay state consistent
+              if (!feltBlockMounted) setTimeout(() => setFeltBlockMounted(true), 0);
+              return cachedNode;
             }
-            return null;
+
+            // Keep a stable (invisible) placeholder instead of unmounting.
+            // This avoids mount/unmount flicker in the center felt block.
+            return (
+              <div
+                className={cn(
+                  "absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2 opacity-0",
+                )}
+                style={{ pointerEvents: 'none' }}
+              />
+            );
           }
           
           const currentTurnResult = horsesController.currentTurnPlayerId 
@@ -3764,7 +3811,7 @@ export const MobileGameTable = ({
               ? (winningDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0)
               : null;
             
-            return (
+            const node = (
               <div
                 className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2"
                 style={{ pointerEvents: 'auto' }}
@@ -3825,16 +3872,29 @@ export const MobileGameTable = ({
                 )}
               </div>
             );
+
+            return cacheFeltNode(node);
           }
           
-          // If observing someone else who hasn't rolled yet, show nothing
+          // If observing someone else who hasn't rolled yet, keep a stable placeholder.
+          // We also reuse a short-lived cached node to prevent flicker during turn/player transitions.
           if (!horsesController.isMyTurn && !hasRolled && !showResult) {
-            console.log(`${logPrefix} UNMOUNT: observer, hasRolled=${hasRolled}, showResult=${showResult}`);
-            // Track unmount for debug overlay
-            if (feltBlockMounted) {
-              setTimeout(() => setFeltBlockMounted(false), 0);
+            console.log(`${logPrefix} STICKY: observer, hasRolled=${hasRolled}, showResult=${showResult}`);
+
+            const cachedNode = getCachedFeltNode();
+            if (cachedNode) {
+              if (!feltBlockMounted) setTimeout(() => setFeltBlockMounted(true), 0);
+              return cachedNode;
             }
-            return null;
+
+            return (
+              <div
+                className={cn(
+                  "absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2 opacity-0",
+                )}
+                style={{ pointerEvents: 'none' }}
+              />
+            );
           }
 
           console.log(`${logPrefix} RENDER: DiceTableLayout or result`);
