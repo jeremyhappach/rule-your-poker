@@ -342,10 +342,10 @@ export function DiceTableLayout({
     if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
       prevRollKeyRef.current = rollKey;
 
-      // CRITICAL FIX: Immediately hide any OLD unheld dice from the previous roll.
-      // This prevents stale dice from roll 2 persisting on the felt during roll 3's animation.
-      // Without this, observers see old dice sitting there until the new animation completes.
-      setShowUnheldDice(false);
+      // CRITICAL FIX: We used to immediately hide OLD unheld dice from the previous roll here.
+      // However, rollKey can also change during the completed-turn hold (when all dice are held).
+      // Hiding in that scenario causes a visible stutter. We now only hide when we are *actually*
+      // going to run a fly-in (see below).
 
       const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
 
@@ -386,8 +386,13 @@ export function DiceTableLayout({
 
       // Trigger fly-in animation if we have an origin.
       if (animationOrigin && unheldIndices.length > 0) {
+        // Hide any previously-rendered unheld dice from the prior roll *only* when we are about to animate.
+        // This avoids stutter when rollKey changes while all dice are held (e.g., completion hold).
+        setShowUnheldDice(false);
+
         setAnimatingDiceIndices(unheldIndices);
         setIsAnimatingFlyIn(true);
+
         // Show unheld dice when animation starts (they'll animate in from player window)
         setShowUnheldDice(true);
       }
