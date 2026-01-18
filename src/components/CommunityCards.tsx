@@ -1,6 +1,6 @@
 import { Card as CardType } from "@/lib/cardUtils";
 import { PlayingCard } from "@/components/PlayingCard";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 interface CommunityCardsProps {
@@ -14,8 +14,12 @@ interface CommunityCardsProps {
 
 export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kickerIndices = [], hasHighlights = false, tightOverlap = false }: CommunityCardsProps) => {
   const { isTablet, isDesktop } = useDeviceSize();
-  const handId = useMemo(() => cards.map(c => `${c.rank}${c.suit}`).join(','), [cards]);
-  
+
+  // IMPORTANT: compute identity every render.
+  // Some realtime patches can mutate the cards array contents without changing its reference;
+  // using useMemo([cards]) can miss those updates and show stale/incorrect community cards.
+  const handId = cards.map((c) => `${c.rank}${c.suit}`).join(',');
+
   // Use refs to track state synchronously to prevent flashing during hand transitions
   const animatedHandIdRef = useRef<string>('');
   const dealtCardsRef = useRef<Set<number>>(new Set());
