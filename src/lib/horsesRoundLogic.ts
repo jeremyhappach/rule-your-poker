@@ -176,7 +176,7 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     .eq('game_id', gameId);
 
   const activePlayers = (freshPlayers || []).filter((p) => !p.sitting_out);
-  const anteAmount = game.ante_amount || 2;
+  const anteAmount = game.ante_amount || 1;
 
   // Pre-initialize horses_state so dice games can start even if the client can't UPDATE rounds (RLS-safe).
   const sortedActive = [...activePlayers].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
