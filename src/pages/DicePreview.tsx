@@ -96,6 +96,7 @@ export default function DicePreview() {
                 size="sm"
                 gameType="horses"
                 showWildHighlight={true}
+                cacheKey={`horses-${idx}`}
               />
             </div>
           </div>
@@ -115,6 +116,7 @@ export default function DicePreview() {
                 size="sm"
                 gameType="ship-captain-crew"
                 showWildHighlight={false}
+                cacheKey={`scc-${idx}`}
               />
             </div>
           </div>

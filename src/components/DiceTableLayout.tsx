@@ -34,6 +34,12 @@ interface DiceTableLayoutProps {
   rollKey?: string | number;
   /** Whether the SCC hand is qualified (has Ship, Captain, Crew) - used to determine unused dice */
   isQualified?: boolean;
+  /**
+   * Stable identity for the *owner* of these dice (usually the currentTurnPlayerId).
+   * When this changes, DiceTableLayout will clear its internal anti-flicker caches so it never
+   * shows the previous player's dice values during turn transitions.
+   */
+  cacheKey?: string | number;
 }
 
 // Staggered positions for unheld dice (as pixel offsets from center)
@@ -223,6 +229,7 @@ export function DiceTableLayout({
   animationOrigin,
   rollKey,
   isQualified,
+  cacheKey,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
   const { isTablet } = useDeviceSize();
@@ -260,7 +267,46 @@ export function DiceTableLayout({
   // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
   // This prevents the empty container from rendering during state transitions
   const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(dice);
-  
+
+  // CRITICAL: When the dice "owner" changes (turn changes), clear internal caches immediately.
+  // Without this, observer dice can momentarily reuse the previous player's dice as a fallback
+  // when the next player hasn't rolled yet (all zeros / filtered), causing the exact flicker you reported.
+  const prevCacheKeyRef = useRef<string | number | undefined>(cacheKey);
+  useEffect(() => {
+    if (cacheKey === prevCacheKeyRef.current) return;
+    prevCacheKeyRef.current = cacheKey;
+
+    // Cancel any pending timers from the previous owner
+    if (animationCompleteTimeoutRef.current) {
+      clearTimeout(animationCompleteTimeoutRef.current);
+      animationCompleteTimeoutRef.current = null;
+    }
+    if (completionTransitionTimeoutRef.current) {
+      clearTimeout(completionTransitionTimeoutRef.current);
+      completionTransitionTimeoutRef.current = null;
+    }
+    if (stabilizationTimeoutRef.current) {
+      clearTimeout(stabilizationTimeoutRef.current);
+      stabilizationTimeoutRef.current = null;
+    }
+
+    // Reset cached dice + per-roll layout caches
+    lastValidDiceRef.current = dice;
+    stableScatterRollKeyRef.current = undefined;
+    stableScatterByDieRef.current = new Map();
+    prevRollKeyRef.current = undefined;
+
+    // Reset transient animation/stabilization state
+    setIsAnimatingFlyIn(false);
+    setAnimatingDiceIndices([]);
+    setShowUnheldDice(true);
+    setIsInCompletionTransition(false);
+    setHideFormerlyUnheld(false);
+    setIsStabilizing(false);
+    prevAllHeldRef.current = false;
+    prevIsCompleteRef.current = false;
+  }, [cacheKey, dice]);
+
   // Stabilization period after roll 3 completes - hold the current visual state
   // to prevent flickering during the isComplete transition
   const [isStabilizing, setIsStabilizing] = useState(false);

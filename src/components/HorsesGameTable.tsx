@@ -1674,6 +1674,7 @@ export function HorsesGameTable({
                         animationOrigin={getAnimationOrigin()}
                         rollKey={(diceState as any).rollKey}
                         isQualified={(diceState as any).isQualified}
+                        cacheKey={currentTurnPlayerId ?? "no-turn"}
                       />
                     );
                   })()}
