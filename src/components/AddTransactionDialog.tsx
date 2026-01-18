@@ -109,7 +109,7 @@ export const AddTransactionDialog = ({
               <SelectTrigger id="transaction-type">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-background border z-[200]" position="popper" sideOffset={4}>
+              <SelectContent>
                 <SelectItem value="Deposit">Deposit</SelectItem>
                 <SelectItem value="Payout">Payout</SelectItem>
               </SelectContent>
