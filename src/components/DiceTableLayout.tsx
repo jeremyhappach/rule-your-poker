@@ -255,8 +255,9 @@ export function DiceTableLayout({
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
 
-  // Track whether unheld dice should be visible (they disappear after animation lands until next roll)
-  // Unheld dice are only visible during the fly-in animation landing
+  // Track whether unheld dice should be visible
+  // NOTE: Unheld dice should remain visible after landing; we only hide them during
+  // the fly-in overlay to avoid double-rendering.
   const [showUnheldDice, setShowUnheldDice] = useState(true);
 
   // Track "completion transition" - when all dice become held, we delay the final layout
@@ -302,11 +303,11 @@ export function DiceTableLayout({
     // Reset transient animation/stabilization state
     setIsAnimatingFlyIn(false);
     setAnimatingDiceIndices([]);
-    // CRITICAL FIX: Start with unheld dice HIDDEN when cacheKey changes.
-    // This prevents a 1-frame flash of the new player's dice in their final
-    // scatter positions before the fly-in animation can start.
-    // The animation logic will set showUnheldDice=true when ready.
-    setShowUnheldDice(false);
+
+    // Keep unheld dice visible on owner change. Hiding here caused unheld/scatter dice
+    // to disappear permanently in contexts where animationOrigin isn't provided.
+    setShowUnheldDice(true);
+
     setIsInCompletionTransition(false);
     setHideFormerlyUnheld(false);
     setIsStabilizing(false);
@@ -483,10 +484,8 @@ export function DiceTableLayout({
     setAnimatingDiceIndices([]);
     setIsAnimatingFlyIn(false);
 
-    // After held dice CSS transition (200ms), wait 300ms then hide unheld
-    animationCompleteTimeoutRef.current = scheduleTimeout(200 + 300, () => {
-      setShowUnheldDice(false);
-    });
+    // Keep unheld dice visible after landing.
+    // (Previously we hid them here, which is the root cause of the "scatter dice disappear" bug.)
   }, [scheduleTimeout]);
   
   // If showing "You are rolling" message, render that instead of dice
