@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { HorsesHandResult, HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCHandResult, SCCDie as SCCDieType, getSCCDisplayOrder, SCCHand } from "@/lib/sccGameLogic";
@@ -39,9 +40,29 @@ export function HorsesPlayerArea({
   onClick,
   isBot,
 }: HorsesPlayerAreaProps) {
+  // CRITICAL FIX: Cache the last valid handResult to prevent flicker during state transitions.
+  // When handResult briefly becomes null/undefined during rehydration, we show the cached value
+  // instead of unmounting and remounting the component.
+  const cachedResultRef = useRef<{ description: string; isWinning: boolean } | null>(null);
+  
+  // Update cache when we have valid data
+  useEffect(() => {
+    if (handResult?.description) {
+      cachedResultRef.current = {
+        description: handResult.description,
+        isWinning: isWinningHand,
+      };
+    }
+  }, [handResult?.description, isWinningHand]);
+  
+  // Use cached result if current result is invalid but we have cached data
+  const effectiveResult = handResult?.description 
+    ? { description: handResult.description, isWinning: isWinningHand }
+    : cachedResultRef.current;
+  
   // For Horses: hide username/seat when showing completed hand result to save space
   // CRITICAL: Only show compact result when we have a valid description to prevent flicker
-  const showCompactResult = gameType === 'horses' && hasTurnCompleted && handResult && handResult.description;
+  const showCompactResult = gameType === 'horses' && hasTurnCompleted && effectiveResult?.description;
 
   return (
     <div
@@ -73,14 +94,15 @@ export function HorsesPlayerArea({
 
       {/* Compact mode: just show username initial + result */}
       {/* CRITICAL: No animate-in here - prevents mount/remount flicker when isWinning changes */}
-      {showCompactResult && (
+      {/* Uses effectiveResult (cached) instead of handResult to prevent flicker during rehydration */}
+      {showCompactResult && effectiveResult && (
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground truncate max-w-[50px]">
             {username}
           </span>
           <HorsesHandResultDisplay 
-            description={handResult!.description} 
-            isWinning={isWinningHand}
+            description={effectiveResult.description} 
+            isWinning={effectiveResult.isWinning}
           />
         </div>
       )}
@@ -187,24 +209,24 @@ export function HorsesPlayerArea({
       )}
 
       {/* Hand result or status for other players (non-compact) */}
-      {/* CRITICAL: Only render when we have a valid description to prevent mount/unmount flicker */}
+      {/* CRITICAL: Uses effectiveResult (cached) to prevent mount/unmount flicker during rehydration */}
       {!showCompactResult && !isCurrentUser && (
         <div className="min-h-[24px] flex items-center">
-          {hasTurnCompleted && handResult && handResult.description ? (
+          {hasTurnCompleted && effectiveResult?.description ? (
             <Badge
-              variant={isWinningHand ? "default" : "secondary"}
+              variant={effectiveResult.isWinning ? "default" : "secondary"}
               className={cn(
                 "px-2 py-1 text-white",
-                isWinningHand && "bg-green-600"
+                effectiveResult.isWinning && "bg-green-600"
               )}
             >
               {gameType === 'horses' ? (
                 <HorsesHandResultDisplay 
-                  description={handResult.description} 
-                  isWinning={isWinningHand}
+                  description={effectiveResult.description} 
+                  isWinning={effectiveResult.isWinning}
                 />
               ) : (
-                handResult.description
+                effectiveResult.description
               )}
             </Badge>
           ) : isCurrentTurn ? (
