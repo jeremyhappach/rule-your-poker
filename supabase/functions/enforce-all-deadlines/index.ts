@@ -1220,12 +1220,22 @@ serve(async (req) => {
                 const newRoundNumber = (latestRound?.round_number || 0) + 1;
                 const newHandNumber = (game.total_hands || 0) + 1;
                 
-                // Build turn order (clockwise from dealer)
+                // Check Make It Take It setting - if enabled, dealer goes first
+                const { data: makeItTakeItSetting } = await supabase
+                  .from('system_settings')
+                  .select('value')
+                  .eq('key', 'make_it_take_it')
+                  .maybeSingle();
+                const makeItTakeIt = (makeItTakeItSetting?.value as { enabled?: boolean })?.enabled ?? false;
+                const turnOffset = makeItTakeIt ? 0 : 1;
+                console.log(`[CRON] Make It Take It: ${makeItTakeIt}, Turn offset: ${turnOffset}`);
+                
+                // Build turn order (clockwise from dealer, or starting with dealer if Make It Take It)
                 const sortedPlayers = [...players].sort((a: any, b: any) => a.position - b.position);
                 const dealerPos = game.dealer_position;
                 const dealerIdx = dealerPos ? sortedPlayers.findIndex((p: any) => p.position === dealerPos) : -1;
                 const turnOrder = dealerIdx >= 0
-                  ? Array.from({ length: sortedPlayers.length }, (_, i) => sortedPlayers[(dealerIdx + i + 1) % sortedPlayers.length].id)
+                  ? Array.from({ length: sortedPlayers.length }, (_, i) => sortedPlayers[(dealerIdx + i + turnOffset) % sortedPlayers.length].id)
                   : sortedPlayers.map((p: any) => p.id);
                 
                 const firstPlayer = sortedPlayers.find((p: any) => p.id === turnOrder[0]);
@@ -1331,12 +1341,22 @@ serve(async (req) => {
                 const newRoundNumber = (latestRound?.round_number || 0) + 1;
                 const newHandNumber = (game.total_hands || 0) + 1;
                 
-                // Build turn order (clockwise from dealer)
+                // Check Make It Take It setting - if enabled, dealer goes first
+                const { data: makeItTakeItSetting } = await supabase
+                  .from('system_settings')
+                  .select('value')
+                  .eq('key', 'make_it_take_it')
+                  .maybeSingle();
+                const makeItTakeIt = (makeItTakeItSetting?.value as { enabled?: boolean })?.enabled ?? false;
+                const turnOffset = makeItTakeIt ? 0 : 1;
+                console.log(`[CRON] SCC Make It Take It: ${makeItTakeIt}, Turn offset: ${turnOffset}`);
+                
+                // Build turn order (clockwise from dealer, or starting with dealer if Make It Take It)
                 const sortedPlayers = [...players].sort((a: any, b: any) => a.position - b.position);
                 const dealerPos = game.dealer_position;
                 const dealerIdx = dealerPos ? sortedPlayers.findIndex((p: any) => p.position === dealerPos) : -1;
                 const turnOrder = dealerIdx >= 0
-                  ? Array.from({ length: sortedPlayers.length }, (_, i) => sortedPlayers[(dealerIdx + i + 1) % sortedPlayers.length].id)
+                  ? Array.from({ length: sortedPlayers.length }, (_, i) => sortedPlayers[(dealerIdx + i + turnOffset) % sortedPlayers.length].id)
                   : sortedPlayers.map((p: any) => p.id);
                 
                 const firstPlayer = sortedPlayers.find((p: any) => p.id === turnOrder[0]);

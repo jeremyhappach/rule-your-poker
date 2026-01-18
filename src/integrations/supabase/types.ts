@@ -149,7 +149,6 @@ export type Database = {
           id: string
           leg_value: number
           legs_to_win: number
-          make_it_take_it: boolean
           pot_max_enabled: boolean
           pot_max_value: number
           pussy_tax_enabled: boolean
@@ -174,7 +173,6 @@ export type Database = {
           id?: string
           leg_value?: number
           legs_to_win?: number
-          make_it_take_it?: boolean
           pot_max_enabled?: boolean
           pot_max_value?: number
           pussy_tax_enabled?: boolean
@@ -199,7 +197,6 @@ export type Database = {
           id?: string
           leg_value?: number
           legs_to_win?: number
-          make_it_take_it?: boolean
           pot_max_enabled?: boolean
           pot_max_value?: number
           pussy_tax_enabled?: boolean

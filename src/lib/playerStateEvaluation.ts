@@ -344,14 +344,14 @@ export async function getMakeItTakeItDealer(
   gameId: string,
   winnerPlayerId: string | null
 ): Promise<number | null> {
-  // Fetch the make_it_take_it setting from game_defaults
-  const { data: gameDefaults } = await supabase
-    .from('game_defaults')
-    .select('make_it_take_it')
-    .eq('game_type', 'holm')
-    .single();
+  // Fetch the make_it_take_it setting from system_settings (global setting)
+  const { data: settingData } = await supabase
+    .from('system_settings')
+    .select('value')
+    .eq('key', 'make_it_take_it')
+    .maybeSingle();
   
-  const makeItTakeIt = (gameDefaults as any)?.make_it_take_it ?? false;
+  const makeItTakeIt = (settingData?.value as { enabled?: boolean })?.enabled ?? false;
   console.log('[MAKE IT TAKE IT] Setting enabled:', makeItTakeIt);
   
   if (!makeItTakeIt) {
