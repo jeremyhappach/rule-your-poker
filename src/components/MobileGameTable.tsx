@@ -3241,12 +3241,15 @@ export const MobileGameTable = ({
             // Lock pot display at PRE-ANTE value for the duration of the chip travel
             potLockRef.current = true;
 
-            // IMPORTANT: Ante is always a fresh-hand action, so the pre-ante pot should be 0.
-            // Pussy tax is mid-session, so it must use postPot-totalAmount.
-            const preAntePot = isPussyTaxTrigger ? Math.max(0, postPot - totalAmount) : 0;
+            // Calculate pre-ante pot by subtracting the total ante amount from the expected post-ante pot.
+            // This works for ALL ante types: fresh antes ($0 pot), rollovers (existing pot), and pussy tax.
+            // For a fresh ante: postPot=4, totalAmount=4 → preAntePot=0
+            // For a rollover:   postPot=6, totalAmount=3 → preAntePot=3 (keeps existing pot visible)
+            // For pussy tax:    postPot=5, totalAmount=1 → preAntePot=4 (keeps existing pot visible)
+            const preAntePot = Math.max(0, postPot - totalAmount);
 
-            console.log('[ANTE_ANIM_DEBUG] Setting displayedPot', { preAntePot, displayedPot, postPot });
-            if (displayedPot < postPot) {
+            console.log('[ANTE_ANIM_DEBUG] Setting displayedPot', { preAntePot, displayedPot, postPot, totalAmount, isPussyTaxTrigger });
+            if (displayedPot !== preAntePot) {
               setDisplayedPot(preAntePot);
             }
           }}
