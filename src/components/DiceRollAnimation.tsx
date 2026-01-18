@@ -26,6 +26,18 @@ interface DiceRollAnimationProps {
 const ANIMATION_DURATION = 900;
 const START_SCALE = 0.25;
 
+type TumbleDatum = {
+  rotations: number;
+  axis: 1 | -1;
+  tumbleSequence: number[];
+};
+
+const createTumbleDatum = (): TumbleDatum => ({
+  rotations: Math.floor(Math.random() * 3) + 2, // 2-4 full rotations
+  axis: Math.random() > 0.5 ? 1 : -1, // direction
+  tumbleSequence: Array.from({ length: 8 }, () => Math.floor(Math.random() * 6) + 1),
+});
+
 export function DiceRollAnimation({
   dice,
   animatingIndices,
@@ -58,18 +70,20 @@ export function DiceRollAnimation({
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // Random tumble rotations and display sequences for each die (memoized to prevent switching)
-  const [tumbleData] = useState(() =>
-    animatingIndices.map(() => ({
-      rotations: Math.floor(Math.random() * 3) + 2, // 2-4 full rotations
-      axis: Math.random() > 0.5 ? 1 : -1, // direction
-      // Pre-generate a sequence of random values for tumbling display
-      tumbleSequence: Array.from({ length: 8 }, () => Math.floor(Math.random() * 6) + 1),
-    })),
+  // Use a signature of the actual indices so we only reset when the animation run truly changes.
+  const animKey = animatingIndices.join("|");
+
+  // Random tumble rotations and display sequences for each die (kept stable per animation run)
+  const [tumbleData, setTumbleData] = useState<TumbleDatum[]>(() =>
+    animatingIndices.map(createTumbleDatum),
   );
 
   useEffect(() => {
     if (animatingIndices.length === 0) return;
+
+    // Ensure tumbleData always matches the current animation run.
+    // This prevents crashes when animatingIndices grows/shrinks due to realtime updates.
+    setTumbleData(animatingIndices.map(createTumbleDatum));
 
     // Reset per-run timing stats
     perfRef.current = {
@@ -135,10 +149,12 @@ export function DiceRollAnimation({
         completionTimeoutRef.current = null;
       }
     };
-    // IMPORTANT: depend only on length so parent rerenders don't restart the animation
-  }, [animatingIndices.length]);
+    // IMPORTANT: depend on the signature so parent rerenders don't restart the animation,
+    // but real animation runs (different dice indices) do.
+  }, [animKey]);
 
   if (animatingIndices.length === 0) return null;
+  if (tumbleData.length < animatingIndices.length) return null;
 
   // Y offset is now passed in as a prop to match DiceTableLayout's unheldYOffset
 
