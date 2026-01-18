@@ -476,6 +476,10 @@ export const MobileGameTable = ({
   // Dice debug overlay state tracking
   const [feltBlockMounted, setFeltBlockMounted] = useState(false);
 
+  // CRITICAL FIX: Sticky cache for current winning result to prevent "Beat" badge flicker
+  // When horsesController.currentWinningResult briefly becomes undefined during state transitions,
+  // we keep showing the cached value to prevent visual jitter
+  const cachedWinningResultRef = useRef<{ description: string; dice: any[] | null } | null>(null);
   // Buck's on you animation state
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
@@ -3737,8 +3741,22 @@ export const MobileGameTable = ({
             }
             
             // Get winning result to show what we're trying to beat
-            const winningResultToBeat = horsesController.currentWinningResult;
-            const winningDice = horsesController.getWinningPlayerDice?.();
+            // Use cached result if current one is undefined (prevents flicker during state transitions)
+            const liveWinningResult = horsesController.currentWinningResult;
+            const liveWinningDice = horsesController.getWinningPlayerDice?.();
+            
+            // Update cache when we have valid data
+            if (liveWinningResult?.description) {
+              cachedWinningResultRef.current = {
+                description: liveWinningResult.description,
+                dice: liveWinningDice ?? null,
+              };
+            }
+            
+            // Use cached result if live one is invalid
+            const winningResultToBeat = liveWinningResult ?? 
+              (cachedWinningResultRef.current ? { description: cachedWinningResultRef.current.description } : null);
+            const winningDice = liveWinningDice ?? cachedWinningResultRef.current?.dice;
             const isSCCGame = gameType === 'ship-captain-crew';
             
             // For SCC, get cargo dice (non-SCC dice with value > 0)
@@ -3855,65 +3873,84 @@ export const MobileGameTable = ({
                 </div>
               ) : horsesController.isMyTurn ? (
                 // My turn - show "You are rolling" message with Beat badge
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                    You are rolling
-                  </p>
-                  {/* Beat badge - show what hand to beat */}
-                  {horsesController.currentWinningResult && (
-                    <div className={cn(
-                      "flex items-center justify-center gap-2",
-                      isTablet && "gap-4"
-                    )}>
-                      <Target className={cn(
-                        "text-muted-foreground",
-                        isTablet ? "w-10 h-10" : "w-3 h-3"
-                      )} />
-                      <span className={cn(
-                        "text-muted-foreground",
-                        isTablet ? "text-xl font-medium" : "text-xs"
-                      )}>
-                        Beat:
-                      </span>
-                      {gameType === 'ship-captain-crew' && (() => {
-                        const winDice = horsesController.getWinningPlayerDice?.();
-                        const cargo = winDice ? (winDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0) : [];
-                        return cargo.length === 2 ? (
-                          <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
-                            {cargo.map((die, idx) => (
-                              <HorsesDie
-                                key={idx}
-                                value={die.value}
-                                isHeld={false}
-                                isRolling={false}
-                                canToggle={false}
-                                size={isTablet ? "md" : "sm"}
-                                showWildHighlight={false}
-                                forceWhiteBackground={true}
-                              />
-                            ))}
-                          </div>
-                        ) : null;
-                      })()}
-                      {gameType === 'horses' && (
-                        <HorsesHandResultDisplay
-                          description={horsesController.currentWinningResult.description}
-                          isWinning={true}
-                          size={isTablet ? "md" : "sm"}
-                        />
-                      )}
-                      {/* Show "Tied" indicator when multiple players share the best hand */}
-                      {horsesController.isCurrentWinningTied && (
-                        <span className={cn(
-                          "font-medium text-amber-400",
-                          isTablet ? "text-base" : "text-xs"
+                // Uses cached result if live one is undefined (prevents flicker during state transitions)
+                (() => {
+                  const liveResult = horsesController.currentWinningResult;
+                  const liveWinDice = horsesController.getWinningPlayerDice?.();
+                  
+                  // Update cache when we have valid data
+                  if (liveResult?.description) {
+                    cachedWinningResultRef.current = {
+                      description: liveResult.description,
+                      dice: liveWinDice ?? null,
+                    };
+                  }
+                  
+                  const winResult = liveResult ?? 
+                    (cachedWinningResultRef.current ? { description: cachedWinningResultRef.current.description } : null);
+                  const winDice = liveWinDice ?? cachedWinningResultRef.current?.dice;
+                  
+                  return (
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                        You are rolling
+                      </p>
+                      {/* Beat badge - show what hand to beat */}
+                      {winResult && (
+                        <div className={cn(
+                          "flex items-center justify-center gap-2",
+                          isTablet && "gap-4"
                         )}>
-                          (Tied)
-                        </span>
+                          <Target className={cn(
+                            "text-muted-foreground",
+                            isTablet ? "w-10 h-10" : "w-3 h-3"
+                          )} />
+                          <span className={cn(
+                            "text-muted-foreground",
+                            isTablet ? "text-xl font-medium" : "text-xs"
+                          )}>
+                            Beat:
+                          </span>
+                          {gameType === 'ship-captain-crew' && (() => {
+                            const cargo = winDice ? (winDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0) : [];
+                            return cargo.length === 2 ? (
+                              <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
+                                {cargo.map((die, idx) => (
+                                  <HorsesDie
+                                    key={idx}
+                                    value={die.value}
+                                    isHeld={false}
+                                    isRolling={false}
+                                    canToggle={false}
+                                    size={isTablet ? "md" : "sm"}
+                                    showWildHighlight={false}
+                                    forceWhiteBackground={true}
+                                  />
+                                ))}
+                              </div>
+                            ) : null;
+                          })()}
+                          {gameType === 'horses' && (
+                            <HorsesHandResultDisplay
+                              description={winResult.description}
+                              isWinning={true}
+                              size={isTablet ? "md" : "sm"}
+                            />
+                          )}
+                          {/* Show "Tied" indicator when multiple players share the best hand */}
+                          {horsesController.isCurrentWinningTied && (
+                            <span className={cn(
+                              "font-medium text-amber-400",
+                              isTablet ? "text-base" : "text-xs"
+                            )}>
+                              (Tied)
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()
               ) : (
                 // Observer view - show staggered dice layout
                 <DiceTableLayout
@@ -4671,6 +4708,9 @@ export const MobileGameTable = ({
           ) : !isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && 
              !(gameType !== 'holm-game' && lastRoundResult.includes('won the game')) &&
              !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
+             // CRITICAL FIX: Never show prior round result during configuring or ante_decision phases
+             // These are setup phases for a NEW hand - we should show dealer/ante messages instead
+             gameStatus !== 'configuring' && gameStatus !== 'ante_decision' &&
              (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) ? (
             /* Result message - in bottom section */
             /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
@@ -4679,6 +4719,13 @@ export const MobileGameTable = ({
                 {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
                   ? '🏆 Game Complete!' 
                   : lastRoundResult.split('|||')[0]}
+              </p>
+            </div>
+          ) : gameStatus === 'ante_decision' ? (
+            /* Ante decision phase - show waiting for antes message */
+            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center truncate animate-pulse">
+                Waiting for ante decisions...
               </p>
             </div>
           ) : reAnteMessage ? (

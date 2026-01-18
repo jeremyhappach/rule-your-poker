@@ -500,8 +500,11 @@ serve(async (req) => {
 
         // ============= HORSES/SCC COMPLETED ROUND PROCESSING =============
         // Detect when a dice game has a completed round waiting for winner evaluation
+        // CRITICAL FIX: Do NOT run this during ante_decision! The game is waiting for antes,
+        // not stuck in a completed round. Running this logic during ante_decision incorrectly
+        // re-asserts old results and causes the UI to show stale data.
         if ((game.game_type === 'horses' || game.game_type === 'ship-captain-crew') && 
-            (game.status === 'in_progress' || game.status === 'ante_decision' || game.status === 'betting')) {
+            (game.status === 'in_progress' || game.status === 'betting')) {
           
           // Find the latest round for this game
           const { data: latestRound } = await supabase
@@ -1732,7 +1735,8 @@ serve(async (req) => {
                   ? eligiblePositions[0]
                   : eligiblePositions[(currentIndex + 1) % eligiblePositions.length];
                 
-                const configDeadline = new Date(Date.now() + 60 * 1000).toISOString();
+                // CRITICAL FIX: Use 30s timer (matches game defaults) instead of 60s
+                const configDeadline = new Date(Date.now() + 30 * 1000).toISOString();
                 
                 await supabase
                   .from('games')
@@ -1743,6 +1747,9 @@ serve(async (req) => {
                     game_over_at: null,
                     awaiting_next_round: false,
                     config_complete: false,
+                    // CRITICAL FIX: Clear last_round_result when rotating to new game config
+                    // This prevents the old result banner from showing during configuration
+                    last_round_result: null,
                   })
                   .eq('id', game.id);
                 
