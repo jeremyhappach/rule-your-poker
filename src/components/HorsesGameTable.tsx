@@ -83,6 +83,8 @@ interface PlayerDiceState {
   heldMaskBeforeComplete?: boolean[];
   /** Legacy: number of dice held before completion */
   heldCountBeforeComplete?: number;
+  /** Stable per-roll key used by observers to trigger the fly-in animation exactly once */
+  rollKey?: number;
 }
 
 export interface HorsesStateFromDB {
@@ -173,6 +175,9 @@ export function HorsesGameTable({
   
   // Roll animation tracking - increment on each roll to trigger fly-in animation
   const [rollAnimationKey, setRollAnimationKey] = useState(0);
+
+  // Stable per-roll key persisted in the round state so observers don't re-trigger animations.
+  const localRollKeyRef = useRef<number | undefined>(undefined);
 
   // Prevent DB rehydration from overwriting the felt while the user is interacting.
   const lastLocalEditAtRef = useRef<number>(0);
@@ -349,7 +354,7 @@ export function HorsesGameTable({
     dice: (HorsesDieType | SCCDieType)[];
     result: HorsesHandResult | SCCHandResult;
     heldMaskBeforeComplete?: boolean[];
-    rollKey?: string | number;
+    rollKey?: number;
     expiresAt: number;
   } | null>(null);
   const completedTurnHoldTimerRef = useRef<number | null>(null);
@@ -475,7 +480,7 @@ export function HorsesGameTable({
       dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
       result: currentTurnState.result,
       heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
-      rollKey: (currentTurnState as any).rollKey,
+      rollKey: (currentTurnState as any).rollKey as number | undefined,
       expiresAt,
     });
 
@@ -664,6 +669,7 @@ export function HorsesGameTable({
         result,
         heldMaskBeforeComplete,
         heldCountBeforeComplete,
+        rollKey: localRollKeyRef.current,
       };
 
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
@@ -686,6 +692,7 @@ export function HorsesGameTable({
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
     const rollStartTime = Date.now();
+    localRollKeyRef.current = rollStartTime;
     console.log(`[ROLL_DEBUG_DESKTOP] ===== ROLL STARTED at ${new Date(rollStartTime).toISOString()} =====`);
 
     // Determine if this is the first roll (rollsRemaining === 3 means first roll)
@@ -985,7 +992,12 @@ export function HorsesGameTable({
              dice: botHand.dice as any,
              rollsRemaining: botHand.rollsRemaining,
              isComplete: false,
-           });
+             heldMaskBeforeComplete,
+             heldCountBeforeComplete: heldMaskBeforeComplete
+               ? heldMaskBeforeComplete.filter(Boolean).length
+               : undefined,
+             rollKey: botRollKey,
+           } as any);
 
           await new Promise((resolve) => setTimeout(resolve, 600));
 
@@ -1016,14 +1028,25 @@ export function HorsesGameTable({
               botHand = applyHoldDecision(botHand as HorsesHand, decision);
 
               // Show the hold decision
-              setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false, heldMaskBeforeComplete });
+              setBotDisplayState({
+                playerId: botId,
+                dice: botHand.dice as HorsesDieType[],
+                isRolling: false,
+                rollKey: botRollKey,
+                heldMaskBeforeComplete,
+              });
 
-               // Save hold state so others can see (atomic per-player)
-               await horsesSetPlayerState(currentRoundId, botId, {
-                 dice: botHand.dice as any,
-                 rollsRemaining: botHand.rollsRemaining,
-                 isComplete: false,
-               });
+              // Save hold state so others can see (atomic per-player)
+              await horsesSetPlayerState(currentRoundId, botId, {
+                dice: botHand.dice as any,
+                rollsRemaining: botHand.rollsRemaining,
+                isComplete: false,
+                heldMaskBeforeComplete,
+                heldCountBeforeComplete: heldMaskBeforeComplete
+                  ? heldMaskBeforeComplete.filter(Boolean).length
+                  : undefined,
+                rollKey: botRollKey,
+              } as any);
 
               await new Promise((resolve) => setTimeout(resolve, 800));
             }
@@ -1043,16 +1066,26 @@ export function HorsesGameTable({
         }
 
         // Keep final bot dice visible until the DB turn advances.
-        setBotDisplayState({ playerId: botId, dice: botHand.dice as HorsesDieType[], isRolling: false, heldMaskBeforeComplete });
+        setBotDisplayState({
+          playerId: botId,
+          dice: botHand.dice as HorsesDieType[],
+          isRolling: false,
+          rollKey: botRollKey,
+          heldMaskBeforeComplete,
+        });
 
-         // Save bot final state to DB (atomic per-player)
-         await horsesSetPlayerState(currentRoundId, botId, {
-           dice: botHand.dice as any,
-           rollsRemaining: 0,
-           isComplete: true,
-           result,
-           heldMaskBeforeComplete,
-         } as any);
+        // Save bot final state to DB (atomic per-player)
+        await horsesSetPlayerState(currentRoundId, botId, {
+          dice: botHand.dice as any,
+          rollsRemaining: 0,
+          isComplete: true,
+          result,
+          heldMaskBeforeComplete,
+          heldCountBeforeComplete: heldMaskBeforeComplete
+            ? heldMaskBeforeComplete.filter(Boolean).length
+            : undefined,
+          rollKey: botRollKey,
+        } as any);
 
         // Advance turn after a moment
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1233,7 +1266,7 @@ export function HorsesGameTable({
           isRolling: false,
           heldMaskBeforeComplete: completedTurnHold.heldMaskBeforeComplete,
           // Preserve the *real* rollKey so DiceTableLayout doesn't think a new roll started during the hold.
-          rollKey: completedTurnHold.rollKey ?? `complete-${completedTurnHold.playerId}`,
+          rollKey: completedTurnHold.rollKey,
           isQualified: isSCC ? holdResult?.isQualified : undefined,
           isCompletedHold: true, // Flag to indicate this is the hold state
         };
@@ -1260,12 +1293,19 @@ export function HorsesGameTable({
     }
     
     // Prefer the authoritative per-roll key if available (prevents re-animations/stutter)
-    const stateRollKey = (state as any).rollKey as string | number | undefined;
+    const stateRollKey = (state as any).rollKey as number | undefined;
 
-    // Backwards-compatible fallback for older rows that don't have rollKey persisted
-    const fallbackRollKey = state.isComplete
-      ? `complete-${currentTurnPlayerId}`
-      : `roll-${state.rollsRemaining}-${currentTurnPlayerId}`;
+    // Backwards-compatible fallback for older rows that don't have rollKey persisted.
+    // Use a deterministic hash of the visible state so it only changes when the roll actually changes.
+    const fallbackRollKey = (() => {
+      let h = 17;
+      h = h * 31 + (state.rollsRemaining ?? 0);
+      for (const d of (state.dice as any[])) {
+        h = h * 31 + (Number(d?.value) || 0);
+        h = h * 31 + (d?.isHeld ? 1 : 0);
+      }
+      return h;
+    })();
 
     const effectiveRollKey = stateRollKey ?? fallbackRollKey;
 
