@@ -200,22 +200,21 @@ export function useHorsesMobileController({
     rollKey?: number;
   } | null>(null);
 
-  // OBSERVER ANIMATION STATE: When watching another human player, we need to briefly
-  // show isRolling=true when their rollKey changes to trigger the fly-in animation.
-  // Without this, the observer sees dice "appear" instead of flying in.
-  const [observerRollingPlayerId, setObserverRollingPlayerId] = useState<string | null>(null);
-  const observerRollingTimerRef = useRef<number | null>(null);
-  const lastObservedRollKeyRef = useRef<Record<string, number>>({});
-  // Cache of last valid dice state per player to prevent flicker during DB updates
-  // Also stores timestamp so we can show cached state for a period after animation ends
-  const lastValidDiceByPlayerRef = useRef<Record<string, {
+  // OBSERVER DISPLAY STATE: When watching another human player roll, we capture their dice
+  // state at the moment of rollKey change and hold it during the animation. This mirrors
+  // how botDisplayState works - the display state is decoupled from DB updates during animation.
+  // This is the key fix for human vs human dice animation issues.
+  const [observerDisplayState, setObserverDisplayState] = useState<{
+    playerId: string;
     dice: (HorsesDieType | SCCDieType)[];
     rollsRemaining: number;
+    isRolling: boolean;
     heldMaskBeforeComplete?: boolean[];
     heldCountBeforeComplete?: number;
     rollKey?: number;
-    cachedAt: number;
-  }>>({});
+  } | null>(null);
+  const observerRollingTimerRef = useRef<number | null>(null);
+  const lastObservedRollKeyRef = useRef<Record<string, number>>({});
   // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
   const [botTurnActiveId, setBotTurnActiveId] = useState<string | null>(null);
@@ -1825,67 +1824,35 @@ export function useHorsesMobileController({
       return botDisplayState;
     }
 
-    // Fallback to DB state for human players (who aren't "me")
+    // OBSERVER DISPLAY STATE: When observing another human player, use dedicated display state
+    // during animation. This mirrors how botDisplayState works - it's decoupled from DB updates
+    // during the animation period, preventing flicker and dice disappearing.
+    if (observerDisplayState?.playerId === currentTurnPlayerId) {
+      const isBlank = observerDisplayState.dice.every((d: any) => !d?.value);
+      if (isBlank && !observerDisplayState.isRolling) {
+        console.log(`${logPrefix} OBSERVER DISPLAY returning null: isBlank=${isBlank}, isRolling=${observerDisplayState.isRolling}`);
+        return null;
+      }
+      console.log(`${logPrefix} OBSERVER DISPLAY returning observerDisplayState: dice=${JSON.stringify(observerDisplayState.dice.map((d: any) => d.value))}, isRolling=${observerDisplayState.isRolling}, rollKey=${observerDisplayState.rollKey}`);
+      return observerDisplayState;
+    }
+
+    // Fallback to DB state for human players (who aren't "me" and don't have active observer display)
     const state = horsesState?.playerStates?.[currentTurnPlayerId];
     
-    // Check if we're observing this human player's rolling animation
-    const isObservingRoll = observerRollingPlayerId === currentTurnPlayerId;
-    
-    // CRITICAL FIX: Keep showing cached dice for a grace period after animation ends.
-    // This prevents dice from disappearing when the turn transitions or state updates.
-    const CACHE_GRACE_PERIOD_MS = 2000;
-    const cached = lastValidDiceByPlayerRef.current[currentTurnPlayerId];
-    const cacheIsRecent = cached && (Date.now() - cached.cachedAt < CACHE_GRACE_PERIOD_MS);
-    
     if (!state) {
-      // If state is missing but we have a cached valid state, use the cache
-      if (cached && (isObservingRoll || cacheIsRecent)) {
-        console.log(`${logPrefix} FALLBACK using cache (no state): dice=${JSON.stringify(cached.dice.map((d: any) => d.value))}, isObservingRoll=${isObservingRoll}, cacheAge=${Date.now() - cached.cachedAt}ms`);
-        return {
-          dice: cached.dice,
-          rollsRemaining: cached.rollsRemaining,
-          isRolling: isObservingRoll,
-          heldMaskBeforeComplete: cached.heldMaskBeforeComplete,
-          heldCountBeforeComplete: cached.heldCountBeforeComplete,
-          rollKey: cached.rollKey,
-        };
-      }
       console.log(`${logPrefix} FALLBACK returning null: no state for player ${currentTurnPlayerId}`);
       return null;
     }
 
     const isBlank = state.dice.every((d: any) => !d?.value);
     
-    // Don't return null if we have recent cache - show cached dice
     if (isBlank && state.rollsRemaining === 3) {
-      if (cached && (isObservingRoll || cacheIsRecent)) {
-        console.log(`${logPrefix} FALLBACK blank but cache valid - using cache, isObservingRoll=${isObservingRoll}, cacheAge=${cached ? Date.now() - cached.cachedAt : 'N/A'}ms`);
-        return {
-          dice: cached.dice,
-          rollsRemaining: cached.rollsRemaining,
-          isRolling: isObservingRoll,
-          heldMaskBeforeComplete: cached.heldMaskBeforeComplete,
-          heldCountBeforeComplete: cached.heldCountBeforeComplete,
-          rollKey: cached.rollKey,
-        };
-      }
       console.log(`${logPrefix} FALLBACK returning null: isBlank=${isBlank}, rollsRemaining=${state.rollsRemaining}`);
       return null;
     }
 
-    // Cache valid dice state for this player (non-blank dice)
-    if (!isBlank) {
-      lastValidDiceByPlayerRef.current[currentTurnPlayerId] = {
-        dice: state.dice,
-        rollsRemaining: state.rollsRemaining,
-        heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
-        heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
-        rollKey: (state as any).rollKey,
-        cachedAt: Date.now(),
-      };
-    }
-
-    console.log(`${logPrefix} FALLBACK returning DB state: dice=${JSON.stringify(state.dice.map((d: any) => d.value))}, rollsRemaining=${state.rollsRemaining}, isObservingRoll=${isObservingRoll}`);
+    console.log(`${logPrefix} FALLBACK returning DB state: dice=${JSON.stringify(state.dice.map((d: any) => d.value))}, rollsRemaining=${state.rollsRemaining}`);
     // Check if the SCC hand is qualified (for unused dice visual)
     const isQualified = isSCC && state.result 
       ? (state.result as any).isQualified 
@@ -1894,7 +1861,7 @@ export function useHorsesMobileController({
     return {
       dice: state.dice,
       rollsRemaining: state.rollsRemaining,
-      isRolling: isObservingRoll,
+      isRolling: false, // Not animating
       heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
       heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
       rollKey: (state as any).rollKey,
@@ -1915,7 +1882,7 @@ export function useHorsesMobileController({
     botTurnActiveId,
     completedTurnHold,
     isSCC,
-    observerRollingPlayerId,
+    observerDisplayState,
   ]);
 
   useEffect(() => {
@@ -1926,11 +1893,9 @@ export function useHorsesMobileController({
   }, [rawFeltDice, currentTurnPlayerId]);
 
   // OBSERVER ROLL DETECTION: When observing a human player (not my turn, not a bot),
-  // detect when their rollKey changes and briefly set isRolling=true so the fly-in animation triggers.
-  // This is the key fix for "third roll animation missing when two humans are playing"
-  // Use a ref to track player state to avoid triggering effect on every playerStates update
-  const observerPlayerStateRef = useRef<{ rollKey?: number; isComplete?: boolean } | null>(null);
-  
+  // detect when their rollKey changes and capture a display state that's protected during animation.
+  // This mirrors how botDisplayState works - the display state is completely decoupled from
+  // DB/realtime updates during the animation period.
   useEffect(() => {
     if (!enabled || !currentTurnPlayerId) return;
     if (isMyTurn) return; // I'm rolling, not observing
@@ -1944,8 +1909,10 @@ export function useHorsesMobileController({
     
     // CRITICAL: Don't trigger if state is complete - prevents refire when hand rank badge shows
     if (state.isComplete) {
-      // Store the state but don't trigger animation
-      observerPlayerStateRef.current = { rollKey: newRollKey, isComplete: true };
+      // Clear observer display state when turn completes
+      if (observerDisplayState?.playerId === currentTurnPlayerId) {
+        setObserverDisplayState(null);
+      }
       return;
     }
     
@@ -1955,7 +1922,7 @@ export function useHorsesMobileController({
     if (newRollKey !== prevRollKey) {
       lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
       
-      // Don't trigger observer rolling if this is the first observation (no prev)
+      // Don't trigger observer animation if this is the first observation (no prev)
       if (prevRollKey !== undefined) {
         console.log(`[OBSERVER_ROLL] Detected rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey}`);
         
@@ -1964,13 +1931,40 @@ export function useHorsesMobileController({
           window.clearTimeout(observerRollingTimerRef.current);
         }
         
-        // Set observer rolling state (triggers isRolling=true in feltDice)
-        setObserverRollingPlayerId(currentTurnPlayerId);
+        // CAPTURE DISPLAY STATE: Lock in the dice state at this moment with isRolling=true
+        // This state will be held during the entire animation duration, preventing flicker
+        setObserverDisplayState({
+          playerId: currentTurnPlayerId,
+          dice: state.dice as (HorsesDieType | SCCDieType)[],
+          rollsRemaining: state.rollsRemaining,
+          isRolling: true,
+          heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+          heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
+          rollKey: newRollKey,
+        });
         
-        // Clear after animation duration (use the longer duration to be safe)
+        // After animation completes, update display state to show landed dice (isRolling=false)
+        // Then clear it after a brief hold period so DB state can take over
         observerRollingTimerRef.current = window.setTimeout(() => {
-          setObserverRollingPlayerId(null);
-          observerRollingTimerRef.current = null;
+          // Update to non-rolling state (dice have landed)
+          setObserverDisplayState(prev => {
+            if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
+            return { ...prev, isRolling: false };
+          });
+          
+          // Hold the landed state for a brief period before clearing
+          // This prevents dice from disappearing if DB state lags behind
+          observerRollingTimerRef.current = window.setTimeout(() => {
+            setObserverDisplayState(prev => {
+              // Only clear if still showing the same player
+              if (prev?.playerId === currentTurnPlayerId) {
+                console.log(`[OBSERVER_ROLL] Clearing observer display state for ${currentTurnPlayerId}`);
+                return null;
+              }
+              return prev;
+            });
+            observerRollingTimerRef.current = null;
+          }, 500); // Hold landed dice visible for 500ms after animation
         }, HORSES_ROLL_AGAIN_ANIMATION_MS);
       }
     }
@@ -1986,6 +1980,7 @@ export function useHorsesMobileController({
     currentTurnPlayerId,
     isMyTurn,
     currentTurnPlayer?.is_bot,
+    observerDisplayState?.playerId,
     // Use specific state properties instead of the entire object
     horsesState?.playerStates?.[currentTurnPlayerId ?? '']?.rollsRemaining,
     (horsesState?.playerStates?.[currentTurnPlayerId ?? ''] as any)?.rollKey,
