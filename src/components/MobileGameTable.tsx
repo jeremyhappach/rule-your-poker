@@ -3945,6 +3945,7 @@ export const MobileGameTable = ({
                   animationOrigin={getDiceAnimationOrigin()}
                   rollKey={(horsesController.feltDice as any)?.rollKey}
                   isQualified={(horsesController.feltDice as any)?.isQualified}
+                  cacheKey={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
                 />
               )}
             </div>
