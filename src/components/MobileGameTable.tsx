@@ -3926,10 +3926,10 @@ export const MobileGameTable = ({
                     };
                   }) as (HorsesDieType | SCCDieType)[]}
                   isRolling={
-                    showDice
-                      ? horsesController.isMyTurn
-                        ? horsesController.isRolling
-                        : !!(horsesController.feltDice as any)?.isRolling
+                    // CRITICAL: Observers should NEVER see rumbling dice.
+                    // Only the active player's local window (isMyTurn=true) shows rumbling.
+                    showDice && horsesController.isMyTurn
+                      ? horsesController.isRolling
                       : false
                   }
                   canToggle={false}

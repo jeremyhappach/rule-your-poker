@@ -1662,7 +1662,7 @@ export function HorsesGameTable({
                     return (
                       <DiceTableLayout
                         dice={diceState.dice as (HorsesDieType | SCCDieType)[]}
-                        isRolling={diceState.isRolling}
+                        isRolling={false} // CRITICAL: Observers should NEVER see rumbling - only the active player window rumbles
                         canToggle={false}
                         size="sm"
                         gameType={gameType}

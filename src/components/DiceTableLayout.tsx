@@ -299,7 +299,11 @@ export function DiceTableLayout({
     // Reset transient animation/stabilization state
     setIsAnimatingFlyIn(false);
     setAnimatingDiceIndices([]);
-    setShowUnheldDice(true);
+    // CRITICAL FIX: Start with unheld dice HIDDEN when cacheKey changes.
+    // This prevents a 1-frame flash of the new player's dice in their final
+    // scatter positions before the fly-in animation can start.
+    // The animation logic will set showUnheldDice=true when ready.
+    setShowUnheldDice(false);
     setIsInCompletionTransition(false);
     setHideFormerlyUnheld(false);
     setIsStabilizing(false);
