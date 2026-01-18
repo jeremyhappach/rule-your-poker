@@ -357,6 +357,11 @@ export function DiceTableLayout({
             ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
             : dice.map((_, i) => i);
 
+        // CRITICAL FIX for Issue #1: Check if ALL dice are currently held BEFORE computing unheldIndices.
+        // When showing a completed-turn badge (all dice held), we should NOT trigger fly-in animation
+        // even if rollKey changed (e.g., switching to view a different player's completed turn).
+        const allCurrentlyHeld = dice.length > 0 && dice.every((d) => d.isHeld);
+
         // Find which dice were unheld at the START of the roll.
         const unheldIndices = orderedIndices.filter((i) => {
           const d = dice[i];
@@ -386,8 +391,9 @@ export function DiceTableLayout({
         });
         stableScatterByDieRef.current = nextStable;
 
-        // Trigger fly-in animation if we have an origin.
-        if (animationOrigin && unheldIndices.length > 0) {
+        // Trigger fly-in animation if we have an origin AND there are unheld dice to animate
+        // AND we're not showing a completed turn (all dice held).
+        if (animationOrigin && unheldIndices.length > 0 && !allCurrentlyHeld) {
           // Hide any previously-rendered unheld dice from the prior roll *only* when we are about to animate.
           // This avoids stutter when rollKey changes while all dice are held (e.g., completion hold).
           setShowUnheldDice(false);
@@ -800,11 +806,32 @@ export function DiceTableLayout({
   const heldPositions = getHeldPositions(layoutHeldDice.length, dieWidth, gap);
 
   // Build quick lookup maps so a die can smoothly transition between scatter and held row
+  // CRITICAL FIX for Issue #2: Include ALL currently-held dice in the position map, not just layout dice.
+  // This ensures that dice which were held BEFORE the roll (and remain held) always have a valid
+  // held position during animation, preventing them from flashing to scatter positions.
   const heldPositionByOriginalIndex = new Map<number, { x: number; y: number }>();
   layoutHeldDice.forEach((item, displayIdx) => {
     const pos = heldPositions[displayIdx];
     if (pos) heldPositionByOriginalIndex.set(item.originalIndex, pos);
   });
+  
+  // Additionally, ensure dice that are actually held (by current isHeld state) also have positions
+  // This prevents held dice from reverting to scatter when heldMaskBeforeComplete differs from actual state
+  if (!usePreRollLayout) {
+    // Not in animation - already handled above
+  } else {
+    // During animation: also compute positions for dice that are ACTUALLY held now (not just pre-roll held)
+    // so they don't flash to scatter positions if they were held before the roll started
+    const actualHeldDice = orderedDice.filter((d) => d.die.isHeld);
+    const actualHeldPositions = getHeldPositions(actualHeldDice.length, dieWidth, gap);
+    actualHeldDice.forEach((item, displayIdx) => {
+      // Only add if not already in the map (pre-roll held dice take precedence for their positions)
+      if (!heldPositionByOriginalIndex.has(item.originalIndex)) {
+        const pos = actualHeldPositions[displayIdx];
+        if (pos) heldPositionByOriginalIndex.set(item.originalIndex, pos);
+      }
+    });
+  }
 
   return (
     <div className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
