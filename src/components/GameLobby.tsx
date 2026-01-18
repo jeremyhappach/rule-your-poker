@@ -19,6 +19,7 @@ import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
+import { RealMoneyWarningDialog } from "@/components/RealMoneyWarningDialog";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import {
   AlertDialog,
@@ -89,6 +90,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [realMoney, setRealMoney] = useState(false);
   const [isSuperuser, setIsSuperuser] = useState(false);
+  const [pendingRealMoneyGameId, setPendingRealMoneyGameId] = useState<string | null>(null);
   const [creatingGame, setCreatingGame] = useState(false);
   const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceMode();
   const { isTablet } = useDeviceSize();
@@ -365,7 +367,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     }
   };
 
-  const joinGame = async (gameId: string) => {
+  const joinGame = async (gameId: string, skipWarning = false) => {
     const { data: existingPlayer } = await supabase
       .from('players')
       .select('id')
@@ -373,20 +375,36 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .eq('user_id', userId)
       .maybeSingle();
 
+    // If already a player, just navigate
     if (existingPlayer) {
       navigate(`/game/${gameId}`);
       return;
     }
 
-    const { data: gameData } = await supabase
-      .from('games')
-      .select('status')
-      .eq('id', gameId)
-      .single();
+    // Check if this is a real money game and show warning if needed
+    if (!skipWarning) {
+      const game = games.find(g => g.id === gameId);
+      if (game?.real_money) {
+        setPendingRealMoneyGameId(gameId);
+        return;
+      }
+    }
 
     // Everyone except the host joins as observer and selects their seat
     // The host is already seated when they create the game
     navigate(`/game/${gameId}`);
+  };
+
+  const handleRealMoneyConfirm = () => {
+    if (pendingRealMoneyGameId) {
+      const gameId = pendingRealMoneyGameId;
+      setPendingRealMoneyGameId(null);
+      joinGame(gameId, true);
+    }
+  };
+
+  const handleRealMoneyCancel = () => {
+    setPendingRealMoneyGameId(null);
   };
 
   const deleteGame = async (gameId: string) => {
@@ -896,6 +914,12 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       <GameRules 
         open={showRulesDialog} 
         onOpenChange={setShowRulesDialog} 
+      />
+
+      <RealMoneyWarningDialog
+        open={!!pendingRealMoneyGameId}
+        onConfirm={handleRealMoneyConfirm}
+        onCancel={handleRealMoneyCancel}
       />
     </div>
   );
