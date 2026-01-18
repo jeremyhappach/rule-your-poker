@@ -520,11 +520,22 @@ export function DiceTableLayout({
   
   // Determine which dice source to use - prefer current if valid, fallback to cached
   // During stabilization period, ALWAYS use cached dice to prevent flicker
-  const hasValidCurrentDice = dice.length > 0 && dice.some(d => d.value > 0);
-  const effectiveDice = isStabilizing 
-    ? lastValidDiceRef.current 
-    : (hasValidCurrentDice ? dice : lastValidDiceRef.current);
-  
+  const hasValidCurrentDice = dice.length > 0 && dice.some((d) => d.value > 0);
+
+  // IMPORTANT: Only fall back to cached dice if we're in the middle of a roll/animation.
+  // If rollKey is undefined (no roll has started for the current player yet), showing cached dice
+  // can leak the previous player's final dice onto the felt during turn transitions.
+  const canFallbackToCache = rollKey !== undefined || isRolling;
+  const shouldFallbackToCache = !hasValidCurrentDice && canFallbackToCache;
+
+  const effectiveDice = isStabilizing
+    ? lastValidDiceRef.current
+    : hasValidCurrentDice
+      ? dice
+      : shouldFallbackToCache
+        ? lastValidDiceRef.current
+        : dice;
+
   // Update cache when we have valid dice (but not during stabilization)
   if (hasValidCurrentDice && !isStabilizing) {
     lastValidDiceRef.current = dice;

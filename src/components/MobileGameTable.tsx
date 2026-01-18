@@ -3770,12 +3770,14 @@ export const MobileGameTable = ({
             const cached = cachedFeltBlockNodeRef.current;
             if (!cached) return null;
 
-            const withinGrace = Date.now() - cached.at < FELT_STICKY_MS;
-            const currentTurnId = horsesController.currentTurnPlayerId ?? null;
-            // Only reuse cached node if we're still on the same turn, or if current turn is briefly null.
-            const sameTurn = currentTurnId === null || currentTurnId === cached.turnPlayerId;
+             const withinGrace = Date.now() - cached.at < FELT_STICKY_MS;
+             const currentTurnId = horsesController.currentTurnPlayerId ?? null;
+             // Only reuse cached node if we're still on the same turn.
+             // If the current turn is briefly null during a transition, do NOT reuse the old node;
+             // it can display the previous player's final dice.
+             const sameTurn = currentTurnId !== null && currentTurnId === cached.turnPlayerId;
 
-            return withinGrace && sameTurn ? cached.node : null;
+             return withinGrace && sameTurn ? cached.node : null;
           };
 
           const cacheFeltNode = (node: any) => {
