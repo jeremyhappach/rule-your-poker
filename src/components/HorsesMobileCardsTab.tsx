@@ -161,6 +161,13 @@ export function HorsesMobileCardsTab({
   // Show "rolling against" when it's my turn and there's already a winning hand to beat
   const showRollingAgainst = horses.isMyTurn && horses.gamePhase === "playing" && horses.currentWinningResult;
 
+  // CRITICAL FIX: Only show result badge in ONE place to avoid duplicates.
+  // When hold period is active with badge, the dice area shows it (lines ~202-222).
+  // When hold period ends, the action area shows it (lines ~322-341).
+  // We NEVER want both to render simultaneously.
+  const showResultInDiceArea = showHoldResultBadge;
+  const showResultInActionArea = hasCompleted && myResult && !showHoldResultBadge;
+
   const isSCC = gameType === "ship-captain-crew";
 
   // TABLET: Use larger dice for active player
@@ -319,8 +326,9 @@ export function HorsesMobileCardsTab({
             // After roll 3, hide the Roll button entirely
             <Badge className="text-sm px-3 py-1.5 font-medium">✓ Locked In</Badge>
           )
-        ) : hasCompleted && myResult ? (
+        ) : showResultInActionArea ? (
           // Styled result badge persists from turn completion through game end (including win animations)
+          // CRITICAL: Only shows when NOT displaying in dice area (showHoldResultBadge is false)
           <Badge 
             variant="secondary" 
             className={cn(
@@ -331,12 +339,12 @@ export function HorsesMobileCardsTab({
           >
             {gameType === 'horses' ? (
               <HorsesHandResultDisplay 
-                description={myResult.description} 
+                description={myResult!.description} 
                 isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
                 size={isTablet || isDesktop ? "md" : "sm"}
               />
             ) : (
-              myResult.description
+              myResult!.description
             )}
           </Badge>
         ) : isWaitingForYourTurn ? (
