@@ -3624,54 +3624,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME OVER] Last winner player_id:', lastWinnerPlayerId);
     
     // Check if "make it take it" is enabled and winner is eligible
-    const makeItTakeItPosition = await getMakeItTakeItDealer(gameId, lastWinnerPlayerId);
+    const makeItTakeItResult = await getMakeItTakeItDealer(gameId, lastWinnerPlayerId);
     
-    let newDealerPosition: number;
-    if (makeItTakeItPosition !== null) {
-      console.log('[GAME OVER] Using "make it take it" dealer:', makeItTakeItPosition);
-      newDealerPosition = makeItTakeItPosition;
-    } else {
-      // Normal rotation
-      const currentDealerPosition = gameData?.dealer_position || 1;
-      newDealerPosition = await rotateDealerPosition(gameId, currentDealerPosition);
-      console.log('[GAME OVER] Dealer rotation after player state evaluation:', currentDealerPosition, '->', newDealerPosition);
-    }
-
-    console.log('[GAME OVER] Transitioning to game_selection phase for new game');
-    
-    // CAPTURE previous game config for "Running it Back" detection AND session-specific configs
-    if (game) {
-      const gameConfig = {
-        game_type: game.game_type || null,
-        ante_amount: game.ante_amount || 1,
-        leg_value: game.leg_value || 1,
-        legs_to_win: game.legs_to_win || 3,
-        pussy_tax_enabled: game.pussy_tax_enabled ?? true,
-        pussy_tax_value: game.pussy_tax_value || 1,
-        pot_max_enabled: game.pot_max_enabled ?? true,
-        pot_max_value: game.pot_max_value || 10,
-        chucky_cards: game.chucky_cards || 4,
-        rabbit_hunt: game.rabbit_hunt ?? false,
-        reveal_at_showdown: (game as any).reveal_at_showdown ?? false
-      };
-      
-      console.log('[GAME OVER] Capturing game config:', gameConfig);
-      setPreviousGameConfig(gameConfig);
-      
-      // Also save to session-specific configs by game type
-      // Only save card game configs (holm-game, 3-5-7) - dice games have no config to remember
-      if (game.game_type === 'holm-game' || game.game_type === 'holm' || game.game_type === '3-5-7') {
-        const gameTypeKey = game.game_type === 'holm-game' || game.game_type === 'holm' ? 'holm-game' : '3-5-7';
-        setSessionGameConfigs(prev => ({
-          ...prev,
-          [gameTypeKey]: gameConfig
-        }));
-        console.log('[GAME OVER] Saved session config for card game type:', gameTypeKey);
-      } else {
-        console.log('[GAME OVER] Skipping session config save for dice game:', game.game_type);
-      }
-    }
-
     // CRITICAL: Mark ALL rounds as 'completed' before transitioning to new game
     // This prevents stale 'betting' rounds from blocking new round creation via the guard in startHolmRound
     // We preserve the round data (don't delete) for UI display, but status must be set to completed
@@ -3696,6 +3650,57 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         stand_up_next_hand: false
       })
       .eq('game_id', gameId);
+
+    // Handle make it take it result - can be a position, 'selection', or null
+    if (makeItTakeItResult === 'selection') {
+      // Bot won and multiple eligible human dealers - trigger dealer selection animation
+      console.log('[GAME OVER] Make it take it: bot won, triggering dealer selection animation');
+      
+      await logStatusChanged(gameId, user?.id, 'game_over', 'dealer_selection', 'Bot won with make it take it, running dealer selection');
+      
+      const { error } = await supabase
+        .from('games')
+        .update({ 
+          status: 'dealer_selection',
+          config_complete: false,
+          last_round_result: null,
+          current_round: null,
+          awaiting_next_round: false,
+          next_round_number: null,
+          pot: 0,
+          all_decisions_in: false,
+          game_over_at: null,
+          buck_position: null,
+          total_hands: 0
+          // Don't set dealer_position - DealerSelection will handle it
+        })
+        .eq('id', gameId);
+
+      if (error) {
+        console.error('[GAME OVER] Failed to start dealer selection:', error);
+        gameOverTransitionRef.current = false;
+        return;
+      }
+
+      console.log('[GAME OVER] Successfully transitioned to dealer_selection');
+      gameOverTransitionRef.current = false;
+      anteAnimationFiredRef.current = null;
+      await fetchGameData();
+      return;
+    }
+    
+    let newDealerPosition: number;
+    if (typeof makeItTakeItResult === 'number') {
+      console.log('[GAME OVER] Using "make it take it" dealer:', makeItTakeItResult);
+      newDealerPosition = makeItTakeItResult;
+    } else {
+      // Normal rotation
+      const currentDealerPosition = gameData?.dealer_position || 1;
+      newDealerPosition = await rotateDealerPosition(gameId, currentDealerPosition);
+      console.log('[GAME OVER] Dealer rotation after player state evaluation:', currentDealerPosition, '->', newDealerPosition);
+    }
+
+    console.log('[GAME OVER] Transitioning to game_selection phase for new game');
 
     // CRITICAL: Set config_deadline ATOMICALLY with status change to prevent race condition
     // where enforce-deadlines fires before DealerGameSetup component can set the deadline
