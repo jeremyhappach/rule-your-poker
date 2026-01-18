@@ -241,6 +241,8 @@ export function DiceTableLayout({
   const [isAnimatingFlyIn, setIsAnimatingFlyIn] = useState(false);
   const [animatingDiceIndices, setAnimatingDiceIndices] = useState<number[]>([]);
   const prevRollKeyRef = useRef<string | number | undefined>(undefined);
+  const lastFlyInRollKeyRef = useRef<string | number | undefined>(undefined);
+  const [flyInRunId, setFlyInRunId] = useState(0);
   const animationCompleteTimeoutRef = useRef<number | null>(null);
 
   // Stable scatter positions for the CURRENT rollKey.
@@ -295,6 +297,7 @@ export function DiceTableLayout({
     stableScatterRollKeyRef.current = undefined;
     stableScatterByDieRef.current = new Map();
     prevRollKeyRef.current = undefined;
+    lastFlyInRollKeyRef.current = undefined;
 
     // Reset transient animation/stabilization state
     setIsAnimatingFlyIn(false);
@@ -330,81 +333,80 @@ export function DiceTableLayout({
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
   useLayoutEffect(() => {
     // While a fly-in is in progress, ignore prop churn (DB updates, hold toggles) to avoid refires/stutter.
-    if (!isAnimatingFlyIn) {
-      // Reset completion transition when a new roll starts
-      if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
-        setIsInCompletionTransition(false);
-        setHideFormerlyUnheld(false);
-        if (completionTransitionTimeoutRef.current) {
-          clearTimeout(completionTransitionTimeoutRef.current);
-          completionTransitionTimeoutRef.current = null;
-        }
-      }
+    if (isAnimatingFlyIn) return;
 
-      if (rollKey !== undefined && rollKey !== prevRollKeyRef.current) {
-        prevRollKeyRef.current = rollKey;
+    const isNewRollKey = rollKey !== undefined && rollKey !== prevRollKeyRef.current;
+    if (!isNewRollKey) return;
 
-        // CRITICAL FIX: We used to immediately hide OLD unheld dice from the previous roll here.
-        // However, rollKey can also change during the completed-turn hold (when all dice are held).
-        // Hiding in that scenario causes a visible stutter. We now only hide when we are *actually*
-        // going to run a fly-in (see below).
+    prevRollKeyRef.current = rollKey;
 
-        const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
+    // Reset completion transition when a new roll starts
+    setIsInCompletionTransition(false);
+    setHideFormerlyUnheld(false);
+    if (completionTransitionTimeoutRef.current) {
+      clearTimeout(completionTransitionTimeoutRef.current);
+      completionTransitionTimeoutRef.current = null;
+    }
 
-        // Build an index order consistent with what we render (important for SCC).
-        const orderedIndices =
-          useSCCDisplayOrder && sccHand
-            ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
-            : dice.map((_, i) => i);
+    const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
 
-        // CRITICAL FIX for Issue #1: Check if ALL dice are currently held BEFORE computing unheldIndices.
-        // When showing a completed-turn badge (all dice held), we should NOT trigger fly-in animation
-        // even if rollKey changed (e.g., switching to view a different player's completed turn).
-        const allCurrentlyHeld = dice.length > 0 && dice.every((d) => d.isHeld);
+    // Build an index order consistent with what we render (important for SCC).
+    const orderedIndices =
+      useSCCDisplayOrder && sccHand
+        ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
+        : dice.map((_, i) => i);
 
-        // Find which dice were unheld at the START of the roll.
-        const unheldIndices = orderedIndices.filter((i) => {
-          const d = dice[i];
-          if (!d) return false;
-          const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
-          return !wasHeldAtRollStart && d.value !== 0;
-        });
+    // Find which dice were unheld at the START of the roll.
+    // IMPORTANT: do NOT require die.value !== 0 here.
+    // Observers can receive rollKey before values propagate; we still want to start fly-in on time.
+    const unheldIndices = orderedIndices.filter((i) => {
+      const d = dice[i];
+      if (!d) return false;
+      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+      return !wasHeldAtRollStart;
+    });
 
-        // Track how many were held at the START of this roll (for Y offset calculation)
-        const heldAtRollStart = heldMask
-          ? heldMask.filter(Boolean).length
-          : dice.filter((d) => d.isHeld).length;
-        setAnimationHeldCount(heldAtRollStart);
+    // Track how many were held at the START of this roll (for Y offset calculation)
+    const heldAtRollStart = heldMask
+      ? heldMask.filter(Boolean).length
+      : dice.filter((d) => d.isHeld).length;
+    setAnimationHeldCount(heldAtRollStart);
 
-        // Freeze scatter positions for this rollKey (prevents reposition when holds change)
-        stableScatterRollKeyRef.current = rollKey;
-        const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
-        const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
-        unheldIndices.forEach((dieIndex, displayIdx) => {
-          const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
-          // IMPORTANT: Match the exact tablet scatter scaling used by getUnheldPosition.
-          // Otherwise, dice will "snap" back into the tighter mobile formation after the fly-in lands.
-          const stablePos = isTablet
-            ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
-            : basePos;
-          nextStable.set(dieIndex, stablePos);
-        });
-        stableScatterByDieRef.current = nextStable;
+    // Freeze scatter positions for this rollKey (prevents reposition when holds change)
+    stableScatterRollKeyRef.current = rollKey;
+    const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
+    const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
+    unheldIndices.forEach((dieIndex, displayIdx) => {
+      const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
+      // IMPORTANT: Match the exact tablet scatter scaling used by getUnheldPosition.
+      // Otherwise, dice will "snap" back into the tighter mobile formation after the fly-in lands.
+      const stablePos = isTablet
+        ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
+        : basePos;
+      nextStable.set(dieIndex, stablePos);
+    });
+    stableScatterByDieRef.current = nextStable;
 
-        // Trigger fly-in animation if we have an origin AND there are unheld dice to animate
-        // AND we're not showing a completed turn (all dice held).
-        if (animationOrigin && unheldIndices.length > 0 && !allCurrentlyHeld) {
-          // Hide any previously-rendered unheld dice from the prior roll *only* when we are about to animate.
-          // This avoids stutter when rollKey changes while all dice are held (e.g., completion hold).
-          setShowUnheldDice(false);
+    // Trigger fly-in animation once per rollKey.
+    // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
+    // so we use (rollKey + flyInRunId) to guarantee exactly-one run.
+    const shouldStartFlyIn =
+      !!animationOrigin &&
+      unheldIndices.length > 0 &&
+      lastFlyInRollKeyRef.current !== rollKey;
 
-          setAnimatingDiceIndices(unheldIndices);
-          setIsAnimatingFlyIn(true);
+    if (shouldStartFlyIn) {
+      lastFlyInRollKeyRef.current = rollKey;
 
-          // Show unheld dice when animation starts (they'll animate in from player window)
-          setShowUnheldDice(true);
-        }
-      }
+      // Hide any previously-rendered unheld dice from the prior roll *only* when we are about to animate.
+      setShowUnheldDice(false);
+
+      setAnimatingDiceIndices(unheldIndices);
+      setIsAnimatingFlyIn(true);
+      setFlyInRunId((v) => v + 1);
+
+      // Show unheld dice when animation starts (they'll animate in from player window)
+      setShowUnheldDice(true);
     }
 
     return () => {
@@ -838,7 +840,7 @@ export function DiceTableLayout({
       {/* Fly-in animation overlay for unheld dice */}
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
-          key={`dice-roll-${String(rollKey ?? 'no-key')}`}
+          runKey={flyInRunId}
           dice={dice}
           animatingIndices={animatingDiceIndices}
           targetPositions={animatingDiceIndices.map((_, displayIdx) =>
