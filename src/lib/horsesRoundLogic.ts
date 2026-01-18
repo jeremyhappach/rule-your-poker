@@ -4,12 +4,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
-
-/**
- * Start a new Horses round
- * Creates a round record and sets the game to in_progress
- * Collects antes from all active players and sets the pot
- */
+import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[HORSES] 🎲 Starting round', { gameId, isFirstHand });
 
@@ -182,8 +177,14 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   const sortedActive = [...activePlayers].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const dealerPos = (game as any)?.dealer_position as number | null; // eslint-disable-line @typescript-eslint/no-explicit-any
   const dealerIdx = dealerPos ? sortedActive.findIndex((p) => p.position === dealerPos) : -1;
+  
+  // Check Make It Take It setting - if enabled, dealer goes first (offset 0), otherwise player after dealer (offset 1)
+  const makeItTakeIt = await getMakeItTakeItSetting();
+  const turnOffset = makeItTakeIt ? 0 : 1;
+  console.log('[HORSES] Make It Take It:', makeItTakeIt, 'Turn offset:', turnOffset);
+  
   const turnOrder = dealerIdx >= 0
-    ? Array.from({ length: sortedActive.length }, (_, i) => sortedActive[(dealerIdx + i + 1) % sortedActive.length].id)
+    ? Array.from({ length: sortedActive.length }, (_, i) => sortedActive[(dealerIdx + i + turnOffset) % sortedActive.length].id)
     : sortedActive.map((p) => p.id);
 
   const firstTurnPlayer = sortedActive.find((p) => p.id === turnOrder[0]) ?? null;

@@ -35,6 +35,7 @@ import { MyGameHistory } from "@/components/MyGameHistory";
 import { GameRules } from "@/components/GameRules";
 import { CustomGameNamesManager } from "@/components/CustomGameNamesManager";
 import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
+import { useMakeItTakeIt } from "@/hooks/useMakeItTakeIt";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePlayerBalance } from "@/hooks/usePlayerBalance";
 import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog";
@@ -60,7 +61,9 @@ const Index = () => {
   const [allowBotDealers, setAllowBotDealers] = useState(false);
   const [loadingBotDealersSetting, setLoadingBotDealersSetting] = useState(true);
   const { isMaintenanceMode, loading: maintenanceLoading, toggleMaintenanceMode } = useMaintenanceMode();
+  const { makeItTakeIt, loading: makeItTakeItLoading, toggleMakeItTakeIt } = useMakeItTakeIt();
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
+  const [isTogglingMakeItTakeIt, setIsTogglingMakeItTakeIt] = useState(false);
   const { isAdmin } = useIsAdmin(user?.id);
   const { balance, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
@@ -589,6 +592,43 @@ const Index = () => {
                         checked={allowBotDealers}
                         onCheckedChange={handleToggleBotDealers}
                         disabled={loadingBotDealersSetting}
+                      />
+                    </div>
+
+                    {/* Make It Take It Toggle */}
+                    <div className="flex items-center justify-between py-2 bg-green-900/20 rounded-lg px-3 border border-green-600/30">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="make-it-take-it" className="flex items-center gap-2">
+                          🎯 Make It Take It
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Winner becomes dealer. In dice games, dealer rolls first.
+                        </p>
+                      </div>
+                      <Switch
+                        id="make-it-take-it"
+                        checked={makeItTakeIt}
+                        onCheckedChange={async (enabled) => {
+                          setIsTogglingMakeItTakeIt(true);
+                          const success = await toggleMakeItTakeIt(enabled);
+                          setIsTogglingMakeItTakeIt(false);
+                          if (success) {
+                            toast({
+                              title: enabled ? "Make It Take It Enabled" : "Make It Take It Disabled",
+                              description: enabled 
+                                ? "Winner will become dealer, dice games start with dealer" 
+                                : "Normal dealer rotation restored",
+                            });
+                          } else {
+                            toast({
+                              title: "Error",
+                              description: "Failed to toggle Make It Take It",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        disabled={makeItTakeItLoading || isTogglingMakeItTakeIt}
+                        className="data-[state=checked]:bg-green-600"
                       />
                     </div>
 
