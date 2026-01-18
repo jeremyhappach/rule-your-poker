@@ -428,11 +428,11 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     const hasHistory = rounds && rounds.length > 0;
 
     if (hasHistory) {
-      // Move to completed status instead of deleting
+      // Move to session_ended status instead of deleting (so it moves to historical)
       const { error: updateError } = await supabase
         .from('games')
         .update({
-          status: 'completed',
+          status: 'session_ended',
           session_ended_at: new Date().toISOString()
         })
         .eq('id', gameId);
@@ -448,7 +448,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
       toast({
         title: "Session Ended",
-        description: "Game moved to completed (history preserved)",
+        description: "Game moved to historical (history preserved)",
       });
     } else {
       // No history, safe to delete
