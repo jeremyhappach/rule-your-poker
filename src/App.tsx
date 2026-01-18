@@ -11,6 +11,7 @@ import HandEvalTest from "./pages/HandEvalTest";
 import HandEvalDebug from "./pages/HandEvalDebug";
 import DicePreview from "./pages/DicePreview";
 import DeadlineDebug from "./pages/DeadlineDebug";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -23,7 +24,14 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/game/:gameId" element={<Game />} />
+          <Route
+            path="/game/:gameId"
+            element={
+              <RouteErrorBoundary title="Game screen crashed">
+                <Game />
+              </RouteErrorBoundary>
+            }
+          />
           <Route path="/test-hands" element={<HandEvalTest />} />
           <Route path="/debug-hands" element={<HandEvalDebug />} />
           <Route path="/dice-preview" element={<DicePreview />} />
