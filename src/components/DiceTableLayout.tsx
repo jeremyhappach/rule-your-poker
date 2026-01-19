@@ -397,10 +397,14 @@ export function DiceTableLayout({
     // Trigger fly-in animation once per rollKey.
     // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
     // so we use (rollKey + flyInRunId) to guarantee exactly-one run.
+    // CRITICAL: If all dice are already held (turn completed), don't start a new fly-in.
+    // This prevents Roll 3 animation from refiring when isComplete arrives after rollKey.
+    const allAlreadyHeld = dice.length > 0 && dice.every(d => d.isHeld);
     const shouldStartFlyIn =
       !!animationOrigin &&
       unheldIndices.length > 0 &&
-      lastFlyInRollKeyRef.current !== rollKey;
+      lastFlyInRollKeyRef.current !== rollKey &&
+      !allAlreadyHeld;
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
@@ -416,6 +420,9 @@ export function DiceTableLayout({
       // NOTE: Do NOT set showUnheldDice(true) here synchronously - React batches it and
       // the false state is never committed. The animation overlay renders the flying dice,
       // and handleAnimationComplete will restore showUnheldDice=true when done.
+    } else if (lastFlyInRollKeyRef.current !== rollKey) {
+      // Update ref even if we didn't animate, to prevent stale key comparisons
+      lastFlyInRollKeyRef.current = rollKey;
     }
 
     return () => {
