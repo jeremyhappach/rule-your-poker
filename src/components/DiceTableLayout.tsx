@@ -397,14 +397,14 @@ export function DiceTableLayout({
     // Trigger fly-in animation once per rollKey.
     // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
     // so we use (rollKey + flyInRunId) to guarantee exactly-one run.
-    // CRITICAL: If all dice are already held (turn completed), don't start a new fly-in.
-    // This prevents Roll 3 animation from refiring when isComplete arrives after rollKey.
-    const allAlreadyHeld = dice.length > 0 && dice.every(d => d.isHeld);
+    // IMPORTANT: only start fly-in while the parent says we're in a rolling window.
+    // This prevents completion updates (all dice held, isRolling=false) from consuming rollKey
+    // and keeps Roll 3 animations intact.
     const shouldStartFlyIn =
       !!animationOrigin &&
+      !!isRolling &&
       unheldIndices.length > 0 &&
-      lastFlyInRollKeyRef.current !== rollKey &&
-      !allAlreadyHeld;
+      lastFlyInRollKeyRef.current !== rollKey;
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
