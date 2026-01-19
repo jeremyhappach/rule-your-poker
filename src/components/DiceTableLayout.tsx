@@ -402,7 +402,10 @@ export function DiceTableLayout({
     // - The active player's window should only fly-in during the rolling window (isRolling=true).
     // - Observers should still get the fly-in (but NEVER the rumble), so we allow fly-in when isObserver=true.
     // - Do NOT "consume" rollKey when fly-in didn't start; rollKey can arrive before isRolling flips true.
-    const flyInWindowActive = !!isRolling || !!isObserver;
+    // - CRITICAL: Only allow fly-in if ALL dice are NOT held yet. Once all dice become held,
+    //   the turn is complete and we should NOT refire the animation even if isObserver causes a re-render.
+    const allDiceHeld = dice.length > 0 && dice.every((d) => d.isHeld);
+    const flyInWindowActive = (!!isRolling || !!isObserver) && !allDiceHeld;
 
     const shouldStartFlyIn =
       !!animationOrigin &&
@@ -892,13 +895,33 @@ export function DiceTableLayout({
         const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
         if (isThisDieAnimating) return null;
 
-        const heldPos = heldPositionByOriginalIndex.get(item.originalIndex);
-        const isHeldInLayout = !!heldPos;
+        // CRITICAL FIX: Prioritize ACTUAL held state over layout held state.
+        // If a die is currently held (die.isHeld = true), it should ALWAYS render in the held row,
+        // even if stableScatter positions exist for it from a previous roll.
+        // This prevents dice from jumping to scatter after animation completes when they were just held.
+        const actuallyHeld = item.die.isHeld;
+        const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
+        
+        // If die is actually held but doesn't have a layout position yet (transition moment),
+        // compute a position based on its index among all currently-held dice
+        let heldPos = layoutHeldPos;
+        if (actuallyHeld && !heldPos) {
+          // Find this die's index among all actually-held dice
+          const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
+          const heldIdx = actuallyHeldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+          if (heldIdx >= 0) {
+            const allHeldPositions = getHeldPositions(actuallyHeldDice.length, dieWidth, gap);
+            heldPos = allHeldPositions[heldIdx];
+          }
+        }
+        
+        // Die is in held position if it's actually held AND we have a position for it
+        const isHeldInLayout = actuallyHeld && !!heldPos;
 
-        // CRITICAL FIX: Only use stable scatter positions if they're for THIS rollKey.
-        // After animation completes, if rollKey hasn't changed but dice have been re-held,
-        // we should NOT revert them to stale scatter positions.
+        // CRITICAL FIX: Only use stable scatter positions if they're for THIS rollKey
+        // AND the die is NOT currently held. Once a die becomes held, ignore scatter positions.
         const hasValidStablePos =
+          !actuallyHeld &&
           stableScatterRollKeyRef.current === rollKey &&
           stableScatterByDieRef.current.has(item.originalIndex);
         const stablePos = hasValidStablePos
