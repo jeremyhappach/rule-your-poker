@@ -44,24 +44,21 @@ export const HighCardDealerSelection = ({
   onCardsUpdate,
   onAnnouncementUpdate
 }: HighCardDealerSelectionProps) => {
-  const [phase, setPhase] = useState<'announcing' | 'dealing' | 'revealing' | 'tiebreaker' | 'complete'>('announcing');
+  const [phase, setPhase] = useState<'announcing' | 'dealing' | 'complete'>('announcing');
   const [playerCards, setPlayerCards] = useState<DealerSelectionCard[]>([]);
-  const [deck, setDeck] = useState<Card[]>([]);
   
   const hasInitializedRef = useRef(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const deckRef = useRef<Card[]>([]);
   
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
   const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
   
-  // Timing constants (1.5s between cards as requested)
-  const ANNOUNCE_DURATION = 2000; // Show "High card wins deal" for 2s
-  const DEAL_DELAY = 1500; // 1.5s between each card dealt
-  const REVEAL_DELAY = 500; // Small delay after all cards are face-down
-  const CARD_FLIP_DELAY = 1500; // 1.5s between each card flip
+  // Timing constants
+  const ANNOUNCE_DURATION = 1500; // Show "High card wins deal" for 1.5s
+  const ROUND_PAUSE = 1500; // 1.5s pause after dealing before checking winner/tiebreaker
   const WINNER_ANNOUNCE_DELAY = 2000; // Show winner for 2s before completing
-  const TIEBREAKER_DELAY = 2500; // 2.5s pause before tiebreaker round
   
   const clearTimeouts = useCallback(() => {
     timeoutsRef.current.forEach(t => clearTimeout(t));
@@ -120,90 +117,57 @@ export const HighCardDealerSelection = ({
     console.log('[HIGH CARD] Starting high card dealer selection with', eligibleDealers.length, 'eligible players');
     
     // Initialize deck
-    const shuffledDeck = shuffleDeck(createDeck());
-    setDeck(shuffledDeck);
+    deckRef.current = shuffleDeck(createDeck());
     
     // Start the sequence
-    runSelectionRound(shuffledDeck, eligibleDealers, 1);
+    runSelectionRound(eligibleDealers, 1);
     
     return () => clearTimeouts();
   }, []);
   
-  const runSelectionRound = useCallback((currentDeck: Card[], playersInRound: Player[], roundNum: number) => {
+  const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
     
     if (roundNum === 1) {
       onAnnouncementUpdate('High card wins deal', false);
-      setPhase('announcing');
     } else {
-      onAnnouncementUpdate(`Tiebreaker round ${roundNum - 1}`, false);
-      setPhase('announcing');
+      onAnnouncementUpdate('Tie! Drawing again...', false);
     }
+    setPhase('announcing');
     
-    // Deal cards after announcement
+    // Deal all cards face-up after brief announcement
     addTimeout(() => {
       setPhase('dealing');
       
-      // Deal one card to each player with delay
-      let deckIndex = 0;
-      const newCards: DealerSelectionCard[] = [];
-      
-      playersInRound.forEach((player, idx) => {
-        const card = currentDeck[deckIndex++];
-        const playerCard: DealerSelectionCard = {
+      // Deal one card to each player - all at once, all face-up
+      const newCards: DealerSelectionCard[] = playersInRound.map((player) => {
+        const card = deckRef.current.shift()!;
+        return {
           playerId: player.id,
           position: player.position,
           card,
-          isRevealed: false,
+          isRevealed: true, // Always face-up
           isWinner: false,
           isDimmed: false,
           roundNumber: roundNum
         };
-        newCards.push(playerCard);
-        
-        // Stagger card dealing
-        addTimeout(() => {
-          setPlayerCards(prev => {
-            // Keep previous round cards, add new one
-            const existingForOtherRounds = prev.filter(pc => pc.roundNumber !== roundNum);
-            const existingForThisRound = prev.filter(pc => pc.roundNumber === roundNum);
-            return [...existingForOtherRounds, ...existingForThisRound, playerCard];
-          });
-        }, idx * DEAL_DELAY);
       });
       
-      // After all cards are dealt, start revealing
-      const totalDealTime = (playersInRound.length - 1) * DEAL_DELAY + REVEAL_DELAY;
+      // Update cards immediately (all at once)
+      setPlayerCards(prev => {
+        const existingForOtherRounds = prev.filter(pc => pc.roundNumber !== roundNum);
+        return [...existingForOtherRounds, ...newCards];
+      });
+      
+      // After 1.5s pause, check for winner or tiebreaker
       addTimeout(() => {
-        setPhase('revealing');
-        revealCards(newCards, currentDeck.slice(deckIndex), playersInRound, roundNum);
-      }, totalDealTime);
+        determineWinner(newCards, playersInRound, roundNum);
+      }, ROUND_PAUSE);
       
     }, ANNOUNCE_DURATION);
-  }, [addTimeout, getPlayerName, onAnnouncementUpdate]);
+  }, [addTimeout, onAnnouncementUpdate]);
   
-  const revealCards = useCallback((cards: DealerSelectionCard[], remainingDeck: Card[], playersInRound: Player[], roundNum: number) => {
-    // Reveal cards one at a time
-    cards.forEach((pc, idx) => {
-      addTimeout(() => {
-        setPlayerCards(prev => 
-          prev.map(p => 
-            p.playerId === pc.playerId && p.roundNumber === roundNum
-              ? { ...p, isRevealed: true }
-              : p
-          )
-        );
-      }, idx * CARD_FLIP_DELAY);
-    });
-    
-    // After all cards revealed, determine winner(s)
-    const revealCompleteTime = (cards.length - 1) * CARD_FLIP_DELAY + CARD_FLIP_DELAY;
-    addTimeout(() => {
-      determineWinner(cards, remainingDeck, playersInRound, roundNum);
-    }, revealCompleteTime);
-  }, [addTimeout]);
-  
-  const determineWinner = useCallback((cards: DealerSelectionCard[], remainingDeck: Card[], playersInRound: Player[], roundNum: number) => {
+  const determineWinner = useCallback((cards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => {
     // Find highest card(s)
     let highestRank = 0;
     let winners: DealerSelectionCard[] = [];
@@ -247,19 +211,15 @@ export const HighCardDealerSelection = ({
         }, WINNER_ANNOUNCE_DELAY);
       }
     } else {
-      // Tiebreaker needed
-      onAnnouncementUpdate('Tie! Drawing again...', false);
-      setPhase('tiebreaker');
-      
-      // Filter to only tied players
+      // Tiebreaker needed - run next round after brief pause
       const tiedPlayerIds = winners.map(w => w.playerId);
       const tiedPlayers = playersInRound.filter(p => tiedPlayerIds.includes(p.id));
       
       addTimeout(() => {
-        runSelectionRound(remainingDeck, tiedPlayers, roundNum + 1);
-      }, TIEBREAKER_DELAY);
+        runSelectionRound(tiedPlayers, roundNum + 1);
+      }, ROUND_PAUSE);
     }
-  }, [addTimeout, getPlayerName, onComplete, onAnnouncementUpdate, runSelectionRound]);
+  }, [addTimeout, getPlayerName, onComplete, onAnnouncementUpdate, runSelectionRound, ROUND_PAUSE]);
   
   // This component doesn't render anything - it just manages state
   // The actual rendering happens in MobileGameTable/GameTable via props
