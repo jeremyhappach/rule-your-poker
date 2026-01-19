@@ -4090,6 +4090,7 @@ export const MobileGameTable = ({
                   useSCCDisplayOrder={gameType === 'ship-captain-crew'}
                   sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
                   isObserver={true}
+                  observerFlyInRolling={!!(horsesController.observerDisplayState as any)?.isRolling}
                   hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
                   heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
                   previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}

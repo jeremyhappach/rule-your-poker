@@ -21,6 +21,12 @@ interface DiceTableLayoutProps {
   sccHand?: SCCHand;
   /** If true, this is the observer view (not my turn) */
   isObserver?: boolean;
+  /**
+   * For observers only: rolling window for fly-in.
+   * IMPORTANT: This is separate from `isRolling` because observers must not see rumbling dice,
+   * but they still need the fly-in animation during the observer state machine's rolling window.
+   */
+  observerFlyInRolling?: boolean;
   /** If true, show "You are rolling" message instead of dice (for active roller's own view) */
   showRollingMessage?: boolean;
   /** If true, hide dice that haven't been rolled yet (value === 0) */
@@ -42,9 +48,8 @@ interface DiceTableLayoutProps {
    */
   cacheKey?: string | number;
   /**
-   * For observers only: the rollKey that has been "acknowledged" by the observer state machine.
-   * Fly-in animation will only start when rollKey === observerAcknowledgedRollKey.
-   * This prevents stale dice from animating when rollKey arrives before observer state updates.
+   * (Legacy) For observers only: rollKey acknowledged by an upstream state machine.
+   * Kept for compatibility; fly-in gating now prefers `observerFlyInRolling`.
    */
   observerAcknowledgedRollKey?: string | number;
 }
@@ -229,6 +234,7 @@ export function DiceTableLayout({
   useSCCDisplayOrder = false,
   sccHand,
   isObserver = false,
+  observerFlyInRolling,
   showRollingMessage = false,
   hideUnrolledDice = false,
   heldMaskBeforeComplete,
@@ -239,17 +245,29 @@ export function DiceTableLayout({
   cacheKey,
   observerAcknowledgedRollKey,
 }: DiceTableLayoutProps) {
-  const isSCC = gameType === 'ship-captain-crew';
+  const isSCC = gameType === "ship-captain-crew";
   const { isTablet } = useDeviceSize();
-  
+
   // TABLET: Use larger dice size
   const effectiveSize = isTablet ? "lg" : size;
-  
+
   // Track fly-in animation state
   const [isAnimatingFlyIn, setIsAnimatingFlyIn] = useState(false);
   const [animatingDiceIndices, setAnimatingDiceIndices] = useState<number[]>([]);
-  const prevRollKeyRef = useRef<string | number | undefined>(undefined);
+
+  // IMPORTANT: Initialize prepared rollKey with the current prop.
+  // This prevents "initial mount" (or StrictMode remount) from counting as a new roll
+  // and accidentally firing fly-in twice.
+  const prevRollKeyRef = useRef<string | number | undefined>(rollKey);
+
+  // The last rollKey we actually STARTED a fly-in for.
+  // We only update this when animation begins, so if prerequisites arrive late
+  // (origin position, observer rolling window), we can still start for the current rollKey.
   const lastFlyInRollKeyRef = useRef<string | number | undefined>(undefined);
+
+  // Cache the dice indices that were unheld at the START of this rollKey.
+  const unheldIndicesAtRollStartRef = useRef<number[]>([]);
+
   const [flyInRunId, setFlyInRunId] = useState(0);
   const animationCompleteTimeoutRef = useRef<number | null>(null);
 
@@ -316,11 +334,11 @@ export function DiceTableLayout({
     stableScatterRollKeyRef.current = undefined;
     stableScatterByDieRef.current = new Map();
 
-    // Seed roll-key refs to the CURRENT rollKey so we don't accidentally replay a fly-in
-    // for an already-completed roll when cacheKey changes (e.g., post-turn hold UI).
-    // The next real roll will change rollKey and trigger normally.
+    // Seed roll-key ref to the CURRENT rollKey so we don't treat this owner-change render as a "new roll".
+    // IMPORTANT: Do NOT seed lastFlyInRollKeyRef here; that would suppress the first real fly-in of the new owner.
     prevRollKeyRef.current = rollKey;
-    lastFlyInRollKeyRef.current = rollKey;
+    lastFlyInRollKeyRef.current = undefined;
+    unheldIndicesAtRollStartRef.current = [];
 
     // Reset transient animation/stabilization state
     setIsAnimatingFlyIn(false);
@@ -424,8 +442,7 @@ export function DiceTableLayout({
     // - Do NOT "consume" rollKey when fly-in didn't start; rollKey can arrive before isRolling flips true.
     // - CRITICAL: Do NOT block fly-in just because all dice are now held.
     //   The final roll auto-marks dice held (game logic) *before* the animation should run.
-    const observerRollKeyAcknowledged = !isObserver || (observerAcknowledgedRollKey === rollKey);
-    const flyInWindowActive = !!isRolling || (!!isObserver && observerRollKeyAcknowledged);
+    const flyInWindowActive = !isObserver ? !!isRolling : !!observerFlyInRolling;
 
     const shouldStartFlyIn =
       !!animationOrigin &&
@@ -455,8 +472,6 @@ export function DiceTableLayout({
     }
 
     if (shouldStartFlyIn) {
-      console.log('[FLYIN] Starting fly-in animation', { rollKey, unheldIndices, isObserver, observerRollKeyAcknowledged });
-      
       lastFlyInRollKeyRef.current = rollKey;
 
       // Hide previously-rendered unheld dice while the fly-in animation runs.
@@ -466,19 +481,6 @@ export function DiceTableLayout({
       setAnimatingDiceIndices(unheldIndices);
       setIsAnimatingFlyIn(true);
       setFlyInRunId((v) => v + 1);
-
-      // TRACE: Fly-in animation started
-      if (isDiceTraceRecording()) {
-        pushDiceTrace("DiceTableLayout:flyInStarted", {
-          rollKey,
-          cacheKey: String(cacheKey ?? ""),
-          isAnimatingFlyIn: true, // We just set it
-          extra: {
-            unheldIndices,
-            flyInRunId: 'incremented',
-          },
-        });
-      }
 
       // NOTE: Do NOT set showUnheldDice(true) here synchronously - React batches it and
       // the false state is never committed. The animation overlay renders the flying dice,
@@ -507,7 +509,7 @@ export function DiceTableLayout({
     isTablet,
     isRolling,
     isObserver,
-    observerAcknowledgedRollKey,
+    observerFlyInRolling,
   ]);
 
   // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly

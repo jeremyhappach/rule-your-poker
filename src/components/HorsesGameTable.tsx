@@ -1721,6 +1721,7 @@ export function HorsesGameTable({
                         gameType={gameType}
                         showWildHighlight={!isSCC}
                         isObserver={true}
+                        observerFlyInRolling={!!(diceState as any).isRolling}
                         hideUnrolledDice={true}
                         heldMaskBeforeComplete={(diceState as any).heldMaskBeforeComplete}
                         previouslyHeldCount={(diceState as any).heldCountBeforeComplete}
