@@ -301,6 +301,11 @@ export function DiceTableLayout({
       stabilizationTimeoutRef.current = null;
     }
 
+  // Reset caches ONLY when the dice owner changes.
+  // IMPORTANT: Parent components often create new dice arrays every render (e.g. `.map(...)`).
+  // If we reset on every `dice` identity change, we can accidentally mark the current rollKey as
+  // "already animated" and permanently suppress the fly-in.
+  useEffect(() => {
     // Reset cached dice + per-roll layout caches
     // IMPORTANT: On owner change, props can still briefly contain the *previous* player's dice.
     // If we seed lastValidDiceRef with that, the next roll may "land" using stale dice and then snap.
@@ -331,7 +336,8 @@ export function DiceTableLayout({
     setIsStabilizing(false);
     prevAllHeldRef.current = false;
     prevIsCompleteRef.current = false;
-  }, [cacheKey, dice]);
+  }, [cacheKey]);
+
 
   // Stabilization period after roll 3 completes - hold the current visual state
   // to prevent flickering during the isComplete transition
