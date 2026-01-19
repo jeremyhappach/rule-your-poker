@@ -7,6 +7,13 @@ import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
 
+// Persist rollKey / fly-in consumption across DiceTableLayout remounts.
+// MobileGameTable intentionally remounts DiceTableLayout when the dice "owner" changes,
+// but other UI transitions can also cause remounts. Without persistence, the fly-in can refire
+// for the same rollKey after a remount (the exact bug you captured).
+const lastSeenRollKeyByCacheKey = new Map<string, string | number>();
+const lastFlyInRollKeyByCacheKey = new Map<string, string | number>();
+
 interface DiceTableLayoutProps {
   dice: (HorsesDieType | SCCDieType)[];
   isRolling?: boolean;
@@ -347,10 +354,18 @@ export function DiceTableLayout({
     // While a fly-in is in progress, ignore prop churn (DB updates, hold toggles) to avoid refires/stutter.
     if (isAnimatingFlyIn) return;
 
-    const isNewRollKey = rollKey !== undefined && rollKey !== prevRollKeyRef.current;
+    // Prevent "same rollKey" replays across remounts by persisting last-seen rollKey per cacheKey.
+    const cacheKeyStr = String(cacheKey ?? "");
+    const lastSeenGlobal = cacheKeyStr ? lastSeenRollKeyByCacheKey.get(cacheKeyStr) : undefined;
+
+    const isNewRollKey =
+      rollKey !== undefined &&
+      rollKey !== prevRollKeyRef.current &&
+      (lastSeenGlobal === undefined || rollKey !== lastSeenGlobal);
     if (!isNewRollKey) return;
 
     prevRollKeyRef.current = rollKey;
+    if (cacheKeyStr) lastSeenRollKeyByCacheKey.set(cacheKeyStr, rollKey);
 
     // Reset completion transition when a new roll starts
     setIsInCompletionTransition(false);
@@ -417,11 +432,16 @@ export function DiceTableLayout({
     //   The final roll auto-marks dice held (game logic) *before* the animation should run.
     const flyInWindowActive = !!isRolling || !!isObserver;
 
+    // Prevent fly-in refires across remounts by persisting last "consumed" rollKey per cacheKey.
+    const cacheKeyStr = String(cacheKey ?? "");
+    const lastFlyInGlobal = cacheKeyStr ? lastFlyInRollKeyByCacheKey.get(cacheKeyStr) : undefined;
+    const effectiveLastFlyIn = lastFlyInGlobal ?? lastFlyInRollKeyRef.current;
+
     const shouldStartFlyIn =
       !!animationOrigin &&
       flyInWindowActive &&
       unheldIndices.length > 0 &&
-      lastFlyInRollKeyRef.current !== rollKey;
+      effectiveLastFlyIn !== rollKey;
 
     // TRACE: Fly-in decision point
     if (isDiceTraceRecording()) {
@@ -431,7 +451,7 @@ export function DiceTableLayout({
         cacheKey: String(cacheKey ?? ""),
         isAnimatingFlyIn,
         showUnheldDice,
-        lastFlyInRollKey: lastFlyInRollKeyRef.current,
+        lastFlyInRollKey: effectiveLastFlyIn,
         extra: {
           flyInWindowActive,
           shouldStartFlyIn,
@@ -444,6 +464,7 @@ export function DiceTableLayout({
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
+      if (cacheKeyStr) lastFlyInRollKeyByCacheKey.set(cacheKeyStr, rollKey);
 
       // Hide previously-rendered unheld dice while the fly-in animation runs.
       // They will be shown again when handleAnimationComplete fires.
