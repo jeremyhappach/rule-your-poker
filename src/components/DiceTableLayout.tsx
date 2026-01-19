@@ -433,8 +433,8 @@ export function DiceTableLayout({
     const flyInWindowActive = !!isRolling || !!isObserver;
 
     // Prevent fly-in refires across remounts by persisting last "consumed" rollKey per cacheKey.
-    const cacheKeyStr = String(cacheKey ?? "");
-    const lastFlyInGlobal = cacheKeyStr ? lastFlyInRollKeyByCacheKey.get(cacheKeyStr) : undefined;
+    const flyInCacheKeyStr = String(cacheKey ?? "");
+    const lastFlyInGlobal = flyInCacheKeyStr ? lastFlyInRollKeyByCacheKey.get(flyInCacheKeyStr) : undefined;
     const effectiveLastFlyIn = lastFlyInGlobal ?? lastFlyInRollKeyRef.current;
 
     const shouldStartFlyIn =
@@ -464,7 +464,7 @@ export function DiceTableLayout({
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
-      if (cacheKeyStr) lastFlyInRollKeyByCacheKey.set(cacheKeyStr, rollKey);
+      if (flyInCacheKeyStr) lastFlyInRollKeyByCacheKey.set(flyInCacheKeyStr, rollKey);
 
       // Hide previously-rendered unheld dice while the fly-in animation runs.
       // They will be shown again when handleAnimationComplete fires.
