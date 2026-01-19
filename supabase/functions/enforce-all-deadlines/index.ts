@@ -258,6 +258,161 @@ serve(async (req) => {
           continue;
         }
 
+        // ============= CONFIG DEADLINE ENFORCEMENT (game_selection/configuring/dealer_selection) =============
+        // CRITICAL: Backup enforcement when no clients are connected during dealer setup phase.
+        if ((game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
+          const configDeadline = new Date(game.config_deadline);
+          const msUntilDeadline = configDeadline.getTime() - now.getTime();
+          
+          if (msUntilDeadline <= 0) {
+            console.log('[CRON-ENFORCE] Config deadline EXPIRED for game', game.id, 'status:', game.status);
+            
+            const { data: players } = await supabase
+              .from('players')
+              .select('*')
+              .eq('game_id', game.id);
+
+            const dealerPlayer = players?.find((p: any) => p.position === game.dealer_position);
+
+            if (dealerPlayer) {
+              // Mark dealer as sitting out
+              await supabase
+                .from('players')
+                .update({ sitting_out: true, waiting: false })
+                .eq('id', dealerPlayer.id);
+
+              actionsTaken.push(`Config timeout: Dealer at position ${dealerPlayer.position} sat out`);
+
+              // Fetch game defaults to check allow_bot_dealers
+              const { data: gameDefaults } = await supabase
+                .from('game_defaults')
+                .select('allow_bot_dealers')
+                .eq('game_type', game.game_type || 'holm')
+                .maybeSingle();
+              
+              const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
+
+              // Re-fetch players to get updated list
+              const { data: freshPlayers } = await supabase
+                .from('players')
+                .select('*')
+                .eq('game_id', game.id);
+
+              // Count remaining eligible dealers
+              const eligibleDealers = (freshPlayers || []).filter((p: any) =>
+                !p.sitting_out &&
+                p.id !== dealerPlayer.id &&
+                (allowBotDealers || !p.is_bot)
+              );
+
+              if (eligibleDealers.length >= 1) {
+                // Rotate dealer to next eligible player
+                const sortedEligible = eligibleDealers.sort((a: any, b: any) => a.position - b.position);
+                const currentDealerIdx = sortedEligible.findIndex((p: any) => p.position > game.dealer_position);
+                const nextDealer = currentDealerIdx >= 0
+                  ? sortedEligible[currentDealerIdx]
+                  : sortedEligible[0];
+
+                const newConfigDeadline = new Date(Date.now() + 30000).toISOString();
+
+                await supabase
+                  .from('games')
+                  .update({
+                    dealer_position: nextDealer.position,
+                    config_deadline: newConfigDeadline,
+                  })
+                  .eq('id', game.id);
+
+                actionsTaken.push(`Config timeout: Rotated dealer to position ${nextDealer.position}`);
+              } else {
+                // Not enough eligible dealers - check for history
+                const totalHands = game.total_hands || 0;
+                const { count: resultsCount } = await supabase
+                  .from('game_results')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('game_id', game.id);
+                
+                const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+
+                if (!hasHistory) {
+                  // Delete empty session
+                  const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
+                  const roundIds = (roundRows ?? []).map((r: any) => r.id);
+                  if (roundIds.length > 0) {
+                    await supabase.from('player_cards').delete().in('round_id', roundIds);
+                    await supabase.from('player_actions').delete().in('round_id', roundIds);
+                  }
+                  await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
+                  await supabase.from('chat_messages').delete().eq('game_id', game.id);
+                  await supabase.from('rounds').delete().eq('game_id', game.id);
+                  await supabase.from('players').delete().eq('game_id', game.id);
+                  await supabase.from('games').delete().eq('id', game.id);
+                  
+                  actionsTaken.push('Config timeout: No eligible dealers, no history - deleted empty session');
+                } else {
+                  // Has history - end session instead of deleting
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'session_ended',
+                      pending_session_end: false,
+                      session_ended_at: nowIso,
+                      game_over_at: nowIso,
+                      config_deadline: null,
+                      config_complete: false,
+                    })
+                    .eq('id', game.id);
+
+                  actionsTaken.push('Config timeout: No eligible dealers, session ended');
+                }
+              }
+            } else {
+              // No dealer found - clean up based on history
+              const totalHands = game.total_hands || 0;
+              const { count: resultsCount } = await supabase
+                .from('game_results')
+                .select('id', { count: 'exact', head: true })
+                .eq('game_id', game.id);
+              
+              const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+
+              if (!hasHistory) {
+                // Delete empty session
+                const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
+                const roundIds = (roundRows ?? []).map((r: any) => r.id);
+                if (roundIds.length > 0) {
+                  await supabase.from('player_cards').delete().in('round_id', roundIds);
+                  await supabase.from('player_actions').delete().in('round_id', roundIds);
+                }
+                await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
+                await supabase.from('chat_messages').delete().eq('game_id', game.id);
+                await supabase.from('rounds').delete().eq('game_id', game.id);
+                await supabase.from('players').delete().eq('game_id', game.id);
+                await supabase.from('games').delete().eq('id', game.id);
+                
+                actionsTaken.push('Config timeout: No dealer found, no history - deleted empty session');
+              } else {
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'session_ended',
+                    pending_session_end: false,
+                    session_ended_at: nowIso,
+                    game_over_at: nowIso,
+                    config_deadline: null,
+                    config_complete: false,
+                  })
+                  .eq('id', game.id);
+
+                actionsTaken.push('Config timeout: No dealer found, session ended');
+              }
+            }
+            
+            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+            continue;
+          }
+        }
+
         // ============= BOT-ONLY GAME CHECK =============
         if (game.status === 'in_progress' || game.status === 'betting' || game.status === 'ante_decision') {
           const { data: allPlayers } = await supabase
