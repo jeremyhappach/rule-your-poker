@@ -1842,10 +1842,12 @@ export function useHorsesMobileController({
       // Prefer DB dice ONLY once they diverge from the pre-roll snapshot.
       // During a re-roll, DB often keeps the previous roll's values for a moment; showing them causes
       // the exact "old dice land then snap" issue.
+      // IMPORTANT: preRollSig guard ONLY applies while isRolling. Once animation ends, accept DB dice
+      // unconditionally to avoid getting stuck on masked (value=0) dice.
       const shouldUseDb =
         Array.isArray(dbDice) &&
         dbDice.length > 0 &&
-        (!observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig);
+        (!observerDisplayState.isRolling || !observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig);
 
       const dice = shouldUseDb ? ((dbDice as any) ?? observerDisplayState.dice) : observerDisplayState.dice;
 
