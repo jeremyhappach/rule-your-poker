@@ -219,6 +219,11 @@ export function useHorsesMobileController({
 
   const observerRollingTimerRef = useRef<number | null>(null);
   const lastObservedRollKeyRef = useRef<Record<string, number>>({});
+  
+  // MONOTONICITY GUARD: Track the highest rollKey we've ever seen per player.
+  // This prevents processing stale/out-of-order DB updates that arrive with older rollKeys.
+  // The key insight: rollKey is a timestamp, so it should only ever increase.
+  const maxSeenRollKeyRef = useRef<Record<string, number>>({});
 
   // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
@@ -1867,6 +1872,13 @@ export function useHorsesMobileController({
       const prevHeldCount = (observerDisplayState.dice as any[]).filter((d: any) => !!d?.isHeld).length;
       const dbHeldCount = Array.isArray(dbDice) ? (dbDice as any[]).filter((d: any) => !!d?.isHeld).length : 0;
       const dbRollKey = typeof (dbState as any)?.rollKey === "number" ? (dbState as any).rollKey : undefined;
+      const currentDisplayRollKey = observerDisplayState.rollKey ?? 0;
+      const maxSeenRollKey = maxSeenRollKeyRef.current[currentTurnPlayerId] ?? 0;
+      
+      // MONOTONICITY CHECK: Reject DB data if it has an older rollKey than what we've already processed.
+      // This is the key fix for the "held dice reverting to scatter" issue.
+      const dbRollKeyIsStale = typeof dbRollKey === "number" && dbRollKey < maxSeenRollKey;
+      
       const sameRoll =
         typeof dbRollKey === "number" && typeof observerDisplayState.rollKey === "number" && dbRollKey === observerDisplayState.rollKey;
 
@@ -1879,6 +1891,7 @@ export function useHorsesMobileController({
       const shouldUseDb =
         Array.isArray(dbDice) &&
         dbDice.length > 0 &&
+        !dbRollKeyIsStale && // NEW: Never accept DB data from an older rollKey
         !sameRollWithStaleDb &&
         (!observerDisplayState.isRolling || !observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig) &&
         (!sameRoll || dbHeldCount >= prevHeldCount);
@@ -1987,6 +2000,28 @@ export function useHorsesMobileController({
     if (typeof newRollKey !== "number") return;
 
     const prevRollKey = lastObservedRollKeyRef.current[currentTurnPlayerId];
+    const maxSeenRollKey = maxSeenRollKeyRef.current[currentTurnPlayerId] ?? 0;
+
+    // MONOTONICITY GUARD: If this rollKey is older than the max we've seen, it's stale data.
+    // This happens when out-of-order realtime updates arrive. Ignore them completely.
+    if (newRollKey < maxSeenRollKey) {
+      if (isDiceTraceRecording()) {
+        pushDiceTrace("observerRollDetect:staleRejected", {
+          playerId: currentTurnPlayerId,
+          rollKey: newRollKey,
+          extra: { maxSeenRollKey, reason: "rollKey < maxSeenRollKey" },
+        });
+      }
+      console.log(
+        `[OBSERVER_ROLL] REJECTED stale rollKey ${newRollKey} < maxSeen ${maxSeenRollKey} for ${currentTurnPlayerId}`,
+      );
+      return;
+    }
+
+    // Update max seen rollKey (only ever increases)
+    if (newRollKey > maxSeenRollKey) {
+      maxSeenRollKeyRef.current[currentTurnPlayerId] = newRollKey;
+    }
 
     // If the turn completed, ensure we stop showing rolling state, but keep dice visible.
     // IMPORTANT: Also update the rollKey ref to prevent the "new roll detected" branch from
