@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
+import { PlayingCard } from "./PlayingCard";
 import { ChipStack } from "./ChipStack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
@@ -3773,6 +3774,97 @@ export const MobileGameTable = ({
             </div>
           );
         })()}
+
+        {/* High Card Dealer Selection - Large cards displayed in center of table */}
+        {dealerSelectionCards && dealerSelectionCards.length > 0 && (
+          <div className="absolute inset-0 z-30 pointer-events-none">
+            {/* Cards for each player position arranged around the table */}
+            {dealerSelectionCards.map((selectionCard) => {
+              // Calculate position based on player position (1-7 around the table)
+              // Position layout matches the player slot positions
+              const positionStyles: Record<number, { top: string; left: string; transform: string }> = {
+                1: { top: '15%', left: '20%', transform: 'translate(-50%, -50%)' },   // Top-left
+                2: { top: '45%', left: '8%', transform: 'translate(-50%, -50%)' },    // Left
+                3: { top: '75%', left: '20%', transform: 'translate(-50%, -50%)' },   // Bottom-left
+                4: { top: '85%', left: '50%', transform: 'translate(-50%, -50%)' },   // Bottom center (home)
+                5: { top: '75%', left: '80%', transform: 'translate(-50%, -50%)' },   // Bottom-right
+                6: { top: '45%', left: '92%', transform: 'translate(-50%, -50%)' },   // Right
+                7: { top: '15%', left: '80%', transform: 'translate(-50%, -50%)' },   // Top-right
+              };
+              
+              const posStyle = positionStyles[selectionCard.position] || positionStyles[1];
+              const card = selectionCard.card as CardType;
+              
+              // Render all cards for this player position stacked (for tie-breakers)
+              const allCardsForPosition = dealerSelectionCards.filter(c => c.position === selectionCard.position);
+              const isFirstCardForPosition = allCardsForPosition[0]?.roundNumber === selectionCard.roundNumber;
+              
+              // Only render once per position (first card triggers full stack render)
+              if (!isFirstCardForPosition) return null;
+              
+              return (
+                <div 
+                  key={`dealer-selection-${selectionCard.position}`}
+                  className="absolute flex flex-col items-center gap-1"
+                  style={{
+                    top: posStyle.top,
+                    left: posStyle.left,
+                    transform: posStyle.transform,
+                  }}
+                >
+                  {/* Stack all cards for this position (tie-breaker rounds) */}
+                  <div className="flex gap-1">
+                    {allCardsForPosition.map((cardData, idx) => (
+                      <div 
+                        key={`card-${cardData.roundNumber}-${idx}`}
+                        className="transition-all duration-500"
+                        style={{
+                          opacity: cardData.isRevealed ? 1 : 0.9,
+                          transform: cardData.isRevealed 
+                            ? (cardData.isWinner ? 'scale(1.1) translateY(-4px)' : (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)'))
+                            : 'scale(1)',
+                        }}
+                      >
+                        <PlayingCard
+                          card={cardData.card as CardType}
+                          isHidden={!cardData.isRevealed}
+                          size="xl"
+                          isHighlighted={cardData.isWinner}
+                          isDimmed={cardData.isDimmed && cardData.isRevealed}
+                          className={cn(
+                            "shadow-2xl transition-all duration-500",
+                            cardData.isWinner && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-black/50",
+                            cardData.isDimmed && cardData.isRevealed && "opacity-50"
+                          )}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Player name below their cards */}
+                  {(() => {
+                    const player = players.find(p => p.position === selectionCard.position);
+                    if (!player) return null;
+                    const playerName = player.is_bot 
+                      ? getBotAlias(players, player.user_id) 
+                      : (player.profiles?.username || `P${player.position}`);
+                    return (
+                      <div className={cn(
+                        "px-2 py-0.5 rounded text-xs font-bold mt-1 transition-all duration-300",
+                        allCardsForPosition.some(c => c.isWinner && c.isRevealed)
+                          ? "bg-yellow-500 text-black"
+                          : allCardsForPosition.some(c => c.isDimmed && c.isRevealed)
+                            ? "bg-black/60 text-white/60"
+                            : "bg-black/80 text-white"
+                      )}>
+                        {playerName}
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
         {isDiceGame && horsesController.enabled && (() => {

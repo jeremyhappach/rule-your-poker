@@ -5382,6 +5382,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   players={players}
                   onComplete={selectDealer}
                   isHost={isCreator}
+                  allowBotDealers={allowBotDealers}
                   onCardsUpdate={setDealerSelectionCards}
                   onAnnouncementUpdate={(msg, complete) => {
                     setDealerSelectionAnnouncement(msg);
