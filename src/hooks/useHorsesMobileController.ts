@@ -1935,6 +1935,7 @@ export function useHorsesMobileController({
       : undefined;
     
     return {
+      playerId: currentTurnPlayerId,
       dice: state.dice,
       rollsRemaining: state.rollsRemaining,
       isRolling: false, // Not animating

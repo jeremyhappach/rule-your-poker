@@ -3928,9 +3928,11 @@ export const MobileGameTable = ({
             return cacheFeltNode(node);
           }
           
-          // If observing someone else who hasn't rolled yet, keep a stable placeholder.
+          // If observing someone else who hasn't rolled yet (AND no rollKey has started), keep a stable placeholder.
+          // Once rollKey exists, we must render DiceTableLayout even if values are still 0,
+          // otherwise roll 1 can miss the fly-in and the dice will "just appear" when values land.
           // We also reuse a short-lived cached node to prevent flicker during turn/player transitions.
-          if (!horsesController.isMyTurn && !hasRolled && !showResult) {
+          if (!horsesController.isMyTurn && !hasRolled && !showResult && !((horsesController.feltDice as any)?.rollKey)) {
             console.log(`${logPrefix} STICKY: observer, hasRolled=${hasRolled}, showResult=${showResult}`);
 
             const cachedNode = getCachedFeltNode();
