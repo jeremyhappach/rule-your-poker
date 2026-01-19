@@ -396,13 +396,17 @@ export function DiceTableLayout({
 
     // Trigger fly-in animation once per rollKey.
     // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
-    // so we use (rollKey + flyInRunId) to guarantee exactly-one run.
-    // IMPORTANT: only start fly-in while the parent says we're in a rolling window.
-    // This prevents completion updates (all dice held, isRolling=false) from consuming rollKey
-    // and keeps Roll 3 animations intact.
+    // so we use rollKey as the stable "new roll" signal.
+    //
+    // IMPORTANT:
+    // - The active player's window should only fly-in during the rolling window (isRolling=true).
+    // - Observers should still get the fly-in (but NEVER the rumble), so we allow fly-in when isObserver=true.
+    // - Do NOT "consume" rollKey when fly-in didn't start; rollKey can arrive before isRolling flips true.
+    const flyInWindowActive = !!isRolling || !!isObserver;
+
     const shouldStartFlyIn =
       !!animationOrigin &&
-      !!isRolling &&
+      flyInWindowActive &&
       unheldIndices.length > 0 &&
       lastFlyInRollKeyRef.current !== rollKey;
 
@@ -420,9 +424,6 @@ export function DiceTableLayout({
       // NOTE: Do NOT set showUnheldDice(true) here synchronously - React batches it and
       // the false state is never committed. The animation overlay renders the flying dice,
       // and handleAnimationComplete will restore showUnheldDice=true when done.
-    } else if (lastFlyInRollKeyRef.current !== rollKey) {
-      // Update ref even if we didn't animate, to prevent stale key comparisons
-      lastFlyInRollKeyRef.current = rollKey;
     }
 
     return () => {
@@ -446,6 +447,7 @@ export function DiceTableLayout({
     isAnimatingFlyIn,
     isTablet,
     isRolling,
+    isObserver,
   ]);
 
   // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly
