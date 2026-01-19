@@ -134,30 +134,25 @@ const Auth = () => {
     setForgotPasswordLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('reset-password', {
-        body: { email: forgotPasswordEmail.trim().toLowerCase() }
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        forgotPasswordEmail.trim().toLowerCase(),
+        {
+          redirectTo: `${window.location.origin}/auth?reset=true`,
+        }
+      );
 
       if (error) throw error;
 
-      if (data?.error) {
-        toast({
-          title: "Error",
-          description: data.error,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Check Your Email",
-          description: "If this email is registered, you'll receive a new password shortly.",
-        });
-        setShowForgotPassword(false);
-        setForgotPasswordEmail("");
-      }
+      toast({
+        title: "Check Your Email",
+        description: "If this email is registered, you'll receive a password reset link.",
+      });
+      setShowForgotPassword(false);
+      setForgotPasswordEmail("");
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to reset password. Please try again.",
+        description: error.message || "Failed to send reset email. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -336,7 +331,7 @@ const Auth = () => {
               Reset Password
             </DialogTitle>
             <DialogDescription className="text-amber-200/60">
-              Enter your email address and we'll send you a new password.
+              Enter your email address and we'll send you a reset link.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleForgotPassword} className="space-y-4">
@@ -366,7 +361,7 @@ const Auth = () => {
                 className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold" 
                 disabled={forgotPasswordLoading}
               >
-                {forgotPasswordLoading ? "Sending..." : "Send New Password"}
+                {forgotPasswordLoading ? "Sending..." : "Send Reset Link"}
               </Button>
             </div>
           </form>
