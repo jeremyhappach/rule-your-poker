@@ -405,17 +405,16 @@ export function DiceTableLayout({
     //
     // IMPORTANT:
     // - The active player's window should only fly-in during the rolling window (isRolling=true).
-    // Trigger fly-in animation once per rollKey.
-    // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
-    // so we use rollKey as the stable "new roll" signal.
-    //
-    // IMPORTANT:
-    // - The active player's window should only fly-in during the rolling window (isRolling=true).
-    // - Observers should still get the fly-in (but NEVER the rumble), so we allow fly-in when isObserver=true.
+    // - Observers MUST also wait for isRolling=true before starting fly-in. The old logic
+    //   allowed fly-in when isObserver=true regardless of isRolling, which caused stale dice
+    //   to land because rollKey arrives before observerDisplayState.isRolling is set.
     // - Do NOT "consume" rollKey when fly-in didn't start; rollKey can arrive before isRolling flips true.
     // - CRITICAL: Do NOT block fly-in just because all dice are now held.
     //   The final roll auto-marks dice held (game logic) *before* the animation should run.
-    const flyInWindowActive = !!isRolling || !!isObserver;
+    //
+    // FIX: For observers, we now REQUIRE isRolling=true, not just isObserver=true.
+    // The isObserver flag is still used to skip rumble effects, but it no longer gates fly-in.
+    const flyInWindowActive = !!isRolling;
 
     const shouldStartFlyIn =
       !!animationOrigin &&
