@@ -111,6 +111,7 @@ interface GameData {
   rabbit_hunt?: boolean;
   reveal_at_showdown?: boolean;
   is_first_hand?: boolean;
+  config_complete?: boolean;
   rounds?: Round[];
 }
 
