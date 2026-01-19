@@ -303,8 +303,12 @@ export function DiceTableLayout({
     })) as any;
     stableScatterRollKeyRef.current = undefined;
     stableScatterByDieRef.current = new Map();
-    prevRollKeyRef.current = undefined;
-    lastFlyInRollKeyRef.current = undefined;
+
+    // Seed roll-key refs to the CURRENT rollKey so we don't accidentally replay a fly-in
+    // for an already-completed roll when cacheKey changes (e.g., post-turn hold UI).
+    // The next real roll will change rollKey and trigger normally.
+    prevRollKeyRef.current = rollKey;
+    lastFlyInRollKeyRef.current = rollKey;
 
     // Reset transient animation/stabilization state
     setIsAnimatingFlyIn(false);
@@ -400,12 +404,17 @@ export function DiceTableLayout({
     //
     // IMPORTANT:
     // - The active player's window should only fly-in during the rolling window (isRolling=true).
+    // Trigger fly-in animation once per rollKey.
+    // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
+    // so we use rollKey as the stable "new roll" signal.
+    //
+    // IMPORTANT:
+    // - The active player's window should only fly-in during the rolling window (isRolling=true).
     // - Observers should still get the fly-in (but NEVER the rumble), so we allow fly-in when isObserver=true.
     // - Do NOT "consume" rollKey when fly-in didn't start; rollKey can arrive before isRolling flips true.
-    // - CRITICAL: Only allow fly-in if ALL dice are NOT held yet. Once all dice become held,
-    //   the turn is complete and we should NOT refire the animation even if isObserver causes a re-render.
-    const allDiceHeld = dice.length > 0 && dice.every((d) => d.isHeld);
-    const flyInWindowActive = (!!isRolling || !!isObserver) && !allDiceHeld;
+    // - CRITICAL: Do NOT block fly-in just because all dice are now held.
+    //   The final roll auto-marks dice held (game logic) *before* the animation should run.
+    const flyInWindowActive = !!isRolling || !!isObserver;
 
     const shouldStartFlyIn =
       !!animationOrigin &&
