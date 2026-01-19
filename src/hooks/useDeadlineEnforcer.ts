@@ -12,8 +12,16 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   useEffect(() => {
     if (!gameId) return;
     
-    // Only enforce for active game states
-    const activeStatuses = ['waiting_for_players', 'configuring', 'ante_up', 'in_progress'];
+    // Only enforce for active game states - must include ALL states with deadlines
+    const activeStatuses = [
+      'waiting_for_players', 
+      'dealer_selection',  // Has config_deadline
+      'game_selection',    // Has config_deadline  
+      'configuring',       // Has config_deadline
+      'ante_decision',     // Has ante_decision_deadline
+      'betting',           // Has decision_deadline
+      'in_progress',       // Has decision_deadline
+    ];
     if (!gameStatus || !activeStatuses.includes(gameStatus)) {
       return;
     }
