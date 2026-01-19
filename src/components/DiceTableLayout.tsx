@@ -265,6 +265,10 @@ export function DiceTableLayout({
   // (origin position, observer rolling window), we can still start for the current rollKey.
   const lastFlyInRollKeyRef = useRef<string | number | undefined>(undefined);
 
+  // When we detect a new rollKey, we mark it "pending" until we successfully start the fly-in.
+  // This allows late-arriving prerequisites (especially animationOrigin) without missing roll 1.
+  const pendingFlyInRollKeyRef = useRef<string | number | undefined>(undefined);
+
   // Cache the dice indices that were unheld at the START of this rollKey.
   const unheldIndicesAtRollStartRef = useRef<number[]>([]);
 
@@ -338,6 +342,7 @@ export function DiceTableLayout({
     // IMPORTANT: Do NOT seed lastFlyInRollKeyRef here; that would suppress the first real fly-in of the new owner.
     prevRollKeyRef.current = rollKey;
     lastFlyInRollKeyRef.current = undefined;
+    pendingFlyInRollKeyRef.current = undefined;
     unheldIndicesAtRollStartRef.current = [];
 
     // Reset transient animation/stabilization state
@@ -383,6 +388,7 @@ export function DiceTableLayout({
     // On a new rollKey, capture the "roll start" layout facts once.
     if (isNewRollKey) {
       prevRollKeyRef.current = rollKey;
+      pendingFlyInRollKeyRef.current = rollKey;
 
       // Reset completion transition when a new roll starts
       setIsInCompletionTransition(false);
@@ -451,16 +457,15 @@ export function DiceTableLayout({
     }
 
     // FLY-IN TRIGGER LOGIC:
-    // - Active player: require `isRolling` to sync with rumble animation
-    // - Observer: trigger on NEW rollKey only (don't require rolling window - it's too easy to miss)
-    //   The `lastFlyInRollKeyRef` guard ensures we only fire once per rollKey.
-    const isNewRollKeyForFlyIn = isNewRollKey && lastFlyInRollKeyRef.current !== rollKey;
-    
+    // - We mark a rollKey as "pending" when we detect it changed.
+    // - We start the fly-in once prerequisites exist.
+    // - This prevents the classic race where rollKey arrives before animationOrigin is measurable.
     const shouldStartFlyIn =
       !!animationOrigin &&
       unheldIndices.length > 0 &&
-      isNewRollKeyForFlyIn &&
-      // Active players need isRolling, observers just need the new rollKey
+      pendingFlyInRollKeyRef.current === rollKey &&
+      lastFlyInRollKeyRef.current !== rollKey &&
+      // Active players need isRolling, observers do not.
       (isObserver || !!isRolling);
 
     // TRACE: Fly-in decision point
@@ -473,7 +478,7 @@ export function DiceTableLayout({
         showUnheldDice,
         lastFlyInRollKey: lastFlyInRollKeyRef.current,
         extra: {
-          isNewRollKeyForFlyIn,
+          pendingFlyInRollKey: pendingFlyInRollKeyRef.current,
           shouldStartFlyIn,
           unheldCount: unheldIndices.length,
           hasAnimationOrigin: !!animationOrigin,
@@ -485,6 +490,7 @@ export function DiceTableLayout({
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
+      pendingFlyInRollKeyRef.current = undefined;
 
       // Hide previously-rendered unheld dice while the fly-in animation runs.
       // They will be shown again when handleAnimationComplete fires.
