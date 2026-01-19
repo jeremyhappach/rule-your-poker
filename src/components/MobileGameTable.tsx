@@ -613,6 +613,11 @@ export const MobileGameTable = ({
         newPotProp: pot
       });
       displayedPotMemoryByGameId.delete(potMemoryKey);
+      
+      // CRITICAL FIX: Clear cached winning result to prevent "Beat" badge persistence on rollovers
+      // This ensures the SCC/Horses "Beat" badge doesn't show stale results from the prior round
+      cachedWinningResultRef.current = null;
+      
       prevHandContextRef.current = handContextId;
     }
   }, [handContextId, potMemoryKey, pot]);
@@ -634,6 +639,10 @@ export const MobileGameTable = ({
       displayedPotMemoryByGameId.delete(potMemoryKey);
       // Also reset displayedPot to 0 for fresh game start
       setDisplayedPot(0);
+      
+      // CRITICAL FIX: Clear cached winning result to prevent "Beat" badge persistence
+      // This ensures the SCC/Horses "Beat" badge doesn't show stale results from prior game
+      cachedWinningResultRef.current = null;
     }
     
     prevGameStatusForMemoryRef.current = gameStatus;
