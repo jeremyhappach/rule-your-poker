@@ -1937,16 +1937,28 @@ export function useHorsesMobileController({
     const prevRollKey = lastObservedRollKeyRef.current[currentTurnPlayerId];
 
     // If the turn completed, ensure we stop showing rolling state, but keep dice visible.
+    // IMPORTANT: Also update the rollKey ref to prevent the "new roll detected" branch from
+    // firing if isComplete arrives slightly AFTER the rollKey update.
     if (state.isComplete) {
       if (observerRollingTimerRef.current) {
         window.clearTimeout(observerRollingTimerRef.current);
         observerRollingTimerRef.current = null;
       }
+      // Update rollKey BEFORE setting display state to prevent race
+      lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
+      
+      // Use the final DB dice values (not masked) since the turn is done
+      const finalDice = (state.dice as any[]) ?? [];
       setObserverDisplayState((prev) => {
         if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
-        return { ...prev, isRolling: false };
+        return { 
+          ...prev, 
+          dice: finalDice as (HorsesDieType | SCCDieType)[],
+          isRolling: false,
+          rollKey: newRollKey,
+          preRollSig: undefined, // Clear to allow DB dice through
+        };
       });
-      lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
       return;
     }
 
@@ -1969,19 +1981,20 @@ export function useHorsesMobileController({
 
         // Start protected observer display state.
         // IMPORTANT: At roll start, DB often still contains the *previous* roll values.
-        // We mask the re-rolled (unheld) dice to value=0 so observers never see old values "land".
+        // We keep held dice as-is but mark unheld dice with a special "rolling" marker.
+        // Instead of masking to value=0 (which DiceTableLayout can cache as "valid"), we
+        // preserve the old values but set isRolling=true so the fly-in animation shows them.
         const preRollDice = (state.dice as any[]) ?? [];
         const preRollSig = preRollDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
 
-        const maskedDice = preRollDice.map((d) => {
-          const isHeld = !!d?.isHeld;
-          if (isHeld) return d;
-          return { ...d, value: 0 };
-        });
+        // DON'T mask dice to value=0 - this gets cached and causes null dice to "land".
+        // Instead, keep the pre-roll values; the fly-in animation will overlay them anyway.
+        // DiceTableLayout only shows the animation overlay when isRolling=true.
+        const displayDice = preRollDice;
 
         setObserverDisplayState({
           playerId: currentTurnPlayerId,
-          dice: maskedDice as (HorsesDieType | SCCDieType)[],
+          dice: displayDice as (HorsesDieType | SCCDieType)[],
           rollsRemaining: state.rollsRemaining,
           isRolling: true,
           heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
