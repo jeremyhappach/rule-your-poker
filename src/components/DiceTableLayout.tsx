@@ -450,16 +450,18 @@ export function DiceTableLayout({
       stableScatterByDieRef.current = nextStable;
     }
 
-    // Rolling window:
-    // - Active player: use `isRolling` (rumble + fly-in)
-    // - Observer: use `observerFlyInRolling` (fly-in only; never rumble)
-    const flyInWindowActive = !isObserver ? !!isRolling : !!observerFlyInRolling;
-
+    // FLY-IN TRIGGER LOGIC:
+    // - Active player: require `isRolling` to sync with rumble animation
+    // - Observer: trigger on NEW rollKey only (don't require rolling window - it's too easy to miss)
+    //   The `lastFlyInRollKeyRef` guard ensures we only fire once per rollKey.
+    const isNewRollKeyForFlyIn = isNewRollKey && lastFlyInRollKeyRef.current !== rollKey;
+    
     const shouldStartFlyIn =
       !!animationOrigin &&
-      flyInWindowActive &&
       unheldIndices.length > 0 &&
-      lastFlyInRollKeyRef.current !== rollKey;
+      isNewRollKeyForFlyIn &&
+      // Active players need isRolling, observers just need the new rollKey
+      (isObserver || !!isRolling);
 
     // TRACE: Fly-in decision point
     if (isDiceTraceRecording()) {
@@ -471,7 +473,7 @@ export function DiceTableLayout({
         showUnheldDice,
         lastFlyInRollKey: lastFlyInRollKeyRef.current,
         extra: {
-          flyInWindowActive,
+          isNewRollKeyForFlyIn,
           shouldStartFlyIn,
           unheldCount: unheldIndices.length,
           hasAnimationOrigin: !!animationOrigin,
