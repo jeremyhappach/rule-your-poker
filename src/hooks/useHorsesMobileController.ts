@@ -2271,5 +2271,7 @@ export function useHorsesMobileController({
     handleMidnightAnimationComplete,
     // Completed turn hold state (for showing dice before transitioning to badge)
     completedTurnHold,
+    // Observer display state (for DiceTableLayout fly-in gating)
+    observerDisplayState,
   };
 }

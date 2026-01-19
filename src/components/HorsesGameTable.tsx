@@ -1728,6 +1728,7 @@ export function HorsesGameTable({
                         rollKey={(diceState as any).rollKey}
                         isQualified={(diceState as any).isQualified}
                         cacheKey={currentTurnPlayerId ?? "no-turn"}
+                        observerAcknowledgedRollKey={(diceState as any).rollKey}
                       />
                     );
                   })()}

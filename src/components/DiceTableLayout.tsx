@@ -41,6 +41,12 @@ interface DiceTableLayoutProps {
    * shows the previous player's dice values during turn transitions.
    */
   cacheKey?: string | number;
+  /**
+   * For observers only: the rollKey that has been "acknowledged" by the observer state machine.
+   * Fly-in animation will only start when rollKey === observerAcknowledgedRollKey.
+   * This prevents stale dice from animating when rollKey arrives before observer state updates.
+   */
+  observerAcknowledgedRollKey?: string | number;
 }
 
 // Staggered positions for unheld dice (as pixel offsets from center)
@@ -231,6 +237,7 @@ export function DiceTableLayout({
   rollKey,
   isQualified,
   cacheKey,
+  observerAcknowledgedRollKey,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
   const { isTablet } = useDeviceSize();
@@ -406,10 +413,14 @@ export function DiceTableLayout({
     // IMPORTANT:
     // - The active player's window should only fly-in during the rolling window (isRolling=true).
     // - Observers should still get the fly-in (but NEVER the rumble), so we allow fly-in when isObserver=true.
+    // - FIX FOR STALE DICE: For observers, we require observerAcknowledgedRollKey === rollKey.
+    //   This ensures the observer state machine has processed the new rollKey before animation starts.
+    //   Without this gate, rollKey arrives before observer display state updates, causing stale dice to animate.
     // - Do NOT "consume" rollKey when fly-in didn't start; rollKey can arrive before isRolling flips true.
     // - CRITICAL: Do NOT block fly-in just because all dice are now held.
     //   The final roll auto-marks dice held (game logic) *before* the animation should run.
-    const flyInWindowActive = !!isRolling || !!isObserver;
+    const observerRollKeyAcknowledged = !isObserver || (observerAcknowledgedRollKey === rollKey);
+    const flyInWindowActive = !!isRolling || (!!isObserver && observerRollKeyAcknowledged);
 
     const shouldStartFlyIn =
       !!animationOrigin &&
@@ -432,6 +443,8 @@ export function DiceTableLayout({
           unheldCount: unheldIndices.length,
           hasAnimationOrigin: !!animationOrigin,
           isObserver,
+          observerAcknowledgedRollKey,
+          observerRollKeyAcknowledged,
         },
       });
     }
@@ -474,6 +487,7 @@ export function DiceTableLayout({
     isTablet,
     isRolling,
     isObserver,
+    observerAcknowledgedRollKey,
   ]);
 
   // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly

@@ -4097,6 +4097,7 @@ export const MobileGameTable = ({
                   rollKey={(horsesController.feltDice as any)?.rollKey}
                   isQualified={(horsesController.feltDice as any)?.isQualified}
                   cacheKey={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
+                  observerAcknowledgedRollKey={(horsesController.observerDisplayState as any)?.rollKey}
                 />
               )}
             </div>
