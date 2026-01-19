@@ -29,6 +29,7 @@ interface HighCardDealerSelectionProps {
   players: Player[];
   onComplete: (dealerPosition: number) => void;
   isHost: boolean;
+  allowBotDealers?: boolean;
   // Callback to provide cards for rendering in the game table
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   // Callback for announcement messages
@@ -39,6 +40,7 @@ export const HighCardDealerSelection = ({
   players, 
   onComplete, 
   isHost,
+  allowBotDealers = false,
   onCardsUpdate,
   onAnnouncementUpdate
 }: HighCardDealerSelectionProps) => {
@@ -49,9 +51,9 @@ export const HighCardDealerSelection = ({
   const hasInitializedRef = useRef(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   
-  // Filter to only human players who are NOT sitting out (eligible dealers)
+  // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
-  const eligibleDealers = sortedPlayers.filter(p => !p.is_bot && !p.sitting_out);
+  const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
   
   // Timing constants (1.5s between cards as requested)
   const ANNOUNCE_DURATION = 2000; // Show "High card wins deal" for 2s
