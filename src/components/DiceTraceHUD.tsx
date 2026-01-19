@@ -103,9 +103,6 @@ export const DiceTraceHUD: React.FC<DiceTraceHUDProps> = ({ enabled = true }) =>
 
   if (!enabled) return null;
 
-  // Only show in development
-  if (import.meta.env.PROD) return null;
-
   return (
     <div
       className="fixed bottom-2 left-2 z-[9999] flex items-center gap-1 rounded bg-black/80 px-2 py-1 text-xs text-white shadow-lg"
