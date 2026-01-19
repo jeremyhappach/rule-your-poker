@@ -445,6 +445,7 @@ export function DiceTableLayout({
     sccHand,
     isAnimatingFlyIn,
     isTablet,
+    isRolling,
   ]);
 
   // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly
