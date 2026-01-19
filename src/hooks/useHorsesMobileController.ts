@@ -33,6 +33,7 @@ import {
   applyHoldDecision,
 } from "@/lib/horsesBotLogic";
 import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
+import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
 
 export interface HorsesPlayerForController {
   id: string;
@@ -746,7 +747,7 @@ export function useHorsesMobileController({
     const holdDuration = 3000; // 3 seconds to display dice before transition
     const expiresAt = Date.now() + holdDuration;
 
-    setCompletedTurnHold({
+    const holdPayload = {
       playerId: currentTurnPlayerId,
       dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
       result: currentTurnState.result,
@@ -754,13 +755,31 @@ export function useHorsesMobileController({
       heldCountBeforeComplete: (currentTurnState as any).heldCountBeforeComplete,
       rollKey: (currentTurnState as any).rollKey,
       expiresAt,
-    });
+    };
+
+    // TRACE: Setting completedTurnHold
+    if (isDiceTraceRecording()) {
+      pushDiceTrace("completedTurnHold:set", {
+        playerId: currentTurnPlayerId,
+        rollKey: holdPayload.rollKey,
+        heldCount: holdPayload.heldCountBeforeComplete,
+        extra: { holdDuration, expiresAt },
+      });
+    }
+
+    setCompletedTurnHold(holdPayload);
 
     // Clear the hold after the duration
     if (completedTurnHoldTimerRef.current) {
       window.clearTimeout(completedTurnHoldTimerRef.current);
     }
     completedTurnHoldTimerRef.current = window.setTimeout(() => {
+      // TRACE: Clearing completedTurnHold
+      if (isDiceTraceRecording()) {
+        pushDiceTrace("completedTurnHold:clear", {
+          playerId: currentTurnPlayerId,
+        });
+      }
       setCompletedTurnHold(null);
       completedTurnHoldTimerRef.current = null;
     }, holdDuration);
@@ -1857,6 +1876,21 @@ export function useHorsesMobileController({
 
       const dice = shouldUseDb ? ((dbDice as any) ?? observerDisplayState.dice) : observerDisplayState.dice;
 
+      // TRACE: Observer dice decision
+      if (isDiceTraceRecording()) {
+        pushDiceTrace("rawFeltDice:observer", {
+          playerId: currentTurnPlayerId,
+          rollKey: observerDisplayState.rollKey,
+          isRolling: observerDisplayState.isRolling,
+          preRollSig: observerDisplayState.preRollSig,
+          dbSig: dbSig ?? undefined,
+          heldCount: prevHeldCount,
+          dbHeldCount,
+          shouldUseDb,
+          extra: { sameRoll, dbRollKey },
+        });
+      }
+
       console.log(
         `${logPrefix} OBSERVER DISPLAY returning observerDisplayState: dice=${JSON.stringify((dice as any[]).map((d: any) => d.value))}, isRolling=${observerDisplayState.isRolling}, rollKey=${observerDisplayState.rollKey}`,
       );
@@ -1956,6 +1990,16 @@ export function useHorsesMobileController({
       // Update rollKey BEFORE setting display state to prevent race
       lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
       
+      // TRACE: Observer turn complete
+      if (isDiceTraceRecording()) {
+        pushDiceTrace("observerRollDetect:complete", {
+          playerId: currentTurnPlayerId,
+          rollKey: newRollKey,
+          isComplete: true,
+          isRolling: false,
+        });
+      }
+      
       // Use the final DB dice values (not masked) since the turn is done
       const finalDice = (state.dice as any[]) ?? [];
       setObserverDisplayState((prev) => {
@@ -1978,6 +2022,17 @@ export function useHorsesMobileController({
       // Don't animate on the first observation (no baseline)
       if (prevRollKey !== undefined) {
         const durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+
+        // TRACE: Observer new roll detected
+        if (isDiceTraceRecording()) {
+          pushDiceTrace("observerRollDetect:newRoll", {
+            playerId: currentTurnPlayerId,
+            rollKey: newRollKey,
+            rollsRemaining: state.rollsRemaining,
+            isRolling: true,
+            extra: { prevRollKey, durationMs },
+          });
+        }
 
         console.log(
           `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} (duration=${durationMs}ms)`,
