@@ -2048,11 +2048,13 @@ export function useHorsesMobileController({
       const finalDice = (state.dice as any[]) ?? [];
       setObserverDisplayState((prev) => {
         if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
-        return { 
-          ...prev, 
+        return {
+          ...prev,
           dice: finalDice as (HorsesDieType | SCCDieType)[],
           isRolling: false,
-          rollKey: newRollKey,
+          // IMPORTANT: do NOT update rollKey on completion.
+          // The completion rollKey bump is a server-side bookkeeping change and will cause DiceTableLayout
+          // to re-trigger fly-in if we pass it through (especially if the component remounts during the hold window).
           preRollSig: undefined, // Clear to allow DB dice through
         };
       });
@@ -2095,7 +2097,8 @@ export function useHorsesMobileController({
           isRolling: false,
           heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
           heldCountBeforeComplete: derivedHeldCount,
-          rollKey: newRollKey,
+          // IMPORTANT: keep the previous rollKey so DiceTableLayout doesn't treat completion as a new roll.
+          rollKey: typeof prevRollKey === "number" ? prevRollKey : newRollKey,
           preRollSig: undefined, // Clear to allow DB through
         });
         return;
