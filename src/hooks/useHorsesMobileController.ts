@@ -230,6 +230,7 @@ export function useHorsesMobileController({
     dice: (HorsesDieType | SCCDieType)[];
     result: HorsesHandResult | SCCHandResult;
     heldMaskBeforeComplete?: boolean[];
+    heldCountBeforeComplete?: number;
     rollKey?: number;
     expiresAt: number;
   } | null>(null);
@@ -750,7 +751,8 @@ export function useHorsesMobileController({
       dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
       result: currentTurnState.result,
       heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
-      rollKey: currentTurnState.rollKey,
+      heldCountBeforeComplete: (currentTurnState as any).heldCountBeforeComplete,
+      rollKey: (currentTurnState as any).rollKey,
       expiresAt,
     });
 
@@ -1839,15 +1841,19 @@ export function useHorsesMobileController({
         ? dbDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|")
         : null;
 
-      // Prefer DB dice ONLY once they diverge from the pre-roll snapshot.
-      // During a re-roll, DB often keeps the previous roll's values for a moment; showing them causes
-      // the exact "old dice land then snap" issue.
-      // IMPORTANT: preRollSig guard ONLY applies while isRolling. Once animation ends, accept DB dice
-      // unconditionally to avoid getting stuck on masked (value=0) dice.
+      const prevHeldCount = (observerDisplayState.dice as any[]).filter((d: any) => !!d?.isHeld).length;
+      const dbHeldCount = Array.isArray(dbDice) ? (dbDice as any[]).filter((d: any) => !!d?.isHeld).length : 0;
+      const dbRollKey = typeof (dbState as any)?.rollKey === "number" ? (dbState as any).rollKey : undefined;
+      const sameRoll =
+        typeof dbRollKey === "number" && typeof observerDisplayState.rollKey === "number" && dbRollKey === observerDisplayState.rollKey;
+
+      // Prefer DB dice ONLY once they diverge from the pre-roll snapshot, and never let DB regress held state.
+      // The regression is what creates the held↔scatter jump when out-of-order realtime snapshots arrive.
       const shouldUseDb =
         Array.isArray(dbDice) &&
         dbDice.length > 0 &&
-        (!observerDisplayState.isRolling || !observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig);
+        (!observerDisplayState.isRolling || !observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig) &&
+        (!sameRoll || dbHeldCount >= prevHeldCount);
 
       const dice = shouldUseDb ? ((dbDice as any) ?? observerDisplayState.dice) : observerDisplayState.dice;
 
@@ -1914,7 +1920,10 @@ export function useHorsesMobileController({
 
   useEffect(() => {
     if (rawFeltDice) {
-      lastFeltDiceRef.current = { playerId: currentTurnPlayerId ?? null, value: rawFeltDice };
+      lastFeltDiceRef.current = {
+        playerId: (rawFeltDice as any)?.playerId ?? currentTurnPlayerId ?? null,
+        value: rawFeltDice,
+      };
       lastFeltDiceAtRef.current = Date.now();
     }
   }, [rawFeltDice, currentTurnPlayerId]);
