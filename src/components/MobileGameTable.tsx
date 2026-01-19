@@ -298,6 +298,9 @@ interface MobileGameTableProps {
   reAnteMessage?: string | null;
   // Auto-fold callback for when player disables auto_fold
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
+  // High card dealer selection props
+  dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
+  dealerSelectionAnnouncement?: string | null;
 }
 export const MobileGameTable = ({
   gameId,
@@ -412,6 +415,8 @@ export const MobileGameTable = ({
   dealerSetupMessage,
   reAnteMessage,
   onAutoFoldChange,
+  dealerSelectionCards = [],
+  dealerSelectionAnnouncement,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -4866,6 +4871,18 @@ export const MobileGameTable = ({
               <p className="text-slate-900 font-bold text-sm text-center truncate animate-pulse">
                 {dealerSetupMessage}
               </p>
+            </div>
+          ) : dealerSelectionAnnouncement ? (
+            /* High card dealer selection announcement */
+            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-amber-900 flex items-center justify-center border-2 border-amber-700 shadow-lg">
+                  <span className="text-poker-gold font-black text-sm">D</span>
+                </div>
+                <p className="text-slate-900 font-bold text-sm text-center">
+                  {dealerSelectionAnnouncement}
+                </p>
+              </div>
             </div>
           ) : null}
         </div>

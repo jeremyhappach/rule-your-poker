@@ -17,7 +17,7 @@ import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 
 
 
-import { DealerSelection } from "@/components/DealerSelection";
+import { HighCardDealerSelection, DealerSelectionCard } from "@/components/HighCardDealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
@@ -214,6 +214,11 @@ const Game = () => {
   // Track session-specific configs per game type (for remembering settings when switching back)
   type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
   const [sessionGameConfigs, setSessionGameConfigs] = useState<SessionGameConfigs>({});
+  
+  // High card dealer selection state
+  const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
+  const [dealerSelectionAnnouncement, setDealerSelectionAnnouncement] = useState<string | null>(null);
+  const [dealerSelectionComplete, setDealerSelectionComplete] = useState(false);
 
   // Capture the *last confirmed* config so Dealer Setup can offer "Run Back" even after we reset
   // the game back to game_selection (where config_complete becomes false).
@@ -5345,6 +5350,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
                     isWaitingPhase={true}
+                    dealerSelectionCards={dealerSelectionCards}
+                    dealerSelectionAnnouncement={dealerSelectionAnnouncement}
                   />
                 ) : (
                   <GameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
@@ -5370,11 +5377,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     handContextId={null}
                   />
                 )}
-                {/* DealerSelection overlay */}
-                <DealerSelection 
+                {/* High Card Dealer Selection */}
+                <HighCardDealerSelection 
                   players={players}
                   onComplete={selectDealer}
                   isHost={isCreator}
+                  onCardsUpdate={setDealerSelectionCards}
+                  onAnnouncementUpdate={(msg, complete) => {
+                    setDealerSelectionAnnouncement(msg);
+                    setDealerSelectionComplete(complete);
+                  }}
                 />
               </>
             )}
