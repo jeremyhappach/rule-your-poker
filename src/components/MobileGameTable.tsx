@@ -3775,94 +3775,124 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* High Card Dealer Selection - Large cards displayed in center of table */}
+        {/* High Card Dealer Selection - Large cards displayed on felt for OTHER players only */}
+        {/* Current player's card is rendered in their bottom card box, not here */}
         {dealerSelectionCards && dealerSelectionCards.length > 0 && (
           <div className="absolute inset-0 z-30 pointer-events-none">
-            {/* Cards for each player position arranged around the table */}
-            {dealerSelectionCards.map((selectionCard) => {
-              // Calculate position based on player position (1-7 around the table)
-              // Position layout matches the player slot positions
-              const positionStyles: Record<number, { top: string; left: string; transform: string }> = {
-                1: { top: '15%', left: '20%', transform: 'translate(-50%, -50%)' },   // Top-left
-                2: { top: '45%', left: '8%', transform: 'translate(-50%, -50%)' },    // Left
-                3: { top: '75%', left: '20%', transform: 'translate(-50%, -50%)' },   // Bottom-left
-                4: { top: '85%', left: '50%', transform: 'translate(-50%, -50%)' },   // Bottom center (home)
-                5: { top: '75%', left: '80%', transform: 'translate(-50%, -50%)' },   // Bottom-right
-                6: { top: '45%', left: '92%', transform: 'translate(-50%, -50%)' },   // Right
-                7: { top: '15%', left: '80%', transform: 'translate(-50%, -50%)' },   // Top-right
+            {/* Cards for each player position arranged around the table (relative to current player) */}
+            {(() => {
+              // Get unique positions from dealer selection cards
+              const uniquePositions = [...new Set(dealerSelectionCards.map(c => c.position))];
+              
+              // Slot position mapping for relative positioning (matches animation components)
+              const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
+                const slots: Record<number, { top: number; left: number }> = {
+                  0: { top: 85, left: 10 },   // Bottom-left
+                  1: { top: 50, left: 5 },    // Middle-left
+                  2: { top: 12, left: 15 },   // Top-left
+                  3: { top: 12, left: 85 },   // Top-right
+                  4: { top: 50, left: 95 },   // Middle-right
+                  5: { top: 85, left: 90 },   // Bottom-right
+                };
+                return slots[slotIndex] || { top: 50, left: 50 };
               };
               
-              const posStyle = positionStyles[selectionCard.position] || positionStyles[1];
-              const card = selectionCard.card as CardType;
+              // Absolute position mapping for observers (no currentPlayer)
+              const getAbsolutePositionPercent = (position: number): { top: number; left: number } => {
+                const positions: Record<number, { top: number; left: number }> = {
+                  1: { top: 12, left: 15 },   // Top-left
+                  2: { top: 50, left: 5 },    // Left
+                  3: { top: 85, left: 10 },   // Bottom-left
+                  4: { top: 85, left: 50 },   // Bottom-center
+                  5: { top: 85, left: 90 },   // Bottom-right
+                  6: { top: 50, left: 95 },   // Right
+                  7: { top: 12, left: 85 },   // Top-right
+                };
+                return positions[position] || { top: 50, left: 50 };
+              };
               
-              // Render all cards for this player position stacked (for tie-breakers)
-              const allCardsForPosition = dealerSelectionCards.filter(c => c.position === selectionCard.position);
-              const isFirstCardForPosition = allCardsForPosition[0]?.roundNumber === selectionCard.roundNumber;
-              
-              // Only render once per position (first card triggers full stack render)
-              if (!isFirstCardForPosition) return null;
-              
-              return (
-                <div 
-                  key={`dealer-selection-${selectionCard.position}`}
-                  className="absolute flex flex-col items-center gap-1"
-                  style={{
-                    top: posStyle.top,
-                    left: posStyle.left,
-                    transform: posStyle.transform,
-                  }}
-                >
-                  {/* Stack all cards for this position (tie-breaker rounds) */}
-                  <div className="flex gap-1">
-                    {allCardsForPosition.map((cardData, idx) => (
-                      <div 
-                        key={`card-${cardData.roundNumber}-${idx}`}
-                        className="transition-all duration-500"
-                        style={{
-                          opacity: cardData.isRevealed ? 1 : 0.9,
-                          transform: cardData.isRevealed 
-                            ? (cardData.isWinner ? 'scale(1.1) translateY(-4px)' : (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)'))
-                            : 'scale(1)',
-                        }}
-                      >
-                        <PlayingCard
-                          card={cardData.card as CardType}
-                          isHidden={!cardData.isRevealed}
-                          size="xl"
-                          isHighlighted={cardData.isWinner}
-                          isDimmed={cardData.isDimmed && cardData.isRevealed}
-                          className={cn(
-                            "shadow-2xl transition-all duration-500",
-                            cardData.isWinner && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-black/50",
-                            cardData.isDimmed && cardData.isRevealed && "opacity-50"
-                          )}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {/* Player name below their cards */}
-                  {(() => {
-                    const player = players.find(p => p.position === selectionCard.position);
-                    if (!player) return null;
-                    const playerName = player.is_bot 
+              return uniquePositions.map((position) => {
+                // Skip current player - their card renders in the bottom card box
+                if (currentPlayer && currentPlayer.position === position) {
+                  return null;
+                }
+                
+                // Get all cards for this position (including tie-breakers)
+                const allCardsForPosition = dealerSelectionCards.filter(c => c.position === position);
+                if (allCardsForPosition.length === 0) return null;
+                
+                // Calculate position - use relative slots for seated players, absolute for observers
+                let posPercent: { top: number; left: number };
+                if (currentPlayer) {
+                  // Seated player mode: use clockwise distance
+                  const distance = getClockwiseDistance(position);
+                  const slotIndex = distance - 1; // slot 0 = 1 seat away, etc.
+                  posPercent = getSlotPercent(slotIndex);
+                } else {
+                  // Observer mode: use absolute positions
+                  posPercent = getAbsolutePositionPercent(position);
+                }
+                
+                const player = players.find(p => p.position === position);
+                const playerName = player 
+                  ? (player.is_bot 
                       ? getBotAlias(players, player.user_id) 
-                      : (player.profiles?.username || `P${player.position}`);
-                    return (
-                      <div className={cn(
-                        "px-2 py-0.5 rounded text-xs font-bold mt-1 transition-all duration-300",
-                        allCardsForPosition.some(c => c.isWinner && c.isRevealed)
-                          ? "bg-yellow-500 text-black"
-                          : allCardsForPosition.some(c => c.isDimmed && c.isRevealed)
-                            ? "bg-black/60 text-white/60"
-                            : "bg-black/80 text-white"
-                      )}>
-                        {playerName}
-                      </div>
-                    );
-                  })()}
-                </div>
-              );
-            })}
+                      : (player.profiles?.username || `P${position}`))
+                  : `P${position}`;
+                
+                return (
+                  <div 
+                    key={`dealer-selection-${position}`}
+                    className="absolute flex flex-col items-center gap-1"
+                    style={{
+                      top: `${posPercent.top}%`,
+                      left: `${posPercent.left}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  >
+                    {/* Stack all cards for this position (tie-breaker rounds) */}
+                    <div className="flex gap-1">
+                      {allCardsForPosition.map((cardData, idx) => (
+                        <div 
+                          key={`card-${cardData.roundNumber}-${idx}`}
+                          className="transition-all duration-500"
+                          style={{
+                            opacity: cardData.isRevealed ? 1 : 0.9,
+                            transform: cardData.isRevealed 
+                              ? (cardData.isWinner ? 'scale(1.1) translateY(-4px)' : (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)'))
+                              : 'scale(1)',
+                          }}
+                        >
+                          <PlayingCard
+                            card={cardData.card as CardType}
+                            isHidden={!cardData.isRevealed}
+                            size="xl"
+                            isHighlighted={cardData.isWinner}
+                            isDimmed={cardData.isDimmed && cardData.isRevealed}
+                            className={cn(
+                              "shadow-2xl transition-all duration-500",
+                              cardData.isWinner && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-black/50",
+                              cardData.isDimmed && cardData.isRevealed && "opacity-50"
+                            )}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {/* Player name below their cards */}
+                    <div className={cn(
+                      "px-2 py-0.5 rounded text-xs font-bold mt-1 transition-all duration-300",
+                      allCardsForPosition.some(c => c.isWinner && c.isRevealed)
+                        ? "bg-yellow-500 text-black"
+                        : allCardsForPosition.some(c => c.isDimmed && c.isRevealed)
+                          ? "bg-black/60 text-white/60"
+                          : "bg-black/80 text-white"
+                    )}>
+                      {playerName}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
 
@@ -5087,11 +5117,50 @@ export const MobileGameTable = ({
                         ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]") // Taller for tablet R2
                         : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]")); // Taller for tablet R3
 
+              // Check if current player has dealer selection cards
+              const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
+                ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
+                : [];
+              const showDealerSelectionCards = currentPlayerDealerCards.length > 0;
+
               return (
                 <div className={cn(
                   "flex flex-col items-center",
                   gameType !== "holm-game" ? "gap-0" : "gap-0",
                 )}>
+                  {/* Dealer Selection Cards for current player */}
+                  {showDealerSelectionCards ? (
+                    <div className="flex flex-col items-center gap-2 py-4">
+                      <div className="flex gap-2">
+                        {currentPlayerDealerCards.map((cardData, idx) => (
+                          <div 
+                            key={`dealer-card-${cardData.roundNumber}-${idx}`}
+                            className="transition-all duration-500"
+                            style={{
+                              opacity: cardData.isRevealed ? 1 : 0.9,
+                              transform: cardData.isRevealed 
+                                ? (cardData.isWinner ? 'scale(1.15) translateY(-4px)' : (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)'))
+                                : 'scale(1)',
+                            }}
+                          >
+                            <PlayingCard
+                              card={cardData.card as CardType}
+                              isHidden={!cardData.isRevealed}
+                              size="xl"
+                              isHighlighted={cardData.isWinner}
+                              isDimmed={cardData.isDimmed && cardData.isRevealed}
+                              className={cn(
+                                "shadow-2xl transition-all duration-500",
+                                cardData.isWinner && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-black/50",
+                                cardData.isDimmed && cardData.isRevealed && "opacity-50"
+                              )}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {/* Show cards button for 3-5-7 winner */}
                   {isWinner357InAnimation ? (
                     (() => {
