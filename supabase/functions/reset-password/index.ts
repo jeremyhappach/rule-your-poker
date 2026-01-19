@@ -92,22 +92,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate new password
+    // Generate new password (only apply it after email is successfully sent)
     const newPassword = generateStrongPassword(16);
-
-    // Update the user's password using admin API
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      profile.id,
-      { password: newPassword }
-    );
-
-    if (updateError) {
-      console.error("Password update error:", updateError);
-      return new Response(
-        JSON.stringify({ error: "Failed to reset password. Please try again." }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
 
     // Send email with new password using Resend API directly
     const emailResponse = await fetch("https://api.resend.com/emails", {
@@ -180,17 +166,41 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (!emailResponse.ok) {
-      const errorData = await emailResponse.json();
-      console.error("Resend API error:", errorData);
+      let errorText = "";
+      try {
+        const errorData = await emailResponse.json();
+        errorText = JSON.stringify(errorData);
+        console.error("Resend API error:", errorData);
+      } catch {
+        errorText = await emailResponse.text();
+        console.error("Resend API error (non-json):", errorText);
+      }
+
+      // IMPORTANT: Do NOT change the password if we couldn't email it.
+      // Also, keep the response generic to avoid leaking whether the email exists.
       return new Response(
-        JSON.stringify({ error: "Failed to send password reset email. Please try again." }),
+        JSON.stringify({
+          success: true,
+          message: "If this email is registered, a password reset has been sent.",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Only after the email is successfully sent do we update the user's password.
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(profile.id, {
+      password: newPassword,
+    });
+
+    if (updateError) {
+      console.error("Password update error:", updateError);
+      return new Response(
+        JSON.stringify({ error: "Failed to reset password. Please try again." }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const emailResult = await emailResponse.json();
-
-    console.log("Password reset email sent successfully:", emailResponse);
+    console.log("Password reset email sent successfully.");
 
     return new Response(
       JSON.stringify({ success: true, message: "If this email is registered, a password reset has been sent." }),
