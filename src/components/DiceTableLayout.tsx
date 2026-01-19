@@ -5,6 +5,7 @@ import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGame
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
 
 interface DiceTableLayoutProps {
   dice: (HorsesDieType | SCCDieType)[];
@@ -421,6 +422,25 @@ export function DiceTableLayout({
       flyInWindowActive &&
       unheldIndices.length > 0 &&
       lastFlyInRollKeyRef.current !== rollKey;
+
+    // TRACE: Fly-in decision point
+    if (isDiceTraceRecording()) {
+      pushDiceTrace("DiceTableLayout:flyIn", {
+        rollKey,
+        isRolling,
+        cacheKey: String(cacheKey ?? ""),
+        isAnimatingFlyIn,
+        showUnheldDice,
+        lastFlyInRollKey: lastFlyInRollKeyRef.current,
+        extra: {
+          flyInWindowActive,
+          shouldStartFlyIn,
+          unheldCount: unheldIndices.length,
+          hasAnimationOrigin: !!animationOrigin,
+          isObserver,
+        },
+      });
+    }
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
@@ -955,6 +975,27 @@ export function DiceTableLayout({
         // Skip the transition by omitting transition classes for dice that just switched from unheld to held.
         const justBecameHeld = allHeld && !isAnimatingFlyIn && !isHeldInLayout;
         const shouldSkipTransition = justBecameHeld;
+
+        // TRACE: Dice render position (sampled - only first die to avoid flood)
+        if (isDiceTraceRecording() && item.originalIndex === 0) {
+          pushDiceTrace("DiceTableLayout:render", {
+            rollKey,
+            isRolling,
+            isAnimatingFlyIn,
+            showUnheldDice,
+            cacheKey: String(cacheKey ?? ""),
+            extra: {
+              dieIdx: item.originalIndex,
+              dieValue: item.die.value,
+              dieIsHeld: item.die.isHeld,
+              isHeldInLayout,
+              actuallyHeld,
+              hasLayoutPos: !!heldPos,
+              hasStableScatter: hasValidStablePos,
+              allHeld,
+            },
+          });
+        }
 
         const transform = isHeldInLayout
           ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
