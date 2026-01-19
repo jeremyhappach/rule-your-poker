@@ -210,11 +210,53 @@ const Game = () => {
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   
   // Track session-specific configs per game type (for remembering settings when switching back)
-  interface SessionGameConfigs {
-    'holm-game'?: PreviousGameConfig;
-    '3-5-7'?: PreviousGameConfig;
-  }
+  type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
   const [sessionGameConfigs, setSessionGameConfigs] = useState<SessionGameConfigs>({});
+
+  // Capture the *last confirmed* config so Dealer Setup can offer "Run Back" even after we reset
+  // the game back to game_selection (where config_complete becomes false).
+  const lastCapturedConfigKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!game) return;
+    if (!game.config_complete) return;
+    const gameType = game.game_type ?? null;
+    if (!gameType) return;
+
+    const cfg: PreviousGameConfig = {
+      game_type: gameType,
+      ante_amount: game.ante_amount ?? 2,
+      leg_value: game.leg_value ?? 1,
+      legs_to_win: game.legs_to_win ?? 3,
+      pussy_tax_enabled: game.pussy_tax_enabled ?? true,
+      pussy_tax_value: game.pussy_tax_value ?? 1,
+      pot_max_enabled: game.pot_max_enabled ?? true,
+      pot_max_value: game.pot_max_value ?? 10,
+      chucky_cards: game.chucky_cards ?? 4,
+      rabbit_hunt: game.rabbit_hunt ?? false,
+      reveal_at_showdown: game.reveal_at_showdown ?? false,
+    };
+
+    const key = `${game.id}:${gameType}:${JSON.stringify(cfg)}`;
+    if (lastCapturedConfigKeyRef.current === key) return;
+    lastCapturedConfigKeyRef.current = key;
+
+    setPreviousGameConfig(cfg);
+    setSessionGameConfigs((prev) => ({ ...prev, [gameType]: cfg }));
+  }, [
+    game?.id,
+    game?.config_complete,
+    game?.game_type,
+    game?.ante_amount,
+    game?.leg_value,
+    game?.legs_to_win,
+    game?.pussy_tax_enabled,
+    game?.pussy_tax_value,
+    game?.pot_max_enabled,
+    game?.pot_max_value,
+    game?.chucky_cards,
+    game?.rabbit_hunt,
+    game?.reveal_at_showdown,
+  ]);
 
   // "Run it back" should appear starting with the 2nd game in the same session.
   // Hands are game-specific and are reset between games, so we detect session history via snapshots.
@@ -5410,10 +5452,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isBot={dealerPlayer?.is_bot || false}
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
-                    previousGameType={game.game_type || undefined}
+                    previousGameType={(previousGameConfig?.game_type ?? game.game_type) || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
-                    isFirstHand={!hasSessionHistory}
+                    isFirstHand={!hasSessionHistory && !previousGameConfig}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />

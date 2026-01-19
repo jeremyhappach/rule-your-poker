@@ -29,10 +29,7 @@ interface PreviousGameConfig {
   reveal_at_showdown: boolean;
 }
 
-interface SessionGameConfigs {
-  'holm-game'?: PreviousGameConfig;
-  '3-5-7'?: PreviousGameConfig;
-}
+type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
 
 interface DealerGameSetupProps {
   gameId: string;
