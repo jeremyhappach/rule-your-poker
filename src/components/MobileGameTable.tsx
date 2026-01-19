@@ -3928,11 +3928,9 @@ export const MobileGameTable = ({
             return cacheFeltNode(node);
           }
           
-          // If observing someone else who hasn't rolled yet (AND no rollKey has started), keep a stable placeholder.
-          // Once rollKey exists, we must render DiceTableLayout even if values are still 0,
-          // otherwise roll 1 can miss the fly-in and the dice will "just appear" when values land.
+          // If observing someone else who hasn't rolled yet, keep a stable placeholder.
           // We also reuse a short-lived cached node to prevent flicker during turn/player transitions.
-          if (!horsesController.isMyTurn && !hasRolled && !showResult && !((horsesController.feltDice as any)?.rollKey)) {
+          if (!horsesController.isMyTurn && !hasRolled && !showResult) {
             console.log(`${logPrefix} STICKY: observer, hasRolled=${hasRolled}, showResult=${showResult}`);
 
             const cachedNode = getCachedFeltNode();
@@ -4092,7 +4090,6 @@ export const MobileGameTable = ({
                   useSCCDisplayOrder={gameType === 'ship-captain-crew'}
                   sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
                   isObserver={true}
-                  observerFlyInRolling={!!(horsesController.observerDisplayState as any)?.isRolling}
                   hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
                   heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
                   previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
@@ -4100,7 +4097,6 @@ export const MobileGameTable = ({
                   rollKey={(horsesController.feltDice as any)?.rollKey}
                   isQualified={(horsesController.feltDice as any)?.isQualified}
                   cacheKey={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
-                  observerAcknowledgedRollKey={(horsesController.observerDisplayState as any)?.rollKey}
                 />
               )}
             </div>

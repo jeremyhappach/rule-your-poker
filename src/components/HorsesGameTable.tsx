@@ -1721,7 +1721,6 @@ export function HorsesGameTable({
                         gameType={gameType}
                         showWildHighlight={!isSCC}
                         isObserver={true}
-                        observerFlyInRolling={!!(diceState as any).isRolling}
                         hideUnrolledDice={true}
                         heldMaskBeforeComplete={(diceState as any).heldMaskBeforeComplete}
                         previouslyHeldCount={(diceState as any).heldCountBeforeComplete}
@@ -1729,7 +1728,6 @@ export function HorsesGameTable({
                         rollKey={(diceState as any).rollKey}
                         isQualified={(diceState as any).isQualified}
                         cacheKey={currentTurnPlayerId ?? "no-turn"}
-                        observerAcknowledgedRollKey={(diceState as any).rollKey}
                       />
                     );
                   })()}
