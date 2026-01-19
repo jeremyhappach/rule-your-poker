@@ -301,11 +301,10 @@ export function DiceTableLayout({
       stabilizationTimeoutRef.current = null;
     }
 
-  // Reset caches ONLY when the dice owner changes.
-  // IMPORTANT: Parent components often create new dice arrays every render (e.g. `.map(...)`).
-  // If we reset on every `dice` identity change, we can accidentally mark the current rollKey as
-  // "already animated" and permanently suppress the fly-in.
-  useEffect(() => {
+    // Reset caches ONLY when the dice owner changes.
+    // IMPORTANT: Parent components often create new dice arrays every render (e.g. `.map(...)`).
+    // If we reset on every `dice` identity change, we can accidentally mark the current rollKey as
+    // "already animated" and permanently suppress the fly-in.
     // Reset cached dice + per-roll layout caches
     // IMPORTANT: On owner change, props can still briefly contain the *previous* player's dice.
     // If we seed lastValidDiceRef with that, the next roll may "land" using stale dice and then snap.
@@ -456,6 +455,8 @@ export function DiceTableLayout({
     }
 
     if (shouldStartFlyIn) {
+      console.log('[FLYIN] Starting fly-in animation', { rollKey, unheldIndices, isObserver, observerRollKeyAcknowledged });
+      
       lastFlyInRollKeyRef.current = rollKey;
 
       // Hide previously-rendered unheld dice while the fly-in animation runs.
@@ -465,6 +466,19 @@ export function DiceTableLayout({
       setAnimatingDiceIndices(unheldIndices);
       setIsAnimatingFlyIn(true);
       setFlyInRunId((v) => v + 1);
+
+      // TRACE: Fly-in animation started
+      if (isDiceTraceRecording()) {
+        pushDiceTrace("DiceTableLayout:flyInStarted", {
+          rollKey,
+          cacheKey: String(cacheKey ?? ""),
+          isAnimatingFlyIn: true, // We just set it
+          extra: {
+            unheldIndices,
+            flyInRunId: 'incremented',
+          },
+        });
+      }
 
       // NOTE: Do NOT set showUnheldDice(true) here synchronously - React batches it and
       // the false state is never committed. The animation overlay renders the flying dice,
