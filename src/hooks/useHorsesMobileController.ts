@@ -219,6 +219,8 @@ export function useHorsesMobileController({
 
   const observerRollingTimerRef = useRef<number | null>(null);
   const lastObservedRollKeyRef = useRef<Record<string, number>>({});
+  // Track rollsRemaining at the time of each rollKey to distinguish real roll 3 from bookkeeping bumps
+  const lastObservedRollsRemainingRef = useRef<Record<string, number>>({});
   
   // MONOTONICITY GUARD: Track the highest rollKey we've ever seen per player.
   // This prevents processing stale/out-of-order DB updates that arrive with older rollKeys.
@@ -762,10 +764,10 @@ export function useHorsesMobileController({
       result: currentTurnState.result,
       heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
       heldCountBeforeComplete: derivedHeldCount,
-      // IMPORTANT: Do NOT pass the server completion rollKey into DiceTableLayout during the 3s hold.
-      // The server may bump rollKey as bookkeeping when the turn completes; if we forward that, observers
-      // see the final dice state first and then a delayed fly-in animation triggers afterward.
-      rollKey: undefined,
+      // Pass the rollKey so DiceTableLayout maintains consistent state during the hold.
+      // The observer logic now correctly distinguishes roll-3 from bookkeeping bumps,
+      // so the fly-in won't refire during the hold period.
+      rollKey: (currentTurnState as any).rollKey,
       expiresAt,
     };
 
@@ -2066,31 +2068,38 @@ export function useHorsesMobileController({
 
     // Detect a new roll start.
     if (newRollKey !== prevRollKey) {
+      // Track what rollsRemaining was BEFORE this new rollKey, so we can distinguish:
+      // - Roll 3 completing (prevRollsRemaining=1 -> rollsRemaining=0) = ANIMATE
+      // - Bookkeeping bump after completion (prevRollsRemaining=0 -> rollsRemaining=0) = SKIP
+      const prevRollsRemaining = lastObservedRollsRemainingRef.current[currentTurnPlayerId];
       lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
+      lastObservedRollsRemainingRef.current[currentTurnPlayerId] = state.rollsRemaining;
 
-      // FIX #1: Roll-3 refire prevention
-      // When rollsRemaining === 0, this is NOT a new roll to animate; it's the final dice state.
-      // The rollKey changed because the player's turn completed, not because they rolled again.
-      // Skip animation and set final state immediately.
-      if (state.rollsRemaining === 0) {
-        // TRACE: Skip fly-in for completed turn
+      // FIX #1: Roll-3 refire prevention (refined)
+      // Only skip animation if BOTH prev AND current rollsRemaining are 0.
+      // That indicates a post-completion bookkeeping rollKey bump, not a real roll.
+      // If prevRollsRemaining was > 0 (or undefined on first obs), this IS roll 3 and needs animation.
+      const wasAlreadyComplete = prevRollsRemaining === 0;
+      const isNowComplete = state.rollsRemaining === 0;
+      
+      if (wasAlreadyComplete && isNowComplete) {
+        // TRACE: Skip fly-in for post-completion bookkeeping
         if (isDiceTraceRecording()) {
           pushDiceTrace("observerRollDetect:skipCompletedRoll", {
             playerId: currentTurnPlayerId,
             rollKey: newRollKey,
             rollsRemaining: 0,
             isRolling: false,
-            extra: { prevRollKey, reason: "rollsRemaining===0" },
+            extra: { prevRollKey, prevRollsRemaining, reason: "already complete, bookkeeping bump" },
           });
         }
         
         console.log(
-          `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} SKIPPED (rollsRemaining=0, turn complete)`,
+          `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} SKIPPED (already complete, bookkeeping)`,
         );
         
         // Set final display state without animation
         const finalDice = (state.dice as any[]) ?? [];
-        // Derive heldCountBeforeComplete directly from current dice (FIX #3)
         const derivedHeldCount = finalDice.filter((d: any) => !!d?.isHeld).length;
         
         setObserverDisplayState({
@@ -2100,9 +2109,8 @@ export function useHorsesMobileController({
           isRolling: false,
           heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
           heldCountBeforeComplete: derivedHeldCount,
-          // IMPORTANT: keep the previous rollKey so DiceTableLayout doesn't treat completion as a new roll.
           rollKey: typeof prevRollKey === "number" ? prevRollKey : newRollKey,
-          preRollSig: undefined, // Clear to allow DB through
+          preRollSig: undefined,
         });
         return;
       }
