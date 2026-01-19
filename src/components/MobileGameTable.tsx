@@ -4749,14 +4749,16 @@ export const MobileGameTable = ({
         {/* FIXED HEIGHT announcement/timer area - prevents layout shift when announcements appear/disappear */}
         <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
           {/* Dice games: dealer announcement + countdown timer live here (top of the active player box) */}
-          {isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' ? (
-            horsesController.turnAnnouncement ? (
-              <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-                <p className="text-slate-900 font-bold text-sm text-center truncate">
-                  {horsesController.turnAnnouncement}
-                </p>
-              </div>
-            ) : horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot && horsesController.timeLeft !== null ? (
+          {/* CRITICAL: Show turnAnnouncement even after gamePhase changes to prevent 3x flash on win.
+              The announcement has its own 2.5s timeout and will clear naturally. */}
+          {isDiceGame && horsesController.enabled && horsesController.turnAnnouncement ? (
+            <div key="horses-turn-announcement" className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center truncate">
+                {horsesController.turnAnnouncement}
+              </p>
+            </div>
+          ) : isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' ? (
+            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot && horsesController.timeLeft !== null ? (
               <div className="flex items-center justify-center gap-2">
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
                   <Clock className="w-4 h-4 text-muted-foreground" />
