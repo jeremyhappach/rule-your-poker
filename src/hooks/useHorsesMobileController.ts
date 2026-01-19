@@ -747,12 +747,16 @@ export function useHorsesMobileController({
     const holdDuration = 3000; // 3 seconds to display dice before transition
     const expiresAt = Date.now() + holdDuration;
 
+    // FIX #3: Derive heldCountBeforeComplete directly from the dice array
+    // Don't trust (currentTurnState as any).heldCountBeforeComplete which can be stale/mismatched
+    const derivedHeldCount = (currentTurnState.dice as any[]).filter((d: any) => !!d?.isHeld).length;
+
     const holdPayload = {
       playerId: currentTurnPlayerId,
       dice: currentTurnState.dice as (HorsesDieType | SCCDieType)[],
       result: currentTurnState.result,
       heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
-      heldCountBeforeComplete: (currentTurnState as any).heldCountBeforeComplete,
+      heldCountBeforeComplete: derivedHeldCount,
       rollKey: (currentTurnState as any).rollKey,
       expiresAt,
     };
@@ -1866,11 +1870,16 @@ export function useHorsesMobileController({
       const sameRoll =
         typeof dbRollKey === "number" && typeof observerDisplayState.rollKey === "number" && dbRollKey === observerDisplayState.rollKey;
 
+      // FIX #2: Stricter DB acceptance to prevent held↔scatter flicker
       // Prefer DB dice ONLY once they diverge from the pre-roll snapshot, and never let DB regress held state.
       // The regression is what creates the held↔scatter jump when out-of-order realtime snapshots arrive.
+      // CRITICAL: For the SAME rollKey, require that dbSig actually differs from preRollSig.
+      // This prevents the case where isRolling just flipped to false but DB still has pre-roll data.
+      const sameRollWithStaleDb = sameRoll && observerDisplayState.preRollSig && dbSig === observerDisplayState.preRollSig;
       const shouldUseDb =
         Array.isArray(dbDice) &&
         dbDice.length > 0 &&
+        !sameRollWithStaleDb &&
         (!observerDisplayState.isRolling || !observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig) &&
         (!sameRoll || dbHeldCount >= prevHeldCount);
 
@@ -2019,6 +2028,44 @@ export function useHorsesMobileController({
     if (newRollKey !== prevRollKey) {
       lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
 
+      // FIX #1: Roll-3 refire prevention
+      // When rollsRemaining === 0, this is NOT a new roll to animate; it's the final dice state.
+      // The rollKey changed because the player's turn completed, not because they rolled again.
+      // Skip animation and set final state immediately.
+      if (state.rollsRemaining === 0) {
+        // TRACE: Skip fly-in for completed turn
+        if (isDiceTraceRecording()) {
+          pushDiceTrace("observerRollDetect:skipCompletedRoll", {
+            playerId: currentTurnPlayerId,
+            rollKey: newRollKey,
+            rollsRemaining: 0,
+            isRolling: false,
+            extra: { prevRollKey, reason: "rollsRemaining===0" },
+          });
+        }
+        
+        console.log(
+          `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} SKIPPED (rollsRemaining=0, turn complete)`,
+        );
+        
+        // Set final display state without animation
+        const finalDice = (state.dice as any[]) ?? [];
+        // Derive heldCountBeforeComplete directly from current dice (FIX #3)
+        const derivedHeldCount = finalDice.filter((d: any) => !!d?.isHeld).length;
+        
+        setObserverDisplayState({
+          playerId: currentTurnPlayerId,
+          dice: finalDice as (HorsesDieType | SCCDieType)[],
+          rollsRemaining: 0,
+          isRolling: false,
+          heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+          heldCountBeforeComplete: derivedHeldCount,
+          rollKey: newRollKey,
+          preRollSig: undefined, // Clear to allow DB through
+        });
+        return;
+      }
+
       // Don't animate on the first observation (no baseline)
       if (prevRollKey !== undefined) {
         const durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
@@ -2055,6 +2102,9 @@ export function useHorsesMobileController({
         // Instead, keep the pre-roll values; the fly-in animation will overlay them anyway.
         // DiceTableLayout only shows the animation overlay when isRolling=true.
         const displayDice = preRollDice;
+        
+        // FIX #3: Derive heldCountBeforeComplete directly from dice (not stale metadata)
+        const derivedHeldCount = preRollDice.filter((d: any) => !!d?.isHeld).length;
 
         setObserverDisplayState({
           playerId: currentTurnPlayerId,
@@ -2062,7 +2112,7 @@ export function useHorsesMobileController({
           rollsRemaining: state.rollsRemaining,
           isRolling: true,
           heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
-          heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
+          heldCountBeforeComplete: derivedHeldCount,
           rollKey: newRollKey,
           preRollSig,
         });
