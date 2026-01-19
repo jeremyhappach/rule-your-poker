@@ -376,72 +376,83 @@ export function DiceTableLayout({
   useLayoutEffect(() => {
     // While a fly-in is in progress, ignore prop churn (DB updates, hold toggles) to avoid refires/stutter.
     if (isAnimatingFlyIn) return;
+    if (rollKey === undefined) return;
 
-    const isNewRollKey = rollKey !== undefined && rollKey !== prevRollKeyRef.current;
-    if (!isNewRollKey) return;
+    const isNewRollKey = rollKey !== prevRollKeyRef.current;
 
-    prevRollKeyRef.current = rollKey;
+    // On a new rollKey, capture the "roll start" layout facts once.
+    if (isNewRollKey) {
+      prevRollKeyRef.current = rollKey;
 
-    // Reset completion transition when a new roll starts
-    setIsInCompletionTransition(false);
-    setHideFormerlyUnheld(false);
-    if (completionTransitionTimeoutRef.current) {
-      clearTimeout(completionTransitionTimeoutRef.current);
-      completionTransitionTimeoutRef.current = null;
+      // Reset completion transition when a new roll starts
+      setIsInCompletionTransition(false);
+      setHideFormerlyUnheld(false);
+      if (completionTransitionTimeoutRef.current) {
+        clearTimeout(completionTransitionTimeoutRef.current);
+        completionTransitionTimeoutRef.current = null;
+      }
+
+      const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
+
+      // Build an index order consistent with what we render (important for SCC).
+      const orderedIndices =
+        useSCCDisplayOrder && sccHand
+          ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
+          : dice.map((_, i) => i);
+
+      // Find which dice were unheld at the START of the roll.
+      // IMPORTANT: do NOT require die.value !== 0 here.
+      // Observers can receive rollKey before values propagate; we still want to start fly-in on time.
+      const unheldAtRollStart = orderedIndices.filter((i) => {
+        const d = dice[i];
+        if (!d) return false;
+        const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+        return !wasHeldAtRollStart;
+      });
+      unheldIndicesAtRollStartRef.current = unheldAtRollStart;
+
+      // Track how many were held at the START of this roll (for Y offset calculation)
+      const heldAtRollStart = heldMask
+        ? heldMask.filter(Boolean).length
+        : dice.filter((d) => d.isHeld).length;
+      setAnimationHeldCount(heldAtRollStart);
+
+      // Freeze scatter positions for this rollKey (prevents reposition when holds change)
+      stableScatterRollKeyRef.current = rollKey;
+      const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
+      const positions = UNHELD_POSITIONS[unheldAtRollStart.length] || UNHELD_POSITIONS[5];
+      unheldAtRollStart.forEach((dieIndex, displayIdx) => {
+        const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
+        // IMPORTANT: Match the exact tablet scatter scaling used by getUnheldPosition.
+        // Otherwise, dice will "snap" back into the tighter mobile formation after the fly-in lands.
+        const stablePos = isTablet
+          ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
+          : basePos;
+        nextStable.set(dieIndex, stablePos);
+      });
+      stableScatterByDieRef.current = nextStable;
     }
 
-    const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
+    const unheldIndices = unheldIndicesAtRollStartRef.current;
 
-    // Build an index order consistent with what we render (important for SCC).
-    const orderedIndices =
-      useSCCDisplayOrder && sccHand
-        ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
-        : dice.map((_, i) => i);
+    // If scatter cache was cleared but rollKey didn't change (rare), rebuild it.
+    if (stableScatterRollKeyRef.current !== rollKey) {
+      stableScatterRollKeyRef.current = rollKey;
+      const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
+      const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
+      unheldIndices.forEach((dieIndex, displayIdx) => {
+        const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
+        const stablePos = isTablet
+          ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
+          : basePos;
+        nextStable.set(dieIndex, stablePos);
+      });
+      stableScatterByDieRef.current = nextStable;
+    }
 
-    // Find which dice were unheld at the START of the roll.
-    // IMPORTANT: do NOT require die.value !== 0 here.
-    // Observers can receive rollKey before values propagate; we still want to start fly-in on time.
-    const unheldIndices = orderedIndices.filter((i) => {
-      const d = dice[i];
-      if (!d) return false;
-      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
-      return !wasHeldAtRollStart;
-    });
-
-    // Track how many were held at the START of this roll (for Y offset calculation)
-    const heldAtRollStart = heldMask
-      ? heldMask.filter(Boolean).length
-      : dice.filter((d) => d.isHeld).length;
-    setAnimationHeldCount(heldAtRollStart);
-
-    // Freeze scatter positions for this rollKey (prevents reposition when holds change)
-    stableScatterRollKeyRef.current = rollKey;
-    const nextStable = new Map<number, { x: number; y: number; rotate: number }>();
-    const positions = UNHELD_POSITIONS[unheldIndices.length] || UNHELD_POSITIONS[5];
-    unheldIndices.forEach((dieIndex, displayIdx) => {
-      const basePos = positions[displayIdx] || { x: 0, y: 0, rotate: 0 };
-      // IMPORTANT: Match the exact tablet scatter scaling used by getUnheldPosition.
-      // Otherwise, dice will "snap" back into the tighter mobile formation after the fly-in lands.
-      const stablePos = isTablet
-        ? { x: basePos.x * 1.6, y: basePos.y * 1.5, rotate: basePos.rotate }
-        : basePos;
-      nextStable.set(dieIndex, stablePos);
-    });
-    stableScatterByDieRef.current = nextStable;
-
-    // Trigger fly-in animation once per rollKey.
-    // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
-    // so we use rollKey as the stable "new roll" signal.
-    //
-    // IMPORTANT:
-    // - The active player's window should only fly-in during the rolling window (isRolling=true).
-    // - Observers should still get the fly-in (but NEVER the rumble), so we allow fly-in when isObserver=true.
-    // - FIX FOR STALE DICE: For observers, we require observerAcknowledgedRollKey === rollKey.
-    //   This ensures the observer state machine has processed the new rollKey before animation starts.
-    //   Without this gate, rollKey arrives before observer display state updates, causing stale dice to animate.
-    // - Do NOT "consume" rollKey when fly-in didn't start; rollKey can arrive before isRolling flips true.
-    // - CRITICAL: Do NOT block fly-in just because all dice are now held.
-    //   The final roll auto-marks dice held (game logic) *before* the animation should run.
+    // Rolling window:
+    // - Active player: use `isRolling` (rumble + fly-in)
+    // - Observer: use `observerFlyInRolling` (fly-in only; never rumble)
     const flyInWindowActive = !isObserver ? !!isRolling : !!observerFlyInRolling;
 
     const shouldStartFlyIn =
@@ -465,8 +476,7 @@ export function DiceTableLayout({
           unheldCount: unheldIndices.length,
           hasAnimationOrigin: !!animationOrigin,
           isObserver,
-          observerAcknowledgedRollKey,
-          observerRollKeyAcknowledged,
+          observerFlyInRolling: !!observerFlyInRolling,
         },
       });
     }
