@@ -762,7 +762,10 @@ export function useHorsesMobileController({
       result: currentTurnState.result,
       heldMaskBeforeComplete: currentTurnState.heldMaskBeforeComplete,
       heldCountBeforeComplete: derivedHeldCount,
-      rollKey: (currentTurnState as any).rollKey,
+      // IMPORTANT: Do NOT pass the server completion rollKey into DiceTableLayout during the 3s hold.
+      // The server may bump rollKey as bookkeeping when the turn completes; if we forward that, observers
+      // see the final dice state first and then a delayed fly-in animation triggers afterward.
+      rollKey: undefined,
       expiresAt,
     };
 
