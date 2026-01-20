@@ -609,7 +609,9 @@ export const MobileGameTable = ({
   
   // Clear stale pot memory when starting a fresh hand (pot resets to antes only)
   const prevHandContextRef = useRef(handContextId);
+  const prevHorsesRoundIdRef = useRef(horsesRoundId);
   useEffect(() => {
+    // Clear on handContextId change (for card games)
     if (handContextId && handContextId !== prevHandContextRef.current) {
       // New hand started - clear any stale memory to use fresh pot value
       console.log('[POT_MEMORY] New hand detected, clearing stale memory:', {
@@ -626,7 +628,18 @@ export const MobileGameTable = ({
       
       prevHandContextRef.current = handContextId;
     }
-  }, [handContextId, potMemoryKey, pot]);
+    
+    // CRITICAL FIX: Also clear on horsesRoundId change (for dice games - Horses/SCC rollovers)
+    // The horsesRoundId changes on each dice game rollover, which handContextId may not always track
+    if (horsesRoundId && horsesRoundId !== prevHorsesRoundIdRef.current) {
+      console.log('[BEAT_BADGE] Dice game round changed, clearing Beat badge cache:', {
+        prevRound: prevHorsesRoundIdRef.current,
+        newRound: horsesRoundId,
+      });
+      cachedWinningResultRef.current = null;
+      prevHorsesRoundIdRef.current = horsesRoundId;
+    }
+  }, [handContextId, horsesRoundId, potMemoryKey, pot]);
   
   // CRITICAL FIX: Clear stale pot memory when entering dealer config phases (new game starting)
   // This prevents the $6 pot bug where old pot values carry over to a new game

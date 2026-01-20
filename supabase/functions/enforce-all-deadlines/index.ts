@@ -479,12 +479,12 @@ serve(async (req) => {
                   // Calculate split amount (integer division, remainder stays in void)
                   const splitAmount = Math.floor(currentPot / activePlayers.length);
                   
-                  // Update each player's chips
+                  // Update each player's chips using atomic increment
                   for (const player of activePlayers) {
-                    await supabase
-                      .from('players')
-                      .update({ chips: (player.chips || 0) + splitAmount })
-                      .eq('id', player.id);
+                    await supabase.rpc('increment_player_chips', {
+                      p_player_id: player.id,
+                      p_amount: splitAmount,
+                    });
                   }
                   
                   actionsTaken.push(`Pot of $${currentPot} split evenly: $${splitAmount} to each of ${activePlayers.length} players`);

@@ -294,13 +294,7 @@ export async function startRound(gameId: string, roundNumber: number) {
       
       if (anteError) {
         console.error('[START_ROUND] Error batch charging antes:', anteError);
-        // Fallback to sequential if RPC fails
-        for (const player of activePlayers) {
-          await supabase
-            .from('players')
-            .update({ chips: player.chips - anteAmount })
-            .eq('id', player.id);
-        }
+        // RPC failed - log but don't use non-atomic fallback which causes accounting drift
       }
       
       console.log('[START_ROUND] Total ante pot:', initialPot);
@@ -1217,21 +1211,24 @@ export async function endRound(gameId: string) {
     
     // Winning a leg costs the leg value (can go negative)
     const newLegCount = soloStayer.legs + 1;
-    const newChips = soloStayer.chips - betAmount;
     
+    // Deduct leg cost using atomic decrement to prevent race conditions
+    await supabase.rpc('decrement_player_chips', {
+      player_ids: [soloStayer.id],
+      amount: betAmount,
+    });
+    
+    // Update legs separately (no race condition risk)
     await supabase
       .from('players')
-      .update({ 
-        legs: newLegCount,
-        chips: newChips
-      })
+      .update({ legs: newLegCount })
       .eq('id', soloStayer.id);
       
     resultMessage = `${username} won a leg`;
     
     console.log('[endRound] Leg awarded:', {
       newLegCount,
-      newChips,
+      betAmount,
       legsToWin,
       isFinalLeg: newLegCount >= legsToWin
     });
@@ -1399,13 +1396,11 @@ export async function endRound(gameId: string) {
                 amountPerLoser = amountToCharge; // All losers pay same amount
                 loserIds.push(player.id);
                 
-                // Deduct from loser with error logging
-                const { error: loserError } = await supabase
-                  .from('players')
-                  .update({ 
-                    chips: player.chips - amountToCharge
-                  })
-                  .eq('id', player.id);
+                // Deduct from loser using atomic decrement
+                const { error: loserError } = await supabase.rpc('decrement_player_chips', {
+                  player_ids: [player.id],
+                  amount: amountToCharge,
+                });
                 
                 if (loserError) {
                   console.error('[endRound] SHOWDOWN: ERROR deducting from loser:', player.id, loserError);
@@ -1508,16 +1503,7 @@ export async function endRound(gameId: string) {
       
       if (taxError) {
         console.error('[357 END] Pussy tax decrement error:', taxError);
-        // Fallback to individual updates if RPC doesn't exist
-        for (const player of activePlayersForTax) {
-          const { error: fallbackError } = await supabase
-            .from('players')
-            .update({ chips: player.chips - pussyTaxValue })
-            .eq('id', player.id);
-          if (fallbackError) {
-            console.error('[357 END] Fallback pussy tax error for player:', player.id, fallbackError);
-          }
-        }
+        // RPC failed - log but don't use non-atomic fallback which causes accounting drift
       }
       const taxCollected = pussyTaxValue * activePlayersForTax.length;
       
