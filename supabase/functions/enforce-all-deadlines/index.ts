@@ -976,6 +976,7 @@ serve(async (req) => {
                 const remainder = roundPot % winners.length;
                 const playerChipChanges: Record<string, number> = {};
                 const winnerNames: string[] = [];
+                const winnerIds = new Set(winners.map(w => w.playerId));
                 
                 for (let i = 0; i < winners.length; i++) {
                   const winner = winners[i];
@@ -991,6 +992,15 @@ serve(async (req) => {
                     winnerNames.push((player.profiles as any)?.username || 'Player');
                   }
                 }
+                
+                // ACCOUNTING FIX: Include loser ante losses in chip changes
+                const anteAmount = game.ante_amount || 1;
+                for (const [playerId, player] of playerMap.entries()) {
+                  if (!winnerIds.has(playerId) && !player.sitting_out) {
+                    playerChipChanges[playerId] = -anteAmount;
+                  }
+                }
+                console.log('[CRON-ENFORCE] Dice chop: balanced chip changes', playerChipChanges);
                 
                 await supabase.from('game_results').insert({
                   game_id: game.id,
@@ -1031,6 +1041,18 @@ serve(async (req) => {
                   });
                 }
                 
+                // ACCOUNTING FIX: Include loser ante losses in chip changes
+                const anteAmount = game.ante_amount || 1;
+                const playerChipChanges: Record<string, number> = {
+                  [bestPlayer.playerId]: roundPot
+                };
+                for (const [playerId, player] of playerMap.entries()) {
+                  if (playerId !== bestPlayer.playerId && !player.sitting_out) {
+                    playerChipChanges[playerId] = -anteAmount;
+                  }
+                }
+                console.log('[CRON-ENFORCE] Dice single winner: balanced chip changes', playerChipChanges);
+                
                 await supabase.from('game_results').insert({
                   game_id: game.id,
                   hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
@@ -1039,7 +1061,7 @@ serve(async (req) => {
                   pot_won: roundPot,
                   winning_hand_description: bestPlayer.result.description,
                   is_chopped: false,
-                  player_chip_changes: { [bestPlayer.playerId]: roundPot },
+                  player_chip_changes: playerChipChanges,
                   game_type: game.game_type,
                 });
                 
