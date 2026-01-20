@@ -1018,6 +1018,10 @@ export type Database = {
         Args: { _player_id: string; _round_id: string; _state: Json }
         Returns: Json
       }
+      increment_player_chips: {
+        Args: { p_amount: number; p_player_id: string }
+        Returns: number
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       user_in_game: { Args: { game_id_param: string }; Returns: boolean }
       user_is_in_game: { Args: { game_id_param: string }; Returns: boolean }

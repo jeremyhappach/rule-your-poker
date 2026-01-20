@@ -1217,12 +1217,10 @@ async function handleChuckyShowdown(
       false
     );
     
-    await supabase
-      .from('players')
-      .update({ 
-        chips: player.chips + roundPot
-      })
-      .eq('id', player.id);
+    await supabase.rpc('increment_player_chips', {
+      p_player_id: player.id,
+      p_amount: roundPot
+    });
 
     // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
     await snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
@@ -1552,12 +1550,10 @@ async function handleMultiPlayerShowdown(
     
     // Winner takes ONLY the pot
     console.log('[HOLM MULTI] Winner', winnerUsername, 'takes pot:', roundPot);
-    await supabase
-      .from('players')
-      .update({ 
-        chips: winner.player.chips + roundPot
-      })
-      .eq('id', winner.player.id);
+    await supabase.rpc('increment_player_chips', {
+      p_player_id: winner.player.id,
+      p_amount: roundPot
+    });
 
     // Losers match the pot (capped) - this becomes the NEW pot for next hand
     const potMatchAmount = game.pot_max_enabled 
@@ -1637,12 +1633,10 @@ async function handleMultiPlayerShowdown(
       const winnerUsername = getDisplayName(playersList, winner.player, winner.player.profiles?.username || winner.player.user_id);
       winnerNames.push(winnerUsername);
       
-      await supabase
-        .from('players')
-        .update({ 
-          chips: winner.player.chips + splitAmount
-        })
-        .eq('id', winner.player.id);
+      await supabase.rpc('increment_player_chips', {
+        p_player_id: winner.player.id,
+        p_amount: splitAmount
+      });
     }
     
     console.log('[HOLM PARTIAL TIE] Winners each get:', splitAmount);
@@ -1852,12 +1846,10 @@ async function handleMultiPlayerShowdown(
         winnerNames.push(winnerUsername);
         winnerIds.push(winner.player.id);
         
-        await supabase
-          .from('players')
-          .update({ 
-            chips: winner.player.chips + splitAmount
-          })
-          .eq('id', winner.player.id);
+        await supabase.rpc('increment_player_chips', {
+          p_player_id: winner.player.id,
+          p_amount: splitAmount
+        });
       }
       
       // If there are losers to Chucky, they still pay - but game ends regardless
@@ -1865,11 +1857,13 @@ async function handleMultiPlayerShowdown(
         ? Math.min(roundPot, game.pot_max_value) 
         : roundPot;
       
-      for (const loser of playersLoseToChucky) {
-        await supabase
-          .from('players')
-          .update({ chips: loser.player.chips - potMatchAmount })
-          .eq('id', loser.player.id);
+      // Use atomic decrement for losers to Chucky
+      const loserToChuckyIds = playersLoseToChucky.map(l => l.player.id);
+      if (loserToChuckyIds.length > 0) {
+        await supabase.rpc('decrement_player_chips', {
+          player_ids: loserToChuckyIds,
+          amount: potMatchAmount
+        });
       }
       
       // Record game result for hand history (for tie case, record first winner but indicate chopped)
