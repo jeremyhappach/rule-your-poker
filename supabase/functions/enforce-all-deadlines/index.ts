@@ -1689,8 +1689,9 @@ serve(async (req) => {
 
         // ============= ALL DECISIONS IN - SHOWDOWN (HOLM GAMES ONLY) =============
         // CRITICAL: Only process Holm showdowns here - 357/horses/scc handle their own showdowns
+        // IMPORTANT: Only process if the round is stale (decision_deadline passed + grace period)
+        // This prevents the cron from racing ahead of client animations
         if ((game.status === 'in_progress' || game.status === 'betting') && game.all_decisions_in === true && game.game_type === 'holm-game') {
-          console.log('[CRON-ENFORCE] Processing HOLM showdown for game:', game.id);
           
           const { data: currentRound } = await supabase
             .from('rounds')
@@ -1698,6 +1699,37 @@ serve(async (req) => {
             .eq('game_id', game.id)
             .eq('round_number', game.current_round ?? 0)
             .maybeSingle();
+          
+          // GRACE PERIOD CHECK: Only process if either:
+          // 1. No decision_deadline exists (already processed/cleared)
+          // 2. Decision deadline has passed AND it's been at least 15 seconds stale
+          // 3. The round is already in 'showdown' status (client started but didn't finish)
+          const HOLM_SHOWDOWN_GRACE_MS = 15000; // 15 seconds grace for client animations
+          let roundIsStale = false;
+          
+          if (currentRound) {
+            if (!currentRound.decision_deadline) {
+              // Deadline was cleared - safe to process
+              roundIsStale = true;
+            } else if (currentRound.status === 'showdown' || currentRound.status === 'processing') {
+              // Already in showdown/processing - definitely stale
+              roundIsStale = true;
+            } else {
+              const deadlineAt = new Date(currentRound.decision_deadline);
+              const timeSinceDeadline = now.getTime() - deadlineAt.getTime();
+              if (timeSinceDeadline > HOLM_SHOWDOWN_GRACE_MS) {
+                roundIsStale = true;
+              }
+            }
+          }
+          
+          if (!roundIsStale) {
+            console.log('[CRON-ENFORCE] HOLM showdown: Skipping - within grace period, client is animating');
+            results.push({ gameId: game.id, status: game.status, result: 'no_action_needed' });
+            continue;
+          }
+          
+          console.log('[CRON-ENFORCE] Processing HOLM showdown for game:', game.id);
           
           if (currentRound && currentRound.status === 'betting') {
             const { data: players } = await supabase
