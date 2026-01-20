@@ -1309,6 +1309,22 @@ async function handleChuckyShowdown(
 
     console.log('[HOLM SHOWDOWN] Pot update - old:', roundPot, 'adding:', potMatchAmount, 'new:', newPot);
 
+    // ACCOUNTING FIX: Record loser's chip loss in game_results so accounting sums to zero
+    const loserChipChanges: Record<string, number> = {};
+    loserChipChanges[player.id] = -potMatchAmount;
+    
+    await recordGameResult(
+      gameId,
+      (game.total_hands || 0) + 1,
+      null, // No winner - Chucky won
+      'Chucky',
+      chuckyHandDesc,
+      0, // No pot won by any player
+      loserChipChanges,
+      false
+    );
+    console.log('[HOLM SHOWDOWN] Recorded loser chip change for accounting:', loserChipChanges);
+
     // Use different message for tie vs actual loss
     const resultMessage = isTie 
       ? `Ya tie but ya lose!`
@@ -1583,6 +1599,25 @@ async function handleMultiPlayerShowdown(
     const winnerAllCards = [...winner.cards, ...communityCards];
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
     
+    // ACCOUNTING FIX: Record game_result with balanced chip changes (winner gain + loser losses)
+    const playerChipChanges: Record<string, number> = {};
+    playerChipChanges[winner.player.id] = roundPot;
+    for (const loser of losers) {
+      playerChipChanges[loser.player.id] = -potMatchAmount;
+    }
+    console.log('[HOLM MULTI] Recording balanced game result:', playerChipChanges);
+    
+    await recordGameResult(
+      gameId,
+      (game.total_hands || 0) + 1,
+      winner.player.id,
+      winnerUsername,
+      winnerHandDesc,
+      roundPot,
+      playerChipChanges,
+      false
+    );
+    
     // Build debug data object to embed in result message
     const debugData = {
       roundId: roundId,
@@ -1667,6 +1702,27 @@ async function handleMultiPlayerShowdown(
     // Get detailed hand description for winners
     const winnerAllCards = [...winners[0].cards, ...communityCards];
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
+    
+    // ACCOUNTING FIX: Record game_result with balanced chip changes (winner gains + loser losses)
+    const playerChipChanges: Record<string, number> = {};
+    for (const winner of winners) {
+      playerChipChanges[winner.player.id] = splitAmount;
+    }
+    for (const loser of losers) {
+      playerChipChanges[loser.player.id] = -potMatchAmount;
+    }
+    console.log('[HOLM PARTIAL TIE] Recording balanced game result:', playerChipChanges);
+    
+    await recordGameResult(
+      gameId,
+      (game.total_hands || 0) + 1,
+      winners[0].player.id,
+      winnerNames.join(' and '),
+      winnerHandDesc,
+      roundPot,
+      playerChipChanges,
+      true // is_chopped
+    );
     
     // Build debug data object to embed in result message
     const debugData = {
@@ -1812,6 +1868,24 @@ async function handleMultiPlayerShowdown(
       
       const newPot = roundPot + totalMatched;
       
+      // ACCOUNTING FIX: Record loser chip changes in game_results so accounting sums to zero
+      const loserChipChanges: Record<string, number> = {};
+      for (const loser of playersLoseToChucky) {
+        loserChipChanges[loser.player.id] = -potMatchAmount;
+      }
+      
+      await recordGameResult(
+        gameId,
+        (game.total_hands || 0) + 1,
+        null, // No winner - Chucky won
+        'Chucky',
+        chuckyHandDesc,
+        0, // No pot won by any player
+        loserChipChanges,
+        false
+      );
+      console.log('[HOLM TIE] Recorded loser chip changes for accounting:', loserChipChanges);
+      
       // Use different message for tie vs actual loss
       const resultMessage = allTiedWithChucky 
         ? `Ya tie but ya lose!`
@@ -1866,13 +1940,22 @@ async function handleMultiPlayerShowdown(
         });
       }
       
-      // Record game result for hand history (for tie case, record first winner but indicate chopped)
+      // Record game result for hand history - ACCOUNTING FIX: include both winners AND losers
       const winnerAllCards = [...playersBeatChucky[0].cards, ...communityCards];
       const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
       const playerChipChanges: Record<string, number> = {};
+      
+      // Include winner gains
       for (const winner of playersBeatChucky) {
         playerChipChanges[winner.player.id] = splitAmount;
       }
+      
+      // Include loser deductions (so accounting sums to zero)
+      for (const loser of playersLoseToChucky) {
+        playerChipChanges[loser.player.id] = -potMatchAmount;
+      }
+      
+      console.log('[HOLM TIE] Recording game result with balanced chip changes:', playerChipChanges);
       
       await recordGameResult(
         gameId,
