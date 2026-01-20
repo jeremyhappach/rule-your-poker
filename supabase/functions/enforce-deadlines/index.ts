@@ -596,13 +596,18 @@ serve(async (req) => {
           // Check if there's a turn deadline that has expired
           if (horsesState?.turnDeadline && horsesState?.gamePhase === 'playing') {
             const turnDeadline = new Date(horsesState.turnDeadline);
+            const msOverdue = now.getTime() - turnDeadline.getTime();
             
-            if (now > turnDeadline) {
+            // GRACE PERIOD: Skip enforcement if deadline just barely expired (within 3 seconds)
+            // This prevents race conditions where a turn advances and the next player 
+            // immediately times out due to clock skew or stale deadline data.
+            if (msOverdue > 3000) {
               console.log('[ENFORCE-CLIENT] 🎲 DICE GAME turn deadline expired', {
                 gameId,
                 gameType: game.game_type,
                 currentPlayer: horsesState.currentTurnPlayerId,
                 turnDeadline: horsesState.turnDeadline,
+                msOverdue,
               });
 
               const currentPlayerId = horsesState.currentTurnPlayerId;
@@ -733,6 +738,13 @@ serve(async (req) => {
                   actionsTaken.push('Skipped - another client processed dice turn');
                 }
               }
+            } else if (msOverdue > 0) {
+              // Deadline just expired but within grace period - skip this cycle
+              console.log('[ENFORCE-CLIENT] 🎲 DICE GAME deadline within grace period, skipping', {
+                gameId,
+                msOverdue,
+                currentPlayer: horsesState.currentTurnPlayerId,
+              });
             }
           }
         }
