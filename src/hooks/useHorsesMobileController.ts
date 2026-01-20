@@ -1618,18 +1618,25 @@ export function useHorsesMobileController({
     if (!shouldProcess) return;
 
     const processWin = async () => {
-      // Mark as processed IMMEDIATELY to prevent race conditions
+      // Mark as processed IMMEDIATELY to prevent local double-processing
       processedWinRoundRef.current = currentRoundId;
 
       if (winningPlayerIds.length > 1) {
-        // Set awaiting_next_round to trigger re-ante flow
-        await supabase
+        // ATOMIC GUARD: Only one client claims the tie processing
+        const { data: claimed, error: claimError } = await supabase
           .from("games")
           .update({
             awaiting_next_round: true,
             last_round_result: "One tie all tie - rollover",
           })
-          .eq("id", gameId);
+          .eq("id", gameId)
+          .eq("status", "in_progress") // Only succeeds if not already processed
+          .select("id");
+
+        if (claimError || !claimed || claimed.length === 0) {
+          console.log("[HORSES] Tie already processed by another client");
+          return;
+        }
         return;
       }
 
@@ -1638,15 +1645,25 @@ export function useHorsesMobileController({
 
       if (!winnerPlayer || !winnerResult) return;
 
-      // Fetch the actual pot from the database (prop may be stale)
-      const { data: gameData } = await supabase
+      // ATOMIC GUARD: Claim the right to process this win by atomically
+      // transitioning game status. Only one client will succeed.
+      const { data: claimed, error: claimError } = await supabase
         .from("games")
-        .select("pot, total_hands")
+        .update({
+          status: "game_over",
+          game_over_at: new Date().toISOString(),
+        })
         .eq("id", gameId)
-        .single();
+        .eq("status", "in_progress") // Only succeeds if still in_progress
+        .select("id, pot, total_hands");
 
-      const actualPot = gameData?.pot || pot || 0;
-      const handNumber = gameData?.total_hands || 1;
+      if (claimError || !claimed || claimed.length === 0) {
+        console.log("[HORSES] Win already processed by another client");
+        return;
+      }
+
+      const actualPot = claimed[0].pot || pot || 0;
+      const handNumber = claimed[0].total_hands || 1;
 
       // Award pot to winner using atomic increment to prevent race conditions
       // (non-atomic read-then-write could lose chips if state is stale)
@@ -1689,13 +1706,11 @@ export function useHorsesMobileController({
       // Snapshot player chips for session history (enables "Run Back" option)
       await snapshotPlayerChips(gameId, handNumber);
 
-      // Transition to game_over and reset pot
+      // Update pot and result description (status already set in atomic claim)
       await supabase
         .from("games")
         .update({
-          status: "game_over",
           pot: 0,
-          game_over_at: new Date().toISOString(),
           last_round_result: `${winnerName} wins with ${winnerResult.result.description}`,
         })
         .eq("id", gameId);
