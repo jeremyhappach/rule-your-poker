@@ -596,13 +596,13 @@ export async function startRound(gameId: string, roundNumber: number) {
               totalPrize 
             });
             
-            // Award pot + leg value to the winner
+            // Award pot + leg value to the winner using atomic increment
             const winnerPlayer = (allPlayers || []).find(p => p.id === player?.id);
-            if (winnerPlayer) {
-              await supabase
-                .from('players')
-                .update({ chips: winnerPlayer.chips + totalPrize })
-                .eq('id', player?.id);
+            if (winnerPlayer && player?.id) {
+              await supabase.rpc('increment_player_chips', {
+                p_player_id: player.id,
+                p_amount: totalPrize
+              });
             }
             
             // Reset all players' legs to 0 for next game
@@ -918,11 +918,11 @@ async function handleGameOver(
     false
   );
   
-  // Award the winner
-  await supabase
-    .from('players')
-    .update({ chips: allPlayers.find(p => p.id === winnerId)!.chips + totalPrize })
-    .eq('id', winnerId);
+  // Award the winner using atomic increment
+  await supabase.rpc('increment_player_chips', {
+    p_player_id: winnerId,
+    p_amount: totalPrize
+  });
   
   // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
   await snapshotPlayerChips(gameId, newTotalHands);
@@ -1415,13 +1415,11 @@ export async function endRound(gameId: string) {
               }
             }
             
-            // Award showdown winnings to winner (pot remains for game winner)
-            const { error: winnerError } = await supabase
-              .from('players')
-              .update({ 
-                chips: winningPlayer.chips + totalWinnings
-              })
-              .eq('id', winner.playerId);
+            // Award showdown winnings to winner using atomic increment
+            const { error: winnerError } = await supabase.rpc('increment_player_chips', {
+              p_player_id: winner.playerId,
+              p_amount: totalWinnings
+            });
             
             if (winnerError) {
               console.error('[endRound] SHOWDOWN: ERROR awarding to winner:', winner.playerId, winnerError);

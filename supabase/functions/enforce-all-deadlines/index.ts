@@ -923,10 +923,11 @@ serve(async (req) => {
                   const player = playerMap.get(winner.playerId);
                   if (player) {
                     const winAmount = shareAmount + (i === 0 ? remainder : 0);
-                    await supabase
-                      .from('players')
-                      .update({ chips: player.chips + winAmount })
-                      .eq('id', winner.playerId);
+                    // Use atomic increment to prevent race conditions
+                    await supabase.rpc('increment_player_chips', {
+                      p_player_id: winner.playerId,
+                      p_amount: winAmount
+                    });
                     playerChipChanges[winner.playerId] = winAmount;
                     winnerNames.push((player.profiles as any)?.username || 'Player');
                   }
@@ -963,12 +964,12 @@ serve(async (req) => {
                 const winnerPlayer = playerMap.get(bestPlayer.playerId);
                 const winnerUsername = (winnerPlayer?.profiles as any)?.username || 'Player';
                 
-                // Award pot
+                // Award pot using atomic increment
                 if (winnerPlayer) {
-                  await supabase
-                    .from('players')
-                    .update({ chips: winnerPlayer.chips + roundPot })
-                    .eq('id', bestPlayer.playerId);
+                  await supabase.rpc('increment_player_chips', {
+                    p_player_id: bestPlayer.playerId,
+                    p_amount: roundPot
+                  });
                 }
                 
                 await supabase.from('game_results').insert({
@@ -1747,10 +1748,10 @@ serve(async (req) => {
                 const playerWins = playerEval.value > chuckyEval.value;
                 
                 if (playerWins) {
-                  await supabase
-                    .from('players')
-                    .update({ chips: player.chips + roundPot })
-                    .eq('id', player.id);
+                  await supabase.rpc('increment_player_chips', {
+                    p_player_id: player.id,
+                    p_amount: roundPot
+                  });
                   
                   await supabase.from('game_results').insert({
                     game_id: game.id,
@@ -1842,10 +1843,10 @@ serve(async (req) => {
                 if (winners.length === 1) {
                   const winner = winners[0];
                   
-                  await supabase
-                    .from('players')
-                    .update({ chips: winner.player.chips + roundPot })
-                    .eq('id', winner.player.id);
+                  await supabase.rpc('increment_player_chips', {
+                    p_player_id: winner.player.id,
+                    p_amount: roundPot
+                  });
                   
                   await supabase.from('game_results').insert({
                     game_id: game.id,
@@ -1888,10 +1889,10 @@ serve(async (req) => {
                   const playerChipChanges: Record<string, number> = {};
                   
                   for (const winner of winners) {
-                    await supabase
-                      .from('players')
-                      .update({ chips: winner.player.chips + splitAmount })
-                      .eq('id', winner.player.id);
+                    await supabase.rpc('increment_player_chips', {
+                      p_player_id: winner.player.id,
+                      p_amount: splitAmount
+                    });
                     playerChipChanges[winner.player.id] = splitAmount;
                   }
                   
