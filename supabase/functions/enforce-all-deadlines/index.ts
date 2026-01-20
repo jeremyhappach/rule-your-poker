@@ -686,6 +686,65 @@ serve(async (req) => {
           }
         }
 
+        // ============= STUCK HOLM GAME RECOVERY (all_decisions_in mismatch) =============
+        // Detects games where all players have decision_locked=true but all_decisions_in is still false
+        // This can happen if endHolmRound crashes/stalls before completing
+        if ((game.game_type === 'holm' || game.game_type === 'holm-game') && 
+            game.status === 'in_progress' && 
+            game.all_decisions_in === false) {
+          
+          const { data: currentRound } = await supabase
+            .from('rounds')
+            .select('id, status')
+            .eq('game_id', game.id)
+            .eq('round_number', game.current_round || 1)
+            .maybeSingle();
+          
+          if (currentRound && (currentRound.status === 'processing' || currentRound.status === 'active')) {
+            const { data: holmPlayers } = await supabase
+              .from('players')
+              .select('id, position, decision_locked, current_decision, sitting_out, status')
+              .eq('game_id', game.id);
+            
+            // Check active players (not sitting out)
+            const activePlayers = (holmPlayers || []).filter((p: any) => 
+              !p.sitting_out && p.status === 'active'
+            );
+            
+            // Check if ALL active players have decision_locked = true
+            const allDecided = activePlayers.length > 0 && 
+              activePlayers.every((p: any) => p.decision_locked === true);
+            
+            if (allDecided) {
+              console.log('[CRON-ENFORCE] 🔧 STUCK HOLM GAME RECOVERY: all players decided but all_decisions_in=false', {
+                gameId: game.id,
+                roundId: currentRound.id,
+                roundStatus: currentRound.status,
+                playerCount: activePlayers.length,
+              });
+              
+              // Fix by setting all_decisions_in = true (triggers client-side showdown)
+              await supabase
+                .from('games')
+                .update({ all_decisions_in: true })
+                .eq('id', game.id);
+              
+              // Clear stale deadline/turn position
+              await supabase
+                .from('rounds')
+                .update({ 
+                  current_turn_position: null,
+                  decision_deadline: null,
+                })
+                .eq('id', currentRound.id);
+              
+              actionsTaken.push('Stuck Holm recovery: Set all_decisions_in=true, all players had decided');
+              results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+              continue;
+            }
+          }
+        }
+
         // ============= DEGENERATE GAME STATE CHECK =============
         if (game.status === 'in_progress') {
           const CONSECUTIVE_FOLDS_THRESHOLD = 5;
