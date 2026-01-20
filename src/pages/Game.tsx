@@ -4784,10 +4784,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const currentPlayer = players.find(p => p.user_id === user.id);
     if (!currentPlayer) return;
 
-    const { error } = await supabase
-      .from('players')
-      .update({ chips: currentPlayer.chips + amount })
-      .eq('id', currentPlayer.id);
+    // Use atomic increment to prevent race conditions
+    const { error } = await supabase.rpc('increment_player_chips', {
+      p_player_id: currentPlayer.id,
+      p_amount: amount,
+    });
 
     if (error) {
       console.error('Failed to add chips:', error);

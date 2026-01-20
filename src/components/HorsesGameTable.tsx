@@ -1183,11 +1183,11 @@ export function HorsesGameTable({
       const actualPot = gameData?.pot || pot || 0;
       const handNumber = gameData?.total_hands || 1;
 
-      // Award pot to winner
-      const { error: updateError } = await supabase
-        .from("players")
-        .update({ chips: winnerPlayer.chips + actualPot })
-        .eq("id", winnerId);
+      // Award pot to winner using atomic increment to prevent race conditions
+      const { error: updateError } = await supabase.rpc("increment_player_chips", {
+        p_player_id: winnerId,
+        p_amount: actualPot,
+      });
 
       if (updateError) {
         console.error("[HORSES] Failed to update winner chips:", updateError);
