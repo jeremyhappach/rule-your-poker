@@ -1309,21 +1309,10 @@ async function handleChuckyShowdown(
 
     console.log('[HOLM SHOWDOWN] Pot update - old:', roundPot, 'adding:', potMatchAmount, 'new:', newPot);
 
-    // ACCOUNTING FIX: Record loser's chip loss in game_results so accounting sums to zero
-    const loserChipChanges: Record<string, number> = {};
-    loserChipChanges[player.id] = -potMatchAmount;
-    
-    await recordGameResult(
-      gameId,
-      (game.total_hands || 0) + 1,
-      null, // No winner - Chucky won
-      'Chucky',
-      chuckyHandDesc,
-      0, // No pot won by any player
-      loserChipChanges,
-      false
-    );
-    console.log('[HOLM SHOWDOWN] Recorded loser chip change for accounting:', loserChipChanges);
+    // NOTE: No game_result is recorded here because the game continues
+    // The accounting invariant is: sum(player_chips) + pot = constant
+    // Chips moved from player to pot, pot grows, game continues until someone beats Chucky
+    console.log('[HOLM SHOWDOWN] Chucky won - game continues, no game_result recorded (chips went to pot)');
 
     // Use different message for tie vs actual loss
     const resultMessage = isTie 
@@ -1595,28 +1584,16 @@ async function handleMultiPlayerShowdown(
 
     // Set pot to losers' matched amount (no re-anting in Holm)
     console.log('[HOLM MULTI] New pot from losers match:', newPot);
-    // Get detailed hand description for winner
+    
+    // NOTE: No game_result is recorded here because the game continues
+    // The accounting invariant is: sum(player_chips) + pot = constant
+    // Winner takes old pot (+roundPot), losers pay into new pot (-potMatchAmount each)
+    // Game only ends when someone beats Chucky
+    console.log('[HOLM MULTI] Single winner - game continues, no game_result recorded');
+    
+    // Get detailed hand description for winner (for result message)
     const winnerAllCards = [...winner.cards, ...communityCards];
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
-    
-    // ACCOUNTING FIX: Record game_result with balanced chip changes (winner gain + loser losses)
-    const playerChipChanges: Record<string, number> = {};
-    playerChipChanges[winner.player.id] = roundPot;
-    for (const loser of losers) {
-      playerChipChanges[loser.player.id] = -potMatchAmount;
-    }
-    console.log('[HOLM MULTI] Recording balanced game result:', playerChipChanges);
-    
-    await recordGameResult(
-      gameId,
-      (game.total_hands || 0) + 1,
-      winner.player.id,
-      winnerUsername,
-      winnerHandDesc,
-      roundPot,
-      playerChipChanges,
-      false
-    );
     
     // Build debug data object to embed in result message
     const debugData = {
@@ -1703,26 +1680,10 @@ async function handleMultiPlayerShowdown(
     const winnerAllCards = [...winners[0].cards, ...communityCards];
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
     
-    // ACCOUNTING FIX: Record game_result with balanced chip changes (winner gains + loser losses)
-    const playerChipChanges: Record<string, number> = {};
-    for (const winner of winners) {
-      playerChipChanges[winner.player.id] = splitAmount;
-    }
-    for (const loser of losers) {
-      playerChipChanges[loser.player.id] = -potMatchAmount;
-    }
-    console.log('[HOLM PARTIAL TIE] Recording balanced game result:', playerChipChanges);
-    
-    await recordGameResult(
-      gameId,
-      (game.total_hands || 0) + 1,
-      winners[0].player.id,
-      winnerNames.join(' and '),
-      winnerHandDesc,
-      roundPot,
-      playerChipChanges,
-      true // is_chopped
-    );
+    // NOTE: No game_result is recorded here because the game continues
+    // The accounting invariant is: sum(player_chips) + pot = constant
+    // Winners split old pot, losers pay into new pot - game continues until someone beats Chucky
+    console.log('[HOLM PARTIAL TIE] Partial tie - game continues, no game_result recorded');
     
     // Build debug data object to embed in result message
     const debugData = {
@@ -1868,23 +1829,10 @@ async function handleMultiPlayerShowdown(
       
       const newPot = roundPot + totalMatched;
       
-      // ACCOUNTING FIX: Record loser chip changes in game_results so accounting sums to zero
-      const loserChipChanges: Record<string, number> = {};
-      for (const loser of playersLoseToChucky) {
-        loserChipChanges[loser.player.id] = -potMatchAmount;
-      }
-      
-      await recordGameResult(
-        gameId,
-        (game.total_hands || 0) + 1,
-        null, // No winner - Chucky won
-        'Chucky',
-        chuckyHandDesc,
-        0, // No pot won by any player
-        loserChipChanges,
-        false
-      );
-      console.log('[HOLM TIE] Recorded loser chip changes for accounting:', loserChipChanges);
+      // NOTE: No game_result is recorded here because the game continues
+      // The accounting invariant is: sum(player_chips) + pot = constant
+      // Chips moved from players to pot, pot grows, game continues until someone beats Chucky
+      console.log('[HOLM TIE] Chucky won - game continues, no game_result recorded (chips went to pot)');
       
       // Use different message for tie vs actual loss
       const resultMessage = allTiedWithChucky 
