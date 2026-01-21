@@ -22,6 +22,7 @@ import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
@@ -405,6 +406,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
   useDeadlineEnforcer(gameId, game?.status);
+  
+  // Keep screen awake during active gameplay (prevents device from sleeping)
+  const isActiveGame = game?.status && !['session_ended', 'deleted'].includes(game.status);
+  useWakeLock(!!isActiveGame);
   
 
   // If an empty session was deleted (no longer exists in DB), leave the game route.
