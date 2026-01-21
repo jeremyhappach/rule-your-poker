@@ -220,6 +220,7 @@ const Game = () => {
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionAnnouncement, setDealerSelectionAnnouncement] = useState<string | null>(null);
   const [dealerSelectionComplete, setDealerSelectionComplete] = useState(false);
+  const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
 
   // Capture the *last confirmed* config so Dealer Setup can offer "Run Back" even after we reset
   // the game back to game_selection (where config_complete becomes false).
@@ -5358,6 +5359,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isWaitingPhase={true}
                     dealerSelectionCards={dealerSelectionCards}
                     dealerSelectionAnnouncement={dealerSelectionAnnouncement}
+                    dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
                   />
                 ) : (
                   <GameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
@@ -5394,6 +5396,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     setDealerSelectionAnnouncement(msg);
                     setDealerSelectionComplete(complete);
                   }}
+                  onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
                 />
               </>
             )}

@@ -34,6 +34,8 @@ interface HighCardDealerSelectionProps {
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   // Callback for announcement messages
   onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
+  // Callback to report the winning position when determined (for spotlight effect)
+  onWinnerPositionUpdate?: (position: number | null) => void;
 }
 
 export const HighCardDealerSelection = ({ 
@@ -42,7 +44,8 @@ export const HighCardDealerSelection = ({
   isHost,
   allowBotDealers = false,
   onCardsUpdate,
-  onAnnouncementUpdate
+  onAnnouncementUpdate,
+  onWinnerPositionUpdate
 }: HighCardDealerSelectionProps) => {
   const [phase, setPhase] = useState<'announcing' | 'dealing' | 'complete'>('announcing');
   const [playerCards, setPlayerCards] = useState<DealerSelectionCard[]>([]);
@@ -128,6 +131,9 @@ export const HighCardDealerSelection = ({
   const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
     
+    // Clear winner position when starting a new round (including tiebreakers)
+    onWinnerPositionUpdate?.(null);
+    
     if (roundNum === 1) {
       onAnnouncementUpdate('High card wins deal', false);
     } else {
@@ -204,6 +210,9 @@ export const HighCardDealerSelection = ({
         const name = getPlayerName(winnerPlayer);
         onAnnouncementUpdate(`${name} wins the deal!`, true);
         setPhase('complete');
+        
+        // Report winner position for spotlight effect
+        onWinnerPositionUpdate?.(winnerPlayer.position);
         
         // Complete after showing winner
         addTimeout(() => {

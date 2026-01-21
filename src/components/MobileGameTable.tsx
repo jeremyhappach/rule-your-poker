@@ -302,6 +302,7 @@ interface MobileGameTableProps {
   // High card dealer selection props
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
+  dealerSelectionWinnerPosition?: number | null; // Position of winner for spotlight effect
 }
 export const MobileGameTable = ({
   gameId,
@@ -418,6 +419,7 @@ export const MobileGameTable = ({
   onAutoFoldChange,
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
+  dealerSelectionWinnerPosition,
 }: MobileGameTableProps) => {
   const {
     getTableColors,
@@ -3868,6 +3870,9 @@ export const MobileGameTable = ({
                       : (player.profiles?.username || `P${position}`))
                   : `P${position}`;
                 
+                // Check if this player is the winner (for spotlight effect)
+                const isWinnerPosition = dealerSelectionWinnerPosition === position;
+                
                 return (
                   <div 
                     key={`dealer-selection-${position}`}
@@ -3878,6 +3883,17 @@ export const MobileGameTable = ({
                       transform: 'translate(-50%, -50%)',
                     }}
                   >
+                    {/* Winner spotlight glow effect */}
+                    {isWinnerPosition && (
+                      <div 
+                        className="absolute inset-0 -inset-6 rounded-full animate-pulse pointer-events-none"
+                        style={{
+                          background: 'radial-gradient(circle, rgba(234,179,8,0.5) 0%, rgba(234,179,8,0.2) 40%, transparent 70%)',
+                          filter: 'blur(8px)',
+                          zIndex: -1,
+                        }}
+                      />
+                    )}
                     {/* Stack all cards for this position (tie-breaker rounds) */}
                     <div className="flex gap-1">
                       {allCardsForPosition.map((cardData, idx) => (
@@ -3887,7 +3903,7 @@ export const MobileGameTable = ({
                           style={{
                             opacity: cardData.isRevealed ? 1 : 0.9,
                             transform: cardData.isRevealed 
-                              ? (cardData.isWinner ? 'scale(1.1) translateY(-4px)' : (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)'))
+                              ? (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)')
                               : 'scale(1)',
                           }}
                         >
@@ -3895,11 +3911,10 @@ export const MobileGameTable = ({
                             card={cardData.card as CardType}
                             isHidden={!cardData.isRevealed}
                             size="xl"
-                            isHighlighted={cardData.isWinner}
+                            isHighlighted={false}
                             isDimmed={cardData.isDimmed && cardData.isRevealed}
                             className={cn(
                               "shadow-2xl transition-all duration-500",
-                              cardData.isWinner && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-black/50",
                               cardData.isDimmed && cardData.isRevealed && "opacity-50"
                             )}
                           />
@@ -3909,8 +3924,8 @@ export const MobileGameTable = ({
                     {/* Player name below their cards */}
                     <div className={cn(
                       "px-2 py-0.5 rounded text-xs font-bold mt-1 transition-all duration-300",
-                      allCardsForPosition.some(c => c.isWinner && c.isRevealed)
-                        ? "bg-yellow-500 text-black"
+                      isWinnerPosition
+                        ? "bg-poker-gold text-black ring-2 ring-yellow-300 shadow-lg"
                         : allCardsForPosition.some(c => c.isDimmed && c.isRevealed)
                           ? "bg-black/60 text-white/60"
                           : "bg-black/80 text-white"
@@ -5169,7 +5184,18 @@ export const MobileGameTable = ({
                 )}>
                   {/* Dealer Selection Cards for current player */}
                   {showDealerSelectionCards ? (
-                    <div className="flex flex-col items-center gap-2 py-4">
+                    <div className="flex flex-col items-center gap-2 py-4 relative">
+                      {/* Winner spotlight glow for current player */}
+                      {dealerSelectionWinnerPosition === currentPlayer?.position && (
+                        <div 
+                          className="absolute inset-0 -inset-4 rounded-xl animate-pulse pointer-events-none"
+                          style={{
+                            background: 'radial-gradient(circle, rgba(234,179,8,0.4) 0%, rgba(234,179,8,0.15) 50%, transparent 80%)',
+                            filter: 'blur(6px)',
+                            zIndex: -1,
+                          }}
+                        />
+                      )}
                       <div className="flex gap-2">
                         {currentPlayerDealerCards.map((cardData, idx) => (
                           <div 
@@ -5178,7 +5204,7 @@ export const MobileGameTable = ({
                             style={{
                               opacity: cardData.isRevealed ? 1 : 0.9,
                               transform: cardData.isRevealed 
-                                ? (cardData.isWinner ? 'scale(1.15) translateY(-4px)' : (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)'))
+                                ? (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)')
                                 : 'scale(1)',
                             }}
                           >
@@ -5186,11 +5212,10 @@ export const MobileGameTable = ({
                               card={cardData.card as CardType}
                               isHidden={!cardData.isRevealed}
                               size="xl"
-                              isHighlighted={cardData.isWinner}
+                              isHighlighted={false}
                               isDimmed={cardData.isDimmed && cardData.isRevealed}
                               className={cn(
                                 "shadow-2xl transition-all duration-500",
-                                cardData.isWinner && "ring-4 ring-yellow-400 ring-offset-2 ring-offset-black/50",
                                 cardData.isDimmed && cardData.isRevealed && "opacity-50"
                               )}
                             />
