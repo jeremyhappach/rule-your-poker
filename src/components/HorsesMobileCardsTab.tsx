@@ -161,13 +161,28 @@ export function HorsesMobileCardsTab({
     horses.completedTurnHold && 
     (horses.completedTurnHold.expiresAt - Date.now() < 1500);
 
+  const isSCC = gameType === "ship-captain-crew";
+
   // STICKY RESULT: Cache the result so it persists through game phase transitions (win animation)
   // Once I've completed my turn, keep showing my result badge until a new round starts
-  const stickyResultRef = useRef<{ result: typeof myResult; playerId: string | null } | null>(null);
+  const stickyResultRef = useRef<{ 
+    result: typeof myResult; 
+    playerId: string | null;
+    cargoDice?: { value: number; sccType?: 'ship' | 'captain' | 'crew' }[];
+  } | null>(null);
+  
+  // Extract cargo dice from localHand for SCC games (dice without sccType)
+  const myCargoDice = isSCC 
+    ? (horses.localHand.dice as any[]).filter(d => !d.sccType && d.value > 0)
+    : undefined;
   
   // Update sticky cache when we have a valid result
   if (myResult && horses.myPlayer?.id) {
-    stickyResultRef.current = { result: myResult, playerId: horses.myPlayer.id };
+    stickyResultRef.current = { 
+      result: myResult, 
+      playerId: horses.myPlayer.id,
+      cargoDice: myCargoDice,
+    };
   }
   
   // Clear sticky cache when a new round starts (my turn begins fresh)
@@ -181,6 +196,11 @@ export function HorsesMobileCardsTab({
       ? stickyResultRef.current?.result 
       : null
   );
+  
+  // Get effective cargo dice (from current state or sticky cache)
+  const effectiveCargoDice = myCargoDice && myCargoDice.length >= 2 
+    ? myCargoDice 
+    : stickyResultRef.current?.cargoDice;
 
   // CRITICAL: Single source of truth for showing result badge
   // Show result in action area when:
@@ -193,8 +213,6 @@ export function HorsesMobileCardsTab({
     showHoldResultBadge || // In hold badge phase
     (isGameComplete && effectiveResult) // Game over - keep showing result
   );
-
-  const isSCC = gameType === "ship-captain-crew";
 
   // TABLET: Use larger dice for active player
   const diceSize = isTablet || isDesktop ? "lg" : "lg";
@@ -334,9 +352,10 @@ export function HorsesMobileCardsTab({
           // Styled result badge persists from turn completion through game end (including win animations)
           // Uses effectiveResult which includes sticky cache for stability during transitions
           isSCC ? (
-            // SCC: Use dedicated SCCHandResultDisplay component with proper styling
+            // SCC: Show cargo dice visually (same as felt display)
             <SCCHandResultDisplay
               description={effectiveResult.description}
+              cargoDice={effectiveCargoDice}
               isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
               size={isTablet || isDesktop ? "md" : "sm"}
             />
