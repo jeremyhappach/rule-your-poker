@@ -812,9 +812,14 @@ export const MobileGameTable = ({
       // For a fresh-hand ante, the post pot should be at least the ante total.
       const postPot = isPussyTaxTrigger ? postPotFromProps : Math.max(postPotFromProps, totalAmount);
 
-      // IMPORTANT: Ante happens at the start of a fresh hand, so the pre-ante pot should be 0.
-      // We intentionally do NOT show any transient/stale backend pot value here.
-      const prePot = isPussyTaxTrigger ? Math.max(0, postPot - totalAmount) : 0;
+      // For rollovers (re-antes), the pot should preserve the existing value.
+      // Detect rollovers: anteAnimationExpectedPot is set AND is greater than just the antes being added.
+      // This means there's an existing pot (from a tie/chop) that should be preserved.
+      const isRolloverAnte = anteAnimationExpectedPot !== null && anteAnimationExpectedPot !== undefined && anteAnimationExpectedPot > totalAmount;
+      
+      // IMPORTANT: prePot = 0 ONLY for true fresh-hand antes (no prior pot).
+      // For pussy-tax and rollover antes, prePot = postPot - totalAmount (preserve existing pot).
+      const prePot = (isPussyTaxTrigger || isRolloverAnte) ? Math.max(0, postPot - totalAmount) : 0;
 
       return { lockId: anteAnimationTriggerId, prePot, postPot, totalAmount, type: 'pot-in' as const };
     }
