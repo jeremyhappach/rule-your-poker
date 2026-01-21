@@ -555,51 +555,181 @@ export const DealerGameSetup = ({
   }, [isBot, loadingDefaults]);
 
 
-  // Auto-submit for bots - with 5 second delay and 80/20 run-it-back logic
+  // Auto-submit for bots - always run it back immediately with previous config
   useEffect(() => {
     if (isBot && !loadingDefaults && !hasSubmittedRef.current) {
-      // Determine if bot should change game type (20% chance) or run it back (80%)
-      const shouldChangeGame = Math.random() < 0.2;
+      hasSubmittedRef.current = true;
       
-      if (shouldChangeGame && previousGameType) {
-        // Change to the OTHER game type
-        const newGameType = previousGameType === 'holm-game' ? '3-5-7' : 'holm-game';
-        console.log('[BOT DEALER] Changing game type from', previousGameType, 'to', newGameType);
-        setSelectedGameType(newGameType);
+      // Bot dealers always "run it back" with previous config
+      if (previousGameType && previousGameConfig) {
+        console.log('[BOT DEALER] Running it back with previous config:', previousGameType);
         
-        // Load session config or defaults for the new game type
-        // Only use session config if it's for the same game type (not a dice game config)
-        const sessionConfig = sessionGameConfigs?.[newGameType];
-        if (sessionConfig && sessionConfig.game_type === newGameType) {
-          setAnteAmount(String(sessionConfig.ante_amount));
-          setLegValue(String(sessionConfig.leg_value));
-          setLegsToWin(String(sessionConfig.legs_to_win));
-          setPussyTaxEnabled(sessionConfig.pussy_tax_enabled);
-          setPussyTaxValue(String(sessionConfig.pussy_tax_value));
-          setPotMaxEnabled(sessionConfig.pot_max_enabled);
-          setPotMaxValue(String(sessionConfig.pot_max_value));
-          setChuckyCards(String(sessionConfig.chucky_cards));
-          setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
-          setRevealAtShowdown(sessionConfig.reveal_at_showdown ?? false);
+        // Check if it's a dice game
+        const isDice = previousGameType === 'horses' || previousGameType === 'ship-captain-crew';
+        
+        if (isDice) {
+          // Dice games only need ante - submit directly
+          const parsedAnte = previousGameConfig.ante_amount || 2;
+          
+          const submitDiceGame = async () => {
+            const anteDeadline = new Date(Date.now() + 10000).toISOString();
+            
+            const { error } = await supabase
+              .from('games')
+              .update({
+                game_type: previousGameType,
+                ante_amount: parsedAnte,
+                config_complete: true,
+                status: 'ante_decision',
+                ante_decision_deadline: anteDeadline,
+                leg_value: 0,
+                legs_to_win: 0,
+                pot_max_enabled: false,
+                pussy_tax_enabled: false,
+              })
+              .eq('id', gameId);
+            
+            if (error) {
+              console.error('[BOT DEALER] Error submitting dice game:', error);
+              return;
+            }
+            
+            // Reset ante_decision for all non-dealer players
+            await supabase
+              .from('players')
+              .update({ ante_decision: null })
+              .eq('game_id', gameId)
+              .neq('id', dealerPlayerId);
+            
+            // Auto ante up the dealer
+            await supabase
+              .from('players')
+              .update({ ante_decision: 'ante_up', sitting_out: false })
+              .eq('id', dealerPlayerId);
+            
+            console.log('[BOT DEALER] ✅ Dice game config complete');
+            onConfigComplete();
+          };
+          
+          submitDiceGame();
         } else {
-          const defaults = newGameType === 'holm-game' ? holmDefaults : threeFiveSevenDefaults;
-          if (defaults) applyDefaults(defaults);
+          // Card games - submit with full config directly
+          const isHolmGame = previousGameType === 'holm-game';
+          const anteDeadline = new Date(Date.now() + 10000).toISOString();
+          
+          const submitCardGame = async () => {
+            const updateData: any = {
+              game_type: previousGameType,
+              ante_amount: previousGameConfig.ante_amount,
+              leg_value: previousGameConfig.leg_value,
+              pussy_tax_enabled: previousGameConfig.pussy_tax_enabled,
+              pussy_tax_value: previousGameConfig.pussy_tax_value,
+              pussy_tax: previousGameConfig.pussy_tax_value,
+              legs_to_win: previousGameConfig.legs_to_win,
+              pot_max_enabled: previousGameConfig.pot_max_enabled,
+              pot_max_value: previousGameConfig.pot_max_value,
+              config_complete: true,
+              status: 'ante_decision',
+              ante_decision_deadline: anteDeadline,
+            };
+            
+            if (isHolmGame) {
+              updateData.chucky_cards = previousGameConfig.chucky_cards;
+              updateData.rabbit_hunt = previousGameConfig.rabbit_hunt ?? false;
+              updateData.reveal_at_showdown = previousGameConfig.reveal_at_showdown ?? false;
+              updateData.current_round = 1;
+              updateData.is_first_hand = true;
+            }
+            
+            const { error } = await supabase
+              .from('games')
+              .update(updateData)
+              .eq('id', gameId);
+            
+            if (error) {
+              console.error('[BOT DEALER] Error submitting card game:', error);
+              return;
+            }
+            
+            // Reset ante_decision for all non-dealer players
+            await supabase
+              .from('players')
+              .update({ ante_decision: null })
+              .eq('game_id', gameId)
+              .neq('id', dealerPlayerId);
+            
+            // Auto ante up the dealer
+            await supabase
+              .from('players')
+              .update({ ante_decision: 'ante_up', sitting_out: false })
+              .eq('id', dealerPlayerId);
+            
+            console.log('[BOT DEALER] ✅ Card game config complete');
+            onConfigComplete();
+          };
+          
+          submitCardGame();
         }
       } else {
-        console.log('[BOT DEALER] Running it back with same config');
-      }
-      
-      // Wait 5 seconds before submitting to simulate dealer thinking
-      const timer = setTimeout(() => {
-        if (!hasSubmittedRef.current) {
-          hasSubmittedRef.current = true;
-          handleSubmit();
+        // No previous config - use defaults and submit with Holm game
+        console.log('[BOT DEALER] No previous config, using defaults');
+        const defaults = holmDefaults || threeFiveSevenDefaults;
+        const gameType = holmDefaults ? 'holm-game' : '3-5-7';
+        
+        if (defaults) {
+          const anteDeadline = new Date(Date.now() + 10000).toISOString();
+          
+          const submitDefault = async () => {
+            const updateData: any = {
+              game_type: gameType,
+              ante_amount: defaults.ante_amount,
+              leg_value: defaults.leg_value,
+              pussy_tax_enabled: defaults.pussy_tax_enabled,
+              pussy_tax_value: defaults.pussy_tax_value,
+              pussy_tax: defaults.pussy_tax_value,
+              legs_to_win: defaults.legs_to_win,
+              pot_max_enabled: defaults.pot_max_enabled,
+              pot_max_value: defaults.pot_max_value,
+              config_complete: true,
+              status: 'ante_decision',
+              ante_decision_deadline: anteDeadline,
+            };
+            
+            if (gameType === 'holm-game') {
+              updateData.chucky_cards = defaults.chucky_cards;
+              updateData.rabbit_hunt = defaults.rabbit_hunt ?? false;
+              updateData.reveal_at_showdown = defaults.reveal_at_showdown ?? false;
+              updateData.current_round = 1;
+              updateData.is_first_hand = true;
+            }
+            
+            const { error } = await supabase.from('games').update(updateData).eq('id', gameId);
+            
+            if (error) {
+              console.error('[BOT DEALER] Error submitting default game:', error);
+              return;
+            }
+            
+            await supabase
+              .from('players')
+              .update({ ante_decision: null })
+              .eq('game_id', gameId)
+              .neq('id', dealerPlayerId);
+            
+            await supabase
+              .from('players')
+              .update({ ante_decision: 'ante_up', sitting_out: false })
+              .eq('id', dealerPlayerId);
+            
+            console.log('[BOT DEALER] ✅ Default game config complete');
+            onConfigComplete();
+          };
+          
+          submitDefault();
         }
-      }, 5000);
-      
-      return () => clearTimeout(timer);
+      }
     }
-  }, [isBot, loadingDefaults, previousGameType, sessionGameConfigs, holmDefaults, threeFiveSevenDefaults]);
+  }, [isBot, loadingDefaults, previousGameType, previousGameConfig, holmDefaults, threeFiveSevenDefaults, gameId, dealerPlayerId, onConfigComplete]);
 
   const handleSubmit = async (overrideGameType?: string) => {
     if (isSubmitting || hasSubmittedRef.current) return;
