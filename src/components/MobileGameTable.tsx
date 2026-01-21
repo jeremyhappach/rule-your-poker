@@ -4213,40 +4213,103 @@ export const MobileGameTable = ({
                   );
                 })()
               ) : (
-                // Observer view - show staggered dice layout
-                <DiceTableLayout
-                  // Force a remount when the dice "owner" changes so no internal refs leak between players.
-                  key={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
-                  dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
-                    const showHeldVisual =
-                      typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
-                    return {
-                      ...die,
-                      isHeld: showHeldVisual,
-                    };
-                  }) as (HorsesDieType | SCCDieType)[]}
-                  isRolling={
-                    // CRITICAL: Observers should NEVER see rumbling dice.
-                    // Only the active player's local window (isMyTurn=true) shows rumbling.
-                    showDice && horsesController.isMyTurn
-                      ? horsesController.isRolling
-                      : false
-                  }
-                  canToggle={false}
-                  size="md"
-                  gameType={gameType ?? undefined}
-                  showWildHighlight={gameType !== 'ship-captain-crew'}
-                  useSCCDisplayOrder={gameType === 'ship-captain-crew'}
-                  sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
-                  isObserver={true}
-                  hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
-                  heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
-                  previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
-                  animationOrigin={getDiceAnimationOrigin()}
-                  rollKey={(horsesController.feltDice as any)?.rollKey}
-                  isQualified={(horsesController.feltDice as any)?.isQualified}
-                  cacheKey={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
-                />
+                // Observer view - show staggered dice layout with Beat badge when I'm winning
+                <div className="flex flex-col items-center gap-2">
+                  <DiceTableLayout
+                    // Force a remount when the dice "owner" changes so no internal refs leak between players.
+                    key={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
+                    dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
+                      const showHeldVisual =
+                        typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
+                      return {
+                        ...die,
+                        isHeld: showHeldVisual,
+                      };
+                    }) as (HorsesDieType | SCCDieType)[]}
+                    isRolling={
+                      // CRITICAL: Observers should NEVER see rumbling dice.
+                      // Only the active player's local window (isMyTurn=true) shows rumbling.
+                      showDice && horsesController.isMyTurn
+                        ? horsesController.isRolling
+                        : false
+                    }
+                    canToggle={false}
+                    size="md"
+                    gameType={gameType ?? undefined}
+                    showWildHighlight={gameType !== 'ship-captain-crew'}
+                    useSCCDisplayOrder={gameType === 'ship-captain-crew'}
+                    sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
+                    isObserver={true}
+                    hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
+                    heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
+                    previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
+                    animationOrigin={getDiceAnimationOrigin()}
+                    rollKey={(horsesController.feltDice as any)?.rollKey}
+                    isQualified={(horsesController.feltDice as any)?.isQualified}
+                    cacheKey={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
+                  />
+                  {/* Beat badge - show when I'm the current winning player and someone else is rolling */}
+                  {(() => {
+                    const myPlayerId = horsesController.myPlayer?.id;
+                    const amIWinning = myPlayerId && horsesController.currentlyWinningPlayerIds.includes(myPlayerId);
+                    const myResult = myPlayerId ? horsesController.getPlayerHandResult(myPlayerId) : null;
+                    
+                    if (!amIWinning || !myResult?.description) return null;
+                    
+                    return (
+                      <div className={cn(
+                        "flex items-center justify-center gap-2 mt-1",
+                        isTablet && "gap-4 mt-3"
+                      )}>
+                        <Target className={cn(
+                          "text-green-400",
+                          isTablet ? "w-10 h-10" : "w-3 h-3"
+                        )} />
+                        <span className={cn(
+                          "text-green-400 font-medium",
+                          isTablet ? "text-xl" : "text-xs"
+                        )}>
+                          Beat:
+                        </span>
+                        {gameType === 'ship-captain-crew' && (() => {
+                          const myDice = horsesController.getWinningPlayerDice?.();
+                          const cargo = myDice ? (myDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0) : [];
+                          return cargo.length === 2 ? (
+                            <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
+                              {cargo.map((die, idx) => (
+                                <HorsesDie
+                                  key={idx}
+                                  value={die.value}
+                                  isHeld={false}
+                                  isRolling={false}
+                                  canToggle={false}
+                                  size={isTablet ? "md" : "sm"}
+                                  showWildHighlight={false}
+                                  forceWhiteBackground={true}
+                                />
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+                        {gameType === 'horses' && (
+                          <HorsesHandResultDisplay
+                            description={myResult.description}
+                            isWinning={true}
+                            size={isTablet ? "md" : "sm"}
+                          />
+                        )}
+                        {horsesController.isCurrentWinningTied && (
+                          <span className={cn(
+                            "font-medium text-amber-400",
+                            isTablet ? "text-base" : "text-xs"
+                          )}>
+                            (Tied)
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
               )}
             </div>
           );
