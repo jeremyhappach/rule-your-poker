@@ -482,10 +482,19 @@ export const MobileGameTable = ({
   // Dice debug overlay state tracking
   const [feltBlockMounted, setFeltBlockMounted] = useState(false);
 
-  // CRITICAL FIX: Sticky cache for current winning result to prevent "Beat" badge flicker
-  // When horsesController.currentWinningResult briefly becomes undefined during state transitions,
-  // we keep showing the cached value to prevent visual jitter
+  // CRITICAL FIX: Freeze Beat badge at turn start - never update during player's turn
+  // This prevents the badge from flickering/updating when the player's roll takes the lead
   const cachedWinningResultRef = useRef<{ description: string; dice: any[] | null } | null>(null);
+  const wasMyTurnRef = useRef(false); // Track isMyTurn transitions
+  
+  // Reset wasMyTurnRef when turn ends (so next turn gets a fresh snapshot)
+  const isMyTurn = horsesController.isMyTurn;
+  useEffect(() => {
+    if (!isMyTurn && wasMyTurnRef.current) {
+      // Turn just ended - reset for next time
+      wasMyTurnRef.current = false;
+    }
+  }, [isMyTurn]);
 
   // CRITICAL FIX: Sticky cache for the entire felt block content.
   // During brief state gaps (gamePhase flips to waiting/complete, currentTurnPlayerId null, etc.)
@@ -637,6 +646,7 @@ export const MobileGameTable = ({
         newRound: horsesRoundId,
       });
       cachedWinningResultRef.current = null;
+      wasMyTurnRef.current = false; // Reset turn tracking on round change
       prevHorsesRoundIdRef.current = horsesRoundId;
     }
   }, [handContextId, horsesRoundId, potMemoryKey, pot]);
@@ -4134,22 +4144,33 @@ export const MobileGameTable = ({
                 </div>
               ) : horsesController.isMyTurn ? (
                 // My turn - show "You are rolling" message with Beat badge
-                // Uses cached result if live one is undefined (prevents flicker during state transitions)
+                // CRITICAL: Freeze the Beat badge at turn START - don't update during rolls
                 (() => {
                   const liveResult = horsesController.currentWinningResult;
                   const liveWinDice = horsesController.getWinningPlayerDice?.();
                   
-                  // Update cache when we have valid data
-                  if (liveResult?.description) {
-                    cachedWinningResultRef.current = {
-                      description: liveResult.description,
-                      dice: liveWinDice ?? null,
-                    };
+                  // FREEZE LOGIC: Only snapshot the winning result when turn FIRST becomes mine
+                  // Once snapshotted, it stays frozen for my entire turn (wasMyTurnRef stays true)
+                  const justBecameMyTurn = !wasMyTurnRef.current;
+                  if (justBecameMyTurn) {
+                    // Snapshot the current winning hand at turn start
+                    if (liveResult?.description) {
+                      cachedWinningResultRef.current = {
+                        description: liveResult.description,
+                        dice: liveWinDice ?? null,
+                      };
+                    }
+                    // If no one has completed yet, leave cache null (blank badge)
+                    wasMyTurnRef.current = true;
                   }
+                  // Note: cache is NOT updated after this point during my turn
                   
-                  const winResult = liveResult ?? 
-                    (cachedWinningResultRef.current ? { description: cachedWinningResultRef.current.description } : null);
-                  const winDice = liveWinDice ?? cachedWinningResultRef.current?.dice;
+                  // CRITICAL: Use ONLY the cached/frozen value during my turn
+                  // This prevents the badge from updating when my roll takes the lead
+                  const winResult = cachedWinningResultRef.current 
+                    ? { description: cachedWinningResultRef.current.description } 
+                    : null;
+                  const winDice = cachedWinningResultRef.current?.dice ?? null;
                   
                   return (
                     <div className="flex flex-col items-center gap-2">
