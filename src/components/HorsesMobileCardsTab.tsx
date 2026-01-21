@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { HorsesDie } from "./HorsesDie";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
+import { SCCHandResultDisplay } from "./SCCHandResultDisplay";
 import { DiceDebugOverlay } from "./DiceDebugOverlay";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { ValueChangeFlash } from "./ValueChangeFlash";
@@ -332,24 +333,30 @@ export function HorsesMobileCardsTab({
         ) : showResultBadge && effectiveResult ? (
           // Styled result badge persists from turn completion through game end (including win animations)
           // Uses effectiveResult which includes sticky cache for stability during transitions
-          <Badge 
-            variant="secondary" 
-            className={cn(
-              "font-bold",
-              isTablet || isDesktop ? "text-xl px-6 py-3" : "text-lg px-4 py-2",
-              horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '') && "bg-green-600 text-white"
-            )}
-          >
-            {gameType === 'horses' ? (
+          isSCC ? (
+            // SCC: Use dedicated SCCHandResultDisplay component with proper styling
+            <SCCHandResultDisplay
+              description={effectiveResult.description}
+              isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
+              size={isTablet || isDesktop ? "md" : "sm"}
+            />
+          ) : (
+            // Horses: Use badge wrapper with HorsesHandResultDisplay
+            <Badge 
+              variant="secondary" 
+              className={cn(
+                "font-bold",
+                isTablet || isDesktop ? "text-xl px-6 py-3" : "text-lg px-4 py-2",
+                horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '') && "bg-green-600 text-white"
+              )}
+            >
               <HorsesHandResultDisplay 
                 description={effectiveResult.description} 
                 isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
                 size={isTablet || isDesktop ? "md" : "sm"}
               />
-            ) : (
-              effectiveResult.description
-            )}
-          </Badge>
+            </Badge>
+          )
         ) : isWaitingForYourTurn ? (
           <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
             Waiting — {horses.currentTurnPlayerName ? `${horses.currentTurnPlayerName}'s turn` : "Next turn"}
