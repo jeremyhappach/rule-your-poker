@@ -3163,6 +3163,18 @@ export const MobileGameTable = ({
           />
         )}
         
+        {/* Turn Spotlight - Dealer Selection Winner */}
+        {dealerSelectionWinnerPosition !== null && dealerSelectionWinnerPosition !== undefined && (
+          <TurnSpotlight
+            currentTurnPosition={dealerSelectionWinnerPosition}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            isObserver={!currentPlayer}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            isVisible={true}
+          />
+        )}
+        
         {/* Chopped Animation */}
         <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
         
@@ -3870,9 +3882,6 @@ export const MobileGameTable = ({
                       : (player.profiles?.username || `P${position}`))
                   : `P${position}`;
                 
-                // Check if this player is the winner (for spotlight effect)
-                const isWinnerPosition = dealerSelectionWinnerPosition === position;
-                
                 return (
                   <div 
                     key={`dealer-selection-${position}`}
@@ -3883,17 +3892,6 @@ export const MobileGameTable = ({
                       transform: 'translate(-50%, -50%)',
                     }}
                   >
-                    {/* Winner spotlight glow effect */}
-                    {isWinnerPosition && (
-                      <div 
-                        className="absolute inset-0 -inset-6 rounded-full animate-pulse pointer-events-none"
-                        style={{
-                          background: 'radial-gradient(circle, rgba(234,179,8,0.5) 0%, rgba(234,179,8,0.2) 40%, transparent 70%)',
-                          filter: 'blur(8px)',
-                          zIndex: -1,
-                        }}
-                      />
-                    )}
                     {/* Stack all cards for this position (tie-breaker rounds) */}
                     <div className="flex gap-1">
                       {allCardsForPosition.map((cardData, idx) => (
@@ -3924,11 +3922,9 @@ export const MobileGameTable = ({
                     {/* Player name below their cards */}
                     <div className={cn(
                       "px-2 py-0.5 rounded text-xs font-bold mt-1 transition-all duration-300",
-                      isWinnerPosition
-                        ? "bg-poker-gold text-black ring-2 ring-yellow-300 shadow-lg"
-                        : allCardsForPosition.some(c => c.isDimmed && c.isRevealed)
-                          ? "bg-black/60 text-white/60"
-                          : "bg-black/80 text-white"
+                      allCardsForPosition.some(c => c.isDimmed && c.isRevealed)
+                        ? "bg-black/60 text-white/60"
+                        : "bg-black/80 text-white"
                     )}>
                       {playerName}
                     </div>
@@ -5049,16 +5045,11 @@ export const MobileGameTable = ({
               </p>
             </div>
           ) : dealerSelectionAnnouncement ? (
-            /* High card dealer selection announcement */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-xl border-2 border-amber-900">
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-amber-900 flex items-center justify-center border-2 border-amber-700 shadow-lg">
-                  <span className="text-poker-gold font-black text-sm">D</span>
-                </div>
-                <p className="text-slate-900 font-bold text-sm text-center">
-                  {dealerSelectionAnnouncement}
-                </p>
-              </div>
+            /* High card dealer selection announcement - same styling as other dealer messages */
+            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center truncate">
+                {dealerSelectionAnnouncement}
+              </p>
             </div>
           ) : null}
         </div>
@@ -5184,18 +5175,7 @@ export const MobileGameTable = ({
                 )}>
                   {/* Dealer Selection Cards for current player */}
                   {showDealerSelectionCards ? (
-                    <div className="flex flex-col items-center gap-2 py-4 relative">
-                      {/* Winner spotlight glow for current player */}
-                      {dealerSelectionWinnerPosition === currentPlayer?.position && (
-                        <div 
-                          className="absolute inset-0 -inset-4 rounded-xl animate-pulse pointer-events-none"
-                          style={{
-                            background: 'radial-gradient(circle, rgba(234,179,8,0.4) 0%, rgba(234,179,8,0.15) 50%, transparent 80%)',
-                            filter: 'blur(6px)',
-                            zIndex: -1,
-                          }}
-                        />
-                      )}
+                    <div className="flex flex-col items-center gap-2 py-4">
                       <div className="flex gap-2">
                         {currentPlayerDealerCards.map((cardData, idx) => (
                           <div 
