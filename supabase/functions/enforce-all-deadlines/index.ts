@@ -1014,11 +1014,13 @@ serve(async (req) => {
                   game_type: game.game_type,
                 });
                 
+                // For dice game ties, pot carries over to next round (rollover)
+                // Do NOT reset pot to 0 - this is a "one tie all tie" situation
                 await supabase
                   .from('games')
                   .update({
-                    pot: 0,
-                    last_round_result: `CHOPPED: ${winnerNames.join(' & ')}`,
+                    // pot stays unchanged - it carries over for the rollover
+                    last_round_result: "One tie all tie - rollover",
                     awaiting_next_round: true,
                     total_hands: (game.total_hands || 0) + 1,
                     status: 'in_progress',
