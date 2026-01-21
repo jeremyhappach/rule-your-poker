@@ -150,23 +150,48 @@ export function HorsesMobileCardsTab({
   // Show dice when it's my turn and I've rolled at least once, OR during hold period
   const showMyDice = (horses.isMyTurn && horses.gamePhase === "playing" && horses.localHand.rollsRemaining < 3);
   
-  // Show completed hold dice (after locking in, before transitioning to badge)
-  const showHoldDice = isInMyCompletedHold && holdDice && holdDice.length > 0;
+  // Show completed hold dice (after locking in, FIRST 1.5 seconds of hold - dice → badge transition)
+  const showHoldDice = isInMyCompletedHold && holdDice && holdDice.length > 0 && 
+    horses.completedTurnHold && 
+    (horses.completedTurnHold.expiresAt - Date.now() >= 1500);
   
-  // Check if hold period just started showing result badge (last 1.5 seconds of hold)
+  // Show hold result badge (LAST 1.5 seconds of hold period - transition from dice to badge)
   const showHoldResultBadge = isInMyCompletedHold && holdResult && 
     horses.completedTurnHold && 
     (horses.completedTurnHold.expiresAt - Date.now() < 1500);
 
-  // Show "rolling against" when it's my turn and there's already a winning hand to beat
-  const showRollingAgainst = horses.isMyTurn && horses.gamePhase === "playing" && horses.currentWinningResult;
+  // STICKY RESULT: Cache the result so it persists through game phase transitions (win animation)
+  // Once I've completed my turn, keep showing my result badge until a new round starts
+  const stickyResultRef = useRef<{ result: typeof myResult; playerId: string | null } | null>(null);
+  
+  // Update sticky cache when we have a valid result
+  if (myResult && horses.myPlayer?.id) {
+    stickyResultRef.current = { result: myResult, playerId: horses.myPlayer.id };
+  }
+  
+  // Clear sticky cache when a new round starts (my turn begins fresh)
+  if (horses.isMyTurn && horses.localHand.rollsRemaining === 3 && !hasCompleted) {
+    stickyResultRef.current = null;
+  }
+  
+  // Use sticky result if available and my result cleared during transition
+  const effectiveResult = myResult ?? (
+    stickyResultRef.current?.playerId === horses.myPlayer?.id 
+      ? stickyResultRef.current?.result 
+      : null
+  );
 
-  // CRITICAL FIX: Only show result badge in ONE place to avoid duplicates.
-  // When hold period is active with badge, the dice area shows it (lines ~202-222).
-  // When hold period ends, the action area shows it (lines ~322-341).
-  // We NEVER want both to render simultaneously.
-  const showResultInDiceArea = showHoldResultBadge;
-  const showResultInActionArea = hasCompleted && myResult && !showHoldResultBadge;
+  // CRITICAL: Single source of truth for showing result badge
+  // Show result in action area when:
+  // 1. My turn is completed (hasCompleted) and we have a result
+  // 2. OR we're in the hold badge phase (last 1.5s of hold)
+  // 3. OR game is complete and we have a sticky result (for win animation)
+  const isGameComplete = horses.gamePhase === "complete";
+  const showResultBadge = (
+    (hasCompleted && effectiveResult && !showHoldDice) || // Completed, not showing dice
+    showHoldResultBadge || // In hold badge phase
+    (isGameComplete && effectiveResult) // Game over - keep showing result
+  );
 
   const isSCC = gameType === "ship-captain-crew";
 
@@ -199,35 +224,13 @@ export function HorsesMobileCardsTab({
       )}
       */}
 
-      {/* Dice area - always reserve space so button doesn't move */}
+      {/* Dice area - shows dice only, badge shows in action area below */}
       {/* TABLET: Larger dice area to accommodate bigger dice */}
       <div className={cn(
         "flex items-center justify-center mb-1",
         isTablet || isDesktop ? "gap-2 min-h-[100px]" : "gap-1 min-h-[60px]"
       )}>
-        {/* Show hold result badge in last 1.5 seconds of hold period */}
-        {showHoldResultBadge && holdResult ? (
-          <div className="flex flex-col items-center gap-2 animate-in fade-in duration-300">
-            <Badge 
-              variant="secondary" 
-              className={cn(
-                "font-bold",
-                isTablet || isDesktop ? "text-xl px-6 py-3" : "text-lg px-4 py-2",
-                horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '') && "bg-green-600 text-white"
-              )}
-            >
-              {gameType === 'horses' ? (
-                <HorsesHandResultDisplay 
-                  description={holdResult.description} 
-                  isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
-                  size={isTablet || isDesktop ? "md" : "sm"}
-                />
-              ) : (
-                holdResult.description
-              )}
-            </Badge>
-          </div>
-        ) : showHoldDice && holdDice ? (
+        {showHoldDice && holdDice ? (
           // Show hold dice during first 1.5 seconds of hold period (no flicker)
           holdDice.map((die: any, idx: number) => (
             <HorsesDie
@@ -271,7 +274,7 @@ export function HorsesMobileCardsTab({
             );
           })
         ) : (
-          // Placeholder to reserve space before first roll
+          // Placeholder to reserve space before first roll or when showing result badge
           <div className={isTablet || isDesktop ? "h-[100px]" : "h-[52px]"} />
         )}
       </div>
@@ -326,9 +329,9 @@ export function HorsesMobileCardsTab({
             // After roll 3, hide the Roll button entirely
             <Badge className="text-sm px-3 py-1.5 font-medium">✓ Locked In</Badge>
           )
-        ) : showResultInActionArea ? (
+        ) : showResultBadge && effectiveResult ? (
           // Styled result badge persists from turn completion through game end (including win animations)
-          // CRITICAL: Only shows when NOT displaying in dice area (showHoldResultBadge is false)
+          // Uses effectiveResult which includes sticky cache for stability during transitions
           <Badge 
             variant="secondary" 
             className={cn(
@@ -339,12 +342,12 @@ export function HorsesMobileCardsTab({
           >
             {gameType === 'horses' ? (
               <HorsesHandResultDisplay 
-                description={myResult!.description} 
+                description={effectiveResult.description} 
                 isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
                 size={isTablet || isDesktop ? "md" : "sm"}
               />
             ) : (
-              myResult!.description
+              effectiveResult.description
             )}
           </Badge>
         ) : isWaitingForYourTurn ? (
