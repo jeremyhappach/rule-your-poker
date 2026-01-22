@@ -14,6 +14,7 @@ import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { EmoticonOverlay } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { supabase } from "@/integrations/supabase/client";
 
 // Active-player dice roll mask durations (matches useHorsesMobileController constants)
 const ACTIVE_FIRST_ROLL_MS = 1300;   // Roll 1: ~1.3s
@@ -63,9 +64,34 @@ export function HorsesMobileCardsTab({
 
   // Haptic feedback interval ref for cleanup
   const hapticIntervalRef = useRef<number | null>(null);
+  
+  // Track user's haptic preference
+  const [useHaptic, setUseHaptic] = useState(true);
+  
+  // Fetch user's haptic preference on mount
+  useEffect(() => {
+    const fetchHapticPref = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('use_haptic')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setUseHaptic((data as any).use_haptic ?? true);
+      }
+    };
+    fetchHapticPref();
+  }, []);
 
   const triggerRollHaptics = useCallback((durationMs: number) => {
-    // Check if vibration API is available
+    // Check user preference first
+    if (!useHaptic) return;
+    
+    // Check if vibration API is available (not supported on iOS Safari)
     if (!navigator.vibrate) return;
 
     // Clear any existing haptic interval
@@ -94,7 +120,7 @@ export function HorsesMobileCardsTab({
       // Light rumble during roll
       navigator.vibrate(15 + Math.floor(Math.random() * 10));
     }, interval);
-  }, []);
+  }, [useHaptic]);
 
   // Clean up haptic interval on unmount
   useEffect(() => {
