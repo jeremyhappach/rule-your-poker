@@ -902,17 +902,12 @@ async function handleGameOver(
   const actualPot = guardResult.pot || currentPot;
   const newTotalHands = (guardResult.total_hands || 0) + 1;
   
-  // ACCOUNTING FIX: The pot already contains all the money from:
-  // - Antes (recorded as negative chip changes when collected)
-  // - Leg purchases (recorded as negative chip changes when bought)
-  // - Pussy taxes (recorded as negative chip changes when applied)
-  // - Showdown chips are SEPARATE transfers between players (not in pot)
-  //
-  // Winner gets the pot. Losers have already "paid" their leg values when they earned the legs.
-  // DO NOT double-count leg values - they're already in the pot.
-  const totalPrize = actualPot;
+  // Calculate total leg value from all players (legs are separate from pot)
+  // Winner gets pot + all leg values when they win the game
+  const totalLegValue = allPlayers.reduce((sum, p) => sum + (p.legs * legValue), 0);
+  const totalPrize = actualPot + totalLegValue;
   
-  console.log('[HANDLE GAME OVER] Awarding prize:', { actualPot, totalPrize, note: 'Leg values already in pot from purchases' });
+  console.log('[HANDLE GAME OVER] Awarding prize:', { actualPot, totalLegValue, totalPrize });
   
   // Calculate chip changes for all players (for game result tracking)
   // Winner gets the pot; losers record nothing (their losses were already recorded)
@@ -1245,22 +1240,16 @@ export async function endRound(gameId: string) {
       amount: betAmount,
     });
     
-    // CRITICAL: Add leg cost to the pot - this is money the winner will receive
-    const currentPotForLeg = game.pot || 0;
-    await supabase
-      .from('games')
-      .update({ pot: currentPotForLeg + betAmount })
-      .eq('id', gameId);
-    console.log('[endRound] Added leg cost to pot:', { betAmount, oldPot: currentPotForLeg, newPot: currentPotForLeg + betAmount });
-    
     // Update legs separately (no race condition risk)
+    // NOTE: Leg costs are NOT added to pot - they're held separately
+    // Winner receives pot + all leg values when they win the game
     await supabase
       .from('players')
       .update({ legs: newLegCount })
       .eq('id', soloStayer.id);
     
     // CRITICAL: Record leg purchase in game_results for zero-sum accounting
-    // This is money going INTO the pot (like an ante) - pot increases, player chips decrease
+    // This is a leg purchase - money held separately from pot, awarded to winner at game end
     const legChipChanges: Record<string, number> = {};
     legChipChanges[soloStayer.id] = -betAmount;
     
@@ -1268,10 +1257,10 @@ export async function endRound(gameId: string) {
     await recordGameResult(
       gameId,
       currentHandNumber,
-      null, // no winner - this is a leg purchase (money into pot)
+      null, // no winner - this is a leg purchase
       'Leg Purchase',
       `${username} paid $${betAmount} for leg ${newLegCount}`,
-      0, // pot_won is 0 - money going INTO pot
+      0, // pot_won is 0 - money held for game winner
       legChipChanges,
       false
     );
