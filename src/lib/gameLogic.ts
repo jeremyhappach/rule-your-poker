@@ -389,16 +389,27 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   const currentPot = currentGameForPot?.pot || 0;
   
+  // Build game update object - CRITICAL: For Round 1, also update total_hands to match handNumber
+  // This ensures the unique constraint (game_id, hand_number, round_number) works correctly for subsequent hands
+  // Similar to how Horses/SCC atomically update total_hands when starting a new hand
+  const gameUpdate: Record<string, unknown> = {
+    current_round: roundNumber,
+    all_decisions_in: false,
+    pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
+    // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
+    config_deadline: null,
+    ante_decision_deadline: null,
+  };
+  
+  // For Round 1, atomically update total_hands to ensure the next hand gets a unique hand_number
+  if (roundNumber === 1) {
+    gameUpdate.total_hands = handNumber;
+    console.log('[START_ROUND] Round 1: Setting total_hands to', handNumber);
+  }
+  
   const { error: gameUpdateError } = await supabase
     .from('games')
-    .update({
-      current_round: roundNumber,
-      all_decisions_in: false,
-      pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
-      // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
-      config_deadline: null,
-      ante_decision_deadline: null,
-    })
+    .update(gameUpdate)
     .eq('id', gameId);
   
   if (gameUpdateError) {
@@ -406,7 +417,7 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
   }
   
-  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false, pot =', currentPot + initialPot);
+  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false, pot =', currentPot + initialPot, roundNumber === 1 ? ', total_hands = ' + handNumber : '');
   
   // Update round pot to reflect the ante collection
   if (initialPot > 0) {
