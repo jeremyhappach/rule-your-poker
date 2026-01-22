@@ -641,7 +641,9 @@ export type Database = {
           is_active: boolean
           is_superuser: boolean
           last_seen_at: string | null
+          play_sounds: boolean
           table_layout: string
+          use_haptic: boolean
           username: string
         }
         Insert: {
@@ -654,7 +656,9 @@ export type Database = {
           is_active?: boolean
           is_superuser?: boolean
           last_seen_at?: string | null
+          play_sounds?: boolean
           table_layout?: string
+          use_haptic?: boolean
           username: string
         }
         Update: {
@@ -667,7 +671,9 @@ export type Database = {
           is_active?: boolean
           is_superuser?: boolean
           last_seen_at?: string | null
+          play_sounds?: boolean
           table_layout?: string
+          use_haptic?: boolean
           username?: string
         }
         Relationships: []

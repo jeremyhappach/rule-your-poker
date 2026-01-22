@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Palette } from 'lucide-react';
+import { Palette, Volume2, Vibrate } from 'lucide-react';
 import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode } from '@/hooks/useVisualPreferences';
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
@@ -28,6 +29,8 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
   const [tableLayout, setTableLayout] = useState('bridge');
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
+  const [useHaptic, setUseHaptic] = useState(true);
+  const [playSounds, setPlaySounds] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +49,8 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
       setTableLayout((data as any).table_layout || 'bridge');
       setCardBackDesign((data as any).card_back_design || 'red');
       setDeckColorMode((data as any).deck_color_mode || 'two_color');
+      setUseHaptic((data as any).use_haptic ?? true);
+      setPlaySounds((data as any).play_sounds ?? true);
     }
     setLoading(false);
   };
@@ -58,6 +63,8 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
         table_layout: tableLayout,
         card_back_design: cardBackDesign,
         deck_color_mode: deckColorMode,
+        use_haptic: useHaptic,
+        play_sounds: playSounds,
       } as any)
       .eq('id', userId);
 
@@ -200,6 +207,44 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
               <span className="text-xs text-center">{card.name.split(' ')[0]}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Sound & Haptic Settings */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <Volume2 className="h-4 w-4" />
+          <h3 className="font-semibold">Sound & Haptic</h3>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Volume2 className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <Label htmlFor="play-sounds" className="cursor-pointer">Sound Effects</Label>
+              <p className="text-xs text-muted-foreground">Play audio for game events</p>
+            </div>
+          </div>
+          <Switch
+            id="play-sounds"
+            checked={playSounds}
+            onCheckedChange={setPlaySounds}
+          />
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Vibrate className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <Label htmlFor="use-haptic" className="cursor-pointer">Haptic Feedback</Label>
+              <p className="text-xs text-muted-foreground">Vibration on mobile devices</p>
+            </div>
+          </div>
+          <Switch
+            id="use-haptic"
+            checked={useHaptic}
+            onCheckedChange={setUseHaptic}
+          />
         </div>
       </div>
 
