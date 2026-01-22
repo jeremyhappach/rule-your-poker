@@ -559,17 +559,34 @@ export async function startRound(gameId: string, roundNumber: number) {
           // After 5 seconds (animation duration), set game_over state directly
           // Don't use handleGameOver - it would overwrite the sweep message
           setTimeout(async () => {
-            console.log('[357 SWEEP] Animation complete, transitioning to game_over');
+            console.log('[357 SWEEP] Animation complete, attempting atomic transition to game_over');
             
-            // Fetch fresh game data to get current pot value
-            const { data: freshGameData } = await supabase
+            // ATOMIC GUARD: Only the first client to update status from 'in_progress' to 'game_over' proceeds
+            // This prevents duplicate pot awards in human-vs-human games
+            const { data: guardResult, error: guardError } = await supabase
               .from('games')
-              .select('pot, total_hands, dealer_position, leg_value')
+              .update({ 
+                status: 'game_over',
+                game_over_at: new Date().toISOString(),
+                current_round: null,
+                awaiting_next_round: false,
+                all_decisions_in: false
+                // NOTE: Keep last_round_result as the sweep message, keep pot for now
+              })
               .eq('id', gameId)
+              .eq('status', 'in_progress')  // ATOMIC: Only if still in_progress
+              .select('pot, total_hands, dealer_position, leg_value')
               .single();
             
-            const currentPot = freshGameData?.pot || 0;
-            const legValue = freshGameData?.leg_value || 1;
+            if (guardError || !guardResult) {
+              console.log('[357 SWEEP] Another client already processed game over, skipping pot award');
+              return;
+            }
+            
+            console.log('[357 SWEEP] Won atomic guard, proceeding with pot award');
+            
+            const currentPot = guardResult.pot || 0;
+            const legValue = guardResult.leg_value || 1;
             
             // Fetch all players to calculate total leg value
             const { data: allPlayers } = await supabase
@@ -608,18 +625,12 @@ export async function startRound(gameId: string, roundNumber: number) {
               })
               .eq('game_id', gameId);
             
-            // Set game_over state - NOW the countdown will appear
+            // Now zero out the pot and update total_hands
             await supabase
               .from('games')
               .update({ 
-                status: 'game_over',
-                game_over_at: new Date().toISOString(),
-                current_round: null,
-                awaiting_next_round: false,
-                all_decisions_in: false,
                 pot: 0,
-                total_hands: (freshGameData?.total_hands || 0) + 1
-                // NOTE: Keep last_round_result as the sweep message
+                total_hands: (guardResult.total_hands || 0) + 1
               })
               .eq('id', gameId);
           }, 5000);
@@ -867,14 +878,29 @@ async function handleGameOver(
 ) {
   console.log('[HANDLE GAME OVER] Starting game over handler', { winnerId, winnerUsername, winnerLegs });
   
-  // Get current total_hands to increment it
-  const { data: currentGameData } = await supabase
+  // ATOMIC GUARD: Only the first client to update status from 'in_progress' to 'game_over' proceeds
+  // This prevents duplicate pot awards in human-vs-human games
+  const { data: guardResult, error: guardError } = await supabase
     .from('games')
-    .select('total_hands')
+    .update({ 
+      status: 'game_over',
+      game_over_at: new Date().toISOString()
+    })
     .eq('id', gameId)
+    .eq('status', 'in_progress')  // ATOMIC: Only if still in_progress
+    .select('total_hands, pot')
     .single();
   
-  const newTotalHands = (currentGameData?.total_hands || 0) + 1;
+  if (guardError || !guardResult) {
+    console.log('[HANDLE GAME OVER] Another client already processed game over, skipping pot award');
+    return;
+  }
+  
+  console.log('[HANDLE GAME OVER] Won atomic guard, proceeding with pot award');
+  
+  // Use the pot value from the atomic guard result to ensure consistency
+  const actualPot = guardResult.pot || currentPot;
+  const newTotalHands = (guardResult.total_hands || 0) + 1;
   
   // ACCOUNTING FIX: The pot already contains all the money from:
   // - Antes (recorded as negative chip changes when collected)
@@ -884,9 +910,9 @@ async function handleGameOver(
   //
   // Winner gets the pot. Losers have already "paid" their leg values when they earned the legs.
   // DO NOT double-count leg values - they're already in the pot.
-  const totalPrize = currentPot;
+  const totalPrize = actualPot;
   
-  console.log('[HANDLE GAME OVER] Awarding prize:', { currentPot, totalPrize, note: 'Leg values already in pot from purchases' });
+  console.log('[HANDLE GAME OVER] Awarding prize:', { actualPot, totalPrize, note: 'Leg values already in pot from purchases' });
   
   // Calculate chip changes for all players (for game result tracking)
   // Winner gets the pot; losers record nothing (their losses were already recorded)
