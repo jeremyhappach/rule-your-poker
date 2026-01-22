@@ -34,6 +34,7 @@ import {
 } from "@/lib/horsesBotLogic";
 import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
 import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
+import { logDiceRolls, getRollNumber } from "@/lib/diceAudit";
 
 export interface HorsesPlayerForController {
   id: string;
@@ -1133,10 +1134,23 @@ export function useHorsesMobileController({
     heldMaskAtLastRollStartRef.current = heldMaskBeforeRoll;
 
     // Roll immediately so the animation displays the NEW dice values (prevents old->new flash)
+    const rollNumber = getRollNumber(localHand.rollsRemaining);
     const newHand = isSCC ? rollSCCDice(localHand as SCCHand) : rollDice(localHand as HorsesHand);
     const newVals = (newHand.dice as any[]).map((d: any) => d.value).join(",");
     console.log(`[ROLL_DEBUG] newHand dice: [${newVals}], rollsRemaining=${newHand.rollsRemaining}`);
     logDebug("roll_start", `isFirstRoll=${isFirstRoll} anim=${animationDuration}ms dice=[${newVals}] rr=${newHand.rollsRemaining}`);
+
+    // Audit log the dice rolls for randomness validation
+    logDiceRolls(
+      (newHand.dice as any[]).map((d: any) => d.value),
+      heldMaskBeforeRoll,
+      {
+        gameId,
+        roundId: currentRoundId ?? undefined,
+        playerId: myPlayer?.id,
+        rollNumber,
+      }
+    );
 
     // Mark interaction immediately so realtime/DB snapshots can't overwrite the felt during the roll animation.
     lastLocalEditAtRef.current = rollStartTime;
@@ -1401,7 +1415,20 @@ export function useHorsesMobileController({
           if (cancelled) return;
 
           // Roll immediately so the fly-in animation "lands" on the NEW values (prevents old->new flash)
+          const botRollNumber = getRollNumber(botHand.rollsRemaining);
           const rolledHand = isSCC ? rollSCCDice(botHand as SCCHand) : rollDice(botHand as HorsesHand);
+
+          // Audit log the bot dice rolls for randomness validation
+          logDiceRolls(
+            (rolledHand.dice as any[]).map((d: any) => d.value),
+            heldMaskBeforeComplete ?? [],
+            {
+              gameId,
+              roundId: currentRoundId ?? undefined,
+              playerId: botId,
+              rollNumber: botRollNumber,
+            }
+          );
 
           setBotDisplayState({
             playerId: botId,
