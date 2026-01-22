@@ -263,160 +263,8 @@ export async function startRound(gameId: string, roundNumber: number) {
   });
   let initialPot = 0;
   
-  // Ante: Each active (non-sitting-out) player pays ante amount into the pot at the start of round 1
-  // CRITICAL: Check if any round already exists for this game to prevent double-charging in race conditions
-  let skipPotUpdate = false;
-  if (roundNumber === 1) {
-    const { data: anyExistingRounds } = await supabase
-      .from('rounds')
-      .select('id, round_number')
-      .eq('game_id', gameId)
-      .limit(1);
-    
-    if (anyExistingRounds && anyExistingRounds.length > 0) {
-      console.log('[START_ROUND] ⚠️ Round already exists for this game, skipping ante charge AND pot update to prevent double-charge');
-      // Don't charge antes again, and DON'T update pot - it's already correct
-      skipPotUpdate = true;
-    } else {
-      console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
-      
-      // Calculate total pot from active players
-      initialPot = activePlayers.length * anteAmount;
-      
-      // BATCH: Charge all antes in a single RPC call instead of sequential updates
-      const playerIds = activePlayers.map(p => p.id);
-      console.log('[START_ROUND] Batch charging', playerIds.length, 'players $', anteAmount, 'each');
-      
-      const { error: anteError } = await supabase.rpc('decrement_player_chips', {
-        player_ids: playerIds,
-        amount: anteAmount
-      });
-      
-      if (anteError) {
-        console.error('[START_ROUND] Error batch charging antes:', anteError);
-        // RPC failed - log but don't use non-atomic fallback which causes accounting drift
-      } else {
-        // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
-        // Each player's ante payment is tracked as a negative chip change
-        const anteChipChanges: Record<string, number> = {};
-        for (const player of activePlayers) {
-          anteChipChanges[player.id] = -anteAmount;
-        }
-        
-        // Get current hand number for this game
-        const { data: gameData } = await supabase
-          .from('games')
-          .select('total_hands')
-          .eq('id', gameId)
-          .single();
-        
-        const handNumber = (gameData?.total_hands || 0) + 1;
-        
-        // Record antes as a game result entry with no winner (just ante collection)
-        await recordGameResult(
-          gameId,
-          handNumber,
-          null, // no winner - this is ante collection
-          'Ante', // Description
-          `${activePlayers.length} players anted $${anteAmount}`,
-          0, // pot_won is 0 - this is money going INTO the pot
-          anteChipChanges,
-          false
-        );
-        console.log('[START_ROUND] Recorded ante chip changes in game_results:', anteChipChanges);
-      }
-      
-      console.log('[START_ROUND] Total ante pot:', initialPot);
-    }
-  }
-
-  // Safety check: delete any existing round with same game_id and round_number to prevent duplicates
-  const { data: existingRound } = await supabase
-    .from('rounds')
-    .select('id')
-    .eq('game_id', gameId)
-    .eq('round_number', roundNumber)
-    .maybeSingle();
-  
-  if (existingRound) {
-    console.log('[START_ROUND] Found existing round for game', gameId, 'round', roundNumber, '- deleting it');
-    
-    // Delete player_cards for this round
-    await supabase
-      .from('player_cards')
-      .delete()
-      .eq('round_id', existingRound.id);
-    
-    // Delete player_actions for this round
-    await supabase
-      .from('player_actions')
-      .delete()
-      .eq('round_id', existingRound.id);
-    
-    // Delete the round
-    await supabase
-      .from('rounds')
-      .delete()
-      .eq('id', existingRound.id);
-    
-    console.log('[START_ROUND] Deleted existing round');
-  }
-
   // timerSeconds already fetched in parallel at start
   console.log('[START_ROUND] Using decision timer:', timerSeconds, 'seconds');
-
-  // CRITICAL: Update game state BEFORE creating round to prevent race conditions
-  // This ensures current_round and all_decisions_in are correct before any realtime updates fire
-  // But SKIP pot update if we already detected a race condition (existing rounds)
-  if (skipPotUpdate) {
-    console.log('[START_ROUND] Skipping pot update due to race condition guard');
-    const { error: gameUpdateError } = await supabase
-      .from('games')
-      .update({
-        current_round: roundNumber,
-        all_decisions_in: false,
-        // DON'T update pot - it's already correct from the first call
-        // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
-        config_deadline: null,
-        ante_decision_deadline: null,
-      })
-      .eq('id', gameId);
-    
-    if (gameUpdateError) {
-      console.error('[START_ROUND] Failed to update game state:', gameUpdateError);
-      throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
-    }
-  } else {
-    const { data: currentGameForPot } = await supabase
-      .from('games')
-      .select('pot')
-      .eq('id', gameId)
-      .single();
-    
-    const currentPot = currentGameForPot?.pot || 0;
-    
-    const { error: gameUpdateError } = await supabase
-      .from('games')
-      .update({
-        current_round: roundNumber,
-        all_decisions_in: false,
-        pot: currentPot + initialPot,  // Add antes to existing pot
-        // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
-        config_deadline: null,
-        ante_decision_deadline: null,
-      })
-      .eq('id', gameId);
-    
-    if (gameUpdateError) {
-      console.error('[START_ROUND] Failed to update game state:', gameUpdateError);
-      throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
-    }
-  }
-  
-  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false');
-
-  // Create round with configured deadline (accounts for ~2s of processing/fetch time)
-  const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
   
   // Get current hand_number for this session
   // For round 1, use total_hands + 1 (new game starting)
@@ -432,34 +280,144 @@ export async function startRound(gameId: string, roundNumber: number) {
     handNumber = (gameForHand?.total_hands || 0) + 1;
   } else {
     // Continuing game - use same hand_number as existing rounds
-    const { data: existingRound } = await supabase
+    const { data: existingRoundForHand } = await supabase
       .from('rounds')
       .select('hand_number')
       .eq('game_id', gameId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    handNumber = existingRound?.hand_number || 1;
+    handNumber = existingRoundForHand?.hand_number || 1;
   }
+
+  // Create round with configured deadline (accounts for ~2s of processing/fetch time)
+  const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
   
-  const { data: round, error: roundError } = await supabase
+  // CRITICAL: Use INSERT-AS-LOCK pattern with unique constraint on (game_id, hand_number, round_number)
+  // The unique index prevents duplicate rounds - only ONE client can successfully insert.
+  // That winning client is the ONLY one that charges antes, updates pot, etc.
+  const { data: insertedRound, error: roundInsertError } = await supabase
     .from('rounds')
     .insert({
       game_id: gameId,
       round_number: roundNumber,
-      cards_dealt: cardsToDeal,
+      cards_dealt: roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7,
       status: 'betting',
-      pot: initialPot,
+      pot: 0, // Will be updated after ante collection
       decision_deadline: deadline.toISOString(),
       hand_number: handNumber
     })
     .select()
     .single();
 
-  if (roundError || !round) {
-    console.error('Round creation error:', roundError);
-    throw new Error(`Failed to create round: ${roundError?.message || 'Unknown error'}`);
+  // Check if this client won the race to create the round
+  if (roundInsertError) {
+    // Unique constraint violation or other error - another client already created the round
+    console.log('[START_ROUND] ⚠️ Round already exists (race lost or error):', roundInsertError.message);
+    
+    // Fetch the existing round so we can still return it (for callers that need round data)
+    const { data: existingRound } = await supabase
+      .from('rounds')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('round_number', roundNumber)
+      .eq('hand_number', handNumber)
+      .maybeSingle();
+    
+    if (existingRound) {
+      console.log('[START_ROUND] Returning existing round created by winner:', existingRound.id);
+      return existingRound;
+    }
+    
+    // If we can't find the round, throw error
+    throw new Error(`Failed to create or find round: ${roundInsertError.message}`);
   }
+
+  // This client WON the race - we are the only one that will charge antes
+  console.log('[START_ROUND] ✅ WON round creation race for round', roundNumber, 'id:', insertedRound.id);
+  
+  // Charge antes only for round 1 (initial ante or re-ante after round 3 wraps)
+  if (roundNumber === 1) {
+    console.log('[START_ROUND] Charging antes. Players:', activePlayers.map(p => ({ id: p.id, position: p.position, chips_before: p.chips, is_bot: p.is_bot })));
+    
+    // Calculate total pot from active players
+    initialPot = activePlayers.length * anteAmount;
+    
+    // BATCH: Charge all antes in a single RPC call instead of sequential updates
+    const playerIds = activePlayers.map(p => p.id);
+    console.log('[START_ROUND] Batch charging', playerIds.length, 'players $', anteAmount, 'each');
+    
+    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
+      player_ids: playerIds,
+      amount: anteAmount
+    });
+    
+    if (anteError) {
+      console.error('[START_ROUND] Error batch charging antes:', anteError);
+      // RPC failed - log but don't use non-atomic fallback which causes accounting drift
+    } else {
+      // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
+      // Each player's ante payment is tracked as a negative chip change
+      const anteChipChanges: Record<string, number> = {};
+      for (const player of activePlayers) {
+        anteChipChanges[player.id] = -anteAmount;
+      }
+      
+      // Record antes as a game result entry with no winner (just ante collection)
+      await recordGameResult(
+        gameId,
+        handNumber,
+        null, // no winner - this is ante collection
+        'Ante', // Description
+        `${activePlayers.length} players anted $${anteAmount}`,
+        0, // pot_won is 0 - this is money going INTO the pot
+        anteChipChanges,
+        false
+      );
+      console.log('[START_ROUND] Recorded ante chip changes in game_results:', anteChipChanges);
+    }
+    
+    console.log('[START_ROUND] Total ante pot:', initialPot);
+  }
+
+  // Get current pot and update game state + pot atomically
+  const { data: currentGameForPot } = await supabase
+    .from('games')
+    .select('pot')
+    .eq('id', gameId)
+    .single();
+  
+  const currentPot = currentGameForPot?.pot || 0;
+  
+  const { error: gameUpdateError } = await supabase
+    .from('games')
+    .update({
+      current_round: roundNumber,
+      all_decisions_in: false,
+      pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
+      // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
+      config_deadline: null,
+      ante_decision_deadline: null,
+    })
+    .eq('id', gameId);
+  
+  if (gameUpdateError) {
+    console.error('[START_ROUND] Failed to update game state:', gameUpdateError);
+    throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
+  }
+  
+  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false, pot =', currentPot + initialPot);
+  
+  // Update round pot to reflect the ante collection
+  if (initialPot > 0) {
+    await supabase
+      .from('rounds')
+      .update({ pot: initialPot })
+      .eq('id', insertedRound.id);
+  }
+  
+  // Use the inserted round from here on
+  const round = insertedRound;
 
   // Deal cards - create deck and remove already dealt cards
   let deck = shuffleDeck(createDeck());
