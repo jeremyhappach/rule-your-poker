@@ -42,7 +42,6 @@ import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
-import { DiceTraceHUD } from "@/components/DiceTraceHUD";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -5988,13 +5987,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       </AlertDialogContent>
       </AlertDialog>
 
-      {/* Debug Panel - shows player status, deadlines, session info */}
-      {/* TEMPORARILY HIDDEN - uncomment to restore debug panel
-      <DeadlineDebugPanel gameId={gameId} userId={user?.id} />
-      */}
-      
-      {/* Dice Trace HUD for debugging dice state transitions */}
-      <DiceTraceHUD enabled={game?.game_type === "horses" || game?.game_type === "scc"} />
     </div>
     </VisualPreferencesProvider>
   );

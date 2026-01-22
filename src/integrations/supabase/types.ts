@@ -133,6 +133,61 @@ export type Database = {
           },
         ]
       }
+      dice_roll_audit: {
+        Row: {
+          created_at: string
+          die_index: number
+          die_value: number
+          game_id: string | null
+          id: string
+          player_id: string | null
+          roll_number: number
+          round_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          die_index: number
+          die_value: number
+          game_id?: string | null
+          id?: string
+          player_id?: string | null
+          roll_number: number
+          round_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          die_index?: number
+          die_value?: number
+          game_id?: string | null
+          id?: string
+          player_id?: string | null
+          roll_number?: number
+          round_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dice_roll_audit_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dice_roll_audit_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dice_roll_audit_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_defaults: {
         Row: {
           allow_bot_dealers: boolean
