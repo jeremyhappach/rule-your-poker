@@ -295,6 +295,35 @@ export async function startRound(gameId: string, roundNumber: number) {
       if (anteError) {
         console.error('[START_ROUND] Error batch charging antes:', anteError);
         // RPC failed - log but don't use non-atomic fallback which causes accounting drift
+      } else {
+        // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
+        // Each player's ante payment is tracked as a negative chip change
+        const anteChipChanges: Record<string, number> = {};
+        for (const player of activePlayers) {
+          anteChipChanges[player.id] = -anteAmount;
+        }
+        
+        // Get current hand number for this game
+        const { data: gameData } = await supabase
+          .from('games')
+          .select('total_hands')
+          .eq('id', gameId)
+          .single();
+        
+        const handNumber = (gameData?.total_hands || 0) + 1;
+        
+        // Record antes as a game result entry with no winner (just ante collection)
+        await recordGameResult(
+          gameId,
+          handNumber,
+          null, // no winner - this is ante collection
+          'Ante', // Description
+          `${activePlayers.length} players anted $${anteAmount}`,
+          0, // pot_won is 0 - this is money going INTO the pot
+          anteChipChanges,
+          false
+        );
+        console.log('[START_ROUND] Recorded ante chip changes in game_results:', anteChipChanges);
       }
       
       console.log('[START_ROUND] Total ante pot:', initialPot);
@@ -878,25 +907,28 @@ async function handleGameOver(
   
   const newTotalHands = (currentGameData?.total_hands || 0) + 1;
   
-  // Calculate total leg value from all players
-  const totalLegValue = allPlayers.reduce((sum, p) => {
-    const playerLegs = p.id === winnerId ? winnerLegs : p.legs;
-    return sum + (playerLegs * legValue);
-  }, 0);
+  // ACCOUNTING FIX: The pot already contains all the money from:
+  // - Antes (recorded as negative chip changes when collected)
+  // - Leg purchases (recorded as negative chip changes when bought)
+  // - Pussy taxes (recorded as negative chip changes when applied)
+  // - Showdown chips are SEPARATE transfers between players (not in pot)
+  //
+  // Winner gets the pot. Losers have already "paid" their leg values when they earned the legs.
+  // DO NOT double-count leg values - they're already in the pot.
+  const totalPrize = currentPot;
   
-  // Winner gets pot + total leg value
-  const totalPrize = currentPot + totalLegValue;
-  
-  console.log('[HANDLE GAME OVER] Awarding prize:', { currentPot, totalLegValue, totalPrize });
+  console.log('[HANDLE GAME OVER] Awarding prize:', { currentPot, totalPrize, note: 'Leg values already in pot from purchases' });
   
   // Calculate chip changes for all players (for game result tracking)
+  // Winner gets the pot; losers record nothing (their losses were already recorded)
   const playerChipChanges: Record<string, number> = {};
   for (const player of allPlayers) {
     if (player.id === winnerId) {
-      playerChipChanges[player.id] = totalPrize; // Winner gains the total prize
+      playerChipChanges[player.id] = totalPrize; // Winner gains the pot
     } else {
-      // Other players lost their leg value (if they had legs)
-      playerChipChanges[player.id] = -(player.legs * legValue);
+      // Other players' leg costs were already recorded when they bought legs
+      // Recording 0 here for completeness in the game_results entry
+      playerChipChanges[player.id] = 0;
     }
   }
   
@@ -1223,6 +1255,24 @@ export async function endRound(gameId: string) {
       .from('players')
       .update({ legs: newLegCount })
       .eq('id', soloStayer.id);
+    
+    // CRITICAL: Record leg purchase in game_results for zero-sum accounting
+    // This is money going INTO the pot (like an ante) - pot increases, player chips decrease
+    const legChipChanges: Record<string, number> = {};
+    legChipChanges[soloStayer.id] = -betAmount;
+    
+    const currentHandNumber = game.total_hands || 1;
+    await recordGameResult(
+      gameId,
+      currentHandNumber,
+      null, // no winner - this is a leg purchase (money into pot)
+      'Leg Purchase',
+      `${username} paid $${betAmount} for leg ${newLegCount}`,
+      0, // pot_won is 0 - money going INTO pot
+      legChipChanges,
+      false
+    );
+    console.log('[endRound] Recorded leg purchase chip changes:', legChipChanges);
       
     resultMessage = `${username} won a leg`;
     
@@ -1422,6 +1472,29 @@ export async function endRound(gameId: string) {
               console.log('[endRound] SHOWDOWN: Awarded', totalWinnings, 'to winner', winner.playerId);
             }
             
+            // CRITICAL: Record showdown chip changes in game_results for zero-sum accounting
+            // Winner gains what losers paid (not the pot - pot came from antes which are tracked separately)
+            const showdownChipChanges: Record<string, number> = {};
+            showdownChipChanges[winner.playerId] = totalWinnings;
+            for (const loserId of loserIds) {
+              showdownChipChanges[loserId] = -amountPerLoser;
+            }
+            
+            // Get current hand number
+            const currentHandNumber = game.total_hands || 1;
+            
+            await recordGameResult(
+              gameId,
+              currentHandNumber,
+              winner.playerId,
+              winnerUsername,
+              handName,
+              totalWinnings, // pot_won = what winner received from losers
+              showdownChipChanges,
+              false
+            );
+            console.log('[endRound] SHOWDOWN: Recorded chip changes:', showdownChipChanges);
+            
             // Include metadata for chip transfer animation (similar to Holm format)
             const showdownResult = `${winnerUsername} won with ${handName}|||WINNER:${winner.playerId}|||LOSERS:${loserIds.join(',')}|||AMOUNT:${amountPerLoser}`;
             
@@ -1504,6 +1577,25 @@ export async function endRound(gameId: string) {
       if (taxError) {
         console.error('[357 END] Pussy tax decrement error:', taxError);
         // RPC failed - log but don't use non-atomic fallback which causes accounting drift
+      } else {
+        // CRITICAL: Record pussy tax in game_results for zero-sum accounting
+        const pussyTaxChipChanges: Record<string, number> = {};
+        for (const player of activePlayersForTax) {
+          pussyTaxChipChanges[player.id] = -pussyTaxValue;
+        }
+        
+        const currentHandNumber = game.total_hands || 1;
+        await recordGameResult(
+          gameId,
+          currentHandNumber,
+          null, // no winner - this is tax going into pot
+          'Pussy Tax',
+          `${activePlayersForTax.length} players paid $${pussyTaxValue} pussy tax`,
+          0, // pot_won is 0 - money going INTO pot
+          pussyTaxChipChanges,
+          false
+        );
+        console.log('[endRound] Recorded pussy tax chip changes:', pussyTaxChipChanges);
       }
       const taxCollected = pussyTaxValue * activePlayersForTax.length;
       
