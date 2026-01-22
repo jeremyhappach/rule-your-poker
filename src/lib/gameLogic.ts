@@ -1245,6 +1245,14 @@ export async function endRound(gameId: string) {
       amount: betAmount,
     });
     
+    // CRITICAL: Add leg cost to the pot - this is money the winner will receive
+    const currentPotForLeg = game.pot || 0;
+    await supabase
+      .from('games')
+      .update({ pot: currentPotForLeg + betAmount })
+      .eq('id', gameId);
+    console.log('[endRound] Added leg cost to pot:', { betAmount, oldPot: currentPotForLeg, newPot: currentPotForLeg + betAmount });
+    
     // Update legs separately (no race condition risk)
     await supabase
       .from('players')
