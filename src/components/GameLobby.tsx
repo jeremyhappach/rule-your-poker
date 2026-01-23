@@ -101,6 +101,24 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     fetchGames();
     checkSuperuser();
 
+    // iOS Safari (and some mobile browsers) can keep SPA pages "alive" while hidden
+    // or restore them from memory. Refresh the lobby when the page becomes visible
+    // again so we don't display stale game lists after publishes/settings changes.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchGames();
+        checkSuperuser();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      fetchGames();
+      checkSuperuser();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleWindowFocus);
+
     // Polling fallback for realtime reliability - poll every 10 seconds (NOT 1 second - that hammers DB)
     const pollingInterval = setInterval(() => {
       fetchGames();
@@ -140,6 +158,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       .subscribe();
 
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleWindowFocus);
       clearInterval(pollingInterval);
       supabase.removeChannel(gamesChannel);
       supabase.removeChannel(playersChannel);
