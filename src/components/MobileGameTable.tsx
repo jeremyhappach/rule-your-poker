@@ -4475,7 +4475,7 @@ export const MobileGameTable = ({
                 : (isTablet ? 'top-[70%]' : 'top-[65%]'),
             )}
             style={{ 
-              transform: `translateX(-50%) scale(${isTablet ? 1.4 : isDesktop ? 1.6 : 0.85})`,
+              transform: `translateX(-50%) scale(${isTablet ? 1.6 : isDesktop ? 1.8 : 1.1})`,
               // Dim Chucky when player won
               opacity: (!!winnerPlayerId && isShowingAnnouncement) ? 0.4 : 1,
               filter: (!!winnerPlayerId && isShowingAnnouncement) ? 'grayscale(30%)' : 'none',
