@@ -14,9 +14,11 @@ interface PlayerOptionsMenuProps {
   isObserver: boolean;
   waiting: boolean;
   autoAnte: boolean;
+  autoAnteRunback: boolean;
   sitOutNextHand: boolean;
   standUpNextHand: boolean;
   onAutoAnteChange: (value: boolean) => void;
+  onAutoAnteRunbackChange: (value: boolean) => void;
   onSitOutNextHandChange: (value: boolean) => void;
   onStandUpNextHandChange: (value: boolean) => void;
   onStandUpNow: () => void;
@@ -41,9 +43,11 @@ export const PlayerOptionsMenu = ({
   isObserver,
   waiting,
   autoAnte,
+  autoAnteRunback,
   sitOutNextHand,
   standUpNextHand,
   onAutoAnteChange,
+  onAutoAnteRunbackChange,
   onSitOutNextHandChange,
   onStandUpNextHandChange,
   onStandUpNow,
@@ -222,7 +226,14 @@ export const PlayerOptionsMenu = ({
           checked={autoAnte}
           onCheckedChange={onAutoAnteChange}
         >
-          Auto Ante
+          Auto Ante (All)
+        </DropdownMenuCheckboxItem>
+        
+        <DropdownMenuCheckboxItem
+          checked={autoAnteRunback}
+          onCheckedChange={onAutoAnteRunbackChange}
+        >
+          Auto Ante (Run it Back)
         </DropdownMenuCheckboxItem>
         
         <DropdownMenuCheckboxItem

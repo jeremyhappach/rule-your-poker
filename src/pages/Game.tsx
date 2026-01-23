@@ -67,6 +67,7 @@ interface Player {
   sitting_out_hands: number;
   ante_decision: string | null;
   auto_ante: boolean;
+  auto_ante_runback: boolean;
   sit_out_next_hand: boolean;
   stand_up_next_hand: boolean;
   waiting: boolean;
@@ -464,12 +465,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Player options state
   const [playerOptions, setPlayerOptions] = useState({
     autoAnte: false,
+    autoAnteRunback: false,
     sitOutNextHand: false,
     standUpNextHand: false,
   });
   
   // Player options - synced with database
-  const handlePlayerOptionChange = async (option: 'auto_ante' | 'sit_out_next_hand' | 'stand_up_next_hand', value: boolean) => {
+  const handlePlayerOptionChange = async (option: 'auto_ante' | 'auto_ante_runback' | 'sit_out_next_hand' | 'stand_up_next_hand', value: boolean) => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) {
       console.error('[PLAYER OPTIONS] No current player found');
@@ -494,28 +496,49 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
     
+    // Mutual exclusivity: auto_ante and auto_ante_runback cannot both be true
+    const updates: Record<string, boolean> = { [option]: value };
+    if (option === 'auto_ante' && value === true) {
+      updates.auto_ante_runback = false;
+    } else if (option === 'auto_ante_runback' && value === true) {
+      updates.auto_ante = false;
+    }
+    
     // Optimistic update
-    setPlayerOptions(prev => ({
-      ...prev,
-      [option === 'auto_ante' ? 'autoAnte' : option === 'sit_out_next_hand' ? 'sitOutNextHand' : 'standUpNextHand']: value
-    }));
+    const optionToStateKey = (opt: string) => {
+      if (opt === 'auto_ante') return 'autoAnte';
+      if (opt === 'auto_ante_runback') return 'autoAnteRunback';
+      if (opt === 'sit_out_next_hand') return 'sitOutNextHand';
+      return 'standUpNextHand';
+    };
+    
+    setPlayerOptions(prev => {
+      const newState = { ...prev };
+      for (const [key, val] of Object.entries(updates)) {
+        newState[optionToStateKey(key) as keyof typeof prev] = val;
+      }
+      return newState;
+    });
     
     // Persist to database
     const { error, data } = await supabase
       .from('players')
-      .update({ [option]: value })
+      .update(updates)
       .eq('id', currentPlayer.id)
       .select();
     
     if (error) {
       console.error('[PLAYER OPTIONS] Failed to save:', error);
       // Revert on error
-      setPlayerOptions(prev => ({
-        ...prev,
-        [option === 'auto_ante' ? 'autoAnte' : option === 'sit_out_next_hand' ? 'sitOutNextHand' : 'standUpNextHand']: !value
-      }));
+      setPlayerOptions(prev => {
+        const newState = { ...prev };
+        for (const [key, val] of Object.entries(updates)) {
+          newState[optionToStateKey(key) as keyof typeof prev] = !val;
+        }
+        return newState;
+      });
     } else {
-      console.log('[PLAYER OPTIONS] ✅ Successfully saved:', option, '=', value, 'Result:', data);
+      console.log('[PLAYER OPTIONS] ✅ Successfully saved:', updates, 'Result:', data);
     }
   };
   
@@ -1787,8 +1810,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       
       // AUTO-ANTE: If player has auto_ante enabled, automatically accept ante (no dialog)
-      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && currentPlayer.auto_ante) {
-        console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id);
+      // OR if player has auto_ante_runback enabled AND this is a run-it-back scenario
+      const shouldAutoAnte = currentPlayer?.auto_ante || (currentPlayer?.auto_ante_runback && isRunBack);
+      
+      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && shouldAutoAnte) {
+        console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id, {
+          auto_ante: currentPlayer.auto_ante,
+          auto_ante_runback: currentPlayer.auto_ante_runback,
+          isRunBack
+        });
         
         // Auto-accept the ante
         supabase
@@ -5150,9 +5180,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isObserver={false}
                   waiting={currentPlayer.waiting}
                   autoAnte={playerOptions.autoAnte}
+                  autoAnteRunback={playerOptions.autoAnteRunback}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
                   onAutoAnteChange={(v) => handlePlayerOptionChange('auto_ante', v)}
+                  onAutoAnteRunbackChange={(v) => handlePlayerOptionChange('auto_ante_runback', v)}
                   onSitOutNextHandChange={(v) => handlePlayerOptionChange('sit_out_next_hand', v)}
                   onStandUpNextHandChange={(v) => handlePlayerOptionChange('stand_up_next_hand', v)}
                   onStandUpNow={handleStandUpNow}
@@ -5256,9 +5288,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isObserver={false}
                   waiting={currentPlayer.waiting}
                   autoAnte={playerOptions.autoAnte}
+                  autoAnteRunback={playerOptions.autoAnteRunback}
                   sitOutNextHand={playerOptions.sitOutNextHand}
                   standUpNextHand={playerOptions.standUpNextHand}
                   onAutoAnteChange={(v) => handlePlayerOptionChange('auto_ante', v)}
+                  onAutoAnteRunbackChange={(v) => handlePlayerOptionChange('auto_ante_runback', v)}
                   onSitOutNextHandChange={(v) => handlePlayerOptionChange('sit_out_next_hand', v)}
                   onStandUpNextHandChange={(v) => handlePlayerOptionChange('stand_up_next_hand', v)}
                   onStandUpNow={handleStandUpNow}

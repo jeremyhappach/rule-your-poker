@@ -946,9 +946,11 @@ export const GameTable = ({
             isObserver={true}
             waiting={false}
             autoAnte={false}
+            autoAnteRunback={false}
             sitOutNextHand={false}
             standUpNextHand={false}
             onAutoAnteChange={() => {}}
+            onAutoAnteRunbackChange={() => {}}
             onSitOutNextHandChange={() => {}}
             onStandUpNextHandChange={() => {}}
             onStandUpNow={() => {}}
