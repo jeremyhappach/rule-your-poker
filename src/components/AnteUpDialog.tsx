@@ -83,6 +83,56 @@ export const AnteUpDialog = ({
     onDecisionMade();
   };
 
+  const handleAutoAnteRunback = async () => {
+    if (hasDecided) return;
+    setHasDecided(true);
+
+    // Set auto_ante_runback to true AND ante up for this hand
+    // Also set auto_ante to false (mutual exclusivity)
+    const { error } = await supabase
+      .from('players')
+      .update({
+        ante_decision: 'ante_up',
+        sitting_out: false,
+        auto_ante_runback: true,
+        auto_ante: false,
+      })
+      .eq('id', playerId);
+
+    if (error) {
+      console.error('Failed to set auto-ante runback:', error);
+      return;
+    }
+
+    console.log('[ANTE DIALOG] Set auto_ante_runback = true and anted up');
+    onDecisionMade();
+  };
+
+  const handleAutoAnteAll = async () => {
+    if (hasDecided) return;
+    setHasDecided(true);
+
+    // Set auto_ante to true AND ante up for this hand
+    // Also set auto_ante_runback to false (mutual exclusivity)
+    const { error } = await supabase
+      .from('players')
+      .update({
+        ante_decision: 'ante_up',
+        sitting_out: false,
+        auto_ante: true,
+        auto_ante_runback: false,
+      })
+      .eq('id', playerId);
+
+    if (error) {
+      console.error('Failed to set auto-ante all:', error);
+      return;
+    }
+
+    console.log('[ANTE DIALOG] Set auto_ante = true and anted up');
+    onDecisionMade();
+  };
+
   const handleSitOut = async () => {
     if (hasDecided) return;
     setHasDecided(true);
@@ -162,6 +212,7 @@ export const AnteUpDialog = ({
             </Badge>
           </div>
           
+          {/* Main action buttons */}
           <div className="grid grid-cols-2 gap-3">
             <Button
               onClick={handleAnteUp}
@@ -177,6 +228,26 @@ export const AnteUpDialog = ({
               className="font-bold"
             >
               Sit Out 🪑
+            </Button>
+          </div>
+          
+          {/* Auto-ante options */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+            <Button
+              onClick={handleAutoAnteRunback}
+              size="sm"
+              variant="outline"
+              className="text-xs"
+            >
+              Auto-Ante (Run it Back)
+            </Button>
+            <Button
+              onClick={handleAutoAnteAll}
+              size="sm"
+              variant="outline"
+              className="text-xs"
+            >
+              Auto-Ante (All)
             </Button>
           </div>
           

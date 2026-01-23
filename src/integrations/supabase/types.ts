@@ -596,6 +596,7 @@ export type Database = {
         Row: {
           ante_decision: string | null
           auto_ante: boolean
+          auto_ante_runback: boolean
           auto_fold: boolean
           chips: number
           created_at: string
@@ -621,6 +622,7 @@ export type Database = {
         Insert: {
           ante_decision?: string | null
           auto_ante?: boolean
+          auto_ante_runback?: boolean
           auto_fold?: boolean
           chips?: number
           created_at?: string
@@ -646,6 +648,7 @@ export type Database = {
         Update: {
           ante_decision?: string | null
           auto_ante?: boolean
+          auto_ante_runback?: boolean
           auto_fold?: boolean
           chips?: number
           created_at?: string
