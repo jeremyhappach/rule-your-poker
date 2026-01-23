@@ -23,7 +23,12 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
   const finalTarget = targetPosition || { top: '85%', left: '65%' };
 
   // Animation duration - slightly shorter for winning leg to allow faster transition to legs-to-player
-  const animationDuration = isWinningLeg ? 1800 : 1500;
+  // IMPORTANT: Memoize this at first render to prevent animation restart if isWinningLeg changes mid-flight
+  const animationDurationRef = useRef<number | null>(null);
+  if (animationDurationRef.current === null) {
+    animationDurationRef.current = isWinningLeg ? 1800 : 1500;
+  }
+  const animationDuration = animationDurationRef.current;
 
   // Format leg value for display
   const formattedValue = legValue > 0 ? `$${legValue}` : 'L';
@@ -55,6 +60,8 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       // Only reset when show becomes false AND no active timer (animation already completed)
       // This prevents resetting mid-animation which could cause re-triggering
       hasShownRef.current = false;
+      // Also reset duration ref so next animation can recalculate
+      animationDurationRef.current = null;
     }
   }, [show, animationDuration]);
 

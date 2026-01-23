@@ -2349,7 +2349,8 @@ export const MobileGameTable = ({
     // If the normal "leg gained" detector missed (common when legs_to_win=1 and backend resets fast),
     // force the leg-earned banner so the win moment still feels right.
     // CRITICAL: Check legAnimationActiveRef SYNCHRONOUSLY - showLegEarned state may be stale due to async batching
-    if (!legAnimationActiveRef.current && !showLegEarned && threeFiveSevenWinnerId) {
+    // ALSO check isWinningLegAnimation state - if it's already true, the primary path already triggered
+    if (!legAnimationActiveRef.current && !showLegEarned && !isWinningLegAnimation && threeFiveSevenWinnerId) {
       const winner = players.find((p) => p.id === threeFiveSevenWinnerId);
       if (winner) {
         const winnerName = winner.is_bot
