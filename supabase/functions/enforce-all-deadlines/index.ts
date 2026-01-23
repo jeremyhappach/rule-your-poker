@@ -2050,7 +2050,189 @@ serve(async (req) => {
         }
 
         // ============= GAME OVER COUNTDOWN =============
-        if (game.status === 'game_over' && game.game_over_at) {
+        // CRITICAL FIX: Handle game_over games both WITH and WITHOUT game_over_at set
+        // Games can get stuck in game_over with null game_over_at if the client that set game_over
+        // failed to also set game_over_at, or if there was a race condition.
+        if (game.status === 'game_over') {
+          // If game_over_at is null but game has been in game_over for a while (based on updated_at),
+          // treat it as stale and clean it up using the same logic as stale game_over with game_over_at
+          const STALE_GAME_OVER_THRESHOLD_MS = 60000; // 1 minute - if game_over with no game_over_at for 1min, it's stuck
+          
+          if (!game.game_over_at) {
+            // game_over_at is null - check if it's been stuck based on updated_at
+            if (msSinceUpdate > STALE_GAME_OVER_THRESHOLD_MS) {
+              console.log('[CRON-ENFORCE] game_over with NULL game_over_at, stuck for', Math.round(msSinceUpdate / 1000), 'seconds:', game.id);
+              
+              // Apply the same stale game_over logic as below
+              const { data: allPlayers } = await supabase
+                .from('players')
+                .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, auto_fold, status')
+                .eq('game_id', game.id)
+                .order('position');
+              
+              if (allPlayers) {
+                // Evaluate player states
+                for (const player of allPlayers) {
+                  if (player.stand_up_next_hand) {
+                    if (player.is_bot) {
+                      await supabase.from('players').delete().eq('id', player.id);
+                    } else {
+                      await supabase
+                        .from('players')
+                        .update({ sitting_out: true, stand_up_next_hand: false, waiting: false })
+                        .eq('id', player.id);
+                    }
+                    continue;
+                  }
+                  
+                  if (player.sit_out_next_hand) {
+                    await supabase
+                      .from('players')
+                      .update({ sitting_out: true, sit_out_next_hand: false, waiting: false })
+                      .eq('id', player.id);
+                    continue;
+                  }
+                  
+                  if (player.auto_fold) {
+                    await supabase
+                      .from('players')
+                      .update({ sitting_out: true, waiting: false })
+                      .eq('id', player.id);
+                    continue;
+                  }
+                  
+                  if (player.waiting && !player.sitting_out) {
+                    await supabase
+                      .from('players')
+                      .update({ sitting_out: false, waiting: false })
+                      .eq('id', player.id);
+                  }
+                }
+                
+                // Re-fetch and decide
+                const { data: freshPlayers } = await supabase
+                  .from('players')
+                  .select('id, sitting_out, is_bot, status, position')
+                  .eq('game_id', game.id);
+                
+                const activeHumans = (freshPlayers || []).filter((p: any) => !p.sitting_out && p.status !== 'observer' && !p.is_bot);
+                
+                const { data: gameDefaults } = await supabase
+                  .from('game_defaults')
+                  .select('allow_bot_dealers')
+                  .eq('game_type', game.game_type || 'holm')
+                  .maybeSingle();
+                
+                const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
+                
+                const eligibleDealers = (freshPlayers || []).filter((p: any) =>
+                  !p.sitting_out && p.status !== 'observer' && (allowBotDealers || !p.is_bot) && p.position !== null
+                );
+                
+                if (activeHumans.length === 0) {
+                  const hasHistory = (game.total_hands || 0) > 0;
+                  
+                  if (hasHistory) {
+                    await supabase
+                      .from('games')
+                      .update({
+                        status: 'session_ended',
+                        session_ended_at: nowIso,
+                        pending_session_end: false,
+                        game_over_at: nowIso,
+                        config_deadline: null,
+                        ante_decision_deadline: null,
+                        config_complete: false,
+                        awaiting_next_round: false,
+                      })
+                      .eq('id', game.id);
+                    actionsTaken.push('game_over stuck (null game_over_at): No active humans, session ended');
+                  } else {
+                    // Delete empty session
+                    const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
+                    const roundIds = (roundRows ?? []).map((r: any) => r.id);
+                    if (roundIds.length > 0) {
+                      await supabase.from('player_cards').delete().in('round_id', roundIds);
+                      await supabase.from('player_actions').delete().in('round_id', roundIds);
+                    }
+                    await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
+                    await supabase.from('chat_messages').delete().eq('game_id', game.id);
+                    await supabase.from('rounds').delete().eq('game_id', game.id);
+                    await supabase.from('players').delete().eq('game_id', game.id);
+                    await supabase.from('games').delete().eq('id', game.id);
+                    actionsTaken.push('game_over stuck (null game_over_at): No humans, no history - deleted');
+                  }
+                } else if (eligibleDealers.length === 0) {
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'session_ended',
+                      session_ended_at: nowIso,
+                      pending_session_end: false,
+                      game_over_at: nowIso,
+                      config_deadline: null,
+                      ante_decision_deadline: null,
+                      config_complete: false,
+                      awaiting_next_round: false,
+                    })
+                    .eq('id', game.id);
+                  actionsTaken.push('game_over stuck (null game_over_at): No eligible dealers, session ended');
+                } else {
+                  // Rotate dealer and start next hand
+                  const eligiblePositions = eligibleDealers.map((p: any) => p.position as number).sort((a, b) => a - b);
+                  const currentDealerPos = game.dealer_position || 0;
+                  const currentIndex = eligiblePositions.indexOf(currentDealerPos);
+                  
+                  const nextDealerPos = currentIndex === -1
+                    ? eligiblePositions[0]
+                    : eligiblePositions[(currentIndex + 1) % eligiblePositions.length];
+                  
+                  const configDeadline = new Date(Date.now() + 30 * 1000).toISOString();
+                  
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'configuring',
+                      dealer_position: nextDealerPos,
+                      config_deadline: configDeadline,
+                      game_over_at: null,
+                      awaiting_next_round: false,
+                      config_complete: false,
+                      last_round_result: null,
+                    })
+                    .eq('id', game.id);
+                  
+                  await supabase
+                    .from('players')
+                    .update({
+                      ante_decision: null,
+                      current_decision: null,
+                      decision_locked: false,
+                      auto_fold: false,
+                      pre_fold: false,
+                      pre_stay: false,
+                    })
+                    .eq('game_id', game.id)
+                    .eq('sitting_out', false);
+                  
+                  actionsTaken.push(`game_over stuck (null game_over_at): Rotated dealer to position ${nextDealerPos}`);
+                }
+              }
+              
+              results.push({
+                gameId: game.id,
+                status: game.status,
+                result: actionsTaken.length > 0 ? actionsTaken.join('; ') : 'no_action_needed',
+              });
+              continue;
+            } else {
+              // game_over with null game_over_at but not stuck long enough yet - skip for now
+              results.push({ gameId: game.id, status: game.status, result: 'game_over_null_timestamp_waiting' });
+              continue;
+            }
+          }
+          
+          // game_over_at is set - use normal logic
           const gameOverAt = new Date(game.game_over_at);
           const gameOverDeadline = new Date(gameOverAt.getTime() + 8000);
           const staleThreshold = new Date(gameOverAt.getTime() + 15000);
