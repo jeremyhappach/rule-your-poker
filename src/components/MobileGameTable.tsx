@@ -1959,6 +1959,8 @@ export const MobileGameTable = ({
   }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId]);
 
   // Detect Chucky chopped animation
+  // CRITICAL: Only trigger after ALL Chucky cards are revealed visually
+  // This prevents "YOU GOT CRACKED" from appearing before the last card flips
   useEffect(() => {
     if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
       const currentUsername = currentPlayer?.profiles?.username || '';
@@ -1966,11 +1968,24 @@ export const MobileGameTable = ({
       const is1v1Loss = lastRoundResult.includes(`Chucky beat ${currentUsername} `);
       const isTieBreakerLoss = lastRoundResult.includes('lose to Chucky') && (lastRoundResult.includes(`${currentUsername} and `) || lastRoundResult.includes(` and ${currentUsername} lose`) || lastRoundResult.includes(`! ${currentUsername} lose`));
       if (is1v1Loss || isTieBreakerLoss) {
-        lastChoppedResultRef.current = lastRoundResult;
-        setShowChopped(true);
+        // GATE: Wait until all Chucky cards are revealed before showing cracked animation
+        // ChuckyHand has its own flip animation delay (~1.5s for last card),
+        // so we need to check if the reveal count matches the total card count
+        const totalChuckyCards = chuckyCards?.length ?? 0;
+        const revealedChuckyCards = chuckyCardsRevealed ?? 0;
+        
+        if (totalChuckyCards > 0 && revealedChuckyCards >= totalChuckyCards) {
+          // All cards revealed in database - now add delay for the ChuckyHand flip animation
+          // The ChuckyHand component delays the last card flip by 1500ms
+          // So we delay the cracked animation to match
+          setTimeout(() => {
+            lastChoppedResultRef.current = lastRoundResult;
+            setShowChopped(true);
+          }, 1600); // Slightly longer than ChuckyHand's 1500ms last card delay
+        }
       }
     }
-  }, [lastRoundResult, gameType, currentPlayer, currentUserId]);
+  }, [lastRoundResult, gameType, currentPlayer, currentUserId, chuckyCards, chuckyCardsRevealed]);
 
   // Detect 357 sweep animation (3-5-7 games only)
   useEffect(() => {
@@ -4033,23 +4048,13 @@ export const MobileGameTable = ({
               setTimeout(() => setFeltBlockMounted(true), 0);
             }
             
-            // Get winning result to show what we're trying to beat
-            // Use cached result if current one is undefined (prevents flicker during state transitions)
-            const liveWinningResult = horsesController.currentWinningResult;
-            const liveWinningDice = horsesController.getWinningPlayerDice?.();
-            
-            // Update cache when we have valid data
-            if (liveWinningResult?.description) {
-              cachedWinningResultRef.current = {
-                description: liveWinningResult.description,
-                dice: liveWinningDice ?? null,
-              };
-            }
-            
-            // Use cached result if live one is invalid
-            const winningResultToBeat = liveWinningResult ?? 
-              (cachedWinningResultRef.current ? { description: cachedWinningResultRef.current.description } : null);
-            const winningDice = liveWinningDice ?? cachedWinningResultRef.current?.dice;
+            // CRITICAL FIX: Only use the cached snapshot from turn start
+            // Do NOT update the cache here - it was frozen at turn start via useEffect
+            // This prevents the Beat badge from appearing after the player takes the lead
+            const winningResultToBeat = cachedWinningResultRef.current 
+              ? { description: cachedWinningResultRef.current.description } 
+              : null;
+            const winningDice = cachedWinningResultRef.current?.dice ?? null;
             const isSCCGame = gameType === 'ship-captain-crew';
             
             // For SCC, get cargo dice (non-SCC dice with value > 0)
