@@ -8,9 +8,27 @@ interface ChuckyHandProps {
   revealed?: number;
   x?: number;
   y?: number;
+  /** Optional extra scale applied to the hand container. */
+  scale?: number;
+  /** Negative overlap between cards (more negative = tighter overlap). */
+  overlapPx?: number;
+  /** Optional style overrides for the outer container. */
+  containerStyle?: React.CSSProperties;
+  /** Optional className for the outer container. */
+  containerClassName?: string;
 }
 
-export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: ChuckyHandProps) => {
+export const ChuckyHand = ({
+  cards,
+  show,
+  revealed = cards.length,
+  x,
+  y,
+  scale = 1,
+  overlapPx = -22,
+  containerStyle,
+  containerClassName,
+}: ChuckyHandProps) => {
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const prevRevealedRef = useRef(revealed);
   const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
@@ -59,9 +77,18 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
 
   if (!show || cards.length === 0) return null;
 
-  const positionStyle = x !== undefined && y !== undefined
-    ? { left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }
-    : { top: '2%', left: '50%', transform: 'translateX(-50%)' };
+  const positionStyle =
+    x !== undefined && y !== undefined
+      ? {
+          left: `${x}%`,
+          top: `${y}%`,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+        }
+      : {
+          top: "2%",
+          left: "50%",
+          transform: `translateX(-50%) scale(${scale})`,
+        };
 
   // Calculate container width: first card full width + (remaining cards * overlap amount)
   const cardWidth = 40; // approximate card width in px
@@ -69,7 +96,10 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
   const totalWidth = cardWidth + (cards.length - 1) * overlapOffset;
 
   return (
-    <div className="absolute z-30 animate-scale-in" style={positionStyle}>
+    <div
+      className={"absolute z-30 animate-scale-in" + (containerClassName ? ` ${containerClassName}` : "")}
+      style={{ ...positionStyle, ...containerStyle }}
+    >
       <div className="bg-gradient-to-br from-red-900/90 to-red-950/90 rounded-lg p-1.5 sm:p-2 backdrop-blur-sm border border-red-500 shadow-xl">
         <div className="text-center mb-1">
           <span className="text-red-400 font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1">
@@ -86,7 +116,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
               <div
                 key={`${cardsKeyRef.current}-${index}`}
                 style={{ 
-                  marginLeft: index === 0 ? 0 : -22,
+                  marginLeft: index === 0 ? 0 : overlapPx,
                   transformStyle: 'preserve-3d',
                   transition: 'transform 1s ease-in-out',
                   transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',

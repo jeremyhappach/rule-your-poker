@@ -4464,29 +4464,22 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* Chucky's Hand - use ChuckyHand component with proper flip animations */}
+        {/* Chucky's Hand - flip animation + readable spacing */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div 
-            className={cn(
-              "absolute left-1/2 transform -translate-x-1/2 z-10 transition-all duration-300",
-              // Tablet needs extra downward offset to avoid community card overlap
-              isHolmMultiPlayerShowdown 
-                ? (isTablet ? 'top-[80%]' : 'top-[76%]') 
-                : (isTablet ? 'top-[70%]' : 'top-[65%]'),
-            )}
-            style={{ 
-              transform: `translateX(-50%) scale(${isTablet ? 1.6 : isDesktop ? 1.8 : 1.1})`,
+          <ChuckyHand
+            cards={cachedChuckyCards}
+            show={true}
+            revealed={cachedChuckyCardsRevealed}
+            x={50}
+            y={isHolmMultiPlayerShowdown ? (isTablet ? 80 : 76) : (isTablet ? 70 : 65)}
+            scale={isTablet ? 1.8 : isDesktop ? 2.0 : 1.15}
+            overlapPx={isTablet || isDesktop ? -18 : -12}
+            containerStyle={{
               // Dim Chucky when player won
               opacity: (!!winnerPlayerId && isShowingAnnouncement) ? 0.4 : 1,
               filter: (!!winnerPlayerId && isShowingAnnouncement) ? 'grayscale(30%)' : 'none',
             }}
-          >
-            <ChuckyHand 
-              cards={cachedChuckyCards}
-              show={true}
-              revealed={cachedChuckyCardsRevealed}
-            />
-          </div>
+          />
         )}
         
         {/* Winner's Tabled Cards - shown above pot (overlaying game name/pot max) when player beats Chucky */}
