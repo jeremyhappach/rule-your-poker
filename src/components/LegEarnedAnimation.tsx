@@ -13,7 +13,10 @@ interface LegEarnedAnimationProps {
 export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, onComplete }: LegEarnedAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
-  const hasShownRef = useRef(false);
+  // Track the UNIQUE animation cycle - keyed by a timestamp set when animation starts
+  const animationCycleIdRef = useRef<string | null>(null);
+  // Track if the current cycle has completed (prevents restart on prop flicker)
+  const cycleCompletedRef = useRef(false);
   const activeTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Keep ref updated
@@ -22,20 +25,33 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
   // Default target if not provided
   const finalTarget = targetPosition || { top: '85%', left: '65%' };
 
-  // Animation duration - slightly shorter for winning leg to allow faster transition to legs-to-player
-  // IMPORTANT: Memoize this at first render to prevent animation restart if isWinningLeg changes mid-flight
+  // Animation duration - lock at cycle start to prevent mid-flight changes
   const animationDurationRef = useRef<number | null>(null);
-  if (animationDurationRef.current === null) {
-    animationDurationRef.current = isWinningLeg ? 1800 : 1500;
-  }
-  const animationDuration = animationDurationRef.current;
 
   // Format leg value for display
   const formattedValue = legValue > 0 ? `$${legValue}` : 'L';
 
   useEffect(() => {
-    if (show && !hasShownRef.current) {
-      hasShownRef.current = true;
+    if (show) {
+      // If we already completed this animation cycle, ignore further show=true signals
+      if (cycleCompletedRef.current) {
+        return;
+      }
+      
+      // If animation is already running for this cycle, ignore
+      if (animationCycleIdRef.current !== null) {
+        return;
+      }
+      
+      // Start a NEW animation cycle
+      const cycleId = `cycle-${Date.now()}`;
+      animationCycleIdRef.current = cycleId;
+      cycleCompletedRef.current = false;
+      
+      // Lock duration at cycle start
+      animationDurationRef.current = isWinningLeg ? 1800 : 1500;
+      const animationDuration = animationDurationRef.current;
+      
       setVisible(true);
       
       // Clear any existing timer to prevent double-fires
@@ -45,7 +61,13 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       
       // Hide after fly-in completes
       activeTimerRef.current = setTimeout(() => {
+        // Validate this is still the same animation cycle
+        if (animationCycleIdRef.current !== cycleId) {
+          return;
+        }
+        
         activeTimerRef.current = null;
+        cycleCompletedRef.current = true; // Mark cycle as complete BEFORE any state changes
         setVisible(false);
         onCompleteRef.current?.();
       }, animationDuration);
@@ -56,14 +78,16 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
           activeTimerRef.current = null;
         }
       };
-    } else if (!show && !activeTimerRef.current) {
-      // Only reset when show becomes false AND no active timer (animation already completed)
-      // This prevents resetting mid-animation which could cause re-triggering
-      hasShownRef.current = false;
-      // Also reset duration ref so next animation can recalculate
-      animationDurationRef.current = null;
+    } else {
+      // show=false: Only reset refs if the animation cycle completed naturally
+      // This allows a new animation to start on next show=true
+      if (cycleCompletedRef.current) {
+        animationCycleIdRef.current = null;
+        cycleCompletedRef.current = false;
+        animationDurationRef.current = null;
+      }
     }
-  }, [show, animationDuration]);
+  }, [show, isWinningLeg]);
 
   if (!visible) return null;
 
