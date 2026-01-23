@@ -79,21 +79,9 @@ interface GameLobbyProps {
   userId: string;
 }
 
-// Timestamp when this component was first mounted - used to detect stale BFCache restores
-const LOBBY_MOUNT_TIME = Date.now();
-
 export const GameLobby = ({ userId }: GameLobbyProps) => {
-  // Initialize with empty array - never use any cached/restored state
-  const [games, setGames] = useState<Game[]>(() => {
-    // If this component is mounting from a BFCache restore that's more than 5 minutes old,
-    // the entire page is stale and we should reload
-    const timeSinceMount = Date.now() - LOBBY_MOUNT_TIME;
-    if (timeSinceMount > 5 * 60 * 1000) {
-      // This is a stale BFCache restore - force reload
-      window.location.reload();
-    }
-    return [];
-  });
+  // Always start with empty array - never use cached/restored state
+  const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -111,14 +99,9 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Detect if this is a stale BFCache/frozen page restore
-    // If the page navigation type is "back_forward", force a full reload to get fresh assets
-    const navEntry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-    if (navEntry?.type === "back_forward") {
-      console.log("[GameLobby] Detected back_forward navigation, forcing reload for fresh content");
-      window.location.reload();
-      return;
-    }
+    // Force clear any stale state on mount - this ensures we always start fresh
+    setGames([]);
+    setLoading(true);
 
     fetchGames();
     checkSuperuser();
