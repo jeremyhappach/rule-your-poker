@@ -486,17 +486,36 @@ export const MobileGameTable = ({
 
   // CRITICAL FIX: Freeze Beat badge at turn start - never update during player's turn
   // This prevents the badge from flickering/updating when the player's roll takes the lead
+  // The cache is snapshotted ONCE when isMyTurn transitions from false to true,
+  // and is never updated again until the turn ends.
   const cachedWinningResultRef = useRef<{ description: string; dice: any[] | null } | null>(null);
-  const wasMyTurnRef = useRef(false); // Track isMyTurn transitions
+  const turnSnapshotTakenRef = useRef(false); // True once we've snapshotted at turn start
   
-  // Reset wasMyTurnRef when turn ends (so next turn gets a fresh snapshot)
+  // Detect turn transitions and manage snapshot lifecycle
   const isMyTurn = horsesController.isMyTurn;
   useEffect(() => {
-    if (!isMyTurn && wasMyTurnRef.current) {
+    if (isMyTurn && !turnSnapshotTakenRef.current) {
+      // Turn just started - take the snapshot NOW (before any rolls)
+      const liveWinningResult = horsesController.currentWinningResult;
+      const liveWinningDice = horsesController.getWinningPlayerDice?.();
+      
+      if (liveWinningResult?.description) {
+        cachedWinningResultRef.current = {
+          description: liveWinningResult.description,
+          dice: liveWinningDice ?? null,
+        };
+      } else {
+        // No hand to beat - explicitly set to null so we don't show any beat badge
+        cachedWinningResultRef.current = null;
+      }
+      turnSnapshotTakenRef.current = true;
+      console.log('[MobileGameTable] Beat badge snapshot taken at turn start:', cachedWinningResultRef.current);
+    } else if (!isMyTurn && turnSnapshotTakenRef.current) {
       // Turn just ended - reset for next time
-      wasMyTurnRef.current = false;
+      turnSnapshotTakenRef.current = false;
+      cachedWinningResultRef.current = null;
     }
-  }, [isMyTurn]);
+  }, [isMyTurn, horsesController.currentWinningResult, horsesController.getWinningPlayerDice]);
 
   // CRITICAL FIX: Sticky cache for the entire felt block content.
   // During brief state gaps (gamePhase flips to waiting/complete, currentTurnPlayerId null, etc.)
@@ -648,7 +667,7 @@ export const MobileGameTable = ({
         newRound: horsesRoundId,
       });
       cachedWinningResultRef.current = null;
-      wasMyTurnRef.current = false; // Reset turn tracking on round change
+      turnSnapshotTakenRef.current = false; // Reset turn tracking on round change
       prevHorsesRoundIdRef.current = horsesRoundId;
     }
   }, [handContextId, horsesRoundId, potMemoryKey, pot]);
@@ -4162,26 +4181,8 @@ export const MobileGameTable = ({
                 // My turn - show "You are rolling" message with Beat badge
                 // CRITICAL: Freeze the Beat badge at turn START - don't update during rolls
                 (() => {
-                  const liveResult = horsesController.currentWinningResult;
-                  const liveWinDice = horsesController.getWinningPlayerDice?.();
-                  
-                  // FREEZE LOGIC: Only snapshot the winning result when turn FIRST becomes mine
-                  // Once snapshotted, it stays frozen for my entire turn (wasMyTurnRef stays true)
-                  const justBecameMyTurn = !wasMyTurnRef.current;
-                  if (justBecameMyTurn) {
-                    // Snapshot the current winning hand at turn start
-                    if (liveResult?.description) {
-                      cachedWinningResultRef.current = {
-                        description: liveResult.description,
-                        dice: liveWinDice ?? null,
-                      };
-                    }
-                    // If no one has completed yet, leave cache null (blank badge)
-                    wasMyTurnRef.current = true;
-                  }
-                  // Note: cache is NOT updated after this point during my turn
-                  
-                  // CRITICAL: Use ONLY the cached/frozen value during my turn
+                  // FREEZE LOGIC: Beat badge was snapshotted in the useEffect at turn start
+                  // We simply use the cached value here - no updates during my turn
                   // This prevents the badge from updating when my roll takes the lead
                   const winResult = cachedWinningResultRef.current 
                     ? { description: cachedWinningResultRef.current.description } 
