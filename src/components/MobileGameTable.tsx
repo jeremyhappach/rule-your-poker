@@ -1959,8 +1959,6 @@ export const MobileGameTable = ({
   }, [isShowingAnnouncement, winnerCards, communityCards, winnerPlayerId]);
 
   // Detect Chucky chopped animation
-  // CRITICAL: Only trigger after ALL Chucky cards are revealed visually
-  // This prevents "YOU GOT CRACKED" from appearing before the last card flips
   useEffect(() => {
     if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
       const currentUsername = currentPlayer?.profiles?.username || '';
@@ -1968,24 +1966,11 @@ export const MobileGameTable = ({
       const is1v1Loss = lastRoundResult.includes(`Chucky beat ${currentUsername} `);
       const isTieBreakerLoss = lastRoundResult.includes('lose to Chucky') && (lastRoundResult.includes(`${currentUsername} and `) || lastRoundResult.includes(` and ${currentUsername} lose`) || lastRoundResult.includes(`! ${currentUsername} lose`));
       if (is1v1Loss || isTieBreakerLoss) {
-        // GATE: Wait until all Chucky cards are revealed before showing cracked animation
-        // ChuckyHand has its own flip animation delay (~1.5s for last card),
-        // so we need to check if the reveal count matches the total card count
-        const totalChuckyCards = chuckyCards?.length ?? 0;
-        const revealedChuckyCards = chuckyCardsRevealed ?? 0;
-        
-        if (totalChuckyCards > 0 && revealedChuckyCards >= totalChuckyCards) {
-          // All cards revealed in database - now add delay for the ChuckyHand flip animation
-          // The ChuckyHand component delays the last card flip by 1500ms
-          // So we delay the cracked animation to match
-          setTimeout(() => {
-            lastChoppedResultRef.current = lastRoundResult;
-            setShowChopped(true);
-          }, 1600); // Slightly longer than ChuckyHand's 1500ms last card delay
-        }
+        lastChoppedResultRef.current = lastRoundResult;
+        setShowChopped(true);
       }
     }
-  }, [lastRoundResult, gameType, currentPlayer, currentUserId, chuckyCards, chuckyCardsRevealed]);
+  }, [lastRoundResult, gameType, currentPlayer, currentUserId]);
 
   // Detect 357 sweep animation (3-5-7 games only)
   useEffect(() => {
@@ -4048,13 +4033,23 @@ export const MobileGameTable = ({
               setTimeout(() => setFeltBlockMounted(true), 0);
             }
             
-            // CRITICAL FIX: Only use the cached snapshot from turn start
-            // Do NOT update the cache here - it was frozen at turn start via useEffect
-            // This prevents the Beat badge from appearing after the player takes the lead
-            const winningResultToBeat = cachedWinningResultRef.current 
-              ? { description: cachedWinningResultRef.current.description } 
-              : null;
-            const winningDice = cachedWinningResultRef.current?.dice ?? null;
+            // Get winning result to show what we're trying to beat
+            // Use cached result if current one is undefined (prevents flicker during state transitions)
+            const liveWinningResult = horsesController.currentWinningResult;
+            const liveWinningDice = horsesController.getWinningPlayerDice?.();
+            
+            // Update cache when we have valid data
+            if (liveWinningResult?.description) {
+              cachedWinningResultRef.current = {
+                description: liveWinningResult.description,
+                dice: liveWinningDice ?? null,
+              };
+            }
+            
+            // Use cached result if live one is invalid
+            const winningResultToBeat = liveWinningResult ?? 
+              (cachedWinningResultRef.current ? { description: cachedWinningResultRef.current.description } : null);
+            const winningDice = liveWinningDice ?? cachedWinningResultRef.current?.dice;
             const isSCCGame = gameType === 'ship-captain-crew';
             
             // For SCC, get cargo dice (non-SCC dice with value > 0)
@@ -4464,22 +4459,60 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* Chucky's Hand - flip animation + readable spacing */}
+        {/* Chucky's Hand - use cached values to persist through announcement */}
+        {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
         {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <ChuckyHand
-            cards={cachedChuckyCards}
-            show={true}
-            revealed={cachedChuckyCardsRevealed}
-            x={50}
-            y={isHolmMultiPlayerShowdown ? (isTablet ? 80 : 76) : (isTablet ? 70 : 65)}
-            scale={isTablet ? 1.8 : isDesktop ? 2.0 : 1.15}
-            overlapPx={isTablet || isDesktop ? -18 : -12}
-            containerStyle={{
-              // Dim Chucky when player won
-              opacity: (!!winnerPlayerId && isShowingAnnouncement) ? 0.4 : 1,
-              filter: (!!winnerPlayerId && isShowingAnnouncement) ? 'grayscale(30%)' : 'none',
-            }}
-          />
+          <div 
+            className={cn(
+              "absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center transition-all duration-300",
+              // Tablet needs extra downward offset to avoid community card overlap
+              isHolmMultiPlayerShowdown 
+                ? (isTablet ? 'top-[80%]' : 'top-[76%]') 
+                : (isTablet ? 'top-[70%]' : 'top-[65%]'),
+              isTablet || isDesktop ? '-space-x-1' : '-space-x-[2px]'
+            )}
+            style={{ transform: `translateX(-50%) scale(${isTablet ? 1.8 : isDesktop ? 2.0 : 1})` }}
+          >
+            <span className={cn("text-red-400 mr-1", isTablet || isDesktop ? "text-xl" : "text-sm")}>👿</span>
+            {cachedChuckyCards.map((card, index) => {
+              const isRevealed = index < cachedChuckyCardsRevealed;
+              const isFourColor = deckColorMode === 'four_color';
+              const fourColorConfig = getFourColorSuit(card.suit);
+
+              // Card face styling based on deck mode
+              const cardBg = isRevealed ? isFourColor && fourColorConfig ? fourColorConfig.bg : 'white' : undefined;
+              // Use inline color style for 2-color mode to override dark mode text colors
+              const twoColorTextStyle = !isFourColor && isRevealed 
+                ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
+                : {};
+              
+              // Dim Chucky's cards when a player won (winnerPlayerId is set - meaning player beat Chucky)
+              const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
+              const dimStyle = shouldDimChucky ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
+              
+              return <div key={index} className="w-10 h-14 sm:w-11 sm:h-15">
+                      {isRevealed ? <div 
+                        className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300" 
+                        style={{
+                          backgroundColor: cardBg,
+                          ...twoColorTextStyle,
+                          ...dimStyle
+                        }}
+                      >
+                          <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                            {card.rank}
+                          </span>
+                          {!isFourColor && <span className="text-2xl leading-none -mt-0.5">
+                              {card.suit}
+                            </span>}
+                        </div> : <div className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg" style={{
+                  background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`
+                }}>
+                          <span className="text-amber-400/50 text-xl">?</span>
+                        </div>}
+                    </div>;
+            })}
+          </div>
         )}
         
         {/* Winner's Tabled Cards - shown above pot (overlaying game name/pot max) when player beats Chucky */}
