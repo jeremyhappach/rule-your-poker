@@ -2250,6 +2250,17 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (gameType === 'holm-game') return;
 
+    // CRITICAL: This component is also used as a "background table" during dealer selection / setup phases.
+    // In those phases, late realtime player updates (e.g. the final leg increment) can arrive AFTER the background
+    // table mounts, causing it to "re-detect" the winning leg and replay the animation.
+    if (isWaitingPhase) {
+      // Reset baseline so when we return to gameplay we snapshot fresh and don't animate stale transitions.
+      legsTrackerInitializedRef.current = false;
+      playerLegsRef.current = {};
+      firedLegAnimationKeysRef.current = new Set();
+      return;
+    }
+
     // One-time baseline snapshot so we only animate *changes* in legs, not whatever legs already exist.
     if (!legsTrackerInitializedRef.current) {
       const snapshot: Record<string, number> = {};
@@ -2299,7 +2310,7 @@ export const MobileGameTable = ({
 
       playerLegsRef.current[player.id] = currentLegs;
     });
-  }, [players, gameType, legsToWin]);
+  }, [players, gameType, legsToWin, isWaitingPhase]);
   // Clear winning leg player when game status changes (next game starting)
   useEffect(() => {
     if (roundStatus === undefined || roundStatus === 'pending' || !allDecisionsIn) {
@@ -2330,6 +2341,9 @@ export const MobileGameTable = ({
   // Legacy 3-5-7 win animation trigger from parent (kept as fallback)
   // NOTE: Primary trigger now comes from LegEarnedAnimation onComplete when isWinningLegAnimation is true
   useEffect(() => {
+    // Same reasoning as above: never run win-trigger fallback logic in the dealer-selection/setup background table.
+    if (isWaitingPhase) return;
+
     if (!threeFiveSevenWinTriggerId || threeFiveSevenWinTriggerId === lastThreeFiveSevenTriggerRef.current) {
       return;
     }
@@ -2417,7 +2431,7 @@ export const MobileGameTable = ({
     }, 1800); // Tighter timing - start legs-to-player just after leg lands
     // NOTE: threeFiveSevenCachedLegPositions intentionally NOT in deps - we capture it via ref at animation start
     // to prevent dependency changes during animation from invalidating the animation sequence
-  }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver]);
+  }, [threeFiveSevenWinTriggerId, onThreeFiveSevenWinAnimationStarted, gameStatus, isGameOver, isWaitingPhase]);
 
   const handleLegsToPlayerComplete = useCallback(() => {
     const animId = currentAnimationIdRef.current;
