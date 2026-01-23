@@ -551,6 +551,9 @@ export const MobileGameTable = ({
   const [isWinningLegAnimation, setIsWinningLegAnimation] = useState(false);
   const [winningLegPlayerId, setWinningLegPlayerId] = useState<string | null>(null); // Track player who won final leg for card exposure
   const playerLegsRef = useRef<Record<string, number>>({});
+  // REF-BASED GUARD: Prevents double-trigger of leg animation due to async state batching
+  // When set to true, the fallback path in 357 win trigger will skip forcing the animation
+  const legAnimationActiveRef = useRef(false);
   
   // 357 Sweeps pot animation state
   const [showSweepsPot, setShowSweepsPot] = useState(false);
@@ -2283,6 +2286,8 @@ export const MobileGameTable = ({
           const isWinningLeg = currentLegs >= legsToWin;
           setIsWinningLegAnimation(isWinningLeg);
           setShowLegEarned(true);
+          // Mark ref SYNCHRONOUSLY to prevent race with 357 trigger fallback path
+          legAnimationActiveRef.current = true;
 
           // Track the winning leg player for card exposure
           if (isWinningLeg) {
@@ -2343,7 +2348,8 @@ export const MobileGameTable = ({
 
     // If the normal "leg gained" detector missed (common when legs_to_win=1 and backend resets fast),
     // force the leg-earned banner so the win moment still feels right.
-    if (!showLegEarned && threeFiveSevenWinnerId) {
+    // CRITICAL: Check legAnimationActiveRef SYNCHRONOUSLY - showLegEarned state may be stale due to async batching
+    if (!legAnimationActiveRef.current && !showLegEarned && threeFiveSevenWinnerId) {
       const winner = players.find((p) => p.id === threeFiveSevenWinnerId);
       if (winner) {
         const winnerName = winner.is_bot
@@ -2354,6 +2360,7 @@ export const MobileGameTable = ({
         setLegEarnedPlayerPosition(winner.position);
         setIsWinningLegAnimation(true);
         setShowLegEarned(true);
+        legAnimationActiveRef.current = true; // Mark ref to prevent any further triggers
         setWinningLegPlayerId(winner.id);
       }
     }
@@ -3655,6 +3662,7 @@ export const MobileGameTable = ({
           suppressWinnerOverlay={gameType !== 'holm-game'} // Suppress for 3-5-7 - has its own win animation
           onComplete={() => {
             setShowLegEarned(false);
+            legAnimationActiveRef.current = false; // Reset ref so next leg can trigger
             // For 3-5-7: When winning leg animation completes, immediately start the win animation sequence
             // GUARD: Only start if not already in progress (prevents double-firing)
             if (
