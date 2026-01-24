@@ -53,6 +53,14 @@ export function useBackgroundMusic() {
 
       const audioBlob = await response.blob();
       
+      // Validate we got actual audio data
+      if (audioBlob.size < 1000) {
+        console.error("Received blob too small:", audioBlob.size, "type:", audioBlob.type);
+        throw new Error("Invalid audio response - try again");
+      }
+      
+      console.log("Received audio blob:", audioBlob.size, "bytes, type:", audioBlob.type);
+      
       // Revoke old URL if exists
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current);
@@ -67,6 +75,15 @@ export function useBackgroundMusic() {
       }
       
       audioRef.current.src = audioUrlRef.current;
+      
+      // Add error handler for audio element
+      audioRef.current.onerror = (e) => {
+        console.error("Audio element error:", e, audioRef.current?.error);
+        toast.error("Audio playback failed - try again");
+        setIsPlaying(false);
+        setIsLoading(false);
+      };
+      
       await audioRef.current.play();
       
       setIsPlaying(true);
@@ -77,7 +94,8 @@ export function useBackgroundMusic() {
       if (error instanceof Error && error.name === 'AbortError') {
         toast.error("Music generation timed out. Please try again.");
       } else {
-        toast.error(error instanceof Error ? error.message : "Failed to generate music");
+        const message = error instanceof Error ? error.message : "Failed to generate music";
+        toast.error(message === "Load failed" ? "Audio failed to load - try again" : message);
       }
     } finally {
       setIsLoading(false);
