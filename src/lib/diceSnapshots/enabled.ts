@@ -18,18 +18,8 @@ function getSearchParams(): URLSearchParams {
  * - Optional interval override: ?diceSnapMs=50
  */
 export function isDiceSnapEnabled(): boolean {
-  if (typeof window === "undefined") return false;
-
-  const sp = getSearchParams();
-  const urlToggle = sp.get("diceSnap");
-
-  if (urlToggle === "1") {
-    sessionStorage.setItem(STORAGE_KEY, "1");
-  } else if (urlToggle === "0") {
-    sessionStorage.removeItem(STORAGE_KEY);
-  }
-
-  return sessionStorage.getItem(STORAGE_KEY) === "1";
+  // TEMPORARY: Always enabled for debugging dice position jumps
+  return true;
 }
 
 export function getDiceSnapIntervalMs(): number {
