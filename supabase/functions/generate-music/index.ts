@@ -24,7 +24,7 @@ serve(async (req) => {
     console.log("Generating music with duration:", duration);
 
     // Generate acoustic jazz/bluegrass fusion music in the style of David Grisman Quintet
-    const prompt = "Acoustic jazz bluegrass fusion instrumental, mandolin lead melody, upright bass walking lines, acoustic guitar rhythm, violin harmonies, gentle swing feel, warm intimate coffeehouse atmosphere, virtuosic yet tasteful improvisation, Dawg music style";
+    const prompt = "An acoustic jazz bluegrass fusion instrumental featuring mandolin lead melody, upright bass walking lines, acoustic guitar rhythm, violin harmonies, and a gentle swing feel. The track should evoke a warm, intimate coffeehouse atmosphere with virtuosic yet tasteful improvisation, blending elements of progressive bluegrass and jazz mandolin styles.";
 
     const response = await fetch("https://api.elevenlabs.io/v1/music", {
       method: "POST",
