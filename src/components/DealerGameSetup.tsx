@@ -900,12 +900,17 @@ export const DealerGameSetup = ({
       case 'holm-game': return 'Holm';
       case 'horses': return 'Horses';
       case 'ship-captain-crew': return 'Ship';
+      case 'sports-trivia': return 'Trivia';
       default: return gameType;
     }
   };
   
   const isDiceGame = (gameType: string) => {
     return gameType === 'horses' || gameType === 'ship-captain-crew';
+  };
+  
+  const isSimpleAnteGame = (gameType: string) => {
+    return isDiceGame(gameType) || gameType === 'sports-trivia';
   };
 
   const handleCategorySelect = (category: 'cards' | 'dice') => {
@@ -959,7 +964,7 @@ export const DealerGameSetup = ({
     }
   };
   
-  const handleDiceGameSubmit = async (overrideGameType?: string) => {
+  const handleSimpleAnteGameSubmit = async (overrideGameType?: string) => {
     if (isSubmitting || hasSubmittedRef.current) return;
     
     const parsedAnte = parseInt(anteAmount) || 2;
@@ -973,7 +978,9 @@ export const DealerGameSetup = ({
     
     // Use override if provided (for run back), otherwise use state
     const gameTypeToSubmit = overrideGameType || selectedGameType;
-    const gameTypeName = gameTypeToSubmit === 'ship-captain-crew' ? 'Ship' : 'Horses';
+    const gameTypeName = gameTypeToSubmit === 'ship-captain-crew' ? 'Ship' : 
+                         gameTypeToSubmit === 'horses' ? 'Horses' : 
+                         gameTypeToSubmit === 'sports-trivia' ? 'Trivia' : gameTypeToSubmit;
     console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config, game_type:`, gameTypeToSubmit);
     
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
@@ -1028,10 +1035,10 @@ export const DealerGameSetup = ({
       setSelectedGameType(previousGameType);
       setAnteAmount(String(previousGameConfig.ante_amount));
       
-      // For dice games, we only need ante - submit with dice game handler
-      if (isDiceGame(previousGameType)) {
+      // For simple ante games (dice + trivia), we only need ante - submit with simple handler
+      if (isSimpleAnteGame(previousGameType)) {
         // Pass game type directly to avoid state race condition
-        handleDiceGameSubmit(previousGameType);
+        handleSimpleAnteGameSubmit(previousGameType);
       } else {
         // Card games need full config - set state then submit with explicit game type
         setLegValue(String(previousGameConfig.leg_value));
@@ -1184,7 +1191,7 @@ export const DealerGameSetup = ({
                   ← Back
                 </button>
                 <Button
-                  onClick={() => handleDiceGameSubmit()}
+                  onClick={() => handleSimpleAnteGameSubmit()}
                   disabled={isSubmitting}
                   className="flex-1 bg-poker-gold hover:bg-amber-500 text-black font-bold"
                 >

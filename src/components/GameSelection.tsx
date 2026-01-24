@@ -36,6 +36,12 @@ export const GameSelection = ({
       description: "4 cards + 4 community cards vs the table",
       enabled: true,
     },
+    {
+      id: "sports-trivia",
+      name: "Sports Trivia",
+      description: "Answer trivia, winner takes the pot",
+      enabled: true,
+    },
   ];
 
   const diceGames = [
@@ -59,6 +65,7 @@ export const GameSelection = ({
       case 'holm-game': return 'Holm';
       case 'horses': return 'Horses';
       case 'ship-captain-crew': return 'Ship';
+      case 'sports-trivia': return 'Trivia';
       default: return gameType;
     }
   };
