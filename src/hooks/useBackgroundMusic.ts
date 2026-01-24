@@ -7,6 +7,7 @@ export function useBackgroundMusic() {
   const [hasGenerated, setHasGenerated] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const isUnlockedRef = useRef(false);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -22,7 +23,32 @@ export function useBackgroundMusic() {
     };
   }, []);
 
+  // Unlock audio context on iOS by playing silent audio immediately on user gesture
+  const unlockAudio = useCallback(() => {
+    if (isUnlockedRef.current) return;
+    
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.3;
+    }
+    
+    // Create a short silent audio to "unlock" the audio context
+    // This must happen synchronously in the click handler
+    audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    audioRef.current.play().then(() => {
+      audioRef.current?.pause();
+      isUnlockedRef.current = true;
+      console.log("Audio context unlocked for iOS");
+    }).catch((e) => {
+      console.log("Audio unlock failed (expected on some browsers):", e.message);
+    });
+  }, []);
+
   const generateAndPlay = useCallback(async () => {
+    // Immediately unlock audio on the user gesture
+    unlockAudio();
+    
     setIsLoading(true);
     
     try {
@@ -71,7 +97,7 @@ export function useBackgroundMusic() {
       if (!audioRef.current) {
         audioRef.current = new Audio();
         audioRef.current.loop = true;
-        audioRef.current.volume = 0.3; // Start at 30% volume
+        audioRef.current.volume = 0.3;
       }
       
       audioRef.current.src = audioUrlRef.current;
@@ -95,12 +121,17 @@ export function useBackgroundMusic() {
         toast.error("Music generation timed out. Please try again.");
       } else {
         const message = error instanceof Error ? error.message : "Failed to generate music";
-        toast.error(message === "Load failed" ? "Audio failed to load - try again" : message);
+        // Handle iOS-specific permission error
+        if (message.includes("not allowed") || message.includes("denied permission")) {
+          toast.error("Tap again to enable audio playback");
+        } else {
+          toast.error(message === "Load failed" ? "Audio failed to load - try again" : message);
+        }
       }
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [unlockAudio]);
 
   const togglePlay = useCallback(async () => {
     if (!hasGenerated) {
@@ -113,8 +144,13 @@ export function useBackgroundMusic() {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
-        await audioRef.current.play();
-        setIsPlaying(true);
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        } catch (e) {
+          console.error("Resume play failed:", e);
+          toast.error("Tap again to resume audio");
+        }
       }
     }
   }, [hasGenerated, isPlaying, generateAndPlay]);
