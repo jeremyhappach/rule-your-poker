@@ -335,6 +335,7 @@ export type Database = {
           current_host: string | null
           current_round: number | null
           dealer_position: number | null
+          dealer_selection_state: Json | null
           game_over_at: string | null
           game_type: string | null
           id: string
@@ -375,6 +376,7 @@ export type Database = {
           current_host?: string | null
           current_round?: number | null
           dealer_position?: number | null
+          dealer_selection_state?: Json | null
           game_over_at?: string | null
           game_type?: string | null
           id?: string
@@ -415,6 +417,7 @@ export type Database = {
           current_host?: string | null
           current_round?: number | null
           dealer_position?: number | null
+          dealer_selection_state?: Json | null
           game_over_at?: string | null
           game_type?: string | null
           id?: string

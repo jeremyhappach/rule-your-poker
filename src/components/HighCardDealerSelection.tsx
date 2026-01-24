@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getBotAlias } from "@/lib/botAlias";
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from "@/lib/cardUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Player {
   id: string;
@@ -25,11 +26,22 @@ export interface DealerSelectionCard {
   roundNumber: number; // Which deal round (1 = initial, 2+ = tiebreaker)
 }
 
+// State stored in database for sync
+export interface DealerSelectionState {
+  cards: DealerSelectionCard[];
+  announcement: string | null;
+  isComplete: boolean;
+  winnerPosition: number | null;
+}
+
 interface HighCardDealerSelectionProps {
+  gameId: string;
   players: Player[];
   onComplete: (dealerPosition: number) => void;
   isHost: boolean;
   allowBotDealers?: boolean;
+  // DB-synced state from parent (received via realtime)
+  syncedState: DealerSelectionState | null;
   // Callback to provide cards for rendering in the game table
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   // Callback for announcement messages
@@ -39,20 +51,20 @@ interface HighCardDealerSelectionProps {
 }
 
 export const HighCardDealerSelection = ({ 
+  gameId,
   players, 
   onComplete, 
   isHost,
   allowBotDealers = false,
+  syncedState,
   onCardsUpdate,
   onAnnouncementUpdate,
   onWinnerPositionUpdate
 }: HighCardDealerSelectionProps) => {
-  const [phase, setPhase] = useState<'announcing' | 'dealing' | 'complete'>('announcing');
-  const [playerCards, setPlayerCards] = useState<DealerSelectionCard[]>([]);
-  
   const hasInitializedRef = useRef(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const deckRef = useRef<Card[]>([]);
+  const hasCompletedRef = useRef(false);
   
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
@@ -81,12 +93,45 @@ export const HighCardDealerSelection = ({
     return player.profiles?.username || `Seat ${player.position}`;
   }, [sortedPlayers]);
   
-  // Sync cards to parent
-  useEffect(() => {
-    onCardsUpdate(playerCards);
-  }, [playerCards, onCardsUpdate]);
+  // Write state to database (host only)
+  const syncToDatabase = useCallback(async (state: DealerSelectionState) => {
+    if (!isHost) return;
+    
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update({ dealer_selection_state: state as any })
+        .eq('id', gameId);
+      
+      if (error) {
+        console.error('[HIGH CARD] Failed to sync state to DB:', error);
+      }
+    } catch (err) {
+      console.error('[HIGH CARD] Error syncing to DB:', err);
+    }
+  }, [isHost, gameId]);
   
-  // Run the selection sequence
+  // NON-HOST: React to synced state from database
+  useEffect(() => {
+    if (isHost) return; // Host drives state, doesn't react to it
+    if (!syncedState) return;
+    
+    // Update local UI via callbacks
+    onCardsUpdate(syncedState.cards);
+    onAnnouncementUpdate(syncedState.announcement, syncedState.isComplete);
+    onWinnerPositionUpdate?.(syncedState.winnerPosition);
+    
+    // If selection is complete and we have a winner, trigger onComplete
+    if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
+      hasCompletedRef.current = true;
+      // Small delay to let UI render the winner state
+      setTimeout(() => {
+        onComplete(syncedState.winnerPosition!);
+      }, WINNER_ANNOUNCE_DELAY);
+    }
+  }, [isHost, syncedState, onCardsUpdate, onAnnouncementUpdate, onWinnerPositionUpdate, onComplete]);
+  
+  // HOST: Run the selection sequence and sync to DB
   useEffect(() => {
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
@@ -113,7 +158,7 @@ export const HighCardDealerSelection = ({
     
     // Only host runs the actual selection logic
     if (!isHost) {
-      // Non-hosts just show the UI - they'll receive updates via the parent syncing state
+      // Non-hosts receive state via syncedState prop (realtime)
       return;
     }
     
@@ -123,28 +168,30 @@ export const HighCardDealerSelection = ({
     deckRef.current = shuffleDeck(createDeck());
     
     // Start the sequence
-    runSelectionRound(eligibleDealers, 1);
+    runSelectionRound(eligibleDealers, 1, []);
     
     return () => clearTimeouts();
   }, []);
   
-  const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number) => {
+  const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
     
     // Clear winner position when starting a new round (including tiebreakers)
     onWinnerPositionUpdate?.(null);
     
-    if (roundNum === 1) {
-      onAnnouncementUpdate('High card wins deal', false);
-    } else {
-      onAnnouncementUpdate('Tie! Drawing again...', false);
-    }
-    setPhase('announcing');
+    const announcement = roundNum === 1 ? 'High card wins deal' : 'Tie! Drawing again...';
+    onAnnouncementUpdate(announcement, false);
+    
+    // Sync announcement state to DB
+    syncToDatabase({
+      cards: existingCards,
+      announcement,
+      isComplete: false,
+      winnerPosition: null
+    });
     
     // Deal all cards face-up after brief announcement
     addTimeout(() => {
-      setPhase('dealing');
-      
       // Deal one card to each player - all at once, all face-up
       const newCards: DealerSelectionCard[] = playersInRound.map((player) => {
         const card = deckRef.current.shift()!;
@@ -159,26 +206,34 @@ export const HighCardDealerSelection = ({
         };
       });
       
-      // Update cards immediately (all at once)
-      setPlayerCards(prev => {
-        const existingForOtherRounds = prev.filter(pc => pc.roundNumber !== roundNum);
-        return [...existingForOtherRounds, ...newCards];
+      // Combine with existing cards from other rounds
+      const allCards = [...existingCards.filter(c => c.roundNumber !== roundNum), ...newCards];
+      
+      // Update local UI
+      onCardsUpdate(allCards);
+      
+      // Sync to DB for other players
+      syncToDatabase({
+        cards: allCards,
+        announcement,
+        isComplete: false,
+        winnerPosition: null
       });
       
       // After 1.5s pause, check for winner or tiebreaker
       addTimeout(() => {
-        determineWinner(newCards, playersInRound, roundNum);
+        determineWinner(newCards, allCards, playersInRound, roundNum);
       }, ROUND_PAUSE);
       
     }, ANNOUNCE_DURATION);
-  }, [addTimeout, onAnnouncementUpdate]);
+  }, [addTimeout, onAnnouncementUpdate, onCardsUpdate, syncToDatabase, onWinnerPositionUpdate]);
   
-  const determineWinner = useCallback((cards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => {
+  const determineWinner = useCallback((roundCards: DealerSelectionCard[], allCards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => {
     // Find highest card(s)
     let highestRank = 0;
     let winners: DealerSelectionCard[] = [];
     
-    cards.forEach(pc => {
+    roundCards.forEach(pc => {
       const rankValue = RANK_VALUES[pc.card.rank];
       if (rankValue > highestRank) {
         highestRank = rankValue;
@@ -191,28 +246,37 @@ export const HighCardDealerSelection = ({
     console.log('[HIGH CARD] Round', roundNum, 'highest rank:', highestRank, 'winners:', winners.length);
     
     // Update card states - highlight winners, dim losers
-    setPlayerCards(prev => 
-      prev.map(p => {
-        if (p.roundNumber !== roundNum) return p;
-        const isWinner = winners.some(w => w.playerId === p.playerId);
-        return {
-          ...p,
-          isWinner,
-          isDimmed: !isWinner
-        };
-      })
-    );
+    const updatedCards = allCards.map(p => {
+      if (p.roundNumber !== roundNum) return p;
+      const isWinner = winners.some(w => w.playerId === p.playerId);
+      return {
+        ...p,
+        isWinner,
+        isDimmed: !isWinner
+      };
+    });
+    
+    onCardsUpdate(updatedCards);
     
     if (winners.length === 1) {
       // Single winner!
       const winnerPlayer = playersInRound.find(p => p.id === winners[0].playerId);
       if (winnerPlayer) {
         const name = getPlayerName(winnerPlayer);
-        onAnnouncementUpdate(`${name} wins the deal!`, true);
-        setPhase('complete');
+        const winAnnouncement = `${name} wins the deal!`;
         
-        // Report winner position for spotlight effect
+        onAnnouncementUpdate(winAnnouncement, true);
         onWinnerPositionUpdate?.(winnerPlayer.position);
+        
+        // Sync final state to DB
+        syncToDatabase({
+          cards: updatedCards,
+          announcement: winAnnouncement,
+          isComplete: true,
+          winnerPosition: winnerPlayer.position
+        });
+        
+        hasCompletedRef.current = true;
         
         // Complete after showing winner
         addTimeout(() => {
@@ -220,15 +284,23 @@ export const HighCardDealerSelection = ({
         }, WINNER_ANNOUNCE_DELAY);
       }
     } else {
+      // Sync current state before tiebreaker
+      syncToDatabase({
+        cards: updatedCards,
+        announcement: 'Tie! Drawing again...',
+        isComplete: false,
+        winnerPosition: null
+      });
+      
       // Tiebreaker needed - run next round after brief pause
       const tiedPlayerIds = winners.map(w => w.playerId);
       const tiedPlayers = playersInRound.filter(p => tiedPlayerIds.includes(p.id));
       
       addTimeout(() => {
-        runSelectionRound(tiedPlayers, roundNum + 1);
+        runSelectionRound(tiedPlayers, roundNum + 1, updatedCards);
       }, ROUND_PAUSE);
     }
-  }, [addTimeout, getPlayerName, onComplete, onAnnouncementUpdate, runSelectionRound, ROUND_PAUSE]);
+  }, [addTimeout, getPlayerName, onComplete, onAnnouncementUpdate, onCardsUpdate, onWinnerPositionUpdate, syncToDatabase, runSelectionRound]);
   
   // This component doesn't render anything - it just manages state
   // The actual rendering happens in MobileGameTable/GameTable via props
