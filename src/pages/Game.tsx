@@ -1879,30 +1879,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Check for "Running it Back" - same game type AND same config as previous game
       // NOTE: is_first_hand is NOT used here - that flag is for Holm's atomic round-start lock,
       // not for runback detection. A "runback" simply means the config matches the previous game.
+      // Use the SAME fallback values as the config capture (lines 234-246) for accurate comparison
+      const currentConfig = {
+        game_type: game.game_type,
+        ante_amount: game.ante_amount ?? 2,
+        leg_value: game.leg_value ?? 1,
+        legs_to_win: game.legs_to_win ?? 3,
+        pussy_tax_enabled: game.pussy_tax_enabled ?? true,
+        pussy_tax_value: game.pussy_tax_value ?? 1,
+        pot_max_enabled: game.pot_max_enabled ?? true,
+        pot_max_value: game.pot_max_value ?? 10,
+        chucky_cards: game.chucky_cards ?? 4,
+      };
+      
       const isRunBack = previousGameConfig !== null && 
-        previousGameConfig.game_type === game.game_type &&
-        previousGameConfig.ante_amount === (game.ante_amount || 1) &&
-        previousGameConfig.pussy_tax_enabled === (game.pussy_tax_enabled ?? true) &&
-        previousGameConfig.pussy_tax_value === (game.pussy_tax_value || 1) &&
-        previousGameConfig.pot_max_enabled === (game.pot_max_enabled ?? true) &&
-        previousGameConfig.pot_max_value === (game.pot_max_value || 10) &&
-        (game.game_type === 'holm-game' || game.game_type === 'holm' 
-          ? previousGameConfig.chucky_cards === (game.chucky_cards || 4)
-          : previousGameConfig.leg_value === (game.leg_value || 1) && 
-            previousGameConfig.legs_to_win === (game.legs_to_win || 3)
+        previousGameConfig.game_type === currentConfig.game_type &&
+        previousGameConfig.ante_amount === currentConfig.ante_amount &&
+        previousGameConfig.pussy_tax_enabled === currentConfig.pussy_tax_enabled &&
+        previousGameConfig.pussy_tax_value === currentConfig.pussy_tax_value &&
+        previousGameConfig.pot_max_enabled === currentConfig.pot_max_enabled &&
+        previousGameConfig.pot_max_value === currentConfig.pot_max_value &&
+        (currentConfig.game_type === 'holm-game' || currentConfig.game_type === 'holm' 
+          ? previousGameConfig.chucky_cards === currentConfig.chucky_cards
+          : previousGameConfig.leg_value === currentConfig.leg_value && 
+            previousGameConfig.legs_to_win === currentConfig.legs_to_win
         );
       
-      console.log('[ANTE DIALOG] Running it back check:', { isRunBack, previousGameConfig, currentConfig: {
-        game_type: game.game_type,
-        ante_amount: game.ante_amount,
-        pussy_tax_enabled: game.pussy_tax_enabled,
-        pussy_tax_value: game.pussy_tax_value,
-        pot_max_enabled: game.pot_max_enabled,
-        pot_max_value: game.pot_max_value,
-        chucky_cards: game.chucky_cards,
-        leg_value: game.leg_value,
-        legs_to_win: game.legs_to_win
-      }});
+      console.log('[ANTE DIALOG] Running it back check:', { isRunBack, previousGameConfig, currentConfig });
       setIsRunningItBack(isRunBack);
       
       console.log('[ANTE DIALOG] Checking ante dialog:', {
@@ -6092,23 +6095,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
         })()}
 
-        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && (
-          <AnteUpDialog
-            gameId={gameId!}
-            playerId={players.find(p => p.user_id === user.id)?.id || ''}
-            gameType={game.game_type}
-            anteAmount={game.ante_amount}
-            legValue={game.leg_value ?? 0}
-            pussyTaxEnabled={game.pussy_tax_enabled ?? true}
-            pussyTaxValue={game.pussy_tax_value || 1}
-            legsToWin={game.legs_to_win || 3}
-            potMaxEnabled={game.pot_max_enabled ?? true}
-            potMaxValue={game.pot_max_value || 10}
-            chuckyCards={game.chucky_cards}
-            isRunningItBack={isRunningItBack}
-            onDecisionMade={() => setShowAnteDialog(false)}
-          />
-        )}
+        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && (() => {
+          const currentPlayer = players.find(p => p.user_id === user.id);
+          return (
+            <AnteUpDialog
+              gameId={gameId!}
+              playerId={currentPlayer?.id || ''}
+              gameType={game.game_type}
+              anteAmount={game.ante_amount}
+              legValue={game.leg_value ?? 0}
+              pussyTaxEnabled={game.pussy_tax_enabled ?? true}
+              pussyTaxValue={game.pussy_tax_value || 1}
+              legsToWin={game.legs_to_win || 3}
+              potMaxEnabled={game.pot_max_enabled ?? true}
+              potMaxValue={game.pot_max_value || 10}
+              chuckyCards={game.chucky_cards}
+              isRunningItBack={isRunningItBack}
+              autoAnte={currentPlayer?.auto_ante ?? false}
+              autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
+              onDecisionMade={() => setShowAnteDialog(false)}
+            />
+          );
+        })()}
 
       </div>
 
