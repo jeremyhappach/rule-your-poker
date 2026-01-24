@@ -23,7 +23,11 @@ export function useBackgroundMusic() {
     };
   }, []);
 
-  // Unlock audio context on iOS by playing silent audio immediately on user gesture
+  // Create a looping silent audio to keep iOS audio context alive during generation
+  // This 1-second silent WAV will loop continuously until real audio is ready
+  const SILENT_LOOP = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQgXj9markup69AAACAAgAZGF0YQIA";
+  
+  // Unlock and KEEP playing silent audio on iOS during the async generation
   const unlockAudio = useCallback(() => {
     if (isUnlockedRef.current) return;
     
@@ -33,13 +37,12 @@ export function useBackgroundMusic() {
       audioRef.current.volume = 0.3;
     }
     
-    // Create a short silent audio to "unlock" the audio context
-    // This must happen synchronously in the click handler
-    audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+    // Play a silent looping audio to keep the audio context alive
+    // This must continue playing during the entire generation wait
+    audioRef.current.src = SILENT_LOOP;
     audioRef.current.play().then(() => {
-      audioRef.current?.pause();
       isUnlockedRef.current = true;
-      console.log("Audio context unlocked for iOS");
+      console.log("Audio context unlocked and kept alive for iOS");
     }).catch((e) => {
       console.log("Audio unlock failed (expected on some browsers):", e.message);
     });
@@ -100,6 +103,7 @@ export function useBackgroundMusic() {
         audioRef.current.volume = 0.3;
       }
       
+      // Swap from silent loop to real audio - no new play() call needed since already playing
       audioRef.current.src = audioUrlRef.current;
       
       // Add error handler for audio element
@@ -110,6 +114,8 @@ export function useBackgroundMusic() {
         setIsLoading(false);
       };
       
+      // The audio element is already playing (silent loop), just loading new src continues playback
+      // But we still call play() to ensure it starts if the browser paused during src change
       await audioRef.current.play();
       
       setIsPlaying(true);
