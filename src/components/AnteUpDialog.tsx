@@ -46,7 +46,7 @@ export const AnteUpDialog = ({
     return '3-5-7';
   };
   const gameDisplayName = getGameDisplayName();
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [hasDecided, setHasDecided] = useState(false);
 
   useEffect(() => {
