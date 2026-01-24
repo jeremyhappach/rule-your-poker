@@ -1764,9 +1764,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const currentPlayer = players.find(p => p.user_id === user.id);
       const isDealer = currentPlayer?.position === game.dealer_position;
       
-      // Check for "Running it Back" - same game type AND same config AND not first hand of session
+      // Check for "Running it Back" - same game type AND same config as previous game
+      // NOTE: is_first_hand is NOT used here - that flag is for Holm's atomic round-start lock,
+      // not for runback detection. A "runback" simply means the config matches the previous game.
       const isRunBack = previousGameConfig !== null && 
-        !game.is_first_hand &&  // First hand of session is never a "run it back"
         previousGameConfig.game_type === game.game_type &&
         previousGameConfig.ante_amount === (game.ante_amount || 1) &&
         previousGameConfig.pussy_tax_enabled === (game.pussy_tax_enabled ?? true) &&
