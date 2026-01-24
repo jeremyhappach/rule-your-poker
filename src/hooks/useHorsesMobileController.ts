@@ -1064,11 +1064,14 @@ export function useHorsesMobileController({
     horsesState?.turnDeadline,
   ]);
 
-  // Timeout handler - auto-complete turn and mark player for sit-out
+  // Timeout handler - set auto_fold so bot loop takes over with animated rolls
+  // NOTE: We no longer force-complete here. The bot auto-play loop (below) handles
+  // players with auto_fold=true and animates their rolls properly.
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
     if (!currentRoundId || !currentTurnPlayerId) return;
-    if (currentTurnPlayer?.is_bot) return; // Bots handle themselves
+    if (currentTurnPlayer?.is_bot) return; // Bots handle themselves via bot loop
+    if (currentTurnPlayer?.auto_fold) return; // Already in auto-roll mode, let bot loop handle
     if (!horsesState?.turnDeadline) return; // Only process timeouts when a real server deadline exists
     if (timeLeft === null || timeLeft > 0) return;
 
@@ -1083,108 +1086,59 @@ export function useHorsesMobileController({
     timeoutProcessedRef.current = timeoutKey;
 
     const handleTimeout = async () => {
-      console.log("[HORSES] Turn timeout for player:", currentTurnPlayerId);
+      console.log("[HORSES] Turn timeout - setting auto_fold for animated bot takeover:", currentTurnPlayerId);
 
       // Get current player state
       const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
 
       // IMPORTANT: If player has already completed their turn, do NOT mark them as timed out!
-      // This prevents false timeout penalties when the player locked in but timer display lagged
       if (playerState?.isComplete) {
         console.log("[HORSES] Player already completed turn, skipping timeout penalty:", currentTurnPlayerId);
-        // Just advance to next turn without penalty
         setTimeout(() => {
           advanceToNextTurn(currentTurnPlayerId);
         }, HORSES_POST_TURN_PAUSE_MS);
         return;
       }
 
-      // IMPORTANT: If player has initiated roll 3 (rollsRemaining === 0), don't time them out
-      // They're in the middle of their final roll animation
-      if (playerState && playerState.rollsRemaining === 0 && !playerState.isComplete) {
-        console.log("[HORSES] Player in roll 3 animation, skipping timeout:", currentTurnPlayerId);
-        // Don't advance, just wait - the roll will complete and lock in automatically
-        return;
-      }
+      // Set auto_fold on the player so the bot auto-play loop takes over
+      // This triggers animated rolls instead of instant force-completion
+      await supabase
+        .from("players")
+        .update({ auto_fold: true })
+        .eq("id", currentTurnPlayerId);
 
-      // If player hasn't rolled yet, give them a forced roll result
-      let result;
-      if (!playerState || playerState.rollsRemaining === 3) {
-        // Never rolled - create a random hand with proper game-type handling
-        if (isSCC) {
-          // For SCC: Simulate 3 rolls with auto-freeze logic to create a valid hand
-          let sccHand = createInitialSCCHand();
-          for (let i = 0; i < 3; i++) {
-            sccHand = rollSCCDice(sccHand);
-          }
-          sccHand = lockInSCCHand(sccHand);
-          result = evaluateSCCHand(sccHand);
-          
-          await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
-            dice: sccHand.dice,
-            rollsRemaining: 0,
-            isComplete: true,
-            result,
-          });
-        } else {
-          // For Horses: create random dice
-          const forcedDice = Array(5)
-            .fill(null)
-            .map(() => ({
-              value: Math.floor(Math.random() * 6) + 1,
-              isHeld: false,
-            }));
-          result = evaluateHand(forcedDice);
+      // Extend the deadline to give the bot loop time to animate (15 seconds)
+      const extendedDeadline = new Date(Date.now() + 15000).toISOString();
+      await supabase
+        .from("rounds")
+        .update({
+          horses_state: {
+            ...horsesState,
+            turnDeadline: extendedDeadline,
+          } as any,
+        })
+        .eq("id", currentRoundId);
 
-          await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
-            dice: forcedDice,
-            rollsRemaining: 0,
-            isComplete: true,
-            result,
-          });
-        }
-      } else {
-        // Had rolled but didn't lock in - evaluate current dice with proper evaluator
-        if (isSCC) {
-          const sccHand = reconstructSCCHand(
-            playerState.dice as SCCDieType[],
-            playerState.rollsRemaining,
-            playerState.isComplete
-          );
-          result = evaluateSCCHand(sccHand);
-        } else {
-          result = evaluateHand(playerState.dice as HorsesDieType[]);
-        }
-        await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
-          ...playerState,
-          rollsRemaining: 0,
-          isComplete: true,
-          result,
-        });
-      }
+      console.log("[HORSES] Set auto_fold and extended deadline for bot takeover:", {
+        playerId: currentTurnPlayerId,
+        extendedDeadline,
+      });
 
-      // Log this status change for debugging (before the update)
+      // Log this for debugging (before the bot loop kicks in)
       await logSitOutNextHandSet(
         currentTurnPlayerId,
         currentTurnPlayer?.user_id || '',
         gameId,
         currentTurnPlayer?.profiles?.username,
         currentTurnPlayer?.is_bot || false,
-        false, // old value - they weren't sitting out
-        'Player timed out during Horses turn, setting sit_out_next_hand=true',
+        false,
+        'Player timed out during Horses turn - setting auto_fold for bot takeover',
         'useHorsesMobileController.ts:handleTimeout',
-        { round_id: currentRoundId, forced_result: result }
+        { round_id: currentRoundId }
       );
 
-      // Mark player to sit out next hand (disconnect/timeout penalty)
-      await supabase.from("players").update({ sit_out_next_hand: true }).eq("id", currentTurnPlayerId);
-
-      toast.info(`${getPlayerUsername(currentTurnPlayer!)} timed out - sitting out next hand`);
-
-      // Advance to next turn
-      setTimeout(() => {
-        advanceToNextTurn(currentTurnPlayerId);
-      }, HORSES_POST_TURN_PAUSE_MS);
+      // The bot auto-play loop will now kick in because currentTurnPlayer.auto_fold is true
+      // After the bot loop completes all rolls, it will mark sit_out_next_hand
     };
 
     handleTimeout();
@@ -1199,8 +1153,9 @@ export function useHorsesMobileController({
     timeLeft,
     horsesState?.turnDeadline,
     horsesState?.playerStates,
+    horsesState,
     advanceToNextTurn,
-    getPlayerUsername,
+    gameId,
   ]);
 
   const handleRoll = useCallback(async () => {
@@ -1662,6 +1617,17 @@ export function useHorsesMobileController({
           heldCountBeforeComplete,
           rollKey: botRollKey,
         } as any);
+
+        // If this was a human player with auto_fold (timed out), mark them to sit out next hand
+        const currentPlayerData = players.find((p) => p.id === botId);
+        if (currentPlayerData && !currentPlayerData.is_bot && currentPlayerData.auto_fold) {
+          console.log("[HORSES] Auto-roll complete for timed-out human, marking sit_out_next_hand:", botId);
+          await supabase
+            .from("players")
+            .update({ sit_out_next_hand: true })
+            .eq("id", botId);
+          toast.info(`${getPlayerUsername(currentPlayerData)} timed out - sitting out next hand`);
+        }
 
         await new Promise((resolve) => setTimeout(resolve, 450));
         if (cancelled) return;
