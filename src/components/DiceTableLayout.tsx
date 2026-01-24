@@ -6,6 +6,8 @@ import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
+import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
+import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
 // MobileGameTable intentionally remounts DiceTableLayout when the dice "owner" changes,
@@ -338,6 +340,71 @@ export function DiceTableLayout({
   const [isStabilizing, setIsStabilizing] = useState(false);
   const stabilizationTimeoutRef = useRef<number | null>(null);
   const prevIsCompleteRef = useRef(false);
+  
+  // Ref to access the container DOM for position sampling
+  const containerRef = useRef<HTMLDivElement>(null);
+  const snapFrameSeq = useRef(0);
+  
+  // 50ms interval recording of die positions when ?diceSnap=1 is active
+  useEffect(() => {
+    if (!isDiceSnapEnabled()) return;
+    
+    const intervalId = window.setInterval(() => {
+      const container = containerRef.current;
+      if (!container) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const dieEls = container.querySelectorAll<HTMLElement>('[data-die-idx]');
+      if (dieEls.length === 0) return;
+      
+      const samples: DiceSnapSample[] = [];
+      const frameSeq = ++snapFrameSeq.current;
+      const tMs = Date.now();
+      
+      dieEls.forEach((el) => {
+        const idxStr = el.getAttribute('data-die-idx');
+        if (!idxStr) return;
+        const dieIndex = parseInt(idxStr, 10);
+        const rect = el.getBoundingClientRect();
+        
+        // Extract die state from data attributes
+        const dieValue = parseInt(el.getAttribute('data-die-value') || '0', 10);
+        const dieIsHeld = el.getAttribute('data-die-held') === 'true';
+        const dieIsHeldInLayout = el.getAttribute('data-die-held-layout') === 'true';
+        
+        samples.push({
+          t_ms: tMs,
+          frame_seq: frameSeq,
+          cache_key: cacheKey != null ? String(cacheKey) : null,
+          roll_key: rollKey != null ? String(rollKey) : null,
+          die_index: dieIndex,
+          die_value: dieValue,
+          die_is_held: dieIsHeld,
+          die_is_held_in_layout: dieIsHeldInLayout,
+          is_observer: isObserver,
+          is_rolling: isRolling,
+          is_animating_fly_in: isAnimatingFlyIn,
+          x: rect.left - containerRect.left,
+          y: rect.top - containerRect.top,
+          w: rect.width,
+          h: rect.height,
+          container_w: containerRect.width,
+          container_h: containerRect.height,
+          extra: {
+            showUnheldDice,
+            allHeldNow: dice.every(d => d.isHeld),
+            heldCount: dice.filter(d => d.isHeld).length,
+          },
+        });
+      });
+      
+      if (samples.length > 0) {
+        void recordDiceSnapFrame(samples);
+      }
+    }, 50);
+    
+    return () => window.clearInterval(intervalId);
+  }, [cacheKey, rollKey, isObserver, isRolling, isAnimatingFlyIn, showUnheldDice, dice]);
   
   // Schedules a timeout
   const scheduleTimeout = useCallback(
@@ -691,7 +758,7 @@ export function DiceTableLayout({
     const scatterYOffset = 50;
 
     return (
-      <div className="relative" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
+      <div ref={containerRef} className="relative" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
         {/* Dice that were held before the final roll started */}
         {heldAtStartOfFinalRoll.map((item, displayIdx) => {
           const pos = heldPositions[displayIdx];
@@ -703,6 +770,10 @@ export function DiceTableLayout({
           return (
             <div
               key={`held-${item.originalIndex}`}
+              data-die-idx={item.originalIndex}
+              data-die-value={item.die.value}
+              data-die-held={true}
+              data-die-held-layout={true}
               className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
@@ -737,6 +808,10 @@ export function DiceTableLayout({
           return (
             <div
               key={`scatter-held-${item.originalIndex}`}
+              data-die-idx={item.originalIndex}
+              data-die-value={item.die.value}
+              data-die-held={true}
+              data-die-held-layout={false}
               className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
@@ -772,7 +847,7 @@ export function DiceTableLayout({
     const heldYOffset = -35;
 
     return (
-      <div className="relative" style={{ width: '200px', height: '120px' }}>
+      <div ref={containerRef} className="relative" style={{ width: '200px', height: '120px' }}>
         {orderedDice.map((item, displayIdx) => {
           const pos = heldPositions[displayIdx];
           if (!pos) return null;
@@ -783,6 +858,10 @@ export function DiceTableLayout({
           return (
             <div
               key={`held-${item.originalIndex}`}
+              data-die-idx={item.originalIndex}
+              data-die-value={item.die.value}
+              data-die-held={true}
+              data-die-held-layout={true}
               className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
@@ -821,7 +900,7 @@ export function DiceTableLayout({
     const heldYOffset = -35;
 
     return (
-      <div className="relative" style={{ width: '200px', height: '120px' }}>
+      <div ref={containerRef} className="relative" style={{ width: '200px', height: '120px' }}>
         {orderedDice.map((item, displayIdx) => {
           const pos = heldPositions[displayIdx];
           if (!pos) return null;
@@ -832,6 +911,10 @@ export function DiceTableLayout({
           return (
             <div
               key={`die-${item.originalIndex}`}
+              data-die-idx={item.originalIndex}
+              data-die-value={item.die.value}
+              data-die-held={true}
+              data-die-held-layout={true}
               className="absolute transition-transform duration-300 ease-out will-change-transform"
               style={{
                 left: '50%',
@@ -930,7 +1013,7 @@ export function DiceTableLayout({
   }
 
   return (
-    <div className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
+    <div ref={containerRef} className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
       {/* Fly-in animation overlay for unheld dice */}
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
@@ -1037,6 +1120,10 @@ export function DiceTableLayout({
         return (
           <div
             key={`die-${item.originalIndex}`}
+            data-die-idx={item.originalIndex}
+            data-die-value={item.die.value}
+            data-die-held={item.die.isHeld}
+            data-die-held-layout={isHeldInLayout}
             className={cn(
               "absolute will-change-transform",
               !shouldSkipTransition && "transition-transform duration-300 ease-out",
