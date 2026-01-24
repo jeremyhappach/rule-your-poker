@@ -26,6 +26,10 @@ export function useBackgroundMusic() {
     setIsLoading(true);
     
     try {
+      // Use AbortController for timeout - music generation can take a while
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+      
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-music`,
         {
@@ -35,9 +39,12 @@ export function useBackgroundMusic() {
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ duration: 45 }),
+          body: JSON.stringify({ duration: 30 }), // 30 seconds generates faster
+          signal: controller.signal,
         }
       );
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -67,7 +74,11 @@ export function useBackgroundMusic() {
       toast.success("🎵 Music started");
     } catch (error) {
       console.error("Failed to generate music:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to generate music");
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.error("Music generation timed out. Please try again.");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Failed to generate music");
+      }
     } finally {
       setIsLoading(false);
     }
