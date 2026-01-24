@@ -94,7 +94,7 @@ export const PlayerOptionsMenu = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent 
           align="start" 
-          className="w-56 bg-popover border border-border z-50"
+          className="w-56 bg-popover border border-border z-[9999]"
         >
           <DropdownMenuItem 
             onClick={onLeaveGameNow}
@@ -125,7 +125,7 @@ export const PlayerOptionsMenu = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent 
           align="start" 
-          className="w-56 bg-popover border border-border z-50"
+          className="w-56 bg-popover border border-border z-[9999]"
         >
           {/* Host Add Bot option */}
           {isHost && onAddBot && canAddBot && (
@@ -189,7 +189,7 @@ export const PlayerOptionsMenu = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="start" 
-        className="w-56 bg-popover border border-border z-50"
+        className="w-56 bg-popover border border-border z-[9999]"
       >
         {/* Host pause/resume, add bot, and end session options */}
         {isHost && (onTogglePause || (onAddBot && canAddBot) || onEndSession) && (
