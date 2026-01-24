@@ -1178,6 +1178,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 // CRITICAL: Also clear community cards cache to prevent old cards showing in new game
                 communityCardsCacheRef.current = { cards: null, round: null, show: false };
                 setCommunityCacheEpoch((e) => e + 1);
+                // Clear dealer selection state when transitioning away from dealer_selection
+                if (newStatus !== 'dealer_selection') {
+                  setDealerSelectionCards([]);
+                  setDealerSelectionAnnouncement(null);
+                  setDealerSelectionComplete(false);
+                  setDealerSelectionWinnerPosition(null);
+                }
               }
               
               if (debounceTimer) clearTimeout(debounceTimer);
@@ -1231,6 +1238,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] 💰 POT CHANGED - IMMEDIATE FETCH!', newData.pot);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
+            handled = true;
+          }
+          
+          // Handle dealer selection state changes - immediate sync for all players
+          if (!handled && newData && 'dealer_selection_state' in newData) {
+            console.log('[REALTIME] 🎯 DEALER SELECTION STATE CHANGED - IMMEDIATE UPDATE!');
+            // Direct optimistic update without full fetch for responsiveness
+            setGame(prev => prev ? {
+              ...prev,
+              dealer_selection_state: newData.dealer_selection_state
+            } : prev);
             handled = true;
           }
           
@@ -3558,7 +3576,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .update({ 
         status: 'game_selection',
         dealer_position: dealerPosition,
-        config_deadline: configDeadline
+        config_deadline: configDeadline,
+        dealer_selection_state: null // Clear selection state after dealer is chosen
       })
       .eq('id', gameId);
 
@@ -5561,10 +5580,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 )}
                 {/* High Card Dealer Selection */}
                 <HighCardDealerSelection 
+                  gameId={gameId!}
                   players={players}
                   onComplete={selectDealer}
                   isHost={isCreator}
                   allowBotDealers={allowBotDealers}
+                  syncedState={(game as any).dealer_selection_state ?? null}
                   onCardsUpdate={setDealerSelectionCards}
                   onAnnouncementUpdate={(msg, complete) => {
                     setDealerSelectionAnnouncement(msg);
