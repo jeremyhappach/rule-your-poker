@@ -38,11 +38,13 @@ export const AnteUpDialog = ({
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
   const isHorsesGame = gameType === 'horses';
   const isSCCGame = gameType === 'ship-captain-crew';
+  const isTriviaGame = gameType === 'sports-trivia';
   
   const getGameDisplayName = () => {
     if (isHolmGame) return 'Holm Game';
     if (isHorsesGame) return 'Horses';
     if (isSCCGame) return 'Ship Captain Crew';
+    if (isTriviaGame) return 'Sports Trivia';
     return '3-5-7';
   };
   const gameDisplayName = getGameDisplayName();
@@ -184,7 +186,7 @@ export const AnteUpDialog = ({
               </>
             )}
             
-            {!isHolmGame && !isHorsesGame && !isSCCGame && (
+            {!isHolmGame && !isHorsesGame && !isSCCGame && !isTriviaGame && (
               <>
                 <div className="font-semibold">Leg Value:</div>
                 <div className="text-right">${legValue}</div>
@@ -197,6 +199,13 @@ export const AnteUpDialog = ({
                 
                 <div className="font-semibold">Pot Maximum:</div>
                 <div className="text-right">{potMaxEnabled ? `$${potMaxValue}` : 'Unlimited'}</div>
+              </>
+            )}
+            
+            {isTriviaGame && (
+              <>
+                <div className="font-semibold">Format:</div>
+                <div className="text-right">Winner takes pot</div>
               </>
             )}
           </div>
