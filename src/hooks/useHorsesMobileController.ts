@@ -559,12 +559,40 @@ export function useHorsesMobileController({
     initializingRef.current = true;
 
     const initializeGame = async () => {
-      const order = getTurnOrder();
+      try {
+        // CRITICAL: Never initialize based on a possibly-stale local horsesState snapshot.
+        // If another client already initialized, our local state may briefly be empty while
+        // realtime catches up. Re-initializing would overwrite live playerStates and cause
+        // observers to see held dice revert (held → scatter → held).
+        const { data: roundRow, error: roundErr } = await supabase
+          .from("rounds")
+          .select("horses_state")
+          .eq("id", currentRoundId)
+          .single();
 
-      const controllerUserId =
-        order
-          .map((id) => activePlayers.find((p) => p.id === id))
-          .find((p) => p && !p.is_bot)?.user_id ?? null;
+        if (roundErr) {
+          console.warn("[HORSES] init: failed to fetch current state, aborting init", roundErr);
+          return;
+        }
+
+        const existingState = (roundRow as any)?.horses_state as HorsesStateFromDB | null | undefined;
+        const existingTurnOrder = (existingState as any)?.turnOrder;
+        if (Array.isArray(existingTurnOrder) && existingTurnOrder.length > 0) {
+          return;
+        }
+
+        const order = getTurnOrder();
+
+        const controllerUserId =
+          order
+            .map((id) => activePlayers.find((p) => p.id === id))
+            .find((p) => p && !p.is_bot)?.user_id ?? null;
+
+        // Deterministic single-writer: only the chosen controller should initialize.
+        // Prevents multiple clients from racing and overwriting horses_state.
+        if (controllerUserId && currentUserId && controllerUserId !== currentUserId) {
+          return;
+        }
 
       // Set deadline for the first player's turn (skip for bots)
       const firstPlayer = activePlayers.find((p) => p.id === order[0]);
@@ -591,13 +619,15 @@ export function useHorsesMobileController({
         };
       });
 
-      const error = await updateHorsesState(currentRoundId, initialState);
-      if (error) console.error("[HORSES] Failed to initialize state:", error);
-      initializingRef.current = false;
+        const error = await updateHorsesState(currentRoundId, initialState);
+        if (error) console.error("[HORSES] Failed to initialize state:", error);
+      } finally {
+        initializingRef.current = false;
+      }
     };
 
-    initializeGame();
-  }, [enabled, currentRoundId, gameId, horsesState?.turnOrder?.length, activePlayers.length, getTurnOrder]);
+    void initializeGame();
+  }, [enabled, currentRoundId, gameId, horsesState?.turnOrder?.length, activePlayers.length, getTurnOrder, currentUserId]);
 
   // Recovery: if gamePhase is "playing" but currentTurnPlayerId is null/missing and we have turnOrder,
   // re-initialize the current turn to the first incomplete player
@@ -622,17 +652,35 @@ export function useHorsesMobileController({
     console.warn("[HORSES] Detected stuck game - attempting recovery", { currentRoundId, turnOrder });
     
     const recover = async () => {
+      // CRITICAL: Use the latest persisted horses_state as the base for recovery.
+      // Spreading a stale in-memory horsesState snapshot can clobber just-updated holds,
+      // which shows up to observers as held dice briefly reverting to the scatter area.
+      const { data: roundRow, error: roundErr } = await supabase
+        .from("rounds")
+        .select("horses_state")
+        .eq("id", currentRoundId)
+        .single();
+
+      if (roundErr) {
+        console.warn("[HORSES] recovery: failed to fetch current state, aborting", roundErr);
+        return;
+      }
+
+      const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null | undefined;
+      const baseState = latestState && typeof latestState === "object" ? latestState : horsesState;
+      if (!baseState) return;
+
+      const latestTurnOrder = Array.isArray(baseState.turnOrder) ? baseState.turnOrder : turnOrder;
+      const latestPlayerStates = (baseState.playerStates ?? {}) as Record<string, any>;
+
       // Find the first player who hasn't completed their turn
-      const nextPlayerId = turnOrder.find((pid) => {
-        const state = horsesState?.playerStates?.[pid];
-        return !state?.isComplete;
-      });
+      const nextPlayerId = latestTurnOrder.find((pid) => !latestPlayerStates?.[pid]?.isComplete);
       
       if (!nextPlayerId) {
         // Everyone is complete - set to complete phase
         console.log("[HORSES] Recovery: all players complete, setting phase to complete");
         await updateHorsesState(currentRoundId, {
-          ...horsesState!,
+          ...baseState,
           currentTurnPlayerId: null,
           gamePhase: "complete",
         });
@@ -640,7 +688,7 @@ export function useHorsesMobileController({
         // Set the next incomplete player as current
         console.log("[HORSES] Recovery: setting currentTurnPlayerId to", nextPlayerId);
         await updateHorsesState(currentRoundId, {
-          ...horsesState!,
+          ...baseState,
           currentTurnPlayerId: nextPlayerId,
           gamePhase: "playing",
         });
