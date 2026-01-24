@@ -1986,9 +1986,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       }
       
-      const decidedCount = freshPlayers.filter(p => p.ante_decision).length;
-      const allDecided = freshPlayers.every(p => p.ante_decision);
-      console.log('[ANTE CHECK] Fresh players:', freshPlayers.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', freshPlayers.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
+      // CRITICAL FIX: Only check decisions from players who are NOT sitting_out
+      // Players who are already sitting_out should not block the ante phase
+      const activePlayers = freshPlayers.filter(p => !p.sitting_out);
+      const decidedCount = activePlayers.filter(p => p.ante_decision).length;
+      const allDecided = activePlayers.every(p => p.ante_decision);
+      console.log('[ANTE CHECK] Fresh players:', freshPlayers.length, 'Active (not sitting out):', activePlayers.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', activePlayers.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
       
       if (allDecided && freshPlayers.length > 0) {
         console.log('[ANTE CHECK] All players decided, proceeding to start round');
