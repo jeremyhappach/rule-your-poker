@@ -312,13 +312,14 @@ export const DealerGameSetup = ({
 
         const { data: gameData, error: gameError } = await supabase
           .from('games')
-          .select('total_hands')
+          .select('total_hands, real_money')
           .eq('id', gameId)
           .maybeSingle();
 
         if (gameError) throw gameError;
 
         const totalHands = gameData?.total_hands || 0;
+        const isRealMoney = gameData?.real_money === true;
 
         // Also check game_results as backup - if any results exist, session has history
         const { count: resultsCount, error: resultsError } = await supabase
@@ -332,6 +333,27 @@ export const DealerGameSetup = ({
 
         console.log('[DEALER SETUP] Session history check:', { totalHands, resultsCount, hasHistory });
 
+        // CRITICAL: NEVER delete real_money games - archive them instead (30 day retention)
+        if (isRealMoney) {
+          console.log('[DEALER SETUP] Real money game - archiving instead of deleting');
+          const { error: archiveError } = await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              pending_session_end: false,
+              session_ended_at: new Date().toISOString(),
+              game_over_at: new Date().toISOString(),
+              config_deadline: null,
+              ante_decision_deadline: null,
+              awaiting_next_round: false,
+            })
+            .eq('id', gameId);
+          
+          if (archiveError) throw archiveError;
+          onSessionEnd();
+          return;
+        }
+        
         if (!hasHistory) {
           // No hands played - show 5s message then delete
           // Log session deletion before deleting

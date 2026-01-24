@@ -581,14 +581,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     // Check if host is leaving during waiting phase - delete the entire game
+    // CRITICAL: NEVER delete real_money games - archive them instead
     if (game?.status === 'waiting' && isCreator) {
-      // Delete all players first (including bots)
-      await supabase.from('players').delete().eq('game_id', gameId);
-      // Delete the game
-      const { error } = await supabase.from('games').delete().eq('id', gameId);
-      if (error) {
-        console.error('[PLAYER OPTIONS] Failed to delete game:', error);
-        toast({ title: "Error", description: "Failed to delete game", variant: "destructive" });
+      if (game?.real_money) {
+        // Real money games: NEVER delete - archive to session_ended
+        console.log('[PLAYER OPTIONS] Real money game - archiving instead of deleting');
+        await supabase
+          .from('games')
+          .update({
+            status: 'session_ended',
+            session_ended_at: new Date().toISOString(),
+            game_over_at: new Date().toISOString(),
+          })
+          .eq('id', gameId);
+      } else {
+        // Delete all players first (including bots)
+        await supabase.from('players').delete().eq('game_id', gameId);
+        // Delete the game
+        const { error } = await supabase.from('games').delete().eq('id', gameId);
+        if (error) {
+          console.error('[PLAYER OPTIONS] Failed to delete game:', error);
+          toast({ title: "Error", description: "Failed to delete game", variant: "destructive" });
+        }
       }
       navigate('/');
       return;
@@ -3634,7 +3648,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
       
-      if (!hasHistory) {
+      // CRITICAL: NEVER delete real_money games - archive them instead (30 day retention)
+      if (game?.real_money) {
+        console.log('[GAME OVER] Real money game - archiving instead of deleting');
+        await logSessionEvent({ gameId, eventType: 'session_ended', eventData: { reason: 'No active humans - real money archived', hasHistory }, userId: user?.id });
+        
+        await supabase
+          .from('games')
+          .update({
+            status: 'session_ended',
+            session_ended_at: new Date().toISOString(),
+            pending_session_end: false,
+            game_over_at: new Date().toISOString()
+          })
+          .eq('id', gameId);
+        
+        setTimeout(() => navigate('/'), 2000);
+      } else if (!hasHistory) {
         // No hands played - DELETE the empty session instead of marking completed
         console.log('[GAME OVER] No hands played, deleting empty session');
         
