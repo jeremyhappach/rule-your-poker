@@ -211,6 +211,8 @@ const Game = () => {
     reveal_at_showdown: boolean;
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
+  // Track which gameId the previousGameConfig was captured from
+  const [previousGameConfigGameId, setPreviousGameConfigGameId] = useState<string | null>(null);
   
   // Track session-specific configs per game type (for remembering settings when switching back)
   type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
@@ -250,6 +252,7 @@ const Game = () => {
     lastCapturedConfigKeyRef.current = key;
 
     setPreviousGameConfig(cfg);
+    setPreviousGameConfigGameId(game.id);
     setSessionGameConfigs((prev) => ({ ...prev, [gameType]: cfg }));
   }, [
     game?.id,
@@ -1911,8 +1914,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       };
       
       // CRITICAL: Can't be "running it back" on the FIRST hand of a session
-      // hasSessionHistory is false until at least one hand has completed (snapshot exists)
-      const isRunBack = hasSessionHistory && previousGameConfig !== null && 
+      // There are two valid "runback" scenarios:
+      // 1. hasSessionHistory = true (at least one hand completed in THIS game) AND configs match
+      // 2. previousGameConfig was captured from a DIFFERENT gameId (previous game in session) AND configs match
+      // If previousGameConfigGameId === current gameId and no session history yet, it's the first hand of this game
+      const configFromDifferentGame = previousGameConfigGameId !== null && previousGameConfigGameId !== game.id;
+      const hasCompletedHandInThisGame = hasSessionHistory;
+      const canBeRunback = configFromDifferentGame || hasCompletedHandInThisGame;
+      
+      const isRunBack = canBeRunback && previousGameConfig !== null && 
         previousGameConfig.game_type === currentConfig.game_type &&
         previousGameConfig.ante_amount === currentConfig.ante_amount &&
         previousGameConfig.pussy_tax_enabled === currentConfig.pussy_tax_enabled &&
@@ -1925,7 +1935,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             previousGameConfig.legs_to_win === currentConfig.legs_to_win
         );
       
-      console.log('[ANTE DIALOG] Running it back check:', { isRunBack, hasSessionHistory, previousGameConfig, currentConfig });
+      console.log('[ANTE DIALOG] Running it back check:', { 
+        isRunBack, 
+        canBeRunback, 
+        configFromDifferentGame, 
+        hasCompletedHandInThisGame,
+        previousGameConfigGameId,
+        currentGameId: game.id,
+        previousGameConfig, 
+        currentConfig 
+      });
       setIsRunningItBack(isRunBack);
       
       console.log('[ANTE DIALOG] Checking ante dialog:', {
@@ -2011,7 +2030,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       setShowAnteDialog(false);
     }
-  }, [game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig]);
+  }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
   useEffect(() => {
