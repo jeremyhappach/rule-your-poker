@@ -86,6 +86,8 @@ interface PlayerDiceState {
   heldCountBeforeComplete?: number;
   /** Stable per-roll key used by observers to trigger the fly-in animation exactly once */
   rollKey?: number;
+  /** Monotonically increasing counter for hold/unhold actions within a roll - used for ordering realtime updates */
+  holdSeq?: number;
 }
 
 export interface HorsesStateFromDB {
@@ -179,6 +181,9 @@ export function HorsesGameTable({
 
   // Stable per-roll key persisted in the round state so observers don't re-trigger animations.
   const localRollKeyRef = useRef<number | undefined>(undefined);
+  
+  // Hold sequence counter - increments on every hold/unhold action for ordering realtime updates
+  const localHoldSeqRef = useRef(0);
 
   // Prevent DB rehydration from overwriting the felt while the user is interacting.
   const lastLocalEditAtRef = useRef<number>(0);
@@ -717,6 +722,7 @@ export function HorsesGameTable({
         heldMaskBeforeComplete,
         heldCountBeforeComplete,
         rollKey: localRollKeyRef.current,
+        holdSeq: localHoldSeqRef.current,
       };
 
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
@@ -740,6 +746,8 @@ export function HorsesGameTable({
 
     const rollStartTime = Date.now();
     localRollKeyRef.current = rollStartTime;
+    // Reset hold sequence for new roll
+    localHoldSeqRef.current = 0;
     console.log(`[ROLL_DEBUG_DESKTOP] ===== ROLL STARTED at ${new Date(rollStartTime).toISOString()} =====`);
 
     // Determine if this is the first roll (rollsRemaining === 3 means first roll)
@@ -828,6 +836,9 @@ export function HorsesGameTable({
     }
 
     lastLocalEditAtRef.current = Date.now();
+    
+    // Increment hold sequence for ordering - this is critical for observers to reject stale updates
+    localHoldSeqRef.current += 1;
 
     // Persist holds immediately so DB sync can't revert held dice.
     const nextHand = toggleHold(localHand as HorsesHand, index);
