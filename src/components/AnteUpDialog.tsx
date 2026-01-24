@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AnteUpDialogProps {
@@ -17,6 +18,8 @@ interface AnteUpDialogProps {
   potMaxValue: number;
   chuckyCards: number | null;
   isRunningItBack?: boolean;
+  autoAnte?: boolean;
+  autoAnteRunback?: boolean;
   onDecisionMade: () => void;
 }
 
@@ -33,6 +36,8 @@ export const AnteUpDialog = ({
   potMaxValue,
   chuckyCards,
   isRunningItBack = false,
+  autoAnte = false,
+  autoAnteRunback = false,
   onDecisionMade,
 }: AnteUpDialogProps) => {
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
@@ -245,17 +250,19 @@ export const AnteUpDialog = ({
             <Button
               onClick={handleAutoAnteRunback}
               size="sm"
-              variant="outline"
-              className="text-xs"
+              variant={autoAnteRunback ? "default" : "outline"}
+              className={`text-xs flex items-center justify-center gap-1 ${autoAnteRunback ? 'bg-primary' : ''}`}
             >
+              {autoAnteRunback && <Check className="h-3 w-3" />}
               Auto-Ante (Run it Back)
             </Button>
             <Button
               onClick={handleAutoAnteAll}
               size="sm"
-              variant="outline"
-              className="text-xs"
+              variant={autoAnte ? "default" : "outline"}
+              className={`text-xs flex items-center justify-center gap-1 ${autoAnte ? 'bg-primary' : ''}`}
             >
+              {autoAnte && <Check className="h-3 w-3" />}
               Auto-Ante (All)
             </Button>
           </div>
