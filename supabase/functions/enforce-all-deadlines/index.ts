@@ -334,7 +334,24 @@ serve(async (req) => {
                 
                 const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
 
-                if (!hasHistory) {
+                // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
+                const isRealMoney = game.real_money === true;
+                
+                if (isRealMoney) {
+                  console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
+                  await supabase
+                    .from('games')
+                    .update({
+                      status: 'session_ended',
+                      pending_session_end: false,
+                      session_ended_at: nowIso,
+                      game_over_at: nowIso,
+                      config_deadline: null,
+                      config_complete: false,
+                    })
+                    .eq('id', game.id);
+                  actionsTaken.push('Config timeout: Real money game archived (never deleted)');
+                } else if (!hasHistory) {
                   // Delete empty session
                   const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
                   const roundIds = (roundRows ?? []).map((r: any) => r.id);
@@ -376,7 +393,24 @@ serve(async (req) => {
               
               const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
 
-              if (!hasHistory) {
+              // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
+              const isRealMoney = game.real_money === true;
+              
+              if (isRealMoney) {
+                console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'session_ended',
+                    pending_session_end: false,
+                    session_ended_at: nowIso,
+                    game_over_at: nowIso,
+                    config_deadline: null,
+                    config_complete: false,
+                  })
+                  .eq('id', game.id);
+                actionsTaken.push('Config timeout: Real money game archived (never deleted)');
+              } else if (!hasHistory) {
                 // Delete empty session
                 const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
                 const roundIds = (roundRows ?? []).map((r: any) => r.id);
@@ -660,6 +694,20 @@ serve(async (req) => {
                       })
                       .eq('id', game.id);
                     actionsTaken.push('Ante timeout: No active players, session ended');
+                  } else if (game.real_money === true) {
+                    // CRITICAL: NEVER delete real_money games - archive instead
+                    console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
+                    await supabase
+                      .from('games')
+                      .update({
+                        status: 'session_ended',
+                        pending_session_end: false,
+                        session_ended_at: nowIso,
+                        game_over_at: nowIso,
+                        ante_decision_deadline: null,
+                      })
+                      .eq('id', game.id);
+                    actionsTaken.push('Ante timeout: Real money game archived (never deleted)');
                   } else {
                     // Delete empty session
                     const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
@@ -803,7 +851,22 @@ serve(async (req) => {
             
             const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
             
-            if (!hasHistory) {
+            // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
+            if (game.real_money === true) {
+              console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
+              await supabase
+                .from('games')
+                .update({
+                  status: 'session_ended',
+                  pending_session_end: false,
+                  session_ended_at: nowIso,
+                  game_over_at: nowIso,
+                  config_deadline: null,
+                  config_complete: false,
+                })
+                .eq('id', game.id);
+              actionsTaken.push('Stale dealer_selection: Real money game archived (never deleted)');
+            } else if (!hasHistory) {
               // Delete empty session
               const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
               const roundIds = (roundRows ?? []).map((r: any) => r.id);
@@ -851,7 +914,22 @@ serve(async (req) => {
           
           const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
           
-          if (!hasHistory) {
+          // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
+          if (game.real_money === true) {
+            console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
+            await supabase
+              .from('games')
+              .update({
+                status: 'session_ended',
+                pending_session_end: false,
+                session_ended_at: nowIso,
+                game_over_at: nowIso,
+                config_deadline: null,
+                config_complete: false,
+              })
+              .eq('id', game.id);
+            actionsTaken.push('Stale waiting (>2h): Real money game archived (never deleted)');
+          } else if (!hasHistory) {
             const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
             const roundIds = (roundRows ?? []).map((r: any) => r.id);
             if (roundIds.length > 0) {
@@ -1178,6 +1256,22 @@ serve(async (req) => {
                 .eq('id', game.id);
               
               actionsTaken.push('Stuck awaiting_next_round (>30 min): Has history, session ended');
+            } else if (game.real_money === true) {
+              // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
+              console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
+              await supabase
+                .from('games')
+                .update({
+                  status: 'session_ended',
+                  pending_session_end: false,
+                  session_ended_at: nowIso,
+                  game_over_at: nowIso,
+                  awaiting_next_round: false,
+                  config_deadline: null,
+                  ante_decision_deadline: null,
+                })
+                .eq('id', game.id);
+              actionsTaken.push('Stuck awaiting_next_round (>30 min): Real money game archived (never deleted)');
             } else {
               // Delete if no history
               const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
@@ -2147,6 +2241,23 @@ serve(async (req) => {
                       })
                       .eq('id', game.id);
                     actionsTaken.push('game_over stuck (null game_over_at): No active humans, session ended');
+                  } else if (game.real_money === true) {
+                    // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
+                    console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
+                    await supabase
+                      .from('games')
+                      .update({
+                        status: 'session_ended',
+                        session_ended_at: nowIso,
+                        pending_session_end: false,
+                        game_over_at: nowIso,
+                        config_deadline: null,
+                        ante_decision_deadline: null,
+                        config_complete: false,
+                        awaiting_next_round: false,
+                      })
+                      .eq('id', game.id);
+                    actionsTaken.push('game_over stuck (null game_over_at): Real money game archived (never deleted)');
                   } else {
                     // Delete empty session
                     const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);

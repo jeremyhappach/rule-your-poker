@@ -183,26 +183,60 @@ const Index = () => {
     setIsDeleting(true);
     
     try {
-      // Delete all player_cards
-      await supabase.from('player_cards').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // CRITICAL: Get only NON-real-money games for deletion
+      // Real money games are NEVER deleted - they are retained for 30 days
+      const { data: deletableGames, error: fetchError } = await supabase
+        .from('games')
+        .select('id')
+        .eq('real_money', false);
       
-      // Delete all player_actions
-      await supabase.from('player_actions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (fetchError) throw fetchError;
       
-      // Delete all rounds
-      await supabase.from('rounds').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (!deletableGames || deletableGames.length === 0) {
+        toast({
+          title: "Info",
+          description: "No non-real-money sessions to delete (real money games are protected)",
+        });
+        setIsDeleting(false);
+        return;
+      }
       
-      // Delete all players
-      await supabase.from('players').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const gameIds = deletableGames.map(g => g.id);
       
-      // Delete all games
-      const { error } = await supabase.from('games').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Get all round IDs for these games
+      const { data: rounds } = await supabase
+        .from('rounds')
+        .select('id')
+        .in('game_id', gameIds);
+      
+      const roundIds = rounds?.map(r => r.id) || [];
+      
+      // Delete player_cards and player_actions for these rounds
+      if (roundIds.length > 0) {
+        await supabase.from('player_cards').delete().in('round_id', roundIds);
+        await supabase.from('player_actions').delete().in('round_id', roundIds);
+      }
+      
+      // Delete rounds for these games
+      await supabase.from('rounds').delete().in('game_id', gameIds);
+      
+      // Delete players for these games
+      await supabase.from('players').delete().in('game_id', gameIds);
+      
+      // Delete the games
+      const { error } = await supabase.from('games').delete().in('id', gameIds);
       
       if (error) throw error;
       
+      // Count real money games that were protected
+      const { count: realMoneyCount } = await supabase
+        .from('games')
+        .select('id', { count: 'exact', head: true })
+        .eq('real_money', true);
+      
       toast({
         title: "Success",
-        description: "All sessions have been deleted",
+        description: `Deleted ${gameIds.length} session(s). ${realMoneyCount || 0} real money session(s) protected.`,
       });
       
       // Refresh the page to update the game list
