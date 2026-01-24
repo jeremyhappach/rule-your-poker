@@ -8,6 +8,7 @@ import { HorsesPlayerArea } from "./HorsesPlayerArea";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
 import { MidnightAnimation } from "./MidnightAnimation";
 import { TurnSpotlight } from "./TurnSpotlight";
+import { MusicToggleButton } from "./MusicToggleButton";
 import {
   HorsesHand,
   HorsesHandResult,
@@ -1583,33 +1584,38 @@ export function HorsesGameTable({
             className="px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
             aria-label="Actions"
           >
-            {isMyTurn && gamePhase === "playing" ? (
-              <div className="mx-auto w-fit flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
-                <Button
-                  onClick={handleRoll}
-                  disabled={localHand.rollsRemaining <= 0 || isRolling}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
-                  Roll{localHand.rollsRemaining === 3 ? "" : " Again"}
-                </Button>
-
-                {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+            <div className="flex items-center justify-center gap-3">
+              {/* Music toggle - always visible */}
+              <MusicToggleButton variant="compact" />
+              
+              {isMyTurn && gamePhase === "playing" ? (
+                <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
                   <Button
-                    onClick={handleLockIn}
+                    onClick={handleRoll}
+                    disabled={localHand.rollsRemaining <= 0 || isRolling}
                     size="sm"
-                    variant="outline"
-                    className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
+                    className="bg-green-600 hover:bg-green-700"
                   >
-                    <Lock className="w-4 h-4 mr-1" />
-                    Lock In
+                    <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
+                    Roll{localHand.rollsRemaining === 3 ? "" : " Again"}
                   </Button>
-                )}
-              </div>
-            ) : (
-              <div className="h-2" />
-            )}
+
+                  {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+                    <Button
+                      onClick={handleLockIn}
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
+                    >
+                      <Lock className="w-4 h-4 mr-1" />
+                      Lock In
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="h-10" />
+              )}
+            </div>
           </footer>
         </div>
       ) : (
@@ -1772,34 +1778,39 @@ export function HorsesGameTable({
             </div>
           </main>
 
-          {/* Bottom action bar for my turn (fixed) */}
-          {isMyTurn && gamePhase === "playing" && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30">
-              <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
-                <Button
-                  onClick={handleRoll}
-                  disabled={localHand.rollsRemaining <= 0 || isRolling}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
-                  Roll{localHand.rollsRemaining === 3 ? "" : " Again"}
-                </Button>
-
-                {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+          {/* Bottom action bar - music toggle always visible, roll controls when it's my turn */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30">
+            <div className="flex items-center gap-3">
+              {/* Music toggle - always visible */}
+              <MusicToggleButton variant="compact" />
+              
+              {isMyTurn && gamePhase === "playing" && (
+                <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
                   <Button
-                    onClick={handleLockIn}
+                    onClick={handleRoll}
+                    disabled={localHand.rollsRemaining <= 0 || isRolling}
                     size="sm"
-                    variant="outline"
-                    className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
+                    className="bg-green-600 hover:bg-green-700"
                   >
-                    <Lock className="w-4 h-4 mr-1" />
-                    Lock In
+                    <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
+                    Roll{localHand.rollsRemaining === 3 ? "" : " Again"}
                   </Button>
-                )}
-              </div>
+
+                  {localHand.rollsRemaining < 3 && localHand.rollsRemaining > 0 && (
+                    <Button
+                      onClick={handleLockIn}
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
+                    >
+                      <Lock className="w-4 h-4 mr-1" />
+                      Lock In
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </>
       )}
     </div>
