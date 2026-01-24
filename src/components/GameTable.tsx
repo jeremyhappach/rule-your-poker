@@ -14,6 +14,7 @@ import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { PlayerOptionsMenu } from "./PlayerOptionsMenu";
+import { MusicToggleButton } from "./MusicToggleButton";
 
 import { Card as CardType, evaluateHand, formatHandRank } from "@/lib/cardUtils";
 import { getAggressionAbbreviation } from "@/lib/botAggression";
@@ -1779,6 +1780,11 @@ export const GameTable = ({
           </div>
         );
       })()}
+      
+      {/* Music toggle button - fixed bottom right */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <MusicToggleButton variant="compact" />
+      </div>
     </div>
   );
 };
