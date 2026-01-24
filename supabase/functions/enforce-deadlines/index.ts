@@ -617,125 +617,176 @@ serve(async (req) => {
               // Get player info
               const { data: players } = await supabase
                 .from('players')
-                .select('id, user_id, is_bot, sitting_out, position, profiles(username)')
+                .select('id, user_id, is_bot, sitting_out, auto_fold, position, profiles(username)')
                 .eq('game_id', gameId);
 
               const currentPlayer = players?.find((p: any) => p.id === currentPlayerId);
 
               if (currentPlayer && !currentPlayer.sitting_out) {
-                // Auto-complete the timed-out player's turn with their current dice
-                const currentPlayerState = playerStates[currentPlayerId] || {};
-                
-                // If they haven't rolled yet, give them random dice
-                let finalDice = currentPlayerState.dice || [];
-                if (!finalDice.length || finalDice.every((d: any) => d.value === 0)) {
-                  // Generate random dice for them
-                  finalDice = Array(5).fill(null).map(() => ({
-                    value: Math.floor(Math.random() * 6) + 1,
-                    isHeld: true
-                  }));
-                } else {
-                  // Lock all their current dice
-                  finalDice = finalDice.map((d: any) => ({ ...d, isHeld: true }));
-                }
+                // Check if this player is already in auto_fold mode (being handled by a client)
+                if (currentPlayer.auto_fold) {
+                  // Player is in auto-roll mode - a client should be handling their turn.
+                  // Check if their turn is REALLY stuck (deadline expired by more than 20 seconds)
+                  // This catches cases where ALL clients disconnected mid-turn.
+                  if (msOverdue > 20000) {
+                    console.log('[ENFORCE-CLIENT] 🎲 DICE GAME: auto_fold player stuck, forcing completion', {
+                      gameId,
+                      currentPlayerId,
+                      msOverdue,
+                    });
+                    
+                    // Force-complete their turn with whatever dice they have
+                    const currentPlayerState = playerStates[currentPlayerId] || {};
+                    let finalDice = currentPlayerState.dice || [];
+                    if (!finalDice.length || finalDice.every((d: any) => d.value === 0)) {
+                      finalDice = Array(5).fill(null).map(() => ({
+                        value: Math.floor(Math.random() * 6) + 1,
+                        isHeld: true
+                      }));
+                    } else {
+                      finalDice = finalDice.map((d: any) => ({ ...d, isHeld: true }));
+                    }
 
-                // Evaluate the hand
-                const diceValues = finalDice.map((d: any) => d.value);
-                const valueCounts: Record<number, number> = {};
-                diceValues.forEach((v: number) => {
-                  valueCounts[v] = (valueCounts[v] || 0) + 1;
-                });
+                    // Simple hand evaluation (for Horses - works as fallback for SCC)
+                    const diceValues = finalDice.map((d: any) => d.value);
+                    const valueCounts: Record<number, number> = {};
+                    diceValues.forEach((v: number) => {
+                      valueCounts[v] = (valueCounts[v] || 0) + 1;
+                    });
+                    let bestOfAKind = 0;
+                    let bestValue = 0;
+                    for (const [val, count] of Object.entries(valueCounts)) {
+                      const numVal = parseInt(val);
+                      const numCount = count as number;
+                      if (numCount > bestOfAKind || (numCount === bestOfAKind && numVal > bestValue)) {
+                        bestOfAKind = numCount;
+                        bestValue = numVal;
+                      }
+                    }
+                    
+                    // For SCC, check qualification
+                    let result: any;
+                    if (game.game_type === 'ship-captain-crew') {
+                      const has6 = diceValues.includes(6);
+                      const has5 = diceValues.includes(5);
+                      const has4 = diceValues.includes(4);
+                      const isQualified = has6 && has5 && has4;
+                      if (isQualified) {
+                        // Find cargo dice (not 6, 5, or 4)
+                        const cargoValues = diceValues.filter((v: number) => v !== 6 && v !== 5 && v !== 4);
+                        const cargoSum = cargoValues.reduce((a: number, b: number) => a + b, 0);
+                        result = {
+                          isQualified: true,
+                          cargoSum,
+                          rank: 100 + cargoSum,
+                          description: `Cargo ${cargoSum}`,
+                        };
+                      } else {
+                        result = {
+                          isQualified: false,
+                          cargoSum: 0,
+                          rank: 0,
+                          description: 'No Qualify',
+                        };
+                      }
+                    } else {
+                      result = {
+                        ofAKindCount: bestOfAKind,
+                        highValue: bestValue,
+                        rank: bestOfAKind * 10 + bestValue,
+                        description: `${bestOfAKind} ${bestValue}${bestOfAKind > 1 ? 's' : ''}`
+                      };
+                    }
 
-                let bestOfAKind = 0;
-                let bestValue = 0;
-                for (const [val, count] of Object.entries(valueCounts)) {
-                  const numVal = parseInt(val);
-                  const numCount = count as number;
-                  if (numCount > bestOfAKind || (numCount === bestOfAKind && numVal > bestValue)) {
-                    bestOfAKind = numCount;
-                    bestValue = numVal;
+                    const updatedPlayerState = {
+                      ...currentPlayerState,
+                      dice: finalDice,
+                      rollsRemaining: 0,
+                      isComplete: true,
+                      result,
+                      heldMaskBeforeComplete: finalDice.map((d: any) => d.isHeld),
+                      heldCountBeforeComplete: finalDice.filter((d: any) => d.isHeld).length,
+                    };
+
+                    // Find next player
+                    const currentIndex = turnOrder.indexOf(currentPlayerId);
+                    let nextPlayerId: string | null = null;
+                    let allComplete = true;
+                    for (let i = 1; i <= turnOrder.length; i++) {
+                      const checkIdx = (currentIndex + i) % turnOrder.length;
+                      const checkId = turnOrder[checkIdx];
+                      const checkState = checkId === currentPlayerId ? updatedPlayerState : playerStates[checkId];
+                      if (!checkState?.isComplete) {
+                        nextPlayerId = checkId;
+                        allComplete = false;
+                        break;
+                      }
+                    }
+
+                    const newPlayerStates = { ...playerStates, [currentPlayerId]: updatedPlayerState };
+                    let newHorsesState: any;
+                    if (allComplete || !nextPlayerId) {
+                      newHorsesState = {
+                        ...horsesState,
+                        playerStates: newPlayerStates,
+                        currentTurnPlayerId: null,
+                        turnDeadline: null,
+                        gamePhase: 'complete',
+                      };
+                      actionsTaken.push(`Dice stuck recovery: ${(currentPlayer.profiles as any)?.username || 'Player'} force-completed, round complete`);
+                    } else {
+                      const nextPlayer = players?.find((p: any) => p.id === nextPlayerId);
+                      const nextDeadline = nextPlayer?.is_bot ? null : new Date(Date.now() + 30000).toISOString();
+                      newHorsesState = {
+                        ...horsesState,
+                        playerStates: newPlayerStates,
+                        currentTurnPlayerId: nextPlayerId,
+                        turnDeadline: nextDeadline,
+                      };
+                      actionsTaken.push(`Dice stuck recovery: ${(currentPlayer.profiles as any)?.username || 'Player'} force-completed, advancing`);
+                    }
+
+                    await supabase
+                      .from('rounds')
+                      .update({ 
+                        horses_state: newHorsesState,
+                        status: allComplete ? 'completed' : 'betting',
+                      })
+                      .eq('id', currentRound.id);
+                  } else {
+                    console.log('[ENFORCE-CLIENT] 🎲 DICE GAME: auto_fold player still within recovery window', {
+                      gameId,
+                      currentPlayerId,
+                      msOverdue,
+                    });
                   }
-                }
-
-                const result = {
-                  ofAKindCount: bestOfAKind,
-                  highValue: bestValue,
-                  rank: bestOfAKind * 10 + bestValue,
-                  description: `${bestOfAKind} ${bestValue}${bestOfAKind > 1 ? 's' : ''}`
-                };
-
-                // Mark player as complete
-                const updatedPlayerState = {
-                  ...currentPlayerState,
-                  dice: finalDice,
-                  rollsRemaining: 0,
-                  isComplete: true,
-                  result,
-                  heldMaskBeforeComplete: finalDice.map((d: any) => d.isHeld),
-                  heldCountBeforeComplete: finalDice.filter((d: any) => d.isHeld).length,
-                };
-
-                // Find next player in turn order
-                const currentIndex = turnOrder.indexOf(currentPlayerId);
-                let nextPlayerId: string | null = null;
-                let allComplete = true;
-
-                for (let i = 1; i <= turnOrder.length; i++) {
-                  const checkIdx = (currentIndex + i) % turnOrder.length;
-                  const checkId = turnOrder[checkIdx];
-                  const checkState = checkId === currentPlayerId ? updatedPlayerState : playerStates[checkId];
-                  if (!checkState?.isComplete) {
-                    nextPlayerId = checkId;
-                    allComplete = false;
-                    break;
-                  }
-                }
-
-                // Build updated horses state
-                const newPlayerStates = {
-                  ...playerStates,
-                  [currentPlayerId]: updatedPlayerState,
-                };
-
-                let newHorsesState: any;
-                if (allComplete || !nextPlayerId) {
-                  // All players done - mark game phase as complete
-                  newHorsesState = {
-                    ...horsesState,
-                    playerStates: newPlayerStates,
-                    currentTurnPlayerId: null,
-                    turnDeadline: null,
-                    gamePhase: 'complete',
-                  };
-                  actionsTaken.push(`Dice timeout: ${(currentPlayer.profiles as any)?.username || 'Player'} auto-completed, round complete`);
                 } else {
-                  // Move to next player
-                  const nextPlayer = players?.find((p: any) => p.id === nextPlayerId);
-                  const nextDeadline = nextPlayer?.is_bot ? null : new Date(Date.now() + 30000).toISOString();
-                  
-                  newHorsesState = {
-                    ...horsesState,
-                    playerStates: newPlayerStates,
-                    currentTurnPlayerId: nextPlayerId,
-                    turnDeadline: nextDeadline,
-                  };
-                  actionsTaken.push(`Dice timeout: ${(currentPlayer.profiles as any)?.username || 'Player'} auto-completed, advancing to next player`);
-                }
+                  // Player is NOT in auto_fold mode - set it now so clients can animate their turn
+                  console.log('[ENFORCE-CLIENT] 🎲 DICE GAME: Setting auto_fold for timed out player', {
+                    gameId,
+                    currentPlayerId,
+                    username: (currentPlayer.profiles as any)?.username,
+                  });
 
-                // Update round with optimistic locking on turnDeadline
-                const { data: updateResult } = await supabase
-                  .from('rounds')
-                  .update({ 
-                    horses_state: newHorsesState,
-                    status: allComplete ? 'completed' : 'betting',
-                  })
-                  .eq('id', currentRound.id)
-                  .eq('horses_state->>turnDeadline', horsesState.turnDeadline)
-                  .select();
+                  // Set auto_fold on the player so client-side bot logic takes over
+                  await supabase
+                    .from('players')
+                    .update({ auto_fold: true })
+                    .eq('id', currentPlayerId);
 
-                if (!updateResult || updateResult.length === 0) {
-                  console.log('[ENFORCE-CLIENT] Dice turn advance skipped - another client already processed');
-                  actionsTaken.push('Skipped - another client processed dice turn');
+                  // Extend the deadline to give client bot logic time to animate (15 seconds)
+                  const extendedDeadline = new Date(Date.now() + 15000).toISOString();
+                  await supabase
+                    .from('rounds')
+                    .update({ 
+                      horses_state: {
+                        ...horsesState,
+                        turnDeadline: extendedDeadline,
+                      }
+                    })
+                    .eq('id', currentRound.id);
+
+                  actionsTaken.push(`Dice timeout: ${(currentPlayer.profiles as any)?.username || 'Player'} set to auto-roll mode`);
                 }
               }
             } else if (msOverdue > 0) {
