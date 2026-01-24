@@ -436,7 +436,8 @@ export const MobileGameTable = ({
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
   
   // Z-index for player slots - higher in dice games to stay above spotlight
-  const playerSlotZIndex = isDiceGame ? 'z-[105]' : 'z-10';
+  // For 3-5-7 games, player cards need to be above the pot (z-20) during showdown
+  const playerSlotZIndex = isDiceGame ? 'z-[105]' : 'z-30';
   
   // Device size detection for tablet/desktop responsive sizing
   const { isTablet, isDesktop } = useDeviceSize();
