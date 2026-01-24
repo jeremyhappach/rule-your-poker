@@ -60,6 +60,8 @@ export interface HorsesPlayerDiceState {
   heldCountBeforeComplete?: number;
   /** Changes every roll so all clients can trigger the fly-in animation deterministically */
   rollKey?: number;
+  /** Monotonically increasing counter for hold/unhold actions within a roll - used for ordering realtime updates */
+  holdSeq?: number;
 }
 export interface HorsesStateFromDB {
   currentTurnPlayerId: string | null;
@@ -228,10 +230,14 @@ export function useHorsesMobileController({
   // The key insight: rollKey is a timestamp, so it should only ever increase.
   const maxSeenRollKeyRef = useRef<Record<string, number>>({});
   
-  // HELD COUNT MONOTONICITY: Track the max held count seen per (playerId, rollKey).
-  // For the SAME rollKey, held count should only ever increase (player can hold more dice, never fewer).
-  // This prevents out-of-order realtime updates from regressing held state within a roll.
-  const maxHeldCountPerRollKeyRef = useRef<Record<string, number>>({});
+  // HOLD SEQUENCE MONOTONICITY: Track the max holdSeq seen per (playerId, rollKey).
+  // holdSeq increments on every hold/unhold action, so it should only ever increase.
+  // This prevents out-of-order realtime updates from regressing dice state within a roll.
+  // Unlike held count, holdSeq correctly handles unhold actions (player can hold 3, then unhold to 2).
+  const maxHoldSeqPerRollKeyRef = useRef<Record<string, number>>({});
+  
+  // Local hold sequence counter - increments on every hold/unhold action
+  const localHoldSeqRef = useRef(0);
 
   // Track when a bot turn is actively being animated - prevents DB/realtime from overwriting display
   // Using state (not ref) so that useMemo for rawFeltDice recalculates when this changes
@@ -737,6 +743,7 @@ export function useHorsesMobileController({
         heldMaskBeforeComplete,
         heldCountBeforeComplete,
         rollKey: localRollKeyRef.current,
+        holdSeq: localHoldSeqRef.current,
       };
 
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
@@ -1174,6 +1181,8 @@ export function useHorsesMobileController({
     const rollStartTime = Date.now();
     // Unique per-roll key so all clients can trigger DiceTableLayout fly-in animations.
     localRollKeyRef.current = rollStartTime;
+    // Reset hold sequence for new roll
+    localHoldSeqRef.current = 0;
 
     console.log(`[ROLL_DEBUG] ===== ROLL STARTED at ${new Date(rollStartTime).toISOString()} =====`);
 
@@ -1289,6 +1298,9 @@ export function useHorsesMobileController({
       }
 
       lastLocalEditAtRef.current = Date.now();
+      
+      // Increment hold sequence for ordering - this is critical for observers to reject stale updates
+      localHoldSeqRef.current += 1;
 
       // IMPORTANT (mobile): persist holds immediately.
       // Otherwise the next realtime/DB sync can overwrite local holds and it feels like it "won't hold".
@@ -1990,17 +2002,19 @@ export function useHorsesMobileController({
       // This prevents the case where isRolling just flipped to false but DB still has pre-roll data.
       const sameRollWithStaleDb = sameRoll && observerDisplayState.preRollSig && dbSig === observerDisplayState.preRollSig;
       
-      // Use monotonic max held count for this rollKey to guard against regressions
+      // Use holdSeq for monotonicity guard - this correctly handles unhold actions
+      // (player can hold 3 dice then unhold to 2, which is valid if holdSeq increases)
       const rollKeyStr = `${currentTurnPlayerId}:${dbRollKey}`;
-      const maxSeenHeldForRoll = maxHeldCountPerRollKeyRef.current[rollKeyStr] ?? 0;
-      const dbHeldWouldRegress = sameRoll && dbHeldCount < maxSeenHeldForRoll;
+      const dbHoldSeq = (dbState as any)?.holdSeq ?? 0;
+      const maxSeenHoldSeq = maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0;
+      const dbHoldSeqWouldRegress = sameRoll && dbHoldSeq < maxSeenHoldSeq;
       
       const shouldUseDb =
         Array.isArray(dbDice) &&
         dbDice.length > 0 &&
         !dbRollKeyIsStale && // Never accept DB data from an older rollKey
         !sameRollWithStaleDb &&
-        !dbHeldWouldRegress && // Never accept DB data that would regress held count
+        !dbHoldSeqWouldRegress && // Never accept DB data with older holdSeq
         (!observerDisplayState.isRolling || !observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig);
 
       const dice = shouldUseDb ? ((dbDice as any) ?? observerDisplayState.dice) : observerDisplayState.dice;
@@ -2257,9 +2271,10 @@ export function useHorsesMobileController({
         // FIX #3: Derive heldCountBeforeComplete directly from dice (not stale metadata)
         const derivedHeldCount = preRollDice.filter((d: any) => !!d?.isHeld).length;
         
-        // Reset the max held count tracker for this new rollKey
+        // Reset the holdSeq tracker for this new rollKey
         const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
-        maxHeldCountPerRollKeyRef.current[rollKeyStr] = derivedHeldCount;
+        const dbHoldSeq = (state as any).holdSeq ?? 0;
+        maxHoldSeqPerRollKeyRef.current[rollKeyStr] = dbHoldSeq;
 
         setObserverDisplayState({
           playerId: currentTurnPlayerId,
@@ -2304,23 +2319,23 @@ export function useHorsesMobileController({
 
       if (nextSig === prevSig) return prev;
 
-      // FIX: Prevent held-state regression during same-rollKey updates.
-      // Use a monotonic max count to guard against out-of-order realtime updates.
-      // Even if the previous state was already regressed, we use the MAX we've ever seen for this rollKey.
+      // FIX: Prevent dice-state regression during same-rollKey updates using holdSeq.
+      // holdSeq increments on every hold/unhold action, so it correctly handles unhold actions.
+      // Unlike held count, a player can legitimately go from 3 held to 2 held.
       const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
-      const nextHeldCount = nextDice.filter((d: any) => !!d?.isHeld).length;
-      const maxSeenHeld = maxHeldCountPerRollKeyRef.current[rollKeyStr] ?? 0;
+      const nextHoldSeq = (state as any).holdSeq ?? 0;
+      const maxSeenHoldSeq = maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0;
       
-      if (nextHeldCount < maxSeenHeld) {
-        // Stale update - would regress held state. Reject it.
+      if (nextHoldSeq < maxSeenHoldSeq) {
+        // Stale update - has older sequence number. Reject it.
         console.log(
-          `[OBSERVER_ROLL] Rejecting same-rollKey update: nextHeldCount (${nextHeldCount}) < maxSeenHeld (${maxSeenHeld})`,
+          `[OBSERVER_ROLL] Rejecting same-rollKey update: holdSeq (${nextHoldSeq}) < maxSeenHoldSeq (${maxSeenHoldSeq})`,
         );
         return prev;
       }
       
       // Update the max seen for this rollKey
-      maxHeldCountPerRollKeyRef.current[rollKeyStr] = nextHeldCount;
+      maxHoldSeqPerRollKeyRef.current[rollKeyStr] = nextHoldSeq;
 
       return {
         ...prev,
