@@ -238,6 +238,7 @@ export const AnteUpDialog = ({
           
           {/* Auto-ante options */}
           <div className="flex flex-col gap-3 pt-2 border-t border-border">
+            <p className="text-xs text-muted-foreground font-medium">For future ante decisions:</p>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="auto-ante-runback"
