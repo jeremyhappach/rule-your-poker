@@ -54,6 +54,7 @@ interface Player {
   chips: number;
   is_bot: boolean;
   sitting_out: boolean;
+  auto_fold?: boolean; // For dice games, auto_fold means "auto-roll" mode
   profiles?: {
     username: string;
   };
@@ -885,8 +886,10 @@ export function HorsesGameTable({
   }, [isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
 
   // Bot auto-play with visible animation
+  // Also handles HUMAN players with auto_fold=true (auto-roll mode in dice games)
   useEffect(() => {
-    if (!currentPlayer?.is_bot || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
+    const shouldAutoPlay = currentPlayer?.is_bot || currentPlayer?.auto_fold;
+    if (!shouldAutoPlay || gamePhase !== "playing" || !currentRoundId || !horsesState) return;
     if (!currentUserId) return;
 
     const token = ++botRunTokenRef.current;
@@ -1186,6 +1189,7 @@ export function HorsesGameTable({
   }, [
     currentPlayer?.id,
     currentPlayer?.is_bot,
+    currentPlayer?.auto_fold, // Added to trigger auto-roll for human players
     gamePhase,
     currentRoundId,
     horsesState,

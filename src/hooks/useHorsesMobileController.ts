@@ -43,6 +43,7 @@ export interface HorsesPlayerForController {
   chips: number;
   is_bot: boolean;
   sitting_out: boolean;
+  auto_fold?: boolean; // For dice games, auto_fold means "auto-roll" mode
   profiles?: {
     username: string;
   };
@@ -1357,15 +1358,18 @@ export function useHorsesMobileController({
   }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
 
   // Bot auto-play with visible animation (mobile)
-  // CRITICAL: This effect should ONLY re-run when the turn identity changes (round + bot),
+  // CRITICAL: This effect should ONLY re-run when the turn identity changes (round + bot/auto-roll player),
   // NOT on every horsesState update. We use refs to read latest values inside the loop.
+  // This also handles HUMAN players with auto_fold=true (auto-roll mode in dice games)
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "playing") return;
     if (!currentRoundId) return;
     if (!currentUserId) return;
 
-    const botId = currentTurnPlayer?.is_bot ? currentTurnPlayer.id : null;
+    // Auto-play for bots OR human players with auto_fold (auto-roll mode)
+    const shouldAutoPlay = currentTurnPlayer?.is_bot || currentTurnPlayer?.auto_fold;
+    const botId = shouldAutoPlay ? currentTurnPlayer?.id : null;
     if (!botId) return;
 
     const processingKey = `${currentRoundId}:${botId}`;
@@ -1664,6 +1668,7 @@ export function useHorsesMobileController({
     currentUserId,
     currentTurnPlayer?.id,
     currentTurnPlayer?.is_bot,
+    currentTurnPlayer?.auto_fold, // Added to trigger auto-roll for human players
     // REMOVED: horsesState?.currentTurnPlayerId - causes re-runs on every state update
     // REMOVED: horsesState?.playerStates - causes re-runs on every state update
     // REMOVED: candidateBotControllerUserId - use ref instead
