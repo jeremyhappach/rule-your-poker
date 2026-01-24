@@ -3930,14 +3930,14 @@ export const MobileGameTable = ({
                 return (
                   <div 
                     key={`dealer-selection-${position}`}
-                    className="absolute flex flex-col items-center gap-1"
+                    className="absolute flex flex-col items-center pointer-events-none"
                     style={{
                       top: `${posPercent.top}%`,
                       left: `${posPercent.left}%`,
                       transform: 'translate(-50%, -50%)',
                     }}
                   >
-                    {/* Stack all cards for this position (tie-breaker rounds) */}
+                    {/* Stack all cards for this position (tie-breaker rounds) - positioned directly over chip stack */}
                     <div className="flex gap-1">
                       {allCardsForPosition.map((cardData, idx) => (
                         <div 
@@ -3964,15 +3964,7 @@ export const MobileGameTable = ({
                         </div>
                       ))}
                     </div>
-                    {/* Player name below their cards */}
-                    <div className={cn(
-                      "px-2 py-0.5 rounded text-xs font-bold mt-1 transition-all duration-300",
-                      allCardsForPosition.some(c => c.isDimmed && c.isRevealed)
-                        ? "bg-black/60 text-white/60"
-                        : "bg-black/80 text-white"
-                    )}>
-                      {playerName}
-                    </div>
+                    {/* Player name badge removed per user request - cards placed directly over chip stack */}
                   </div>
                 );
               });

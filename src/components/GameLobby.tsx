@@ -21,6 +21,7 @@ import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useMaintenanceMode } from "@/hooks/useMaintenanceMode";
 import { RealMoneyWarningDialog } from "@/components/RealMoneyWarningDialog";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +81,9 @@ interface GameLobbyProps {
 }
 
 export const GameLobby = ({ userId }: GameLobbyProps) => {
+  // Prevent screen from dimming in the lobby
+  useWakeLock(true);
+  
   // Always start with empty array - never use cached/restored state
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
