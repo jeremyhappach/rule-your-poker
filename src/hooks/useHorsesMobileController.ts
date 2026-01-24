@@ -1110,25 +1110,51 @@ export function useHorsesMobileController({
       // If player hasn't rolled yet, give them a forced roll result
       let result;
       if (!playerState || playerState.rollsRemaining === 3) {
-        // Never rolled - create a random hand
-        const forcedDice = Array(5)
-          .fill(null)
-          .map(() => ({
-            value: Math.floor(Math.random() * 6) + 1,
-            isHeld: false,
-          }));
-        result = evaluateHand(forcedDice);
+        // Never rolled - create a random hand with proper game-type handling
+        if (isSCC) {
+          // For SCC: Simulate 3 rolls with auto-freeze logic to create a valid hand
+          let sccHand = createInitialSCCHand();
+          for (let i = 0; i < 3; i++) {
+            sccHand = rollSCCDice(sccHand);
+          }
+          sccHand = lockInSCCHand(sccHand);
+          result = evaluateSCCHand(sccHand);
+          
+          await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
+            dice: sccHand.dice,
+            rollsRemaining: 0,
+            isComplete: true,
+            result,
+          });
+        } else {
+          // For Horses: create random dice
+          const forcedDice = Array(5)
+            .fill(null)
+            .map(() => ({
+              value: Math.floor(Math.random() * 6) + 1,
+              isHeld: false,
+            }));
+          result = evaluateHand(forcedDice);
 
-        // Save the forced state
-        await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
-          dice: forcedDice,
-          rollsRemaining: 0,
-          isComplete: true,
-          result,
-        });
+          await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
+            dice: forcedDice,
+            rollsRemaining: 0,
+            isComplete: true,
+            result,
+          });
+        }
       } else {
-        // Had rolled but didn't lock in - evaluate current dice
-        result = evaluateHand(playerState.dice);
+        // Had rolled but didn't lock in - evaluate current dice with proper evaluator
+        if (isSCC) {
+          const sccHand = reconstructSCCHand(
+            playerState.dice as SCCDieType[],
+            playerState.rollsRemaining,
+            playerState.isComplete
+          );
+          result = evaluateSCCHand(sccHand);
+        } else {
+          result = evaluateHand(playerState.dice as HorsesDieType[]);
+        }
         await horsesSetPlayerState(currentRoundId, currentTurnPlayerId, {
           ...playerState,
           rollsRemaining: 0,
@@ -1283,20 +1309,33 @@ export function useHorsesMobileController({
   const handleToggleHold = useCallback(
     (index: number) => {
       if (!enabled) return;
-      if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3) return;
+      if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3 || localHand.rollsRemaining <= 0) return;
 
-      // For SCC: dice auto-freeze for 6-5-4, users cannot manually toggle holds
-      // Only cargo dice (non-SCC) could theoretically be toggled, but SCC is all-or-nothing (re-roll both or lock in)
+      // For SCC: Ship/Captain/Crew are auto-locked and cannot be toggled
+      // Cargo dice (non-SCC) CAN be toggled - player can hold individual cargo dice
       if (isSCC) {
         const sccHand = localHand as SCCHand;
         const die = sccHand.dice[index];
-        // Prevent toggling any dice in SCC - Ship/Captain/Crew auto-freeze, cargo is all-or-nothing
+        
+        // Ship/Captain/Crew are auto-frozen and cannot be unheld
         if (die.isSCC) {
-          // Can't unhold Ship/Captain/Crew dice
           return;
         }
-        // For cargo dice, SCC doesn't allow individual holds - it's all-or-nothing
-        // Users must either roll again (re-rolls both cargo) or lock in
+        
+        // Toggle the cargo die
+        lastLocalEditAtRef.current = Date.now();
+        localHoldSeqRef.current += 1;
+        
+        const newDice = [...sccHand.dice];
+        newDice[index] = { ...newDice[index], isHeld: !newDice[index].isHeld };
+        
+        const nextHand: SCCHand = {
+          ...sccHand,
+          dice: newDice,
+        };
+        
+        setLocalHand(nextHand);
+        void saveMyState(nextHand, false, undefined, heldMaskAtLastRollStartRef.current ?? undefined);
         return;
       }
 

@@ -638,58 +638,124 @@ serve(async (req) => {
                     // Force-complete their turn with whatever dice they have
                     const currentPlayerState = playerStates[currentPlayerId] || {};
                     let finalDice = currentPlayerState.dice || [];
+                    let hasShip = false;
+                    let hasCaptain = false;
+                    let hasCrew = false;
+                    
+                    // Check existing SCC status from dice
+                    if (finalDice.length > 0) {
+                      finalDice.forEach((d: any) => {
+                        if (d.sccType === 'ship') hasShip = true;
+                        if (d.sccType === 'captain') hasCaptain = true;
+                        if (d.sccType === 'crew') hasCrew = true;
+                      });
+                    }
+                    
                     if (!finalDice.length || finalDice.every((d: any) => d.value === 0)) {
-                      finalDice = Array(5).fill(null).map(() => ({
-                        value: Math.floor(Math.random() * 6) + 1,
-                        isHeld: true
-                      }));
+                      // No dice rolled yet - simulate 3 rolls with SCC auto-freeze logic
+                      if (game.game_type === 'ship-captain-crew') {
+                        // Simulate 3 SCC rolls with proper auto-freeze
+                        finalDice = [
+                          { value: 0, isHeld: false, isSCC: false },
+                          { value: 0, isHeld: false, isSCC: false },
+                          { value: 0, isHeld: false, isSCC: false },
+                          { value: 0, isHeld: false, isSCC: false },
+                          { value: 0, isHeld: false, isSCC: false },
+                        ];
+                        hasShip = false;
+                        hasCaptain = false;
+                        hasCrew = false;
+                        
+                        for (let roll = 0; roll < 3; roll++) {
+                          // Roll all non-held dice
+                          finalDice = finalDice.map((d: any) => ({
+                            ...d,
+                            value: d.isHeld ? d.value : Math.floor(Math.random() * 6) + 1,
+                          }));
+                          
+                          // Auto-freeze Ship (6) if not yet
+                          if (!hasShip) {
+                            const shipIdx = finalDice.findIndex((d: any) => d.value === 6 && !d.isSCC);
+                            if (shipIdx !== -1) {
+                              finalDice[shipIdx].isHeld = true;
+                              finalDice[shipIdx].isSCC = true;
+                              finalDice[shipIdx].sccType = 'ship';
+                              hasShip = true;
+                            }
+                          }
+                          // Auto-freeze Captain (5) if have Ship
+                          if (hasShip && !hasCaptain) {
+                            const captainIdx = finalDice.findIndex((d: any) => d.value === 5 && !d.isSCC);
+                            if (captainIdx !== -1) {
+                              finalDice[captainIdx].isHeld = true;
+                              finalDice[captainIdx].isSCC = true;
+                              finalDice[captainIdx].sccType = 'captain';
+                              hasCaptain = true;
+                            }
+                          }
+                          // Auto-freeze Crew (4) if have Ship and Captain
+                          if (hasShip && hasCaptain && !hasCrew) {
+                            const crewIdx = finalDice.findIndex((d: any) => d.value === 4 && !d.isSCC);
+                            if (crewIdx !== -1) {
+                              finalDice[crewIdx].isHeld = true;
+                              finalDice[crewIdx].isSCC = true;
+                              finalDice[crewIdx].sccType = 'crew';
+                              hasCrew = true;
+                            }
+                          }
+                        }
+                        // Mark all as held since turn is complete
+                        finalDice = finalDice.map((d: any) => ({ ...d, isHeld: true }));
+                      } else {
+                        // Horses: just random dice
+                        finalDice = Array(5).fill(null).map(() => ({
+                          value: Math.floor(Math.random() * 6) + 1,
+                          isHeld: true
+                        }));
+                      }
                     } else {
                       finalDice = finalDice.map((d: any) => ({ ...d, isHeld: true }));
                     }
 
-                    // Simple hand evaluation (for Horses - works as fallback for SCC)
-                    const diceValues = finalDice.map((d: any) => d.value);
-                    const valueCounts: Record<number, number> = {};
-                    diceValues.forEach((v: number) => {
-                      valueCounts[v] = (valueCounts[v] || 0) + 1;
-                    });
-                    let bestOfAKind = 0;
-                    let bestValue = 0;
-                    for (const [val, count] of Object.entries(valueCounts)) {
-                      const numVal = parseInt(val);
-                      const numCount = count as number;
-                      if (numCount > bestOfAKind || (numCount === bestOfAKind && numVal > bestValue)) {
-                        bestOfAKind = numCount;
-                        bestValue = numVal;
-                      }
-                    }
-                    
-                    // For SCC, check qualification
+                    // Hand evaluation
                     let result: any;
                     if (game.game_type === 'ship-captain-crew') {
-                      const has6 = diceValues.includes(6);
-                      const has5 = diceValues.includes(5);
-                      const has4 = diceValues.includes(4);
-                      const isQualified = has6 && has5 && has4;
+                      const isQualified = hasShip && hasCaptain && hasCrew;
                       if (isQualified) {
-                        // Find cargo dice (not 6, 5, or 4)
-                        const cargoValues = diceValues.filter((v: number) => v !== 6 && v !== 5 && v !== 4);
-                        const cargoSum = cargoValues.reduce((a: number, b: number) => a + b, 0);
+                        // Find cargo dice (non-SCC)
+                        const cargoDice = finalDice.filter((d: any) => !d.isSCC);
+                        const cargoSum = cargoDice.reduce((sum: number, d: any) => sum + d.value, 0);
                         result = {
                           isQualified: true,
                           cargoSum,
-                          rank: 100 + cargoSum,
-                          description: `Cargo ${cargoSum}`,
+                          rank: cargoSum,
+                          description: `${cargoSum}`,
                         };
                       } else {
                         result = {
                           isQualified: false,
                           cargoSum: 0,
                           rank: 0,
-                          description: 'No Qualify',
+                          description: 'NQ',
                         };
                       }
                     } else {
+                      // Horses evaluation
+                      const diceValues = finalDice.map((d: any) => d.value);
+                      const valueCounts: Record<number, number> = {};
+                      diceValues.forEach((v: number) => {
+                        valueCounts[v] = (valueCounts[v] || 0) + 1;
+                      });
+                      let bestOfAKind = 0;
+                      let bestValue = 0;
+                      for (const [val, count] of Object.entries(valueCounts)) {
+                        const numVal = parseInt(val);
+                        const numCount = count as number;
+                        if (numCount > bestOfAKind || (numCount === bestOfAKind && numVal > bestValue)) {
+                          bestOfAKind = numCount;
+                          bestValue = numVal;
+                        }
+                      }
                       result = {
                         ofAKindCount: bestOfAKind,
                         highValue: bestValue,

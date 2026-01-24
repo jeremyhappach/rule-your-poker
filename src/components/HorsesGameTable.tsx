@@ -821,18 +821,33 @@ export function HorsesGameTable({
 
   // Handle toggle hold - SCC has auto-freeze for 6-5-4, humans cannot toggle SCC dice
   const handleToggleHold = useCallback((index: number) => {
-    if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3) return;
+    if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3 || localHand.rollsRemaining <= 0) return;
 
-    // For SCC: cannot toggle SCC dice (Ship/Captain/Crew are auto-frozen)
+    // For SCC: Ship/Captain/Crew are auto-locked and cannot be toggled
+    // Cargo dice (non-SCC) CAN be toggled - player can hold individual cargo dice
     if (isSCC) {
       const sccHand = localHand as SCCHand;
       const die = sccHand.dice[index];
+      
+      // Ship/Captain/Crew are auto-frozen and cannot be unheld
       if (die.isSCC) {
-        // Can't unhold Ship/Captain/Crew dice
         return;
       }
-      // For cargo dice in SCC, it's all-or-nothing (re-roll both or lock in)
-      // So we don't allow individual hold toggling for cargo
+      
+      // Toggle the cargo die
+      lastLocalEditAtRef.current = Date.now();
+      localHoldSeqRef.current += 1;
+      
+      const newDice = [...sccHand.dice];
+      newDice[index] = { ...newDice[index], isHeld: !newDice[index].isHeld };
+      
+      const nextHand: SCCHand = {
+        ...sccHand,
+        dice: newDice,
+      };
+      
+      setLocalHand(nextHand);
+      void saveMyState(nextHand as any, false);
       return;
     }
 
