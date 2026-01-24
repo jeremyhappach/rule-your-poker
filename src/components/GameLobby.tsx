@@ -477,15 +477,37 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
       });
     } else {
       // No history, safe to delete
+      // First delete dependent records (players, chat messages, etc.)
+      await supabase.from('chat_messages').delete().eq('game_id', gameId);
+      await supabase.from('session_events').delete().eq('game_id', gameId);
+      await supabase.from('players').delete().eq('game_id', gameId);
+      
       const { error } = await supabase
         .from('games')
         .delete()
         .eq('id', gameId);
 
       if (error) {
+        console.error('Delete game error:', error);
         toast({
           title: "Error",
           description: "Failed to delete game",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verify the game was actually deleted
+      const { data: stillExists } = await supabase
+        .from('games')
+        .select('id')
+        .eq('id', gameId)
+        .maybeSingle();
+
+      if (stillExists) {
+        toast({
+          title: "Permission Denied",
+          description: "Only the game host can delete this game",
           variant: "destructive",
         });
         return;
