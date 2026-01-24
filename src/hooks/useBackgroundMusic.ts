@@ -1,0 +1,108 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { toast } from "sonner";
+
+export function useBackgroundMusic() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  const generateAndPlay = useCallback(async () => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-music`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ duration: 45 }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Request failed: ${response.status}`);
+      }
+
+      const audioBlob = await response.blob();
+      
+      // Revoke old URL if exists
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+      }
+      
+      audioUrlRef.current = URL.createObjectURL(audioBlob);
+      
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
+        audioRef.current.loop = true;
+        audioRef.current.volume = 0.3; // Start at 30% volume
+      }
+      
+      audioRef.current.src = audioUrlRef.current;
+      await audioRef.current.play();
+      
+      setIsPlaying(true);
+      setHasGenerated(true);
+      toast.success("🎵 Music started");
+    } catch (error) {
+      console.error("Failed to generate music:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate music");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const togglePlay = useCallback(async () => {
+    if (!hasGenerated) {
+      await generateAndPlay();
+      return;
+    }
+
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        await audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  }, [hasGenerated, isPlaying, generateAndPlay]);
+
+  const stop = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+  }, []);
+
+  return {
+    isPlaying,
+    isLoading,
+    togglePlay,
+    stop,
+    hasGenerated,
+  };
+}
