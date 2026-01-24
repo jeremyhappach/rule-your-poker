@@ -150,11 +150,16 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
 
     const winnerCoords = getChipCoords(winner);
 
-    // Create animations for each leg from each player
+    // Create animations for each leg from each player (excluding winner - their legs stay in place)
     const newAnimations: LegChipAnimation[] = [];
     let animIndex = 0;
 
     positions.forEach((playerLeg) => {
+      // Skip the winner - their legs don't need to animate to themselves
+      if (playerLeg.position === winner) {
+        return;
+      }
+      
       const legCoords = getLegCoords(playerLeg.position);
       const legCount = Math.min(playerLeg.legCount, maxLegs);
       
