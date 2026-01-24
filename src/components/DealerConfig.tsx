@@ -110,6 +110,10 @@ export const DealerConfig = ({
         if (isHolmGame) {
           updateData.chucky_cards = chuckyCards;
           updateData.rabbit_hunt = rabbitHunt;
+          // CRITICAL: Holm round start uses an atomic first-hand lock (status=ante_decision AND is_first_hand=true).
+          // If a bot dealer configures the game but we don't set this flag, the game can get stuck in ante_decision.
+          updateData.current_round = 1;
+          updateData.is_first_hand = true;
         }
 
         const { error } = await supabase
