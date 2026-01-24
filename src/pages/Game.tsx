@@ -1911,6 +1911,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         pot_max_enabled: game.pot_max_enabled ?? true,
         pot_max_value: game.pot_max_value ?? 10,
         chucky_cards: game.chucky_cards ?? 4,
+        rabbit_hunt: game.rabbit_hunt ?? false,
+        reveal_at_showdown: game.reveal_at_showdown ?? false,
       };
       
       // CRITICAL: Can't be "running it back" on the FIRST hand of a session
@@ -1922,18 +1924,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const hasCompletedHandInThisGame = hasSessionHistory;
       const canBeRunback = configFromDifferentGame || hasCompletedHandInThisGame;
       
+      // "Running it Back" means EXACT same game with ALL parameters matching
+      // This includes: game_type, ante, leg_value, legs_to_win, pussy_tax, pot_max, chucky_cards, rabbit_hunt, reveal_at_showdown
       const isRunBack = canBeRunback && previousGameConfig !== null && 
         previousGameConfig.game_type === currentConfig.game_type &&
         previousGameConfig.ante_amount === currentConfig.ante_amount &&
+        previousGameConfig.leg_value === currentConfig.leg_value &&
+        previousGameConfig.legs_to_win === currentConfig.legs_to_win &&
         previousGameConfig.pussy_tax_enabled === currentConfig.pussy_tax_enabled &&
         previousGameConfig.pussy_tax_value === currentConfig.pussy_tax_value &&
         previousGameConfig.pot_max_enabled === currentConfig.pot_max_enabled &&
         previousGameConfig.pot_max_value === currentConfig.pot_max_value &&
-        (currentConfig.game_type === 'holm-game' || currentConfig.game_type === 'holm' 
-          ? previousGameConfig.chucky_cards === currentConfig.chucky_cards
-          : previousGameConfig.leg_value === currentConfig.leg_value && 
-            previousGameConfig.legs_to_win === currentConfig.legs_to_win
-        );
+        previousGameConfig.chucky_cards === currentConfig.chucky_cards &&
+        previousGameConfig.rabbit_hunt === currentConfig.rabbit_hunt &&
+        previousGameConfig.reveal_at_showdown === currentConfig.reveal_at_showdown;
       
       console.log('[ANTE DIALOG] Running it back check:', { 
         isRunBack, 
