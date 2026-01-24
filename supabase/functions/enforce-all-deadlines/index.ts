@@ -1827,7 +1827,29 @@ serve(async (req) => {
           
           console.log('[CRON-ENFORCE] Processing HOLM showdown for game:', game.id);
           
-          if (currentRound && currentRound.status === 'betting') {
+          // Handle 'betting' status rounds (normal showdown)
+          // Also handle 'completed' status if client crashed mid-showdown
+          if (currentRound && (currentRound.status === 'betting' || currentRound.status === 'showdown' || currentRound.status === 'processing' || currentRound.status === 'completed')) {
+            
+            // STUCK GAME RECOVERY: If round is 'completed' but game still has all_decisions_in=true and awaiting_next_round=false,
+            // the client crashed mid-showdown. Force advance to next round.
+            if (currentRound.status === 'completed' && !game.awaiting_next_round) {
+              console.log('[CRON-ENFORCE] STUCK RECOVERY: Round completed but game not advancing. Forcing awaiting_next_round=true for game:', game.id);
+              await supabase
+                .from('games')
+                .update({ 
+                  awaiting_next_round: true, 
+                  all_decisions_in: false,
+                  last_round_result: game.last_round_result || 'Showdown completed - advancing'
+                })
+                .eq('id', game.id);
+              
+              actionsTaken.push('STUCK RECOVERY: Forced awaiting_next_round after stale completed round');
+              results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') || 'recovered' });
+              continue;
+            }
+          
+            if (currentRound.status === 'betting') {
             const { data: players } = await supabase
               .from('players')
               .select('*')
@@ -2140,7 +2162,8 @@ serve(async (req) => {
                 }
               }
             }
-          }
+            } // Close if (currentRound.status === 'betting')
+          } // Close outer if (currentRound && status check)
         }
 
         // ============= GAME OVER COUNTDOWN =============
