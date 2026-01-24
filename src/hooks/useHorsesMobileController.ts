@@ -2319,7 +2319,9 @@ export function useHorsesMobileController({
 
       // While the roll animation is running, do NOT replace our masked dice with the pre-roll values.
       // Only accept updates once the DB dice actually change vs the roll-start snapshot.
-      if (prev.isRolling && prev.preRollSig && nextSig === prev.preRollSig) {
+      // EXCEPTION: On roll 3 (rollsRemaining === 0), skip this guard to allow final dice values through for animation.
+      const isRoll3 = state.rollsRemaining === 0;
+      if (!isRoll3 && prev.isRolling && prev.preRollSig && nextSig === prev.preRollSig) {
         return prev;
       }
 
