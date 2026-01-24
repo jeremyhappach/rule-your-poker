@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AnteUpDialogProps {
@@ -55,6 +56,8 @@ export const AnteUpDialog = ({
   const gameDisplayName = getGameDisplayName();
   const [timeLeft, setTimeLeft] = useState(30);
   const [hasDecided, setHasDecided] = useState(false);
+  const [localAutoAnteRunback, setLocalAutoAnteRunback] = useState(autoAnteRunback);
+  const [localAutoAnte, setLocalAutoAnte] = useState(autoAnte);
 
   useEffect(() => {
     if (timeLeft <= 0 && !hasDecided) {
@@ -79,6 +82,8 @@ export const AnteUpDialog = ({
       .update({
         ante_decision: 'ante_up',
         sitting_out: false,
+        auto_ante: localAutoAnte,
+        auto_ante_runback: localAutoAnteRunback,
       })
       .eq('id', playerId);
 
@@ -90,54 +95,40 @@ export const AnteUpDialog = ({
     onDecisionMade();
   };
 
-  const handleAutoAnteRunback = async () => {
-    if (hasDecided) return;
-    setHasDecided(true);
+  const toggleAutoAnteRunback = async (checked: boolean) => {
+    // Mutual exclusivity: if enabling runback, disable all
+    const newRunback = checked;
+    const newAll = checked ? false : localAutoAnte;
+    
+    setLocalAutoAnteRunback(newRunback);
+    setLocalAutoAnte(newAll);
 
-    // Set auto_ante_runback to true AND ante up for this hand
-    // Also set auto_ante to false (mutual exclusivity)
-    const { error } = await supabase
+    // Persist to database immediately
+    await supabase
       .from('players')
       .update({
-        ante_decision: 'ante_up',
-        sitting_out: false,
-        auto_ante_runback: true,
-        auto_ante: false,
+        auto_ante_runback: newRunback,
+        auto_ante: newAll,
       })
       .eq('id', playerId);
-
-    if (error) {
-      console.error('Failed to set auto-ante runback:', error);
-      return;
-    }
-
-    console.log('[ANTE DIALOG] Set auto_ante_runback = true and anted up');
-    onDecisionMade();
   };
 
-  const handleAutoAnteAll = async () => {
-    if (hasDecided) return;
-    setHasDecided(true);
+  const toggleAutoAnteAll = async (checked: boolean) => {
+    // Mutual exclusivity: if enabling all, disable runback
+    const newAll = checked;
+    const newRunback = checked ? false : localAutoAnteRunback;
+    
+    setLocalAutoAnte(newAll);
+    setLocalAutoAnteRunback(newRunback);
 
-    // Set auto_ante to true AND ante up for this hand
-    // Also set auto_ante_runback to false (mutual exclusivity)
-    const { error } = await supabase
+    // Persist to database immediately
+    await supabase
       .from('players')
       .update({
-        ante_decision: 'ante_up',
-        sitting_out: false,
-        auto_ante: true,
-        auto_ante_runback: false,
+        auto_ante: newAll,
+        auto_ante_runback: newRunback,
       })
       .eq('id', playerId);
-
-    if (error) {
-      console.error('Failed to set auto-ante all:', error);
-      return;
-    }
-
-    console.log('[ANTE DIALOG] Set auto_ante = true and anted up');
-    onDecisionMade();
   };
 
   const handleSitOut = async () => {
@@ -231,7 +222,7 @@ export const AnteUpDialog = ({
             <Button
               onClick={handleAnteUp}
               size="lg"
-              className="bg-green-600 hover:bg-green-700 text-white font-bold"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
             >
               Ante Up! 💰
             </Button>
@@ -246,25 +237,27 @@ export const AnteUpDialog = ({
           </div>
           
           {/* Auto-ante options */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
-            <Button
-              onClick={handleAutoAnteRunback}
-              size="sm"
-              variant={autoAnteRunback ? "default" : "outline"}
-              className={`text-xs flex items-center justify-center gap-1 ${autoAnteRunback ? 'bg-primary' : ''}`}
-            >
-              {autoAnteRunback && <Check className="h-3 w-3" />}
-              Auto-Ante (Run it Back)
-            </Button>
-            <Button
-              onClick={handleAutoAnteAll}
-              size="sm"
-              variant={autoAnte ? "default" : "outline"}
-              className={`text-xs flex items-center justify-center gap-1 ${autoAnte ? 'bg-primary' : ''}`}
-            >
-              {autoAnte && <Check className="h-3 w-3" />}
-              Auto-Ante (All)
-            </Button>
+          <div className="flex flex-col gap-3 pt-2 border-t border-border">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="auto-ante-runback"
+                checked={localAutoAnteRunback}
+                onCheckedChange={(checked) => toggleAutoAnteRunback(checked === true)}
+              />
+              <Label htmlFor="auto-ante-runback" className="text-sm cursor-pointer">
+                Auto-Ante (Run it Back)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="auto-ante-all"
+                checked={localAutoAnte}
+                onCheckedChange={(checked) => toggleAutoAnteAll(checked === true)}
+              />
+              <Label htmlFor="auto-ante-all" className="text-sm cursor-pointer">
+                Auto-Ante (All Games)
+              </Label>
+            </div>
           </div>
           
           <p className="text-xs text-muted-foreground">
