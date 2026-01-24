@@ -1334,6 +1334,104 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
   }, [gameId, user]);
 
+  // AUTO-RESYNC ON RESUME: When the user returns to the tab (iOS BFCache, tab switch, app resume),
+  // immediately refetch game data and clear stale caches if the backend shows a different state.
+  // This prevents the "stuck in-progress UI" when the user was away and the game transitioned.
+  useEffect(() => {
+    if (!gameId || !user) return;
+
+    let lastResyncTime = 0;
+    const RESYNC_DEBOUNCE_MS = 1000; // Don't resync more than once per second
+
+    const handleResync = async () => {
+      const now = Date.now();
+      if (now - lastResyncTime < RESYNC_DEBOUNCE_MS) return;
+      lastResyncTime = now;
+
+      console.log('[AUTO-RESYNC] Tab visible/focused - checking for stale state');
+
+      // Fetch fresh game status from DB
+      const { data: freshGame, error } = await supabase
+        .from('games')
+        .select('status, current_round, game_type, awaiting_next_round')
+        .eq('id', gameId)
+        .single();
+
+      if (error || !freshGame) {
+        console.warn('[AUTO-RESYNC] Failed to fetch fresh game state:', error);
+        return;
+      }
+
+      const localStatus = game?.status;
+      const localRound = game?.current_round;
+      const localGameType = game?.game_type;
+
+      // Detect if backend state diverged significantly from local state
+      const statusChanged = localStatus !== freshGame.status;
+      const roundChanged = localRound !== freshGame.current_round;
+      const gameTypeChanged = localGameType !== freshGame.game_type;
+      const isWaitingOrConfig = ['waiting', 'game_selection', 'configuring', 'dealer_selection', 'session_ended'].includes(freshGame.status);
+
+      console.log('[AUTO-RESYNC] State comparison:', {
+        local: { status: localStatus, round: localRound, gameType: localGameType },
+        fresh: freshGame,
+        statusChanged,
+        roundChanged,
+        gameTypeChanged,
+        isWaitingOrConfig,
+      });
+
+      if (statusChanged || roundChanged || gameTypeChanged) {
+        console.log('[AUTO-RESYNC] 🔄 State divergence detected - refetching and clearing caches');
+
+        // If backend is in waiting/config phase but UI shows in-progress, clear all stale game state
+        if (isWaitingOrConfig) {
+          console.log('[AUTO-RESYNC] 🧹 Backend in setup phase - clearing all card/round caches');
+          clearLiftedCardCaches('AUTO-RESYNC (backend in setup)', { freshGame });
+          setCachedRoundData(null);
+          cachedRoundRef.current = null;
+          setPlayerCards([]);
+          setCardStateContext(null);
+          maxRevealedRef.current = 0;
+          cardIdentityRef.current = '';
+          lastKnownGameTypeRef.current = freshGame.game_type ?? null;
+          lastKnownRoundRef.current = null;
+        }
+
+        // Force full refetch
+        fetchGameData();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleResync();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      handleResync();
+    };
+
+    // iOS Safari pageshow event (for BFCache restores)
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        console.log('[AUTO-RESYNC] BFCache restore detected - forcing resync');
+        handleResync();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('pageshow', handlePageShow as EventListener);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('pageshow', handlePageShow as EventListener);
+    };
+  }, [gameId, user, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
+
   // NOTE: Duplicate rounds subscription was REMOVED to reduce query volume.
   // The main `game-${gameId}` channel already listens to rounds table changes (lines 1155-1188).
   // Having two channels caused every round event to trigger fetchGameData twice.
