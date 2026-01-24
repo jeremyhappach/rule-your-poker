@@ -1945,9 +1945,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // AUTO-ANTE: If player has auto_ante enabled, automatically accept ante (no dialog)
       // OR if player has auto_ante_runback enabled AND this is a run-it-back scenario
+      // CRITICAL: Only auto-ante if the dialog is NOT already showing - this allows users
+      // to toggle the auto-ante checkboxes without immediately closing the modal
       const shouldAutoAnte = currentPlayer?.auto_ante || (currentPlayer?.auto_ante_runback && isRunBack);
       
-      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && shouldAutoAnte) {
+      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
         console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id, {
           auto_ante: currentPlayer.auto_ante,
           auto_ante_runback: currentPlayer.auto_ante_runback,
