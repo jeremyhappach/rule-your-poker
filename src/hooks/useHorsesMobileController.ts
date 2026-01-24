@@ -2224,6 +2224,7 @@ export function useHorsesMobileController({
     }
 
     // Same rollKey: keep observer display state up to date if DB dice arrive after rollKey.
+    // CRITICAL: Protect against held-state regression from out-of-order realtime updates.
     setObserverDisplayState((prev) => {
       if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
       if (prev.rollKey !== newRollKey) return prev;
@@ -2239,6 +2240,20 @@ export function useHorsesMobileController({
       }
 
       if (nextSig === prevSig) return prev;
+
+      // FIX: Prevent held-state regression during same-rollKey updates.
+      // If the DB update has FEWER held dice than our current display state, it's a stale/out-of-order
+      // snapshot and would cause held dice to jump back to scatter positions.
+      const prevHeldCount = (prev.dice as any[]).filter((d: any) => !!d?.isHeld).length;
+      const nextHeldCount = nextDice.filter((d: any) => !!d?.isHeld).length;
+      
+      if (nextHeldCount < prevHeldCount) {
+        // Stale update - would regress held state. Reject it.
+        console.log(
+          `[OBSERVER_ROLL] Rejecting same-rollKey update: nextHeldCount (${nextHeldCount}) < prevHeldCount (${prevHeldCount})`,
+        );
+        return prev;
+      }
 
       return {
         ...prev,
