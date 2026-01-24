@@ -188,6 +188,116 @@ export type Database = {
           },
         ]
       }
+      dice_trace_samples: {
+        Row: {
+          cache_key: string | null
+          container_h: number | null
+          container_w: number | null
+          created_at: string
+          die_index: number
+          die_is_held: boolean
+          die_is_held_in_layout: boolean | null
+          die_value: number | null
+          extra: Json
+          frame_seq: number
+          h: number | null
+          id: number
+          is_animating_fly_in: boolean | null
+          is_observer: boolean | null
+          is_rolling: boolean | null
+          roll_key: string | null
+          session_id: string
+          t_ms: number
+          w: number | null
+          x: number | null
+          y: number | null
+        }
+        Insert: {
+          cache_key?: string | null
+          container_h?: number | null
+          container_w?: number | null
+          created_at?: string
+          die_index: number
+          die_is_held: boolean
+          die_is_held_in_layout?: boolean | null
+          die_value?: number | null
+          extra?: Json
+          frame_seq: number
+          h?: number | null
+          id?: number
+          is_animating_fly_in?: boolean | null
+          is_observer?: boolean | null
+          is_rolling?: boolean | null
+          roll_key?: string | null
+          session_id: string
+          t_ms: number
+          w?: number | null
+          x?: number | null
+          y?: number | null
+        }
+        Update: {
+          cache_key?: string | null
+          container_h?: number | null
+          container_w?: number | null
+          created_at?: string
+          die_index?: number
+          die_is_held?: boolean
+          die_is_held_in_layout?: boolean | null
+          die_value?: number | null
+          extra?: Json
+          frame_seq?: number
+          h?: number | null
+          id?: number
+          is_animating_fly_in?: boolean | null
+          is_observer?: boolean | null
+          is_rolling?: boolean | null
+          roll_key?: string | null
+          session_id?: string
+          t_ms?: number
+          w?: number | null
+          x?: number | null
+          y?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dice_trace_samples_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "dice_trace_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dice_trace_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          game_id: string | null
+          id: string
+          label: string | null
+          round_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          game_id?: string | null
+          id?: string
+          label?: string | null
+          round_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          game_id?: string | null
+          id?: string
+          label?: string | null
+          round_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_defaults: {
         Row: {
           allow_bot_dealers: boolean
