@@ -2919,10 +2919,10 @@ export const MobileGameTable = ({
     const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
     // Hide cards from original position when winner's cards are "tabled" above pot
     // Applies to both Holm winners and 3-5-7 winners during win animation
-    // For 3-5-7: only table AFTER leg award animation completes (not during 'waiting' phase)
+    // For 3-5-7: table cards IMMEDIATELY when winner is detected (including 'waiting' phase)
+    // This prevents the "jump" where cards move from player slot to tabled position mid-animation
     // For solo vs Chucky: hide solo player's cards from slot (they're tabled above pot)
-    const is357WinWinner = threeFiveSevenWinnerId === player.id && 
-      threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting';
+    const is357WinWinner = threeFiveSevenWinnerId === player.id && threeFiveSevenWinPhase !== 'idle';
     const isSoloVsChuckyPlayer = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
     const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer;
     
@@ -3754,8 +3754,10 @@ export const MobileGameTable = ({
         {/* Rounds 1-2: Only table cards if winner clicked "Show Cards" (always face-up, with spin animation) */}
         {/* Round 3: Always table cards (face-down unless "Show Cards" clicked) */}
         {/* Only show AFTER leg award animation completes (not during 'waiting' phase) */}
+        {/* 3-5-7 Winner Cards - tabled IMMEDIATELY when winner is detected (including 'waiting' phase)
+            This ensures cards stay in tabled position throughout the entire win animation sequence */}
         {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
-         threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPhase !== 'waiting' &&
+         threeFiveSevenWinPhase !== 'idle' &&
          threeFiveSevenWinnerCards.length > 0 && 
          (currentRound === 3 || winner357ShowCards) && (
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
