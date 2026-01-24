@@ -1167,6 +1167,17 @@ export function HorsesGameTable({
           rollKey: botRollKey,
         } as any);
 
+        // If this was a human player with auto_fold (timed out), mark them to sit out next hand
+        if (!currentPlayer.is_bot && currentPlayer.auto_fold) {
+          console.log("[HORSES] Auto-roll complete for timed-out human, marking sit_out_next_hand:", botId);
+          await supabase
+            .from("players")
+            .update({ sit_out_next_hand: true })
+            .eq("id", botId);
+          const username = currentPlayer.profiles?.username || "Player";
+          toast.info(`${username} timed out - sitting out next hand`);
+        }
+
         // Advance turn after a moment
         await new Promise((resolve) => setTimeout(resolve, 1000));
 

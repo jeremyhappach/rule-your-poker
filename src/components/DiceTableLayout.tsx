@@ -457,15 +457,15 @@ export function DiceTableLayout({
       const d = dice[i];
       if (!d) return false;
 
-      // CRITICAL: Treat a die as "held at roll start" if EITHER:
-      // - the persisted pre-roll mask says it was held, OR
-      // - the current dice props already show it held.
+      // CRITICAL FIX for Roll 3 animation:
+      // When heldMaskBeforeComplete is provided (from the roller), trust it EXCLUSIVELY.
+      // The old OR logic (!!heldMask[i] || !!d.isHeld) broke Roll 3 because the game logic
+      // auto-marks ALL dice as isHeld when rollsRemaining === 0. This caused unheldIndices
+      // to be empty, skipping the fly-in animation entirely for observers.
       //
-      // Why: we can briefly have a stale/late `heldMaskBeforeComplete` due to state batching
-      // or out-of-order realtime packets. If we trust the mask exclusively, a newly-held die
-      // can be incorrectly considered "unheld" and get included in `animatingDiceIndices`,
-      // causing the exact held → scatter → held jump.
-      const wasHeldAtRollStart = heldMask ? (!!heldMask[i] || !!d.isHeld) : !!d.isHeld;
+      // The mask is authoritative: it captures what was held at the START of the roll.
+      // The current d.isHeld can already reflect post-roll state (all held on Roll 3).
+      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
       return !wasHeldAtRollStart;
     });
 
