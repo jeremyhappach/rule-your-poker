@@ -1140,7 +1140,15 @@ export function DiceTableLayout({
               value={item.die.value}
               isHeld={isHeldInLayout}
               isRolling={isRolling && !isHeldInLayout}
-              canToggle={canToggle && !isObserver && !isSCC && !isAnimatingFlyIn && !isRolling}
+                // SCC: allow toggling ONLY for non-locked dice (cargo / non-SCC dice).
+                // Locked Ship/Captain/Crew dice (isSCCDie) can never be unheld.
+                canToggle={
+                  canToggle &&
+                  !isObserver &&
+                  !isAnimatingFlyIn &&
+                  !isRolling &&
+                  (!isSCC || !isSCCDie)
+                }
               onToggle={() => onToggleHold?.(item.originalIndex)}
               size={effectiveSize}
               showWildHighlight={showWildHighlight && !isSCC}
