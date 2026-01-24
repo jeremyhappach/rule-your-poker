@@ -1837,13 +1837,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         return;
       }
       
-      // CRITICAL: If auto-ante didn't apply, player MUST see the modal to make a decision.
-      // Don't show for dealer (they auto ante up).
-      // DO show for sitting_out players - they need a chance to rejoin or confirm sit-out.
-      // A player should NEVER be stuck without either auto-ante or a modal.
-      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer) {
+      // Don't show ante dialog for dealer (they auto ante up)
+      // Don't show ante dialog for players who are sitting_out (they stay sitting out)
+      // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
+      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && !currentPlayer.sitting_out) {
         console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', currentPlayer.id, {
-          sitting_out: currentPlayer.sitting_out,
           auto_ante: currentPlayer.auto_ante,
           auto_ante_runback: currentPlayer.auto_ante_runback,
           isRunBack
@@ -1863,7 +1861,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           noCurrentPlayer: !currentPlayer,
           anteDecisionNotNull: currentPlayer?.ante_decision !== null,
           anteDecisionValue: currentPlayer?.ante_decision,
-          isDealer
+          isDealer,
+          sittingOut: currentPlayer?.sitting_out
         });
         setShowAnteDialog(false);
       }
