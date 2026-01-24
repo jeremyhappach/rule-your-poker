@@ -2328,11 +2328,16 @@ export function useHorsesMobileController({
       // FIX: Prevent dice-state regression during same-rollKey updates using holdSeq.
       // holdSeq increments on every hold/unhold action, so it correctly handles unhold actions.
       // Unlike held count, a player can legitimately go from 3 held to 2 held.
+      // EXCEPTION: On roll 3 (rollsRemaining === 0), players can't change holds anymore,
+      // so we skip the holdSeq guard to allow the final dice values through for animation.
       const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
       const nextHoldSeq = (state as any).holdSeq ?? 0;
       const maxSeenHoldSeq = maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0;
       
-      if (nextHoldSeq < maxSeenHoldSeq) {
+      // Only apply holdSeq guard if the player can still hold/unhold (rollsRemaining > 0)
+      const canStillHold = state.rollsRemaining > 0;
+      
+      if (canStillHold && nextHoldSeq < maxSeenHoldSeq) {
         // Stale update - has older sequence number. Reject it.
         console.log(
           `[OBSERVER_ROLL] Rejecting same-rollKey update: holdSeq (${nextHoldSeq}) < maxSeenHoldSeq (${maxSeenHoldSeq})`,
