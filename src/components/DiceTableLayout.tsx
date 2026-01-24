@@ -389,13 +389,25 @@ export function DiceTableLayout({
     const unheldIndices = orderedIndices.filter((i) => {
       const d = dice[i];
       if (!d) return false;
-      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+
+      // CRITICAL: Treat a die as "held at roll start" if EITHER:
+      // - the persisted pre-roll mask says it was held, OR
+      // - the current dice props already show it held.
+      //
+      // Why: we can briefly have a stale/late `heldMaskBeforeComplete` due to state batching
+      // or out-of-order realtime packets. If we trust the mask exclusively, a newly-held die
+      // can be incorrectly considered "unheld" and get included in `animatingDiceIndices`,
+      // causing the exact held → scatter → held jump.
+      const wasHeldAtRollStart = heldMask ? (!!heldMask[i] || !!d.isHeld) : !!d.isHeld;
       return !wasHeldAtRollStart;
     });
 
     // Track how many were held at the START of this roll (for Y offset calculation)
     const heldAtRollStart = heldMask
-      ? heldMask.filter(Boolean).length
+      ? orderedIndices.filter((i) => {
+          const d = dice[i];
+          return !!(heldMask[i] || d?.isHeld);
+        }).length
       : dice.filter((d) => d.isHeld).length;
     setAnimationHeldCount(heldAtRollStart);
 
