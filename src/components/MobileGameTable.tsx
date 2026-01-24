@@ -19,6 +19,7 @@ import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
+import { MusicToggleButton } from "./MusicToggleButton";
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
@@ -5629,5 +5630,12 @@ export const MobileGameTable = ({
           </div>
         )}
       </div>
+      
+      {/* Music toggle button - fixed bottom right (for card games only, dice games have it in action bar) */}
+      {gameType !== 'horses' && gameType !== 'ship-captain-crew' && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <MusicToggleButton variant="compact" />
+        </div>
+      )}
     </div>;
 };
