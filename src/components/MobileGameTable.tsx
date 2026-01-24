@@ -3863,8 +3863,9 @@ export const MobileGameTable = ({
 
         {/* High Card Dealer Selection - Large cards displayed on felt for OTHER players only */}
         {/* Current player's card is rendered in their bottom card box, not here */}
+        {/* z-40 to ensure cards appear above player chip stacks (z-30) */}
         {dealerSelectionCards && dealerSelectionCards.length > 0 && (
-          <div className="absolute inset-0 z-30 pointer-events-none">
+          <div className="absolute inset-0 z-40 pointer-events-none">
             {/* Cards for each player position arranged around the table (relative to current player) */}
             {(() => {
               // Get unique positions from dealer selection cards
