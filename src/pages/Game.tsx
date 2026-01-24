@@ -1910,7 +1910,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         chucky_cards: game.chucky_cards ?? 4,
       };
       
-      const isRunBack = previousGameConfig !== null && 
+      // CRITICAL: Can't be "running it back" on the FIRST hand of a session
+      // hasSessionHistory is false until at least one hand has completed (snapshot exists)
+      const isRunBack = hasSessionHistory && previousGameConfig !== null && 
         previousGameConfig.game_type === currentConfig.game_type &&
         previousGameConfig.ante_amount === currentConfig.ante_amount &&
         previousGameConfig.pussy_tax_enabled === currentConfig.pussy_tax_enabled &&
@@ -1923,7 +1925,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             previousGameConfig.legs_to_win === currentConfig.legs_to_win
         );
       
-      console.log('[ANTE DIALOG] Running it back check:', { isRunBack, previousGameConfig, currentConfig });
+      console.log('[ANTE DIALOG] Running it back check:', { isRunBack, hasSessionHistory, previousGameConfig, currentConfig });
       setIsRunningItBack(isRunBack);
       
       console.log('[ANTE DIALOG] Checking ante dialog:', {

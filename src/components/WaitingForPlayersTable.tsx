@@ -10,6 +10,8 @@ import type { AggressionLevel } from "@/lib/botHandStrength";
 import { generateUUID } from "@/lib/uuid";
 import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
+import { useWakeLock } from "@/hooks/useWakeLock";
+import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -104,6 +106,12 @@ export const WaitingForPlayersTable = ({
   realMoney = false,
   onBotAdded,
 }: WaitingForPlayersTableProps) => {
+  // Prevent screen from dimming while waiting for players
+  useWakeLock(true);
+  
+  // Doorbell sound when new player joins
+  const { playDoorbell } = useDoorbellSound();
+  
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
   const [isAddingBot, setIsAddingBot] = useState(false);
@@ -323,10 +331,21 @@ export const WaitingForPlayersTable = ({
     }, 500);
   };
 
-  // Track player count (without toast notification)
+  // Track player count and play doorbell when new human player joins
   useEffect(() => {
+    // Only play if count increased (not on initial mount or when players leave)
+    if (previousPlayerCountRef.current > 0 && players.length > previousPlayerCountRef.current) {
+      // Check if the new player(s) are human (not bots we just added)
+      const prevCount = previousPlayerCountRef.current;
+      const newPlayers = players.slice(-Math.max(0, players.length - prevCount));
+      const hasNewHuman = newPlayers.some(p => !p.is_bot);
+      
+      if (hasNewHuman) {
+        playDoorbell();
+      }
+    }
     previousPlayerCountRef.current = players.length;
-  }, [players.length]);
+  }, [players.length, players, playDoorbell]);
 
   const handleInvite = () => {
     const gameUrl = window.location.href;
