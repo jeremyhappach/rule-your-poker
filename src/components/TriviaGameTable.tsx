@@ -82,9 +82,7 @@ export const TriviaGameTable = ({
     setTriviaState(prev => ({ ...prev, phase: 'loading' }));
     
     try {
-      const categories = ['NFL', 'NBA', 'MLB', 'NHL', 'Soccer', 'general sports'];
-      const randomCategory = categories[Math.floor(Math.random() * categories.length)];
-      
+      // Don't pass category - let the server pick randomly from all categories
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-trivia`,
         {
@@ -93,7 +91,7 @@ export const TriviaGameTable = ({
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ category: randomCategory }),
+          body: JSON.stringify({}),
         }
       );
 
@@ -244,7 +242,7 @@ export const TriviaGameTable = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="w-6 h-6 text-poker-gold" />
-            <span className="text-xl font-bold text-poker-gold">Sports Trivia</span>
+            <span className="text-xl font-bold text-poker-gold">Trivia Challenge</span>
           </div>
           <Badge variant="outline" className="border-poker-gold text-poker-gold">
             Round {triviaState.roundNumber}

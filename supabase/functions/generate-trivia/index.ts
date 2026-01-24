@@ -25,11 +25,20 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const sportCategory = category || "general sports";
+    const categories = [
+      "NFL football", "NBA basketball", "MLB baseball", "NHL hockey", "soccer",
+      "world geography", "US geography", "capital cities",
+      "movies", "TV shows", "music", "celebrities",
+      "world history", "American history", "ancient civilizations",
+      "general science", "space and astronomy", "animals and nature",
+      "food and drink", "art and literature", "pop culture"
+    ];
     
-    const systemPrompt = `You are a sports trivia question generator. Generate medium difficulty trivia questions that are challenging but not obscure. Focus on well-known facts that dedicated sports fans would know.`;
+    const selectedCategory = category || categories[Math.floor(Math.random() * categories.length)];
+    
+    const systemPrompt = `You are a trivia question generator. Generate medium difficulty trivia questions that are challenging but not obscure. Focus on well-known facts that knowledgeable people would know. Always provide exactly 4 distinct answer options with only one correct answer.`;
 
-    const userPrompt = `Generate a single ${sportCategory} trivia question with exactly 4 answer options. The question should be medium difficulty - not too easy, not too hard.
+    const userPrompt = `Generate a single ${selectedCategory} trivia question with exactly 4 answer options. The question should be medium difficulty - not too easy, not too hard. Make it interesting and fun.
 
 Return the response using the trivia_question function.`;
 
