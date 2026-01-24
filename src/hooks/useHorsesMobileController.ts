@@ -216,6 +216,8 @@ export function useHorsesMobileController({
     heldMaskBeforeComplete?: boolean[];
     heldCountBeforeComplete?: number;
     rollKey?: number;
+    /** Monotonic within a roll; increments on every hold/unhold. Used to reject stale updates immediately. */
+    holdSeq?: number;
     /** Signature of the dice at the moment the rollKey changed (pre-roll snapshot). */
     preRollSig?: string;
   } | null>(null);
@@ -2006,7 +2008,10 @@ export function useHorsesMobileController({
       // (player can hold 3 dice then unhold to 2, which is valid if holdSeq increases)
       const rollKeyStr = `${currentTurnPlayerId}:${dbRollKey}`;
       const dbHoldSeq = (dbState as any)?.holdSeq ?? 0;
-      const maxSeenHoldSeq = maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0;
+      // IMPORTANT: compare against what's CURRENTLY displayed, so we reject stale updates during render.
+      // (Relying on refs updated in effects can be one-render late and still flicker.)
+      const displayedHoldSeq = observerDisplayState?.holdSeq ?? 0;
+      const maxSeenHoldSeq = Math.max(maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0, displayedHoldSeq);
       const dbHoldSeqWouldRegress = sameRoll && dbHoldSeq < maxSeenHoldSeq;
       
       const shouldUseDb =
@@ -2284,6 +2289,7 @@ export function useHorsesMobileController({
           heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
           heldCountBeforeComplete: derivedHeldCount,
           rollKey: newRollKey,
+          holdSeq: dbHoldSeq,
           preRollSig,
         });
 
@@ -2343,6 +2349,7 @@ export function useHorsesMobileController({
         rollsRemaining: state.rollsRemaining,
         heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
         heldCountBeforeComplete: (state as any).heldCountBeforeComplete,
+        holdSeq: nextHoldSeq,
       };
     });
 
@@ -2360,6 +2367,7 @@ export function useHorsesMobileController({
     // Use specific state properties instead of the entire object
     horsesState?.playerStates?.[currentTurnPlayerId ?? ""]?.rollsRemaining,
     (horsesState?.playerStates?.[currentTurnPlayerId ?? ""] as any)?.rollKey,
+    (horsesState?.playerStates?.[currentTurnPlayerId ?? ""] as any)?.holdSeq,
     horsesState?.playerStates?.[currentTurnPlayerId ?? ""]?.isComplete,
   ]);
 
