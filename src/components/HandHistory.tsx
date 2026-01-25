@@ -334,8 +334,10 @@ export const HandHistory = ({
       const dealerGameId = events[0]?.dealer_game_id;
       const dealerGame = dealerGameId ? dealerGames.get(dealerGameId) : undefined;
       
-      // Get game type from dealer_games table (single source of truth)
-      const resolvedGameType = dealerGame?.game_type || null;
+      // Get game type from dealer_games table OR fallback to game_results.game_type
+      // (Older results don't have dealer_game_id but do have game_type directly)
+      const gameTypeFromResult = (events[0] as any)?.game_type || null;
+      const resolvedGameType = dealerGame?.game_type || gameTypeFromResult;
       
       // Calculate total chip change for current player
       let totalChipChange = 0;
@@ -355,13 +357,41 @@ export const HandHistory = ({
       const isDiceGame = resolvedGameType === 'horses' || resolvedGameType === 'ship-captain-crew';
       
       if (isDiceGame && lastShowdown) {
-        // Match round by hand_number (rounds and game_results both have hand_number)
-        // Find the round that matches this game result's hand_number
-        const handNumber = lastShowdown.hand_number;
-        const relevantRound = rounds.find(r => 
-          r.hand_number === handNumber && 
-          r.horses_state?.playerStates
-        );
+        let relevantRound: Round | undefined;
+        
+        if (dealerGame) {
+          // Use time window matching when we have dealer_game info
+          const dealerGameStartTime = new Date(dealerGame.started_at).getTime();
+          const lastShowdownTime = new Date(lastShowdown.created_at).getTime();
+          
+          // Find the most recent round that falls within this dealer_game's time window
+          // Allow 10s buffer before dealer_game start (for round creation) and after result (for processing)
+          const matchingRounds = rounds
+            .filter(r => {
+              if (!r.horses_state?.playerStates) return false;
+              const roundTime = new Date(r.created_at).getTime();
+              return roundTime >= dealerGameStartTime - 10000 && 
+                     roundTime <= lastShowdownTime + 10000;
+            })
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          
+          relevantRound = matchingRounds[0];
+        } else {
+          // Fallback: match by hand_number (less reliable but works for single-game sessions)
+          const handNumber = lastShowdown.hand_number;
+          const matchingRounds = rounds
+            .filter(r => 
+              r.hand_number === handNumber && 
+              r.horses_state?.playerStates
+            )
+            .sort((a, b) => {
+              // Prefer rounds closest in time to the result
+              const aTime = Math.abs(new Date(a.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
+              const bTime = Math.abs(new Date(b.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
+              return aTime - bTime;
+            });
+          relevantRound = matchingRounds[0];
+        }
         
         if (relevantRound?.horses_state?.playerStates) {
           const playerStates = relevantRound.horses_state.playerStates as Record<string, any>;
