@@ -19,6 +19,18 @@ interface GameResult {
   created_at: string;
 }
 
+// A hand groups all game_results with the same hand_number
+interface HandGroup {
+  hand_number: number;
+  events: GameResult[]; // All events in this hand (ante, legs, tax, showdown)
+  totalChipChange: number; // Sum of chip changes for current player
+  showdownWinner: string | null; // The actual hand winner (not Ante/Leg Purchase/Pussy Tax)
+  showdownDescription: string | null;
+  isWinner: boolean; // Did current player win the showdown?
+  totalPot: number; // Total pot won in this hand
+  latestTimestamp: string;
+}
+
 interface Round {
   id: string;
   game_id: string;
@@ -29,18 +41,10 @@ interface Round {
   created_at: string;
 }
 
-interface PlayerAction {
-  id: string;
-  round_id: string;
-  player_id: string;
-  action_type: string;
-  created_at: string;
-}
-
 interface InProgressGame {
   hand_number: number;
   currentChipChange: number;
-  rounds: Round[];
+  events: GameResult[]; // Events so far in this hand
 }
 
 interface HandHistoryProps {
@@ -62,7 +66,6 @@ export const HandHistory = ({
 }: HandHistoryProps) => {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
-  const [playerActions, setPlayerActions] = useState<PlayerAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
   const [inProgressGame, setInProgressGame] = useState<InProgressGame | null>(null);
@@ -121,14 +124,14 @@ export const HandHistory = ({
         })));
       }
 
-      await fetchRoundsAndActions();
+      await fetchRoundsData();
     } finally {
       if (showLoading) setLoading(false);
     }
   };
 
-  const fetchRoundsAndActions = async () => {
-    // Fetch all rounds for this game
+  const fetchRoundsData = async () => {
+    // Fetch all rounds for this game (used to detect in-progress hands)
     const { data: roundsData, error: roundsError } = await supabase
       .from('rounds')
       .select('*')
@@ -140,23 +143,64 @@ export const HandHistory = ({
     } else {
       setRounds(roundsData || []);
     }
-
-    // Fetch player actions
-    if (roundsData && roundsData.length > 0) {
-      const roundIds = roundsData.map(r => r.id);
-      const { data: actions, error: actionsError } = await supabase
-        .from('player_actions')
-        .select('*')
-        .in('round_id', roundIds)
-        .order('created_at', { ascending: true });
-      
-      if (actionsError) {
-        console.error('[HandHistory] Error fetching player actions:', actionsError);
-      } else {
-        setPlayerActions(actions || []);
-      }
-    }
   };
+
+  // Helper to check if a result is a "system" event vs actual showdown
+  const isSystemEvent = (result: GameResult): boolean => {
+    const systemWinners = ['Ante', 'Leg Purchase', 'Pussy Tax'];
+    return systemWinners.includes(result.winner_username || '');
+  };
+
+  // Group game results by hand_number
+  const groupResultsByHand = (): HandGroup[] => {
+    const handMap = new Map<number, GameResult[]>();
+    
+    // Group all results by hand_number
+    gameResults.forEach(result => {
+      const existing = handMap.get(result.hand_number) || [];
+      existing.push(result);
+      handMap.set(result.hand_number, existing);
+    });
+
+    // Convert to HandGroup array
+    const groups: HandGroup[] = [];
+    handMap.forEach((events, hand_number) => {
+      // Sort events chronologically
+      const sortedEvents = events.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+      // Find the showdown result (non-system event)
+      const showdownEvent = sortedEvents.find(e => !isSystemEvent(e));
+      
+      // Calculate total chip change for current player
+      let totalChipChange = 0;
+      if (currentPlayerId) {
+        totalChipChange = sortedEvents.reduce((sum, event) => {
+          return sum + (event.player_chip_changes[currentPlayerId] ?? 0);
+        }, 0);
+      }
+
+      // Sum total pot (only from non-system events)
+      const totalPot = sortedEvents.reduce((sum, e) => sum + (e.pot_won || 0), 0);
+
+      groups.push({
+        hand_number,
+        events: sortedEvents,
+        totalChipChange,
+        showdownWinner: showdownEvent?.winner_username || null,
+        showdownDescription: showdownEvent?.winning_hand_description || null,
+        isWinner: showdownEvent?.winner_player_id === currentPlayerId,
+        totalPot,
+        latestTimestamp: sortedEvents[sortedEvents.length - 1]?.created_at || '',
+      });
+    });
+
+    // Sort by hand_number DESC (most recent first)
+    return groups.sort((a, b) => b.hand_number - a.hand_number);
+  };
+
+  const handGroups = groupResultsByHand();
 
   const updateInProgressGame = () => {
     if (rounds.length === 0) {
@@ -167,17 +211,15 @@ export const HandHistory = ({
     // Find the highest hand_number in rounds
     const maxHandNumber = Math.max(...rounds.map(r => r.hand_number || 0));
     
-    // Check if this hand already has a result
-    const hasResult = gameResults.some(gr => gr.hand_number === maxHandNumber);
+    // Check if this hand already has a showdown result (non-system event)
+    const handEvents = gameResults.filter(gr => gr.hand_number === maxHandNumber);
+    const hasShowdown = handEvents.some(e => !isSystemEvent(e));
     
-    if (hasResult || maxHandNumber === 0) {
+    if (hasShowdown || maxHandNumber === 0) {
       setInProgressGame(null);
       return;
     }
 
-    // Get rounds for the current hand
-    const currentHandRounds = rounds.filter(r => r.hand_number === maxHandNumber);
-    
     // Calculate chip change for current game:
     // Current chips - (buyIn + sum of all previous chip changes)
     let chipChange = 0;
@@ -193,55 +235,36 @@ export const HandHistory = ({
     setInProgressGame({
       hand_number: maxHandNumber,
       currentChipChange: chipChange,
-      rounds: currentHandRounds
+      events: handEvents, // Events so far in this hand
     });
   };
 
-  // Get user's chip change for a game result
-  const getUserChipChange = (result: GameResult): number | null => {
-    if (!currentPlayerId) return null;
-    return result.player_chip_changes[currentPlayerId] ?? null;
-  };
-
-  // Get rounds for a specific hand_number
-  const getRoundsForHand = (handNumber: number): Round[] => {
-    return rounds.filter(r => r.hand_number === handNumber).sort((a, b) => a.round_number - b.round_number);
-  };
-
-  // Get actions for a specific round
-  const getActionsForRound = (roundId: string): PlayerAction[] => {
-    return playerActions.filter(a => a.round_id === roundId);
-  };
-
-  // Format action type for display
-  const formatAction = (action: string): string => {
-    switch (action) {
-      case 'stay': return 'Stayed';
-      case 'fold': return 'Folded';
-      default: return action;
+  // Format event for display in expanded section
+  const formatEventDescription = (event: GameResult): { label: string; description: string; chipChange: number | null } => {
+    const chipChange = currentPlayerId ? (event.player_chip_changes[currentPlayerId] ?? null) : null;
+    
+    if (event.winner_username === 'Ante') {
+      return { label: 'Ante', description: event.winning_hand_description || 'Ante collected', chipChange };
     }
+    if (event.winner_username === 'Leg Purchase') {
+      return { label: 'Leg', description: event.winning_hand_description || 'Leg purchased', chipChange };
+    }
+    if (event.winner_username === 'Pussy Tax') {
+      return { label: 'Tax', description: event.winning_hand_description || 'Pussy tax collected', chipChange };
+    }
+    // Showdown result
+    const desc = event.is_chopped 
+      ? `Chopped: ${event.winning_hand_description || 'Split pot'}`
+      : `${event.winner_username} won with ${event.winning_hand_description || 'best hand'}`;
+    return { label: 'Showdown', description: desc, chipChange };
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8 text-muted-foreground">
-        <Clock className="w-4 h-4 mr-2 animate-spin" />
-        Loading history...
-      </div>
-    );
-  }
-
-  const hasNoHistory = gameResults.length === 0 && !inProgressGame;
-
-  if (hasNoHistory) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-        <Clock className="w-8 h-8 mb-2 opacity-50" />
-        <p>No games yet</p>
-        <p className="text-xs mt-1">Game history will appear here</p>
-      </div>
-    );
-  }
+  // Calculate display game number (Game 1 = first played, highest = most recent)
+  const totalGames = handGroups.length + (inProgressGame ? 1 : 0);
+  const getDisplayGameNumber = (index: number, isInProgress: boolean): number => {
+    if (isInProgress) return totalGames;
+    return totalGames - (inProgressGame ? 1 : 0) - index;
+  };
 
   // Format game type for display
   const formatGameType = (type: string | null | undefined): string => {
@@ -253,24 +276,34 @@ export const HandHistory = ({
     }
   };
 
-  // Calculate display game number (Game 1 = first played, highest = most recent)
-  // Since results are sorted by hand_number DESC, we need to reverse the numbering
-  const totalGames = gameResults.length + (inProgressGame ? 1 : 0);
-  const getDisplayGameNumber = (index: number, isInProgress: boolean): number => {
-    // In-progress is always the highest number (most recent)
-    if (isInProgress) return totalGames;
-    // For completed games (already sorted DESC), index 0 is most recent completed
-    // If there's an in-progress game, completed games are numbered totalGames-1, totalGames-2, etc.
-    // If no in-progress game, they're numbered totalGames, totalGames-1, etc.
-    return totalGames - (inProgressGame ? 1 : 0) - index;
-  };
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
+        <Clock className="w-4 h-4 mr-2 animate-spin" />
+        Loading history...
+      </div>
+    );
+  }
+
+  // Empty state
+  const hasNoHistory = handGroups.length === 0 && !inProgressGame;
+  if (hasNoHistory) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+        <Clock className="w-8 h-8 mb-2 opacity-50" />
+        <p>No hands yet</p>
+        <p className="text-xs mt-1">Hand history will appear here</p>
+      </div>
+    );
+  }
 
   return (
     <ScrollArea className="h-full max-h-[400px]">
       <div className="space-y-2 p-2">
         {/* Session Header */}
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-foreground">Game History</span>
+          <span className="text-sm font-medium text-foreground">Hand History</span>
         </div>
 
         <Accordion 
@@ -289,7 +322,7 @@ export const HandHistory = ({
                 <div className="flex items-center justify-between w-full pr-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
-                      Game #{getDisplayGameNumber(0, true)}
+                      Hand #{getDisplayGameNumber(0, true)}
                       {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
                     </span>
                     <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
@@ -308,146 +341,105 @@ export const HandHistory = ({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
-                <div className="space-y-2 pt-2">
-                  {(() => {
-                    // Only show COMPLETED rounds (not active/betting ones)
-                    const completedRounds = inProgressGame.rounds.filter(r => r.status === 'completed');
-                    
-                    if (completedRounds.length === 0) {
+                <div className="space-y-1.5 pt-2">
+                  {inProgressGame.events.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      Hand in progress...
+                    </div>
+                  ) : (
+                    inProgressGame.events.map((event) => {
+                      const { label, description, chipChange } = formatEventDescription(event);
                       return (
-                        <div className="text-xs text-muted-foreground">
-                          No completed rounds yet
+                        <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
+                              {label}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{description}</span>
+                          </div>
+                          {chipChange !== null && chipChange !== 0 && (
+                            <span className={cn(
+                              "text-xs font-medium",
+                              chipChange > 0 ? "text-green-500" : "text-red-500"
+                            )}>
+                              {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
+                            </span>
+                          )}
                         </div>
                       );
-                    }
-                    
-                    return (
-                      <div className="space-y-1">
-                        {completedRounds.map((round) => {
-                          const roundActions = getActionsForRound(round.id);
-                          
-                          return (
-                            <div key={round.id} className="bg-muted/20 rounded p-2">
-                              <div className="text-xs font-medium mb-1">
-                                Round {round.round_number}
-                              </div>
-                              {roundActions.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {roundActions.map((action) => (
-                                    <Badge 
-                                      key={action.id}
-                                      variant="secondary"
-                                      className={cn(
-                                        "text-[10px] py-0",
-                                        action.action_type === 'fold' && "bg-red-500/20 text-red-400",
-                                        action.action_type === 'stay' && "bg-green-500/20 text-green-400"
-                                      )}
-                                    >
-                                      {formatAction(action.action_type)}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">No actions recorded</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
+                    })
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>
           )}
 
-          {/* Completed Games - sorted by hand_number DESC (most recent first) */}
-          {gameResults.map((result, index) => {
-            const userChipChange = getUserChipChange(result);
-            const isWinner = currentPlayerId && result.winner_player_id === currentPlayerId;
-            const handRounds = getRoundsForHand(result.hand_number);
+          {/* Completed Hands - grouped by hand_number, sorted DESC (most recent first) */}
+          {handGroups.map((hand, index) => {
             const displayGameNumber = getDisplayGameNumber(index, false);
 
             return (
               <AccordionItem 
-                key={result.id} 
-                value={result.id}
+                key={hand.hand_number} 
+                value={`hand-${hand.hand_number}`}
                 className="border border-border/50 rounded-lg mb-2 overflow-hidden bg-card/50"
               >
                 <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
                   <div className="flex items-center justify-between w-full pr-2">
                     <div className="flex items-center gap-2">
-                      {isWinner && <Trophy className="w-4 h-4 text-poker-gold" />}
+                      {hand.isWinner && <Trophy className="w-4 h-4 text-poker-gold" />}
                       <span className="text-sm font-medium">
-                        Game #{displayGameNumber}
+                        Hand #{displayGameNumber}
                         {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {result.is_chopped ? 'Chopped' : result.winner_username || 'Unknown'}
+                        {hand.showdownWinner || 'No winner'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {result.winning_hand_description && (
+                      {hand.showdownDescription && (
                         <Badge variant="outline" className="text-[10px] py-0 h-5">
-                          {result.winning_hand_description}
+                          {hand.showdownDescription}
                         </Badge>
                       )}
-                      {userChipChange !== null && (
-                        <span className={cn(
-                          "text-sm font-bold min-w-[60px] text-right",
-                          userChipChange > 0 ? "text-green-500" : 
-                          userChipChange < 0 ? "text-red-500" : "text-muted-foreground"
-                        )}>
-                          {userChipChange > 0 ? '+' : ''}{formatChipValue(userChipChange)}
-                        </span>
-                      )}
+                      <span className={cn(
+                        "text-sm font-bold min-w-[60px] text-right",
+                        hand.totalChipChange > 0 ? "text-green-500" : 
+                        hand.totalChipChange < 0 ? "text-red-500" : "text-muted-foreground"
+                      )}>
+                        {hand.totalChipChange > 0 ? '+' : ''}{formatChipValue(hand.totalChipChange)}
+                      </span>
                     </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-3 pb-3">
-                  <div className="space-y-2 pt-2">
-                    <div className="text-xs text-muted-foreground">
-                      Pot: ${formatChipValue(result.pot_won)} • {new Date(result.created_at).toLocaleTimeString()}
+                  <div className="space-y-1.5 pt-2">
+                    <div className="text-xs text-muted-foreground mb-2">
+                      {hand.totalPot > 0 && `Pot: $${formatChipValue(hand.totalPot)} • `}
+                      {new Date(hand.latestTimestamp).toLocaleTimeString()}
                     </div>
                     
-                    {handRounds.length > 0 ? (
-                      <div className="space-y-1">
-                        {handRounds.map((round) => {
-                          const roundActions = getActionsForRound(round.id);
-                          
-                          return (
-                            <div key={round.id} className="bg-muted/20 rounded p-2">
-                              <div className="text-xs font-medium mb-1">
-                                Round {round.round_number}
-                              </div>
-                              {roundActions.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {roundActions.map((action) => (
-                                    <Badge 
-                                      key={action.id}
-                                      variant="secondary"
-                                      className={cn(
-                                        "text-[10px] py-0",
-                                        action.action_type === 'fold' && "bg-red-500/20 text-red-400",
-                                        action.action_type === 'stay' && "bg-green-500/20 text-green-400"
-                                      )}
-                                    >
-                                      {formatAction(action.action_type)}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">No actions recorded</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-muted-foreground">
-                        Round details not available
-                      </div>
-                    )}
+                    {hand.events.map((event) => {
+                      const { label, description, chipChange } = formatEventDescription(event);
+                      return (
+                        <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
+                              {label}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{description}</span>
+                          </div>
+                          {chipChange !== null && chipChange !== 0 && (
+                            <span className={cn(
+                              "text-xs font-medium",
+                              chipChange > 0 ? "text-green-500" : "text-red-500"
+                            )}>
+                              {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </AccordionContent>
               </AccordionItem>
