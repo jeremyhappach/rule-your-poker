@@ -483,6 +483,7 @@ export type Database = {
           all_decisions_in: boolean | null
           ante_amount: number
           ante_decision_deadline: string | null
+          ante_decision_timer_seconds: number
           awaiting_next_round: boolean | null
           buck_position: number | null
           buy_in: number
@@ -496,6 +497,7 @@ export type Database = {
           dealer_position: number | null
           dealer_selection_state: Json | null
           game_over_at: string | null
+          game_setup_timer_seconds: number
           game_type: string | null
           id: string
           is_first_hand: boolean
@@ -525,6 +527,7 @@ export type Database = {
           all_decisions_in?: boolean | null
           ante_amount?: number
           ante_decision_deadline?: string | null
+          ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
           buck_position?: number | null
           buy_in?: number
@@ -538,6 +541,7 @@ export type Database = {
           dealer_position?: number | null
           dealer_selection_state?: Json | null
           game_over_at?: string | null
+          game_setup_timer_seconds?: number
           game_type?: string | null
           id?: string
           is_first_hand?: boolean
@@ -567,6 +571,7 @@ export type Database = {
           all_decisions_in?: boolean | null
           ante_amount?: number
           ante_decision_deadline?: string | null
+          ante_decision_timer_seconds?: number
           awaiting_next_round?: boolean | null
           buck_position?: number | null
           buy_in?: number
@@ -580,6 +585,7 @@ export type Database = {
           dealer_position?: number | null
           dealer_selection_state?: Json | null
           game_over_at?: string | null
+          game_setup_timer_seconds?: number
           game_type?: string | null
           id?: string
           is_first_hand?: boolean

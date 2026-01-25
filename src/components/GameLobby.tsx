@@ -11,6 +11,7 @@ import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
 import { logSessionCreated } from "@/lib/sessionEventLog";
+import { getTimerSettingsAsync } from "@/hooks/useGlobalTimerSettings";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { PerfSession } from "@/lib/perf";
@@ -326,7 +327,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
       const sessionName = generateGameName(recentNames);
 
-      // Create game with waiting status
+      // Fetch timer settings to cache at session creation
+      const timerSettings = await perf.step("timerSettings.fetch", () => getTimerSettingsAsync());
+
+      // Create game with waiting status and cached timer settings
       const { data: game, error: gameError } = await perf.step("games.insert", () =>
         supabase
           .from("games")
@@ -335,6 +339,8 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
             status: "waiting",
             name: sessionName,
             real_money: realMoney,
+            game_setup_timer_seconds: timerSettings.gameSetup,
+            ante_decision_timer_seconds: timerSettings.anteDecision,
           })
           .select()
           .single()

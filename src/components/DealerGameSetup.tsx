@@ -12,7 +12,6 @@ import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPl
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { toast } from "sonner";
-import { useGlobalTimerSettings } from "@/hooks/useGlobalTimerSettings";
 
 type SelectionStep = 'category' | 'cards' | 'dice';
 
@@ -42,6 +41,8 @@ interface DealerGameSetupProps {
   previousGameConfig?: PreviousGameConfig | null; // The previous game's actual config
   sessionGameConfigs?: SessionGameConfigs; // Session-specific configs per game type
   isFirstHand?: boolean; // Whether this is the first hand of the session (no run back option)
+  gameSetupTimerSeconds: number; // Cached at session start
+  anteDecisionTimerSeconds: number; // Cached at session start
   onConfigComplete: () => void;
   onSessionEnd: () => void;
 }
@@ -69,6 +70,8 @@ export const DealerGameSetup = ({
   previousGameConfig,
   sessionGameConfigs,
   isFirstHand = true,
+  gameSetupTimerSeconds,
+  anteDecisionTimerSeconds,
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
@@ -76,8 +79,7 @@ export const DealerGameSetup = ({
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('category');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
-  // Fetch global timer settings
-  const { gameSetupTimerSeconds, anteDecisionTimerSeconds, isLoading: timerSettingsLoading } = useGlobalTimerSettings();
+  // Timer settings are passed as props (cached at session start)
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeletingEmptySession, setShowDeletingEmptySession] = useState(false);
@@ -489,8 +491,8 @@ export const DealerGameSetup = ({
   }, []);
 
   const syncWithServerDeadline = useCallback(async () => {
-    // Don't sync until timer settings are loaded to avoid using stale defaults
-    if (isBot || loadingDefaults || timerSettingsLoading) return;
+    // Don't sync until defaults are loaded
+    if (isBot || loadingDefaults) return;
 
     const { data: gameData, error } = await supabase
       .from('games')
@@ -534,7 +536,7 @@ export const DealerGameSetup = ({
     console.log('[DEALER SETUP] No server deadline found, set fallback deadline');
     setTimeLeft(gameSetupTimerSeconds);
     scheduleConfigTimeout(new Date(deadlineIso).getTime());
-  }, [gameId, isBot, loadingDefaults, timerSettingsLoading, scheduleConfigTimeout, gameSetupTimerSeconds]);
+  }, [gameId, isBot, loadingDefaults, scheduleConfigTimeout, gameSetupTimerSeconds]);
 
   // Initial sync + resync when app returns to foreground (mobile browsers can pause timers)
   useEffect(() => {
@@ -542,7 +544,7 @@ export const DealerGameSetup = ({
   }, [syncWithServerDeadline]);
 
   useEffect(() => {
-    if (isBot || loadingDefaults || timerSettingsLoading) return;
+    if (isBot || loadingDefaults) return;
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -561,11 +563,11 @@ export const DealerGameSetup = ({
         configTimeoutRef.current = null;
       }
     };
-  }, [isBot, loadingDefaults, timerSettingsLoading, syncWithServerDeadline]);
+  }, [isBot, loadingDefaults, syncWithServerDeadline]);
 
   // Countdown timer - display only (timeout enforcement is scheduled off the server deadline)
   useEffect(() => {
-    if (isBot || loadingDefaults || timerSettingsLoading) return;
+    if (isBot || loadingDefaults) return;
     if (timeLeft === null) return; // Wait for initial sync
 
     const timer = setInterval(() => {
@@ -579,7 +581,7 @@ export const DealerGameSetup = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isBot, loadingDefaults, timerSettingsLoading, timeLeft !== null]);
+  }, [isBot, loadingDefaults, timeLeft !== null]);
 
 
   // Auto-submit for bots - always run it back immediately with previous config
