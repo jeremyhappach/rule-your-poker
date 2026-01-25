@@ -243,6 +243,13 @@ export const HandHistory = ({
         return { ...round, dealer_game_id: matchedDealerGameId };
       });
       
+      console.log('[HandHistory] Enriched rounds:', enrichedRounds.map(r => ({
+        id: r.id,
+        created_at: r.created_at,
+        dealer_game_id: r.dealer_game_id,
+        hasPlayerStates: !!(r.horses_state as any)?.playerStates,
+      })));
+      
       setRounds(enrichedRounds as any);
     }
 
@@ -394,24 +401,23 @@ export const HandHistory = ({
       if (isDiceGame && lastShowdown) {
         let relevantRound: Round | undefined;
         
-        // DIRECT MATCH using enriched dealer_game_id
+        // DIRECT MATCH using the enriched dealer_game_id on rounds
+        // Rounds are enriched with dealer_game_id during fetchRoundsData via time window matching
         const resultDealerGameId = lastShowdown.dealer_game_id;
         
         if (resultDealerGameId) {
+          // Match round using its enriched dealer_game_id (computed during fetch)
           relevantRound = rounds.find(r => 
             (r as any).dealer_game_id === resultDealerGameId && 
             r.horses_state?.playerStates
           );
-        } else {
-          // Fallback: match by hand_number (less reliable but works for single-game sessions)
-          const handNumber = lastShowdown.hand_number;
+        }
+        
+        // Fallback: match by closest time to result if no dealer_game_id match
+        if (!relevantRound) {
           const matchingRounds = rounds
-            .filter(r => 
-              r.hand_number === handNumber && 
-              r.horses_state?.playerStates
-            )
+            .filter(r => r.horses_state?.playerStates)
             .sort((a, b) => {
-              // Prefer rounds closest in time to the result
               const aTime = Math.abs(new Date(a.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
               const bTime = Math.abs(new Date(b.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
               return aTime - bTime;
@@ -457,6 +463,15 @@ export const HandHistory = ({
     // Sort by display number DESC (most recent first)
     return groups.sort((a, b) => b.hand_number - a.hand_number);
   };
+
+  // DEBUG: Log state at render time
+  console.log('[HandHistory] State at render:', {
+    gameResultsCount: gameResults.length,
+    roundsCount: rounds.length,
+    dealerGamesCount: dealerGames.size,
+    roundsWithHorsesState: rounds.filter(r => r.horses_state?.playerStates).length,
+    gameResultsWithDealerGameId: gameResults.filter(r => r.dealer_game_id).length,
+  });
 
   const handGroups = groupResultsByHand();
 
