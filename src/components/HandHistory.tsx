@@ -55,6 +55,7 @@ interface Round {
   status: string;
   created_at: string;
   horses_state?: any; // Contains playerStates with dice values for dice games
+  dealer_game_id?: string | null; // Direct link to dealer_games table
 }
 
 // Player dice result for display
@@ -216,14 +217,13 @@ export const HandHistory = ({
     // Fetch all rounds for this game (including horses_state for dice games)
     const { data: roundsData, error: roundsError } = await supabase
       .from('rounds')
-      .select('id, game_id, round_number, hand_number, pot, status, created_at, horses_state')
+      .select('id, game_id, round_number, hand_number, pot, status, created_at, horses_state, dealer_game_id')
       .eq('game_id', gameId)
       .order('created_at', { ascending: true });
     
     if (roundsError) {
       console.error('[HandHistory] Error fetching rounds:', roundsError);
     } else {
-      // Store rounds WITHOUT pre-enrichment - match them to dealer_games on-demand
       setRounds(roundsData as any);
     }
 
@@ -376,20 +376,13 @@ export const HandHistory = ({
         let relevantRound: Round | undefined;
         
         const resultDealerGameId = lastShowdown.dealer_game_id;
-        const dealerGame = dealerGames.get(resultDealerGameId || '');
         
-        if (dealerGame) {
-          const dgStart = new Date(dealerGame.started_at).getTime();
-          const resultTime = new Date(lastShowdown.created_at).getTime();
-          
-          // Find rounds created during this specific dealer_game
-          // CRITICAL: round.created_at must be >= dealer_game.started_at AND <= game_result.created_at
-          const candidateRounds = rounds.filter(r => {
-            const roundTime = new Date(r.created_at).getTime();
-            return roundTime >= dgStart && 
-                   roundTime <= resultTime && 
-                   r.horses_state?.playerStates;
-          });
+        if (resultDealerGameId) {
+          // DIRECT MATCH: rounds now have dealer_game_id column
+          const candidateRounds = rounds.filter(r => 
+            r.dealer_game_id === resultDealerGameId && 
+            r.horses_state?.playerStates
+          );
           
           // Pick the LAST round (highest round_number) for final showdown
           relevantRound = candidateRounds.length > 0

@@ -18,7 +18,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -235,6 +235,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       status: 'betting', // Use existing status; horses_state manages gamePhase
       pot: potForRound,
       horses_state: initialState,
+      dealer_game_id: game.current_game_uuid || null,
     })
     .select()
     .single();
