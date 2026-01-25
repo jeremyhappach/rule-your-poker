@@ -410,19 +410,18 @@ export const HandHistory = ({
         const resultDealerGameId = lastShowdown.dealer_game_id;
         
         if (resultDealerGameId) {
-          // Find round that matches this dealer_game_id and has player states
+          // Find the LAST round (highest round_number) that matches this dealer_game_id
+          // Multiple rounds exist per game (Horses: up to 7 rounds, SCC: 2-3 rounds)
           const candidateRounds = rounds.filter(r => 
             r.dealer_game_id === resultDealerGameId && 
             r.horses_state?.playerStates
           );
           
-          // If multiple rounds match (rare), pick the one closest to the result time
+          // Pick the LAST round (final showdown) not the first
           if (candidateRounds.length > 0) {
-            relevantRound = candidateRounds.sort((a, b) => {
-              const aTime = Math.abs(new Date(a.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
-              const bTime = Math.abs(new Date(b.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
-              return aTime - bTime;
-            })[0];
+            relevantRound = candidateRounds.sort((a, b) => 
+              b.round_number - a.round_number
+            )[0];
           }
         }
         
