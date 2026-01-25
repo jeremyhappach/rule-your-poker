@@ -187,28 +187,33 @@ export const HandHistory = ({
       if (resultsError) {
         console.error('[HandHistory] Error fetching game results:', resultsError);
       } else {
-        setGameResults((results || []).map((r) => ({
+        const enrichedResults = (results || []).map((r) => ({
           ...r,
           player_chip_changes: (r.player_chip_changes as Record<string, number>) || {},
-        })));
+        }));
+        setGameResults(enrichedResults);
+        
+        // CRITICAL: Pass both dealerGamesMap AND freshGameResults to avoid stale state
+        const dealerGamesMap = dealerGamesData ? new Map(dealerGamesData.map((dg: any) => [dg.id, {
+          id: dg.id,
+          game_type: dg.game_type,
+          dealer_user_id: dg.dealer_user_id,
+          started_at: dg.started_at,
+          config: dg.config || {},
+          dealer_username: dg.profiles?.username || 'Unknown',
+        }])) : new Map();
+        
+        await fetchRoundsData(dealerGamesMap, enrichedResults);
       }
-
-      // CRITICAL: Pass dealerGamesMap directly instead of reading from state
-      // State updates are async and may not have completed yet
-      await fetchRoundsData(dealerGamesData ? new Map(dealerGamesData.map((dg: any) => [dg.id, {
-        id: dg.id,
-        game_type: dg.game_type,
-        dealer_user_id: dg.dealer_user_id,
-        started_at: dg.started_at,
-        config: dg.config || {},
-        dealer_username: dg.profiles?.username || 'Unknown',
-      }])) : new Map());
     } finally {
       if (showLoading) setLoading(false);
     }
   };
 
-  const fetchRoundsData = async (dealerGamesMap: Map<string, DealerGame>) => {
+  const fetchRoundsData = async (
+    dealerGamesMap: Map<string, DealerGame>,
+    freshGameResults: GameResult[]
+  ) => {
     // Fetch all rounds for this game (including horses_state for dice games)
     const { data: roundsData, error: roundsError } = await supabase
       .from('rounds')
@@ -219,18 +224,34 @@ export const HandHistory = ({
     if (roundsError) {
       console.error('[HandHistory] Error fetching rounds:', roundsError);
     } else {
-      // CRITICAL: Enrich rounds with dealer_game_id by matching hand_number
-      // Both rounds and game_results share game_id + hand_number as the definitive link
+      // CRITICAL: Enrich rounds with dealer_game_id by time window matching
+      // NOTE: rounds.hand_number != game_results.hand_number
+      // - game_results.hand_number = global session hand count (1, 2, 3, ...)
+      // - rounds.hand_number = hand within multi-round games (3-5-7: always 1)
+      const sortedDealerGames = Array.from(dealerGamesMap.values()).sort(
+        (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
+      );
+      
       const enrichedRounds = (roundsData || []).map(round => {
-        // Match by hand_number - this is the definitive relationship
-        const matchingResult = gameResults.find(gr => 
-          gr.game_id === round.game_id && 
-          gr.hand_number === round.hand_number
-        );
+        const roundTime = new Date(round.created_at).getTime();
+        let matchedDealerGameId: string | null = null;
+        
+        // Find which dealer game this round belongs to based on time window
+        for (let i = 0; i < sortedDealerGames.length; i++) {
+          const dg = sortedDealerGames[i];
+          const dgStart = new Date(dg.started_at).getTime();
+          const nextDg = sortedDealerGames[i + 1];
+          const dgEnd = nextDg ? new Date(nextDg.started_at).getTime() : Infinity;
+          
+          if (roundTime >= dgStart && roundTime < dgEnd) {
+            matchedDealerGameId = dg.id;
+            break;
+          }
+        }
         
         return { 
           ...round, 
-          dealer_game_id: matchingResult?.dealer_game_id || null 
+          dealer_game_id: matchedDealerGameId
         };
       });
       
