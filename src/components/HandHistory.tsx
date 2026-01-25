@@ -154,20 +154,30 @@ export const HandHistory = ({
   };
 
   // Check if this result represents a game completion (someone won the full game)
-  // For horses: each round IS a complete game (no legs accumulation)
-  // For 357/holm: game ends when someone wins with X legs
+  // Different game types have different completion markers:
+  // - 357: game ends when someone wins with "X legs"
+  // - Horses/SCC: every non-system result with a winner IS a complete game (no legs, just winner-take-all with rollovers for ties)
+  // - Holm: game ends when player "beats Chucky" (not when they just win a round or pussy tax happens)
   const isGameCompletion = (result: GameResult): boolean => {
     if (isSystemEvent(result)) return false;
     
     const resultGameType = (result as any).game_type || null;
+    const desc = result.winning_hand_description || '';
     
-    // Horses games: every non-system result is a complete game
-    if (resultGameType === 'horses') {
-      return true;
+    // Horses and Ship-Captain-Crew: every non-system result with a winner is a complete game
+    // (ties cause rollovers with NO game_result entry, so any result here means a winner was determined)
+    if (resultGameType === 'horses' || resultGameType === 'ship-captain-crew') {
+      // Must have a winner (not null/pussy tax)
+      return result.winner_player_id !== null;
     }
     
-    // 357/holm games: completion is when someone wins with X legs
-    const desc = result.winning_hand_description || '';
+    // Holm: game ends ONLY when someone "beats Chucky"
+    // Pussy tax and player-vs-player rounds continue the game (buck passes)
+    if (resultGameType === 'holm-game') {
+      return desc.toLowerCase().includes('beat chucky');
+    }
+    
+    // 357 (or unknown): completion is when someone wins with X legs
     const legsPattern = /\d+\s*legs?$/i;
     return legsPattern.test(desc);
   };
