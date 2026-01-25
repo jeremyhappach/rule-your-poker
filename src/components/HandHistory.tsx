@@ -55,7 +55,6 @@ interface Round {
   status: string;
   created_at: string;
   horses_state?: any; // Contains playerStates with dice values for dice games
-  dealer_game_id?: string | null; // Enriched during fetch via time window matching
 }
 
 // Player dice result for display
@@ -224,38 +223,8 @@ export const HandHistory = ({
     if (roundsError) {
       console.error('[HandHistory] Error fetching rounds:', roundsError);
     } else {
-      // CRITICAL: Enrich rounds with dealer_game_id by time window matching
-      // NOTE: rounds.hand_number != game_results.hand_number
-      // - game_results.hand_number = global session hand count (1, 2, 3, ...)
-      // - rounds.hand_number = hand within multi-round games (3-5-7: always 1)
-      const sortedDealerGames = Array.from(dealerGamesMap.values()).sort(
-        (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
-      );
-      
-      const enrichedRounds = (roundsData || []).map(round => {
-        const roundTime = new Date(round.created_at).getTime();
-        let matchedDealerGameId: string | null = null;
-        
-        // Find which dealer game this round belongs to based on time window
-        for (let i = 0; i < sortedDealerGames.length; i++) {
-          const dg = sortedDealerGames[i];
-          const dgStart = new Date(dg.started_at).getTime();
-          const nextDg = sortedDealerGames[i + 1];
-          const dgEnd = nextDg ? new Date(nextDg.started_at).getTime() : Infinity;
-          
-          if (roundTime >= dgStart && roundTime < dgEnd) {
-            matchedDealerGameId = dg.id;
-            break;
-          }
-        }
-        
-        return { 
-          ...round, 
-          dealer_game_id: matchedDealerGameId
-        };
-      });
-      
-      setRounds(enrichedRounds as any);
+      // Store rounds WITHOUT pre-enrichment - match them to dealer_games on-demand
+      setRounds(roundsData as any);
     }
 
     // Fetch player names for displaying dice results
@@ -406,35 +375,26 @@ export const HandHistory = ({
       if (isDiceGame && lastShowdown) {
         let relevantRound: Round | undefined;
         
-        // Match round using enriched dealer_game_id (computed during fetch via time windows)
         const resultDealerGameId = lastShowdown.dealer_game_id;
+        const dealerGame = dealerGames.get(resultDealerGameId || '');
         
-        if (resultDealerGameId) {
-          // Find the LAST round (highest round_number) that matches this dealer_game_id
-          // Multiple rounds exist per game (Horses: up to 7 rounds, SCC: 2-3 rounds)
-          const candidateRounds = rounds.filter(r => 
-            r.dealer_game_id === resultDealerGameId && 
-            r.horses_state?.playerStates
-          );
+        if (dealerGame) {
+          const dgStart = new Date(dealerGame.started_at).getTime();
+          const resultTime = new Date(lastShowdown.created_at).getTime();
           
-          // Pick the LAST round (final showdown) not the first
-          if (candidateRounds.length > 0) {
-            relevantRound = candidateRounds.sort((a, b) => 
-              b.round_number - a.round_number
-            )[0];
-          }
-        }
-        
-        // Fallback: if no match via dealer_game_id, find closest round by time
-        if (!relevantRound) {
-          const matchingRounds = rounds
-            .filter(r => r.horses_state?.playerStates)
-            .sort((a, b) => {
-              const aTime = Math.abs(new Date(a.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
-              const bTime = Math.abs(new Date(b.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
-              return aTime - bTime;
-            });
-          relevantRound = matchingRounds[0];
+          // Find rounds created during this specific dealer_game
+          // CRITICAL: round.created_at must be >= dealer_game.started_at AND <= game_result.created_at
+          const candidateRounds = rounds.filter(r => {
+            const roundTime = new Date(r.created_at).getTime();
+            return roundTime >= dgStart && 
+                   roundTime <= resultTime && 
+                   r.horses_state?.playerStates;
+          });
+          
+          // Pick the LAST round (highest round_number) for final showdown
+          relevantRound = candidateRounds.length > 0
+            ? candidateRounds.sort((a, b) => b.round_number - a.round_number)[0]
+            : undefined;
         }
         
         if (relevantRound?.horses_state?.playerStates) {
