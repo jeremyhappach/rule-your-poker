@@ -48,8 +48,6 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
   const [allPlayers, setAllPlayers] = useState<PlayerResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [actualHandCount, setActualHandCount] = useState<number | null>(null);
-  const [allSnapshots, setAllSnapshots] = useState<any[]>([]);
-  const [showDebug, setShowDebug] = useState(false);
 
   // Find current user's player ID from the session players
   const currentPlayer = session.players.find(p => !p.is_bot);
@@ -73,8 +71,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       .eq('game_id', session.id)
       .order('created_at', { ascending: false });
 
-    // Store all snapshots for debug overlay
-    setAllSnapshots(snapshots || []);
+    // Calculate actual hand count from snapshots
 
     // Calculate actual hand count from snapshots
     let handMax: number | null = null;
@@ -308,8 +305,8 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
               )}
             </div>
             
-            {/* View History Button */}
-            {session.total_hands > 0 && (
+            {/* View History Button - show if we have hands from either source */}
+            {((actualHandCount ?? session.total_hands) > 0) && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -319,45 +316,6 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
                 <Clock className="w-4 h-4 mr-2" />
                 View Hand History
               </Button>
-            )}
-
-            {/* Debug Toggle */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-full text-xs text-muted-foreground"
-              onClick={() => setShowDebug(!showDebug)}
-            >
-              {showDebug ? 'Hide' : 'Show'} Debug Snapshots ({allSnapshots.length})
-            </Button>
-
-            {/* Debug Overlay */}
-            {showDebug && (
-              <div className="mt-2 p-2 bg-muted/50 rounded border text-xs font-mono max-h-[300px] overflow-y-auto">
-                <div className="font-bold mb-2">All Snapshots (desc by created_at):</div>
-                {allSnapshots.length === 0 ? (
-                  <div className="text-muted-foreground">No snapshots found</div>
-                ) : (
-                  <div className="space-y-2">
-                    {allSnapshots.map((snap, i) => (
-                      <div key={snap.id} className="p-1.5 bg-background rounded border">
-                        <div className="font-semibold">{i + 1}. {snap.username} {snap.is_bot ? '🤖' : ''}</div>
-                        <div>chips: <span className={snap.chips >= 0 ? 'text-green-500' : 'text-red-500'}>{snap.chips}</span></div>
-                        <div>hand_number: {snap.hand_number}</div>
-                        <div>player_id: {snap.player_id?.slice(0, 8)}...</div>
-                        <div>user_id: {snap.user_id?.slice(0, 8)}...</div>
-                        <div className="text-muted-foreground">
-                          {format(new Date(snap.created_at), 'HH:mm:ss.SSS')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-2 pt-2 border-t">
-                  <div className="font-bold">Sum of latest per player:</div>
-                  <div>{allPlayers.reduce((sum, p) => sum + p.chips, 0)}</div>
-                </div>
-              </div>
             )}
           </div>
         )}
