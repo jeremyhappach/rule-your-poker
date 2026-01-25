@@ -354,21 +354,14 @@ export const HandHistory = ({
       let playerDiceResults: PlayerDiceResult[] | undefined;
       const isDiceGame = resolvedGameType === 'horses' || resolvedGameType === 'ship-captain-crew';
       
-      if (isDiceGame && lastShowdown && dealerGame) {
-        // Find the round that was active during this dealer_game's timeframe
-        // Use dealer_game started_at and result created_at to bracket the round
-        const dealerGameStartTime = new Date(dealerGame.started_at).getTime();
-        const resultTime = new Date(lastShowdown.created_at).getTime();
-        
-        // Find the most recent completed round that falls within the dealer_game window
-        const relevantRound = rounds
-          .filter(r => {
-            const roundTime = new Date(r.created_at).getTime();
-            // Round should be after dealer_game started and before/at result time
-            return roundTime >= dealerGameStartTime - 5000 && roundTime <= resultTime + 5000;
-          })
-          .filter(r => r.horses_state?.playerStates)
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      if (isDiceGame && lastShowdown) {
+        // Match round by hand_number (rounds and game_results both have hand_number)
+        // Find the round that matches this game result's hand_number
+        const handNumber = lastShowdown.hand_number;
+        const relevantRound = rounds.find(r => 
+          r.hand_number === handNumber && 
+          r.horses_state?.playerStates
+        );
         
         if (relevantRound?.horses_state?.playerStates) {
           const playerStates = relevantRound.horses_state.playerStates as Record<string, any>;
