@@ -47,7 +47,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
   const [showHistory, setShowHistory] = useState(false);
   const [allPlayers, setAllPlayers] = useState<PlayerResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [actualHandCount, setActualHandCount] = useState<number | null>(null);
+  const [gameCount, setGameCount] = useState<number | null>(null);
 
   // Find current user's player ID from the session players
   const currentPlayer = session.players.find(p => !p.is_bot);
@@ -71,19 +71,13 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       .eq('game_id', session.id)
       .order('created_at', { ascending: false });
 
-    // Calculate actual hand count from snapshots
-
-    // Calculate actual hand count from snapshots
-    let handMax: number | null = null;
-    if (snapshots && snapshots.length > 0) {
-      for (const snap of snapshots) {
-        const hn = typeof snap.hand_number === 'number' ? snap.hand_number : Number(snap.hand_number);
-        if (Number.isFinite(hn)) {
-          handMax = handMax === null ? hn : Math.max(handMax, hn);
-        }
-      }
-    }
-    setActualHandCount(handMax);
+    // Fetch game count from dealer_games table (distinct games in this session)
+    const { count: dealerGamesCount } = await supabase
+      .from('dealer_games')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', session.id);
+    
+    setGameCount(dealerGamesCount ?? 0);
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
       // Use snapshots - get the latest snapshot per participant.
@@ -265,8 +259,8 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
                 <p className="font-medium truncate">{session.host_username}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Hands</p>
-                <p className="font-medium">{actualHandCount ?? session.total_hands}</p>
+                <p className="text-xs text-muted-foreground">Games</p>
+                <p className="font-medium">{gameCount ?? 0}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Date</p>
@@ -305,8 +299,8 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
               )}
             </div>
             
-            {/* View History Button - show if we have hands from either source */}
-            {((actualHandCount ?? session.total_hands) > 0) && (
+            {/* View History Button - show if we have games */}
+            {(gameCount ?? 0) > 0 && (
               <Button 
                 variant="outline" 
                 size="sm" 
