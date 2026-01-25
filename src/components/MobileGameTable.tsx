@@ -1915,6 +1915,37 @@ export const MobileGameTable = ({
     return null;
   }, [isShowingAnnouncement, holmWinPotTriggerId, lastRoundResult, players]);
 
+  // Format 3-5-7 showdown announcement based on reveal settings and whether current player stayed
+  // New format from server: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:description"
+  const format357ShowdownAnnouncement = useMemo(() => {
+    if (!lastRoundResult || gameType === 'holm-game') return lastRoundResult?.split('|||')[0] || '';
+    
+    // Check if this is a 3-5-7 showdown result (contains HANDNAME field)
+    const parts = lastRoundResult.split('|||');
+    const handNamePart = parts.find(p => p.startsWith('HANDNAME:'));
+    
+    // If no HANDNAME field, this is not a showdown result - return as-is
+    if (!handNamePart) return parts[0] || '';
+    
+    const basePart = parts[0] || ''; // e.g., "Hap won showdown"
+    const handName = handNamePart.replace('HANDNAME:', '');
+    const winnerName = basePart.replace(' won showdown', '');
+    
+    // Case 1: reveal_at_showdown is OFF - everyone sees "(no reveal)"
+    if (!revealAtShowdown) {
+      return `${winnerName} won (no reveal)`;
+    }
+    
+    // Case 2: reveal_at_showdown is ON
+    // - If current player stayed, they see the detailed hand description
+    // - If current player didn't stay, they see "(secret reveal)"
+    if (currentPlayerStayed) {
+      return `${winnerName} won with ${handName}`;
+    } else {
+      return `${winnerName} won showdown (secret reveal)`;
+    }
+  }, [lastRoundResult, gameType, revealAtShowdown, currentPlayerStayed]);
+
   // Check if current player is the winner (for dimming logic)
   const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
 
@@ -5025,7 +5056,7 @@ export const MobileGameTable = ({
               <p className="text-slate-900 font-bold text-sm text-center truncate">
                 {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
                   ? '🏆 Game Complete!' 
-                  : lastRoundResult.split('|||')[0]}
+                  : gameType !== 'holm-game' ? format357ShowdownAnnouncement : lastRoundResult.split('|||')[0]}
               </p>
             </div>
           ) : !isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && 
@@ -5041,7 +5072,7 @@ export const MobileGameTable = ({
               <p className="text-slate-900 font-bold text-sm text-center truncate">
                 {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
                   ? '🏆 Game Complete!' 
-                  : lastRoundResult.split('|||')[0]}
+                  : gameType !== 'holm-game' ? format357ShowdownAnnouncement : lastRoundResult.split('|||')[0]}
               </p>
             </div>
           ) : gameStatus === 'ante_decision' ? (

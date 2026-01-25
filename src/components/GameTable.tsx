@@ -287,6 +287,36 @@ export const GameTable = ({
     is357Round3MultiPlayerShowdown ||
     is357SecretRevealActive;
   
+  // Format 3-5-7 showdown announcement based on reveal settings and whether current player stayed
+  // New format from server: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:description"
+  const format357ShowdownAnnouncement = useMemo(() => {
+    if (!lastRoundResult || gameType === 'holm-game') return lastRoundResult?.split('|||')[0] || '';
+    
+    // Check if this is a 3-5-7 showdown result (contains HANDNAME field)
+    const parts = lastRoundResult.split('|||');
+    const handNamePart = parts.find(p => p.startsWith('HANDNAME:'));
+    
+    // If no HANDNAME field, this is not a showdown result - return as-is
+    if (!handNamePart) return parts[0] || '';
+    
+    const basePart = parts[0] || ''; // e.g., "Hap won showdown"
+    const handName = handNamePart.replace('HANDNAME:', '');
+    const winnerName = basePart.replace(' won showdown', '');
+    
+    // Case 1: reveal_at_showdown is OFF - everyone sees "(no reveal)"
+    if (!revealAtShowdown) {
+      return `${winnerName} won (no reveal)`;
+    }
+    
+    // Case 2: reveal_at_showdown is ON
+    // - If current player stayed, they see the detailed hand description
+    // - If current player didn't stay, they see "(secret reveal)"
+    if (currentPlayerStayed) {
+      return `${winnerName} won with ${handName}`;
+    } else {
+      return `${winnerName} won showdown (secret reveal)`;
+    }
+  }, [lastRoundResult, gameType, revealAtShowdown, currentPlayerStayed]);
   const currentRoundId = realtimeRound?.id || null;
   
   // Clear showdown cache when round context changes
@@ -1687,8 +1717,8 @@ export const GameTable = ({
         chuckyActive ||
         (gameType === 'holm-game' && lastRoundResult.includes(' has '))
       ) && (() => {
-        // Parse debug data from result message (strip everything from first ||| for display)
-        const displayMessage = lastRoundResult.split('|||')[0];
+        // Parse debug data from result message - use formatted announcement for 3-5-7
+        const displayMessage = gameType !== 'holm-game' ? format357ShowdownAnnouncement : lastRoundResult.split('|||')[0];
         
         return (
           <div className="mt-4 flex justify-center">
