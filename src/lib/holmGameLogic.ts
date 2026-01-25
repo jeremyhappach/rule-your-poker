@@ -507,7 +507,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       community_cards: communityCards as any,
       chucky_active: false,
       current_turn_position: buckPosition,
-      hand_number: handNumber
+      hand_number: handNumber,
+      dealer_game_id: gameConfig?.current_game_uuid || null
     })
     .select()
     .single();

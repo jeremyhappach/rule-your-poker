@@ -917,6 +917,7 @@ export type Database = {
           community_cards_revealed: number | null
           created_at: string
           current_turn_position: number | null
+          dealer_game_id: string | null
           decision_deadline: string | null
           game_id: string
           hand_number: number | null
@@ -936,6 +937,7 @@ export type Database = {
           community_cards_revealed?: number | null
           created_at?: string
           current_turn_position?: number | null
+          dealer_game_id?: string | null
           decision_deadline?: string | null
           game_id: string
           hand_number?: number | null
@@ -955,6 +957,7 @@ export type Database = {
           community_cards_revealed?: number | null
           created_at?: string
           current_turn_position?: number | null
+          dealer_game_id?: string | null
           decision_deadline?: string | null
           game_id?: string
           hand_number?: number | null
@@ -965,6 +968,13 @@ export type Database = {
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rounds_dealer_game_id_fkey"
+            columns: ["dealer_game_id"]
+            isOneToOne: false
+            referencedRelation: "dealer_games"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rounds_game_id_fkey"
             columns: ["game_id"]

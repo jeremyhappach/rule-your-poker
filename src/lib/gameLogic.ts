@@ -312,7 +312,8 @@ export async function startRound(gameId: string, roundNumber: number) {
       status: 'betting',
       pot: 0, // Will be updated after ante collection
       decision_deadline: deadline.toISOString(),
-      hand_number: handNumber
+      hand_number: handNumber,
+      dealer_game_id: gameConfig?.current_game_uuid || null
     })
     .select()
     .single();
