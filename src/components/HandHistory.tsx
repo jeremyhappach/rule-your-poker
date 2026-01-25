@@ -20,7 +20,17 @@ interface GameResult {
   dealer_game_id?: string | null;
 }
 
-// A hand groups all game_results with the same hand_number
+// DealerGame info from the dealer_games table
+interface DealerGame {
+  id: string;
+  game_type: string;
+  dealer_user_id: string;
+  started_at: string;
+  config: Record<string, any>;
+  dealer_username?: string; // Joined from profiles
+}
+
+// A hand groups all game_results with the same dealer_game_id
 interface HandGroup {
   hand_number: number;
   events: GameResult[]; // All events in this hand (ante, legs, tax, showdown)
@@ -30,6 +40,7 @@ interface HandGroup {
   isWinner: boolean; // Did current player win the showdown?
   totalPot: number; // Total pot won in this hand
   latestTimestamp: string;
+  dealerGame?: DealerGame; // Info from dealer_games table
 }
 
 interface Round {
@@ -46,6 +57,7 @@ interface InProgressGame {
   hand_number: number;
   currentChipChange: number;
   events: GameResult[]; // Events so far in this hand
+  dealerGame?: DealerGame; // Info from dealer_games table
 }
 
 interface HandHistoryProps {
@@ -66,12 +78,14 @@ export const HandHistory = ({
   currentRound
 }: HandHistoryProps) => {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
+  const [dealerGames, setDealerGames] = useState<Map<string, DealerGame>>(new Map());
   const [rounds, setRounds] = useState<Round[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
   const [inProgressGame, setInProgressGame] = useState<InProgressGame | null>(null);
   const [gameBuyIn, setGameBuyIn] = useState<number | null>(null);
   const [isSessionEnded, setIsSessionEnded] = useState(false);
+  const [currentDealerGame, setCurrentDealerGame] = useState<DealerGame | null>(null);
 
   useEffect(() => {
     fetchHistoryData();
@@ -88,26 +102,63 @@ export const HandHistory = ({
   // Update in-progress game when chips/rounds/results change
   useEffect(() => {
     updateInProgressGame();
-  }, [currentPlayerChips, rounds, gameResults, gameBuyIn, currentPlayerId, isSessionEnded]);
+  }, [currentPlayerChips, rounds, gameResults, gameBuyIn, currentPlayerId, isSessionEnded, currentDealerGame]);
 
   const fetchHistoryData = async (options?: { showLoading?: boolean }) => {
     const showLoading = options?.showLoading ?? true;
     if (showLoading) setLoading(true);
 
     try {
-      // Fetch game buy_in and session status once
-      if (gameBuyIn === null) {
-        const { data: gameData, error: gameError } = await supabase
-          .from('games')
-          .select('buy_in, session_ended_at')
-          .eq('id', gameId)
-          .maybeSingle();
+      // Fetch game buy_in, session status, and current_game_uuid
+      const { data: gameData, error: gameError } = await supabase
+        .from('games')
+        .select('buy_in, session_ended_at, current_game_uuid')
+        .eq('id', gameId)
+        .maybeSingle();
 
-        if (gameError) {
-          console.error('[HandHistory] Error fetching game:', gameError);
-        } else if (gameData) {
-          setGameBuyIn(gameData.buy_in);
-          setIsSessionEnded(!!gameData.session_ended_at);
+      if (gameError) {
+        console.error('[HandHistory] Error fetching game:', gameError);
+      } else if (gameData) {
+        setGameBuyIn(gameData.buy_in);
+        setIsSessionEnded(!!gameData.session_ended_at);
+      }
+
+      // Fetch all dealer_games for this session with dealer profile info
+      const { data: dealerGamesData, error: dealerGamesError } = await supabase
+        .from('dealer_games')
+        .select(`
+          id,
+          game_type,
+          dealer_user_id,
+          started_at,
+          config,
+          profiles:dealer_user_id (username)
+        `)
+        .eq('session_id', gameId)
+        .order('started_at', { ascending: true });
+
+      if (dealerGamesError) {
+        console.error('[HandHistory] Error fetching dealer_games:', dealerGamesError);
+      } else if (dealerGamesData) {
+        const dealerGamesMap = new Map<string, DealerGame>();
+        dealerGamesData.forEach((dg: any) => {
+          dealerGamesMap.set(dg.id, {
+            id: dg.id,
+            game_type: dg.game_type,
+            dealer_user_id: dg.dealer_user_id,
+            started_at: dg.started_at,
+            config: dg.config || {},
+            dealer_username: dg.profiles?.username || 'Unknown',
+          });
+        });
+        setDealerGames(dealerGamesMap);
+        
+        // Find the current dealer game (most recent or matching current_game_uuid)
+        if (gameData?.current_game_uuid && dealerGamesMap.has(gameData.current_game_uuid)) {
+          setCurrentDealerGame(dealerGamesMap.get(gameData.current_game_uuid) || null);
+        } else if (dealerGamesData.length > 0) {
+          const lastDealerGame = dealerGamesData[dealerGamesData.length - 1];
+          setCurrentDealerGame(dealerGamesMap.get(lastDealerGame.id) || null);
         }
       }
 
@@ -227,6 +278,10 @@ export const HandHistory = ({
       const showdownEvents = events.filter(e => !isSystemEvent(e));
       const lastShowdown = showdownEvents[showdownEvents.length - 1];
       
+      // Get dealer_game_id from first event (all events in a group share the same dealer_game_id)
+      const dealerGameId = events[0]?.dealer_game_id;
+      const dealerGame = dealerGameId ? dealerGames.get(dealerGameId) : undefined;
+      
       // Calculate total chip change for current player
       let totalChipChange = 0;
       if (currentPlayerId) {
@@ -249,6 +304,7 @@ export const HandHistory = ({
         isWinner: gameWinner?.winner_player_id === currentPlayerId,
         totalPot,
         latestTimestamp: events[events.length - 1]?.created_at || '',
+        dealerGame,
       };
     });
 
@@ -302,6 +358,7 @@ export const HandHistory = ({
         hand_number: maxHandNumber,
         currentChipChange: 0,
         events: [],
+        dealerGame: currentDealerGame || undefined,
       });
       return;
     }
@@ -331,6 +388,7 @@ export const HandHistory = ({
       events: inProgressEvents.sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       ),
+      dealerGame: currentDealerGame || undefined,
     });
   };
 
@@ -419,7 +477,9 @@ export const HandHistory = ({
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
                       Game #{totalGames}
-                      {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
+                      {inProgressGame.dealerGame && (
+                        <span className="text-muted-foreground font-normal"> ({formatGameType(inProgressGame.dealerGame.game_type)})</span>
+                      )}
                     </span>
                     <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
                       In Progress
@@ -485,7 +545,9 @@ export const HandHistory = ({
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
                         Game #{displayGameNumber}
-                        {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
+                        {hand.dealerGame && (
+                          <span className="text-muted-foreground font-normal"> ({formatGameType(hand.dealerGame.game_type)})</span>
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {hand.showdownWinner || 'No winner'}

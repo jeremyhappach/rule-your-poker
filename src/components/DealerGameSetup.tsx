@@ -12,7 +12,7 @@ import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPl
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { toast } from "sonner";
-import { generateUUID } from "@/lib/uuid";
+// generateUUID no longer needed - dealer_games table provides UUIDs
 
 type SelectionStep = 'category' | 'cards' | 'dice';
 
@@ -597,6 +597,34 @@ export const DealerGameSetup = ({
           const submitDiceGame = async () => {
             const anteDeadline = new Date(Date.now() + 10000).toISOString();
             
+            // Get the dealer's user_id for the dealer_games record
+            const { data: dealerData } = await supabase
+              .from('players')
+              .select('user_id')
+              .eq('id', dealerPlayerId)
+              .single();
+            
+            const dealerUserId = dealerData?.user_id;
+            
+            // Insert into dealer_games table first
+            const { data: dealerGame, error: dealerGameError } = await supabase
+              .from('dealer_games')
+              .insert({
+                session_id: gameId,
+                game_type: previousGameType,
+                dealer_user_id: dealerUserId,
+                config: { ante_amount: parsedAnte },
+              })
+              .select('id')
+              .single();
+            
+            if (dealerGameError) {
+              console.error('[BOT DEALER] Error creating dealer_game:', dealerGameError);
+              return;
+            }
+            
+            const dealerGameId = dealerGame.id;
+            
             const { error } = await supabase
               .from('games')
               .update({
@@ -609,7 +637,7 @@ export const DealerGameSetup = ({
                 legs_to_win: 0,
                 pot_max_enabled: false,
                 pussy_tax_enabled: false,
-                current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
+                current_game_uuid: dealerGameId, // Reference the dealer_games record
               })
               .eq('id', gameId);
             
@@ -631,7 +659,7 @@ export const DealerGameSetup = ({
               .update({ ante_decision: 'ante_up', sitting_out: false })
               .eq('id', dealerPlayerId);
             
-            console.log('[BOT DEALER] ✅ Dice game config complete');
+            console.log('[BOT DEALER] ✅ Dice game config complete, dealer_game_id:', dealerGameId);
             onConfigComplete();
           };
           
@@ -642,6 +670,48 @@ export const DealerGameSetup = ({
           const anteDeadline = new Date(Date.now() + 10000).toISOString();
           
           const submitCardGame = async () => {
+            // Get the dealer's user_id for the dealer_games record
+            const { data: dealerData } = await supabase
+              .from('players')
+              .select('user_id')
+              .eq('id', dealerPlayerId)
+              .single();
+            
+            const dealerUserId = dealerData?.user_id;
+            
+            // Build the config object for dealer_games
+            const dealerGameConfig = {
+              ante_amount: previousGameConfig.ante_amount,
+              leg_value: previousGameConfig.leg_value,
+              pussy_tax_enabled: previousGameConfig.pussy_tax_enabled,
+              pussy_tax_value: previousGameConfig.pussy_tax_value,
+              legs_to_win: previousGameConfig.legs_to_win,
+              pot_max_enabled: previousGameConfig.pot_max_enabled,
+              pot_max_value: previousGameConfig.pot_max_value,
+              chucky_cards: isHolmGame ? previousGameConfig.chucky_cards : null,
+              rabbit_hunt: isHolmGame ? (previousGameConfig.rabbit_hunt ?? false) : null,
+              reveal_at_showdown: !isHolmGame ? (previousGameConfig.reveal_at_showdown ?? false) : null,
+            };
+            
+            // Insert into dealer_games table first
+            const { data: dealerGame, error: dealerGameError } = await supabase
+              .from('dealer_games')
+              .insert({
+                session_id: gameId,
+                game_type: previousGameType,
+                dealer_user_id: dealerUserId,
+                config: dealerGameConfig,
+              })
+              .select('id')
+              .single();
+            
+            if (dealerGameError) {
+              console.error('[BOT DEALER] Error creating dealer_game:', dealerGameError);
+              return;
+            }
+            
+            const dealerGameId = dealerGame.id;
+            
             const updateData: any = {
               game_type: previousGameType,
               ante_amount: previousGameConfig.ante_amount,
@@ -655,7 +725,7 @@ export const DealerGameSetup = ({
               config_complete: true,
               status: 'ante_decision',
               ante_decision_deadline: anteDeadline,
-              current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
+              current_game_uuid: dealerGameId, // Reference the dealer_games record
             };
             
             if (isHolmGame) {
@@ -689,7 +759,7 @@ export const DealerGameSetup = ({
               .update({ ante_decision: 'ante_up', sitting_out: false })
               .eq('id', dealerPlayerId);
             
-            console.log('[BOT DEALER] ✅ Card game config complete');
+            console.log('[BOT DEALER] ✅ Card game config complete, dealer_game_id:', dealerGameId);
             onConfigComplete();
           };
           
@@ -704,7 +774,49 @@ export const DealerGameSetup = ({
         if (defaults) {
           const anteDeadline = new Date(Date.now() + 10000).toISOString();
           
-          const submitDefault = async () => {
+        const submitDefault = async () => {
+            // Get the dealer's user_id for the dealer_games record
+            const { data: dealerData } = await supabase
+              .from('players')
+              .select('user_id')
+              .eq('id', dealerPlayerId)
+              .single();
+            
+            const dealerUserId = dealerData?.user_id;
+            
+            // Build the config object for dealer_games
+            const dealerGameConfig = {
+              ante_amount: defaults.ante_amount,
+              leg_value: defaults.leg_value,
+              pussy_tax_enabled: defaults.pussy_tax_enabled,
+              pussy_tax_value: defaults.pussy_tax_value,
+              legs_to_win: defaults.legs_to_win,
+              pot_max_enabled: defaults.pot_max_enabled,
+              pot_max_value: defaults.pot_max_value,
+              chucky_cards: gameType === 'holm-game' ? defaults.chucky_cards : null,
+              rabbit_hunt: gameType === 'holm-game' ? (defaults.rabbit_hunt ?? false) : null,
+              reveal_at_showdown: gameType !== 'holm-game' ? (defaults.reveal_at_showdown ?? false) : null,
+            };
+            
+            // Insert into dealer_games table first
+            const { data: dealerGame, error: dealerGameError } = await supabase
+              .from('dealer_games')
+              .insert({
+                session_id: gameId,
+                game_type: gameType,
+                dealer_user_id: dealerUserId,
+                config: dealerGameConfig,
+              })
+              .select('id')
+              .single();
+            
+            if (dealerGameError) {
+              console.error('[BOT DEALER] Error creating dealer_game:', dealerGameError);
+              return;
+            }
+            
+            const dealerGameId = dealerGame.id;
+            
             const updateData: any = {
               game_type: gameType,
               ante_amount: defaults.ante_amount,
@@ -718,7 +830,7 @@ export const DealerGameSetup = ({
               config_complete: true,
               status: 'ante_decision',
               ante_decision_deadline: anteDeadline,
-              current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
+              current_game_uuid: dealerGameId, // Reference the dealer_games record
             };
             
             if (gameType === 'holm-game') {
@@ -747,7 +859,7 @@ export const DealerGameSetup = ({
               .update({ ante_decision: 'ante_up', sitting_out: false })
               .eq('id', dealerPlayerId);
             
-            console.log('[BOT DEALER] ✅ Default game config complete');
+            console.log('[BOT DEALER] ✅ Default game config complete, dealer_game_id:', dealerGameId);
             onConfigComplete();
           };
           
@@ -811,6 +923,50 @@ export const DealerGameSetup = ({
     const isHolmGame = gameTypeToSubmit === 'holm-game';
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
     
+    // Get the dealer's user_id for the dealer_games record
+    const { data: dealerData } = await supabase
+      .from('players')
+      .select('user_id')
+      .eq('id', dealerPlayerId)
+      .single();
+    
+    const dealerUserId = dealerData?.user_id;
+    
+    // Build the config object for dealer_games
+    const dealerGameConfig = {
+      ante_amount: parsedAnte,
+      leg_value: parsedLegValue,
+      pussy_tax_enabled: pussyTaxEnabled,
+      pussy_tax_value: parsedPussyTax,
+      legs_to_win: parsedLegsToWin,
+      pot_max_enabled: potMaxEnabled,
+      pot_max_value: parsedPotMax,
+      chucky_cards: isHolmGame ? parsedChucky : null,
+      rabbit_hunt: isHolmGame ? rabbitHunt : null,
+      reveal_at_showdown: !isHolmGame ? revealAtShowdown : null,
+    };
+    
+    // Insert into dealer_games table first
+    const { data: dealerGame, error: dealerGameError } = await supabase
+      .from('dealer_games')
+      .insert({
+        session_id: gameId,
+        game_type: gameTypeToSubmit,
+        dealer_user_id: dealerUserId,
+        config: dealerGameConfig,
+      })
+      .select('id')
+      .single();
+    
+    if (dealerGameError) {
+      console.error('[DEALER SETUP] Error creating dealer_game:', dealerGameError);
+      hasSubmittedRef.current = false;
+      setIsSubmitting(false);
+      return;
+    }
+    
+    const dealerGameId = dealerGame.id;
+    
     const updateData: any = {
       game_type: gameTypeToSubmit,
       ante_amount: parsedAnte,
@@ -824,7 +980,7 @@ export const DealerGameSetup = ({
       config_complete: true,
       status: 'ante_decision',
       ante_decision_deadline: anteDeadline,
-      current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
+      current_game_uuid: dealerGameId, // Reference the dealer_games record
     };
 
     if (isHolmGame) {
@@ -865,7 +1021,7 @@ export const DealerGameSetup = ({
       })
       .eq('id', dealerPlayerId);
 
-    console.log('[DEALER SETUP] ✅ Config complete');
+    console.log('[DEALER SETUP] ✅ Config complete, dealer_game_id:', dealerGameId);
     onConfigComplete();
   };
 
@@ -990,6 +1146,41 @@ export const DealerGameSetup = ({
     
     const anteDeadline = new Date(Date.now() + 10000).toISOString();
     
+    // Get the dealer's user_id for the dealer_games record
+    const { data: dealerData } = await supabase
+      .from('players')
+      .select('user_id')
+      .eq('id', dealerPlayerId)
+      .single();
+    
+    const dealerUserId = dealerData?.user_id;
+    
+    // Build the config object for dealer_games (simple ante games)
+    const dealerGameConfig = {
+      ante_amount: parsedAnte,
+    };
+    
+    // Insert into dealer_games table first
+    const { data: dealerGame, error: dealerGameError } = await supabase
+      .from('dealer_games')
+      .insert({
+        session_id: gameId,
+        game_type: gameTypeToSubmit,
+        dealer_user_id: dealerUserId,
+        config: dealerGameConfig,
+      })
+      .select('id')
+      .single();
+    
+    if (dealerGameError) {
+      console.error('[DEALER SETUP] Error creating dealer_game:', dealerGameError);
+      hasSubmittedRef.current = false;
+      setIsSubmitting(false);
+      return;
+    }
+    
+    const dealerGameId = dealerGame.id;
+    
     const { error } = await supabase
       .from('games')
       .update({
@@ -1003,7 +1194,7 @@ export const DealerGameSetup = ({
         legs_to_win: 0,
         pot_max_enabled: false,
         pussy_tax_enabled: false,
-        current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
+        current_game_uuid: dealerGameId, // Reference the dealer_games record
       })
       .eq('id', gameId);
     
@@ -1030,7 +1221,7 @@ export const DealerGameSetup = ({
       })
       .eq('id', dealerPlayerId);
     
-    console.log(`[DEALER SETUP] ✅ ${gameTypeName} config complete`);
+    console.log(`[DEALER SETUP] ✅ ${gameTypeName} config complete, dealer_game_id:`, dealerGameId);
     onConfigComplete();
   };
 
