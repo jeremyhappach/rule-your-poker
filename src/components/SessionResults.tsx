@@ -77,7 +77,16 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
       .select('id', { count: 'exact', head: true })
       .eq('session_id', session.id);
     
-    setGameCount(dealerGamesCount ?? 0);
+    // Fallback to game_results count for older sessions without dealer_games
+    if ((dealerGamesCount ?? 0) > 0) {
+      setGameCount(dealerGamesCount);
+    } else {
+      const { count: resultsCount } = await supabase
+        .from('game_results')
+        .select('id', { count: 'exact', head: true })
+        .eq('game_id', session.id);
+      setGameCount(resultsCount ?? 0);
+    }
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
       // Use snapshots - get the latest snapshot per participant.
