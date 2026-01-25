@@ -136,7 +136,8 @@ export async function recordGameResult(
   winningHandDescription: string | null,
   potWon: number,
   playerChipChanges: Record<string, number>,
-  isChopped: boolean = false
+  isChopped: boolean = false,
+  dealerGameId?: string | null
 ) {
   console.log('[GAME RESULT] Recording game result:', {
     gameId,
@@ -144,7 +145,8 @@ export async function recordGameResult(
     winnerUsername,
     winningHandDescription,
     potWon,
-    isChopped
+    isChopped,
+    dealerGameId
   });
   
   const { error } = await supabase
@@ -157,7 +159,8 @@ export async function recordGameResult(
       winning_hand_description: winningHandDescription,
       pot_won: potWon,
       player_chip_changes: playerChipChanges,
-      is_chopped: isChopped
+      is_chopped: isChopped,
+      dealer_game_id: dealerGameId || null
     });
   
   if (error) {
@@ -174,7 +177,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
-      .select('ante_amount, leg_value, status, current_round, total_hands, pot')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid')
       .eq('id', gameId)
       .single(),
     supabase
@@ -195,6 +198,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   const anteAmount = gameConfig?.ante_amount || 1;
   const legValue = gameConfig?.leg_value || 1;
+  const currentGameUuid = gameConfig?.current_game_uuid || null;
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
 
@@ -372,7 +376,8 @@ export async function startRound(gameId: string, roundNumber: number) {
         `${activePlayers.length} players anted $${anteAmount}`,
         0, // pot_won is 0 - this is money going INTO the pot
         anteChipChanges,
-        false
+        false,
+        currentGameUuid // dealer_game_id
       );
       console.log('[START_ROUND] Recorded ante chip changes in game_results:', anteChipChanges);
     }
@@ -874,7 +879,8 @@ async function handleGameOver(
   currentPot: number,
   legValue: number,
   legsToWin: number,
-  currentDealerPosition: number
+  currentDealerPosition: number,
+  currentGameUuid?: string | null
 ) {
   console.log('[HANDLE GAME OVER] Starting game over handler', { winnerId, winnerUsername, winnerLegs });
   
@@ -931,7 +937,8 @@ async function handleGameOver(
     `${winnerLegs} legs`,
     totalPrize,
     playerChipChanges,
-    false
+    false,
+    currentGameUuid // dealer_game_id
   );
   
   // Award the winner using atomic increment
@@ -1049,9 +1056,11 @@ export async function endRound(gameId: string) {
   // Fetch game configuration
   const { data: gameConfig } = await supabase
     .from('games')
-    .select('leg_value, legs_to_win, pot_max_enabled, pot_max_value, pussy_tax_enabled, pussy_tax_value')
+    .select('leg_value, legs_to_win, pot_max_enabled, pot_max_value, pussy_tax_enabled, pussy_tax_value, current_game_uuid')
     .eq('id', gameId)
     .single();
+  
+  const currentGameUuid = gameConfig?.current_game_uuid || null;
   
   const legValue = gameConfig?.leg_value || 1;
   const legsToWin = gameConfig?.legs_to_win || 3;
@@ -1182,7 +1191,7 @@ export async function endRound(gameId: string) {
               // Fetch fresh pot value
               const { data: freshGameData } = await supabase
                 .from('games')
-                .select('pot, dealer_position')
+                .select('pot, dealer_position, current_game_uuid')
                 .eq('id', gameId)
                 .single();
               
@@ -1198,7 +1207,8 @@ export async function endRound(gameId: string) {
                 freshPot,
                 legValue,
                 legsToWin,
-                freshGameData?.dealer_position || 1
+                freshGameData?.dealer_position || 1,
+                freshGameData?.current_game_uuid || currentGameUuid
               );
             }, 5000);
             
@@ -1262,7 +1272,8 @@ export async function endRound(gameId: string) {
       `${username} paid $${betAmount} for leg ${newLegCount}`,
       0, // pot_won is 0 - money held for game winner
       legChipChanges,
-      false
+      false,
+      currentGameUuid // dealer_game_id
     );
     console.log('[endRound] Recorded leg purchase chip changes:', legChipChanges);
       
@@ -1301,7 +1312,7 @@ export async function endRound(gameId: string) {
         // Fetch fresh game data to get current pot value
         const { data: freshGameData } = await supabase
           .from('games')
-          .select('pot, dealer_position')
+          .select('pot, dealer_position, current_game_uuid')
           .eq('id', gameId)
           .single();
         
@@ -1318,7 +1329,8 @@ export async function endRound(gameId: string) {
           currentPot,
           legValue,
           legsToWin,
-          freshGameData?.dealer_position || 1
+          freshGameData?.dealer_position || 1,
+          freshGameData?.current_game_uuid || currentGameUuid
         );
       }, 4000);
       
@@ -1483,7 +1495,8 @@ export async function endRound(gameId: string) {
               handName,
               totalWinnings, // pot_won = what winner received from losers
               showdownChipChanges,
-              false
+              false,
+              currentGameUuid // dealer_game_id
             );
             console.log('[endRound] SHOWDOWN: Recorded chip changes:', showdownChipChanges);
             
@@ -1585,7 +1598,8 @@ export async function endRound(gameId: string) {
           `${activePlayersForTax.length} players paid $${pussyTaxValue} pussy tax`,
           0, // pot_won is 0 - money going INTO pot
           pussyTaxChipChanges,
-          false
+          false,
+          currentGameUuid // dealer_game_id
         );
         console.log('[endRound] Recorded pussy tax chip changes:', pussyTaxChipChanges);
       }
