@@ -21,6 +21,7 @@ interface AnteUpDialogProps {
   isRunningItBack?: boolean;
   autoAnte?: boolean;
   autoAnteRunback?: boolean;
+  anteDecisionTimerSeconds?: number;
   onDecisionMade: () => void;
 }
 
@@ -39,6 +40,7 @@ export const AnteUpDialog = ({
   isRunningItBack = false,
   autoAnte = false,
   autoAnteRunback = false,
+  anteDecisionTimerSeconds = 30,
   onDecisionMade,
 }: AnteUpDialogProps) => {
   const isHolmGame = gameType === 'holm-game' || gameType === 'holm';
@@ -54,7 +56,7 @@ export const AnteUpDialog = ({
     return '3-5-7';
   };
   const gameDisplayName = getGameDisplayName();
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(anteDecisionTimerSeconds);
   const [hasDecided, setHasDecided] = useState(false);
   const [localAutoAnteRunback, setLocalAutoAnteRunback] = useState(autoAnteRunback);
   const [localAutoAnte, setLocalAutoAnte] = useState(autoAnte);

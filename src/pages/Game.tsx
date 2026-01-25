@@ -14,6 +14,7 @@ import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
+import { useGlobalTimerSettings } from "@/hooks/useGlobalTimerSettings";
 
 
 
@@ -181,6 +182,7 @@ const Game = () => {
   const [loading, setLoading] = useState(true);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
+  const { anteDecisionTimerSeconds } = useGlobalTimerSettings();
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
@@ -1930,59 +1932,70 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const currentPlayer = players.find(p => p.user_id === user.id);
       const isDealer = currentPlayer?.position === game.dealer_position;
       
-      // Check for "Running it Back" - same game type AND same config as previous game
-      // NOTE: is_first_hand is NOT used here - that flag is for Holm's atomic round-start lock,
-      // not for runback detection. A "runback" simply means the config matches the previous game.
-      // Use the SAME fallback values as the config capture (lines 234-246) for accurate comparison
-      const currentConfig = {
-        game_type: game.game_type,
-        ante_amount: game.ante_amount ?? 2,
-        leg_value: game.leg_value ?? 1,
-        legs_to_win: game.legs_to_win ?? 3,
-        pussy_tax_enabled: game.pussy_tax_enabled ?? true,
-        pussy_tax_value: game.pussy_tax_value ?? 1,
-        pot_max_enabled: game.pot_max_enabled ?? true,
-        pot_max_value: game.pot_max_value ?? 10,
-        chucky_cards: game.chucky_cards ?? 4,
-        rabbit_hunt: game.rabbit_hunt ?? false,
-        reveal_at_showdown: game.reveal_at_showdown ?? false,
+      // Check for "Running it Back" using dealer_games table for deterministic detection
+      // A "runback" means the current dealer_game has the same game_type and config as the previous one
+      // We use the current_game_uuid field to identify the current dealer_game
+      const checkRunBack = async () => {
+        if (!game.current_game_uuid) {
+          console.log('[ANTE DIALOG] No current_game_uuid, not a runback');
+          setIsRunningItBack(false);
+          return;
+        }
+
+        // Query the previous dealer_game in this session (same session_id, started_at before current)
+        const { data: previousDealerGame, error } = await supabase
+          .from('dealer_games')
+          .select('id, game_type, config')
+          .eq('session_id', game.id)
+          .neq('id', game.current_game_uuid)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[ANTE DIALOG] Error fetching previous dealer_game:', error);
+          setIsRunningItBack(false);
+          return;
+        }
+
+        if (!previousDealerGame) {
+          console.log('[ANTE DIALOG] No previous dealer_game found - first game of session');
+          setIsRunningItBack(false);
+          return;
+        }
+
+        // Get current dealer_game for comparison
+        const { data: currentDealerGame, error: currentError } = await supabase
+          .from('dealer_games')
+          .select('id, game_type, config')
+          .eq('id', game.current_game_uuid)
+          .single();
+
+        if (currentError || !currentDealerGame) {
+          console.error('[ANTE DIALOG] Error fetching current dealer_game:', currentError);
+          setIsRunningItBack(false);
+          return;
+        }
+
+        // Compare game_type and config JSON
+        const sameGameType = previousDealerGame.game_type === currentDealerGame.game_type;
+        const sameConfig = JSON.stringify(previousDealerGame.config) === JSON.stringify(currentDealerGame.config);
+        const isRunBack = sameGameType && sameConfig;
+
+        console.log('[ANTE DIALOG] Running it back check (dealer_games):', { 
+          isRunBack, 
+          sameGameType,
+          sameConfig,
+          previousGameType: previousDealerGame.game_type,
+          currentGameType: currentDealerGame.game_type,
+          previousConfig: previousDealerGame.config,
+          currentConfig: currentDealerGame.config
+        });
+        
+        setIsRunningItBack(isRunBack);
       };
-      
-      // CRITICAL: Can't be "running it back" on the FIRST hand of a session
-      // There are two valid "runback" scenarios:
-      // 1. hasSessionHistory = true (at least one hand completed in THIS game) AND configs match
-      // 2. previousGameConfig was captured from a DIFFERENT gameId (previous game in session) AND configs match
-      // If previousGameConfigGameId === current gameId and no session history yet, it's the first hand of this game
-      const configFromDifferentGame = previousGameConfigGameId !== null && previousGameConfigGameId !== game.id;
-      const hasCompletedHandInThisGame = hasSessionHistory;
-      const canBeRunback = configFromDifferentGame || hasCompletedHandInThisGame;
-      
-      // "Running it Back" means EXACT same game with ALL parameters matching
-      // This includes: game_type, ante, leg_value, legs_to_win, pussy_tax, pot_max, chucky_cards, rabbit_hunt, reveal_at_showdown
-      const isRunBack = canBeRunback && previousGameConfig !== null && 
-        previousGameConfig.game_type === currentConfig.game_type &&
-        previousGameConfig.ante_amount === currentConfig.ante_amount &&
-        previousGameConfig.leg_value === currentConfig.leg_value &&
-        previousGameConfig.legs_to_win === currentConfig.legs_to_win &&
-        previousGameConfig.pussy_tax_enabled === currentConfig.pussy_tax_enabled &&
-        previousGameConfig.pussy_tax_value === currentConfig.pussy_tax_value &&
-        previousGameConfig.pot_max_enabled === currentConfig.pot_max_enabled &&
-        previousGameConfig.pot_max_value === currentConfig.pot_max_value &&
-        previousGameConfig.chucky_cards === currentConfig.chucky_cards &&
-        previousGameConfig.rabbit_hunt === currentConfig.rabbit_hunt &&
-        previousGameConfig.reveal_at_showdown === currentConfig.reveal_at_showdown;
-      
-      console.log('[ANTE DIALOG] Running it back check:', { 
-        isRunBack, 
-        canBeRunback, 
-        configFromDifferentGame, 
-        hasCompletedHandInThisGame,
-        previousGameConfigGameId,
-        currentGameId: game.id,
-        previousGameConfig, 
-        currentConfig 
-      });
-      setIsRunningItBack(isRunBack);
+
+      checkRunBack();
       
       console.log('[ANTE DIALOG] Checking ante dialog:', {
         gameStatus: game?.status,
@@ -2005,13 +2018,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // OR if player has auto_ante_runback enabled AND this is a run-it-back scenario
       // CRITICAL: Only auto-ante if the dialog is NOT already showing - this allows users
       // to toggle the auto-ante checkboxes without immediately closing the modal
-      const shouldAutoAnte = currentPlayer?.auto_ante || (currentPlayer?.auto_ante_runback && isRunBack);
+      // Note: isRunningItBack state is set asynchronously by checkRunBack() above
+      const shouldAutoAnte = currentPlayer?.auto_ante || (currentPlayer?.auto_ante_runback && isRunningItBack);
       
       if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
         console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id, {
           auto_ante: currentPlayer.auto_ante,
           auto_ante_runback: currentPlayer.auto_ante_runback,
-          isRunBack
+          isRunningItBack
         });
         
         // Auto-accept the ante
@@ -2037,7 +2051,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', currentPlayer.id, {
           auto_ante: currentPlayer.auto_ante,
           auto_ante_runback: currentPlayer.auto_ante_runback,
-          isRunBack
+          isRunningItBack
         });
         setShowAnteDialog(true);
         
@@ -6194,6 +6208,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isRunningItBack={isRunningItBack}
               autoAnte={currentPlayer?.auto_ante ?? false}
               autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
+              anteDecisionTimerSeconds={anteDecisionTimerSeconds}
               onDecisionMade={() => setShowAnteDialog(false)}
             />
           );
