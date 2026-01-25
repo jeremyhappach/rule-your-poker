@@ -151,52 +151,72 @@ export const HandHistory = ({
     return systemWinners.includes(result.winner_username || '');
   };
 
-  // Group game results by hand_number
+  // Check if this result represents a game completion (someone won the full game)
+  const isGameCompletion = (result: GameResult): boolean => {
+    const desc = result.winning_hand_description || '';
+    // A game ends when someone wins with X legs (the final prize)
+    return /\d+\s*legs?$/i.test(desc) && !isSystemEvent(result);
+  };
+
+  // Group game results into logical games (bounded by game completions)
   const groupResultsByHand = (): HandGroup[] => {
-    const handMap = new Map<number, GameResult[]>();
-    
-    // Group all results by hand_number
-    gameResults.forEach(result => {
-      const existing = handMap.get(result.hand_number) || [];
-      existing.push(result);
-      handMap.set(result.hand_number, existing);
+    // Sort all results chronologically (oldest first) to process in order
+    const sortedResults = [...gameResults].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    const games: GameResult[][] = [];
+    let currentGame: GameResult[] = [];
+
+    sortedResults.forEach(result => {
+      currentGame.push(result);
+      
+      // If this is a game completion, close out this game and start fresh
+      if (isGameCompletion(result)) {
+        games.push(currentGame);
+        currentGame = [];
+      }
     });
 
-    // Convert to HandGroup array
-    const groups: HandGroup[] = [];
-    handMap.forEach((events, hand_number) => {
-      // Sort events chronologically
-      const sortedEvents = events.sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
+    // Add any remaining events as an in-progress game
+    if (currentGame.length > 0) {
+      games.push(currentGame);
+    }
 
-      // Find the showdown result (non-system event)
-      const showdownEvent = sortedEvents.find(e => !isSystemEvent(e));
+    // Convert to HandGroup array
+    const groups: HandGroup[] = games.map((events, index) => {
+      // Find the showdown result that completed the game (the legs winner)
+      const gameWinner = events.find(e => isGameCompletion(e));
+      // Find any showdown results (non-system events)
+      const showdownEvents = events.filter(e => !isSystemEvent(e));
+      const lastShowdown = showdownEvents[showdownEvents.length - 1];
       
       // Calculate total chip change for current player
       let totalChipChange = 0;
       if (currentPlayerId) {
-        totalChipChange = sortedEvents.reduce((sum, event) => {
+        totalChipChange = events.reduce((sum, event) => {
           return sum + (event.player_chip_changes[currentPlayerId] ?? 0);
         }, 0);
       }
 
       // Sum total pot (only from non-system events)
-      const totalPot = sortedEvents.reduce((sum, e) => sum + (e.pot_won || 0), 0);
+      const totalPot = events
+        .filter(e => !isSystemEvent(e))
+        .reduce((sum, e) => sum + (e.pot_won || 0), 0);
 
-      groups.push({
-        hand_number,
-        events: sortedEvents,
+      return {
+        hand_number: index + 1, // Display number (1 = first game played)
+        events,
         totalChipChange,
-        showdownWinner: showdownEvent?.winner_username || null,
-        showdownDescription: showdownEvent?.winning_hand_description || null,
-        isWinner: showdownEvent?.winner_player_id === currentPlayerId,
+        showdownWinner: gameWinner?.winner_username || lastShowdown?.winner_username || null,
+        showdownDescription: gameWinner?.winning_hand_description || lastShowdown?.winning_hand_description || null,
+        isWinner: gameWinner?.winner_player_id === currentPlayerId,
         totalPot,
-        latestTimestamp: sortedEvents[sortedEvents.length - 1]?.created_at || '',
-      });
+        latestTimestamp: events[events.length - 1]?.created_at || '',
+      };
     });
 
-    // Sort by hand_number DESC (most recent first)
+    // Sort by display number DESC (most recent first)
     return groups.sort((a, b) => b.hand_number - a.hand_number);
   };
 
@@ -208,34 +228,72 @@ export const HandHistory = ({
       return;
     }
 
-    // Find the highest hand_number in rounds
+    // Find the highest hand_number in rounds (the current game)
     const maxHandNumber = Math.max(...rounds.map(r => r.hand_number || 0));
     
-    // Check if this hand already has a showdown result (non-system event)
-    const handEvents = gameResults.filter(gr => gr.hand_number === maxHandNumber);
-    const hasShowdown = handEvents.some(e => !isSystemEvent(e));
+    // Check if the last recorded game_result is a game completion
+    // If so, we're either between games or starting a new one
+    const sortedResults = [...gameResults].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
     
-    if (hasShowdown || maxHandNumber === 0) {
+    const latestResult = sortedResults[0];
+    const lastGameCompleted = latestResult && isGameCompletion(latestResult);
+    
+    // Find events that happened AFTER the last game completion (if any)
+    let inProgressEvents: GameResult[] = [];
+    if (lastGameCompleted) {
+      // No in-progress events - last event was a game completion
+      inProgressEvents = [];
+    } else {
+      // Find all events after the most recent game completion
+      const lastCompletionTime = sortedResults.find(r => isGameCompletion(r))?.created_at;
+      if (lastCompletionTime) {
+        inProgressEvents = gameResults.filter(r => 
+          new Date(r.created_at).getTime() > new Date(lastCompletionTime).getTime()
+        );
+      } else {
+        // No game completions yet - all events are in-progress
+        inProgressEvents = gameResults;
+      }
+    }
+    
+    // If no in-progress events, check if we have rounds but no results yet
+    if (inProgressEvents.length === 0 && maxHandNumber > 0) {
+      // We have active rounds but no results yet for current game
+      setInProgressGame({
+        hand_number: maxHandNumber,
+        currentChipChange: 0,
+        events: [],
+      });
+      return;
+    }
+    
+    if (inProgressEvents.length === 0) {
       setInProgressGame(null);
       return;
     }
 
-    // Calculate chip change for current game:
-    // Current chips - (buyIn + sum of all previous chip changes)
+    // Calculate chip change for in-progress game
     let chipChange = 0;
     if (currentPlayerChips !== undefined && gameBuyIn !== null && currentPlayerId) {
-      const totalPreviousChanges = gameResults.reduce((sum, result) => {
-        const playerChange = result.player_chip_changes[currentPlayerId] ?? 0;
-        return sum + playerChange;
-      }, 0);
-      const startingChipsThisHand = gameBuyIn + totalPreviousChanges;
-      chipChange = currentPlayerChips - startingChipsThisHand;
+      // Sum up all changes from completed games
+      const completedGamesChanges = gameResults
+        .filter(r => !inProgressEvents.includes(r))
+        .reduce((sum, result) => {
+          return sum + (result.player_chip_changes[currentPlayerId] ?? 0);
+        }, 0);
+      
+      const startingChipsThisGame = gameBuyIn + completedGamesChanges;
+      chipChange = currentPlayerChips - startingChipsThisGame;
     }
 
     setInProgressGame({
       hand_number: maxHandNumber,
       currentChipChange: chipChange,
-      events: handEvents, // Events so far in this hand
+      events: inProgressEvents.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ),
     });
   };
 
@@ -259,11 +317,12 @@ export const HandHistory = ({
     return { label: 'Showdown', description: desc, chipChange };
   };
 
-  // Calculate display game number (Game 1 = first played, highest = most recent)
+  // Calculate display game number
+  // handGroups are already numbered 1, 2, 3... with highest being most recent
   const totalGames = handGroups.length + (inProgressGame ? 1 : 0);
-  const getDisplayGameNumber = (index: number, isInProgress: boolean): number => {
+  const getDisplayGameNumber = (handGroup: HandGroup, isInProgress: boolean): number => {
     if (isInProgress) return totalGames;
-    return totalGames - (inProgressGame ? 1 : 0) - index;
+    return handGroup.hand_number;
   };
 
   // Format game type for display
@@ -322,7 +381,7 @@ export const HandHistory = ({
                 <div className="flex items-center justify-between w-full pr-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
-                      Hand #{getDisplayGameNumber(0, true)}
+                      Game #{totalGames}
                       {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
                     </span>
                     <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
@@ -375,8 +434,8 @@ export const HandHistory = ({
           )}
 
           {/* Completed Hands - grouped by hand_number, sorted DESC (most recent first) */}
-          {handGroups.map((hand, index) => {
-            const displayGameNumber = getDisplayGameNumber(index, false);
+          {handGroups.map((hand) => {
+            const displayGameNumber = hand.hand_number;
 
             return (
               <AccordionItem 
@@ -389,7 +448,7 @@ export const HandHistory = ({
                     <div className="flex items-center gap-2">
                       {hand.isWinner && <Trophy className="w-4 h-4 text-poker-gold" />}
                       <span className="text-sm font-medium">
-                        Hand #{displayGameNumber}
+                        Game #{displayGameNumber}
                         {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
                       </span>
                       <span className="text-xs text-muted-foreground">
