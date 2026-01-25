@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { cn, formatChipValue } from "@/lib/utils";
 
 interface GameResult {
@@ -70,6 +70,7 @@ export const HandHistory = ({
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
   const [inProgressGame, setInProgressGame] = useState<InProgressGame | null>(null);
   const [gameBuyIn, setGameBuyIn] = useState<number | null>(null);
+  const [isSessionEnded, setIsSessionEnded] = useState(false);
 
   useEffect(() => {
     fetchHistoryData();
@@ -86,18 +87,18 @@ export const HandHistory = ({
   // Update in-progress game when chips/rounds/results change
   useEffect(() => {
     updateInProgressGame();
-  }, [currentPlayerChips, rounds, gameResults, gameBuyIn, currentPlayerId]);
+  }, [currentPlayerChips, rounds, gameResults, gameBuyIn, currentPlayerId, isSessionEnded]);
 
   const fetchHistoryData = async (options?: { showLoading?: boolean }) => {
     const showLoading = options?.showLoading ?? true;
     if (showLoading) setLoading(true);
 
     try {
-      // Fetch game buy_in once (needed for in-progress chip-change calc)
+      // Fetch game buy_in and session status once
       if (gameBuyIn === null) {
         const { data: gameData, error: gameError } = await supabase
           .from('games')
-          .select('buy_in')
+          .select('buy_in, session_ended_at')
           .eq('id', gameId)
           .maybeSingle();
 
@@ -105,6 +106,7 @@ export const HandHistory = ({
           console.error('[HandHistory] Error fetching game:', gameError);
         } else if (gameData) {
           setGameBuyIn(gameData.buy_in);
+          setIsSessionEnded(!!gameData.session_ended_at);
         }
       }
 
@@ -154,11 +156,13 @@ export const HandHistory = ({
   // Check if this result represents a game completion (someone won the full game)
   const isGameCompletion = (result: GameResult): boolean => {
     const desc = result.winning_hand_description || '';
-    // A game ends when someone wins with X legs (the final prize)
-    return /\d+\s*legs?$/i.test(desc) && !isSystemEvent(result);
+    // A game ends when someone wins with X legs (357) or X 6s (horses)
+    const legsPattern = /\d+\s*legs?$/i;
+    const sixesPattern = /\d+\s*6s$/i;
+    return (legsPattern.test(desc) || sixesPattern.test(desc)) && !isSystemEvent(result);
   };
 
-  // Group game results into logical games (bounded by game completions)
+  // Group game results into logical games (bounded by game completions or game_type changes)
   const groupResultsByHand = (): HandGroup[] => {
     // Sort all results chronologically (oldest first) to process in order
     const sortedResults = [...gameResults].sort((a, b) => 
@@ -167,14 +171,25 @@ export const HandHistory = ({
 
     const games: GameResult[][] = [];
     let currentGame: GameResult[] = [];
+    let currentGameType: string | null = null;
 
     sortedResults.forEach(result => {
+      const resultGameType = (result as any).game_type || null;
+      
+      // If game_type changes and we have events, close out the previous game
+      if (currentGame.length > 0 && resultGameType !== currentGameType && currentGameType !== null) {
+        games.push(currentGame);
+        currentGame = [];
+      }
+      
       currentGame.push(result);
+      currentGameType = resultGameType;
       
       // If this is a game completion, close out this game and start fresh
       if (isGameCompletion(result)) {
         games.push(currentGame);
         currentGame = [];
+        currentGameType = null;
       }
     });
 
@@ -223,7 +238,8 @@ export const HandHistory = ({
   const handGroups = groupResultsByHand();
 
   const updateInProgressGame = () => {
-    if (rounds.length === 0) {
+    // Don't show in-progress if session has ended
+    if (isSessionEnded || rounds.length === 0) {
       setInProgressGame(null);
       return;
     }
@@ -446,7 +462,6 @@ export const HandHistory = ({
                 <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
                   <div className="flex items-center justify-between w-full pr-2">
                     <div className="flex items-center gap-2">
-                      {hand.isWinner && <Trophy className="w-4 h-4 text-poker-gold" />}
                       <span className="text-sm font-medium">
                         Game #{displayGameNumber}
                         {gameType && <span className="text-muted-foreground font-normal"> ({formatGameType(gameType)})</span>}
