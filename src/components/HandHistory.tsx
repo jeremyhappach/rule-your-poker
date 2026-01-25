@@ -191,13 +191,22 @@ export const HandHistory = ({
         })));
       }
 
-      await fetchRoundsData();
+      // CRITICAL: Pass dealerGamesMap directly instead of reading from state
+      // State updates are async and may not have completed yet
+      await fetchRoundsData(dealerGamesData ? new Map(dealerGamesData.map((dg: any) => [dg.id, {
+        id: dg.id,
+        game_type: dg.game_type,
+        dealer_user_id: dg.dealer_user_id,
+        started_at: dg.started_at,
+        config: dg.config || {},
+        dealer_username: dg.profiles?.username || 'Unknown',
+      }])) : new Map());
     } finally {
       if (showLoading) setLoading(false);
     }
   };
 
-  const fetchRoundsData = async () => {
+  const fetchRoundsData = async (dealerGamesMap: Map<string, DealerGame>) => {
     // Fetch all rounds for this game (including horses_state for dice games)
     const { data: roundsData, error: roundsError } = await supabase
       .from('rounds')
@@ -210,7 +219,7 @@ export const HandHistory = ({
     } else {
       // CRITICAL: Enrich rounds with dealer_game_id by matching time windows
       // Sort all dealer games by started_at ONCE for efficient matching
-      const sortedDealerGames = Array.from(dealerGames.values()).sort(
+      const sortedDealerGames = Array.from(dealerGamesMap.values()).sort(
         (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
       );
 
