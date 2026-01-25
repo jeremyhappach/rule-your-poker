@@ -41,6 +41,7 @@ interface HandGroup {
   totalPot: number; // Total pot won in this hand
   latestTimestamp: string;
   dealerGame?: DealerGame; // Info from dealer_games table
+  playerDiceResults?: PlayerDiceResult[]; // Dice results for all players (horses/SCC)
 }
 
 interface Round {
@@ -51,6 +52,16 @@ interface Round {
   pot: number | null;
   status: string;
   created_at: string;
+  horses_state?: any; // Contains playerStates with dice values for dice games
+}
+
+// Player dice result for display
+interface PlayerDiceResult {
+  playerId: string;
+  username: string;
+  dice: number[];
+  isWinner: boolean;
+  handDescription?: string;
 }
 
 interface InProgressGame {
@@ -80,6 +91,7 @@ export const HandHistory = ({
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [dealerGames, setDealerGames] = useState<Map<string, DealerGame>>(new Map());
   const [rounds, setRounds] = useState<Round[]>([]);
+  const [playerNames, setPlayerNames] = useState<Map<string, string>>(new Map()); // playerId -> username
   const [loading, setLoading] = useState(true);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
   const [inProgressGame, setInProgressGame] = useState<InProgressGame | null>(null);
@@ -185,10 +197,10 @@ export const HandHistory = ({
   };
 
   const fetchRoundsData = async () => {
-    // Fetch all rounds for this game (used to detect in-progress hands)
+    // Fetch all rounds for this game (including horses_state for dice games)
     const { data: roundsData, error: roundsError } = await supabase
       .from('rounds')
-      .select('*')
+      .select('id, game_id, round_number, hand_number, pot, status, created_at, horses_state')
       .eq('game_id', gameId)
       .order('created_at', { ascending: true });
     
@@ -196,6 +208,27 @@ export const HandHistory = ({
       console.error('[HandHistory] Error fetching rounds:', roundsError);
     } else {
       setRounds(roundsData || []);
+    }
+
+    // Fetch player names for displaying dice results
+    const { data: playersData } = await supabase
+      .from('players')
+      .select('id, user_id, is_bot')
+      .eq('game_id', gameId);
+
+    if (playersData && playersData.length > 0) {
+      const userIds = playersData.filter(p => p.user_id).map(p => p.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+
+      const namesMap = new Map<string, string>();
+      playersData.forEach(player => {
+        const profile = profiles?.find(p => p.id === player.user_id);
+        namesMap.set(player.id, profile?.username || 'Unknown');
+      });
+      setPlayerNames(namesMap);
     }
   };
 
@@ -295,6 +328,43 @@ export const HandHistory = ({
         .filter(e => !isSystemEvent(e))
         .reduce((sum, e) => sum + (e.pot_won || 0), 0);
 
+      // Extract player dice results for dice games (horses, ship-captain-crew)
+      let playerDiceResults: PlayerDiceResult[] | undefined;
+      const isDiceGame = dealerGame?.game_type === 'horses' || dealerGame?.game_type === 'ship-captain-crew';
+      
+      if (isDiceGame && lastShowdown) {
+        // Find the round that matches this game by looking at creation time
+        // The last round before the showdown result
+        const gameStartTime = events[0]?.created_at;
+        const gameEndTime = lastShowdown.created_at;
+        
+        const relevantRound = rounds.find(r => {
+          const roundTime = new Date(r.created_at).getTime();
+          const startTime = new Date(gameStartTime).getTime();
+          const endTime = new Date(gameEndTime).getTime();
+          return roundTime >= startTime - 60000 && roundTime <= endTime + 60000; // 1 minute buffer
+        });
+        
+        if (relevantRound?.horses_state?.playerStates) {
+          const playerStates = relevantRound.horses_state.playerStates as Record<string, any>;
+          const winnerPlayerId = lastShowdown.winner_player_id;
+          
+          playerDiceResults = Object.entries(playerStates)
+            .filter(([, state]) => state.isComplete && state.dice)
+            .map(([playerId, state]) => {
+              const dice = (state.dice as Array<{ value: number }>).map(d => d.value);
+              return {
+                playerId,
+                username: playerNames.get(playerId) || 'Unknown',
+                dice,
+                isWinner: playerId === winnerPlayerId,
+                handDescription: state.result?.handName || undefined,
+              };
+            })
+            .sort((a, b) => (b.isWinner ? 1 : 0) - (a.isWinner ? 1 : 0)); // Winner first
+        }
+      }
+
       return {
         hand_number: index + 1, // Display number (1 = first game played)
         events,
@@ -305,6 +375,7 @@ export const HandHistory = ({
         totalPot,
         latestTimestamp: events[events.length - 1]?.created_at || '',
         dealerGame,
+        playerDiceResults,
       };
     });
 
@@ -425,7 +496,9 @@ export const HandHistory = ({
     if (!type) return '';
     switch (type) {
       case 'holm-game': return 'Holm';
-      case '357': return '357';
+      case '357': return '3-5-7';
+      case 'horses': return 'Horses';
+      case 'ship-captain-crew': return 'SCC';
       default: return type;
     }
   };
@@ -455,11 +528,6 @@ export const HandHistory = ({
   return (
     <ScrollArea className="h-full max-h-[400px]">
       <div className="space-y-2 p-2">
-        {/* Session Header */}
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-foreground">Hand History</span>
-        </div>
-
         <Accordion 
           type="single" 
           collapsible 
@@ -576,27 +644,70 @@ export const HandHistory = ({
                       {new Date(hand.latestTimestamp).toLocaleTimeString()}
                     </div>
                     
-                    {hand.events.map((event) => {
-                      const { label, description, chipChange } = formatEventDescription(event);
-                      return (
-                        <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
-                              {label}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">{description}</span>
+                    {/* For dice games, show all player dice results */}
+                    {hand.playerDiceResults && hand.playerDiceResults.length > 0 ? (
+                      <div className="space-y-1">
+                        {hand.playerDiceResults.map((result) => (
+                          <div 
+                            key={result.playerId} 
+                            className={cn(
+                              "flex items-center justify-between rounded px-2 py-1.5",
+                              result.isWinner ? "bg-primary/20" : "bg-muted/20"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              {result.isWinner && <span className="text-xs">🏆</span>}
+                              <span className={cn(
+                                "text-xs",
+                                result.isWinner ? "font-medium text-foreground" : "text-muted-foreground"
+                              )}>
+                                {result.username}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-0.5">
+                                {result.dice.map((value, i) => (
+                                  <span 
+                                    key={i} 
+                                    className="w-5 h-5 text-xs font-mono flex items-center justify-center bg-background border border-border rounded"
+                                  >
+                                    {value}
+                                  </span>
+                                ))}
+                              </div>
+                              {result.handDescription && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {result.handDescription}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {chipChange !== null && chipChange !== 0 && (
-                            <span className={cn(
-                              "text-xs font-medium",
-                              chipChange > 0 ? "text-green-500" : "text-red-500"
-                            )}>
-                              {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                        ))}
+                      </div>
+                    ) : (
+                      // For non-dice games, show regular events
+                      hand.events.map((event) => {
+                        const { label, description, chipChange } = formatEventDescription(event);
+                        return (
+                          <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
+                                {label}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">{description}</span>
+                            </div>
+                            {chipChange !== null && chipChange !== 0 && (
+                              <span className={cn(
+                                "text-xs font-medium",
+                                chipChange > 0 ? "text-green-500" : "text-red-500"
+                              )}>
+                                {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </AccordionContent>
               </AccordionItem>
