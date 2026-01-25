@@ -44,6 +44,7 @@ interface HandGroup {
   dealerGame?: DealerGame; // Info from dealer_games table
   gameType?: string | null; // Game type (horses, ship-captain-crew, etc.) - from result or dealerGame
   playerDiceResults?: PlayerDiceResult[]; // Dice results for all players (horses/SCC)
+  allRounds?: Round[]; // ALL rounds for this game (for showing rollovers)
 }
 
 interface Round {
@@ -370,28 +371,30 @@ export const HandHistory = ({
 
       // Extract player dice results for dice games (horses, ship-captain-crew)
       let playerDiceResults: PlayerDiceResult[] | undefined;
+      let allGameRounds: Round[] | undefined;
       const isDiceGame = resolvedGameType === 'horses' || resolvedGameType === 'ship-captain-crew';
       
       if (isDiceGame && lastShowdown) {
-        let relevantRound: Round | undefined;
-        
         const resultDealerGameId = lastShowdown.dealer_game_id;
         
         if (resultDealerGameId) {
-          // DIRECT MATCH: rounds now have dealer_game_id column
+          // DIRECT MATCH: Get ALL rounds for this dealer_game_id
           const candidateRounds = rounds.filter(r => 
             r.dealer_game_id === resultDealerGameId && 
             r.horses_state?.playerStates
           );
           
-          // Pick the LAST round (highest round_number) for final showdown
-          relevantRound = candidateRounds.length > 0
-            ? candidateRounds.sort((a, b) => b.round_number - a.round_number)[0]
-            : undefined;
+          // Sort chronologically to show progression
+          allGameRounds = candidateRounds.sort((a, b) => a.round_number - b.round_number);
         }
         
-        if (relevantRound?.horses_state?.playerStates) {
-          const playerStates = relevantRound.horses_state.playerStates as Record<string, any>;
+        // For the summary, use the FINAL round
+        const finalRound = allGameRounds && allGameRounds.length > 0 
+          ? allGameRounds[allGameRounds.length - 1] 
+          : undefined;
+        
+        if (finalRound?.horses_state?.playerStates) {
+          const playerStates = finalRound.horses_state.playerStates as Record<string, any>;
           const winnerPlayerId = lastShowdown.winner_player_id;
           
           playerDiceResults = Object.entries(playerStates)
@@ -422,6 +425,7 @@ export const HandHistory = ({
         dealerGame,
         gameType: resolvedGameType,
         playerDiceResults,
+        allRounds: allGameRounds,
       };
     });
 
@@ -709,7 +713,80 @@ export const HandHistory = ({
                     </div>
                     
                     {/* For dice games, show all player dice results */}
-                    {hand.playerDiceResults && hand.playerDiceResults.length > 0 ? (
+                    {hand.allRounds && hand.allRounds.length > 0 ? (
+                      <div className="space-y-3">
+                        {hand.allRounds.map((round, roundIndex) => {
+                          const isLastRound = roundIndex === hand.allRounds!.length - 1;
+                          const isTieRound = !isLastRound;
+                          const playerStates = round.horses_state?.playerStates as Record<string, any>;
+                          const winnerPlayerId = hand.events.find(e => !isSystemEvent(e))?.winner_player_id;
+                          
+                          if (!playerStates) return null;
+                          
+                          const playerResults = Object.entries(playerStates)
+                            .filter(([, state]) => state.isComplete && state.dice)
+                            .map(([playerId, state]) => ({
+                              playerId,
+                              username: playerNames.get(playerId) || 'Unknown',
+                              dice: (state.dice as Array<{ value: number }>).map(d => d.value),
+                              isWinner: !isTieRound && playerId === winnerPlayerId,
+                              rollCount: state.rollsRemaining !== undefined ? 3 - state.rollsRemaining : undefined,
+                            }))
+                            .sort((a, b) => (b.isWinner ? 1 : 0) - (a.isWinner ? 1 : 0));
+                          
+                          return (
+                            <div key={round.id}>
+                              {roundIndex > 0 && (
+                                <div className="flex items-center gap-2 my-2 text-[10px] text-yellow-500 font-semibold">
+                                  <div className="h-px bg-yellow-500/30 flex-1" />
+                                  <span>🔄 ROLLOVER - ONE TIE ALL TIE</span>
+                                  <div className="h-px bg-yellow-500/30 flex-1" />
+                                </div>
+                              )}
+                              
+                              <div className="space-y-1">
+                                {playerResults.map((result) => (
+                                  <div 
+                                    key={`${round.id}-${result.playerId}`}
+                                    className={cn(
+                                      "flex items-center justify-between rounded px-2 py-1.5",
+                                      result.isWinner ? "bg-primary/20" : "bg-muted/20"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {result.isWinner && <span className="text-xs">🏆</span>}
+                                      <span className={cn(
+                                        "text-xs",
+                                        result.isWinner ? "font-medium text-foreground" : "text-muted-foreground"
+                                      )}>
+                                        {result.username}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex gap-0.5">
+                                        {result.dice.map((value, i) => (
+                                          <span 
+                                            key={i} 
+                                            className="w-5 h-5 text-xs font-mono flex items-center justify-center bg-background border border-border rounded"
+                                          >
+                                            {value}
+                                          </span>
+                                        ))}
+                                      </div>
+                                      {result.rollCount !== undefined && (
+                                        <span className="text-[10px] text-muted-foreground ml-1">
+                                          {result.rollCount} {result.rollCount === 1 ? 'roll' : 'rolls'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : hand.playerDiceResults && hand.playerDiceResults.length > 0 ? (
                       <div className="space-y-1">
                         {hand.playerDiceResults.map((result) => (
                           <div 
