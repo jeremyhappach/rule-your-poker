@@ -137,6 +137,7 @@ export async function recordGameResult(
   potWon: number,
   playerChipChanges: Record<string, number>,
   isChopped: boolean = false,
+  gameType?: string | null,
   dealerGameId?: string | null
 ) {
   console.log('[GAME RESULT] Recording game result:', {
@@ -146,6 +147,7 @@ export async function recordGameResult(
     winningHandDescription,
     potWon,
     isChopped,
+    gameType,
     dealerGameId
   });
   
@@ -160,6 +162,7 @@ export async function recordGameResult(
       pot_won: potWon,
       player_chip_changes: playerChipChanges,
       is_chopped: isChopped,
+      game_type: gameType || null,
       dealer_game_id: dealerGameId || null
     });
   
@@ -377,6 +380,7 @@ export async function startRound(gameId: string, roundNumber: number) {
         0, // pot_won is 0 - this is money going INTO the pot
         anteChipChanges,
         false,
+        '357', // game_type
         currentGameUuid // dealer_game_id
       );
       console.log('[START_ROUND] Recorded ante chip changes in game_results:', anteChipChanges);
@@ -938,6 +942,7 @@ async function handleGameOver(
     totalPrize,
     playerChipChanges,
     false,
+    '357', // game_type
     currentGameUuid // dealer_game_id
   );
   
@@ -1273,6 +1278,7 @@ export async function endRound(gameId: string) {
       0, // pot_won is 0 - money held for game winner
       legChipChanges,
       false,
+      '357', // game_type
       currentGameUuid // dealer_game_id
     );
     console.log('[endRound] Recorded leg purchase chip changes:', legChipChanges);
@@ -1599,6 +1605,7 @@ export async function endRound(gameId: string) {
           0, // pot_won is 0 - money going INTO pot
           pussyTaxChipChanges,
           false,
+          '357', // game_type
           currentGameUuid // dealer_game_id
         );
         console.log('[endRound] Recorded pussy tax chip changes:', pussyTaxChipChanges);

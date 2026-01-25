@@ -856,6 +856,7 @@ export async function endHolmRound(gameId: string) {
         is_chopped: false,
         player_chip_changes: playerChipChanges,
         game_type: 'holm-game',
+        dealer_game_id: game.current_game_uuid || null,
       });
     
     if (resultError) {
@@ -1214,7 +1215,9 @@ async function handleChuckyShowdown(
       playerHandDesc,
       roundPot,
       playerChipChanges,
-      false
+      false,
+      'holm-game',
+      game.current_game_uuid
     );
     
     await supabase.rpc('increment_player_chips', {
@@ -1913,7 +1916,9 @@ async function handleMultiPlayerShowdown(
         winnerHandDesc,
         roundPot,
         playerChipChanges,
-        playersBeatChucky.length > 1 // is_chopped = true if multiple winners
+        playersBeatChucky.length > 1, // is_chopped = true if multiple winners
+        'holm-game',
+        game.current_game_uuid
       );
       
       // Snapshot player chips AFTER awarding prize but BEFORE resetting player states

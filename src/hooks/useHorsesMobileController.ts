@@ -1759,7 +1759,7 @@ export function useHorsesMobileController({
         })
         .eq("id", gameId)
         .eq("status", "in_progress") // Only succeeds if still in_progress
-        .select("id, pot, total_hands");
+        .select("id, pot, total_hands, current_game_uuid");
 
       if (claimError || !claimed || claimed.length === 0) {
         console.log("[HORSES] Win already processed by another client");
@@ -1768,6 +1768,7 @@ export function useHorsesMobileController({
 
       const actualPot = claimed[0].pot || pot || 0;
       const handNumber = claimed[0].total_hands || 1;
+      const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
 
       // Award pot to winner using atomic increment to prevent race conditions
       // (non-atomic read-then-write could lose chips if state is stale)
@@ -1802,7 +1803,8 @@ export function useHorsesMobileController({
         pot_won: actualPot,
         player_chip_changes: chipChanges,
         is_chopped: false,
-        game_type: "horses",
+        game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
+        dealer_game_id: currentGameUuid,
       });
 
       // Note: No toast here - dealer announcement already shows the win message
