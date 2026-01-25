@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
-import { GameTable } from "@/components/GameTable";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { HorsesGameTable, HorsesStateFromDB } from "@/components/HorsesGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
@@ -5579,7 +5578,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             currentUserId={user?.id}
             onSelectSeat={handleSelectSeat}
             onGameStart={startGameFromWaiting}
-            isMobile={isMobile}
+            
             chatBubbles={chatBubbles}
             allMessages={allMessages}
             onSendChat={sendChatMessage}
@@ -5596,8 +5595,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             {game.status === 'dealer_selection' && (
               <>
                 {/* Show game table as background during dealer selection */}
-                {isMobile ? (
-                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
+                <MobileGameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -5636,30 +5634,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerSelectionAnnouncement={dealerSelectionAnnouncement}
                     dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
                   />
-                ) : (
-                  <GameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
-                    players={players}
-                    currentUserId={user?.id}
-                    pot={0}
-                    currentRound={0}
-                    allDecisionsIn={false}
-                    playerCards={[]}
-                    timeLeft={null}
-                    lastRoundResult={null}
-                    dealerPosition={game.dealer_position}
-                    legValue={game.leg_value ?? 0}
-                    legsToWin={game.legs_to_win || 3}
-                    potMaxEnabled={game.pot_max_enabled ?? true}
-                    potMaxValue={game.pot_max_value || 10}
-                    pendingSessionEnd={false}
-                    awaitingNextRound={false}
-                    onStay={() => {}}
-                    onFold={() => {}}
-                    onSelectSeat={handleSelectSeat}
-                    gameStatus={game.status}
-                    handContextId={null}
-                  />
-                )}
                 {/* High Card Dealer Selection */}
                 <HighCardDealerSelection 
                   gameId={gameId!}
@@ -5683,8 +5657,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
-                {isMobile ? (
-                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -5721,31 +5694,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
                     isWaitingPhase={true}
                   />
-                ) : (
-                  <GameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
-                    players={players}
-                    currentUserId={user?.id}
-                    pot={potForDisplay}
-                    currentRound={0}
-                    allDecisionsIn={false}
-                    playerCards={[]}
-                    timeLeft={null}
-                    lastRoundResult={null}
-                    dealerPosition={game.dealer_position}
-                    legValue={game.leg_value ?? 0}
-                    legsToWin={game.legs_to_win || 3}
-                    potMaxEnabled={game.pot_max_enabled ?? true}
-                    potMaxValue={game.pot_max_value || 10}
-                    pendingSessionEnd={false}
-                    awaitingNextRound={false}
-                    onStay={() => {}}
-                    onFold={() => {}}
-                    onSelectSeat={handleSelectSeat}
-                    gameStatus={game.status}
-                    handContextId={null}
-                    dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
-                  />
-                )}
                 {(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
                     gameId={gameId!}
@@ -5766,8 +5714,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               </div>
             ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
-                {isMobile ? (
-                  <MobileGameTable key={gameId ?? 'unknown-game'}
+                <MobileGameTable key={gameId ?? 'unknown-game'}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -5839,39 +5786,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
                   />
-                ) : (
-                  <>
-                    <GameTable key={gameId ?? 'unknown-game'}
-                      players={players}
-                      currentUserId={user?.id}
-                      pot={potForDisplay}
-                      currentRound={game.current_round || 0}
-                      allDecisionsIn={true}
-                      playerCards={playerCards}
-                      timeLeft={null}
-                      lastRoundResult={null}
-                      dealerPosition={game.dealer_position}
-                      legValue={game.leg_value ?? 0}
-                      legsToWin={game.legs_to_win || 3}
-                      potMaxEnabled={game.pot_max_enabled ?? true}
-                      potMaxValue={game.pot_max_value || 10}
-                      pendingSessionEnd={false}
-                      awaitingNextRound={false}
-                      onStay={() => {}}
-                      onFold={() => {}}
-                      onSelectSeat={handleSelectSeat}
-                      communityCards={currentRound?.community_cards as CardType[] | undefined}
-                      communityCardsRevealed={effectiveCommunityCardsRevealed}
-                      chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
-                      chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
-                      chuckyActive={currentRound?.chucky_active}
-                      gameType={game.game_type}
-                      roundStatus={currentRound?.status}
-                      gameStatus={game.status}
-                      handContextId={handContextKey}
-                    />
-                  </>
-                )}
               </div>
             ) : null}
           </>
@@ -6017,7 +5931,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          return isMobile ? (
+          return (
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               gameId={gameId}
@@ -6099,8 +6013,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               holmWinPotAmount={isInProgress ? holmWinPotAmount : undefined}
               holmWinWinnerPosition={isInProgress ? holmWinWinnerPosition : undefined}
               onHolmWinPotAnimationComplete={isInProgress ? handleHolmWinPotAnimationComplete : undefined}
-              // 3-5-7 win animation props must be passed even when not "in_progress",
-              // because the win sequence is intended to run in a stable game_over view.
               threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
               threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
               threeFiveSevenWinnerId={threeFiveSevenWinnerId}
@@ -6141,61 +6053,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
               reAnteMessage={reAnteMessage}
-            />
-          ) : (
-            <GameTable
-              key={gameId ?? 'unknown-game'}
-              gameId={gameId}
-              players={players}
-              currentUserId={user?.id}
-              pot={potForDisplay}
-              currentRound={isInProgress ? (game.current_round ?? 0) : 0}
-              allDecisionsIn={isInProgress ? (game.all_decisions_in || false) : false}
-              playerCards={isInProgress ? playerCards : []}
-              authoritativeCardCount={cardStateContext?.cardsDealt}
-              handContextId={isInProgress && hasActiveRound ? handContextKey : null}
-              timeLeft={isInProgress ? timeLeft : anteTimeLeft}
-              lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
-              dealerPosition={game.dealer_position}
-              legValue={game.leg_value ?? 0}
-              legsToWin={game.legs_to_win || 3}
-              potMaxEnabled={game.pot_max_enabled ?? true}
-              potMaxValue={game.pot_max_value || 10}
-              pendingSessionEnd={game.pending_session_end || false}
-              awaitingNextRound={isInProgress ? (game.awaiting_next_round || false) : false}
-              gameType={game.game_type}
-              communityCards={isInProgress ? (currentRound?.community_cards as CardType[] | undefined) : undefined}
-              communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? game.buck_position : undefined}
-              currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
-              chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
-              chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
-              chuckyCardsRevealed={isInProgress ? currentRound?.chucky_cards_revealed : undefined}
-              roundStatus={isInProgress ? currentRound?.status : undefined}
-              pendingDecision={isInProgress ? pendingDecision : null}
-              isPaused={isInProgress ? (game.is_paused || false) : false}
-              debugHolmPaused={debugHolmPaused}
-              onStay={isInProgress ? handleStay : () => {}}
-              onFold={isInProgress ? handleFold : () => {}}
-              onSelectSeat={handleSelectSeat}
-              onRequestRefetch={fetchGameData}
-              onDebugProceed={handleDebugProceed}
-              isHost={isCreator}
-              onPlayerClick={isInProgress ? (player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); } : undefined}
-              chatBubbles={chatBubbles}
-              onSendChat={sendChatMessage}
-              isChatSending={isChatSending}
-              getPositionForUserId={getPositionForUserId}
-              realMoney={game.real_money || false}
-              revealAtShowdown={game.reveal_at_showdown || false}
-              threeFiveSevenWinnerId={isInProgress ? threeFiveSevenWinnerId : null}
-              threeFiveSevenWinnerCards={isInProgress ? threeFiveSevenWinnerCards : undefined}
-              winner357ShowCards={winner357ShowCards}
-              holmPreFold={holmPreFold}
-              holmPreStay={holmPreStay}
-              onHolmPreFoldChange={setHolmPreFold}
-              onHolmPreStayChange={setHolmPreStay}
-              gameStatus={game.status}
             />
           );
         })()}

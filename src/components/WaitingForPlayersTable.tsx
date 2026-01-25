@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { GameTable } from "./GameTable";
 import { MobileGameTable } from "./MobileGameTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,6 @@ interface WaitingForPlayersTableProps {
   currentUserId: string | undefined;
   onSelectSeat: (position: number) => void;
   onGameStart: () => void;
-  isMobile: boolean;
   chatBubbles?: ChatBubble[];
   allMessages?: ChatMessage[];
   onSendChat?: (message: string, imageFile?: File) => void;
@@ -96,7 +94,6 @@ export const WaitingForPlayersTable = ({
   currentUserId,
   onSelectSeat,
   onGameStart,
-  isMobile,
   chatBubbles = [],
   allMessages = [],
   onSendChat,
@@ -358,7 +355,7 @@ export const WaitingForPlayersTable = ({
 
   // Felt message - positioned in center of felt area
   const renderFeltMessage = () => (
-    <div className={`absolute left-0 right-0 flex justify-center z-10 pointer-events-none ${isMobile ? 'top-[18%]' : 'top-1/2 -translate-y-1/2'}`}>
+    <div className="absolute left-0 right-0 flex justify-center z-10 pointer-events-none top-[18%]">
       <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-amber-600/50 max-w-xs text-center">
         <Users className="w-8 h-8 text-amber-400 mx-auto mb-2" />
         {isObserver ? (
@@ -464,26 +461,16 @@ export const WaitingForPlayersTable = ({
 
   return (
     <div className="relative flex-1 overflow-hidden">
-      {isMobile ? (
-        <MobileGameTable
-          {...emptyTableProps}
-          chatBubbles={chatBubbles}
-          allMessages={allMessages}
-          onSendChat={onSendChat}
-          isChatSending={isChatSending}
-          getPositionForUserId={getPositionForUserId}
-          onLeaveGameNow={onLeaveGameNow}
-          isHost={isHost}
-        />
-      ) : (
-        <GameTable
-          {...emptyTableProps}
-          chatBubbles={chatBubbles}
-          onSendChat={onSendChat}
-          isChatSending={isChatSending}
-          onLeaveGameNow={onLeaveGameNow}
-        />
-      )}
+      <MobileGameTable
+        {...emptyTableProps}
+        chatBubbles={chatBubbles}
+        allMessages={allMessages}
+        onSendChat={onSendChat}
+        isChatSending={isChatSending}
+        getPositionForUserId={getPositionForUserId}
+        onLeaveGameNow={onLeaveGameNow}
+        isHost={isHost}
+      />
       {renderFeltMessage()}
       
       {/* Header showing player count */}
