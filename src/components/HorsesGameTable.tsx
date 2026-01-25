@@ -1264,12 +1264,13 @@ export function HorsesGameTable({
       // Fetch the actual pot from the database
       const { data: gameData } = await supabase
         .from("games")
-        .select("pot, total_hands")
+        .select("pot, total_hands, current_game_uuid")
         .eq("id", gameId)
         .single();
 
       const actualPot = gameData?.pot || pot || 0;
       const handNumber = gameData?.total_hands || 1;
+      const currentGameUuid = gameData?.current_game_uuid || null;
 
       // Award pot to winner using atomic increment to prevent race conditions
       const { error: updateError } = await supabase.rpc("increment_player_chips", {
@@ -1305,7 +1306,8 @@ export function HorsesGameTable({
         pot_won: actualPot,
         player_chip_changes: chipChanges,
         is_chopped: false,
-        game_type: "horses",
+        game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
+        dealer_game_id: currentGameUuid,
       });
       
       // Snapshot player chips for session history AFTER awarding prize

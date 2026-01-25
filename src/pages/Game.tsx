@@ -114,6 +114,7 @@ interface GameData {
   reveal_at_showdown?: boolean;
   is_first_hand?: boolean;
   config_complete?: boolean;
+  current_game_uuid?: string | null;
   rounds?: Round[];
 }
 
