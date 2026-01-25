@@ -102,6 +102,10 @@ export const HandHistory = ({
 
   useEffect(() => {
     fetchHistoryData();
+    // Force fresh fetch to avoid any caching issues
+    const handleFocus = () => fetchHistoryData({ showLoading: false });
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [gameId]);
 
   // When the table advances to a new round/hand, refresh history so newly completed
@@ -369,11 +373,26 @@ export const HandHistory = ({
           const allDealerGames = Array.from(dealerGames.values()).sort(
             (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
           );
+          
+          console.log('[HandHistory] Matching dice for result:', {
+            resultDescription: lastShowdown.winning_hand_description,
+            dealerGameId: dealerGame.id,
+            dealerGameStarted: dealerGame.started_at,
+            totalDealerGames: allDealerGames.length,
+            totalRounds: rounds.length,
+          });
+          
           const currentDgIndex = allDealerGames.findIndex(dg => dg.id === dealerGame.id);
           const nextDealerGame = allDealerGames[currentDgIndex + 1];
           const windowEndTime = nextDealerGame 
             ? new Date(nextDealerGame.started_at).getTime() 
             : lastShowdownTime + 10000;
+          
+          console.log('[HandHistory] Time window:', {
+            start: new Date(dealerGameStartTime).toISOString(),
+            end: new Date(windowEndTime).toISOString(),
+            nextDealerGameId: nextDealerGame?.id,
+          });
           
           // Find rounds that fall strictly within this dealer_game's time window
           const matchingRounds = rounds
@@ -385,7 +404,21 @@ export const HandHistory = ({
             })
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           
+          console.log('[HandHistory] Found matching rounds:', matchingRounds.map(r => ({
+            id: r.id,
+            created: r.created_at,
+            hasPlayerStates: !!r.horses_state?.playerStates,
+          })));
+          
           relevantRound = matchingRounds[0];
+          
+          if (relevantRound) {
+            console.log('[HandHistory] Selected round:', {
+              roundId: relevantRound.id,
+              roundCreated: relevantRound.created_at,
+              playerStateKeys: Object.keys(relevantRound.horses_state?.playerStates || {}),
+            });
+          }
         } else {
           // Fallback: match by hand_number (less reliable but works for single-game sessions)
           const handNumber = lastShowdown.hand_number;
@@ -407,6 +440,24 @@ export const HandHistory = ({
           const playerStates = relevantRound.horses_state.playerStates as Record<string, any>;
           const winnerPlayerId = lastShowdown.winner_player_id;
           
+          // CRITICAL VALIDATION: Verify the round's winner result matches the game_result description
+          // If they don't match, we've matched the wrong round - skip displaying dice
+          const winnerState = winnerPlayerId ? playerStates[winnerPlayerId] : null;
+          const roundWinnerDescription = winnerState?.result?.description;
+          const expectedDescription = lastShowdown.winning_hand_description;
+          
+          if (roundWinnerDescription && expectedDescription && roundWinnerDescription !== expectedDescription) {
+            console.warn('[HandHistory] Round/Result mismatch:', {
+              roundId: relevantRound.id,
+              roundCreated: relevantRound.created_at,
+              roundWinnerDescription,
+              expectedDescription,
+              dealerGameId: dealerGame?.id,
+              dealerGameStarted: dealerGame?.started_at,
+            });
+            // Don't display dice for mismatched rounds
+            playerDiceResults = undefined;
+          } else {
           playerDiceResults = Object.entries(playerStates)
             .filter(([, state]) => state.isComplete && state.dice)
             .map(([playerId, state]) => {
@@ -420,6 +471,7 @@ export const HandHistory = ({
               };
             })
             .sort((a, b) => (b.isWinner ? 1 : 0) - (a.isWinner ? 1 : 0)); // Winner first
+          }
         }
       }
 
