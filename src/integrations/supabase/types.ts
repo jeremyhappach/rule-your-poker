@@ -133,6 +133,44 @@ export type Database = {
           },
         ]
       }
+      dealer_games: {
+        Row: {
+          config: Json
+          created_at: string
+          dealer_user_id: string
+          game_type: string
+          id: string
+          session_id: string
+          started_at: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          dealer_user_id: string
+          game_type: string
+          id?: string
+          session_id: string
+          started_at?: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          dealer_user_id?: string
+          game_type?: string
+          id?: string
+          session_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_games_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dice_roll_audit: {
         Row: {
           created_at: string
@@ -417,6 +455,13 @@ export type Database = {
           winning_hand_description?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_game_results_dealer_game"
+            columns: ["dealer_game_id"]
+            isOneToOne: false
+            referencedRelation: "dealer_games"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "game_results_game_id_fkey"
             columns: ["game_id"]
