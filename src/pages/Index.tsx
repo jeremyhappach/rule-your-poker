@@ -70,9 +70,9 @@ const Index = () => {
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [showAdminPlayerList, setShowAdminPlayerList] = useState(false);
   
-  // Global timer settings
-  const [gameSetupTimer, setGameSetupTimer] = useState<number>(30);
-  const [anteDecisionTimer, setAnteDecisionTimer] = useState<number>(30);
+  // Global timer settings - use strings for free text input, validate on save
+  const [gameSetupTimer, setGameSetupTimer] = useState<string>("30");
+  const [anteDecisionTimer, setAnteDecisionTimer] = useState<string>("30");
   const [loadingTimerSettings, setLoadingTimerSettings] = useState(true);
   const [savingTimerSettings, setSavingTimerSettings] = useState(false);
 
@@ -171,16 +171,27 @@ const Index = () => {
       for (const row of data) {
         const val = typeof row.value === 'number' ? row.value : parseInt(String(row.value), 10);
         if (row.key === 'game_setup_timer_seconds' && !isNaN(val)) {
-          setGameSetupTimer(val);
+          setGameSetupTimer(String(val));
         } else if (row.key === 'ante_decision_timer_seconds' && !isNaN(val)) {
-          setAnteDecisionTimer(val);
+          setAnteDecisionTimer(String(val));
         }
       }
     }
     setLoadingTimerSettings(false);
   };
 
-  const saveTimerSetting = async (key: string, value: number) => {
+  const saveTimerSetting = async (key: string, valueStr: string) => {
+    // Validate: must be a positive integer
+    const value = parseInt(valueStr, 10);
+    if (isNaN(value) || value < 1) {
+      toast({
+        title: "Invalid value",
+        description: "Please enter a positive integer",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSavingTimerSettings(true);
     
     // Upsert the setting
@@ -731,11 +742,10 @@ const Index = () => {
                           <div className="flex gap-2">
                             <Input
                               id="game-setup-timer"
-                              type="number"
-                              min={10}
-                              max={120}
+                              type="text"
+                              inputMode="numeric"
                               value={gameSetupTimer}
-                              onChange={(e) => setGameSetupTimer(parseInt(e.target.value) || 30)}
+                              onChange={(e) => setGameSetupTimer(e.target.value)}
                               disabled={loadingTimerSettings || savingTimerSettings}
                               className="w-20"
                             />
@@ -756,11 +766,10 @@ const Index = () => {
                           <div className="flex gap-2">
                             <Input
                               id="ante-decision-timer"
-                              type="number"
-                              min={10}
-                              max={120}
+                              type="text"
+                              inputMode="numeric"
                               value={anteDecisionTimer}
-                              onChange={(e) => setAnteDecisionTimer(parseInt(e.target.value) || 30)}
+                              onChange={(e) => setAnteDecisionTimer(e.target.value)}
                               disabled={loadingTimerSettings || savingTimerSettings}
                               className="w-20"
                             />
