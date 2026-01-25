@@ -42,6 +42,7 @@ import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog"
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 import { formatChipValue } from "@/lib/utils";
 import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
+import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -68,6 +69,12 @@ const Index = () => {
   const { balance, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [showAdminPlayerList, setShowAdminPlayerList] = useState(false);
+  
+  // Global timer settings
+  const [gameSetupTimer, setGameSetupTimer] = useState<number>(30);
+  const [anteDecisionTimer, setAnteDecisionTimer] = useState<number>(30);
+  const [loadingTimerSettings, setLoadingTimerSettings] = useState(true);
+  const [savingTimerSettings, setSavingTimerSettings] = useState(false);
 
   // Track user's last seen timestamp
   useLastSeenTracker(user?.id ?? null);
@@ -131,9 +138,10 @@ const Index = () => {
       setCurrentUsername(data.username);
       setIsSuperuser(data.is_superuser || false);
       
-      // Fetch bot dealers setting if superuser
+      // Fetch admin settings if superuser
       if (data.is_superuser) {
         fetchBotDealersSetting();
+        fetchTimerSettings();
       }
     }
   };
@@ -150,6 +158,52 @@ const Index = () => {
       setAllowBotDealers((data as any).allow_bot_dealers ?? false);
     }
     setLoadingBotDealersSetting(false);
+  };
+
+  const fetchTimerSettings = async () => {
+    setLoadingTimerSettings(true);
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', ['game_setup_timer_seconds', 'ante_decision_timer_seconds']);
+    
+    if (!error && data) {
+      for (const row of data) {
+        const val = typeof row.value === 'number' ? row.value : parseInt(String(row.value), 10);
+        if (row.key === 'game_setup_timer_seconds' && !isNaN(val)) {
+          setGameSetupTimer(val);
+        } else if (row.key === 'ante_decision_timer_seconds' && !isNaN(val)) {
+          setAnteDecisionTimer(val);
+        }
+      }
+    }
+    setLoadingTimerSettings(false);
+  };
+
+  const saveTimerSetting = async (key: string, value: number) => {
+    setSavingTimerSettings(true);
+    
+    // Upsert the setting
+    const { error } = await supabase
+      .from('system_settings')
+      .upsert({ key, value: value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    
+    if (error) {
+      console.error('[ADMIN] Error saving timer setting:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save timer setting",
+        variant: "destructive",
+      });
+    } else {
+      // Invalidate cache so all components pick up new value
+      invalidateTimerSettingsCache();
+      toast({
+        title: "Success",
+        description: "Timer setting saved",
+      });
+    }
+    setSavingTimerSettings(false);
   };
 
   const handleToggleBotDealers = async (enabled: boolean) => {
@@ -664,6 +718,66 @@ const Index = () => {
                         disabled={makeItTakeItLoading || isTogglingMakeItTakeIt}
                         className="data-[state=checked]:bg-green-600"
                       />
+                    </div>
+
+                    {/* Timer Settings */}
+                    <div className="space-y-3 py-2 border-t border-border">
+                      <Label className="text-sm font-semibold">Timer Settings</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <Label htmlFor="game-setup-timer" className="text-xs text-muted-foreground">
+                            Game Setup (seconds)
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="game-setup-timer"
+                              type="number"
+                              min={10}
+                              max={120}
+                              value={gameSetupTimer}
+                              onChange={(e) => setGameSetupTimer(parseInt(e.target.value) || 30)}
+                              disabled={loadingTimerSettings || savingTimerSettings}
+                              className="w-20"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => saveTimerSetting('game_setup_timer_seconds', gameSetupTimer)}
+                              disabled={loadingTimerSettings || savingTimerSettings}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="ante-decision-timer" className="text-xs text-muted-foreground">
+                            Ante Decision (seconds)
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="ante-decision-timer"
+                              type="number"
+                              min={10}
+                              max={120}
+                              value={anteDecisionTimer}
+                              onChange={(e) => setAnteDecisionTimer(parseInt(e.target.value) || 30)}
+                              disabled={loadingTimerSettings || savingTimerSettings}
+                              className="w-20"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => saveTimerSetting('ante_decision_timer_seconds', anteDecisionTimer)}
+                              disabled={loadingTimerSettings || savingTimerSettings}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        How long dealers have to configure games and players have to ante up
+                      </p>
                     </div>
 
                     {/* Custom Game Names */}

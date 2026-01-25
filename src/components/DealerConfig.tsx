@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
+import { useGlobalTimerSettings } from "@/hooks/useGlobalTimerSettings";
 
 interface DealerConfigProps {
   gameId: string;
@@ -49,6 +50,7 @@ export const DealerConfig = ({
   const [chuckyCards, setChuckyCards] = useState(currentChuckyCards || 4);
   const [rabbitHunt, setRabbitHunt] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
+  const { anteDecisionTimerSeconds } = useGlobalTimerSettings();
   
   const isHolmGame = gameType === 'holm-game';
 
@@ -104,7 +106,7 @@ export const DealerConfig = ({
           pot_max_value: potMaxValue,
           config_complete: true,
           status: 'ante_decision',
-          ante_decision_deadline: new Date(Date.now() + 10000).toISOString(),
+          ante_decision_deadline: new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString(),
         };
 
         if (isHolmGame) {
@@ -166,7 +168,7 @@ export const DealerConfig = ({
     }
 
     // Update game config
-    const anteDeadline = new Date(Date.now() + 10000).toISOString();
+    const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
     const updateData: any = {
       ante_amount: anteAmount,
       leg_value: legValue,

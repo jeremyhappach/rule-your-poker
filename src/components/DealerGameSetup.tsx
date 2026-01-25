@@ -12,7 +12,7 @@ import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPl
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { toast } from "sonner";
-// generateUUID no longer needed - dealer_games table provides UUIDs
+import { useGlobalTimerSettings } from "@/hooks/useGlobalTimerSettings";
 
 type SelectionStep = 'category' | 'cards' | 'dice';
 
@@ -76,7 +76,9 @@ export const DealerGameSetup = ({
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('category');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
-  const [timeLeft, setTimeLeft] = useState(30);
+  // Fetch global timer settings
+  const { gameSetupTimerSeconds, anteDecisionTimerSeconds, isLoading: timerSettingsLoading } = useGlobalTimerSettings();
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeletingEmptySession, setShowDeletingEmptySession] = useState(false);
   const [deleteCountdown, setDeleteCountdown] = useState(5);
@@ -517,7 +519,7 @@ export const DealerGameSetup = ({
     }
 
     // No deadline set yet - set one now (fallback for edge cases)
-    const deadlineIso = new Date(Date.now() + 30000).toISOString();
+    const deadlineIso = new Date(Date.now() + gameSetupTimerSeconds * 1000).toISOString();
     const { error: setErr } = await supabase
       .from('games')
       .update({ config_deadline: deadlineIso })
@@ -529,9 +531,9 @@ export const DealerGameSetup = ({
     }
 
     console.log('[DEALER SETUP] No server deadline found, set fallback deadline');
-    setTimeLeft(30);
+    setTimeLeft(gameSetupTimerSeconds);
     scheduleConfigTimeout(new Date(deadlineIso).getTime());
-  }, [gameId, isBot, loadingDefaults, scheduleConfigTimeout]);
+  }, [gameId, isBot, loadingDefaults, scheduleConfigTimeout, gameSetupTimerSeconds]);
 
   // Initial sync + resync when app returns to foreground (mobile browsers can pause timers)
   useEffect(() => {
@@ -562,11 +564,12 @@ export const DealerGameSetup = ({
 
   // Countdown timer - display only (timeout enforcement is scheduled off the server deadline)
   useEffect(() => {
-    if (isBot || loadingDefaults) return;
+    if (isBot || loadingDefaults || timerSettingsLoading) return;
+    if (timeLeft === null) return; // Wait for initial sync
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) {
+        if (prev === null || prev <= 1) {
           clearInterval(timer);
           return 0;
         }
@@ -575,7 +578,7 @@ export const DealerGameSetup = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isBot, loadingDefaults]);
+  }, [isBot, loadingDefaults, timerSettingsLoading, timeLeft !== null]);
 
 
   // Auto-submit for bots - always run it back immediately with previous config
@@ -595,7 +598,7 @@ export const DealerGameSetup = ({
           const parsedAnte = previousGameConfig.ante_amount || 2;
           
           const submitDiceGame = async () => {
-            const anteDeadline = new Date(Date.now() + 10000).toISOString();
+            const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
             
             // Get the dealer's user_id for the dealer_games record
             const { data: dealerData } = await supabase
@@ -667,7 +670,7 @@ export const DealerGameSetup = ({
         } else {
           // Card games - submit with full config directly
           const isHolmGame = previousGameType === 'holm-game';
-          const anteDeadline = new Date(Date.now() + 10000).toISOString();
+          const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
           
           const submitCardGame = async () => {
             // Get the dealer's user_id for the dealer_games record
@@ -772,7 +775,7 @@ export const DealerGameSetup = ({
         const gameType = holmDefaults ? 'holm-game' : '3-5-7';
         
         if (defaults) {
-          const anteDeadline = new Date(Date.now() + 10000).toISOString();
+          const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
           
         const submitDefault = async () => {
             // Get the dealer's user_id for the dealer_games record
@@ -921,7 +924,7 @@ export const DealerGameSetup = ({
     console.log('[DEALER SETUP] Submitting game config:', { gameTypeToSubmit, parsedAnte, parsedLegValue, parsedChucky });
 
     const isHolmGame = gameTypeToSubmit === 'holm-game';
-    const anteDeadline = new Date(Date.now() + 10000).toISOString();
+    const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
     
     // Get the dealer's user_id for the dealer_games record
     const { data: dealerData } = await supabase
@@ -1144,7 +1147,7 @@ export const DealerGameSetup = ({
                          gameTypeToSubmit === 'sports-trivia' ? 'Trivia' : gameTypeToSubmit;
     console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config, game_type:`, gameTypeToSubmit);
     
-    const anteDeadline = new Date(Date.now() + 10000).toISOString();
+    const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
     
     // Get the dealer's user_id for the dealer_games record
     const { data: dealerData } = await supabase
