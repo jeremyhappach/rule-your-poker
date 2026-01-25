@@ -1494,7 +1494,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
   }, []);
   
-  // Reset winner357ShowCards when game transitions away from game_over
+  // Reset winner357ShowCards when game transitions away from game_over OR when a new hand starts
   useEffect(() => {
     if (game?.status !== 'game_over' && game?.status !== 'in_progress') {
       if (winner357ShowCards) {
@@ -1503,6 +1503,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
   }, [game?.status, winner357ShowCards]);
+  
+  // Reset winner357ShowCards when a new hand starts (awaiting_next_round transitions to false = hand is starting)
+  const prevAwaitingNextRoundRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const wasAwaiting = prevAwaitingNextRoundRef.current;
+    const isAwaiting = game?.awaiting_next_round ?? false;
+    prevAwaitingNextRoundRef.current = isAwaiting;
+    
+    // When transitioning from awaiting_next_round=true to false, a new hand is starting
+    if (wasAwaiting === true && isAwaiting === false) {
+      if (winner357ShowCards) {
+        console.log('[RESET] Clearing winner357ShowCards on new hand start');
+        setWinner357ShowCards(false);
+      }
+    }
+  }, [game?.awaiting_next_round, winner357ShowCards]);
 
   // SAFETY-NET POLL: Check for game_over status when stuck in awaiting_next_round
   // This catches cases where realtime subscription misses the status update
