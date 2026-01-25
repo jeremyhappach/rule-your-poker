@@ -154,12 +154,22 @@ export const HandHistory = ({
   };
 
   // Check if this result represents a game completion (someone won the full game)
+  // For horses: each round IS a complete game (no legs accumulation)
+  // For 357/holm: game ends when someone wins with X legs
   const isGameCompletion = (result: GameResult): boolean => {
+    if (isSystemEvent(result)) return false;
+    
+    const resultGameType = (result as any).game_type || null;
+    
+    // Horses games: every non-system result is a complete game
+    if (resultGameType === 'horses') {
+      return true;
+    }
+    
+    // 357/holm games: completion is when someone wins with X legs
     const desc = result.winning_hand_description || '';
-    // A game ends when someone wins with X legs (357) or X 6s (horses)
     const legsPattern = /\d+\s*legs?$/i;
-    const sixesPattern = /\d+\s*6s$/i;
-    return (legsPattern.test(desc) || sixesPattern.test(desc)) && !isSystemEvent(result);
+    return legsPattern.test(desc);
   };
 
   // Group game results into logical games (bounded by game completions or game_type changes)
