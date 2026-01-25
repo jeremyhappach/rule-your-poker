@@ -1473,16 +1473,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const channel = supabase
       .channel(`show-cards-${gameId}`)
       .on('broadcast', { event: 'show-cards' }, (payload) => {
-        // Only accept show-cards for the CURRENT hand to prevent carryover from previous games
-        const payloadHandNumber = (payload.payload as any)?.handNumber;
-        const currentHand = currentHandNumberRef.current;
+        // Only accept show-cards for the CURRENT game (using current_game_uuid) to prevent carryover
+        const payloadGameUuid = (payload.payload as any)?.currentGameUuid;
+        const currentGameUuid = game?.current_game_uuid;
         
-        if (payloadHandNumber != null && currentHand != null && payloadHandNumber !== currentHand) {
-          console.log('[BROADCAST] Ignoring stale show-cards event from hand', payloadHandNumber, '(current:', currentHand, ')');
+        if (payloadGameUuid && currentGameUuid && payloadGameUuid !== currentGameUuid) {
+          console.log('[BROADCAST] Ignoring stale show-cards event from different game');
           return;
         }
         
-        console.log('[BROADCAST] Received show-cards event for hand', payloadHandNumber);
+        console.log('[BROADCAST] Received show-cards event for game', payloadGameUuid);
         setWinner357ShowCards(true);
       })
       .subscribe();
@@ -1498,17 +1498,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Handler for winner to broadcast "show cards"
   const handleWinner357ShowCards = useCallback(() => {
-    const handNumber = currentHandNumberRef.current;
-    console.log('[BROADCAST] Sending show-cards event for hand', handNumber);
+    const currentGameUuid = game?.current_game_uuid;
+    console.log('[BROADCAST] Sending show-cards event for game', currentGameUuid);
     setWinner357ShowCards(true); // Update local state immediately
     
-    // Broadcast to all other clients - include hand number to prevent stale events
+    // Broadcast to all other clients - include current_game_uuid to prevent stale events
     showCardsChannelRef.current?.send({
       type: 'broadcast',
       event: 'show-cards',
-      payload: { timestamp: Date.now(), handNumber }
+      payload: { timestamp: Date.now(), currentGameUuid }
     });
-  }, []);
+  }, [game?.current_game_uuid]);
   
   // Reset winner357ShowCards when game transitions away from game_over OR when a new hand starts
   useEffect(() => {

@@ -376,6 +376,7 @@ export type Database = {
       game_results: {
         Row: {
           created_at: string
+          dealer_game_id: string | null
           game_id: string
           game_type: string | null
           hand_number: number
@@ -389,6 +390,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dealer_game_id?: string | null
           game_id: string
           game_type?: string | null
           hand_number: number
@@ -402,6 +404,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dealer_game_id?: string | null
           game_id?: string
           game_type?: string | null
           hand_number?: number
@@ -442,6 +445,7 @@ export type Database = {
           config_complete: boolean
           config_deadline: string | null
           created_at: string
+          current_game_uuid: string | null
           current_host: string | null
           current_round: number | null
           dealer_position: number | null
@@ -483,6 +487,7 @@ export type Database = {
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
+          current_game_uuid?: string | null
           current_host?: string | null
           current_round?: number | null
           dealer_position?: number | null
@@ -524,6 +529,7 @@ export type Database = {
           config_complete?: boolean
           config_deadline?: string | null
           created_at?: string
+          current_game_uuid?: string | null
           current_host?: string | null
           current_round?: number | null
           dealer_position?: number | null

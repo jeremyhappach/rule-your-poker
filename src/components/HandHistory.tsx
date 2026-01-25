@@ -17,6 +17,7 @@ interface GameResult {
   player_chip_changes: Record<string, number>;
   is_chopped: boolean;
   created_at: string;
+  dealer_game_id?: string | null;
 }
 
 // A hand groups all game_results with the same hand_number
@@ -182,7 +183,7 @@ export const HandHistory = ({
     return legsPattern.test(desc);
   };
 
-  // Group game results into logical games (bounded by game completions or game_type changes)
+  // Group game results into logical games (bounded by dealer_game_id or fallback to game completion detection)
   const groupResultsByHand = (): HandGroup[] => {
     // Sort all results chronologically (oldest first) to process in order
     const sortedResults = [...gameResults].sort((a, b) => 
@@ -191,25 +192,25 @@ export const HandHistory = ({
 
     const games: GameResult[][] = [];
     let currentGame: GameResult[] = [];
-    let currentGameType: string | null = null;
+    let currentDealerGameId: string | null = null;
 
     sortedResults.forEach(result => {
-      const resultGameType = (result as any).game_type || null;
+      const resultDealerGameId = result.dealer_game_id || null;
       
-      // If game_type changes and we have events, close out the previous game
-      if (currentGame.length > 0 && resultGameType !== currentGameType && currentGameType !== null) {
+      // If dealer_game_id changes and we have events, close out the previous game
+      if (currentGame.length > 0 && resultDealerGameId !== currentDealerGameId && currentDealerGameId !== null) {
         games.push(currentGame);
         currentGame = [];
       }
       
       currentGame.push(result);
-      currentGameType = resultGameType;
+      currentDealerGameId = resultDealerGameId;
       
-      // If this is a game completion, close out this game and start fresh
-      if (isGameCompletion(result)) {
+      // Fallback: If no dealer_game_id, use completion detection
+      if (!resultDealerGameId && isGameCompletion(result)) {
         games.push(currentGame);
         currentGame = [];
-        currentGameType = null;
+        currentDealerGameId = null;
       }
     });
 

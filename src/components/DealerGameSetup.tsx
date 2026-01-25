@@ -12,6 +12,7 @@ import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPl
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { toast } from "sonner";
+import { generateUUID } from "@/lib/uuid";
 
 type SelectionStep = 'category' | 'cards' | 'dice';
 
@@ -608,6 +609,7 @@ export const DealerGameSetup = ({
                 legs_to_win: 0,
                 pot_max_enabled: false,
                 pussy_tax_enabled: false,
+                current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
               })
               .eq('id', gameId);
             
@@ -653,6 +655,7 @@ export const DealerGameSetup = ({
               config_complete: true,
               status: 'ante_decision',
               ante_decision_deadline: anteDeadline,
+              current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
             };
             
             if (isHolmGame) {
@@ -715,6 +718,7 @@ export const DealerGameSetup = ({
               config_complete: true,
               status: 'ante_decision',
               ante_decision_deadline: anteDeadline,
+              current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
             };
             
             if (gameType === 'holm-game') {
@@ -820,6 +824,7 @@ export const DealerGameSetup = ({
       config_complete: true,
       status: 'ante_decision',
       ante_decision_deadline: anteDeadline,
+      current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
     };
 
     if (isHolmGame) {
@@ -998,6 +1003,7 @@ export const DealerGameSetup = ({
         legs_to_win: 0,
         pot_max_enabled: false,
         pussy_tax_enabled: false,
+        current_game_uuid: generateUUID(), // Generate new game ID for this dealer game
       })
       .eq('id', gameId);
     
