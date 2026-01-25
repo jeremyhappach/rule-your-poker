@@ -489,7 +489,8 @@ export const DealerGameSetup = ({
   }, []);
 
   const syncWithServerDeadline = useCallback(async () => {
-    if (isBot || loadingDefaults) return;
+    // Don't sync until timer settings are loaded to avoid using stale defaults
+    if (isBot || loadingDefaults || timerSettingsLoading) return;
 
     const { data: gameData, error } = await supabase
       .from('games')
@@ -533,7 +534,7 @@ export const DealerGameSetup = ({
     console.log('[DEALER SETUP] No server deadline found, set fallback deadline');
     setTimeLeft(gameSetupTimerSeconds);
     scheduleConfigTimeout(new Date(deadlineIso).getTime());
-  }, [gameId, isBot, loadingDefaults, scheduleConfigTimeout, gameSetupTimerSeconds]);
+  }, [gameId, isBot, loadingDefaults, timerSettingsLoading, scheduleConfigTimeout, gameSetupTimerSeconds]);
 
   // Initial sync + resync when app returns to foreground (mobile browsers can pause timers)
   useEffect(() => {
@@ -541,7 +542,7 @@ export const DealerGameSetup = ({
   }, [syncWithServerDeadline]);
 
   useEffect(() => {
-    if (isBot || loadingDefaults) return;
+    if (isBot || loadingDefaults || timerSettingsLoading) return;
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -560,7 +561,7 @@ export const DealerGameSetup = ({
         configTimeoutRef.current = null;
       }
     };
-  }, [isBot, loadingDefaults, syncWithServerDeadline]);
+  }, [isBot, loadingDefaults, timerSettingsLoading, syncWithServerDeadline]);
 
   // Countdown timer - display only (timeout enforcement is scheduled off the server deadline)
   useEffect(() => {
