@@ -18,6 +18,7 @@ interface GameResult {
   is_chopped: boolean;
   created_at: string;
   dealer_game_id?: string | null;
+  game_type?: string | null; // Stored directly on game_results
 }
 
 // DealerGame info from the dealer_games table
@@ -41,6 +42,7 @@ interface HandGroup {
   totalPot: number; // Total pot won in this hand
   latestTimestamp: string;
   dealerGame?: DealerGame; // Info from dealer_games table
+  gameType?: string | null; // Game type (horses, ship-captain-crew, etc.) - from result or dealerGame
   playerDiceResults?: PlayerDiceResult[]; // Dice results for all players (horses/SCC)
 }
 
@@ -333,6 +335,10 @@ export const HandHistory = ({
       const dealerGameId = events[0]?.dealer_game_id;
       const dealerGame = dealerGameId ? dealerGames.get(dealerGameId) : undefined;
       
+      // Get game type from event directly (stored on game_results) or fallback to dealerGame
+      const gameTypeFromResult = events.find(e => e.game_type)?.game_type;
+      const resolvedGameType = gameTypeFromResult || dealerGame?.game_type || null;
+      
       // Calculate total chip change for current player
       let totalChipChange = 0;
       if (currentPlayerId) {
@@ -348,20 +354,23 @@ export const HandHistory = ({
 
       // Extract player dice results for dice games (horses, ship-captain-crew)
       let playerDiceResults: PlayerDiceResult[] | undefined;
-      const isDiceGame = dealerGame?.game_type === 'horses' || dealerGame?.game_type === 'ship-captain-crew';
+      const isDiceGame = resolvedGameType === 'horses' || resolvedGameType === 'ship-captain-crew';
       
-      if (isDiceGame && lastShowdown) {
-        // Find the round that matches this game by looking at creation time
-        // The last round before the showdown result
-        const gameStartTime = events[0]?.created_at;
-        const gameEndTime = lastShowdown.created_at;
+      if (isDiceGame && lastShowdown && dealerGame) {
+        // Find the round that was active during this dealer_game's timeframe
+        // Use dealer_game started_at and result created_at to bracket the round
+        const dealerGameStartTime = new Date(dealerGame.started_at).getTime();
+        const resultTime = new Date(lastShowdown.created_at).getTime();
         
-        const relevantRound = rounds.find(r => {
-          const roundTime = new Date(r.created_at).getTime();
-          const startTime = new Date(gameStartTime).getTime();
-          const endTime = new Date(gameEndTime).getTime();
-          return roundTime >= startTime - 60000 && roundTime <= endTime + 60000; // 1 minute buffer
-        });
+        // Find the most recent completed round that falls within the dealer_game window
+        const relevantRound = rounds
+          .filter(r => {
+            const roundTime = new Date(r.created_at).getTime();
+            // Round should be after dealer_game started and before/at result time
+            return roundTime >= dealerGameStartTime - 5000 && roundTime <= resultTime + 5000;
+          })
+          .filter(r => r.horses_state?.playerStates)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
         
         if (relevantRound?.horses_state?.playerStates) {
           const playerStates = relevantRound.horses_state.playerStates as Record<string, any>;
@@ -393,6 +402,7 @@ export const HandHistory = ({
         totalPot,
         latestTimestamp: events[events.length - 1]?.created_at || '',
         dealerGame,
+        gameType: resolvedGameType,
         playerDiceResults,
       };
     });
@@ -631,8 +641,8 @@ export const HandHistory = ({
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
                         #{displayGameNumber}
-                        {hand.dealerGame && (
-                          <span className="text-muted-foreground font-normal"> {formatGameType(hand.dealerGame.game_type)}</span>
+                        {hand.gameType && (
+                          <span className="text-muted-foreground font-normal"> {formatGameType(hand.gameType)}</span>
                         )}
                       </span>
                       <span className="text-xs text-muted-foreground">
