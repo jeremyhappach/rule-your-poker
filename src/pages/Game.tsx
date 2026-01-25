@@ -1460,6 +1460,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Broadcast channel for ephemeral UI events (like "Show Cards" in 3-5-7)
   const showCardsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   
+  // Track current hand number for show-cards validation
+  const currentHandNumberRef = useRef<number | null>(null);
+  useEffect(() => {
+    currentHandNumberRef.current = game?.total_hands ?? null;
+  }, [game?.total_hands]);
+  
   useEffect(() => {
     if (!gameId) return;
     
@@ -1467,7 +1473,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const channel = supabase
       .channel(`show-cards-${gameId}`)
       .on('broadcast', { event: 'show-cards' }, (payload) => {
-        console.log('[BROADCAST] Received show-cards event:', payload);
+        // Only accept show-cards for the CURRENT hand to prevent carryover from previous games
+        const payloadHandNumber = (payload.payload as any)?.handNumber;
+        const currentHand = currentHandNumberRef.current;
+        
+        if (payloadHandNumber != null && currentHand != null && payloadHandNumber !== currentHand) {
+          console.log('[BROADCAST] Ignoring stale show-cards event from hand', payloadHandNumber, '(current:', currentHand, ')');
+          return;
+        }
+        
+        console.log('[BROADCAST] Received show-cards event for hand', payloadHandNumber);
         setWinner357ShowCards(true);
       })
       .subscribe();
@@ -1483,14 +1498,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // Handler for winner to broadcast "show cards"
   const handleWinner357ShowCards = useCallback(() => {
-    console.log('[BROADCAST] Sending show-cards event');
+    const handNumber = currentHandNumberRef.current;
+    console.log('[BROADCAST] Sending show-cards event for hand', handNumber);
     setWinner357ShowCards(true); // Update local state immediately
     
-    // Broadcast to all other clients
+    // Broadcast to all other clients - include hand number to prevent stale events
     showCardsChannelRef.current?.send({
       type: 'broadcast',
       event: 'show-cards',
-      payload: { timestamp: Date.now() }
+      payload: { timestamp: Date.now(), handNumber }
     });
   }, []);
   
