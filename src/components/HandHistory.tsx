@@ -211,6 +211,22 @@ export const HandHistory = ({
     }
 
     // Fetch player names for displaying dice results
+    // Use session_player_snapshots for historical accuracy (includes players who left)
+    const { data: snapshotsData } = await supabase
+      .from('session_player_snapshots')
+      .select('player_id, username')
+      .eq('game_id', gameId);
+
+    const namesMap = new Map<string, string>();
+    
+    // First, populate from snapshots (historical data)
+    if (snapshotsData) {
+      snapshotsData.forEach(snap => {
+        namesMap.set(snap.player_id, snap.username);
+      });
+    }
+
+    // Also fetch current players as fallback
     const { data: playersData } = await supabase
       .from('players')
       .select('id, user_id, is_bot')
@@ -223,13 +239,15 @@ export const HandHistory = ({
         .select('id, username')
         .in('id', userIds);
 
-      const namesMap = new Map<string, string>();
       playersData.forEach(player => {
-        const profile = profiles?.find(p => p.id === player.user_id);
-        namesMap.set(player.id, profile?.username || 'Unknown');
+        if (!namesMap.has(player.id)) {
+          const profile = profiles?.find(p => p.id === player.user_id);
+          namesMap.set(player.id, profile?.username || 'Unknown');
+        }
       });
-      setPlayerNames(namesMap);
     }
+    
+    setPlayerNames(namesMap);
   };
 
   // Helper to check if a result is a "system" event vs actual showdown
@@ -544,9 +562,9 @@ export const HandHistory = ({
                 <div className="flex items-center justify-between w-full pr-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
-                      Game #{totalGames}
+                      #{totalGames}
                       {inProgressGame.dealerGame && (
-                        <span className="text-muted-foreground font-normal"> ({formatGameType(inProgressGame.dealerGame.game_type)})</span>
+                        <span className="text-muted-foreground font-normal"> {formatGameType(inProgressGame.dealerGame.game_type)}</span>
                       )}
                     </span>
                     <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
@@ -612,9 +630,9 @@ export const HandHistory = ({
                   <div className="flex items-center justify-between w-full pr-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
-                        Game #{displayGameNumber}
+                        #{displayGameNumber}
                         {hand.dealerGame && (
-                          <span className="text-muted-foreground font-normal"> ({formatGameType(hand.dealerGame.game_type)})</span>
+                          <span className="text-muted-foreground font-normal"> {formatGameType(hand.dealerGame.game_type)}</span>
                         )}
                       </span>
                       <span className="text-xs text-muted-foreground">
