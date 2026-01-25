@@ -219,30 +219,19 @@ export const HandHistory = ({
     if (roundsError) {
       console.error('[HandHistory] Error fetching rounds:', roundsError);
     } else {
-      // CRITICAL: Enrich rounds with dealer_game_id by matching time windows
-      // Sort all dealer games by started_at ONCE for efficient matching
-      const sortedDealerGames = Array.from(dealerGamesMap.values()).sort(
-        (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
-      );
-
+      // CRITICAL: Enrich rounds with dealer_game_id by matching hand_number
+      // Both rounds and game_results share game_id + hand_number as the definitive link
       const enrichedRounds = (roundsData || []).map(round => {
-        let matchedDealerGameId: string | null = null;
-        const roundTime = new Date(round.created_at).getTime();
+        // Match by hand_number - this is the definitive relationship
+        const matchingResult = gameResults.find(gr => 
+          gr.game_id === round.game_id && 
+          gr.hand_number === round.hand_number
+        );
         
-        // Find which dealer game this round belongs to based on time
-        for (let i = 0; i < sortedDealerGames.length; i++) {
-          const dg = sortedDealerGames[i];
-          const dgStart = new Date(dg.started_at).getTime();
-          const nextDg = sortedDealerGames[i + 1];
-          const dgEnd = nextDg ? new Date(nextDg.started_at).getTime() : Infinity;
-          
-          if (roundTime >= dgStart && roundTime < dgEnd) {
-            matchedDealerGameId = dg.id;
-            break;
-          }
-        }
-        
-        return { ...round, dealer_game_id: matchedDealerGameId };
+        return { 
+          ...round, 
+          dealer_game_id: matchingResult?.dealer_game_id || null 
+        };
       });
       
       setRounds(enrichedRounds as any);
