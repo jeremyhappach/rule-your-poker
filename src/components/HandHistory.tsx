@@ -18,7 +18,6 @@ interface GameResult {
   is_chopped: boolean;
   created_at: string;
   dealer_game_id?: string | null;
-  game_type?: string | null; // Stored directly on game_results
 }
 
 // DealerGame info from the dealer_games table
@@ -335,9 +334,8 @@ export const HandHistory = ({
       const dealerGameId = events[0]?.dealer_game_id;
       const dealerGame = dealerGameId ? dealerGames.get(dealerGameId) : undefined;
       
-      // Get game type from event directly (stored on game_results) or fallback to dealerGame
-      const gameTypeFromResult = events.find(e => e.game_type)?.game_type;
-      const resolvedGameType = gameTypeFromResult || dealerGame?.game_type || null;
+      // Get game type from dealer_games table (single source of truth)
+      const resolvedGameType = dealerGame?.game_type || null;
       
       // Calculate total chip change for current player
       let totalChipChange = 0;
