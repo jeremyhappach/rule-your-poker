@@ -323,7 +323,7 @@ const Game = () => {
     };
   }, [gameId]);
   
-  const [isRunningItBack, setIsRunningItBack] = useState(false);
+  const [isRunningItBack, setIsRunningItBack] = useState<boolean | null>(null);
   const [showNotEnoughPlayers, setShowNotEnoughPlayers] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showPlayerOptions, setShowPlayerOptions] = useState(false);
@@ -2082,6 +2082,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         actualStatus: game?.status
       });
       setShowAnteDialog(false);
+      // Reset isRunningItBack so it re-computes on next ante_decision phase
+      setIsRunningItBack(null);
     }
   }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
@@ -6198,7 +6200,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
         })()}
 
-        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && (() => {
+        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => {
           const currentPlayer = players.find(p => p.user_id === user.id);
           return (
             <AnteUpDialog

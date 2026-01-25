@@ -1275,13 +1275,15 @@ export const DealerGameSetup = ({
                 <h2 className="text-2xl font-bold text-poker-gold">Dealer Setup</h2>
                 <p className="text-amber-100 text-sm">{dealerUsername}, choose game type</p>
               </div>
-              <Badge 
-                variant={timeLeft <= 10 ? "destructive" : "default"} 
-                className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-              >
-                <Timer className="w-4 h-4" />
-                {timeLeft}s
-              </Badge>
+              {timeLeft !== null && (
+                <Badge 
+                  variant={timeLeft <= 10 ? "destructive" : "default"} 
+                  className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
+                >
+                  <Timer className="w-4 h-4" />
+                  {timeLeft}s
+                </Badge>
+              )}
             </div>
 
             {/* Category Selection */}
@@ -1355,13 +1357,15 @@ export const DealerGameSetup = ({
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
                   <p className="text-amber-100 text-sm">{dealerUsername}, configure ante</p>
                 </div>
-                <Badge 
-                  variant={timeLeft <= 10 ? "destructive" : "default"} 
-                  className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-                >
-                  <Timer className="w-4 h-4" />
-                  {timeLeft}s
-                </Badge>
+                {timeLeft !== null && (
+                  <Badge 
+                    variant={timeLeft <= 10 ? "destructive" : "default"} 
+                    className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
+                  >
+                    <Timer className="w-4 h-4" />
+                    {timeLeft}s
+                  </Badge>
+                )}
               </div>
 
               {/* Dice Game Config */}
@@ -1419,13 +1423,15 @@ export const DealerGameSetup = ({
                 <h2 className="text-2xl font-bold text-poker-gold">Select Dice Game</h2>
                 <p className="text-amber-100 text-sm">{dealerUsername}, choose a dice game</p>
               </div>
-              <Badge 
-                variant={timeLeft <= 10 ? "destructive" : "default"} 
-                className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-              >
-                <Timer className="w-4 h-4" />
-                {timeLeft}s
-              </Badge>
+              {timeLeft !== null && (
+                <Badge 
+                  variant={timeLeft <= 10 ? "destructive" : "default"} 
+                  className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
+                >
+                  <Timer className="w-4 h-4" />
+                  {timeLeft}s
+                </Badge>
+              )}
             </div>
 
             {/* Dice Game Selection */}
@@ -1478,13 +1484,15 @@ export const DealerGameSetup = ({
               <h2 className="text-2xl font-bold text-poker-gold">Card Game Setup</h2>
               <p className="text-amber-100 text-sm">{dealerUsername}, configure your game</p>
             </div>
-            <Badge 
-              variant={timeLeft <= 10 ? "destructive" : "default"} 
-              className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-            >
-              <Timer className="w-4 h-4" />
-              {timeLeft}s
-            </Badge>
+            {timeLeft !== null && (
+              <Badge 
+                variant={timeLeft <= 10 ? "destructive" : "default"} 
+                className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
+              >
+                <Timer className="w-4 h-4" />
+                {timeLeft}s
+              </Badge>
+            )}
           </div>
 
           {/* Game Type Tabs */}
