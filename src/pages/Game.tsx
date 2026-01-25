@@ -3639,9 +3639,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[DEALER SELECT] Selected dealer at position:', dealerPosition);
 
-    // CRITICAL: Set config_deadline ATOMICALLY with status change to prevent race condition
-    // where enforce-deadlines fires before DealerGameSetup component can set the deadline
-    const configDeadline = new Date(Date.now() + 35000).toISOString(); // 35 seconds (5 sec buffer for component mount)
+    // Set config_deadline ATOMICALLY with status change, using the session-cached timer.
+    const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
+    const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
     
     // Log session events
     await logStatusChanged(gameId, user?.id, 'dealer_selection', 'game_selection', `Dealer selected at position ${dealerPosition}`);
@@ -4022,9 +4022,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME OVER] Transitioning to game_selection phase for new game');
 
-    // CRITICAL: Set config_deadline ATOMICALLY with status change to prevent race condition
-    // where enforce-deadlines fires before DealerGameSetup component can set the deadline
-    const configDeadline = new Date(Date.now() + 35000).toISOString(); // 35 seconds (5 sec buffer for component mount)
+    // Set config_deadline ATOMICALLY with status change, using the session-cached timer.
+    const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
+    const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
     
     // Log session events for next game setup
     await logStatusChanged(gameId, user?.id, 'game_over', 'game_selection', `Starting next game, dealer at position ${newDealerPosition}`);
@@ -4946,13 +4946,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Rotate dealer and start new game selection
             const currentDealerPos = game?.dealer_position || 1;
             const newDealerPos = await rotateDealerPosition(gameId, currentDealerPos);
+            const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
+            const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
             await supabase
               .from('games')
               .update({ 
                 status: 'game_selection',
+                config_complete: false,
+                config_deadline: configDeadline,
                 last_round_result: null,
                 awaiting_next_round: false,
-                dealer_position: newDealerPos
+                dealer_position: newDealerPos,
               })
               .eq('id', gameId);
           } else {

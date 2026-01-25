@@ -313,7 +313,10 @@ serve(async (req) => {
                   ? sortedEligible[currentDealerIdx]
                   : sortedEligible[0];
 
-                const newConfigDeadline = new Date(Date.now() + 30000).toISOString();
+                const setupSeconds = typeof game.game_setup_timer_seconds === 'number'
+                  ? Math.max(1, game.game_setup_timer_seconds)
+                  : 30;
+                const newConfigDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
 
                 await supabase
                   .from('games')
