@@ -360,18 +360,28 @@ export const HandHistory = ({
         let relevantRound: Round | undefined;
         
         if (dealerGame) {
-          // Use time window matching when we have dealer_game info
+          // Use STRICT time window matching: round must be created AFTER this dealer_game started
+          // and BEFORE the next dealer_game in the session (or before result time if no next game)
           const dealerGameStartTime = new Date(dealerGame.started_at).getTime();
           const lastShowdownTime = new Date(lastShowdown.created_at).getTime();
           
-          // Find the most recent round that falls within this dealer_game's time window
-          // Allow 10s buffer before dealer_game start (for round creation) and after result (for processing)
+          // Find the next dealer_game's start time (to bound the window)
+          const allDealerGames = Array.from(dealerGames.values()).sort(
+            (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
+          );
+          const currentDgIndex = allDealerGames.findIndex(dg => dg.id === dealerGame.id);
+          const nextDealerGame = allDealerGames[currentDgIndex + 1];
+          const windowEndTime = nextDealerGame 
+            ? new Date(nextDealerGame.started_at).getTime() 
+            : lastShowdownTime + 10000;
+          
+          // Find rounds that fall strictly within this dealer_game's time window
           const matchingRounds = rounds
             .filter(r => {
               if (!r.horses_state?.playerStates) return false;
               const roundTime = new Date(r.created_at).getTime();
-              return roundTime >= dealerGameStartTime - 10000 && 
-                     roundTime <= lastShowdownTime + 10000;
+              // Round must be >= dealer_game start and < next dealer_game start (or result time)
+              return roundTime >= dealerGameStartTime && roundTime < windowEndTime;
             })
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
           
@@ -406,7 +416,7 @@ export const HandHistory = ({
                 username: playerNames.get(playerId) || 'Unknown',
                 dice,
                 isWinner: playerId === winnerPlayerId,
-                handDescription: state.result?.handName || undefined,
+                handDescription: state.result?.description || state.result?.handName || undefined,
               };
             })
             .sort((a, b) => (b.isWinner ? 1 : 0) - (a.isWinner ? 1 : 0)); // Winner first
