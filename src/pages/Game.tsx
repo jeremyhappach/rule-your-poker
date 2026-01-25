@@ -1936,144 +1936,139 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Check for "Running it Back" using dealer_games table for deterministic detection
       // A "runback" means the current dealer_game has the same game_type and config as the previous one
       // We use the current_game_uuid field to identify the current dealer_game
-      const checkRunBack = async () => {
+      const checkRunBackAndAutoAnte = async () => {
+        const currentPlayer = players.find(p => p.user_id === user.id);
+        const isDealer = currentPlayer?.position === game.dealer_position;
+        
+        // Determine if this is a runback FIRST before evaluating auto-ante
+        let isRunBack = false;
+        
         if (!game.current_game_uuid) {
           console.log('[ANTE DIALOG] No current_game_uuid, not a runback');
-          setIsRunningItBack(false);
-          return;
+          isRunBack = false;
+        } else {
+          // Query the previous dealer_game in this session (same session_id, started_at before current)
+          const { data: previousDealerGame, error } = await supabase
+            .from('dealer_games')
+            .select('id, game_type, config')
+            .eq('session_id', game.id)
+            .neq('id', game.current_game_uuid)
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (error) {
+            console.error('[ANTE DIALOG] Error fetching previous dealer_game:', error);
+            isRunBack = false;
+          } else if (!previousDealerGame) {
+            console.log('[ANTE DIALOG] No previous dealer_game found - first game of session');
+            isRunBack = false;
+          } else {
+            // Get current dealer_game for comparison
+            const { data: currentDealerGame, error: currentError } = await supabase
+              .from('dealer_games')
+              .select('id, game_type, config')
+              .eq('id', game.current_game_uuid)
+              .single();
+
+            if (currentError || !currentDealerGame) {
+              console.error('[ANTE DIALOG] Error fetching current dealer_game:', currentError);
+              isRunBack = false;
+            } else {
+              // Compare game_type and config JSON
+              const sameGameType = previousDealerGame.game_type === currentDealerGame.game_type;
+              const sameConfig = JSON.stringify(previousDealerGame.config) === JSON.stringify(currentDealerGame.config);
+              isRunBack = sameGameType && sameConfig;
+
+              console.log('[ANTE DIALOG] Running it back check (dealer_games):', { 
+                isRunBack, 
+                sameGameType,
+                sameConfig,
+                previousGameType: previousDealerGame.game_type,
+                currentGameType: currentDealerGame.game_type,
+                previousConfig: previousDealerGame.config,
+                currentConfig: currentDealerGame.config
+              });
+            }
+          }
         }
-
-        // Query the previous dealer_game in this session (same session_id, started_at before current)
-        const { data: previousDealerGame, error } = await supabase
-          .from('dealer_games')
-          .select('id, game_type, config')
-          .eq('session_id', game.id)
-          .neq('id', game.current_game_uuid)
-          .order('started_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error) {
-          console.error('[ANTE DIALOG] Error fetching previous dealer_game:', error);
-          setIsRunningItBack(false);
-          return;
-        }
-
-        if (!previousDealerGame) {
-          console.log('[ANTE DIALOG] No previous dealer_game found - first game of session');
-          setIsRunningItBack(false);
-          return;
-        }
-
-        // Get current dealer_game for comparison
-        const { data: currentDealerGame, error: currentError } = await supabase
-          .from('dealer_games')
-          .select('id, game_type, config')
-          .eq('id', game.current_game_uuid)
-          .single();
-
-        if (currentError || !currentDealerGame) {
-          console.error('[ANTE DIALOG] Error fetching current dealer_game:', currentError);
-          setIsRunningItBack(false);
-          return;
-        }
-
-        // Compare game_type and config JSON
-        const sameGameType = previousDealerGame.game_type === currentDealerGame.game_type;
-        const sameConfig = JSON.stringify(previousDealerGame.config) === JSON.stringify(currentDealerGame.config);
-        const isRunBack = sameGameType && sameConfig;
-
-        console.log('[ANTE DIALOG] Running it back check (dealer_games):', { 
-          isRunBack, 
-          sameGameType,
-          sameConfig,
-          previousGameType: previousDealerGame.game_type,
-          currentGameType: currentDealerGame.game_type,
-          previousConfig: previousDealerGame.config,
-          currentConfig: currentDealerGame.config
+        
+        // Update state for UI display
+        setIsRunningItBack(isRunBack);
+        
+        console.log('[ANTE DIALOG] Checking ante dialog:', {
+          gameStatus: game?.status,
+          hasUser: !!user,
+          hasCurrentPlayer: !!currentPlayer,
+          currentPlayerId: currentPlayer?.id,
+          currentPlayerUserId: currentPlayer?.user_id,
+          anteDecision: currentPlayer?.ante_decision,
+          isDealer,
+          dealerPosition: game.dealer_position,
+          playerPosition: currentPlayer?.position,
+          autoAnte: currentPlayer?.auto_ante,
+          autoAnteRunback: currentPlayer?.auto_ante_runback,
+          isRunBack
         });
         
-        setIsRunningItBack(isRunBack);
+        // AUTO-ANTE: If player has auto_ante enabled, automatically accept ante (no dialog)
+        // OR if player has auto_ante_runback enabled AND this is a run-it-back scenario
+        // CRITICAL: We now check isRunBack (local variable) which is guaranteed to be resolved
+        const shouldAutoAnte = currentPlayer?.auto_ante || (currentPlayer?.auto_ante_runback && isRunBack);
+        
+        if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
+          console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id, {
+            auto_ante: currentPlayer.auto_ante,
+            auto_ante_runback: currentPlayer.auto_ante_runback,
+            isRunBack
+          });
+          
+          // Auto-accept the ante
+          await supabase
+            .from('players')
+            .update({
+              ante_decision: 'ante_up',
+              sitting_out: false,
+            })
+            .eq('id', currentPlayer.id);
+          
+          console.log('[ANTE DIALOG] Auto-ante complete');
+          setShowAnteDialog(false);
+          return;
+        }
+        
+        // Don't show ante dialog for dealer (they auto ante up)
+        // Don't show ante dialog for players who are sitting_out (they stay sitting out)
+        // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
+        if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && !currentPlayer.sitting_out) {
+          console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', currentPlayer.id, {
+            auto_ante: currentPlayer.auto_ante,
+            auto_ante_runback: currentPlayer.auto_ante_runback,
+            isRunBack
+          });
+          setShowAnteDialog(true);
+          
+          // Calculate ante time left
+          if (game.ante_decision_deadline) {
+            const deadline = new Date(game.ante_decision_deadline).getTime();
+            const now = Date.now();
+            const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
+            console.log('[ANTE DIALOG] Time left calculation:', { deadline, now, remaining });
+            setAnteTimeLeft(remaining);
+          }
+        } else {
+          console.log('[ANTE DIALOG] ❌ NOT showing ante dialog - reasons:', {
+            noCurrentPlayer: !currentPlayer,
+            anteDecisionNotNull: currentPlayer?.ante_decision !== null,
+            anteDecisionValue: currentPlayer?.ante_decision,
+            isDealer,
+            sittingOut: currentPlayer?.sitting_out
+          });
+          setShowAnteDialog(false);
+        }
       };
 
-      checkRunBack();
-      
-      console.log('[ANTE DIALOG] Checking ante dialog:', {
-        gameStatus: game?.status,
-        hasUser: !!user,
-        hasCurrentPlayer: !!currentPlayer,
-        currentPlayerId: currentPlayer?.id,
-        currentPlayerUserId: currentPlayer?.user_id,
-        anteDecision: currentPlayer?.ante_decision,
-        anteDecisionType: typeof currentPlayer?.ante_decision,
-        anteDecisionIsNull: currentPlayer?.ante_decision === null,
-        anteDecisionIsUndefined: currentPlayer?.ante_decision === undefined,
-        isDealer,
-        dealerPosition: game.dealer_position,
-        playerPosition: currentPlayer?.position,
-        autoAnte: currentPlayer?.auto_ante,
-        shouldShow: currentPlayer && currentPlayer.ante_decision === null && !isDealer && !currentPlayer.auto_ante
-      });
-      
-      // AUTO-ANTE: If player has auto_ante enabled, automatically accept ante (no dialog)
-      // OR if player has auto_ante_runback enabled AND this is a run-it-back scenario
-      // CRITICAL: Only auto-ante if the dialog is NOT already showing - this allows users
-      // to toggle the auto-ante checkboxes without immediately closing the modal
-      // Note: isRunningItBack state is set asynchronously by checkRunBack() above
-      const shouldAutoAnte = currentPlayer?.auto_ante || (currentPlayer?.auto_ante_runback && isRunningItBack);
-      
-      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
-        console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id, {
-          auto_ante: currentPlayer.auto_ante,
-          auto_ante_runback: currentPlayer.auto_ante_runback,
-          isRunningItBack
-        });
-        
-        // Auto-accept the ante
-        supabase
-          .from('players')
-          .update({
-            ante_decision: 'ante_up',
-            sitting_out: false,
-          })
-          .eq('id', currentPlayer.id)
-          .then(() => {
-            console.log('[ANTE DIALOG] Auto-ante complete');
-          });
-        
-        setShowAnteDialog(false);
-        return;
-      }
-      
-      // Don't show ante dialog for dealer (they auto ante up)
-      // Don't show ante dialog for players who are sitting_out (they stay sitting out)
-      // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
-      if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && !currentPlayer.sitting_out) {
-        console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', currentPlayer.id, {
-          auto_ante: currentPlayer.auto_ante,
-          auto_ante_runback: currentPlayer.auto_ante_runback,
-          isRunningItBack
-        });
-        setShowAnteDialog(true);
-        
-        // Calculate ante time left
-        if (game.ante_decision_deadline) {
-          const deadline = new Date(game.ante_decision_deadline).getTime();
-          const now = Date.now();
-          const remaining = Math.max(0, Math.floor((deadline - now) / 1000));
-          console.log('[ANTE DIALOG] Time left calculation:', { deadline, now, remaining });
-          setAnteTimeLeft(remaining);
-        }
-      } else {
-        console.log('[ANTE DIALOG] ❌ NOT showing ante dialog - reasons:', {
-          noCurrentPlayer: !currentPlayer,
-          anteDecisionNotNull: currentPlayer?.ante_decision !== null,
-          anteDecisionValue: currentPlayer?.ante_decision,
-          isDealer,
-          sittingOut: currentPlayer?.sitting_out
-        });
-        setShowAnteDialog(false);
-      }
+      checkRunBackAndAutoAnte();
     } else {
       console.log('[ANTE DIALOG] ❌ Conditions not met for ante dialog:', {
         statusNotAnteDecision: game?.status !== 'ante_decision',
