@@ -1507,7 +1507,9 @@ export async function endRound(gameId: string) {
             console.log('[endRound] SHOWDOWN: Recorded chip changes:', showdownChipChanges);
             
             // Include metadata for chip transfer animation (similar to Holm format)
-            const showdownResult = `${winnerUsername} won with ${handName}|||WINNER:${winner.playerId}|||LOSERS:${loserIds.join(',')}|||AMOUNT:${amountPerLoser}`;
+            // Format: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:handDescription"
+            // Client-side decides whether to show hand name based on reveal_at_showdown setting
+            const showdownResult = `${winnerUsername} won showdown|||WINNER:${winner.playerId}|||LOSERS:${loserIds.join(',')}|||AMOUNT:${amountPerLoser}|||HANDNAME:${handName}`;
             
             console.log('[endRound] SHOWDOWN: Result determined:', {
               winner: winnerUsername,
