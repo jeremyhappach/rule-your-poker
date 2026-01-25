@@ -14,7 +14,7 @@ import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
-import { useGlobalTimerSettings } from "@/hooks/useGlobalTimerSettings";
+
 
 
 
@@ -116,6 +116,8 @@ interface GameData {
   is_first_hand?: boolean;
   config_complete?: boolean;
   current_game_uuid?: string | null;
+  game_setup_timer_seconds?: number;
+  ante_decision_timer_seconds?: number;
   rounds?: Round[];
 }
 
@@ -182,7 +184,7 @@ const Game = () => {
   const [loading, setLoading] = useState(true);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
-  const { anteDecisionTimerSeconds } = useGlobalTimerSettings();
+  
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
@@ -5749,6 +5751,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
                     isFirstHand={!hasSessionHistory && !previousGameConfig}
+                    gameSetupTimerSeconds={game.game_setup_timer_seconds || 30}
+                    anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />
@@ -6208,7 +6212,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isRunningItBack={isRunningItBack}
               autoAnte={currentPlayer?.auto_ante ?? false}
               autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
-              anteDecisionTimerSeconds={anteDecisionTimerSeconds}
+              anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
               onDecisionMade={() => setShowAnteDialog(false)}
             />
           );
