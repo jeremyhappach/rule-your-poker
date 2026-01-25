@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -54,6 +55,7 @@ interface Round {
   status: string;
   created_at: string;
   horses_state?: any; // Contains playerStates with dice values for dice games
+  dealer_game_id?: string | null; // Enriched during fetch via time window matching
 }
 
 // Player dice result for display
@@ -243,13 +245,6 @@ export const HandHistory = ({
         return { ...round, dealer_game_id: matchedDealerGameId };
       });
       
-      console.log('[HandHistory] Enriched rounds:', enrichedRounds.map(r => ({
-        id: r.id,
-        created_at: r.created_at,
-        dealer_game_id: r.dealer_game_id,
-        hasPlayerStates: !!(r.horses_state as any)?.playerStates,
-      })));
-      
       setRounds(enrichedRounds as any);
     }
 
@@ -401,19 +396,27 @@ export const HandHistory = ({
       if (isDiceGame && lastShowdown) {
         let relevantRound: Round | undefined;
         
-        // DIRECT MATCH using the enriched dealer_game_id on rounds
-        // Rounds are enriched with dealer_game_id during fetchRoundsData via time window matching
+        // Match round using enriched dealer_game_id (computed during fetch via time windows)
         const resultDealerGameId = lastShowdown.dealer_game_id;
         
         if (resultDealerGameId) {
-          // Match round using its enriched dealer_game_id (computed during fetch)
-          relevantRound = rounds.find(r => 
-            (r as any).dealer_game_id === resultDealerGameId && 
+          // Find round that matches this dealer_game_id and has player states
+          const candidateRounds = rounds.filter(r => 
+            r.dealer_game_id === resultDealerGameId && 
             r.horses_state?.playerStates
           );
+          
+          // If multiple rounds match (rare), pick the one closest to the result time
+          if (candidateRounds.length > 0) {
+            relevantRound = candidateRounds.sort((a, b) => {
+              const aTime = Math.abs(new Date(a.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
+              const bTime = Math.abs(new Date(b.created_at).getTime() - new Date(lastShowdown.created_at).getTime());
+              return aTime - bTime;
+            })[0];
+          }
         }
         
-        // Fallback: match by closest time to result if no dealer_game_id match
+        // Fallback: if no match via dealer_game_id, find closest round by time
         if (!relevantRound) {
           const matchingRounds = rounds
             .filter(r => r.horses_state?.playerStates)
@@ -464,16 +467,11 @@ export const HandHistory = ({
     return groups.sort((a, b) => b.hand_number - a.hand_number);
   };
 
-  // DEBUG: Log state at render time
-  console.log('[HandHistory] State at render:', {
-    gameResultsCount: gameResults.length,
-    roundsCount: rounds.length,
-    dealerGamesCount: dealerGames.size,
-    roundsWithHorsesState: rounds.filter(r => r.horses_state?.playerStates).length,
-    gameResultsWithDealerGameId: gameResults.filter(r => r.dealer_game_id).length,
-  });
-
-  const handGroups = groupResultsByHand();
+  // Use useMemo to compute hand groups only when data changes (ensures enrichment is complete)
+  const handGroups = useMemo(() => {
+    if (gameResults.length === 0) return [];
+    return groupResultsByHand();
+  }, [gameResults, rounds, dealerGames, playerNames, currentPlayerId]);
 
   const updateInProgressGame = () => {
     // Don't show in-progress if session has ended
