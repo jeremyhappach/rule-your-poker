@@ -2965,7 +2965,7 @@ export const MobileGameTable = ({
     const showNameBelowChipstack = isUpperCorner && !hideChipForShowdown;
     
     const cardsElement = isShowdown && !shouldHideForTabling ? (
-      <div className={`flex scale-100 origin-top ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-2' : ''}`}>
+      <div className={`flex scale-100 origin-top relative z-40 ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-2' : ''}`}>
         <PlayerHand 
           cards={cards} 
           isHidden={false}
