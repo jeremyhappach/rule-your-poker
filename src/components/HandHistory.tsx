@@ -244,14 +244,14 @@ export const HandHistory = ({
       });
     }
 
-    // Also fetch current players as fallback
+    // Also fetch current players as fallback (including created_at for bot alias ordering)
     const { data: playersData } = await supabase
       .from('players')
-      .select('id, user_id, is_bot')
+      .select('id, user_id, is_bot, created_at')
       .eq('game_id', gameId);
 
     if (playersData && playersData.length > 0) {
-      const userIds = playersData.filter(p => p.user_id).map(p => p.user_id);
+      const userIds = playersData.filter(p => p.user_id && !p.is_bot).map(p => p.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, username')
@@ -259,8 +259,20 @@ export const HandHistory = ({
 
       playersData.forEach(player => {
         if (!namesMap.has(player.id)) {
-          const profile = profiles?.find(p => p.id === player.user_id);
-          namesMap.set(player.id, profile?.username || 'Unknown');
+          if (player.is_bot) {
+            // Use bot alias (Bot 1, Bot 2, etc.) based on creation order
+            const bots = playersData
+              .filter(p => p.is_bot)
+              .sort((a, b) => {
+                if (!a.created_at || !b.created_at) return 0;
+                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+              });
+            const botIndex = bots.findIndex(b => b.user_id === player.user_id);
+            namesMap.set(player.id, botIndex >= 0 ? `Bot ${botIndex + 1}` : 'Bot');
+          } else {
+            const profile = profiles?.find(p => p.id === player.user_id);
+            namesMap.set(player.id, profile?.username || 'Unknown');
+          }
         }
       });
     }

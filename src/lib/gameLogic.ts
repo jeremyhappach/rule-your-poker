@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, has357Hand } from "./cardUtils";
+import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
 import { getBotAlias } from "./botAlias";
 
 /**
@@ -1408,7 +1408,7 @@ export async function endRound(gameId: string) {
               tiedPlayerNames.push(name);
             }
           }
-          const handName = formatHandRank(winners[0].evaluation.rank);
+          const handName = formatHandRankDetailed(winners[0].cards, true, wildRank as any);
           resultMessage = `${tiedPlayerNames.join(' and ')} tied with ${handName} - no money changes hands`;
           
           console.log('[endRound] SHOWDOWN: TIE detected, no chips transferred:', {
@@ -1435,7 +1435,7 @@ export async function endRound(gameId: string) {
             const winnerUsername = winningPlayer.is_bot 
               ? getBotAlias(allPlayers, winningPlayer.user_id) 
               : (winningPlayer.profiles?.username || `Player ${winningPlayer.position}`);
-            const handName = formatHandRank(winner.evaluation.rank);
+            const handName = formatHandRankDetailed(winner.cards, true, wildRank as any);
             
             const currentPot = game.pot || 0;
             let totalWinnings = 0;
