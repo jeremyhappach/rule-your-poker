@@ -96,6 +96,7 @@ export const HandHistory = ({
   const [dealerGames, setDealerGames] = useState<Map<string, DealerGame>>(new Map());
   const [rounds, setRounds] = useState<Round[]>([]);
   const [playerNames, setPlayerNames] = useState<Map<string, string>>(new Map()); // playerId -> username
+  const [userIdToName, setUserIdToName] = useState<Map<string, string>>(new Map()); // userId -> username (for resolving UUIDs in winner_username)
   const [loading, setLoading] = useState(true);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
   const [inProgressGame, setInProgressGame] = useState<InProgressGame | null>(null);
@@ -250,6 +251,9 @@ export const HandHistory = ({
       .select('id, user_id, is_bot, created_at')
       .eq('game_id', gameId);
 
+    // Map from user_id -> name (for resolving UUIDs stored in winner_username)
+    const userIdMap = new Map<string, string>();
+
     if (playersData && playersData.length > 0) {
       const userIds = playersData.filter(p => p.user_id && !p.is_bot).map(p => p.user_id);
       const { data: profiles } = await supabase
@@ -257,27 +261,70 @@ export const HandHistory = ({
         .select('id, username')
         .in('id', userIds);
 
+      // Sort bots by creation order once for consistency
+      const bots = playersData
+        .filter(p => p.is_bot)
+        .sort((a, b) => {
+          if (!a.created_at || !b.created_at) return 0;
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
+
       playersData.forEach(player => {
-        if (!namesMap.has(player.id)) {
-          if (player.is_bot) {
-            // Use bot alias (Bot 1, Bot 2, etc.) based on creation order
-            const bots = playersData
-              .filter(p => p.is_bot)
-              .sort((a, b) => {
-                if (!a.created_at || !b.created_at) return 0;
-                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-              });
-            const botIndex = bots.findIndex(b => b.user_id === player.user_id);
-            namesMap.set(player.id, botIndex >= 0 ? `Bot ${botIndex + 1}` : 'Bot');
-          } else {
-            const profile = profiles?.find(p => p.id === player.user_id);
-            namesMap.set(player.id, profile?.username || 'Unknown');
+        if (player.is_bot) {
+          // Use bot alias (Bot 1, Bot 2, etc.) based on creation order
+          const botIndex = bots.findIndex(b => b.user_id === player.user_id);
+          const botAlias = botIndex >= 0 ? `Bot ${botIndex + 1}` : 'Bot';
+          if (!namesMap.has(player.id)) {
+            namesMap.set(player.id, botAlias);
           }
+          // Also map user_id to alias so we can resolve UUIDs in winner_username
+          userIdMap.set(player.user_id, botAlias);
+        } else {
+          const profile = profiles?.find(p => p.id === player.user_id);
+          const username = profile?.username || 'Unknown';
+          if (!namesMap.has(player.id)) {
+            namesMap.set(player.id, username);
+          }
+          userIdMap.set(player.user_id, username);
         }
       });
     }
     
     setPlayerNames(namesMap);
+    setUserIdToName(userIdMap);
+  };
+
+  // Helper to check if a string looks like a UUID
+  const isUUID = (str: string): boolean => {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  };
+
+  // Resolve winner name - handles UUIDs stored in winner_username (for bots)
+  const resolveWinnerName = (winnerUsername: string | null, winnerPlayerId: string | null): string | null => {
+    if (!winnerUsername) return null;
+    
+    // If it's a system event name, return as-is
+    const systemWinners = ['Ante', 'Leg Purchase', 'Pussy Tax'];
+    if (systemWinners.includes(winnerUsername)) return winnerUsername;
+    
+    // If it looks like a UUID, try to resolve it
+    if (isUUID(winnerUsername)) {
+      // Try user_id map first (most common for bots)
+      if (userIdToName.has(winnerUsername)) {
+        return userIdToName.get(winnerUsername) || winnerUsername;
+      }
+      // Try player_id map as fallback
+      if (playerNames.has(winnerUsername)) {
+        return playerNames.get(winnerUsername) || winnerUsername;
+      }
+    }
+    
+    // Also try to resolve via winner_player_id if the username still looks like a UUID
+    if (winnerPlayerId && playerNames.has(winnerPlayerId)) {
+      return playerNames.get(winnerPlayerId) || winnerUsername;
+    }
+    
+    return winnerUsername;
   };
 
   // Helper to check if a result is a "system" event vs actual showdown
@@ -425,11 +472,20 @@ export const HandHistory = ({
         }
       }
 
+      // Resolve the winner name (handles UUIDs for bots)
+      const rawWinner = gameWinner?.winner_username || lastShowdown?.winner_username || null;
+      const winnerPlayerId = gameWinner?.winner_player_id || lastShowdown?.winner_player_id || null;
+      const resolvedWinner = resolveWinnerName(rawWinner, winnerPlayerId);
+      
+      // For 357 games: if there's no showdown winner (everyone folded), it's a Pussy Tax round
+      const isPussyTaxOnly = !resolvedWinner && events.some(e => e.winner_username === 'Pussy Tax');
+      const displayWinner = isPussyTaxOnly ? 'Pussy Tax' : resolvedWinner;
+
       return {
         hand_number: index + 1, // Display number (1 = first game played)
         events,
         totalChipChange,
-        showdownWinner: gameWinner?.winner_username || lastShowdown?.winner_username || null,
+        showdownWinner: displayWinner,
         showdownDescription: gameWinner?.winning_hand_description || lastShowdown?.winning_hand_description || null,
         isWinner: gameWinner?.winner_player_id === currentPlayerId,
         totalPot,
@@ -449,7 +505,7 @@ export const HandHistory = ({
   const handGroups = useMemo(() => {
     if (gameResults.length === 0) return [];
     return groupResultsByHand();
-  }, [gameResults, rounds, dealerGames, playerNames, currentPlayerId]);
+  }, [gameResults, rounds, dealerGames, playerNames, userIdToName, currentPlayerId]);
 
   const updateInProgressGame = () => {
     // Don't show in-progress if session has ended
@@ -695,7 +751,12 @@ export const HandHistory = ({
                     
                     {/* Winner name - fixed width, truncated */}
                     <div className="flex-1 min-w-0 max-w-[120px]">
-                      <span className="text-xs text-muted-foreground truncate block">
+                      <span className={cn(
+                        "text-xs truncate block",
+                        hand.showdownWinner === 'Pussy Tax' 
+                          ? "text-amber-500 font-medium" 
+                          : "text-muted-foreground"
+                      )}>
                         {hand.showdownWinner || 'No winner'}
                       </span>
                     </div>
