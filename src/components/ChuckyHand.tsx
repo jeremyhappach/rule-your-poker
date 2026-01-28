@@ -69,7 +69,7 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
   const totalWidth = cardWidth + (cards.length - 1) * overlapOffset;
 
   return (
-    <div className="absolute z-30 animate-scale-in" style={positionStyle}>
+    <div className="absolute z-50 animate-scale-in" style={positionStyle}>
       <div className="bg-gradient-to-br from-red-900/90 to-red-950/90 rounded-lg p-1.5 sm:p-2 backdrop-blur-sm border border-red-500 shadow-xl">
         <div className="text-center mb-1">
           <span className="text-red-400 font-bold text-[10px] sm:text-xs flex items-center justify-center gap-1">
