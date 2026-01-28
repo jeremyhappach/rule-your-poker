@@ -230,6 +230,7 @@ interface MobileGameTableProps {
   holmWinPotTriggerId?: string | null;
   holmWinPotAmount?: number;
   holmWinWinnerPosition?: number;
+  holmWinWinnerPositions?: number[]; // For multi-player wins
   onHolmWinPotAnimationComplete?: () => void;
   // Horses win pot animation props (winner takes pot at game end)
   horsesWinPotTriggerId?: string | null;
@@ -369,6 +370,7 @@ export const MobileGameTable = ({
   holmWinPotTriggerId,
   holmWinPotAmount = 0,
   holmWinWinnerPosition = 1,
+  holmWinWinnerPositions = [],
   onHolmWinPotAnimationComplete,
   horsesWinPotTriggerId,
   horsesWinPotAmount = 0,
@@ -3553,8 +3555,13 @@ export const MobileGameTable = ({
             triggerId={holmWinPotTriggerId}
             amount={holmWinPotAmount}
             winnerPosition={holmWinWinnerPosition}
+            winnerPositions={holmWinWinnerPositions}
             currentPlayerPosition={currentPlayer?.position ?? null}
-            isCurrentPlayerWinner={currentPlayer?.position === holmWinWinnerPosition}
+            isCurrentPlayerWinner={
+              holmWinWinnerPositions.length > 0
+                ? holmWinWinnerPositions.includes(currentPlayer?.position ?? -1)
+                : currentPlayer?.position === holmWinWinnerPosition
+            }
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
             onAnimationStart={() => {
