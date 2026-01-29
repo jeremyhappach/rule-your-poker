@@ -1109,21 +1109,13 @@ serve(async (req) => {
                   });
                 }
                 
-                // ZERO-SUM ACCOUNTING: Calculate NET chip changes based on pot contributions
-                // For Horses/SCC, pot is contributed equally by all active players across all antes
-                // Winner's NET = pot - their_contribution, Loser's NET = -their_contribution
-                const activePlayerCount = [...playerMap.values()].filter(p => !p.sitting_out).length;
-                const contributionPerPlayer = activePlayerCount > 0 ? Math.floor(roundPot / activePlayerCount) : 0;
-                
+                // ZERO-SUM ACCOUNTING: Since antes are recorded separately as negative chip changes,
+                // the showdown event only records the winner's GROSS pot award.
+                // This keeps the ledger balanced: sum(antes) = -pot, showdown = +pot, net = 0
                 const playerChipChanges: Record<string, number> = {
-                  [bestPlayer.playerId]: roundPot - contributionPerPlayer
+                  [bestPlayer.playerId]: roundPot // Winner receives the full pot
                 };
-                for (const [playerId, player] of playerMap.entries()) {
-                  if (playerId !== bestPlayer.playerId && !player.sitting_out) {
-                    playerChipChanges[playerId] = -contributionPerPlayer;
-                  }
-                }
-                console.log('[CRON-ENFORCE] Dice single winner: balanced chip changes', playerChipChanges);
+                console.log('[CRON-ENFORCE] Dice single winner: winner gets full pot', playerChipChanges);
                 
                 await supabase.from('game_results').insert({
                   game_id: game.id,
