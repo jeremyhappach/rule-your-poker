@@ -650,14 +650,15 @@ export const HandHistory = ({
     return handGroup.hand_number;
   };
 
-  // Format game type for display
+  // Format game type for display - handles both '357' and '3-5-7' variations
   const formatGameType = (type: string | null | undefined): string => {
     if (!type) return '';
-    switch (type) {
-      case 'holm-game': return 'Holm';
+    const normalized = type.toLowerCase().replace(/-/g, '');
+    switch (normalized) {
+      case 'holmgame': return 'Holm';
       case '357': return '3-5-7';
       case 'horses': return 'Horses';
-      case 'ship-captain-crew': return 'SCC';
+      case 'shipcaptaincrew': return 'SCC';
       default: return type;
     }
   };
@@ -684,6 +685,7 @@ export const HandHistory = ({
     );
   }
 
+
   return (
     <ScrollArea className="h-full max-h-[400px]">
       <div className="space-y-2 p-2">
@@ -700,7 +702,7 @@ export const HandHistory = ({
               className="border border-amber-500/50 rounded-lg mb-2 overflow-hidden bg-amber-500/10"
             >
               <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                <div className="flex items-center justify-between w-full pr-2 gap-2">
+                <div className="flex items-center w-full pr-2 gap-2 min-w-0">
                   {/* Game number + type - compact left */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <span className="text-sm font-medium whitespace-nowrap">
@@ -716,16 +718,17 @@ export const HandHistory = ({
                     </Badge>
                   </div>
                   
-                  {/* Chip change - compact right */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-                    <span className={cn(
-                      "text-sm font-bold w-[48px] text-right tabular-nums",
-                      inProgressGame.currentChipChange > 0 ? "text-green-500" : 
-                      inProgressGame.currentChipChange < 0 ? "text-red-500" : "text-muted-foreground"
-                    )}>
-                      {inProgressGame.currentChipChange > 0 ? '+' : ''}{formatChipValue(inProgressGame.currentChipChange)}
-                    </span>
-                  </div>
+                  {/* Spacer */}
+                  <div className="flex-1 min-w-0" />
+                  
+                  {/* Chip change - always visible at right */}
+                  <span className={cn(
+                    "text-sm font-bold flex-shrink-0 tabular-nums",
+                    inProgressGame.currentChipChange > 0 ? "text-green-500" : 
+                    inProgressGame.currentChipChange < 0 ? "text-red-500" : "text-muted-foreground"
+                  )}>
+                    {inProgressGame.currentChipChange > 0 ? '+' : ''}{formatChipValue(inProgressGame.currentChipChange)}
+                  </span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
@@ -738,16 +741,16 @@ export const HandHistory = ({
                     inProgressGame.events.map((event) => {
                       const { label, description, chipChange } = formatEventDescription(event);
                       return (
-                        <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
+                        <div key={event.id} className="flex items-center justify-between gap-2 bg-muted/20 rounded px-2 py-1.5">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[45px] flex-shrink-0 justify-center">
                               {label}
                             </Badge>
-                            <span className="text-xs text-muted-foreground">{description}</span>
+                            <span className="text-xs text-muted-foreground truncate">{description}</span>
                           </div>
                           {chipChange !== null && chipChange !== 0 && (
                             <span className={cn(
-                              "text-xs font-medium",
+                              "text-xs font-medium flex-shrink-0",
                               chipChange > 0 ? "text-green-500" : "text-red-500"
                             )}>
                               {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
@@ -762,7 +765,7 @@ export const HandHistory = ({
             </AccordionItem>
           )}
 
-          {/* Completed Hands - grouped by hand_number, sorted DESC (most recent first) */}
+          {/* Completed Hands - grouped by dealer_game_id, sorted DESC (most recent first) */}
           {handGroups.map((hand) => {
             const displayGameNumber = hand.hand_number;
 
@@ -773,7 +776,7 @@ export const HandHistory = ({
                 className="border border-border/50 rounded-lg mb-2 overflow-hidden bg-card/50"
               >
                 <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                  <div className="flex items-center justify-between w-full pr-2 gap-2">
+                  <div className="flex items-center w-full pr-2 gap-2 min-w-0">
                     {/* Game number + type - compact left */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <span className="text-sm font-medium whitespace-nowrap">
@@ -786,8 +789,8 @@ export const HandHistory = ({
                       )}
                     </div>
                     
-                    {/* Winner name - fixed width, truncated */}
-                    <div className="flex-1 min-w-0 max-w-[120px]">
+                    {/* Winner name - truncated middle section */}
+                    <div className="flex-1 min-w-0">
                       <span className={cn(
                         "text-xs truncate block",
                         hand.showdownWinner === 'Pussy Tax' 
@@ -798,15 +801,15 @@ export const HandHistory = ({
                       </span>
                     </div>
                     
-                    {/* Hand description + chip change - compact right */}
+                    {/* Hand description badge + chip change - compact right */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {hand.showdownDescription && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 whitespace-nowrap max-w-[80px] truncate">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 whitespace-nowrap">
                           {hand.showdownDescription}
                         </Badge>
                       )}
                       <span className={cn(
-                        "text-sm font-bold w-[48px] text-right tabular-nums",
+                        "text-sm font-bold tabular-nums",
                         hand.totalChipChange > 0 ? "text-green-500" : 
                         hand.totalChipChange < 0 ? "text-red-500" : "text-muted-foreground"
                       )}>
@@ -978,16 +981,14 @@ export const HandHistory = ({
                                   {handEvents.map((event) => {
                                     const { label, description, chipChange } = formatEventDescription(event);
                                     return (
-                                      <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
-                                        <div className="flex items-center gap-2">
-                                          <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
-                                            {label}
-                                          </Badge>
-                                          <span className="text-xs text-muted-foreground truncate max-w-[180px]">{description}</span>
-                                        </div>
+                                      <div key={event.id} className="flex items-center gap-2 bg-muted/20 rounded px-2 py-1.5 min-w-0">
+                                        <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[45px] flex-shrink-0 justify-center">
+                                          {label}
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">{description}</span>
                                         {chipChange !== null && chipChange !== 0 && (
                                           <span className={cn(
-                                            "text-xs font-medium flex-shrink-0",
+                                            "text-xs font-medium flex-shrink-0 tabular-nums",
                                             chipChange > 0 ? "text-green-500" : "text-red-500"
                                           )}>
                                             {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
