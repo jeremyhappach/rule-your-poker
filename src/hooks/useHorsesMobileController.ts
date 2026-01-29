@@ -139,6 +139,7 @@ export interface UseHorsesMobileControllerArgs {
   currentRoundId: string | null;
   horsesState: HorsesStateFromDB | null;
   gameType?: string; // 'horses' or 'ship-captain-crew'
+  isPaused?: boolean; // When true, timers freeze and no timeouts are enforced
 }
 
 // === DICE ANIMATION TIMING CONSTANTS (SINGLE SOURCE OF TRUTH) ===
@@ -162,6 +163,7 @@ export function useHorsesMobileController({
   currentRoundId,
   horsesState,
   gameType = 'horses',
+  isPaused = false,
 }: UseHorsesMobileControllerArgs) {
   // Determine if this is a Ship Captain Crew game
   const isSCC = gameType === 'ship-captain-crew';
@@ -1007,7 +1009,8 @@ export function useHorsesMobileController({
   // NOTE: If no server deadline is present yet, we still show a local countdown for UI,
   // but we DO NOT process timeouts unless a real deadline exists.
   useEffect(() => {
-    if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) {
+    // Don't run timer when paused - time freezes
+    if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId || isPaused) {
       setTimeLeft(null);
       return;
     }
@@ -1062,6 +1065,7 @@ export function useHorsesMobileController({
     currentTurnPlayerId,
     currentTurnPlayer?.is_bot,
     horsesState?.turnDeadline,
+    isPaused,
   ]);
 
   // Timeout handler - set auto_fold so bot loop takes over with animated rolls
@@ -1069,6 +1073,7 @@ export function useHorsesMobileController({
   // players with auto_fold=true and animates their rolls properly.
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
+    if (isPaused) return; // Never enforce timeouts when game is paused
     if (!currentRoundId || !currentTurnPlayerId) return;
     if (currentTurnPlayer?.is_bot) return; // Bots handle themselves via bot loop
     if (currentTurnPlayer?.auto_fold) return; // Already in auto-roll mode, let bot loop handle
@@ -1145,6 +1150,7 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
+    isPaused,
     currentRoundId,
     currentTurnPlayerId,
     currentTurnPlayer,

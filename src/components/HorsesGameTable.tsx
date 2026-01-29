@@ -73,6 +73,7 @@ interface HorsesGameTableProps {
   gameType?: string;
   isHost?: boolean;
   onPlayerClick?: (player: Player) => void;
+  isPaused?: boolean;
 }
 
 // Database state structure - supports both Horses and SCC dice types
@@ -159,6 +160,7 @@ export function HorsesGameTable({
   gameType = 'horses',
   isHost = false,
   onPlayerClick,
+  isPaused = false,
 }: HorsesGameTableProps) {
   // Determine display title based on game type
   const gameTitle = gameType === 'ship-captain-crew' ? 'Ship' : 'Horses';
