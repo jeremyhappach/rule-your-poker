@@ -14,6 +14,9 @@ export function HandHistoryEventRow({
   delta?: number | null;
   tone?: Tone;
 }) {
+  // Normalize labels for display (shorter versions for compact view)
+  const displayLabel = label === 'Showdown' ? 'Win' : label;
+  
   return (
     <div
       className={cn(
@@ -25,7 +28,7 @@ export function HandHistoryEventRow({
         variant="secondary"
         className="text-[10px] py-0 h-5 justify-center truncate"
       >
-        {label}
+        {displayLabel}
       </Badge>
       <span className="text-xs text-muted-foreground truncate">{description}</span>
       <span

@@ -997,40 +997,49 @@ export const HandHistory = ({
                         // Check if we have multiple hands (for showing separators)
                         const hasMultipleHands = sortedHands.length > 1;
                         
+                        // Calculate relative hand numbers (1, 2, 3...) based on the hands in THIS game
+                        const handNumberToRelative = new Map<number, number>();
+                        sortedHands.forEach(([handNum], idx) => {
+                          handNumberToRelative.set(handNum, idx + 1);
+                        });
+                        
                         return (
                           <div className="space-y-2">
-                            {sortedHands.map(([handNum, handEvents], handIdx) => (
-                              <div key={handNum}>
-                                {/* Hand separator for multi-hand games */}
-                                {hasMultipleHands && handIdx > 0 && (
-                                  <div className="flex items-center gap-2 my-2 text-[10px] text-muted-foreground font-medium">
-                                    <div className="h-px bg-border flex-1" />
-                                    <span>Hand {handNum}</span>
-                                    <div className="h-px bg-border flex-1" />
+                            {sortedHands.map(([handNum, handEvents], handIdx) => {
+                              const relativeHandNum = handNumberToRelative.get(handNum) || handIdx + 1;
+                              return (
+                                <div key={handNum}>
+                                  {/* Hand separator for multi-hand games */}
+                                  {hasMultipleHands && handIdx > 0 && (
+                                    <div className="flex items-center gap-2 my-2 text-[10px] text-muted-foreground font-medium">
+                                      <div className="h-px bg-border flex-1" />
+                                      <span>Hand {relativeHandNum}</span>
+                                      <div className="h-px bg-border flex-1" />
+                                    </div>
+                                  )}
+                                  {hasMultipleHands && handIdx === 0 && (
+                                    <div className="text-[10px] text-muted-foreground font-medium mb-1">
+                                      Hand {relativeHandNum}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Events within this hand */}
+                                  <div className="space-y-1">
+                                      {handEvents.map((event) => {
+                                        const { label, description, chipChange } = formatEventDescription(event);
+                                        return (
+                                          <HandHistoryEventRow
+                                            key={event.id}
+                                            label={label}
+                                            description={description}
+                                            delta={chipChange}
+                                          />
+                                        );
+                                      })}
                                   </div>
-                                )}
-                                {hasMultipleHands && handIdx === 0 && (
-                                  <div className="text-[10px] text-muted-foreground font-medium mb-1">
-                                    Hand {handNum}
-                                  </div>
-                                )}
-                                
-                                {/* Events within this hand */}
-                                <div className="space-y-1">
-                                    {handEvents.map((event) => {
-                                      const { label, description, chipChange } = formatEventDescription(event);
-                                      return (
-                                        <HandHistoryEventRow
-                                          key={event.id}
-                                          label={label}
-                                          description={description}
-                                          delta={chipChange}
-                                        />
-                                      );
-                                    })}
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         );
                       })()
