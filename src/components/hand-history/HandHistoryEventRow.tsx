@@ -31,7 +31,7 @@ export function HandHistoryEventRow({
       {delta !== null && delta !== undefined && delta !== 0 && (
         <span
           className={cn(
-            "text-xs font-medium flex-shrink-0 tabular-nums",
+            "text-xs font-medium flex-shrink-0 tabular-nums w-[4.75rem] text-right",
             delta > 0 ? "text-poker-chip-green" : "text-poker-chip-red",
           )}
         >

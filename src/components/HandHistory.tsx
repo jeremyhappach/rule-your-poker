@@ -95,6 +95,7 @@ export const HandHistory = ({
 }: HandHistoryProps) => {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [dealerGames, setDealerGames] = useState<Map<string, DealerGame>>(new Map());
+  const [dealerGameNumberById, setDealerGameNumberById] = useState<Map<string, number>>(new Map());
   const [rounds, setRounds] = useState<Round[]>([]);
   const [playerNames, setPlayerNames] = useState<Map<string, string>>(new Map()); // playerId -> username
   const [userIdToName, setUserIdToName] = useState<Map<string, string>>(new Map()); // userId -> username (for resolving UUIDs in winner_username)
@@ -169,6 +170,7 @@ export const HandHistory = ({
         }
 
         const dealerGamesMap = new Map<string, DealerGame>();
+        const numberMap = new Map<string, number>();
         dealerGamesData.forEach((dg: any) => {
           dealerGamesMap.set(dg.id, {
             id: dg.id,
@@ -179,7 +181,13 @@ export const HandHistory = ({
             dealer_username: dealerNameByUserId.get(dg.dealer_user_id) || "Unknown",
           });
         });
+
+        // Stable numbering: 1..N by started_at (ascending)
+        dealerGamesData.forEach((dg: any, idx: number) => {
+          numberMap.set(dg.id, idx + 1);
+        });
         setDealerGames(dealerGamesMap);
+        setDealerGameNumberById(numberMap);
 
         // Find the current dealer game (most recent or matching current_game_uuid)
         if (gameData?.current_game_uuid && dealerGamesMap.has(gameData.current_game_uuid)) {
@@ -450,7 +458,9 @@ export const HandHistory = ({
       }
     }
 
-    // Convert to HandGroup array with proper display numbers
+    // Convert to HandGroup array with stable display numbers (based on dealer_games ordering)
+    const maxDealerGameNumber = Math.max(0, ...Array.from(dealerGameNumberById.values()));
+
     const groups: HandGroup[] = dealerGameGroups.map((group, index) => {
       const events = group.events;
       
@@ -545,8 +555,12 @@ export const HandHistory = ({
       const isPussyTaxOnly = !resolvedWinner && events.some((e) => e.winner_username === "Pussy Tax");
       const displayWinner = isPussyTaxOnly ? "Pussy Tax" : normalizeSystemWinnerName(resolvedWinner);
 
+      const displayNumber = group.dealerGameId.startsWith("orphan-")
+        ? maxDealerGameNumber + index + 1
+        : dealerGameNumberById.get(group.dealerGameId) ?? index + 1;
+
       return {
-        hand_number: index + 1, // Display number (1 = first dealer game)
+        hand_number: displayNumber,
         events,
         totalChipChange,
         showdownWinner: displayWinner,
@@ -573,7 +587,7 @@ export const HandHistory = ({
   const handGroups = useMemo(() => {
     if (gameResults.length === 0) return [];
     return groupResultsByDealerGame();
-  }, [gameResults, rounds, dealerGames, playerNames, userIdToName, currentPlayerId]);
+  }, [gameResults, rounds, dealerGames, dealerGameNumberById, playerNames, userIdToName, currentPlayerId]);
 
   const updateInProgressGame = () => {
     // Don't show in-progress if session has ended
@@ -695,6 +709,8 @@ export const HandHistory = ({
   // Format game type for display - handles both '357' and '3-5-7' variations
   const formatGameType = (type: string | null | undefined): string => {
     if (!type) return '';
+    // Sometimes buggy writes put a UUID into game_type — never display that.
+    if (isUUID(type)) return '';
     const normalized = type.toLowerCase().replace(/-/g, '');
     switch (normalized) {
       case 'holmgame': return 'Holm';
@@ -729,7 +745,7 @@ export const HandHistory = ({
 
 
   return (
-    <ScrollArea className="h-full max-h-[400px]">
+    <ScrollArea className="h-full max-h-[400px] overflow-x-hidden">
       <div className="space-y-2 p-2">
         <Accordion 
           type="single" 
@@ -744,7 +760,7 @@ export const HandHistory = ({
               className="border border-poker-gold/50 rounded-lg mb-2 overflow-hidden bg-poker-gold/10"
             >
               <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                <div className="flex items-center w-full pr-2 gap-2 min-w-0">
+                <div className="grid grid-cols-[auto_1fr_auto] items-center w-full pr-2 gap-2 min-w-0 overflow-hidden">
                   {/* Game number + type - compact left */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <span className="text-sm font-medium whitespace-nowrap">
@@ -755,17 +771,14 @@ export const HandHistory = ({
                         {formatGameType(inProgressGame.dealerGame.game_type)}
                       </span>
                     )}
-                    <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
+                    <Badge variant="outline" className="text-[10px] py-0 h-5 border-poker-gold/50 text-poker-gold">
                       In Progress
                     </Badge>
                   </div>
                   
-                  {/* Spacer */}
-                  <div className="flex-1 min-w-0" />
-                  
                   {/* Chip change - always visible at right */}
                   <span className={cn(
-                    "text-sm font-bold flex-shrink-0 tabular-nums",
+                    "text-sm font-bold flex-shrink-0 tabular-nums w-[5.25rem] text-right",
                     inProgressGame.currentChipChange > 0 ? "text-poker-chip-green" : 
                     inProgressGame.currentChipChange < 0 ? "text-poker-chip-red" : "text-muted-foreground"
                   )}>
@@ -809,7 +822,7 @@ export const HandHistory = ({
                 className="border border-border/50 rounded-lg mb-2 overflow-hidden bg-card/50"
               >
                 <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                  <div className="flex items-center w-full pr-2 gap-2 min-w-0">
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center w-full pr-2 gap-2 min-w-0 overflow-hidden">
                     {/* Game number + type - compact left */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <span className="text-sm font-medium whitespace-nowrap">
@@ -827,7 +840,7 @@ export const HandHistory = ({
                       <span className={cn(
                         "text-xs truncate block",
                         hand.showdownWinner === 'Pussy Tax' 
-                          ? "text-amber-500 font-medium" 
+                          ? "text-poker-gold font-medium" 
                           : "text-muted-foreground"
                       )}>
                         {hand.showdownWinner || 'No winner'}
@@ -835,17 +848,17 @@ export const HandHistory = ({
                     </div>
                     
                     {/* Hand description badge + chip change - compact right */}
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center justify-end gap-1.5 min-w-0">
                       {hand.showdownDescription && (
                         <Badge
                           variant="outline"
-                          className="text-[10px] px-1.5 py-0 h-5 min-w-0 max-w-[42vw] sm:max-w-[18rem] truncate"
+                          className="text-[10px] px-1.5 py-0 h-5 min-w-0 max-w-[10rem] sm:max-w-[14rem] md:max-w-[18rem] truncate"
                         >
                           {hand.showdownDescription}
                         </Badge>
                       )}
                       <span className={cn(
-                        "text-sm font-bold tabular-nums",
+                        "text-sm font-bold tabular-nums w-[5.25rem] text-right",
                         hand.totalChipChange > 0 ? "text-poker-chip-green" : 
                         hand.totalChipChange < 0 ? "text-poker-chip-red" : "text-muted-foreground",
                         "flex-shrink-0"
