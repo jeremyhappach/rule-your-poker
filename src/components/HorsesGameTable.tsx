@@ -1287,13 +1287,23 @@ export function HorsesGameTable({
         ? getBotAlias(players, winnerPlayer.user_id)
         : (winnerPlayer.profiles?.username || "Unknown");
 
-      // Record the game result
+      // Record the game result with ZERO-SUM chip changes
+      // The pot is the accumulated antes from all players across all rounds (including rollovers)
+      // Each active player contributed equally to the pot, so:
+      // - Winner net = pot - (pot / numActivePlayers) = winnings minus their contribution
+      // - Loser net = -(pot / numActivePlayers) = their lost contribution
+      const activePlayers = players.filter(p => !p.sitting_out);
+      const numActivePlayers = activePlayers.length || 1;
+      const perPlayerContribution = Math.floor(actualPot / numActivePlayers);
+      
       const chipChanges: Record<string, number> = {};
-      players.forEach((p) => {
+      activePlayers.forEach((p) => {
         if (p.id === winnerId) {
-          chipChanges[p.id] = actualPot;
-        } else if (!p.sitting_out) {
-          chipChanges[p.id] = -(anteAmount || 0);
+          // Winner: gains pot minus their own contribution (what they won from others)
+          chipChanges[p.id] = actualPot - perPlayerContribution;
+        } else {
+          // Losers: lost their contribution to the pot
+          chipChanges[p.id] = -perPlayerContribution;
         }
       });
 
