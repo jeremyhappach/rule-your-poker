@@ -1093,6 +1093,7 @@ serve(async (req) => {
                   is_chopped: true,
                   player_chip_changes: playerChipChanges,
                   game_type: game.game_type,
+                  dealer_game_id: game.current_game_uuid || null,
                 });
                 
                 // For dice game ties, pot carries over to next round (rollover)
@@ -1146,6 +1147,7 @@ serve(async (req) => {
                   is_chopped: false,
                   player_chip_changes: playerChipChanges,
                   game_type: game.game_type,
+                  dealer_game_id: game.current_game_uuid || null,
                 });
                 
                 await supabase
@@ -1906,6 +1908,7 @@ serve(async (req) => {
                 is_chopped: false,
                 player_chip_changes: playerChipChanges,
                 game_type: game.game_type,
+                dealer_game_id: game.current_game_uuid || null,
               });
               
               await supabase
@@ -1996,6 +1999,7 @@ serve(async (req) => {
                     is_chopped: false,
                     player_chip_changes: { [player.id]: roundPot },
                     game_type: game.game_type,
+                    dealer_game_id: game.current_game_uuid || null,
                   });
                   
                   await supabase
@@ -2091,6 +2095,7 @@ serve(async (req) => {
                     is_chopped: false,
                     player_chip_changes: { [winner.player.id]: roundPot },
                     game_type: game.game_type,
+                    dealer_game_id: game.current_game_uuid || null,
                   });
                   
                   await supabase
@@ -2139,6 +2144,7 @@ serve(async (req) => {
                     is_chopped: true,
                     player_chip_changes: playerChipChanges,
                     game_type: game.game_type,
+                    dealer_game_id: game.current_game_uuid || null,
                   });
                   
                   await supabase
