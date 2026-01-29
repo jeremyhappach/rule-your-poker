@@ -456,6 +456,7 @@ export const MobileGameTable = ({
     currentRoundId: horsesRoundId ?? null,
     horsesState: (horsesState as any) ?? null,
     gameType: gameType ?? 'horses',
+    isPaused: isPaused ?? false,
   });
 
   // Tab state - use external if provided, otherwise internal
@@ -5190,6 +5191,7 @@ export const MobileGameTable = ({
               emoticonOverlays={emoticonOverlays}
               winnerLegsFlashTrigger={winnerLegsFlashTrigger}
               winnerPotFlashTrigger={winnerPotFlashTrigger}
+              onAutoFoldChange={onAutoFoldChange ? (autoFold) => onAutoFoldChange(currentPlayer.id, autoFold) : undefined}
             />
           ) : (
             <div className="px-2 flex flex-col flex-1">
