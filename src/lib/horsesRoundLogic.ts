@@ -5,6 +5,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
+import { recordGameResult } from "./gameLogic";
+
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[HORSES] 🎲 Starting round', { gameId, isFirstHand });
 
@@ -287,6 +289,30 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       // Don't throw - the game is already in_progress, we'll handle missing antes gracefully
     } else {
       console.log('[HORSES] Antes collected from', playerIds.length, 'players, amount:', anteAmount);
+      
+      // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
+      // Each player's ante payment is tracked as a negative chip change
+      const anteChipChanges: Record<string, number> = {};
+      for (const player of activePlayers) {
+        anteChipChanges[player.id] = -anteAmount;
+      }
+      
+      const eventType = isFirstHand ? 'Ante' : 'Re-Ante (Rollover)';
+      
+      // Record antes as a game result entry with no winner (just ante collection)
+      await recordGameResult(
+        gameId,
+        newHandNumber,
+        null, // no winner - this is ante collection
+        eventType, // Description
+        `${activePlayers.length} players ${isFirstHand ? 'anted' : 're-anted'} $${anteAmount}`,
+        0, // pot_won is 0 - this is money going INTO the pot
+        anteChipChanges,
+        false,
+        'horses', // game_type
+        game.current_game_uuid || null // dealer_game_id
+      );
+      console.log('[HORSES] Recorded ante chip changes in game_results:', anteChipChanges);
     }
   }
 }
