@@ -1784,10 +1784,21 @@ export function useHorsesMobileController({
 
       const winnerName = getPlayerUsername(winnerPlayer);
 
-      // Record winner's pot win (antes are already logged separately when collected)
-      // Winner receives the full pot - this is a pot-to-player transaction
+      // ZERO-SUM ACCOUNTING: Calculate NET chip changes based on pot contributions
+      // For Horses/SCC, pot is contributed equally by all active players across all antes (including rollovers)
+      // Winner's NET = pot - their_contribution, Loser's NET = -their_contribution
+      const numActivePlayers = activePlayers.length;
+      const contributionPerPlayer = numActivePlayers > 0 ? Math.floor(actualPot / numActivePlayers) : 0;
+      
       const chipChanges: Record<string, number> = {};
-      chipChanges[winnerId] = actualPot;
+      chipChanges[winnerId] = actualPot - contributionPerPlayer; // Winner's NET gain
+      
+      // Losers each lose their contribution
+      for (const player of activePlayers) {
+        if (player.id !== winnerId) {
+          chipChanges[player.id] = -contributionPerPlayer;
+        }
+      }
 
       await supabase.from("game_results").insert({
         game_id: gameId,
