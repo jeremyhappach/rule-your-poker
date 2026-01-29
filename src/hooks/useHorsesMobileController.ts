@@ -377,6 +377,7 @@ export function useHorsesMobileController({
       lastResetTurnKeyRef.current = myKey;
       lastLocalEditAtRef.current = 0; // Clear protection window for fresh turn
       heldMaskAtLastRollStartRef.current = null;
+      timeoutProcessedRef.current = null; // Clear timeout lock for new turn
       console.log(`[SYNC_DEBUG] New turn detected, clearing protection: ${myKey}`);
       logDebug("new_turn", `Cleared protection for ${myKey}`);
       
@@ -1008,6 +1009,8 @@ export function useHorsesMobileController({
   // Timer countdown effect - calculate time remaining from deadline
   // NOTE: If no server deadline is present yet, we still show a local countdown for UI,
   // but we DO NOT process timeouts unless a real deadline exists.
+  // CRITICAL FIX: We ONLY set timeLeft=0 after a gradual countdown, never immediately on mount.
+  // This prevents false timeouts when mounting with a stale deadline from a previous turn.
   useEffect(() => {
     // Don't run timer when paused - time freezes
     if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId || isPaused) {
@@ -1017,6 +1020,12 @@ export function useHorsesMobileController({
 
     // Bots don't need a visible timer
     if (currentTurnPlayer?.is_bot) {
+      setTimeLeft(null);
+      return;
+    }
+
+    // Players in auto-roll mode don't need a visible timer - bot loop handles them
+    if (currentTurnPlayer?.auto_fold) {
       setTimeLeft(null);
       return;
     }
@@ -1035,24 +1044,30 @@ export function useHorsesMobileController({
       return () => window.clearInterval(interval);
     }
 
-    const updateTimeLeft = () => {
-      const deadlineTime = new Date(deadline).getTime();
-      const now = Date.now();
-      const remaining = Math.max(0, Math.ceil((deadlineTime - now) / 1000));
-      setTimeLeft(remaining);
-      return remaining;
-    };
+    const deadlineTime = new Date(deadline).getTime();
+    const now = Date.now();
+    const initialRemaining = Math.max(0, Math.ceil((deadlineTime - now) / 1000));
 
-    // Initial calculation
-    const initial = updateTimeLeft();
-    if (initial <= 0) {
-      setTimeLeft(0);
+    // CRITICAL FIX: If the deadline is already in the past when we mount, DON'T immediately
+    // set timeLeft=0 as that would trigger a false timeout. Instead, set to null and let
+    // the timeout handler's own guards (checking if player already completed, etc.) decide.
+    // This handles stale deadlines from previous turns that haven't been updated yet.
+    if (initialRemaining <= 0) {
+      // Don't set timeLeft at all for already-expired deadlines on mount
+      // The timeout handler requires a real countdown to 0, not instant 0
+      console.log('[TIMER] Deadline already past on mount - not setting timeLeft to avoid false timeout');
+      setTimeLeft(null);
       return;
     }
 
-    // Update every second
+    // Start with actual remaining time
+    setTimeLeft(initialRemaining);
+
+    // Update every second - only the countdown reaching 0 triggers timeout
     const interval = window.setInterval(() => {
-      const remaining = updateTimeLeft();
+      const currentTime = Date.now();
+      const remaining = Math.max(0, Math.ceil((deadlineTime - currentTime) / 1000));
+      setTimeLeft(remaining);
       if (remaining <= 0) {
         window.clearInterval(interval);
       }
@@ -1064,6 +1079,7 @@ export function useHorsesMobileController({
     gamePhase,
     currentTurnPlayerId,
     currentTurnPlayer?.is_bot,
+    currentTurnPlayer?.auto_fold,
     horsesState?.turnDeadline,
     isPaused,
   ]);
@@ -1071,6 +1087,7 @@ export function useHorsesMobileController({
   // Timeout handler - set auto_fold so bot loop takes over with animated rolls
   // NOTE: We no longer force-complete here. The bot auto-play loop (below) handles
   // players with auto_fold=true and animates their rolls properly.
+  // CRITICAL: This only fires when timeLeft counts down to 0 (not when it starts at 0/null).
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
     if (isPaused) return; // Never enforce timeouts when game is paused
@@ -1078,7 +1095,20 @@ export function useHorsesMobileController({
     if (currentTurnPlayer?.is_bot) return; // Bots handle themselves via bot loop
     if (currentTurnPlayer?.auto_fold) return; // Already in auto-roll mode, let bot loop handle
     if (!horsesState?.turnDeadline) return; // Only process timeouts when a real server deadline exists
-    if (timeLeft === null || timeLeft > 0) return;
+    
+    // CRITICAL: timeLeft must be exactly 0 (counted down), not null (never started)
+    // This prevents false timeouts when the component mounts with stale deadline data
+    if (timeLeft !== 0) return;
+
+    // Additional safety: verify the deadline is actually for the current turn
+    // by checking it's not too far in the past (> 30 seconds = definitely stale)
+    const deadlineTime = new Date(horsesState.turnDeadline).getTime();
+    const now = Date.now();
+    const msSinceDeadline = now - deadlineTime;
+    if (msSinceDeadline > 30000) {
+      console.log("[HORSES] Ignoring stale deadline (>30s old):", msSinceDeadline, "ms");
+      return;
+    }
 
     // Only the player whose turn it is OR the bot controller should handle the timeout
     const iAmTurnOwner = currentTurnPlayer?.user_id === currentUserId;
