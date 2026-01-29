@@ -759,26 +759,28 @@ export const HandHistory = ({
               value="in-progress"
               className="border border-poker-gold/50 rounded-lg mb-2 overflow-hidden bg-poker-gold/10"
             >
-              <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                <div className="grid grid-cols-[auto_1fr_auto] items-center w-full pr-2 gap-2 min-w-0 overflow-hidden">
+              <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30 overflow-hidden">
+                <div className="grid grid-cols-[5rem_1fr_4.5rem] items-center w-full gap-1 overflow-hidden">
                   {/* Game number + type - compact left */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-sm font-medium whitespace-nowrap">
-                      #{totalGames}
-                    </span>
+                  <div className="flex items-center gap-1 truncate">
+                    <span className="text-sm font-medium">#{totalGames}</span>
                     {inProgressGame.dealerGame && (
-                      <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">
+                      <span className="text-xs text-muted-foreground">
                         {formatGameType(inProgressGame.dealerGame.game_type)}
                       </span>
                     )}
+                  </div>
+                  
+                  {/* Badge - middle */}
+                  <div className="flex justify-center">
                     <Badge variant="outline" className="text-[10px] py-0 h-5 border-poker-gold/50 text-poker-gold">
                       In Progress
                     </Badge>
                   </div>
                   
-                  {/* Chip change - always visible at right */}
+                  {/* Chip change - right */}
                   <span className={cn(
-                    "text-sm font-bold flex-shrink-0 tabular-nums w-[5.25rem] text-right",
+                    "text-sm font-bold tabular-nums text-right truncate",
                     inProgressGame.currentChipChange > 0 ? "text-poker-chip-green" : 
                     inProgressGame.currentChipChange < 0 ? "text-poker-chip-red" : "text-muted-foreground"
                   )}>
@@ -821,24 +823,22 @@ export const HandHistory = ({
                 value={`hand-${hand.hand_number}`}
                 className="border border-border/50 rounded-lg mb-2 overflow-hidden bg-card/50"
               >
-                <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                  <div className="grid grid-cols-[auto_1fr_auto] items-center w-full pr-2 gap-2 min-w-0 overflow-hidden">
-                    {/* Game number + type - compact left */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-sm font-medium whitespace-nowrap">
-                        #{displayGameNumber}
-                      </span>
+                <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30 overflow-hidden">
+                  <div className="grid grid-cols-[5rem_1fr_4.5rem] items-center w-full gap-1 overflow-hidden">
+                    {/* Game number + type */}
+                    <div className="flex items-center gap-1 truncate">
+                      <span className="text-sm font-medium">#{displayGameNumber}</span>
                       {hand.gameType && (
-                        <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">
+                        <span className="text-xs text-muted-foreground">
                           {formatGameType(hand.gameType)}
                         </span>
                       )}
                     </div>
                     
-                    {/* Winner name - truncated middle section */}
-                    <div className="flex-1 min-w-0">
+                    {/* Winner info - middle (truncated) */}
+                    <div className="min-w-0 truncate text-center">
                       <span className={cn(
-                        "text-xs truncate block",
+                        "text-xs",
                         hand.showdownWinner === 'Pussy Tax' 
                           ? "text-poker-gold font-medium" 
                           : "text-muted-foreground"
@@ -847,25 +847,14 @@ export const HandHistory = ({
                       </span>
                     </div>
                     
-                    {/* Hand description badge + chip change - compact right */}
-                    <div className="flex items-center justify-end gap-1.5 min-w-0">
-                      {hand.showdownDescription && (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] px-1.5 py-0 h-5 min-w-0 max-w-[10rem] sm:max-w-[14rem] md:max-w-[18rem] truncate"
-                        >
-                          {hand.showdownDescription}
-                        </Badge>
-                      )}
-                      <span className={cn(
-                        "text-sm font-bold tabular-nums w-[5.25rem] text-right",
-                        hand.totalChipChange > 0 ? "text-poker-chip-green" : 
-                        hand.totalChipChange < 0 ? "text-poker-chip-red" : "text-muted-foreground",
-                        "flex-shrink-0"
-                      )}>
-                        {hand.totalChipChange > 0 ? '+' : ''}{formatChipValue(hand.totalChipChange)}
-                      </span>
-                    </div>
+                    {/* Chip change - right */}
+                    <span className={cn(
+                      "text-sm font-bold tabular-nums text-right truncate",
+                      hand.totalChipChange > 0 ? "text-poker-chip-green" : 
+                      hand.totalChipChange < 0 ? "text-poker-chip-red" : "text-muted-foreground"
+                    )}>
+                      {hand.totalChipChange > 0 ? '+' : ''}{formatChipValue(hand.totalChipChange)}
+                    </span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-3 pb-3">

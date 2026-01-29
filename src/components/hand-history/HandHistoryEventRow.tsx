@@ -17,28 +17,27 @@ export function HandHistoryEventRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded px-2 py-1.5 min-w-0",
+        "grid grid-cols-[3rem_1fr_4rem] items-center gap-1 rounded px-2 py-1.5 w-full overflow-hidden",
         tone === "gold" ? "bg-poker-gold/10" : "bg-muted/20",
       )}
     >
       <Badge
         variant="secondary"
-        className="text-[10px] py-0 h-5 min-w-[45px] flex-shrink-0 justify-center"
+        className="text-[10px] py-0 h-5 justify-center truncate"
       >
         {label}
       </Badge>
-      <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">{description}</span>
-      {delta !== null && delta !== undefined && delta !== 0 && (
-        <span
-          className={cn(
-            "text-xs font-medium flex-shrink-0 tabular-nums w-[4.75rem] text-right",
-            delta > 0 ? "text-poker-chip-green" : "text-poker-chip-red",
-          )}
-        >
-          {delta > 0 ? "+" : ""}
-          {formatChipValue(delta)}
-        </span>
-      )}
+      <span className="text-xs text-muted-foreground truncate">{description}</span>
+      <span
+        className={cn(
+          "text-xs font-medium tabular-nums text-right truncate",
+          delta && delta > 0 ? "text-poker-chip-green" : delta && delta < 0 ? "text-poker-chip-red" : "text-muted-foreground",
+        )}
+      >
+        {delta !== null && delta !== undefined && delta !== 0 && (
+          <>{delta > 0 ? "+" : ""}{formatChipValue(delta)}</>
+        )}
+      </span>
     </div>
   );
 }
