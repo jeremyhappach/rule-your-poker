@@ -1341,8 +1341,22 @@ export async function endRound(gameId: string) {
       return; // Exit early, game over will be handled after delay
     }
     
-    console.log('[endRound] Not final leg, continuing to set awaiting_next_round');
-    // If not final leg, just continue - result message will be set at end of function
+    console.log('[endRound] Not final leg, setting awaiting_next_round for solo stayer');
+    
+    // CRITICAL FIX: Solo stayer with non-final leg must explicitly set awaiting_next_round
+    // Previously this fell through to the showdown/pussy-tax branches incorrectly
+    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    await supabase
+      .from('games')
+      .update({ 
+        awaiting_next_round: true,
+        next_round_number: nextRound,
+        last_round_result: resultMessage
+      })
+      .eq('id', gameId);
+    
+    console.log('[endRound] Solo stayer leg awarded, awaiting_next_round set. Next round:', nextRound);
+    return; // Exit - solo stayer handled
   } else if (playersWhoStayed.length > 1) {
     console.log('[endRound] SHOWDOWN: Multiple players stayed, evaluating hands');
     // Multiple players stayed - evaluate hands for showdown
