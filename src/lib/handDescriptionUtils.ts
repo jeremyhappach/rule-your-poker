@@ -39,6 +39,27 @@ export function compactHandDescription(
     return winnerName || 'Leg';
   }
   
+  // Holm-specific: "Won showdown (chopped)" or "Won showdown (continued)"
+  // Also handles truncated forms like "Won showdown (co..."
+  if (desc.includes('won showdown')) {
+    // Extract just the core outcome
+    if (desc.includes('chop') || desc.includes('split')) {
+      return winnerName ? `${winnerName}: chopped` : 'chopped';
+    }
+    if (desc.includes('beat') && desc.includes('chucky')) {
+      return winnerName ? `${winnerName}: beat Chucky` : 'beat Chucky';
+    }
+    if (desc.includes('continu')) {
+      return winnerName ? `${winnerName}: won` : 'won';
+    }
+    // Generic showdown win - extract hand if present
+    const handRank = extractCompactHandRank(description);
+    if (handRank && winnerName) {
+      return `${winnerName}: ${handRank}`;
+    }
+    return winnerName ? `${winnerName}: won` : 'won';
+  }
+  
   // Fix malformed descriptions like "Won showdown with Won show..."
   // These happen when the description gets duplicated/corrupted
   let cleanDesc = description;
