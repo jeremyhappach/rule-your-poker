@@ -857,13 +857,33 @@ export const HandHistory = ({
     const resolvedWinner = resolveWinnerName(event.winner_username, event.winner_player_id);
     
     // Use compact description: "Hap: pair K" instead of "Hap won showdown with a pair of Kings"
+    // Always include winner name even if hand rank extraction fails
     const compactDesc = compactHandDescription(event.winning_hand_description, resolvedWinner);
     
     if (event.is_chopped) {
-      return { label: 'Showdown', description: 'chopped', chipChange, handNumber: handNum };
+      return { label: 'Win', description: 'chopped', chipChange, handNumber: handNum };
     }
     
-    return { label: 'Win', description: compactDesc || resolvedWinner || 'winner', chipChange, handNumber: handNum };
+    // Ensure we always show the winner name - if compactDesc doesn't include ":", prepend winner
+    // This handles cases where the hand rank was extracted but winner wasn't passed correctly
+    let finalDesc: string;
+    if (compactDesc && compactDesc.includes(':')) {
+      // Already has "Winner: hand" format
+      finalDesc = compactDesc;
+    } else if (resolvedWinner && compactDesc) {
+      // Have both winner and hand rank, combine them
+      finalDesc = `${resolvedWinner}: ${compactDesc}`;
+    } else if (resolvedWinner) {
+      // Just have winner name
+      finalDesc = resolvedWinner;
+    } else if (compactDesc) {
+      // Just have hand rank (shouldn't happen but fallback)
+      finalDesc = compactDesc;
+    } else {
+      finalDesc = 'winner';
+    }
+    
+    return { label: 'Win', description: finalDesc, chipChange, handNumber: handNum };
   };
 
   // Calculate display game number
@@ -1146,9 +1166,13 @@ export const HandHistory = ({
                         ))}
                       </div>
                     ) : (
-                      // For non-dice games, show regular events grouped by hand_number
+                      // For non-dice games, show events grouped by hand_number
+                      // For 3-5-7: hand_number represents round (1, 2, 3) within the same game
+                      // For Holm: hand_number represents actual hands within the game
                       (() => {
-                        // Group events by hand_number
+                        const is357Game = hand.gameType === '357' || hand.gameType === '3-5-7';
+                        
+                        // Group events by hand_number (which is round_number for 3-5-7)
                         const eventsByHand = new Map<number, GameResult[]>();
                         hand.events.forEach(event => {
                           const handNum = event.hand_number;
@@ -1158,42 +1182,74 @@ export const HandHistory = ({
                           eventsByHand.get(handNum)!.push(event);
                         });
                         
-                        // Sort hands and get array
+                        // Sort and get array
                         const sortedHands = Array.from(eventsByHand.entries())
                           .sort(([a], [b]) => a - b);
                         
-                        // Check if we have multiple hands (for showing separators)
-                        const hasMultipleHands = sortedHands.length > 1;
+                        // Check if we have multiple sections
+                        const hasMultipleSections = sortedHands.length > 1;
                         
-                        // Calculate relative hand numbers (1, 2, 3...) based on the hands in THIS game
+                        // Calculate relative numbers (1, 2, 3...) based on sections in THIS game
                         const handNumberToRelative = new Map<number, number>();
                         sortedHands.forEach(([handNum], idx) => {
                           handNumberToRelative.set(handNum, idx + 1);
                         });
                         
+                        // Get card count label for 3-5-7 rounds
+                        const getCardCount = (roundNum: number) => {
+                          if (roundNum === 1) return '3 cards';
+                          if (roundNum === 2) return '5 cards';
+                          return '7 cards';
+                        };
+                        
                         return (
                           <div className="space-y-2">
                             {sortedHands.map(([handNum, handEvents], handIdx) => {
-                              const relativeHandNum = handNumberToRelative.get(handNum) || handIdx + 1;
+                              const relativeNum = handNumberToRelative.get(handNum) || handIdx + 1;
+                              // For 3-5-7, use "Round X" label; for others, use "Hand X"
+                              const sectionLabel = is357Game ? `Round ${relativeNum}` : `Hand ${relativeNum}`;
+                              
+                              // Get cards for this round/hand
+                              const myCardsForSection = hand.currentPlayerCards?.filter(c => 
+                                is357Game ? c.roundNumber === relativeNum : c.handNumber === handNum
+                              ) || [];
+                              const othersCardsForSection = hand.allPlayerCards?.filter(pc => 
+                                !pc.isCurrentPlayer && (is357Game ? pc.roundNumber === relativeNum : pc.handNumber === handNum)
+                              ) || [];
+                              
                               return (
                                 <div key={handNum}>
-                                  {/* Hand separator for multi-hand games */}
-                                  {hasMultipleHands && handIdx > 0 && (
+                                  {/* Section separator */}
+                                  {hasMultipleSections && handIdx > 0 && (
                                     <div className="flex items-center gap-2 my-2 text-[10px] text-muted-foreground font-medium">
                                       <div className="h-px bg-border flex-1" />
-                                      <span>Hand {relativeHandNum}</span>
+                                      <span>{sectionLabel}{is357Game ? ` (${getCardCount(relativeNum)})` : ''}</span>
                                       <div className="h-px bg-border flex-1" />
                                     </div>
                                   )}
-                                  {hasMultipleHands && handIdx === 0 && (
+                                  {hasMultipleSections && handIdx === 0 && (
                                     <div className="text-[10px] text-muted-foreground font-medium mb-1">
-                                      Hand {relativeHandNum}
+                                      {sectionLabel}{is357Game ? ` (${getCardCount(relativeNum)})` : ''}
                                     </div>
                                   )}
                                   
-                                  {/* Player's cards are now shown in the unified card section below */}
+                                  {/* Cards for this section (shown BEFORE events for 3-5-7) */}
+                                  {is357Game && (myCardsForSection.length > 0 || othersCardsForSection.length > 0) && (
+                                    <div className="mb-2 space-y-1">
+                                      {myCardsForSection.map((cardData, idx) => (
+                                        <MiniCardRow key={`my-${idx}`} cards={cardData.cards} label="You:" />
+                                      ))}
+                                      {othersCardsForSection.map((pc) => (
+                                        <MiniCardRow 
+                                          key={pc.playerId}
+                                          cards={pc.cards} 
+                                          label={`${pc.username}:`} 
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
                                   
-                                  {/* Events within this hand */}
+                                  {/* Events within this section */}
                                   <div className="space-y-1">
                                       {handEvents.map((event) => {
                                         const { label, description, chipChange } = formatEventDescription(event);
@@ -1208,74 +1264,21 @@ export const HandHistory = ({
                                       })}
                                   </div>
                                   
-                                  {/* Show community cards, other players' cards, and Chucky cards at the bottom of the hand */}
-                                  {(() => {
+                                  {/* For Holm games: show community cards and Chucky at the bottom */}
+                                  {!is357Game && (() => {
                                     const roundData = hand.roundCardData?.find(r => r.handNumber === handNum);
-                                    
-                                    // For Holm games, show ALL player cards at showdown (everyone sees everyone's cards)
-                                    // For 3-5-7, group cards by round_number (1, 2, 3)
                                     const isHolmGame = hand.gameType === 'holm-game';
-                                    const is357Game = hand.gameType === '357' || hand.gameType === '3-5-7';
                                     
-                                    // Get all player cards for this hand
                                     const allCardsForHand = hand.allPlayerCards?.filter(
                                       pc => pc.handNumber === handNum
                                     ) || [];
                                     
-                                    // Get current player's cards for this hand
-                                    const currentPlayerHandCards = hand.currentPlayerCards?.filter(c => c.handNumber === handNum) || [];
-                                    
-                                    // For Holm: show all players' cards
-                                    // For 3-5-7: only show other players' cards (current player's cards shown separately)
-                                    const otherPlayersCards = allCardsForHand.filter(pc => !pc.isCurrentPlayer);
-                                    
                                     const hasCommunityCards = roundData?.communityCards && roundData.communityCards.length > 0;
                                     const hasChuckyCards = roundData?.chuckyCards && roundData.chuckyCards.length > 0;
-                                    const hasPlayerCards = isHolmGame ? allCardsForHand.length > 0 : otherPlayersCards.length > 0;
-                                    const hasCurrentPlayerCards = currentPlayerHandCards.length > 0;
+                                    const hasPlayerCards = allCardsForHand.length > 0;
                                     
-                                    // Show section if we have community cards, chucky cards, or player cards to display
-                                    if (!hasCommunityCards && !hasChuckyCards && !hasPlayerCards && !hasCurrentPlayerCards) return null;
+                                    if (!hasCommunityCards && !hasChuckyCards && !hasPlayerCards) return null;
                                     
-                                    // For 3-5-7, group cards by round and show progressively
-                                    if (is357Game) {
-                                      // Group current player's cards by round_number
-                                      const roundsWithCards = new Set<number>();
-                                      currentPlayerHandCards.forEach(c => roundsWithCards.add(c.roundNumber));
-                                      otherPlayersCards.forEach(c => roundsWithCards.add(c.roundNumber));
-                                      
-                                      const sortedRounds = Array.from(roundsWithCards).sort((a, b) => a - b);
-                                      
-                                      return (
-                                        <div className="mt-3 pt-2 border-t border-border/30 space-y-2">
-                                          {sortedRounds.map((roundNum) => {
-                                            const myCards = currentPlayerHandCards.find(c => c.roundNumber === roundNum);
-                                            const othersCards = otherPlayersCards.filter(c => c.roundNumber === roundNum);
-                                            const cardCount = roundNum === 1 ? 3 : roundNum === 2 ? 5 : 7;
-                                            
-                                            return (
-                                              <div key={roundNum} className="space-y-1">
-                                                <div className="text-[10px] text-muted-foreground font-medium">
-                                                  Round {roundNum} ({cardCount} cards)
-                                                </div>
-                                                {myCards && myCards.cards.length > 0 && (
-                                                  <MiniCardRow cards={myCards.cards} label="You:" />
-                                                )}
-                                                {othersCards.map((pc) => (
-                                                  <MiniCardRow 
-                                                    key={`${roundNum}-${pc.playerId}`}
-                                                    cards={pc.cards} 
-                                                    label={`${pc.username}:`} 
-                                                  />
-                                                ))}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    // For Holm games - show all cards without round grouping
                                     return (
                                       <div className="mt-3 pt-2 border-t border-border/30 space-y-1.5">
                                         {/* Community cards */}
@@ -1284,7 +1287,7 @@ export const HandHistory = ({
                                         )}
                                         
                                         {/* All player cards (Holm shows everyone at showdown) */}
-                                        {allCardsForHand.map((pc) => (
+                                        {isHolmGame && allCardsForHand.map((pc) => (
                                           <MiniCardRow 
                                             key={pc.playerId} 
                                             cards={pc.cards} 
