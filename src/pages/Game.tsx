@@ -2696,10 +2696,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     user?.id,
   ]);
 
-  // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
+  // Auto-fold when timer reaches 0
+  // IMPORTANT (3-5-7): only trigger when we have actually observed a running countdown for this round.
+  // This prevents false "instant timeout" when timeLeft briefly initializes to 0 or the round deadline is stale.
   const autoFoldingRef = useRef(false);
+  const countdownArmedRoundIdRef = useRef<string | null>(null);
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
+
+    // Arm the timeout only after we have seen a positive countdown for the current round.
+    // If timeLeft is 0 immediately on mount/round-change, we do NOT treat that as a real expiry.
+    if (currentRound?.id && timeLeft !== null && timeLeft > 0) {
+      countdownArmedRoundIdRef.current = currentRound.id;
+    }
     
     console.log('[TIMER CHECK]', { 
       timeLeft, 
@@ -2723,7 +2732,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         !autoFoldingRef.current &&
         (isHolmGame 
           ? (timerTurnPosition !== null && currentRound?.current_turn_position === timerTurnPosition)
-          : true); // For 3-5-7, just check timer reached 0
+          : (currentRound?.id ? countdownArmedRoundIdRef.current === currentRound.id : false));
     
     if (shouldAutoFold) {
       autoFoldingRef.current = true;

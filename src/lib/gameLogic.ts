@@ -210,14 +210,12 @@ export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Preserving existing rounds for hand history');
 
   // Reset all players to active for the new round (must happen BEFORE we decide who gets dealt in later rounds)
-  // CRITICAL: Also reset auto_fold to false - otherwise players who timed out once get stuck in auto-fold mode
   const { error: resetError } = await supabase
     .from('players')
     .update({
       current_decision: null,
       decision_locked: false,
-      status: 'active',
-      auto_fold: false
+      status: 'active'
     })
     .eq('game_id', gameId);
 
