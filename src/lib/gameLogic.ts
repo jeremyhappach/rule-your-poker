@@ -251,15 +251,12 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   // timerSeconds already fetched in parallel at start
   console.log('[START_ROUND] Using decision timer:', timerSeconds, 'seconds');
-  
-  // Get current hand_number for this session
-  // Each round = a hand, so hand_number increments with every round (1, 2, 3, 4, 5...)
-  const { data: gameForHand } = await supabase
-    .from('games')
-    .select('total_hands')
-    .eq('id', gameId)
-    .single();
-  const handNumber = (gameForHand?.total_hands || 0) + 1;
+
+  // 3-5-7 HAND MODEL:
+  // hand_number increments ONLY when starting a NEW Round 1.
+  // Rounds 1/2/3 share the same hand_number.
+  const currentHandNumber = typeof gameConfig?.total_hands === 'number' ? gameConfig.total_hands : 0;
+  const handNumber = roundNumber === 1 ? currentHandNumber + 1 : (currentHandNumber || 1);
 
   // Create round with configured deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
@@ -277,7 +274,7 @@ export async function startRound(gameId: string, roundNumber: number) {
       pot: 0, // Will be updated after ante collection
       decision_deadline: deadline.toISOString(),
       hand_number: handNumber,
-      dealer_game_id: gameConfig?.current_game_uuid || null
+      dealer_game_id: currentGameUuid
     })
     .select()
     .single();
@@ -371,8 +368,12 @@ export async function startRound(gameId: string, roundNumber: number) {
     // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
     config_deadline: null,
     ante_decision_deadline: null,
-    total_hands: handNumber,  // Always update total_hands since each round = a hand
   };
+
+  // Only bump hand count when starting Round 1 of a new hand
+  if (roundNumber === 1) {
+    gameUpdate.total_hands = handNumber;
+  }
   
   const { error: gameUpdateError } = await supabase
     .from('games')
@@ -384,7 +385,12 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
   }
   
-  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false, pot =', currentPot + initialPot, ', total_hands =', handNumber);
+  console.log('[START_ROUND] Game state updated:', {
+    current_round: roundNumber,
+    all_decisions_in: false,
+    pot: currentPot + initialPot,
+    total_hands: roundNumber === 1 ? handNumber : currentHandNumber,
+  });
   
   // Update round pot to reflect the ante collection
   if (initialPot > 0) {
@@ -413,6 +419,7 @@ export async function startRound(gameId: string, roundNumber: number) {
       .select('id')
       .eq('game_id', gameId)
       .eq('dealer_game_id', currentGameUuid)  // Only from current 3-5-7 game
+      .eq('hand_number', handNumber)          // Only from current HAND within the game
       .eq('round_number', previousRoundNumber)
       .maybeSingle();
 
@@ -598,8 +605,7 @@ export async function startRound(gameId: string, roundNumber: number) {
             await supabase
               .from('games')
               .update({ 
-                pot: 0,
-                total_hands: (guardResult.total_hands || 0) + 1
+                pot: 0
               })
               .eq('id', gameId);
           }, 5000);
@@ -634,6 +640,14 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   // CRITICAL: For Holm games, fetch the LATEST round by round_number DESC
   // game.current_round is NOT updated for Holm (to avoid check constraint violation)
   const isHolmGame = game.game_type === 'holm-game';
+  const is357Game = game.game_type === '3-5-7' || game.game_type === '3-5-7-game' || game.game_type === '357';
+  const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
+  const roundNumber = typeof game.current_round === 'number' ? game.current_round : null;
+
+  if (!isHolmGame && roundNumber === null) {
+    console.error('[MAKE DECISION] No current_round set for non-Holm game', { gameId, gameType: game.game_type });
+    throw new Error('No current round');
+  }
   
   let currentRound;
   if (isHolmGame) {
@@ -647,13 +661,27 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     currentRound = latestRound;
     console.log('[MAKE DECISION] Holm game - using latest round by round_number:', latestRound?.round_number);
   } else {
-    const { data: rounds } = await supabase
-      .from('rounds')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('round_number', game.current_round)
-      .single();
-    currentRound = rounds;
+    if (is357Game) {
+      // 3-5-7 can have multiple round_number=1/2/3 rows across hands.
+      // Disambiguate via (dealer_game_id, hand_number, round_number).
+      const { data: round357 } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', game.current_game_uuid)
+        .eq('hand_number', handNumber)
+        .eq('round_number', roundNumber)
+        .maybeSingle();
+      currentRound = round357;
+    } else {
+      const { data: rounds } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('round_number', game.current_round)
+        .single();
+      currentRound = rounds;
+    }
   }
   
   if (!currentRound) {
@@ -870,7 +898,8 @@ async function handleGameOver(
   
   // Use the pot value from the atomic guard result to ensure consistency
   const actualPot = guardResult.pot || currentPot;
-  const newTotalHands = (guardResult.total_hands || 0) + 1;
+  // 3-5-7 HAND MODEL: total_hands == current hand_number (increments when a NEW Round 1 starts)
+  const handNumber = Math.max(guardResult.total_hands || 0, 1);
   
   // Calculate total leg value from all players (legs are separate from pot)
   // Winner gets pot + all leg values when they win the game
@@ -895,7 +924,7 @@ async function handleGameOver(
   // Record game result for hand history
   await recordGameResult(
     gameId,
-    newTotalHands,
+    handNumber,
     winnerId,
     winnerUsername,
     `${winnerLegs} legs`,
@@ -913,7 +942,7 @@ async function handleGameOver(
   });
   
   // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
-  await snapshotPlayerChips(gameId, newTotalHands);
+  await snapshotPlayerChips(gameId, handNumber);
   
   const gameWinMessage = `🏆 ${winnerUsername} won the game!`;
   
@@ -951,7 +980,7 @@ async function handleGameOver(
         status: 'session_ended',
         session_ended_at: new Date().toISOString(),
         game_over_at: new Date().toISOString(),
-        total_hands: newTotalHands,
+        total_hands: handNumber,
         pending_session_end: false,
         last_round_result: gameWinMessage,
         pot: 0
@@ -978,7 +1007,7 @@ async function handleGameOver(
       last_round_result: gameWinMessage,
       game_over_at: null,  // NULL - frontend animation will set this after completing
       pot: 0,  // Critical: always reset pot
-      total_hands: newTotalHands
+      total_hands: handNumber
     })
     .eq('id', gameId)
     .select();
@@ -1039,12 +1068,20 @@ export async function endRound(gameId: string) {
   const currentRound = game.current_round;
 
   // Get all player hands for this round
-  const { data: round } = await supabase
+  const is357Game = game.game_type === '3-5-7' || game.game_type === '3-5-7-game' || game.game_type === '357';
+  const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
+  const roundQuery = supabase
     .from('rounds')
     .select('*')
     .eq('game_id', gameId)
-    .eq('round_number', currentRound)
-    .single();
+    .eq('round_number', currentRound);
+
+  const { data: round } = is357Game
+    ? await roundQuery
+        .eq('dealer_game_id', currentGameUuid)
+        .eq('hand_number', handNumber)
+        .maybeSingle()
+    : await roundQuery.single();
 
   if (!round) return;
   

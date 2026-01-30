@@ -3392,14 +3392,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (roundData && gameData.current_round && roundData.round_number !== gameData.current_round) {
             console.warn('[FETCH] ⚠️ Round mismatch! game.current_round:', gameData.current_round, 'most recent round:', roundData.round_number);
           }
-        } else if (gameData.current_round && gameData.current_game_uuid) {
-          // 3-5-7: Use dealer_game_id + current_round to get cards from THIS game only
-          // This prevents stale card matching from previous hands that had the same round_number
+        } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
+          // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
+          // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .eq('dealer_game_id', gameData.current_game_uuid)
+            .eq('hand_number', gameData.total_hands)
             .eq('round_number', gameData.current_round)
             .maybeSingle();
           roundData = data;
