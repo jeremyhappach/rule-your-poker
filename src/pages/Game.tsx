@@ -2285,10 +2285,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     if (game.game_type === '3-5-7') {
+      // Derive max hand_number from rounds for this dealer_game - don't trust game.total_hands which can be stale
+      const dealerRounds = game.current_game_uuid
+        ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
+        : game.rounds;
+      const maxHandNumber = dealerRounds.reduce(
+        (max, r) => (typeof r.hand_number === 'number' && r.hand_number > max ? r.hand_number : max),
+        0
+      );
       return (
         pickActive357Round(game.rounds, {
           currentRoundNumber: game.current_round,
-          currentHandNumber: game.total_hands,
+          currentHandNumber: maxHandNumber || game.total_hands,
           dealerGameId: game.current_game_uuid,
         }) ?? null
       );
