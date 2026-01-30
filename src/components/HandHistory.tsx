@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { cn, formatChipValue } from "@/lib/utils";
 import { HandHistoryEventRow } from "@/components/hand-history/HandHistoryEventRow";
+import { MiniCardRow } from "@/components/hand-history/MiniPlayingCard";
 
 interface GameResult {
   id: string;
@@ -46,6 +47,14 @@ interface HandGroup {
   gameType?: string | null; // Game type (horses, ship-captain-crew, etc.) - from result or dealerGame
   playerDiceResults?: PlayerDiceResult[]; // Dice results for all players (horses/SCC)
   allRounds?: Round[]; // ALL rounds for this game (for showing rollovers)
+  currentPlayerCards?: PlayerCardData[]; // Cards dealt to current player this game
+}
+
+// Player cards stored in player_cards table
+interface PlayerCardData {
+  roundId: string;
+  handNumber: number;
+  cards: { rank: string; suit: string }[];
 }
 
 interface Round {
@@ -105,6 +114,8 @@ export const HandHistory = ({
   const [gameBuyIn, setGameBuyIn] = useState<number | null>(null);
   const [isSessionEnded, setIsSessionEnded] = useState(false);
   const [currentDealerGame, setCurrentDealerGame] = useState<DealerGame | null>(null);
+  // Player cards by round_id for the current player (for card games like 357)
+  const [playerCardsByRound, setPlayerCardsByRound] = useState<Map<string, { rank: string; suit: string }[]>>(new Map());
 
   useEffect(() => {
     fetchHistoryData();
@@ -302,6 +313,29 @@ export const HandHistory = ({
     
     setPlayerNames(namesMap);
     setUserIdToName(userIdMap);
+    
+    // Fetch player_cards for the current player (for card games like 357)
+    if (currentPlayerId && roundsData && roundsData.length > 0) {
+      const roundIds = roundsData.map(r => r.id);
+      const { data: cardsData, error: cardsError } = await supabase
+        .from('player_cards')
+        .select('round_id, cards')
+        .eq('player_id', currentPlayerId)
+        .in('round_id', roundIds);
+      
+      if (cardsError) {
+        console.error('[HandHistory] Error fetching player cards:', cardsError);
+      } else if (cardsData) {
+        const cardsMap = new Map<string, { rank: string; suit: string }[]>();
+        cardsData.forEach((pc: any) => {
+          // Cards are stored as JSON array in the cards column
+          if (pc.cards && Array.isArray(pc.cards)) {
+            cardsMap.set(pc.round_id, pc.cards);
+          }
+        });
+        setPlayerCardsByRound(cardsMap);
+      }
+    }
   };
 
   // Helper to check if a string looks like a UUID
@@ -495,7 +529,10 @@ export const HandHistory = ({
       // Extract player dice results for dice games (horses, ship-captain-crew)
       let playerDiceResults: PlayerDiceResult[] | undefined;
       let allGameRounds: Round[] | undefined;
+      let currentPlayerCards: PlayerCardData[] | undefined;
+      
       const isDiceGame = resolvedGameType === 'horses' || resolvedGameType === 'ship-captain-crew';
+      const isCardGame = resolvedGameType === '357' || resolvedGameType === '3-5-7' || resolvedGameType === 'holm-game';
       
       if (isDiceGame && !group.dealerGameId.startsWith('orphan-')) {
         // DIRECT MATCH: Get ALL rounds for this dealer_game_id
@@ -530,6 +567,20 @@ export const HandHistory = ({
             })
             .sort((a, b) => (b.isWinner ? 1 : 0) - (a.isWinner ? 1 : 0)); // Winner first
         }
+      }
+      
+      // For card games, get player cards from each round in this dealer game
+      if (isCardGame && !group.dealerGameId.startsWith('orphan-')) {
+        const gameRounds = rounds.filter(r => r.dealer_game_id === group.dealerGameId);
+        
+        currentPlayerCards = gameRounds
+          .filter(r => playerCardsByRound.has(r.id))
+          .map(r => ({
+            roundId: r.id,
+            handNumber: r.hand_number || 1,
+            cards: playerCardsByRound.get(r.id) || [],
+          }))
+          .sort((a, b) => a.handNumber - b.handNumber);
       }
 
       // Resolve the winner name (handles UUIDs for bots)
@@ -576,6 +627,7 @@ export const HandHistory = ({
         gameType: resolvedGameType,
         playerDiceResults,
         allRounds: allGameRounds,
+        currentPlayerCards,
       };
     });
 
@@ -587,7 +639,7 @@ export const HandHistory = ({
   const handGroups = useMemo(() => {
     if (gameResults.length === 0) return [];
     return groupResultsByDealerGame();
-  }, [gameResults, rounds, dealerGames, dealerGameNumberById, playerNames, userIdToName, currentPlayerId]);
+  }, [gameResults, rounds, dealerGames, dealerGameNumberById, playerNames, userIdToName, currentPlayerId, playerCardsByRound]);
 
   const updateInProgressGame = () => {
     // Don't show in-progress if session has ended
@@ -1022,6 +1074,20 @@ export const HandHistory = ({
                                       Hand {relativeHandNum}
                                     </div>
                                   )}
+                                  
+                                  {/* Show player's dealt cards for this hand (card games only) */}
+                                  {hand.currentPlayerCards && hand.currentPlayerCards.length > 0 && (() => {
+                                    // Find cards for this specific hand number
+                                    const handCards = hand.currentPlayerCards?.find(c => c.handNumber === handNum);
+                                    if (handCards && handCards.cards.length > 0) {
+                                      return (
+                                        <div className="mb-2">
+                                          <MiniCardRow cards={handCards.cards} label="Your cards:" />
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                   
                                   {/* Events within this hand */}
                                   <div className="space-y-1">
