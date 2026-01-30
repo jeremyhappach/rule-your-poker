@@ -3392,22 +3392,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (roundData && gameData.current_round && roundData.round_number !== gameData.current_round) {
             console.warn('[FETCH] ⚠️ Round mismatch! game.current_round:', gameData.current_round, 'most recent round:', roundData.round_number);
           }
+        } else if (gameData.current_round && gameData.current_game_uuid) {
+          // 3-5-7: Use dealer_game_id + current_round to get cards from THIS game only
+          // This prevents stale card matching from previous hands that had the same round_number
+          const { data } = await supabase
+            .from('rounds')
+            .select('id, round_number, cards_dealt')
+            .eq('game_id', gameId)
+            .eq('dealer_game_id', gameData.current_game_uuid)
+            .eq('round_number', gameData.current_round)
+            .maybeSingle();
+          roundData = data;
         } else if (gameData.current_round) {
-          // 3-5-7: Use current_round as it's critical for determining wild cards
+          // 3-5-7 fallback without dealer_game_id (legacy) - get most recent round with matching round_number
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .eq('round_number', gameData.current_round)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
           roundData = data;
         } else {
-          // Fallback: get the most recent round
+          // Fallback: get the most recent round by created_at
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
-            .order('round_number', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
           roundData = data;
