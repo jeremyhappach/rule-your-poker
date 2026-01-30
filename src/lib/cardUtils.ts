@@ -366,6 +366,36 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
   const eval_ = evaluateHand(cards, useWildCards, explicitWildRank);
   const rank = eval_.rank;
   console.log('[FORMAT] Evaluated rank:', rank, 'value:', eval_.value);
+
+  // When wildcards are enabled, the raw card ranks may not reflect the *made* hand.
+  // Example: Round 3 (7s wild) can produce Trips 6s with only two physical 6s + one 7.
+  // The evaluator encodes the made ranks into eval_.value; we decode it here for display.
+  const HAND_TYPE: Record<HandRank, number> = {
+    'high-card': 0,
+    pair: 1,
+    'two-pair': 2,
+    'three-of-a-kind': 3,
+    straight: 4,
+    flush: 5,
+    'full-house': 6,
+    'four-of-a-kind': 7,
+    'straight-flush': 8,
+    'five-of-a-kind': 9,
+  };
+
+  const decodeValuePayload = (value: number, handType: number): number[] => {
+    // Must match calculateValue() weights.
+    const weights = [50625, 3375, 225, 15, 1];
+    let remainder = value - handType * 1000000000;
+    if (!Number.isFinite(remainder) || remainder < 0) remainder = 0;
+    return weights.map((w) => {
+      const v = Math.floor(remainder / w);
+      remainder = remainder % w;
+      return v;
+    });
+  };
+
+  const payload = decodeValuePayload(eval_.value, HAND_TYPE[rank]);
   
   // Sort cards by value descending
   const sortedCards = [...cards].sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
@@ -387,8 +417,9 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
   
   switch (rank) {
     case 'five-of-a-kind': {
-      const quintRank = rankGroups.find(([_, count]) => count >= 5)?.[0] || sortedCards[0]?.rank;
-      result = `Five of a Kind, ${rankNamePlural(RANK_VALUES[quintRank as Rank])}`;
+      // payload[0] is the made-of-a-kind rank value
+      const quintValue = payload[0] || RANK_VALUES[(sortedCards[0]?.rank || 'A') as Rank];
+      result = `Five of a Kind, ${rankNamePlural(quintValue)}`;
       break;
     }
     case 'straight-flush': {
@@ -403,15 +434,15 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
       break;
     }
     case 'four-of-a-kind': {
-      const quadRank = rankGroups.find(([_, count]) => count >= 4)?.[0] || sortedCards[0]?.rank;
-      result = `Four of a Kind, ${rankNamePlural(RANK_VALUES[quadRank as Rank])}`;
+      const quadValue = payload[0] || RANK_VALUES[(sortedCards[0]?.rank || 'A') as Rank];
+      result = `Four of a Kind, ${rankNamePlural(quadValue)}`;
       break;
     }
     case 'full-house': {
-      const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0];
-      const pairRank = rankGroups.find(([r, count]) => count >= 2 && r !== tripRank)?.[0];
-      if (tripRank && pairRank) {
-        result = `Boat, ${rankNamePlural(RANK_VALUES[tripRank as Rank])} full of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      const tripValue = payload[0];
+      const pairValue = payload[1];
+      if (tripValue && pairValue) {
+        result = `Boat, ${rankNamePlural(tripValue)} full of ${rankNamePlural(pairValue)}`;
       } else {
         result = 'Boat';
       }
@@ -434,31 +465,25 @@ export function formatHandRankDetailed(cards: Card[], useWildCards: boolean = fa
       break;
     }
     case 'three-of-a-kind': {
-      const tripRank = rankGroups.find(([_, count]) => count >= 3)?.[0] || sortedCards[0]?.rank;
-      // Don't show kickers by default - only relevant for tie-breaking comparison
-      result = `Trips, ${rankNamePlural(RANK_VALUES[tripRank as Rank])}`;
+      // payload[0] is the made trips rank value
+      const tripValue = payload[0] || RANK_VALUES[(sortedCards[0]?.rank || 'A') as Rank];
+      result = `Trips, ${rankNamePlural(tripValue)}`;
       break;
     }
     case 'two-pair': {
-      // Filter to only ranks that actually have 2+ cards (true pairs)
-      const truePairs = rankGroups.filter(([_, count]) => count >= 2);
-      console.log('[FORMAT] Two pair detection - truePairs:', truePairs);
-      if (truePairs.length >= 2) {
-        // Sort by card value descending to get high pair first
-        truePairs.sort((a, b) => RANK_VALUES[b[0] as Rank] - RANK_VALUES[a[0] as Rank]);
-        const highPair = rankNamePlural(RANK_VALUES[truePairs[0][0] as Rank]);
-        const lowPair = rankNamePlural(RANK_VALUES[truePairs[1][0] as Rank]);
-        // Don't show kickers by default - only relevant for tie-breaking comparison
-        result = `Two Prrr, ${highPair} and ${lowPair}`;
+      // payload[0] and payload[1] are the made pair ranks
+      const highPairValue = payload[0];
+      const lowPairValue = payload[1];
+      if (highPairValue && lowPairValue) {
+        result = `Two Prrr, ${rankNamePlural(highPairValue)} and ${rankNamePlural(lowPairValue)}`;
       } else {
         result = 'Two Prrr';
       }
       break;
     }
     case 'pair': {
-      const pairRank = rankGroups.find(([_, count]) => count >= 2)?.[0] || sortedCards[0]?.rank;
-      // Don't show kickers by default - only relevant for tie-breaking comparison
-      result = `Pair of ${rankNamePlural(RANK_VALUES[pairRank as Rank])}`;
+      const pairValue = payload[0] || RANK_VALUES[(sortedCards[0]?.rank || 'A') as Rank];
+      result = `Pair of ${rankNamePlural(pairValue)}`;
       break;
     }
     case 'high-card':
