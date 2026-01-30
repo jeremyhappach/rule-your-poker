@@ -66,7 +66,7 @@ interface AllPlayerCardsForRound {
   roundId: string;
   handNumber: number;
   roundNumber: number; // Raw round_number from DB (use for matching to events)
-  roundWithinHand: number; // Calculated: (round_number - 1) % 3 + 1 for 3-5-7
+  roundWithinHand: number; // 3-5-7: 1..3 within the hand (derived from rounds timeline)
   playerId: string;
   username: string;
   cards: { rank: string; suit: string }[];
@@ -632,6 +632,27 @@ export const HandHistory = ({
       // For card games, get player cards from each round in this dealer game
       if (isCardGame && !group.dealerGameId.startsWith('orphan-')) {
         const gameRounds = rounds.filter(r => r.dealer_game_id === group.dealerGameId);
+
+        // Build a stable (hand_number -> roundWithinHand -> round_id) mapping using created_at ordering.
+        // This is the authoritative way to delineate hands (3 rounds) for 3-5-7.
+        const roundsByHandNumber = new Map<number, Round[]>();
+        gameRounds.forEach((r) => {
+          const hn = r.hand_number ?? null;
+          if (!hn) return;
+          if (!roundsByHandNumber.has(hn)) roundsByHandNumber.set(hn, []);
+          roundsByHandNumber.get(hn)!.push(r);
+        });
+
+        const roundWithinHandByRoundId = new Map<string, number>();
+        roundsByHandNumber.forEach((rs, hn) => {
+          const sorted = [...rs].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+          );
+          sorted.forEach((r, idx) => {
+            const within = idx + 1;
+            roundWithinHandByRoundId.set(r.id, within);
+          });
+        });
         
         // Current player's cards - include round_number for 3-5-7 grouping
         currentPlayerCards = gameRounds
@@ -650,8 +671,11 @@ export const HandHistory = ({
           const roundCards = allPlayerCardsByRound.get(r.id) as Map<string, { cards: { rank: string; suit: string }[]; visibleToUserIds: string[] | null }> | undefined;
           if (roundCards) {
             roundCards.forEach((data, playerId) => {
-              // Calculate round within hand for 3-5-7 games
-              const roundWithinHand = ((r.round_number - 1) % 3) + 1;
+              // 3-5-7: derive 1..3 within a hand from created_at ordering.
+              // Fallback to round_number if we couldn't compute it.
+              const roundWithinHand =
+                roundWithinHandByRoundId.get(r.id) ??
+                (Number.isFinite(r.round_number) ? ((r.round_number - 1) % 3) + 1 : 1);
               allCardsArray.push({
                 roundId: r.id,
                 handNumber: r.hand_number || 1,
@@ -832,10 +856,22 @@ export const HandHistory = ({
     if (event.winner_username === 'Leg Purchase') {
       // Compact: "Bot 2 ($2)" - extract the winner from description
       const legMatch = event.winning_hand_description?.match(/(.+?)\s+(?:won|bought|purchased)\s+leg/i);
-      const legWinner = legMatch ? legMatch[1] : 'Leg';
-      // Try to get leg value from chip changes (it's negative for the purchaser)
-      const legValue = chipChange ? Math.abs(chipChange) : undefined;
-      return { label: 'Leg', description: compactLegDescription(legWinner, legValue), chipChange, handNumber: handNum };
+
+      // If the description is missing the name (common), infer purchaser from the chip change map.
+      // In leg purchases, the purchaser is the one with a negative delta.
+      const purchaserEntry = Object.entries(event.player_chip_changes || {}).find(([, v]) => v < 0);
+      const purchaserId = purchaserEntry?.[0] || null;
+      const inferredWinner = purchaserId ? (playerNames.get(purchaserId) || purchaserId) : null;
+
+      const legWinner = (legMatch?.[1]?.trim() || inferredWinner || 'Leg').trim();
+      const legValue = purchaserEntry ? Math.abs(purchaserEntry[1]) : (chipChange ? Math.abs(chipChange) : undefined);
+
+      return {
+        label: 'Leg',
+        description: compactLegDescription(legWinner, legValue),
+        chipChange,
+        handNumber: handNum,
+      };
     }
     if (event.winner_username === 'Pussy Tax') {
       // Compact: just "pussy tax"
@@ -1170,30 +1206,72 @@ export const HandHistory = ({
                         const is357Game = hand.gameType === '357' || hand.gameType === '3-5-7';
                         
                         if (is357Game) {
-                          // 3-5-7: Group by calculated "hand" (every 3 rounds = 1 hand)
-                          // and then by round within that hand (1, 2, 3)
-                          const sortedEvents = [...hand.events].sort((a, b) => a.hand_number - b.hand_number);
-                          
-                          // Calculate which "hand" each event belongs to (0-indexed)
-                          // hand_number 1,2,3 -> hand 0, round 1,2,3
-                          // hand_number 4,5,6 -> hand 1, round 1,2,3
-                          const eventsByHandAndRound = new Map<number, Map<number, GameResult[]>>();
-                          sortedEvents.forEach(event => {
-                            const handIndex = Math.floor((event.hand_number - 1) / 3);
-                            const roundWithinHand = ((event.hand_number - 1) % 3) + 1;
-                            
-                            if (!eventsByHandAndRound.has(handIndex)) {
-                              eventsByHandAndRound.set(handIndex, new Map());
-                            }
-                            if (!eventsByHandAndRound.get(handIndex)!.has(roundWithinHand)) {
-                              eventsByHandAndRound.get(handIndex)!.set(roundWithinHand, []);
-                            }
-                            eventsByHandAndRound.get(handIndex)!.get(roundWithinHand)!.push(event);
-                          });
-                          
-                          // Get sorted hands
-                          const sortedHands357 = Array.from(eventsByHandAndRound.entries())
-                            .sort(([a], [b]) => a - b);
+                            // 3-5-7: hands are delineated by `hand_number` in rounds/game_results.
+                            // We assign each event to a specific round-within-hand (1..3) using the
+                            // rounds timeline (created_at), so each round shows only its own events & cards.
+                            const dealerGameId = hand.dealerGame?.id;
+                            const roundsForGame = dealerGameId
+                              ? rounds
+                                  .filter((r) => r.dealer_game_id === dealerGameId && r.hand_number !== null)
+                                  .sort(
+                                    (a, b) =>
+                                      new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+                                  )
+                              : [];
+
+                            const roundsByHandNumber = new Map<number, Round[]>();
+                            roundsForGame.forEach((r) => {
+                              const hn = r.hand_number ?? null;
+                              if (!hn) return;
+                              if (!roundsByHandNumber.has(hn)) roundsByHandNumber.set(hn, []);
+                              roundsByHandNumber.get(hn)!.push(r);
+                            });
+
+                            const sortedRoundsByHand = new Map<number, Round[]>();
+                            const roundIdByHandAndRoundWithin = new Map<number, Map<number, string>>();
+                            roundsByHandNumber.forEach((rs, hn) => {
+                              const sorted = [...rs].sort(
+                                (a, b) =>
+                                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+                              );
+                              sortedRoundsByHand.set(hn, sorted);
+                              const m = new Map<number, string>();
+                              sorted.forEach((r, idx) => m.set(idx + 1, r.id));
+                              roundIdByHandAndRoundWithin.set(hn, m);
+                            });
+
+                            const getRoundWithinHandForEvent = (event: GameResult): number => {
+                              const hn = event.hand_number;
+                              const rs = sortedRoundsByHand.get(hn);
+                              if (!rs || rs.length === 0) return 1;
+                              const t = new Date(event.created_at).getTime();
+                              // Find the most recent round start that is <= event time
+                              let idx = 0;
+                              for (let i = 0; i < rs.length; i++) {
+                                if (new Date(rs[i].created_at).getTime() <= t) idx = i;
+                              }
+                              return Math.min(3, idx + 1);
+                            };
+
+                            const sortedEvents = [...hand.events].sort(
+                              (a, b) =>
+                                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+                            );
+
+                            const eventsByHandAndRound = new Map<number, Map<number, GameResult[]>>();
+                            sortedEvents.forEach((event) => {
+                              const hn = event.hand_number;
+                              const roundWithinHand = getRoundWithinHandForEvent(event);
+
+                              if (!eventsByHandAndRound.has(hn)) eventsByHandAndRound.set(hn, new Map());
+                              const roundsMap = eventsByHandAndRound.get(hn)!;
+                              if (!roundsMap.has(roundWithinHand)) roundsMap.set(roundWithinHand, []);
+                              roundsMap.get(roundWithinHand)!.push(event);
+                            });
+
+                            const sortedHands357 = Array.from(eventsByHandAndRound.entries()).sort(
+                              ([a], [b]) => a - b,
+                            );
                           
                           // Get card count label for 3-5-7 rounds
                           const getCardCount = (roundNum: number) => {
@@ -1219,7 +1297,7 @@ export const HandHistory = ({
                                   .sort(([a], [b]) => a - b);
                                 
                                 return (
-                                  <div key={handIndex}>
+                                    <div key={handIndex}>
                                     {/* Hand separator for multiple hands */}
                                     {handIdx > 0 && (
                                       <div className="flex items-center gap-2 my-3 text-[10px] text-poker-gold font-semibold">
@@ -1240,16 +1318,29 @@ export const HandHistory = ({
                                       
                                       if (filteredEvents.length === 0) return null;
                                       
-                                      // Get cards for this round
-                                      // Match by roundWithinHand calculated from the raw roundNumber
-                                      const myCardsForRound = hand.currentPlayerCards?.filter(c => 
-                                        ((c.roundNumber - 1) % 3) + 1 === roundNum
-                                      ) || [];
-                                      const othersCardsForRound = (hand.allPlayerCards?.filter(pc => 
-                                        !pc.isCurrentPlayer && 
-                                        ((pc.roundNumber - 1) % 3) + 1 === roundNum &&
-                                        canSeeCards(pc)
-                                      ) || []);
+                                        // Get cards for this exact hand+round.
+                                        const roundId = roundIdByHandAndRoundWithin.get(handIndex)?.get(roundNum);
+
+                                        const myCardsForRound = roundId
+                                          ? (hand.currentPlayerCards?.filter((c) => c.roundId === roundId) || [])
+                                          : (hand.currentPlayerCards?.filter(
+                                              (c) => c.handNumber === handIndex && c.roundNumber === roundNum,
+                                            ) || []);
+
+                                        const othersCardsForRound = roundId
+                                          ? (hand.allPlayerCards?.filter(
+                                              (pc) =>
+                                                !pc.isCurrentPlayer &&
+                                                pc.roundId === roundId &&
+                                                canSeeCards(pc),
+                                            ) || [])
+                                          : (hand.allPlayerCards?.filter(
+                                              (pc) =>
+                                                !pc.isCurrentPlayer &&
+                                                pc.handNumber === handIndex &&
+                                                (pc.roundWithinHand === roundNum || pc.roundNumber === roundNum) &&
+                                                canSeeCards(pc),
+                                            ) || []);
                                       
                                       return (
                                         <div key={`${handIndex}-${roundNum}`}>
