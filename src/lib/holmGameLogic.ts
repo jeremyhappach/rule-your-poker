@@ -284,27 +284,28 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     }
     console.log('[HOLM] ✅ Successfully acquired first-hand lock (is_first_hand -> false)');
 
-    // CRITICAL: Remove any old rounds/cards IMMEDIATELY while we are still in ante_decision,
-    // so no client can fetch and render a previous hand during the dealing window.
-    console.log('[HOLM] FIRST HAND - deleting any existing rounds/player_cards BEFORE dealing');
+    // CRITICAL FIX: Do NOT delete old rounds - they belong to previous dealer games and are needed
+    // for Hand History. Instead, just mark any non-completed rounds as completed to prevent
+    // stale card rendering. The new Holm game has a unique dealer_game_id, so old rounds won't interfere.
+    console.log('[HOLM] FIRST HAND - marking any existing non-completed rounds as completed (preserving for history)');
+    
     const { data: oldRounds } = await supabase
       .from('rounds')
-      .select('id')
-      .eq('game_id', gameId);
+      .select('id, round_number, status, dealer_game_id')
+      .eq('game_id', gameId)
+      .neq('status', 'completed');
 
     if (oldRounds && oldRounds.length > 0) {
       const oldRoundIds = oldRounds.map(r => r.id);
-      await supabase
-        .from('player_cards')
-        .delete()
-        .in('round_id', oldRoundIds);
-
+      console.log('[HOLM] Found', oldRounds.length, 'non-completed rounds to mark completed:',
+        oldRounds.map(r => ({ id: r.id, round: r.round_number, dealer_game_id: r.dealer_game_id })));
+      
       await supabase
         .from('rounds')
-        .delete()
-        .eq('game_id', gameId);
+        .update({ status: 'completed' })
+        .in('id', oldRoundIds);
 
-      console.log('[HOLM] Deleted', oldRounds.length, 'old rounds before first hand');
+      console.log('[HOLM] ✅ Marked', oldRoundIds.length, 'old rounds as completed (preserved for history)');
     }
   }
   
