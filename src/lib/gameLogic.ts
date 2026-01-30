@@ -209,44 +209,8 @@ export async function startRound(gameId: string, roundNumber: number) {
   // The card rendering now uses dealer_game_id + round_number to prevent stale card matching
   console.log('[START_ROUND] Preserving existing rounds for hand history');
 
-  // Reset all players to active for the new round (must happen BEFORE we decide who gets dealt in later rounds)
-  const { error: resetError } = await supabase
-    .from('players')
-    .update({
-      current_decision: null,
-      decision_locked: false,
-      status: 'active'
-    })
-    .eq('game_id', gameId);
-
-  if (resetError) {
-    console.error('[START_ROUND] Failed to reset players:', resetError);
-  }
-
-  // CRITICAL: Fetch players AFTER the reset so we don't use stale fold/decision state (fixes missing cards in rounds 1-3)
-  const { data: players, error: playersError } = await supabase
-    .from('players')
-    .select('*')
-    .eq('game_id', gameId)
-    .order('position');
-
-  if (playersError) {
-    console.error('[START_ROUND] Error fetching players:', playersError);
-    throw new Error(`Failed to fetch players: ${playersError.message}`);
-  }
-
-  if (!players || players.length === 0) {
-    throw new Error('No players found in game');
-  }
-
-  // Deal to all non-sitting-out players. Status can be stale if reset failed; sitting_out is the true exclusion.
-  const activePlayers = players.filter(p => !p.sitting_out);
-  console.log('[START_ROUND] Players eligible for dealing:', {
-    roundNumber,
-    totalPlayers: players.length,
-    activeCount: activePlayers.length,
-    active: activePlayers.map(p => ({ id: p.id, position: p.position, status: p.status, sitting_out: p.sitting_out }))
-  });
+  // IMPORTANT (CONCURRENCY): We only reset players + charge antes + deal cards if THIS client
+  // wins the round creation lock. Losing clients must not reset decisions mid-round.
   let initialPot = 0;
   
   // timerSeconds already fetched in parallel at start
@@ -304,6 +268,45 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // This client WON the race - we are the only one that will charge antes
   console.log('[START_ROUND] ✅ WON round creation race for round', roundNumber, 'id:', insertedRound.id);
+
+  // Reset all players to active for the new round (winner only)
+  const { error: resetError } = await supabase
+    .from('players')
+    .update({
+      current_decision: null,
+      decision_locked: false,
+      status: 'active',
+    })
+    .eq('game_id', gameId);
+
+  if (resetError) {
+    console.error('[START_ROUND] Failed to reset players:', resetError);
+  }
+
+  // Fetch players AFTER the reset so we don't use stale fold/decision state
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('*')
+    .eq('game_id', gameId)
+    .order('position');
+
+  if (playersError) {
+    console.error('[START_ROUND] Error fetching players:', playersError);
+    throw new Error(`Failed to fetch players: ${playersError.message}`);
+  }
+
+  if (!players || players.length === 0) {
+    throw new Error('No players found in game');
+  }
+
+  // Deal to all non-sitting-out players.
+  const activePlayers = players.filter((p) => !p.sitting_out);
+  console.log('[START_ROUND] Players eligible for dealing:', {
+    roundNumber,
+    totalPlayers: players.length,
+    activeCount: activePlayers.length,
+    active: activePlayers.map((p) => ({ id: p.id, position: p.position, status: p.status, sitting_out: p.sitting_out })),
+  });
   
   // Charge antes only for round 1 (initial ante or re-ante after round 3 wraps)
   if (roundNumber === 1) {
