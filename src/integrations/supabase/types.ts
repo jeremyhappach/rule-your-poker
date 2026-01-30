@@ -692,6 +692,7 @@ export type Database = {
           id: string
           player_id: string
           round_id: string
+          visible_to_user_ids: string[] | null
         }
         Insert: {
           cards?: Json
@@ -699,6 +700,7 @@ export type Database = {
           id?: string
           player_id: string
           round_id: string
+          visible_to_user_ids?: string[] | null
         }
         Update: {
           cards?: Json
@@ -706,6 +708,7 @@ export type Database = {
           id?: string
           player_id?: string
           round_id?: string
+          visible_to_user_ids?: string[] | null
         }
         Relationships: [
           {
