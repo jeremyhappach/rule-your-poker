@@ -316,7 +316,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   // Get current round and game type, and check pause state
   const { data: gameData } = await supabase
     .from('games')
-    .select('game_type, current_round, is_paused')
+    .select('game_type, current_round, is_paused, total_hands')
     .eq('id', gameId)
     .single();
   
@@ -328,20 +328,34 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   
   const isHolmGame = gameData?.game_type === 'holm-game' || gameData?.game_type === 'holm';
   const roundNumber = gameData?.current_round || 1;
+  const handNumber = gameData?.total_hands || 1;
   
-  // Get current round data
-  const { data: currentRound } = await supabase
+  // Get current round data - CRITICAL: use created_at DESC to get the newest round,
+  // not round_number DESC which would incorrectly return Hand 1 Round 3 over Hand 2 Round 1
+  // For 3-5-7, also filter by hand_number to ensure we get the correct round
+  let roundQuery = supabase
     .from('rounds')
-    .select('id, current_turn_position, community_cards')
-    .eq('game_id', gameId)
-    .order('round_number', { ascending: false })
-    .limit(1)
-    .single();
+    .select('id, current_turn_position, community_cards, hand_number, round_number')
+    .eq('game_id', gameId);
+  
+  if (!isHolmGame) {
+    // 3-5-7: filter by both hand_number and round_number for precise matching
+    roundQuery = roundQuery
+      .eq('hand_number', handNumber)
+      .eq('round_number', roundNumber);
+  } else {
+    // Holm: just get the most recently created round
+    roundQuery = roundQuery.order('created_at', { ascending: false }).limit(1);
+  }
+  
+  const { data: currentRound } = await roundQuery.maybeSingle();
   
   if (!currentRound) {
-    console.log('[BOT DECISIONS] No current round found');
+    console.log('[BOT DECISIONS] No current round found for hand', handNumber, 'round', roundNumber);
     return false;
   }
+  
+  console.log('[BOT DECISIONS] Found round:', { id: currentRound.id, hand: currentRound.hand_number, round: currentRound.round_number });
   
   // For Holm games, use passed turn position for accuracy (avoids stale DB reads)
   const effectiveTurnPosition = passedTurnPosition ?? currentRound.current_turn_position;
