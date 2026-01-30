@@ -744,11 +744,13 @@ serve(async (req) => {
             game.status === 'in_progress' && 
             game.all_decisions_in === false) {
           
+          // For Holm, get the latest round by created_at (round_number can have duplicates across hands)
           const { data: currentRound } = await supabase
             .from('rounds')
             .select('id, status')
             .eq('game_id', game.id)
-            .eq('round_number', game.current_round || 1)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
           
           if (currentRound && (currentRound.status === 'processing' || currentRound.status === 'active')) {
@@ -1166,12 +1168,29 @@ serve(async (req) => {
 
         // ============= STALE IN_PROGRESS CLEANUP =============
         if (game.status === 'in_progress') {
-          const { data: currentRound } = await supabase
-            .from('rounds')
-            .select('*')
-            .eq('game_id', game.id)
-            .eq('round_number', game.current_round ?? 0)
-            .maybeSingle();
+          // CRITICAL: For 3-5-7, use composite key (hand_number + round_number) or created_at fallback
+          // round_number alone is ambiguous since Hand 1 Round 1 and Hand 2 Round 1 share the same number
+          let currentRound: any = null;
+          if (game.game_type === '3-5-7' && game.total_hands && game.current_round) {
+            const { data } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', game.id)
+              .eq('hand_number', game.total_hands)
+              .eq('round_number', game.current_round)
+              .maybeSingle();
+            currentRound = data;
+          } else {
+            // Non-3-5-7 games: use created_at DESC to get most recent round
+            const { data } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', game.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            currentRound = data;
+          }
           
           const hasDecisionDeadline = !!currentRound?.decision_deadline;
           const deadlineTime = hasDecisionDeadline ? new Date(currentRound.decision_deadline).getTime() : 0;
@@ -1422,33 +1441,31 @@ serve(async (req) => {
                   // Cards to deal based on round (3, 5, or 7)
                   const cardsToDeal = nextRoundNum === 1 ? 3 : nextRoundNum === 2 ? 5 : 7;
                   
-                  // Get next round number in DB
-                  const { data: latestRound } = await supabase
-                    .from('rounds')
-                    .select('round_number')
-                    .eq('game_id', game.id)
-                    .order('round_number', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-                  
-                  const newRoundNumber = (latestRound?.round_number || 0) + 1;
+                  // CRITICAL: For 3-5-7, round numbers cycle 1/2/3 per hand.
+                  // Use the round_number from next_round_number (which is 1, 2, or 3).
+                  // The unique constraint is (game_id, hand_number, round_number).
+                  const newRoundNumber = nextRoundNum; // 1, 2, or 3 based on game state
+                  const newHandNumber = nextRoundNum === 1 
+                    ? (game.total_hands || 0) + 1  // New hand starts with round 1
+                    : (game.total_hands || 1);      // Rounds 2/3 continue same hand
                   
                   // Deal cards
                   const deck = shuffleDeck(createDeck());
                   let deckIndex = 0;
                   
-                  // Create round
+                  // Create round - use the correctly calculated hand number
                   const { data: newRound, error: roundError } = await supabase
                     .from('rounds')
                     .insert({
                       game_id: game.id,
                       round_number: newRoundNumber,
-                      hand_number: (game.total_hands || 0) + 1,
+                      hand_number: newHandNumber,
                       cards_dealt: cardsToDeal,
                       pot: game.pot || 0,
                       status: 'betting',
                       decision_deadline: decisionDeadline,
                       current_turn_position: players[0].position,
+                      dealer_game_id: game.current_game_uuid || null,
                     })
                     .select()
                     .single();
@@ -1469,17 +1486,21 @@ serve(async (req) => {
                     
                     await supabase.from('player_cards').insert(playerCardInserts);
                     
-                    // Update game
+                    // Update game - CRITICAL: update total_hands when starting round 1 of new hand
+                    const gameUpdateFields: Record<string, any> = {
+                      current_round: newRoundNumber,
+                      awaiting_next_round: false,
+                      next_round_number: null,
+                      last_round_result: null,
+                      all_decisions_in: false,
+                      status: 'in_progress',
+                    };
+                    if (newRoundNumber === 1) {
+                      gameUpdateFields.total_hands = newHandNumber;
+                    }
                     await supabase
                       .from('games')
-                      .update({
-                        current_round: newRoundNumber,
-                        awaiting_next_round: false,
-                        next_round_number: null,
-                        last_round_result: null,
-                        all_decisions_in: false,
-                        status: 'in_progress',
-                      })
+                      .update(gameUpdateFields)
                       .eq('id', game.id);
                     
                     // Reset player decisions
