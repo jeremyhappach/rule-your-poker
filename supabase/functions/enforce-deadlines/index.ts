@@ -584,12 +584,12 @@ serve(async (req) => {
 
       // ============= 3B. DICE GAME (HORSES/SCC) TURN TIMEOUTS =============
       if (game.game_type === 'horses' || game.game_type === 'ship-captain-crew') {
-        // Get the current round
+        // Get the current round - use created_at DESC for dice games (round numbers increment indefinitely)
         const { data: currentRound } = await supabase
           .from('rounds')
           .select('*')
           .eq('game_id', gameId)
-          .order('round_number', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
 
