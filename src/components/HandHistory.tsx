@@ -1331,9 +1331,13 @@ export const HandHistory = ({
                         });
                         
                         // Helper to check if user can see cards (for Holm)
+                        // User can see their own cards OR cards where they're in the visibleToUserIds array
                         const canSeeCardsHolm = (pc: AllPlayerCardsForRound): boolean => {
+                          // Always show own cards
                           if (pc.isCurrentPlayer) return true;
-                          if (!pc.visibleToUserIds) return false;
+                          // If no visibility array set, cards are private (owner only)
+                          if (!pc.visibleToUserIds || pc.visibleToUserIds.length === 0) return false;
+                          // Check if current user is in the visibility array
                           return currentUserId ? pc.visibleToUserIds.includes(currentUserId) : false;
                         };
                         

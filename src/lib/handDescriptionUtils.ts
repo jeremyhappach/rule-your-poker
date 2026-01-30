@@ -39,17 +39,19 @@ export function compactHandDescription(
     return winnerName || 'Leg';
   }
   
-  // Holm-specific: "Won showdown (chopped)" or "Won showdown (continued)"
-  // Also handles truncated forms like "Won showdown (co..."
-  if (desc.includes('won showdown')) {
-    // Extract just the core outcome
+  // Holm-specific: Handle various Holm showdown descriptions
+  // Patterns: "Won showdown (chopped)", "Won showdown (continued)", truncated "Won show..."
+  // Also: "beat Chucky", "beats Chucky", "X won - beats Chucky"
+  if (desc.includes('won showdown') || desc.includes('won show')) {
+    // Extract just the core outcome - check for various patterns
     if (desc.includes('chop') || desc.includes('split')) {
       return winnerName ? `${winnerName}: chopped` : 'chopped';
     }
     if (desc.includes('beat') && desc.includes('chucky')) {
       return winnerName ? `${winnerName}: beat Chucky` : 'beat Chucky';
     }
-    if (desc.includes('continu')) {
+    // "continued" or truncated "continu" or "co..."
+    if (desc.includes('continu') || desc.includes('(co')) {
       return winnerName ? `${winnerName}: won` : 'won';
     }
     // Generic showdown win - extract hand if present
@@ -58,6 +60,11 @@ export function compactHandDescription(
       return `${winnerName}: ${handRank}`;
     }
     return winnerName ? `${winnerName}: won` : 'won';
+  }
+  
+  // Additional Holm patterns: "X beats Chucky" or "beats Chucky with..."
+  if (desc.includes('beats chucky') || desc.includes('beat chucky')) {
+    return winnerName ? `${winnerName}: beat Chucky` : 'beat Chucky';
   }
   
   // Fix malformed descriptions like "Won showdown with Won show..."
@@ -82,16 +89,12 @@ export function compactHandDescription(
   
   // Chopped pot
   if (desc.includes('chop') || desc.includes('split')) {
-    return 'chopped';
+    return winnerName ? `${winnerName}: chopped` : 'chopped';
   }
   
-  // Beat Chucky descriptions
+  // Beat Chucky descriptions (already handled above, but keep as fallback)
   if (desc.includes('beat chucky') || desc.includes('beats chucky')) {
-    const beatMatch = description.match(/(.+?)\s+beats?\s+chucky/i);
-    if (beatMatch) {
-      return `${beatMatch[1].trim()} beat Chucky`;
-    }
-    return 'beat Chucky';
+    return winnerName ? `${winnerName}: beat Chucky` : 'beat Chucky';
   }
   
   // Fallback: just return a truncated version
