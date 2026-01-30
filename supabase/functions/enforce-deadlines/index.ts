@@ -86,7 +86,15 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(supabaseUrl, keyToUse);
+     // IMPORTANT: When running with the anon key (or if the service role key is not available),
+     // we MUST forward the caller's JWT so RLS policies can authorize reads/writes.
+     // When running with the service role key, this header is harmless.
+     const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
+     const supabase = createClient(supabaseUrl, keyToUse, {
+       global: {
+         headers: authHeader ? { Authorization: authHeader } : {},
+       },
+     });
 
     let body: any;
     try {
@@ -576,6 +584,105 @@ serve(async (req) => {
                     actionsTaken.push('All players decided - flagged for showdown');
                   }
                 }
+              }
+            }
+          }
+        }
+      }
+
+      // ============= 3A. 3-5-7 (SIMULTANEOUS) DECISION TIMEOUTS =============
+      // 3-5-7 round numbers cycle 1/2/3 each hand, so we MUST key the current round by
+      // (hand_number, round_number) (and implicitly by game_id; dealer_game_id is stable per session).
+      if (game.game_type === '3-5-7') {
+        let currentRound: any = null;
+
+        if (typeof (game as any).total_hands === 'number' && typeof (game as any).current_round === 'number') {
+          const { data } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('game_id', gameId)
+            .eq('hand_number', (game as any).total_hands)
+            .eq('round_number', (game as any).current_round)
+            .maybeSingle();
+          currentRound = data;
+        }
+
+        // Fallback: pick latest betting round if game row is briefly out-of-sync
+        if (!currentRound) {
+          const { data } = await supabase
+            .from('rounds')
+            .select('*')
+            .eq('game_id', gameId)
+            .eq('status', 'betting')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          currentRound = data;
+        }
+
+        if (currentRound?.decision_deadline && currentRound.status === 'betting') {
+          const decisionDeadline = new Date(currentRound.decision_deadline);
+          const msOverdue = now.getTime() - decisionDeadline.getTime();
+
+          // Grace period to avoid racing client animations / last-millisecond clicks.
+          if (msOverdue > 3000) {
+            console.log('[ENFORCE-CLIENT] 3-5-7 decision deadline expired', {
+              gameId,
+              roundId: currentRound.id,
+              hand_number: currentRound.hand_number,
+              round_number: currentRound.round_number,
+              decision_deadline: currentRound.decision_deadline,
+              msOverdue,
+            });
+
+            const { data: players } = await supabase
+              .from('players')
+              .select('id, user_id, position, is_bot, sitting_out, status, ante_decision, current_decision, decision_locked')
+              .eq('game_id', gameId);
+
+            const activePlayers = (players || []).filter((p: any) =>
+              p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up'
+            );
+
+            const undecided = activePlayers.filter((p: any) => !p.decision_locked && !p.current_decision);
+
+            if (undecided.length > 0) {
+              const undecidedIds = undecided.map((p: any) => p.id);
+              console.log('[ENFORCE-CLIENT] 3-5-7 auto-folding undecided players:', {
+                count: undecidedIds.length,
+                positions: undecided.map((p: any) => p.position),
+              });
+
+              // Mark any undecided player as folded/locked so the game can progress.
+              await supabase
+                .from('players')
+                .update({ current_decision: 'fold', decision_locked: true })
+                .in('id', undecidedIds);
+
+              actionsTaken.push(`3-5-7 timeout: Auto-folded ${undecidedIds.length} undecided players`);
+            }
+
+            // Re-read and, if everyone has decided, set all_decisions_in=true
+            const { data: postPlayers } = await supabase
+              .from('players')
+              .select('id, sitting_out, status, ante_decision, decision_locked')
+              .eq('game_id', gameId);
+
+            const postActive = (postPlayers || []).filter((p: any) =>
+              p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up'
+            );
+            const allDecided = postActive.length > 0 && postActive.every((p: any) => p.decision_locked === true);
+
+            if (allDecided) {
+              const { data: lockResult } = await supabase
+                .from('games')
+                .update({ all_decisions_in: true })
+                .eq('id', gameId)
+                .eq('all_decisions_in', false)
+                .select();
+
+              if (lockResult && lockResult.length > 0) {
+                actionsTaken.push('3-5-7 timeout: Set all_decisions_in=true');
               }
             }
           }

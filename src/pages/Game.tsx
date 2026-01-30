@@ -124,6 +124,9 @@ interface Round {
   id: string;
   game_id: string;
   round_number: number;
+  // 3-5-7: round_number cycles each hand, so we must also key by hand_number (and usually dealer_game_id).
+  hand_number?: number | null;
+  dealer_game_id?: string | null;
   cards_dealt: number;
   pot: number;
   status: string;
@@ -136,6 +139,38 @@ interface Round {
   current_turn_position?: number | null;
   created_at?: string;
   horses_state?: any; // Horses dice game state
+}
+
+function pickActive357Round(
+  rounds: Round[] | undefined,
+  params: {
+    currentRoundNumber: number | null | undefined;
+    currentHandNumber: number | null | undefined;
+    dealerGameId: string | null | undefined;
+  }
+): Round | null {
+  if (!rounds || rounds.length === 0) return null;
+
+  const { currentRoundNumber, currentHandNumber, dealerGameId } = params;
+
+  if (typeof currentRoundNumber === 'number' && typeof currentHandNumber === 'number') {
+    const exact = rounds.find((r) =>
+      r.round_number === currentRoundNumber &&
+      r.hand_number === currentHandNumber &&
+      (dealerGameId ? r.dealer_game_id === dealerGameId : true)
+    );
+    if (exact) return exact;
+  }
+
+  // Fallback: most recent betting round (prefer within this dealer game if provided).
+  const candidates = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+  const sorted = [...candidates].sort((a, b) => {
+    const aT = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bT = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return bT - aT;
+  });
+
+  return sorted.find((r) => r.status === 'betting') ?? sorted[0] ?? null;
 }
 
 interface PlayerCards {
@@ -2249,6 +2284,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
 
+    if (game.game_type === '3-5-7') {
+      return (
+        pickActive357Round(game.rounds, {
+          currentRoundNumber: game.current_round,
+          currentHandNumber: game.total_hands,
+          dealerGameId: game.current_game_uuid,
+        }) ?? null
+      );
+    }
+
     // Default behavior for other games.
     if (typeof game.current_round === "number") {
       return game.rounds.find((r) => r.round_number === game.current_round) ?? null;
@@ -3541,15 +3586,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const isHolm = gameData.game_type === 'holm-game';
       const isDice = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
 
-      const currentRound = isHolm
-        ? gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
-        : (typeof gameData.current_round === 'number'
-            ? (gameData.rounds.find((r: Round) => r.round_number === gameData.current_round) || null)
-            : (isDice
-                ? null
-                : gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
-              )
-          );
+      let currentRound: Round | null = null;
+      if (isHolm) {
+        currentRound = gameData.rounds.reduce(
+          (latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number ? r : latest),
+          null as Round | null,
+        );
+      } else if (gameData.game_type === '3-5-7') {
+        currentRound =
+          pickActive357Round(gameData.rounds as Round[], {
+            currentRoundNumber: gameData.current_round,
+            currentHandNumber: gameData.total_hands,
+            dealerGameId: gameData.current_game_uuid,
+          }) ?? null;
+      } else if (typeof gameData.current_round === 'number') {
+        currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round) || null;
+      } else if (isDice) {
+        currentRound = null;
+      } else {
+        currentRound = gameData.rounds.reduce(
+          (latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number ? r : latest),
+          null as Round | null,
+        );
+      }
       
       console.log('[FETCH] Round data:', {
         gameType: gameData.game_type,
