@@ -8,6 +8,7 @@ import { Clock } from "lucide-react";
 import { cn, formatChipValue } from "@/lib/utils";
 import { HandHistoryEventRow } from "@/components/hand-history/HandHistoryEventRow";
 import { MiniCardRow } from "@/components/hand-history/MiniPlayingCard";
+import { compactHandDescription, compactLegDescription } from "@/lib/handDescriptionUtils";
 
 interface GameResult {
   id: string;
@@ -67,6 +68,7 @@ interface AllPlayerCardsForRound {
   username: string;
   cards: { rank: string; suit: string }[];
   isCurrentPlayer: boolean;
+  visibleToUserIds?: string[] | null; // Which users can see these cards (null = owner only)
 }
 
 // Round data including community cards and chucky cards
@@ -350,11 +352,12 @@ export const HandHistory = ({
     setUserIdToName(userIdMap);
     
     // Fetch player_cards for ALL players (for showing revealed cards in history)
+    // Include visible_to_user_ids for filtering which cards to show
     if (roundsData && roundsData.length > 0) {
       const roundIds = roundsData.map(r => r.id);
       const { data: allCardsData, error: allCardsError } = await supabase
         .from('player_cards')
-        .select('round_id, player_id, cards')
+        .select('round_id, player_id, cards, visible_to_user_ids')
         .in('round_id', roundIds);
       
       if (allCardsError) {
@@ -362,8 +365,8 @@ export const HandHistory = ({
       } else if (allCardsData) {
         // Map for current player's cards only
         const currentPlayerCardsMap = new Map<string, { rank: string; suit: string }[]>();
-        // Map for all player cards by round_id -> player_id -> cards
-        const allCardsMap = new Map<string, Map<string, { rank: string; suit: string }[]>>();
+        // Map for all player cards by round_id -> player_id -> { cards, visibleToUserIds }
+        const allCardsMap = new Map<string, Map<string, { cards: { rank: string; suit: string }[]; visibleToUserIds: string[] | null }>>();
         
         allCardsData.forEach((pc: any) => {
           if (pc.cards && Array.isArray(pc.cards)) {
@@ -372,16 +375,28 @@ export const HandHistory = ({
               currentPlayerCardsMap.set(pc.round_id, pc.cards);
             }
             
-            // All cards by round
+            // All cards by round (with visibility info)
             if (!allCardsMap.has(pc.round_id)) {
               allCardsMap.set(pc.round_id, new Map());
             }
-            allCardsMap.get(pc.round_id)!.set(pc.player_id, pc.cards);
+            allCardsMap.get(pc.round_id)!.set(pc.player_id, {
+              cards: pc.cards,
+              visibleToUserIds: pc.visible_to_user_ids || null,
+            });
           }
         });
         
         setPlayerCardsByRound(currentPlayerCardsMap);
-        setAllPlayerCardsByRound(allCardsMap);
+        // Convert to the expected format (without visibility for now, we'll filter in render)
+        const simpleAllCardsMap = new Map<string, Map<string, { rank: string; suit: string }[]>>();
+        allCardsMap.forEach((playerMap, roundId) => {
+          const simplePlayerMap = new Map<string, { rank: string; suit: string }[]>();
+          playerMap.forEach((data, playerId) => {
+            simplePlayerMap.set(playerId, data.cards);
+          });
+          simpleAllCardsMap.set(roundId, simplePlayerMap);
+        });
+        setAllPlayerCardsByRound(simpleAllCardsMap);
       }
     }
   };
@@ -803,34 +818,48 @@ export const HandHistory = ({
   };
 
   // Format event for display in expanded section - resolves UUIDs to usernames
+  // Uses compact descriptions for mobile-friendly display
   const formatEventDescription = (event: GameResult): { label: string; description: string; chipChange: number | null; handNumber?: number } => {
     const chipChange = currentPlayerId ? (event.player_chip_changes[currentPlayerId] ?? null) : null;
     const handNum = event.hand_number;
     
     if (event.winner_username === 'Ante') {
-      return { label: 'Ante', description: event.winning_hand_description || 'Ante collected', chipChange, handNumber: handNum };
+      // Compact: "3 × $1" instead of "3 players anted $1"
+      const compactDesc = compactHandDescription(event.winning_hand_description);
+      return { label: 'Ante', description: compactDesc || 'ante', chipChange, handNumber: handNum };
     }
     if (event.winner_username === 'Leg Purchase') {
-      return { label: 'Leg', description: event.winning_hand_description || 'Leg purchased', chipChange, handNumber: handNum };
+      // Compact: "Bot 2 ($2)" - extract the winner from description
+      const legMatch = event.winning_hand_description?.match(/(.+?)\s+(?:won|bought|purchased)\s+leg/i);
+      const legWinner = legMatch ? legMatch[1] : 'Leg';
+      // Try to get leg value from chip changes (it's negative for the purchaser)
+      const legValue = chipChange ? Math.abs(chipChange) : undefined;
+      return { label: 'Leg', description: compactLegDescription(legWinner, legValue), chipChange, handNumber: handNum };
     }
     if (event.winner_username === 'Pussy Tax') {
-      return { label: 'Tax', description: event.winning_hand_description || 'Pussy tax collected', chipChange, handNumber: handNum };
+      // Compact: just "pussy tax"
+      return { label: 'Tax', description: 'pussy tax', chipChange, handNumber: handNum };
     }
 
     if (event.winner_username === "Pot Refund") {
-      return { label: "Refund", description: event.winning_hand_description || "Pot refunded", chipChange, handNumber: handNum };
+      return { label: "Refund", description: "refunded", chipChange, handNumber: handNum };
     }
 
     if (event.winner_username === "CHOP Ante Correction" || event.winner_username === "Ante Correction") {
-      return { label: "Fix", description: event.winning_hand_description || "Ante correction", chipChange, handNumber: handNum };
+      return { label: "Fix", description: "correction", chipChange, handNumber: handNum };
     }
     
     // Showdown result - resolve the winner name (may be a UUID for bots)
     const resolvedWinner = resolveWinnerName(event.winner_username, event.winner_player_id);
-    const desc = event.is_chopped 
-      ? `Chopped: ${event.winning_hand_description || 'Split pot'}`
-      : `${resolvedWinner || 'Unknown'} won with ${event.winning_hand_description || 'best hand'}`;
-    return { label: 'Showdown', description: desc, chipChange, handNumber: handNum };
+    
+    // Use compact description: "Hap: pair K" instead of "Hap won showdown with a pair of Kings"
+    const compactDesc = compactHandDescription(event.winning_hand_description, resolvedWinner);
+    
+    if (event.is_chopped) {
+      return { label: 'Showdown', description: 'chopped', chipChange, handNumber: handNum };
+    }
+    
+    return { label: 'Win', description: compactDesc || resolvedWinner || 'winner', chipChange, handNumber: handNum };
   };
 
   // Calculate display game number
@@ -1158,19 +1187,7 @@ export const HandHistory = ({
                                     </div>
                                   )}
                                   
-                                  {/* Show player's dealt cards for this hand (card games only) */}
-                                  {hand.currentPlayerCards && hand.currentPlayerCards.length > 0 && (() => {
-                                    // Find cards for this specific hand number
-                                    const handCards = hand.currentPlayerCards?.find(c => c.handNumber === handNum);
-                                    if (handCards && handCards.cards.length > 0) {
-                                      return (
-                                        <div className="mb-2">
-                                          <MiniCardRow cards={handCards.cards} label="Your cards:" />
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  })()}
+                                  {/* Player's cards are now shown in the unified card section below */}
                                   
                                   {/* Events within this hand */}
                                   <div className="space-y-1">
@@ -1190,29 +1207,51 @@ export const HandHistory = ({
                                   {/* Show community cards, other players' cards, and Chucky cards at the bottom of the hand */}
                                   {(() => {
                                     const roundData = hand.roundCardData?.find(r => r.handNumber === handNum);
-                                    const otherPlayerCards = hand.allPlayerCards?.filter(
-                                      pc => pc.handNumber === handNum && !pc.isCurrentPlayer
+                                    
+                                    // For Holm games, show ALL player cards at showdown (everyone sees everyone's cards)
+                                    // For 3-5-7, only show other players' cards if they were revealed
+                                    const isHolmGame = hand.gameType === 'holm-game';
+                                    
+                                    // Get all player cards for this hand
+                                    const allCardsForHand = hand.allPlayerCards?.filter(
+                                      pc => pc.handNumber === handNum
                                     ) || [];
+                                    
+                                    // For Holm: show all players' cards (including current player in the "revealed" section)
+                                    // For 3-5-7: only show other players' cards (current player's cards shown separately above)
+                                    const cardsToShow = isHolmGame 
+                                      ? allCardsForHand  // Holm: show everyone's cards
+                                      : allCardsForHand.filter(pc => !pc.isCurrentPlayer); // 3-5-7: only others
                                     
                                     const hasCommunityCards = roundData?.communityCards && roundData.communityCards.length > 0;
                                     const hasChuckyCards = roundData?.chuckyCards && roundData.chuckyCards.length > 0;
-                                    const hasOtherPlayers = otherPlayerCards.length > 0;
+                                    const hasPlayerCards = cardsToShow.length > 0;
                                     
-                                    if (!hasCommunityCards && !hasChuckyCards && !hasOtherPlayers) return null;
+                                    // For Holm, also check if current player has cards to show in the "Your cards" section
+                                    const currentPlayerHandCards = hand.currentPlayerCards?.find(c => c.handNumber === handNum);
+                                    const hasCurrentPlayerCards = currentPlayerHandCards && currentPlayerHandCards.cards.length > 0;
+                                    
+                                    // Show section if we have community cards, chucky cards, or player cards to display
+                                    if (!hasCommunityCards && !hasChuckyCards && !hasPlayerCards && !hasCurrentPlayerCards) return null;
                                     
                                     return (
                                       <div className="mt-3 pt-2 border-t border-border/30 space-y-1.5">
+                                        {/* Current player's cards (for Holm games, shown with name like other players) */}
+                                        {!isHolmGame && hasCurrentPlayerCards && (
+                                          <MiniCardRow cards={currentPlayerHandCards!.cards} label="Your cards:" />
+                                        )}
+                                        
                                         {/* Community cards */}
                                         {hasCommunityCards && (
                                           <MiniCardRow cards={roundData!.communityCards} label="Board:" />
                                         )}
                                         
-                                        {/* Other players' revealed cards */}
-                                        {otherPlayerCards.map((pc) => (
+                                        {/* Player cards (for Holm: all players, for 3-5-7: other players only) */}
+                                        {cardsToShow.map((pc) => (
                                           <MiniCardRow 
                                             key={pc.playerId} 
                                             cards={pc.cards} 
-                                            label={`${pc.username}:`} 
+                                            label={`${pc.isCurrentPlayer ? 'You' : pc.username}:`} 
                                           />
                                         ))}
                                         
