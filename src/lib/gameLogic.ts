@@ -205,22 +205,9 @@ export async function startRound(gameId: string, roundNumber: number) {
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
 
-  // If starting round 1, ensure all old rounds are deleted - FIRE AND FORGET to avoid blocking
-  // NOTE: player_cards are preserved for hand history (retention policy)
-  if (roundNumber === 1) {
-    console.log('[START_ROUND] Cleaning up old rounds for round 1 (fire-and-forget, preserving player_cards)');
-    
-    // Fire-and-forget: Don't block on cleanup
-    // IMPORTANT: We preserve player_cards for hand history display
-    void (async () => {
-      try {
-        await supabase.from('rounds').delete().eq('game_id', gameId);
-        console.log('[START_ROUND] Background cleanup completed (rounds only, cards preserved)');
-      } catch (err) {
-        console.error('[START_ROUND] Background cleanup error (non-fatal):', err);
-      }
-    })();
-  }
+  // NOTE: We no longer delete old rounds - they are preserved for hand history
+  // The card rendering now uses dealer_game_id + round_number to prevent stale card matching
+  console.log('[START_ROUND] Preserving existing rounds for hand history');
 
   // Reset all players to active for the new round (must happen BEFORE we decide who gets dealt in later rounds)
   const { error: resetError } = await supabase
@@ -266,28 +253,13 @@ export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Using decision timer:', timerSeconds, 'seconds');
   
   // Get current hand_number for this session
-  // For round 1, use total_hands + 1 (new game starting)
-  // For rounds 2-3, use the same hand_number as round 1
-  let handNumber = 1;
-  if (roundNumber === 1) {
-    // New game starting - use total_hands + 1
-    const { data: gameForHand } = await supabase
-      .from('games')
-      .select('total_hands')
-      .eq('id', gameId)
-      .single();
-    handNumber = (gameForHand?.total_hands || 0) + 1;
-  } else {
-    // Continuing game - use same hand_number as existing rounds
-    const { data: existingRoundForHand } = await supabase
-      .from('rounds')
-      .select('hand_number')
-      .eq('game_id', gameId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    handNumber = existingRoundForHand?.hand_number || 1;
-  }
+  // Each round = a hand, so hand_number increments with every round (1, 2, 3, 4, 5...)
+  const { data: gameForHand } = await supabase
+    .from('games')
+    .select('total_hands')
+    .eq('id', gameId)
+    .single();
+  const handNumber = (gameForHand?.total_hands || 0) + 1;
 
   // Create round with configured deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
@@ -391,9 +363,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   const currentPot = currentGameForPot?.pot || 0;
   
-  // Build game update object - CRITICAL: For Round 1, also update total_hands to match handNumber
-  // This ensures the unique constraint (game_id, hand_number, round_number) works correctly for subsequent hands
-  // Similar to how Horses/SCC atomically update total_hands when starting a new hand
+  // Build game update object - update total_hands for EVERY round (each round = a hand)
   const gameUpdate: Record<string, unknown> = {
     current_round: roundNumber,
     all_decisions_in: false,
@@ -401,13 +371,8 @@ export async function startRound(gameId: string, roundNumber: number) {
     // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
     config_deadline: null,
     ante_decision_deadline: null,
+    total_hands: handNumber,  // Always update total_hands since each round = a hand
   };
-  
-  // For Round 1, atomically update total_hands to ensure the next hand gets a unique hand_number
-  if (roundNumber === 1) {
-    gameUpdate.total_hands = handNumber;
-    console.log('[START_ROUND] Round 1: Setting total_hands to', handNumber);
-  }
   
   const { error: gameUpdateError } = await supabase
     .from('games')
@@ -419,7 +384,7 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
   }
   
-  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false, pot =', currentPot + initialPot, roundNumber === 1 ? ', total_hands = ' + handNumber : '');
+  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false, pot =', currentPot + initialPot, ', total_hands =', handNumber);
   
   // Update round pot to reflect the ante collection
   if (initialPot > 0) {
@@ -436,18 +401,20 @@ export async function startRound(gameId: string, roundNumber: number) {
   let deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
-  // Get previous round cards if this isn't round 1
+  // Get previous round cards if this isn't round 1 (of the current 3-5-7 game)
+  // CRITICAL: Use dealer_game_id to ensure we only get cards from THIS game, not previous games
   let previousRoundCards: Map<string, Card[]> = new Map();
   let alreadyDealtCards: Card[] = [];
   
-  if (roundNumber > 1) {
+  if (roundNumber > 1 && currentGameUuid) {
     const previousRoundNumber = roundNumber - 1;
     const { data: previousRound } = await supabase
       .from('rounds')
       .select('id')
       .eq('game_id', gameId)
+      .eq('dealer_game_id', currentGameUuid)  // Only from current 3-5-7 game
       .eq('round_number', previousRoundNumber)
-      .single();
+      .maybeSingle();
 
     if (previousRound) {
       const { data: previousCards } = await supabase
