@@ -48,6 +48,8 @@ interface HandGroup {
   playerDiceResults?: PlayerDiceResult[]; // Dice results for all players (horses/SCC)
   allRounds?: Round[]; // ALL rounds for this game (for showing rollovers)
   currentPlayerCards?: PlayerCardData[]; // Cards dealt to current player this game
+  allPlayerCards?: AllPlayerCardsForRound[]; // All players' cards for this game (for showing revealed)
+  roundCardData?: RoundCardData[]; // Community and Chucky cards per round
 }
 
 // Player cards stored in player_cards table
@@ -55,6 +57,24 @@ interface PlayerCardData {
   roundId: string;
   handNumber: number;
   cards: { rank: string; suit: string }[];
+}
+
+// All player cards for a round (for showing revealed cards)
+interface AllPlayerCardsForRound {
+  roundId: string;
+  handNumber: number;
+  playerId: string;
+  username: string;
+  cards: { rank: string; suit: string }[];
+  isCurrentPlayer: boolean;
+}
+
+// Round data including community cards and chucky cards
+interface RoundCardData {
+  roundId: string;
+  handNumber: number;
+  communityCards: { rank: string; suit: string }[];
+  chuckyCards: { rank: string; suit: string }[];
 }
 
 interface Round {
@@ -67,6 +87,8 @@ interface Round {
   created_at: string;
   horses_state?: any; // Contains playerStates with dice values for dice games
   dealer_game_id?: string | null; // Direct link to dealer_games table
+  community_cards?: any; // Community cards (JSON array)
+  chucky_cards?: any; // Chucky's cards (JSON array)
 }
 
 // Player dice result for display
@@ -116,6 +138,10 @@ export const HandHistory = ({
   const [currentDealerGame, setCurrentDealerGame] = useState<DealerGame | null>(null);
   // Player cards by round_id for the current player (for card games like 357)
   const [playerCardsByRound, setPlayerCardsByRound] = useState<Map<string, { rank: string; suit: string }[]>>(new Map());
+  // All player cards by round_id (for showing revealed cards)
+  const [allPlayerCardsByRound, setAllPlayerCardsByRound] = useState<Map<string, Map<string, { rank: string; suit: string }[]>>>(new Map());
+  // Round card data (community cards, chucky cards) by round_id
+  const [roundCardDataByRound, setRoundCardDataByRound] = useState<Map<string, { communityCards: { rank: string; suit: string }[]; chuckyCards: { rank: string; suit: string }[] }>>(new Map());
 
   useEffect(() => {
     fetchHistoryData();
@@ -237,10 +263,10 @@ export const HandHistory = ({
     dealerGamesMap: Map<string, DealerGame>,
     freshGameResults: GameResult[]
   ) => {
-    // Fetch all rounds for this game (including horses_state for dice games)
+    // Fetch all rounds for this game (including horses_state for dice games, community_cards and chucky_cards for card games)
     const { data: roundsData, error: roundsError } = await supabase
       .from('rounds')
-      .select('id, game_id, round_number, hand_number, pot, status, created_at, horses_state, dealer_game_id')
+      .select('id, game_id, round_number, hand_number, pot, status, created_at, horses_state, dealer_game_id, community_cards, chucky_cards')
       .eq('game_id', gameId)
       .order('created_at', { ascending: true });
     
@@ -248,6 +274,15 @@ export const HandHistory = ({
       console.error('[HandHistory] Error fetching rounds:', roundsError);
     } else {
       setRounds(roundsData as any);
+      
+      // Extract community cards and chucky cards from rounds
+      const roundCardMap = new Map<string, { communityCards: { rank: string; suit: string }[]; chuckyCards: { rank: string; suit: string }[] }>();
+      (roundsData || []).forEach((r: any) => {
+        const communityCards = (r.community_cards && Array.isArray(r.community_cards)) ? r.community_cards : [];
+        const chuckyCards = (r.chucky_cards && Array.isArray(r.chucky_cards)) ? r.chucky_cards : [];
+        roundCardMap.set(r.id, { communityCards, chuckyCards });
+      });
+      setRoundCardDataByRound(roundCardMap);
     }
 
     // Fetch player names for displaying dice results
@@ -314,26 +349,39 @@ export const HandHistory = ({
     setPlayerNames(namesMap);
     setUserIdToName(userIdMap);
     
-    // Fetch player_cards for the current player (for card games like 357)
-    if (currentPlayerId && roundsData && roundsData.length > 0) {
+    // Fetch player_cards for ALL players (for showing revealed cards in history)
+    if (roundsData && roundsData.length > 0) {
       const roundIds = roundsData.map(r => r.id);
-      const { data: cardsData, error: cardsError } = await supabase
+      const { data: allCardsData, error: allCardsError } = await supabase
         .from('player_cards')
-        .select('round_id, cards')
-        .eq('player_id', currentPlayerId)
+        .select('round_id, player_id, cards')
         .in('round_id', roundIds);
       
-      if (cardsError) {
-        console.error('[HandHistory] Error fetching player cards:', cardsError);
-      } else if (cardsData) {
-        const cardsMap = new Map<string, { rank: string; suit: string }[]>();
-        cardsData.forEach((pc: any) => {
-          // Cards are stored as JSON array in the cards column
+      if (allCardsError) {
+        console.error('[HandHistory] Error fetching all player cards:', allCardsError);
+      } else if (allCardsData) {
+        // Map for current player's cards only
+        const currentPlayerCardsMap = new Map<string, { rank: string; suit: string }[]>();
+        // Map for all player cards by round_id -> player_id -> cards
+        const allCardsMap = new Map<string, Map<string, { rank: string; suit: string }[]>>();
+        
+        allCardsData.forEach((pc: any) => {
           if (pc.cards && Array.isArray(pc.cards)) {
-            cardsMap.set(pc.round_id, pc.cards);
+            // Current player's cards
+            if (pc.player_id === currentPlayerId) {
+              currentPlayerCardsMap.set(pc.round_id, pc.cards);
+            }
+            
+            // All cards by round
+            if (!allCardsMap.has(pc.round_id)) {
+              allCardsMap.set(pc.round_id, new Map());
+            }
+            allCardsMap.get(pc.round_id)!.set(pc.player_id, pc.cards);
           }
         });
-        setPlayerCardsByRound(cardsMap);
+        
+        setPlayerCardsByRound(currentPlayerCardsMap);
+        setAllPlayerCardsByRound(allCardsMap);
       }
     }
   };
@@ -530,6 +578,8 @@ export const HandHistory = ({
       let playerDiceResults: PlayerDiceResult[] | undefined;
       let allGameRounds: Round[] | undefined;
       let currentPlayerCards: PlayerCardData[] | undefined;
+      let allPlayerCards: AllPlayerCardsForRound[] | undefined;
+      let roundCardData: RoundCardData[] | undefined;
       
       const isDiceGame = resolvedGameType === 'horses' || resolvedGameType === 'ship-captain-crew';
       const isCardGame = resolvedGameType === '357' || resolvedGameType === '3-5-7' || resolvedGameType === 'holm-game';
@@ -573,6 +623,7 @@ export const HandHistory = ({
       if (isCardGame && !group.dealerGameId.startsWith('orphan-')) {
         const gameRounds = rounds.filter(r => r.dealer_game_id === group.dealerGameId);
         
+        // Current player's cards
         currentPlayerCards = gameRounds
           .filter(r => playerCardsByRound.has(r.id))
           .map(r => ({
@@ -581,6 +632,36 @@ export const HandHistory = ({
             cards: playerCardsByRound.get(r.id) || [],
           }))
           .sort((a, b) => a.handNumber - b.handNumber);
+        
+        // All players' cards (for showing revealed cards)
+        const allCardsArray: AllPlayerCardsForRound[] = [];
+        gameRounds.forEach(r => {
+          const roundCards = allPlayerCardsByRound.get(r.id);
+          if (roundCards) {
+            roundCards.forEach((cards, playerId) => {
+              allCardsArray.push({
+                roundId: r.id,
+                handNumber: r.hand_number || 1,
+                playerId,
+                username: playerNames.get(playerId) || 'Unknown',
+                cards,
+                isCurrentPlayer: playerId === currentPlayerId,
+              });
+            });
+          }
+        });
+        allPlayerCards = allCardsArray.sort((a, b) => a.handNumber - b.handNumber);
+        
+        // Community cards and Chucky cards
+        roundCardData = gameRounds.map(r => {
+          const data = roundCardDataByRound.get(r.id);
+          return {
+            roundId: r.id,
+            handNumber: r.hand_number || 1,
+            communityCards: data?.communityCards || [],
+            chuckyCards: data?.chuckyCards || [],
+          };
+        }).sort((a, b) => a.handNumber - b.handNumber);
       }
 
       // Resolve the winner name (handles UUIDs for bots)
@@ -628,6 +709,8 @@ export const HandHistory = ({
         playerDiceResults,
         allRounds: allGameRounds,
         currentPlayerCards,
+        allPlayerCards,
+        roundCardData,
       };
     });
 
@@ -639,7 +722,7 @@ export const HandHistory = ({
   const handGroups = useMemo(() => {
     if (gameResults.length === 0) return [];
     return groupResultsByDealerGame();
-  }, [gameResults, rounds, dealerGames, dealerGameNumberById, playerNames, userIdToName, currentPlayerId, playerCardsByRound]);
+  }, [gameResults, rounds, dealerGames, dealerGameNumberById, playerNames, userIdToName, currentPlayerId, playerCardsByRound, allPlayerCardsByRound, roundCardDataByRound]);
 
   const updateInProgressGame = () => {
     // Don't show in-progress if session has ended
@@ -1103,6 +1186,47 @@ export const HandHistory = ({
                                         );
                                       })}
                                   </div>
+                                  
+                                  {/* Show community cards, other players' cards, and Chucky cards at the bottom of the hand */}
+                                  {(() => {
+                                    const roundData = hand.roundCardData?.find(r => r.handNumber === handNum);
+                                    const otherPlayerCards = hand.allPlayerCards?.filter(
+                                      pc => pc.handNumber === handNum && !pc.isCurrentPlayer
+                                    ) || [];
+                                    
+                                    const hasCommunityCards = roundData?.communityCards && roundData.communityCards.length > 0;
+                                    const hasChuckyCards = roundData?.chuckyCards && roundData.chuckyCards.length > 0;
+                                    const hasOtherPlayers = otherPlayerCards.length > 0;
+                                    
+                                    if (!hasCommunityCards && !hasChuckyCards && !hasOtherPlayers) return null;
+                                    
+                                    return (
+                                      <div className="mt-3 pt-2 border-t border-border/30 space-y-1.5">
+                                        {/* Community cards */}
+                                        {hasCommunityCards && (
+                                          <MiniCardRow cards={roundData!.communityCards} label="Board:" />
+                                        )}
+                                        
+                                        {/* Other players' revealed cards */}
+                                        {otherPlayerCards.map((pc) => (
+                                          <MiniCardRow 
+                                            key={pc.playerId} 
+                                            cards={pc.cards} 
+                                            label={`${pc.username}:`} 
+                                          />
+                                        ))}
+                                        
+                                        {/* Chucky's cards */}
+                                        {hasChuckyCards && (
+                                          <MiniCardRow 
+                                            cards={roundData!.chuckyCards} 
+                                            label="👿 Chucky:" 
+                                            className="text-destructive"
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })}
