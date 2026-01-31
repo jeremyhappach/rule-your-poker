@@ -316,7 +316,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   // Get current round and game type, and check pause state
   const { data: gameData } = await supabase
     .from('games')
-    .select('game_type, current_round, is_paused, total_hands')
+    .select('game_type, current_round, is_paused, total_hands, current_game_uuid')
     .eq('id', gameId)
     .single();
   
@@ -327,6 +327,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   }
   
   const isHolmGame = gameData?.game_type === 'holm-game' || gameData?.game_type === 'holm';
+  const dealerGameId = (gameData as any)?.current_game_uuid as string | null | undefined;
   const roundNumber = gameData?.current_round || 1;
   const handNumber = gameData?.total_hands || 1;
   
@@ -344,7 +345,10 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
       .eq('hand_number', handNumber)
       .eq('round_number', roundNumber);
   } else {
-    // Holm: just get the most recently created round
+    // Holm: ALWAYS scope to the active dealer game to avoid mixing with prior games.
+    if (dealerGameId) {
+      roundQuery = roundQuery.eq('dealer_game_id', dealerGameId);
+    }
     roundQuery = roundQuery.order('created_at', { ascending: false }).limit(1);
   }
   

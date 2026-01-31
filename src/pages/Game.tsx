@@ -3445,19 +3445,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         let roundData: { id: string; round_number: number; cards_dealt: number } | null = null;
         
         if (isHolmGame) {
-          // HOLM: Always fetch most recent round - current_round can be stale
-          const { data } = await supabase
+          // HOLM: Round selection MUST be scoped to the active dealer_game_id.
+          // round_number can reset to 1 when transitioning 3-5-7 -> Holm, so ordering by round_number
+          // across the whole session will pick the wrong round and show the wrong card count.
+          const base = supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
-            .eq('game_id', gameId)
-            .order('round_number', { ascending: false })
+            .eq('game_id', gameId);
+
+          const query = gameData.current_game_uuid
+            ? base.eq('dealer_game_id', gameData.current_game_uuid)
+            : base;
+
+          const { data } = await query
+            .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+
           roundData = data;
-          
-          if (roundData && gameData.current_round && roundData.round_number !== gameData.current_round) {
-            console.warn('[FETCH] ⚠️ Round mismatch! game.current_round:', gameData.current_round, 'most recent round:', roundData.round_number);
-          }
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
           // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
           // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.

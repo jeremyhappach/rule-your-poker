@@ -654,13 +654,29 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   
   let currentRound;
   if (isHolmGame) {
-    const { data: latestRound } = await supabase
+    // CRITICAL: Holm round selection must be scoped to dealer_game_id.
+    // round_number can reset to 1 when switching game types, so round_number DESC across the session is unsafe.
+    const baseRoundQuery = supabase
       .from('rounds')
       .select('*')
-      .eq('game_id', gameId)
-      .order('round_number', { ascending: false })
+      .eq('game_id', gameId);
+
+    const roundQuery = game.current_game_uuid
+      ? baseRoundQuery.eq('dealer_game_id', game.current_game_uuid)
+      : baseRoundQuery;
+
+    const { data: latestRound } = await roundQuery
+      .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
+
+    if (!latestRound) {
+      console.error('[MAKE DECISION] Holm game - no round found for dealer_game_id', {
+        gameId,
+        dealerGameId: game.current_game_uuid,
+      });
+      throw new Error('Round not found');
+    }
     currentRound = latestRound;
     console.log('[MAKE DECISION] Holm game - using latest round by round_number:', latestRound?.round_number);
   } else {
