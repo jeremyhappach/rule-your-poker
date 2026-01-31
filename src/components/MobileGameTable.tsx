@@ -1758,14 +1758,21 @@ export const MobileGameTable = ({
     const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
 
     // Cache validity rules:
-    // - Prefer strict handContextId match when available
+    // - ALWAYS prefer strict handContextId match when available
     // - If handContextId is temporarily missing, fall back to round match (NEVER blindly trust cache)
+    // - CRITICAL: handContextId mismatch means stale cache - NEVER return stale cards
     const isCacheValidForCurrentHand =
       handContextId != null
         ? showdownHandContextRef.current === handContextId
         : showdownRoundRef.current !== null && showdownRoundRef.current === currentRound;
 
     const cachedCards = showdownCardsCache.current.get(playerId);
+
+    // CRITICAL: If cache is invalid (wrong hand), return live cards only - never stale cache
+    // This prevents wrong cards from flashing at showdown on new hands
+    if (!isCacheValidForCurrentHand) {
+      return liveCards;
+    }
 
     // If we have both cached + live and they differ, the cache is stale.
     // Prefer live cards and refresh the cache so exposed/tabled cards match the actual hand.
@@ -1779,9 +1786,9 @@ export const MobileGameTable = ({
     }
 
     // During game_over, use cached cards for pot animation visibility
-    // But ONLY if the cache is valid for this hand/round.
+    // Cache validity is already confirmed above
     if (isInGameOverStatus) {
-      if (cachedCards && cachedCards.length > 0 && isCacheValidForCurrentHand) {
+      if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
       }
       if (liveCards.length > 0) {
@@ -1791,7 +1798,7 @@ export const MobileGameTable = ({
 
     // Once cards are cached for this round AND same hand context, ALWAYS use cache
     // This prevents flickering when isShowdownActive temporarily becomes false
-    if (showdownRoundRef.current === currentRound && isCacheValidForCurrentHand) {
+    if (showdownRoundRef.current === currentRound) {
       if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
       }
@@ -1807,13 +1814,18 @@ export const MobileGameTable = ({
       ? showdownHandContextRef.current === handContextId && showdownRoundRef.current === currentRound
       : showdownRoundRef.current !== null && showdownRoundRef.current === currentRound;
     
-    // During game_over, show cached cards only if cache is valid
-    if (isInGameOverStatus && showdownCardsCache.current.has(playerId) && isCacheValidForCurrentHand) {
+    // CRITICAL: If cache is invalid (wrong hand), cards are NOT exposed - prevents stale exposure
+    if (!isCacheValidForCurrentHand) {
+      return false;
+    }
+    
+    // During game_over, show cached cards only if cache is valid (already confirmed above)
+    if (isInGameOverStatus && showdownCardsCache.current.has(playerId)) {
       return true;
     }
     if (!currentRound) return false;
     // Cards are exposed if: cache is valid AND player has cached cards
-    return isCacheValidForCurrentHand && showdownCardsCache.current.has(playerId);
+    return showdownCardsCache.current.has(playerId);
   };
 
   // Find current player and their cards
