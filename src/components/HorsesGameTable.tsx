@@ -1317,7 +1317,8 @@ export function HorsesGameTable({
             dealerGameId: currentGameUuid,
           });
 
-        await supabase.from("game_results").insert({
+        // Fire-and-forget: Record CHOP event for history (audit trail only)
+        supabase.from("game_results").insert({
           game_id: gameId,
           hand_number: handNumber,
           winner_player_id: null, // No winner in a rollover
@@ -1397,7 +1398,8 @@ export function HorsesGameTable({
         gameType,
       });
 
-      await supabase.from("game_results").insert({
+      // Fire-and-forget: Record game result (audit trail only)
+      supabase.from("game_results").insert({
         game_id: gameId,
         hand_number: handNumber,
         winner_player_id: winnerId,
@@ -1417,8 +1419,8 @@ export function HorsesGameTable({
           pot: actualPot,
         });
       
-      // Snapshot player chips for session history AFTER awarding prize
-      await snapshotPlayerChips(gameId, handNumber);
+      // Fire-and-forget: Snapshot player chips (audit trail only)
+      snapshotPlayerChips(gameId, handNumber);
 
       // Transition game to game_over and reset pot
       await supabase

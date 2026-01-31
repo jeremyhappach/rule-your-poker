@@ -429,8 +429,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
         anteChipChanges[player.id] = -anteAmount;
       }
       
-      // Record antes as a game result entry with no winner (just ante collection)
-      await recordGameResult(
+      // Fire-and-forget: Record antes (audit trail only)
+      recordGameResult(
         gameId,
          handNumber,
         null, // no winner - this is ante collection
@@ -754,9 +754,9 @@ export async function endHolmRound(gameId: string) {
 
     try {
       if (stayedPlayers.length >= 2) {
-        // Ensure visibility is correct (idempotent)
+        // Fire-and-forget: Ensure visibility is correct (idempotent)
         const seatedUserIds = (players || []).map((p: any) => p.user_id);
-        await supabase
+        supabase
           .from('player_cards')
           .update({ visible_to_user_ids: seatedUserIds })
           .eq('round_id', round.id);
@@ -1145,10 +1145,10 @@ export async function endHolmRound(gameId: string) {
       .eq('id', capturedRoundId);
 
     // VISIBILITY: At Holm showdown, ALL seated players can see ALL cards
-    // Update player_cards to mark them visible to all seated players
+    // Fire-and-forget: visibility update is for history only
     const seatedUserIds = players.map(p => p.user_id);
     console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
-    await supabase
+    supabase
       .from('player_cards')
       .update({ visible_to_user_ids: seatedUserIds })
       .eq('round_id', capturedRoundId);
@@ -1259,9 +1259,10 @@ export async function endHolmRound(gameId: string) {
     .eq('id', capturedRoundId);
   
   // VISIBILITY: At Holm multi-player showdown, ALL seated players can see ALL cards
+  // Fire-and-forget: visibility update is for history only
   const seatedUserIds = players.map(p => p.user_id);
   console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
-  await supabase
+  supabase
     .from('player_cards')
     .update({ visible_to_user_ids: seatedUserIds })
     .eq('round_id', capturedRoundId);
@@ -1397,7 +1398,14 @@ async function handleChuckyShowdown(
     const playerChipChanges: Record<string, number> = {};
     playerChipChanges[player.id] = roundPot;
     
-    await recordGameResult(
+    // Award chips FIRST (critical path)
+    await supabase.rpc('increment_player_chips', {
+      p_player_id: player.id,
+      p_amount: roundPot
+    });
+
+    // Fire-and-forget: Record game result (audit trail only)
+    recordGameResult(
       gameId,
       (game.total_hands || 0) + 1,
       player.id,
@@ -1410,13 +1418,8 @@ async function handleChuckyShowdown(
       game.current_game_uuid
     );
     
-    await supabase.rpc('increment_player_chips', {
-      p_player_id: player.id,
-      p_amount: roundPot
-    });
-
-    // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
-    await snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
+    // Fire-and-forget: Snapshot player chips (audit trail only)
+    snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
 
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
@@ -1507,7 +1510,8 @@ async function handleChuckyShowdown(
     const potMatchChipChanges: Record<string, number> = {};
     potMatchChipChanges[player.id] = -potMatchAmount;
     
-    await recordGameResult(
+    // Fire-and-forget: Record pot match event (audit trail only)
+    recordGameResult(
       gameId,
       game.total_hands || 1, // Use current hand number from game
       null, // no winner - this is a pot match
@@ -1800,7 +1804,8 @@ async function handleMultiPlayerShowdown(
       chipChanges[loser.player.id] = -potMatchAmount; // Losers pay pot match
     }
     
-    await recordGameResult(
+    // Fire-and-forget: Record showdown result (audit trail only)
+    recordGameResult(
       gameId,
       currentRoundNumber,
       winner.player.id,
@@ -1913,7 +1918,8 @@ async function handleMultiPlayerShowdown(
       chipChanges[loser.player.id] = -potMatchAmount; // Losers pay pot match
     }
     
-    await recordGameResult(
+    // Fire-and-forget: Record partial tie result (audit trail only)
+    recordGameResult(
       gameId,
       currentRoundNumber,
       null, // multiple winners - no single winner
@@ -2078,7 +2084,8 @@ async function handleMultiPlayerShowdown(
         chipChanges[loser.player.id] = -potMatchAmount;
       }
       
-      await recordGameResult(
+      // Fire-and-forget: Record Chucky win (audit trail only)
+      recordGameResult(
         gameId,
         currentRoundNumber,
         null, // no winner - Chucky won
@@ -2164,7 +2171,8 @@ async function handleMultiPlayerShowdown(
       
       console.log('[HOLM TIE] Recording game result with balanced chip changes:', playerChipChanges);
       
-      await recordGameResult(
+      // Fire-and-forget: Record game result (audit trail only)
+      recordGameResult(
         gameId,
         (game.total_hands || 0) + 1,
         playersBeatChucky[0].player.id,
@@ -2177,8 +2185,8 @@ async function handleMultiPlayerShowdown(
         game.current_game_uuid
       );
       
-      // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
-      await snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
+      // Fire-and-forget: Snapshot player chips (audit trail only)
+      snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
       
       // Reset all players for new game
       console.log('[HOLM TIE] Resetting player states for new game');
