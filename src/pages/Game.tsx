@@ -163,14 +163,52 @@ function pickActive357Round(
   }
 
   // Fallback: most recent betting round (prefer within this dealer game if provided).
+  // IMPORTANT: Never use created_at ordering for round selection.
   const candidates = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
   const sorted = [...candidates].sort((a, b) => {
-    const aT = a.created_at ? new Date(a.created_at).getTime() : 0;
-    const bT = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return bT - aT;
+    const aHand = typeof a.hand_number === 'number' ? a.hand_number : 0;
+    const bHand = typeof b.hand_number === 'number' ? b.hand_number : 0;
+    if (bHand !== aHand) return bHand - aHand;
+    return (b.round_number ?? 0) - (a.round_number ?? 0);
   });
 
   return sorted.find((r) => r.status === 'betting') ?? sorted[0] ?? null;
+}
+
+function pickLatestRoundByKey(rounds: Round[] | undefined, dealerGameId?: string | null): Round | null {
+  if (!rounds || rounds.length === 0) return null;
+  const candidates = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+  if (candidates.length === 0) return null;
+
+  return (
+    [...candidates].sort((a, b) => {
+      const aHand = typeof a.hand_number === 'number' ? a.hand_number : 0;
+      const bHand = typeof b.hand_number === 'number' ? b.hand_number : 0;
+      if (bHand !== aHand) return bHand - aHand;
+      return (b.round_number ?? 0) - (a.round_number ?? 0);
+    })[0] ?? null
+  );
+}
+
+function pickActiveSingleRoundGameRound(
+  rounds: Round[] | undefined,
+  params: {
+    dealerGameId: string | null | undefined;
+    currentRoundNumber: number | null | undefined;
+  }
+): Round | null {
+  if (!rounds || rounds.length === 0) return null;
+
+  const { dealerGameId, currentRoundNumber } = params;
+  const dealerRounds = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+
+  if (typeof currentRoundNumber === 'number') {
+    const exact = dealerRounds.find((r) => r.round_number === currentRoundNumber);
+    if (exact) return exact;
+  }
+
+  // Fallback to latest round within this dealer game.
+  return pickLatestRoundByKey(dealerRounds);
 }
 
 interface PlayerCards {
@@ -684,10 +722,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     const newPausedState = !game.is_paused;
     
-    // Get current round for deadline updates - use latest round for Holm and Horses games
+    // Get current round for deadline updates.
+    // CRITICAL: Must be scoped to dealer_game_id, otherwise 3-5-7 Round 1 can be mistaken for Holm Round 1.
     const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses' || game.game_type === 'ship-captain-crew')
-      ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
-      : game.rounds?.find(r => r.round_number === game.current_round);
+      ? pickActiveSingleRoundGameRound(game.rounds, {
+          dealerGameId: game.current_game_uuid,
+          currentRoundNumber: game.current_round,
+        })
+      : game.rounds?.find((r) => r.round_number === game.current_round) ?? null;
     
     if (newPausedState) {
       // PAUSING: Save current remaining time
@@ -1811,8 +1853,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
     // and no one can make a decision. This can happen due to race conditions.
     const latestRound = game?.game_type === 'holm-game'
-      ? game?.rounds?.reduce((latest: any, r: any) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
-      : game?.rounds?.find((r: any) => r.round_number === game?.current_round);
+      ? pickActiveSingleRoundGameRound(game?.rounds, {
+          dealerGameId: game?.current_game_uuid ?? null,
+          currentRoundNumber: game?.current_round ?? null,
+        })
+      : game?.rounds?.find((r: any) => r.round_number === game?.current_round) ?? null;
     const stuckHolmState = 
       game?.game_type === 'holm-game' &&
       game?.status === 'in_progress' &&
@@ -2270,22 +2315,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!game?.rounds?.length) return null as Round | null;
 
     if (game.game_type === "holm-game") {
-      // Holm: current_round can be stale, so prefer the latest by round_number.
-      return game.rounds.reduce(
-        (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
-        null as Round | null,
-      );
+      // Holm: always scope to dealer_game_id to avoid collisions with 3-5-7 Round 1.
+      return pickActiveSingleRoundGameRound(game.rounds, {
+        dealerGameId: game.current_game_uuid,
+        currentRoundNumber: game.current_round,
+      });
     }
 
     if (game.game_type === "horses" || game.game_type === "ship-captain-crew") {
       // Dice games: current_round is authoritative; never show the previous round during the creation gap.
       if (typeof game.current_round === "number") {
-        return game.rounds.find((r) => r.round_number === game.current_round) ?? null;
+        const dealerRounds = game.current_game_uuid
+          ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
+          : game.rounds;
+        return dealerRounds.find((r) => r.round_number === game.current_round) ?? null;
       }
-      return game.rounds.reduce(
-        (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
-        null as Round | null,
-      );
+      return pickLatestRoundByKey(game.rounds, game.current_game_uuid);
     }
 
     if (game.game_type === '3-5-7') {
@@ -2308,13 +2353,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Default behavior for other games.
     if (typeof game.current_round === "number") {
-      return game.rounds.find((r) => r.round_number === game.current_round) ?? null;
+      const dealerRounds = game.current_game_uuid
+        ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
+        : game.rounds;
+      return dealerRounds.find((r) => r.round_number === game.current_round) ?? null;
     }
 
-    return game.rounds.reduce(
-      (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
-      null as Round | null,
-    );
+    return pickLatestRoundByKey(game.rounds, game.current_game_uuid);
   })();
   
   // DEBUG: Always log liveRound details during in_progress Holm games
@@ -3607,10 +3652,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       let currentRound: Round | null = null;
       if (isHolm) {
-        currentRound = gameData.rounds.reduce(
-          (latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number ? r : latest),
-          null as Round | null,
-        );
+        currentRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
+          dealerGameId: gameData.current_game_uuid,
+          currentRoundNumber: gameData.current_round,
+        });
       } else if (gameData.game_type === '3-5-7') {
         currentRound =
           pickActive357Round(gameData.rounds as Round[], {
@@ -3623,10 +3668,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       } else if (isDice) {
         currentRound = null;
       } else {
-        currentRound = gameData.rounds.reduce(
-          (latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number ? r : latest),
-          null as Round | null,
-        );
+        currentRound = pickLatestRoundByKey(gameData.rounds as Round[], gameData.current_game_uuid);
       }
       
       console.log('[FETCH] Round data:', {

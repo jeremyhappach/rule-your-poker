@@ -417,184 +417,201 @@ serve(async (req) => {
     if (game.status === 'in_progress' || game.status === 'betting') {
       // ============= 3A. HOLM GAME TURN TIMEOUTS =============
       if (game.game_type === 'holm-game') {
+        // IMPORTANT: Determine the active Holm round by dealer_game_id + (hand_number, round_number), never by created_at.
         const baseRoundQuery = supabase
           .from('rounds')
           .select('*')
           .eq('game_id', gameId)
-          .eq('status', 'betting')
-          .not('decision_deadline', 'is', null)
-          .lt('decision_deadline', nowIso);
+          .eq('status', 'betting');
 
-        // CRITICAL: scope enforcement to the active dealer game.
-        // Otherwise an old betting round from a previous dealer_game can steal enforcement and leave
-        // the current Holm hand without a visible countdown / bot action.
-        const roundQuery = game.current_game_uuid
+        const scopedRoundQuery = game.current_game_uuid
           ? baseRoundQuery.eq('dealer_game_id', game.current_game_uuid)
           : baseRoundQuery;
 
-        const { data: overdueRounds } = await roundQuery
-          .order('decision_deadline', { ascending: true })
+        const { data: roundRows } = await scopedRoundQuery
+          .order('hand_number', { ascending: false })
+          .order('round_number', { ascending: false })
           .limit(1);
 
-        const currentRound = overdueRounds?.[0];
+        const currentRound = roundRows?.[0];
 
-        if (currentRound?.decision_deadline && currentRound.status === 'betting') {
+        if (!currentRound) {
+          // Nothing to enforce
+          return new Response(JSON.stringify({
+            success: true,
+            actionsTaken,
+            gameStatus: game.status,
+            timestamp: nowIso,
+            source,
+            requestId,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const { data: players } = await supabase
+          .from('players')
+          .select('*')
+          .eq('game_id', gameId);
+
+        const activePlayers = players?.filter((p: any) => p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up') || [];
+        const currentTurnPos = currentRound.current_turn_position;
+
+        if (!currentTurnPos) {
+          return new Response(JSON.stringify({
+            success: true,
+            actionsTaken,
+            gameStatus: game.status,
+            timestamp: nowIso,
+            source,
+            requestId,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const currentTurnPlayer = activePlayers.find((p: any) => p.position === currentTurnPos);
+
+        if (!currentTurnPlayer || currentTurnPlayer.decision_locked) {
+          return new Response(JSON.stringify({
+            success: true,
+            actionsTaken,
+            gameStatus: game.status,
+            timestamp: nowIso,
+            source,
+            requestId,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Always ensure there is a deadline in the DB so clients can render a timer.
+        // Missing decision_deadline is a known freeze vector (clients won't start countdown; timeouts won't fire).
+        const { data: gameDefaults } = await supabase
+          .from('game_defaults')
+          .select('decision_timer_seconds')
+          .eq('game_type', 'holm')
+          .maybeSingle();
+
+        const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
+
+        if (!currentRound.decision_deadline) {
+          const healedDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+          const { data: healRes } = await supabase
+            .from('rounds')
+            .update({ decision_deadline: healedDeadline })
+            .eq('id', currentRound.id)
+            .is('decision_deadline', null)
+            .select();
+
+          if (healRes && healRes.length > 0) {
+            actionsTaken.push(`Healed missing decision_deadline for position ${currentTurnPos}`);
+          }
+
+          return new Response(JSON.stringify({
+            success: true,
+            actionsTaken,
+            gameStatus: game.status,
+            timestamp: nowIso,
+            source,
+            requestId,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Bots should never stall the table. If it's a bot's turn and it hasn't decided, force a decision immediately.
+        // (Client-side bot logic should handle this normally; this is the safety net.)
+        if (currentTurnPlayer.is_bot) {
+          const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
+          const { data: botUpdateResult } = await supabase
+            .from('players')
+            .update({ current_decision: botDecision, decision_locked: true })
+            .eq('id', currentTurnPlayer.id)
+            .eq('decision_locked', false)
+            .select();
+
+          if (botUpdateResult && botUpdateResult.length > 0) {
+            actionsTaken.push(`Bot turn: Forced decision '${botDecision}' for position ${currentTurnPos}`);
+          } else {
+            actionsTaken.push('Bot turn: Skipped (already processed)');
+          }
+        } else {
+          // Human turn: only enforce if deadline is overdue.
           const decisionDeadline = new Date(currentRound.decision_deadline);
-          if (now > decisionDeadline) {
-            console.log('[ENFORCE-CLIENT] Decision deadline expired for game', gameId, 'round', currentRound.round_number);
+          if (now <= decisionDeadline) {
+            return new Response(JSON.stringify({
+              success: true,
+              actionsTaken,
+              gameStatus: game.status,
+              timestamp: nowIso,
+              source,
+              requestId,
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
 
-            const { data: players } = await supabase
-              .from('players')
-              .select('*')
-              .eq('game_id', gameId);
+          console.log('[ENFORCE-CLIENT] Decision deadline expired for game', gameId, 'round', currentRound.round_number);
 
-            const activePlayers = players?.filter((p: any) => p.status === 'active' && !p.sitting_out) || [];
-            const currentTurnPos = currentRound.current_turn_position;
+          const { data: humanUpdateResult } = await supabase
+            .from('players')
+            .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
+            .eq('id', currentTurnPlayer.id)
+            .eq('decision_locked', false)
+            .select();
 
-            if (currentTurnPos) {
-              const currentTurnPlayer = activePlayers.find((p: any) => p.position === currentTurnPos);
+          if (!humanUpdateResult || humanUpdateResult.length === 0) {
+            console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
+            actionsTaken.push('Skipped - player already processed');
+          } else {
+            actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPos}`);
+          }
+        }
 
-              if (currentTurnPlayer && !currentTurnPlayer.decision_locked) {
-                if (currentTurnPlayer.is_bot) {
-                  // Bot decision - simple 50/50
-                  const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
-                  const { data: botUpdateResult } = await supabase
-                    .from('players')
-                    .update({ current_decision: botDecision, decision_locked: true })
-                    .eq('id', currentTurnPlayer.id)
-                    .eq('decision_locked', false)
-                    .select();
+        // Advance turn to next undecided player (after bot forced decision OR human timeout).
+        const { data: freshPlayers } = await supabase
+          .from('players')
+          .select('*')
+          .eq('game_id', gameId);
 
-                  if (botUpdateResult && botUpdateResult.length > 0) {
-                    actionsTaken.push(`Bot timeout: Made decision '${botDecision}' for position ${currentTurnPlayer.position}`);
-                  }
-                } else {
-                  // Human player - auto-fold
-                  const { data: humanUpdateResult } = await supabase
-                    .from('players')
-                    .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
-                    .eq('id', currentTurnPlayer.id)
-                    .eq('decision_locked', false)
-                    .select();
+        const freshActivePlayers = freshPlayers?.filter((p: any) =>
+          p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up'
+        ) || [];
+        const undecidedPlayers = freshActivePlayers.filter((p: any) => !p.decision_locked);
 
-                  if (!humanUpdateResult || humanUpdateResult.length === 0) {
-                    console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
-                    actionsTaken.push('Skipped - player already processed');
-                  } else {
-                    actionsTaken.push(
-                      `Decision timeout: Auto-folded player at position ${currentTurnPlayer.position}`
-                    );
-                  }
-                }
+        if (undecidedPlayers.length > 0) {
+          const sortedUndecided = undecidedPlayers.sort((a: any, b: any) => a.position - b.position);
+          const higherPositions = sortedUndecided.filter((p: any) => p.position > currentTurnPos);
+          const nextPlayer = higherPositions.length > 0 ? higherPositions[0] : sortedUndecided[0];
 
-                // Advance turn to next undecided player
-                const { data: freshPlayers } = await supabase
-                  .from('players')
-                  .select('*')
-                  .eq('game_id', gameId);
+          const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
 
-                const freshActivePlayers = freshPlayers?.filter((p: any) => 
-                  p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up'
-                ) || [];
-                const undecidedPlayers = freshActivePlayers.filter((p: any) => !p.decision_locked);
+          const { data: turnAdvanceResult } = await supabase
+            .from('rounds')
+            .update({
+              current_turn_position: nextPlayer.position,
+              decision_deadline: newDeadline,
+            })
+            .eq('id', currentRound.id)
+            .eq('current_turn_position', currentTurnPos)
+            .select();
 
-                if (undecidedPlayers.length > 0) {
-                  // Find next undecided player
-                  const sortedUndecided = undecidedPlayers.sort((a: any, b: any) => a.position - b.position);
-                  const higherPositions = sortedUndecided.filter((p: any) => p.position > currentTurnPos);
-                  const nextPlayer = higherPositions.length > 0 
-                    ? higherPositions[0] 
-                    : sortedUndecided[0];
+          if (turnAdvanceResult && turnAdvanceResult.length > 0) {
+            actionsTaken.push(`Turn advanced to position ${nextPlayer.position}`);
+          } else {
+            actionsTaken.push('Turn advance skipped - another client already advanced');
+          }
+        } else {
+          const { data: lockResult } = await supabase
+            .from('games')
+            .update({ all_decisions_in: true })
+            .eq('id', gameId)
+            .eq('all_decisions_in', false)
+            .select();
 
-                  // Get decision timer
-                  const { data: gameDefaults } = await supabase
-                    .from('game_defaults')
-                    .select('decision_timer_seconds')
-                    .eq('game_type', 'holm')
-                    .maybeSingle();
-
-                  const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
-                  const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
-                  console.log('[ENFORCE-CLIENT] Setting new deadline for next player:', {
-                    nextPosition: nextPlayer.position,
-                    timerSeconds,
-                    newDeadline,
-                    oldDeadline: currentRound.decision_deadline,
-                  });
-
-                  const { data: turnAdvanceResult } = await supabase
-                    .from('rounds')
-                    .update({
-                      current_turn_position: nextPlayer.position,
-                      decision_deadline: newDeadline,
-                    })
-                    .eq('id', currentRound.id)
-                    .eq('decision_deadline', currentRound.decision_deadline)
-                    .select();
-
-                  if (!turnAdvanceResult || turnAdvanceResult.length === 0) {
-                    console.log('[ENFORCE-CLIENT] Turn advance skipped - deadline was already updated by another client');
-
-                    const { data: latestRound, error: latestRoundError } = await supabase
-                      .from('rounds')
-                      .select('id, status, round_number, current_turn_position, decision_deadline')
-                      .eq('id', currentRound.id)
-                      .maybeSingle();
-
-                    if (latestRoundError) {
-                      console.warn('[ENFORCE-CLIENT] Failed to re-fetch round after optimistic lock miss:', latestRoundError);
-                    }
-
-                    const latestDeadline = (latestRound as any)?.decision_deadline as string | null | undefined;
-                    const freshNowIso = new Date().toISOString();
-                    const isStillOverdue = !latestDeadline || latestDeadline < freshNowIso;
-
-                    if ((latestRound as any)?.status === 'betting' && isStillOverdue) {
-                      const healedDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
-                      const { data: healRes } = await supabase
-                        .from('rounds')
-                        .update({ decision_deadline: healedDeadline })
-                        .eq('id', currentRound.id)
-                        .eq('decision_deadline', latestDeadline ?? null)
-                        .select();
-
-                      if (healRes && healRes.length > 0) {
-                        actionsTaken.push(`Healed overdue deadline for position ${(latestRound as any)?.current_turn_position ?? nextPlayer.position}`);
-                      } else {
-                        actionsTaken.push('Skipped - another client advanced turn (deadline already changed)');
-                      }
-                    } else {
-                      actionsTaken.push('Skipped - another client advanced turn');
-                    }
-
-                    return new Response(JSON.stringify({
-                      success: true,
-                      actionsTaken,
-                      gameStatus: game.status,
-                      timestamp: nowIso,
-                      source,
-                      requestId,
-                    }), {
-                      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                    });
-                  }
-
-                  actionsTaken.push(`Turn advanced to position ${nextPlayer.position}`);
-                } else {
-                  // All players decided - set all_decisions_in flag
-                  const { data: lockResult } = await supabase
-                    .from('games')
-                    .update({ all_decisions_in: true })
-                    .eq('id', gameId)
-                    .eq('all_decisions_in', false)
-                    .select();
-
-                  if (lockResult && lockResult.length > 0) {
-                    actionsTaken.push('All players decided - flagged for showdown');
-                  }
-                }
-              }
-            }
+          if (lockResult && lockResult.length > 0) {
+            actionsTaken.push('All players decided - flagged for showdown');
           }
         }
       }

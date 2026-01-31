@@ -30,7 +30,8 @@ export function useBotDecisionEnforcer({
 
   useEffect(() => {
     if (!gameId) return;
-    if (gameStatus !== 'in_progress') return;
+    // Some code paths briefly use 'betting' as a game-level status; bots must still act.
+    if (gameStatus !== 'in_progress' && gameStatus !== 'betting') return;
     if (isPaused) return;
     if (allDecisionsIn) return;
 
