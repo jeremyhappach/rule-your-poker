@@ -4983,7 +4983,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // React state can be stale, causing both clients to attempt ante processing or use wrong game type
     const { data: freshGame, error: gameError } = await supabase
       .from('games')
-      .select('status, game_type, ante_amount')
+      .select('status, game_type, ante_amount, is_first_hand, pot')
       .eq('id', gameId)
       .single();
     
@@ -5163,7 +5163,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // Now start the round (animation already triggered above)
           if (isHolmGame) {
-            await startHolmRound(gameId, true);
+            const pot = typeof freshGame?.pot === 'number' ? freshGame.pot : 0;
+            const shouldRunHolmFirstHand = freshGame?.is_first_hand === true;
+            // Recovery: if first-hand flag was already consumed but we're still stuck in ante_decision,
+            // start without first-hand lock/ante collection (pot should already be set).
+            const holmIsRecovery = !shouldRunHolmFirstHand && pot > 0;
+
+            if (holmIsRecovery) {
+              console.warn('[ANTE][HOLM] Recovery start: is_first_hand=false but still in ante_decision; starting Holm without first-hand flag');
+            }
+
+            await startHolmRound(gameId, shouldRunHolmFirstHand);
           } else if (isHorsesGame) {
             // isHorsesGame now includes ship-captain-crew - use freshGame for type check
             if (freshGame?.game_type === 'ship-captain-crew') {

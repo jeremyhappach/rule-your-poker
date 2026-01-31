@@ -265,11 +265,16 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
 export async function startHolmRound(gameId: string, isFirstHand: boolean = false, passedBuckPosition?: number) {
   console.log('[HOLM] ========== Starting Holm hand for game', gameId, '==========');
   console.log('[HOLM] isFirstHand parameter:', isFirstHand, 'passedBuckPosition:', passedBuckPosition);
+
+  // The caller may pass isFirstHand=true, but older stuck states can have is_first_hand already consumed.
+  // In that case, we can safely "recover" by starting the hand without first-hand logic (no re-ante),
+  // as long as the game is still in ante_decision and the pot is already populated.
+  let effectiveIsFirstHand = isFirstHand;
   
   // CRITICAL ATOMIC GUARD (Holm first hand): do NOT flip status to in_progress yet.
   // Flipping status early makes clients fetch rounds while OLD rounds still exist, causing stale cards.
   // Instead, atomically clear is_first_hand as a lock while keeping status in ante_decision.
-  if (isFirstHand) {
+  if (effectiveIsFirstHand) {
     const { data: lockResult, error: lockError } = await supabase
       .from('games')
       .update({ is_first_hand: false })
@@ -279,33 +284,51 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       .select();
 
     if (lockError || !lockResult || lockResult.length === 0) {
-      console.log('[HOLM] ⚠️ ATOMIC GUARD: Another client already started the first hand, skipping');
-      return;
+      // Recovery check (see comment above)
+      const { data: guardGame } = await supabase
+        .from('games')
+        .select('status, pot')
+        .eq('id', gameId)
+        .maybeSingle();
+
+      const pot = typeof guardGame?.pot === 'number' ? guardGame.pot : 0;
+      const canRecover = guardGame?.status === 'ante_decision' && pot > 0;
+
+      if (canRecover) {
+        console.warn('[HOLM] ⚠️ First-hand lock already consumed but game is still in ante_decision; recovering by starting without first-hand logic');
+        effectiveIsFirstHand = false;
+      } else {
+        console.log('[HOLM] ⚠️ ATOMIC GUARD: Another client already started the first hand, skipping');
+        return;
+      }
     }
-    console.log('[HOLM] ✅ Successfully acquired first-hand lock (is_first_hand -> false)');
 
-    // CRITICAL FIX: Do NOT delete old rounds - they belong to previous dealer games and are needed
-    // for Hand History. Instead, just mark any non-completed rounds as completed to prevent
-    // stale card rendering. The new Holm game has a unique dealer_game_id, so old rounds won't interfere.
-    console.log('[HOLM] FIRST HAND - marking any existing non-completed rounds as completed (preserving for history)');
-    
-    const { data: oldRounds } = await supabase
-      .from('rounds')
-      .select('id, round_number, status, dealer_game_id')
-      .eq('game_id', gameId)
-      .neq('status', 'completed');
+    if (effectiveIsFirstHand) {
+      console.log('[HOLM] ✅ Successfully acquired first-hand lock (is_first_hand -> false)');
 
-    if (oldRounds && oldRounds.length > 0) {
-      const oldRoundIds = oldRounds.map(r => r.id);
-      console.log('[HOLM] Found', oldRounds.length, 'non-completed rounds to mark completed:',
-        oldRounds.map(r => ({ id: r.id, round: r.round_number, dealer_game_id: r.dealer_game_id })));
+      // CRITICAL FIX: Do NOT delete old rounds - they belong to previous dealer games and are needed
+      // for Hand History. Instead, just mark any non-completed rounds as completed to prevent
+      // stale card rendering. The new Holm game has a unique dealer_game_id, so old rounds won't interfere.
+      console.log('[HOLM] FIRST HAND - marking any existing non-completed rounds as completed (preserving for history)');
       
-      await supabase
+      const { data: oldRounds } = await supabase
         .from('rounds')
-        .update({ status: 'completed' })
-        .in('id', oldRoundIds);
+        .select('id, round_number, status, dealer_game_id')
+        .eq('game_id', gameId)
+        .neq('status', 'completed');
 
-      console.log('[HOLM] ✅ Marked', oldRoundIds.length, 'old rounds as completed (preserved for history)');
+      if (oldRounds && oldRounds.length > 0) {
+        const oldRoundIds = oldRounds.map(r => r.id);
+        console.log('[HOLM] Found', oldRounds.length, 'non-completed rounds to mark completed:',
+          oldRounds.map(r => ({ id: r.id, round: r.round_number, dealer_game_id: r.dealer_game_id })));
+        
+        await supabase
+          .from('rounds')
+          .update({ status: 'completed' })
+          .in('id', oldRoundIds);
+
+        console.log('[HOLM] ✅ Marked', oldRoundIds.length, 'old rounds as completed (preserved for history)');
+      }
     }
   }
   
@@ -313,7 +336,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   // This prevents the "round misalignment" bug where multiple betting rounds exist simultaneously
   // and hand evaluation uses community cards from the wrong round
   // NOTE: Skip on first hand because we delete any old rounds above.
-  if (!isFirstHand) {
+  if (!effectiveIsFirstHand) {
     console.log('[HOLM] Cleaning up any non-completed rounds before creating new hand...');
 
     const { data: nonCompletedRounds } = await supabase
@@ -350,13 +373,39 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 
   console.log('[HOLM] Game config - pot:', gameConfig.pot, 'buck_position:', gameConfig.buck_position);
 
+  // IMPORTANT: When transitioning from another game type (e.g., 3-5-7 -> Holm) we preserve old rounds.
+  // The rounds table has a uniqueness guard (commonly: game_id + hand_number + round_number).
+  // If Holm starts at hand_number=1/round_number=1, it can collide with existing 3-5-7 rows and get stuck
+  // in ante_decision with is_first_hand already consumed.
+  //
+  // To prevent collisions, we derive a NEW hand_number from the max existing hand_number in rounds.
+  // We treat ANY "ante_decision" start as a new-hand boundary (even if isFirstHand=false for recovery).
+  const { data: maxHandRow } = await supabase
+    .from('rounds')
+    .select('hand_number')
+    .eq('game_id', gameId)
+    .order('hand_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const maxHandFromRounds = maxHandRow?.hand_number ?? 0;
+  const baseHandNumber = Math.max(gameConfig.total_hands ?? 0, maxHandFromRounds);
+  const shouldStartNewHandNumber = effectiveIsFirstHand || gameConfig.status === 'ante_decision';
+  const handNumber = shouldStartNewHandNumber ? baseHandNumber + 1 : (baseHandNumber || 1);
+  console.log('[HOLM] Hand numbering:', {
+    total_hands: gameConfig.total_hands,
+    maxHandFromRounds,
+    handNumber,
+    shouldStartNewHandNumber,
+  });
+
   const anteAmount = gameConfig.ante_amount || 1;
   const dealerPosition = gameConfig.dealer_position || 1;
   
   // CRITICAL: Use passed buck position if provided, otherwise use existing or calculate
   let buckPosition = passedBuckPosition ?? gameConfig.buck_position;
   
-  if (!buckPosition || isFirstHand) {
+  if (!buckPosition || effectiveIsFirstHand) {
     // First hand - buck starts one position to the LEFT of dealer (clockwise order)
     // In clockwise rotation, LEFT means the NEXT higher position number
     const { data: allPlayers } = await supabase
@@ -400,7 +449,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   // SUBSEQUENT HANDS: Use pot value preserved from showdown (DO NOT re-ante)
   let potForRound: number;
   
-  if (isFirstHand) {
+  if (effectiveIsFirstHand) {
     console.log('[HOLM] FIRST HAND - Collecting antes');
     
     // Use atomic decrement to prevent race conditions / double charges
@@ -425,7 +474,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       // Record antes as a game result entry with no winner (just ante collection)
       await recordGameResult(
         gameId,
-        1, // First hand
+         handNumber,
         null, // no winner - this is ante collection
         'Ante', // Description
         `${players.length} players anted $${anteAmount}`,
@@ -447,7 +496,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       .update({
         pot: potForRound,
         buck_position: buckPosition,
-        total_hands: 1
+        total_hands: handNumber
       })
       .eq('id', gameId);
   } else {
@@ -471,7 +520,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   // On subsequent hands: only increment if is_first_hand = false
   let nextRoundNumber: number;
   
-  if (isFirstHand) {
+  if (effectiveIsFirstHand) {
     console.log('[HOLM] FIRST HAND - using current_round = 1');
     // Use current_round from game (pre-seeded to 1 during setup)
     nextRoundNumber = gameConfig.current_round || 1;
@@ -511,10 +560,6 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     deck[cardIndex++],
     deck[cardIndex++]
   ];
-
-  // Get hand_number for this game
-  // In Holm, each hand is one game cycle until someone beats Chucky or Chucky wins
-  const handNumber = gameConfig.total_hands || 1;
 
   // Always create a new round for each hand - unique round_id prevents stale card fetching
   const { data: round, error: roundError } = await supabase
@@ -603,6 +648,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       status: 'in_progress',
       current_round: nextRoundNumber, // RESTORED: Must update for round detection
       buck_position: buckPosition,
+      total_hands: handNumber,
       all_decisions_in: false,
       last_round_result: null,
       is_first_hand: false, // CRITICAL: Clear flag after first hand is dealt
@@ -618,7 +664,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     console.log('[HOLM] ✅ Successfully updated game status, buck_position:', buckPosition);
   }
 
-  console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', isFirstHand);
+  console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', effectiveIsFirstHand);
 }
 
 /**
