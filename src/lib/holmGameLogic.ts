@@ -3,6 +3,7 @@ import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand,
 import { getDisplayName } from "./botAlias";
 import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
 import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransition } from "./holmRoundUtils";
+import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDebugLog";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -94,6 +95,12 @@ export async function checkHolmRoundComplete(gameId: string) {
     }
     
     console.log('[HOLM CHECK] Successfully acquired lock, proceeding with endHolmRound');
+    
+    // DEBUG LOG: all_decisions_in set
+    await logAllDecisionsIn(gameId, round.id, true, 'holmGameLogic:checkHolmRoundComplete', {
+      player_decisions: players.map(p => ({ position: p.position, decision: p.current_decision, locked: p.decision_locked })),
+      round_status: round.status,
+    });
     
     // Clear the timer and turn position since all decisions are in
     await supabase
@@ -618,6 +625,14 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] ========== Starting endHolmRound for game:', gameId, '==========');
 
+  // DEBUG LOG: endHolmRound called
+  await logGameState({
+    gameId,
+    eventType: 'END_HOLM_ROUND_CALLED',
+    sourceLocation: 'holmGameLogic:endHolmRound:entry',
+    details: { timestamp: new Date().toISOString() },
+  });
+
   // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
   const { game, round, error: fetchError } = await getActiveHolmRoundWithGame(gameId);
 
@@ -638,6 +653,26 @@ export async function endHolmRound(gameId: string) {
   }
   
   const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
+  
+  // DEBUG LOG: endHolmRound with full context
+  await logGameState({
+    gameId,
+    dealerGameId,
+    roundId: round.id,
+    eventType: 'END_HOLM_ROUND_CALLED',
+    gameStatus: game.status,
+    roundStatus: round.status,
+    allDecisionsIn: game.all_decisions_in,
+    currentRound: game.current_round,
+    totalHands: game.total_hands,
+    sourceLocation: 'holmGameLogic:endHolmRound:context',
+    details: {
+      round_hand_number: round.hand_number,
+      round_round_number: round.round_number,
+      community_cards_revealed: round.community_cards_revealed,
+      chucky_active: round.chucky_active,
+    },
+  });
   
   console.log('[HOLM END] Using most recent round for dealer game:', {
     dealerGameId,
@@ -783,6 +818,12 @@ export async function endHolmRound(gameId: string) {
     return;
   }
   console.log('[HOLM END] ✅ Successfully acquired atomic lock on round (status -> processing)');
+  
+  // DEBUG LOG: Round status changed to processing
+  await logStatusChange(gameId, capturedRoundId, game.status, 'processing', 'holmGameLogic:endHolmRound:atomicLock', {
+    round_number: capturedRoundNumber,
+    previous_status: 'betting',
+  });
 
   console.log('[HOLM END] Round data:', {
     id: capturedRoundId,
@@ -1189,6 +1230,23 @@ export async function endHolmRound(gameId: string) {
 
   // Case 3: Multiple players stayed - showdown (no Chucky)
   console.log('[HOLM END] Case 3: Multi-player showdown (no Chucky)');
+  
+  // DEBUG LOG: Showdown start
+  await logGameState({
+    gameId,
+    dealerGameId: game.current_game_uuid,
+    roundId: capturedRoundId,
+    eventType: 'SHOWDOWN_START',
+    gameStatus: game.status,
+    roundStatus: 'processing', // about to become 'showdown'
+    allDecisionsIn: true,
+    sourceLocation: 'holmGameLogic:endHolmRound:case3-multiplayerShowdown',
+    details: {
+      stayed_count: stayedPlayers.length,
+      stayed_positions: stayedPlayers.map(p => p.position),
+      community_cards_revealed: round.community_cards_revealed,
+    },
+  });
   
   // Player cards are already visible to their owners, but now expose them to everyone
   // by marking the round as "showdown" phase - the UI will handle showing all cards

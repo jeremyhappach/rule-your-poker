@@ -632,6 +632,34 @@ serve(async (req) => {
             actionsTaken.push('Skipped - player already processed');
           } else {
             actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPos}`);
+            
+            // DEBUG LOG: Log the auto_fold + decision change to debug table
+            try {
+              await supabase
+                .from('game_state_debug_log')
+                .insert({
+                  game_id: gameId,
+                  dealer_game_id: game.current_game_uuid || null,
+                  round_id: currentRound.id,
+                  player_id: currentTurnPlayer.id,
+                  event_type: 'DEADLINE_EXPIRED',
+                  game_status: game.status,
+                  round_status: currentRound.status,
+                  player_decision: 'fold',
+                  decision_locked: true,
+                  auto_fold: true,
+                  deadline_expired: true,
+                  source_location: 'enforce-deadlines:holm-timeout',
+                  details: { 
+                    position: currentTurnPos, 
+                    deadline: currentRound.decision_deadline,
+                    source,
+                    requestId,
+                  },
+                });
+            } catch (logErr) {
+              console.warn('[ENFORCE-CLIENT] Failed to log debug event:', logErr);
+            }
           }
         }
 
