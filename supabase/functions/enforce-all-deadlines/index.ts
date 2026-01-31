@@ -761,7 +761,7 @@ serve(async (req) => {
             .limit(1)
             .maybeSingle();
           
-          if (currentRound && (currentRound.status === 'processing' || currentRound.status === 'active')) {
+          if (currentRound && (currentRound.status === 'processing' || currentRound.status === 'active' || currentRound.status === 'betting')) {
             const { data: holmPlayers } = await supabase
               .from('players')
               .select('id, position, decision_locked, current_decision, sitting_out, status')
