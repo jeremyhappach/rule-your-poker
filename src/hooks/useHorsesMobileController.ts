@@ -1855,7 +1855,8 @@ export function useHorsesMobileController({
       const chipChanges: Record<string, number> = {};
       chipChanges[winnerId] = actualPot; // Winner receives the full pot
 
-      await supabase.from("game_results").insert({
+      // Fire-and-forget: Record game result (audit trail only)
+      supabase.from("game_results").insert({
         game_id: gameId,
         hand_number: handNumber,
         winner_player_id: winnerId,
@@ -1870,8 +1871,8 @@ export function useHorsesMobileController({
 
       // Note: No toast here - dealer announcement already shows the win message
       
-      // Snapshot player chips for session history (enables "Run Back" option)
-      await snapshotPlayerChips(gameId, handNumber);
+      // Fire-and-forget: Snapshot player chips (audit trail only)
+      snapshotPlayerChips(gameId, handNumber);
 
       // Update pot and result description (status already set in atomic claim)
       await supabase

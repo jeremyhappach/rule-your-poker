@@ -368,8 +368,8 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       
       const eventType = isFirstHand ? 'Ante' : 'Re-Ante (Rollover)';
       
-      // Record antes as a game result entry with no winner (just ante collection)
-      await recordGameResult(
+      // Fire-and-forget: Record antes (audit trail only)
+      recordGameResult(
         gameId,
         newHandNumber,
         null, // no winner - this is ante collection

@@ -374,8 +374,8 @@ export async function startRound(gameId: string, roundNumber: number) {
         anteChipChanges[player.id] = -anteAmount;
       }
       
-      // Record antes as a game result entry with no winner (just ante collection)
-      await recordGameResult(
+      // Fire-and-forget: Record antes as a game result entry (audit trail only)
+      recordGameResult(
         gameId,
         handNumber,
         null, // no winner - this is ante collection
@@ -1009,8 +1009,14 @@ async function handleGameOver(
     }
   }
   
-  // Record game result for hand history
-  await recordGameResult(
+  // Award the winner using atomic increment FIRST (critical path)
+  await supabase.rpc('increment_player_chips', {
+    p_player_id: winnerId,
+    p_amount: totalPrize
+  });
+  
+  // Fire-and-forget: Record game result for hand history (audit trail only)
+  recordGameResult(
     gameId,
     handNumber,
     winnerId,
@@ -1023,14 +1029,8 @@ async function handleGameOver(
     currentGameUuid // dealer_game_id
   );
   
-  // Award the winner using atomic increment
-  await supabase.rpc('increment_player_chips', {
-    p_player_id: winnerId,
-    p_amount: totalPrize
-  });
-  
-  // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
-  await snapshotPlayerChips(gameId, handNumber);
+  // Fire-and-forget: Snapshot player chips (audit trail only)
+  snapshotPlayerChips(gameId, handNumber);
   
   const gameWinMessage = `🏆 ${winnerUsername} won the game!`;
   
@@ -1372,7 +1372,8 @@ export async function endRound(gameId: string) {
     legChipChanges[soloStayer.id] = -betAmount;
     
     const currentHandNumber = game.total_hands || 1;
-    await recordGameResult(
+    // Fire-and-forget: Record leg purchase (audit trail only)
+    recordGameResult(
       gameId,
       currentHandNumber,
       null, // no winner - this is a leg purchase
@@ -1491,7 +1492,8 @@ export async function endRound(gameId: string) {
         // Round 3 or reveal enabled: set visibility
         const visibleTo = currentRound === 3 ? seatedUserIds : showdownUserIds;
         console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users');
-        await supabase
+        // Fire-and-forget: visibility update is for history only
+        supabase
           .from('player_cards')
           .update({ visible_to_user_ids: visibleTo })
           .eq('round_id', round.id)
@@ -1628,7 +1630,8 @@ export async function endRound(gameId: string) {
             // Get current hand number
             const currentHandNumber = game.total_hands || 1;
             
-            await recordGameResult(
+            // Fire-and-forget: Record showdown result (audit trail only)
+            recordGameResult(
               gameId,
               currentHandNumber,
               winner.playerId,
@@ -1734,7 +1737,8 @@ export async function endRound(gameId: string) {
         }
         
         const currentHandNumber = game.total_hands || 1;
-        await recordGameResult(
+        // Fire-and-forget: Record pussy tax (audit trail only)
+        recordGameResult(
           gameId,
           currentHandNumber,
           null, // no winner - this is tax going into pot
