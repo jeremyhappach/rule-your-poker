@@ -196,7 +196,7 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // CRITICAL GUARD: Block round creation if game is already over or ended
   if (gameConfig?.status === 'game_over' || gameConfig?.status === 'session_ended') {
-    await logRaceConditionGuard(gameId, 'gameLogic:startRound', 'BLOCKED_GAME_OVER', {
+    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'BLOCKED_GAME_OVER', {
       roundNumber,
       currentStatus: gameConfig?.status,
       gameOverAt: gameConfig?.game_over_at,
@@ -208,7 +208,7 @@ export async function startRound(gameId: string, roundNumber: number) {
 
   // Prevent starting if already in progress with this round
   if (gameConfig?.status === 'in_progress' && gameConfig?.current_round === roundNumber) {
-    await logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_ALREADY_IN_PROGRESS', {
+    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_ALREADY_IN_PROGRESS', {
       roundNumber,
       currentRound: gameConfig?.current_round,
     });
@@ -263,7 +263,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   // Check if this client won the race to create the round
   if (roundInsertError) {
     // Unique constraint violation or other error - another client already created the round
-    await logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_INSERT_RACE_LOST', {
+    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_INSERT_RACE_LOST', {
       roundNumber,
       handNumber,
       error: roundInsertError.message,
@@ -292,7 +292,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   }
 
   // This client WON the race - we are the only one that will charge antes
-  await logGameState({
+  logGameState({
     gameId,
     dealerGameId: currentGameUuid,
     roundId: insertedRound.id,
@@ -792,8 +792,8 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       .eq('id', playerId);
     console.log('[MAKE DECISION] Stay decision locked in database');
     
-    // DEBUG LOG: Player stay decision
-    await logPlayerDecision(gameId, playerId, 'stay', true, 'gameLogic:makeDecision', {
+    // DEBUG LOG: Player stay decision (fire-and-forget)
+    logPlayerDecision(gameId, playerId, 'stay', true, 'gameLogic:makeDecision', {
       round_id: currentRound.id,
       round_number: currentRound.round_number,
       position: player.position,
@@ -812,8 +812,8 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       .eq('id', playerId);
     console.log('[MAKE DECISION] Fold decision locked in database');
     
-    // DEBUG LOG: Player fold decision
-    await logPlayerDecision(gameId, playerId, 'fold', true, 'gameLogic:makeDecision', {
+    // DEBUG LOG: Player fold decision (fire-and-forget)
+    logPlayerDecision(gameId, playerId, 'fold', true, 'gameLogic:makeDecision', {
       round_id: currentRound.id,
       round_number: currentRound.round_number,
       position: player.position,

@@ -625,8 +625,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] ========== Starting endHolmRound for game:', gameId, '==========');
 
-  // DEBUG LOG: endHolmRound called
-  await logGameState({
+  // DEBUG LOG: endHolmRound called (fire-and-forget)
+  logGameState({
     gameId,
     eventType: 'END_HOLM_ROUND_CALLED',
     sourceLocation: 'holmGameLogic:endHolmRound:entry',
@@ -654,8 +654,8 @@ export async function endHolmRound(gameId: string) {
   
   const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
   
-  // DEBUG LOG: endHolmRound with full context
-  await logGameState({
+  // DEBUG LOG: endHolmRound with full context (fire-and-forget)
+  logGameState({
     gameId,
     dealerGameId,
     roundId: round.id,
@@ -819,8 +819,8 @@ export async function endHolmRound(gameId: string) {
   }
   console.log('[HOLM END] ✅ Successfully acquired atomic lock on round (status -> processing)');
   
-  // DEBUG LOG: Round status changed to processing
-  await logStatusChange(gameId, capturedRoundId, game.status, 'processing', 'holmGameLogic:endHolmRound:atomicLock', {
+  // DEBUG LOG: Round status changed to processing (fire-and-forget)
+  logStatusChange(gameId, capturedRoundId, game.status, 'processing', 'holmGameLogic:endHolmRound:atomicLock', {
     round_number: capturedRoundNumber,
     previous_status: 'betting',
   });
@@ -1231,8 +1231,8 @@ export async function endHolmRound(gameId: string) {
   // Case 3: Multiple players stayed - showdown (no Chucky)
   console.log('[HOLM END] Case 3: Multi-player showdown (no Chucky)');
   
-  // DEBUG LOG: Showdown start
-  await logGameState({
+  // DEBUG LOG: Showdown start (fire-and-forget)
+  logGameState({
     gameId,
     dealerGameId: game.current_game_uuid,
     roundId: capturedRoundId,

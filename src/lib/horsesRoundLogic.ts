@@ -27,7 +27,7 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
 
   // CRITICAL GUARD: Block round creation if game is already over or ended
   if (game.status === 'game_over' || game.status === 'session_ended') {
-    await logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_GAME_OVER', {
+    logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_GAME_OVER', {
       currentStatus: game.status,
       isFirstHand,
       dealerGameId: game.current_game_uuid,
@@ -70,8 +70,8 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     console.log('[HORSES] Rollover - next hand_number/round_number:', newHandNumber);
   }
   
-  // Log round creation attempt
-  await logDiceEvent(gameId, 'DICE_ROUND_START', 'horsesRoundLogic:startHorsesRound', {
+  // Fire-and-forget diagnostic logging
+  logDiceEvent(gameId, 'DICE_ROUND_START', 'horsesRoundLogic:startHorsesRound', {
     dealerGameId,
     handNumber: newHandNumber,
     roundNumber: newRoundNumber,

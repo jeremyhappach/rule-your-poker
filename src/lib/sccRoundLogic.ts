@@ -17,7 +17,8 @@ import { logDiceEvent, logRaceConditionGuard, logDealerAnnouncement } from "./ga
 export async function startSCCRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[SCC] 🎲 Starting round', { gameId, isFirstHand });
   
-  await logDiceEvent(gameId, 'DICE_ROUND_START', 'sccRoundLogic:startSCCRound:entry', {
+  // Fire-and-forget diagnostic logging
+  logDiceEvent(gameId, 'DICE_ROUND_START', 'sccRoundLogic:startSCCRound:entry', {
     isFirstHand,
     gameType: 'ship-captain-crew',
   });
@@ -36,7 +37,8 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
 
   // TERMINAL STATE GUARD: Don't start rounds if game is already over
   if (game.status === 'game_over' || game.status === 'session_ended') {
-    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'BLOCKED_GAME_OVER', {
+    // Fire-and-forget diagnostic logging
+    logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'BLOCKED_GAME_OVER', {
       currentStatus: game.status,
       dealerGameId: game.current_game_uuid,
       isFirstHand,
@@ -108,12 +110,12 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
 
     if (!claim || claim.length === 0) {
       console.log('[SCC] Another client claimed first-hand start, skipping');
-      await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'FIRST_HAND_CLAIM_LOST', {
+      logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'FIRST_HAND_CLAIM_LOST', {
         dealerGameId: game.current_game_uuid,
       });
       return;
     }
-    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'FIRST_HAND_CLAIM_WON', {
+    logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'FIRST_HAND_CLAIM_WON', {
       dealerGameId: game.current_game_uuid,
       newHandNumber: newHandNumber,
     });
@@ -146,13 +148,13 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
 
     if (!claim || claim.length === 0) {
       console.log('[SCC] Another client claimed rollover start (or no longer awaiting), skipping');
-      await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_LOST', {
+      logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_LOST', {
         dealerGameId: game.current_game_uuid,
         previousRound: game.current_round,
       });
       return;
     }
-    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_WON', {
+    logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_WON', {
       dealerGameId: game.current_game_uuid,
       newHandNumber: newHandNumber,
     });
@@ -172,7 +174,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       roundNumber: newRoundNumber,
     });
 
-    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROUND_ALREADY_EXISTS', {
+    logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROUND_ALREADY_EXISTS', {
       existingRoundId: existingRound.id,
       roundNumber: newRoundNumber,
       handNumber: newHandNumber,
@@ -306,7 +308,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
 
   console.log('[SCC] Round created:', roundData.id, 'pot:', potForRound);
   
-  await logDiceEvent(gameId, 'DICE_ROUND_START', 'sccRoundLogic:startSCCRound:roundCreated', {
+  logDiceEvent(gameId, 'DICE_ROUND_START', 'sccRoundLogic:startSCCRound:roundCreated', {
     dealerGameId,
     roundId: roundData.id,
     handNumber: newHandNumber,
@@ -381,7 +383,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       );
       console.log('[SCC] Recorded ante chip changes in game_results:', anteChipChanges);
       
-      await logDiceEvent(gameId, 'ANTE_COLLECTION', 'sccRoundLogic:startSCCRound:antesCollected', {
+      logDiceEvent(gameId, 'ANTE_COLLECTION', 'sccRoundLogic:startSCCRound:antesCollected', {
         dealerGameId,
         roundId: roundData.id,
         handNumber: newHandNumber,
@@ -415,7 +417,7 @@ export async function endSCCRound(
 ): Promise<void> {
   console.log('[SCC] Ending round', { gameId, winnerId, winnerDescription, isTie });
   
-  await logDiceEvent(gameId, isTie ? 'DICE_TIE_DETECTED' : 'DICE_WIN_PROCESSING', 'sccRoundLogic:endSCCRound:entry', {
+  logDiceEvent(gameId, isTie ? 'DICE_TIE_DETECTED' : 'DICE_WIN_PROCESSING', 'sccRoundLogic:endSCCRound:entry', {
     dealerGameId: extraContext?.dealerGameId,
     roundId: extraContext?.roundId,
     handNumber: extraContext?.handNumber,
@@ -441,7 +443,7 @@ export async function endSCCRound(
       console.error('[SCC] Failed to set tie state:', error);
     }
     
-    await logDealerAnnouncement(gameId, 'sccRoundLogic:endSCCRound', 'TIE_ROLLOVER', 'One tie all tie - rollover', {
+    logDealerAnnouncement(gameId, 'sccRoundLogic:endSCCRound', 'TIE_ROLLOVER', 'One tie all tie - rollover', {
       dealerGameId: extraContext?.dealerGameId,
       roundId: extraContext?.roundId,
       handNumber: extraContext?.handNumber,
@@ -463,7 +465,7 @@ export async function endSCCRound(
       console.error('[SCC] Failed to set game over:', error);
     }
     
-    await logDiceEvent(gameId, 'DICE_GAME_COMPLETE', 'sccRoundLogic:endSCCRound:gameOver', {
+    logDiceEvent(gameId, 'DICE_GAME_COMPLETE', 'sccRoundLogic:endSCCRound:gameOver', {
       dealerGameId: extraContext?.dealerGameId,
       roundId: extraContext?.roundId,
       handNumber: extraContext?.handNumber,
