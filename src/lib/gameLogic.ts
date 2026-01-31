@@ -866,9 +866,11 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   if (isHolmGame) {
     // For Holm games, check if round is complete and advance turn
     // Import dynamically to avoid circular dependency
+    // CRITICAL: Pass player.position so checkHolmRoundComplete knows exactly who decided
+    // This eliminates the race condition where current_turn_position might have already changed
     const { checkHolmRoundComplete } = await import('./holmGameLogic');
-    console.log('[MAKE DECISION] Holm game - calling checkHolmRoundComplete');
-    await checkHolmRoundComplete(gameId);
+    console.log('[MAKE DECISION] Holm game - calling checkHolmRoundComplete with position', player.position);
+    await checkHolmRoundComplete(gameId, player.position);
   } else {
     // Check if all players have decided (only for non-Holm games)
     await checkAllDecisionsIn(gameId);
