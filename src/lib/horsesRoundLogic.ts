@@ -6,6 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
+import { logDiceEvent, logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
 
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[HORSES] 🎲 Starting round', { gameId, isFirstHand });
@@ -13,13 +14,26 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type')
     .eq('id', gameId)
     .maybeSingle();
 
   if (gameError || !game) {
     console.error('[HORSES] Failed to get game:', gameError);
     throw new Error('Failed to get game state');
+  }
+
+  const gameType = (game as any).game_type || 'horses';
+
+  // CRITICAL GUARD: Block round creation if game is already over or ended
+  if (game.status === 'game_over' || game.status === 'session_ended') {
+    await logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_GAME_OVER', {
+      currentStatus: game.status,
+      isFirstHand,
+      dealerGameId: game.current_game_uuid,
+    });
+    console.warn('[HORSES] Blocked round start - game is in terminal state:', game.status);
+    return;
   }
 
   // CORRECT APPROACH: Each dealer_game_id has its own hand/round numbering starting at 1.
@@ -55,6 +69,17 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     newRoundNumber = newHandNumber;
     console.log('[HORSES] Rollover - next hand_number/round_number:', newHandNumber);
   }
+  
+  // Log round creation attempt
+  await logDiceEvent(gameId, 'DICE_ROUND_START', 'horsesRoundLogic:startHorsesRound', {
+    dealerGameId,
+    handNumber: newHandNumber,
+    roundNumber: newRoundNumber,
+    gameType,
+    isFirstHand,
+    currentGameStatus: game.status,
+    pot: game.pot,
+  });
   
   console.log('[HORSES] Hand/Round numbering:', { dealerGameId, newHandNumber, newRoundNumber, isFirstHand });
 

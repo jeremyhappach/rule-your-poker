@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
 import { getBotAlias } from "./botAlias";
-import { logPlayerDecision, logGameState } from "./gameStateDebugLog";
+import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent } from "./gameStateDebugLog";
 
 /**
  * Snapshot all players' chip counts after a hand completes.
@@ -181,7 +181,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
-      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at')
       .eq('id', gameId)
       .single(),
     supabase
@@ -194,8 +194,24 @@ export async function startRound(gameId: string, roundNumber: number) {
   const gameConfig = gameConfigResult.data;
   const gameDefaults = gameDefaultsResult.data;
 
+  // CRITICAL GUARD: Block round creation if game is already over or ended
+  if (gameConfig?.status === 'game_over' || gameConfig?.status === 'session_ended') {
+    await logRaceConditionGuard(gameId, 'gameLogic:startRound', 'BLOCKED_GAME_OVER', {
+      roundNumber,
+      currentStatus: gameConfig?.status,
+      gameOverAt: gameConfig?.game_over_at,
+      dealerGameId: gameConfig?.current_game_uuid,
+    });
+    console.warn('[START_ROUND] Blocked - game is in terminal state:', gameConfig?.status);
+    return;
+  }
+
   // Prevent starting if already in progress with this round
   if (gameConfig?.status === 'in_progress' && gameConfig?.current_round === roundNumber) {
+    await logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_ALREADY_IN_PROGRESS', {
+      roundNumber,
+      currentRound: gameConfig?.current_round,
+    });
     console.log('[START_ROUND] Round', roundNumber, 'already in progress, skipping');
     return;
   }
@@ -247,6 +263,12 @@ export async function startRound(gameId: string, roundNumber: number) {
   // Check if this client won the race to create the round
   if (roundInsertError) {
     // Unique constraint violation or other error - another client already created the round
+    await logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_INSERT_RACE_LOST', {
+      roundNumber,
+      handNumber,
+      error: roundInsertError.message,
+      dealerGameId: currentGameUuid,
+    });
     console.log('[START_ROUND] ⚠️ Round already exists (race lost or error):', roundInsertError.message);
     
     // Fetch the existing round so we can still return it (for callers that need round data)
@@ -270,6 +292,20 @@ export async function startRound(gameId: string, roundNumber: number) {
   }
 
   // This client WON the race - we are the only one that will charge antes
+  await logGameState({
+    gameId,
+    dealerGameId: currentGameUuid,
+    roundId: insertedRound.id,
+    eventType: 'ROUND_CREATED',
+    currentRound: roundNumber,
+    totalHands: handNumber,
+    sourceLocation: 'gameLogic:startRound:wonRace',
+    details: {
+      cardsToDeal,
+      timerSeconds,
+      anteAmount,
+    },
+  });
   console.log('[START_ROUND] ✅ WON round creation race for round', roundNumber, 'id:', insertedRound.id);
 
   // Reset all players to active for the new round (winner only)
