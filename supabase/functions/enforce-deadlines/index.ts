@@ -417,13 +417,22 @@ serve(async (req) => {
     if (game.status === 'in_progress' || game.status === 'betting') {
       // ============= 3A. HOLM GAME TURN TIMEOUTS =============
       if (game.game_type === 'holm-game') {
-        const { data: overdueRounds } = await supabase
+        const baseRoundQuery = supabase
           .from('rounds')
           .select('*')
           .eq('game_id', gameId)
           .eq('status', 'betting')
           .not('decision_deadline', 'is', null)
-          .lt('decision_deadline', nowIso)
+          .lt('decision_deadline', nowIso);
+
+        // CRITICAL: scope enforcement to the active dealer game.
+        // Otherwise an old betting round from a previous dealer_game can steal enforcement and leave
+        // the current Holm hand without a visible countdown / bot action.
+        const roundQuery = game.current_game_uuid
+          ? baseRoundQuery.eq('dealer_game_id', game.current_game_uuid)
+          : baseRoundQuery;
+
+        const { data: overdueRounds } = await roundQuery
           .order('decision_deadline', { ascending: true })
           .limit(1);
 

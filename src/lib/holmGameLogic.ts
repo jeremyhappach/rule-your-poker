@@ -25,22 +25,33 @@ export async function checkHolmRoundComplete(gameId: string) {
     return;
   }
 
-  // CRITICAL: For Holm games, always use the LATEST round by round_number
-  // game.current_round can be stale due to race conditions
-  const { data: round } = await supabase
+  // CRITICAL: scope ALL Holm round selection to the active dealer_game_id.
+  // round_number resets when starting a new dealer game (e.g., switching 3-5-7 -> Holm),
+  // so ordering by round_number across the whole session is unsafe.
+  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
+
+  const baseRoundQuery = supabase
     .from('rounds')
     .select('*')
-    .eq('game_id', gameId)
-    .order('round_number', { ascending: false })
+    .eq('game_id', gameId);
+
+  const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
+
+  const { data: round } = await roundQuery
+    .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
     
   if (!round) {
     console.log('[HOLM CHECK] Round not found');
     return;
   }
   
-  console.log('[HOLM CHECK] Using latest round:', round.round_number, '(game.current_round was:', game.current_round, ')');
+  console.log('[HOLM CHECK] Using latest round for dealer game:', {
+    dealerGameId,
+    round_number: round.round_number,
+    game_current_round: game.current_round,
+  });
   
   const { data: players } = await supabase
     .from('players')
@@ -169,13 +180,18 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     return;
   }
   
-  // CRITICAL: For Holm games, always use the LATEST round by round_number
-  // game.current_round can be stale due to race conditions
-  const { data: round } = await supabase
+  // CRITICAL: scope to active dealer_game_id to avoid mixing rounds from previous games.
+  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
+
+  const baseRoundQuery = supabase
     .from('rounds')
     .select('*')
-    .eq('game_id', gameId)
-    .order('round_number', { ascending: false })
+    .eq('game_id', gameId);
+
+  const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
+
+  const { data: round } = await roundQuery
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
     
@@ -184,7 +200,11 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     return;
   }
   
-  console.log('[HOLM TURN] Using latest round:', round.round_number, '(game.current_round was:', game.current_round, ')');
+  console.log('[HOLM TURN] Using latest round for dealer game:', {
+    dealerGameId,
+    round_number: round.round_number,
+    game_current_round: game.current_round,
+  });
   
   const { data: allPlayers } = await supabase
     .from('players')
@@ -305,58 +325,8 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 
     if (effectiveIsFirstHand) {
       console.log('[HOLM] ✅ Successfully acquired first-hand lock (is_first_hand -> false)');
-
-      // CRITICAL FIX: Do NOT delete old rounds - they belong to previous dealer games and are needed
-      // for Hand History. Instead, just mark any non-completed rounds as completed to prevent
-      // stale card rendering. The new Holm game has a unique dealer_game_id, so old rounds won't interfere.
-      console.log('[HOLM] FIRST HAND - marking any existing non-completed rounds as completed (preserving for history)');
-      
-      const { data: oldRounds } = await supabase
-        .from('rounds')
-        .select('id, round_number, status, dealer_game_id')
-        .eq('game_id', gameId)
-        .neq('status', 'completed');
-
-      if (oldRounds && oldRounds.length > 0) {
-        const oldRoundIds = oldRounds.map(r => r.id);
-        console.log('[HOLM] Found', oldRounds.length, 'non-completed rounds to mark completed:',
-          oldRounds.map(r => ({ id: r.id, round: r.round_number, dealer_game_id: r.dealer_game_id })));
-        
-        await supabase
-          .from('rounds')
-          .update({ status: 'completed' })
-          .in('id', oldRoundIds);
-
-        console.log('[HOLM] ✅ Marked', oldRoundIds.length, 'old rounds as completed (preserved for history)');
-      }
-    }
-  }
-  
-  // CRITICAL FIX: Before creating any new round, mark ALL existing non-completed rounds as completed
-  // This prevents the "round misalignment" bug where multiple betting rounds exist simultaneously
-  // and hand evaluation uses community cards from the wrong round
-  // NOTE: Skip on first hand because we delete any old rounds above.
-  if (!effectiveIsFirstHand) {
-    console.log('[HOLM] Cleaning up any non-completed rounds before creating new hand...');
-
-    const { data: nonCompletedRounds } = await supabase
-      .from('rounds')
-      .select('id, round_number, status')
-      .eq('game_id', gameId)
-      .neq('status', 'completed');
-
-    if (nonCompletedRounds && nonCompletedRounds.length > 0) {
-      console.log('[HOLM] Found', nonCompletedRounds.length, 'non-completed rounds to clean up:',
-        nonCompletedRounds.map(r => ({ id: r.id, round: r.round_number, status: r.status })));
-
-      // Mark all non-completed rounds as completed
-      const roundIds = nonCompletedRounds.map(r => r.id);
-      await supabase
-        .from('rounds')
-        .update({ status: 'completed' })
-        .in('id', roundIds);
-
-      console.log('[HOLM] ✅ Marked', roundIds.length, 'rounds as completed');
+      // IMPORTANT: Do NOT mutate rounds from previous dealer games.
+      // Correct isolation is achieved via dealer_game_id scoping everywhere we read/write rounds.
     }
   }
   
@@ -684,13 +654,18 @@ export async function endHolmRound(gameId: string) {
     status: game.status
   });
 
-  // CRITICAL: Fetch the MOST RECENT round by round_number, not game.current_round
-  // This prevents issues when current_round is stale due to race conditions
-  const { data: round } = await supabase
+  // CRITICAL: Fetch the active round within the current dealer game.
+  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
+
+  const baseRoundQuery = supabase
     .from('rounds')
     .select('*')
-    .eq('game_id', gameId)
-    .order('round_number', { ascending: false })
+    .eq('game_id', gameId);
+
+  const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
+
+  const { data: round } = await roundQuery
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -699,7 +674,11 @@ export async function endHolmRound(gameId: string) {
     return;
   }
   
-  console.log('[HOLM END] Using most recent round:', round.round_number, '(game.current_round was:', game.current_round, ')');
+  console.log('[HOLM END] Using most recent round for dealer game:', {
+    dealerGameId,
+    round_number: round.round_number,
+    game_current_round: game.current_round,
+  });
 
   // Guard: Prevent multiple simultaneous calls - if round is completed, processing, or Chucky is already active, exit
   // Check status and chucky_active to prevent race conditions
