@@ -7,6 +7,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
+import { logDiceEvent, logRaceConditionGuard, logDealerAnnouncement } from "./gameStateDebugLog";
 
 /**
  * Start a new Ship Captain Crew round
@@ -15,6 +16,11 @@ import { recordGameResult } from "./gameLogic";
  */
 export async function startSCCRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[SCC] 🎲 Starting round', { gameId, isFirstHand });
+  
+  await logDiceEvent(gameId, 'DICE_ROUND_START', 'sccRoundLogic:startSCCRound:entry', {
+    isFirstHand,
+    gameType: 'ship-captain-crew',
+  });
 
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
@@ -26,6 +32,17 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   if (gameError || !game) {
     console.error('[SCC] Failed to get game:', gameError);
     throw new Error('Failed to get game state');
+  }
+
+  // TERMINAL STATE GUARD: Don't start rounds if game is already over
+  if (game.status === 'game_over' || game.status === 'session_ended') {
+    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'BLOCKED_GAME_OVER', {
+      currentStatus: game.status,
+      dealerGameId: game.current_game_uuid,
+      isFirstHand,
+    });
+    console.log('[SCC] Blocked round start - game already in terminal state:', game.status);
+    return;
   }
 
   // CORRECT APPROACH: Each dealer_game_id has its own hand/round numbering starting at 1.
@@ -91,8 +108,15 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
 
     if (!claim || claim.length === 0) {
       console.log('[SCC] Another client claimed first-hand start, skipping');
+      await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'FIRST_HAND_CLAIM_LOST', {
+        dealerGameId: game.current_game_uuid,
+      });
       return;
     }
+    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'FIRST_HAND_CLAIM_WON', {
+      dealerGameId: game.current_game_uuid,
+      newHandNumber: newHandNumber,
+    });
   } else if (game.awaiting_next_round) {
     // Rollover / re-ante: multiple clients may see awaiting_next_round and try to start the next hand.
     let q = supabase
@@ -122,8 +146,16 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
 
     if (!claim || claim.length === 0) {
       console.log('[SCC] Another client claimed rollover start (or no longer awaiting), skipping');
+      await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_LOST', {
+        dealerGameId: game.current_game_uuid,
+        previousRound: game.current_round,
+      });
       return;
     }
+    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_WON', {
+      dealerGameId: game.current_game_uuid,
+      newHandNumber: newHandNumber,
+    });
   }
   // Check if round already exists within THIS dealer game (race condition protection)
   const { data: existingRound } = await supabase
@@ -138,6 +170,13 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     console.log('[SCC] Round already exists, just updating game status', {
       roundId: existingRound.id,
       roundNumber: newRoundNumber,
+    });
+
+    await logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROUND_ALREADY_EXISTS', {
+      existingRoundId: existingRound.id,
+      roundNumber: newRoundNumber,
+      handNumber: newHandNumber,
+      dealerGameId,
     });
 
     const existingHandNumber = (existingRound as any)?.hand_number as number | null;
@@ -266,6 +305,19 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   }
 
   console.log('[SCC] Round created:', roundData.id, 'pot:', potForRound);
+  
+  await logDiceEvent(gameId, 'DICE_ROUND_START', 'sccRoundLogic:startSCCRound:roundCreated', {
+    dealerGameId,
+    roundId: roundData.id,
+    handNumber: newHandNumber,
+    roundNumber: newRoundNumber,
+    pot: potForRound,
+    turnOrder,
+    currentTurnPlayerId: turnOrder[0] ?? null,
+    gameType: 'ship-captain-crew',
+    isFirstHand,
+    playerCount: activePlayers.length,
+  });
 
   // STEP 2: Update game status/pointers BEFORE collecting antes
   // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
@@ -328,6 +380,18 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
         game.current_game_uuid || null // dealer_game_id
       );
       console.log('[SCC] Recorded ante chip changes in game_results:', anteChipChanges);
+      
+      await logDiceEvent(gameId, 'ANTE_COLLECTION', 'sccRoundLogic:startSCCRound:antesCollected', {
+        dealerGameId,
+        roundId: roundData.id,
+        handNumber: newHandNumber,
+        playerCount: activePlayers.length,
+        anteAmount,
+        totalCollected: newAnteTotal,
+        pot: potForRound,
+        gameType: 'ship-captain-crew',
+        isFirstHand,
+      });
     }
   }
 }
@@ -339,9 +403,29 @@ export async function endSCCRound(
   gameId: string, 
   winnerId: string | null, 
   winnerDescription: string,
-  isTie: boolean = false
+  isTie: boolean = false,
+  extraContext?: {
+    dealerGameId?: string | null;
+    roundId?: string | null;
+    handNumber?: number;
+    pot?: number;
+    winnerIds?: string[];
+    playerResults?: Record<string, { rank: number; description: string }>;
+  }
 ): Promise<void> {
   console.log('[SCC] Ending round', { gameId, winnerId, winnerDescription, isTie });
+  
+  await logDiceEvent(gameId, isTie ? 'DICE_TIE_DETECTED' : 'DICE_WIN_PROCESSING', 'sccRoundLogic:endSCCRound:entry', {
+    dealerGameId: extraContext?.dealerGameId,
+    roundId: extraContext?.roundId,
+    handNumber: extraContext?.handNumber,
+    pot: extraContext?.pot,
+    winnerIds: winnerId ? [winnerId] : extraContext?.winnerIds,
+    tieDetected: isTie,
+    winnerDescription,
+    playerResults: extraContext?.playerResults,
+    gameType: 'ship-captain-crew',
+  });
 
   if (isTie) {
     // For ties, set awaiting_next_round which will trigger re-ante
@@ -356,6 +440,14 @@ export async function endSCCRound(
     if (error) {
       console.error('[SCC] Failed to set tie state:', error);
     }
+    
+    await logDealerAnnouncement(gameId, 'sccRoundLogic:endSCCRound', 'TIE_ROLLOVER', 'One tie all tie - rollover', {
+      dealerGameId: extraContext?.dealerGameId,
+      roundId: extraContext?.roundId,
+      handNumber: extraContext?.handNumber,
+      pot: extraContext?.pot,
+      gameType: 'ship-captain-crew',
+    });
   } else if (winnerId) {
     // Winner takes the pot
     const { error } = await supabase
@@ -370,5 +462,15 @@ export async function endSCCRound(
     if (error) {
       console.error('[SCC] Failed to set game over:', error);
     }
+    
+    await logDiceEvent(gameId, 'DICE_GAME_COMPLETE', 'sccRoundLogic:endSCCRound:gameOver', {
+      dealerGameId: extraContext?.dealerGameId,
+      roundId: extraContext?.roundId,
+      handNumber: extraContext?.handNumber,
+      pot: extraContext?.pot,
+      winnerIds: [winnerId],
+      winnerDescription,
+      gameType: 'ship-captain-crew',
+    });
   }
 }
