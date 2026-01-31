@@ -71,36 +71,31 @@ export async function checkHolmRoundComplete(gameId: string, decidingPlayerPosit
   console.log('[HOLM CHECK] All players decided?', allDecided);
   
   if (allDecided) {
-    // CRITICAL: Check if all_decisions_in is ALREADY true (another call beat us)
-    // This prevents multiple concurrent calls from all triggering endHolmRound
-    if (game.all_decisions_in) {
-      console.log('[HOLM CHECK] all_decisions_in already true - another call already processing, skipping');
-      return;
-    }
-    
-    // CRITICAL: Also check round status - if already processing/showdown/completed, skip
+    // CRITICAL: If already processing/showdown/completed, skip
     if (round.status === 'processing' || round.status === 'showdown' || round.status === 'completed') {
       console.log('[HOLM CHECK] Round already in status:', round.status, '- skipping duplicate call');
       return;
     }
-    
-    console.log('[HOLM CHECK] All players decided, attempting atomic all_decisions_in flag set');
-    
-    // CRITICAL: Use atomic guard to prevent race conditions / duplicate endHolmRound calls
-    const { data: updateResult, error: updateError } = await supabase
-      .from('games')
-      .update({ all_decisions_in: true })
-      .eq('id', gameId)
-      .eq('all_decisions_in', false) // Only update if not already set - atomic guard
-      .select();
-    
-    // Only the first call that successfully sets the flag should proceed
-    if (updateError || !updateResult || updateResult.length === 0) {
-      console.log('[HOLM CHECK] Another client already set all_decisions_in - skipping duplicate endHolmRound');
-      return;
+
+    // IMPORTANT: Do NOT bail out just because game.all_decisions_in is already true.
+    // The backend timeout enforcer can set all_decisions_in without completing the round.
+    // endHolmRound itself has an atomic (betting -> processing) lock, so it's safe to call.
+    if (game.all_decisions_in) {
+      console.warn('[HOLM CHECK] all_decisions_in already true - attempting recovery by calling endHolmRound');
+    } else {
+      console.log('[HOLM CHECK] All players decided, setting all_decisions_in');
+
+      // Atomic guard to avoid thrashing writes; if we lose, we'll still proceed to endHolmRound safely.
+      const { error: updateError } = await supabase
+        .from('games')
+        .update({ all_decisions_in: true })
+        .eq('id', gameId)
+        .eq('all_decisions_in', false);
+
+      if (updateError) {
+        console.warn('[HOLM CHECK] Failed to set all_decisions_in (non-fatal):', updateError.message);
+      }
     }
-    
-    console.log('[HOLM CHECK] Successfully acquired lock, proceeding with endHolmRound');
     
     // DEBUG LOG: all_decisions_in set
     await logAllDecisionsIn(gameId, round.id, true, 'holmGameLogic:checkHolmRoundComplete', {
