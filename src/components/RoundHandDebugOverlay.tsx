@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bug, ChevronDown, ChevronUp, RefreshCw, Copy, Check } from "lucide-react";
+import { Bug, ChevronDown, ChevronUp, RefreshCw, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -35,44 +35,52 @@ interface RoundHandDebugOverlayProps {
   inline?: boolean;
 }
 
-/** Small inline copy row for UUIDs */
-function CopyRow({ label, value }: { label: string; value: string | null }) {
-  const [copied, setCopied] = useState(false);
-  const display = value ? `${value.slice(0, 8)}…` : "-";
+/** Format snapshot as copyable text */
+function formatSnapshotForCopy(snapshot: Snapshot): string {
+  const lines = [
+    `=== Debug Snapshot ===`,
+    `Timestamp: ${snapshot.ts}`,
+    ``,
+    `Game ID: ${snapshot.gameId}`,
+    `Dealer Game ID: ${snapshot.dealerGameId ?? "null"}`,
+    `Game Type: ${snapshot.gameType ?? "-"}`,
+    `Game Status: ${snapshot.gameStatus ?? "-"}`,
+    ``,
+    `--- Game State ---`,
+    `Current Hand: ${snapshot.gameCurrentHand ?? "-"}`,
+    `Current Round: ${snapshot.gameCurrentRound ?? "-"}`,
+    ``,
+    `--- Rounds Table (this dealer game) ---`,
+    `Rounds Loaded: ${snapshot.roundsLoaded}`,
+    `Max Hand from Rounds: ${snapshot.maxHandFromRounds ?? "-"}`,
+    `Max Round #: ${snapshot.maxRoundFromRounds ?? "-"}`,
+    `Max Round in Max Hand: ${snapshot.maxRoundInMaxHand ?? "-"}`,
+    `Has Exact Round for Game State: ${snapshot.hasExactRoundForGameState}`,
+  ];
 
-  const handleCopy = async () => {
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      toast.success(`${label} ID copied`);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      toast.error("Copy failed");
-    }
-  };
+  if (snapshot.latestRoundKey) {
+    lines.push(
+      ``,
+      `--- Latest Round ---`,
+      `Round ID: ${snapshot.latestRoundKey.id}`,
+      `Hand/Round: ${snapshot.latestRoundKey.hand ?? "-"}/${snapshot.latestRoundKey.round}`,
+      `Status: ${snapshot.latestRoundKey.status}`
+    );
+  }
 
-  return (
-    <div className="flex items-center justify-between gap-1">
-      <span className="text-muted-foreground">{label}:</span>
-      <div className="flex items-center gap-1">
-        <span className="font-mono text-[9px] truncate max-w-[80px]">{display}</span>
-        {value && (
-          <button
-            onClick={handleCopy}
-            className="p-0.5 rounded hover:bg-muted"
-            title={`Copy full ${label} ID`}
-          >
-            {copied ? (
-              <Check className="h-2.5 w-2.5 text-primary" />
-            ) : (
-              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
-            )}
-          </button>
-        )}
-      </div>
-    </div>
-  );
+  const mismatch =
+    typeof snapshot.gameCurrentHand === "number" &&
+    typeof snapshot.maxHandFromRounds === "number" &&
+    snapshot.gameCurrentHand > snapshot.maxHandFromRounds;
+
+  if (mismatch) {
+    lines.push(``, `⚠ HAND MISMATCH: game says ${snapshot.gameCurrentHand}, rounds max is ${snapshot.maxHandFromRounds}`);
+  }
+  if (!snapshot.hasExactRoundForGameState && snapshot.gameCurrentHand !== null) {
+    lines.push(`⚠ ROUND MISSING: H${snapshot.gameCurrentHand}/R${snapshot.gameCurrentRound} not in table`);
+  }
+
+  return lines.join("\n");
 }
 
 export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebugOverlayProps) {
@@ -277,14 +285,28 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
 
             {snapshot ? (
               <div className="space-y-1.5">
-                {/* IDs with Copy */}
-                <div className="border-b border-border pb-1 space-y-0.5">
-                  <CopyRow label="Game" value={snapshot.gameId} />
-                  <CopyRow label="Dealer" value={snapshot.dealerGameId} />
-                </div>
+                {/* Copy All Button */}
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(formatSnapshotForCopy(snapshot));
+                      toast.success("Debug data copied!");
+                    } catch {
+                      toast.error("Copy failed");
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-1 py-1 px-2 rounded bg-primary text-primary-foreground text-[10px] font-medium hover:bg-primary/90"
+                >
+                  <Copy className="h-3 w-3" />
+                  Copy All Debug Data
+                </button>
 
                 {/* Game State */}
-                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 border-t border-border pt-1">
+                  <span className="text-muted-foreground">Game:</span>
+                  <span className="font-mono text-[9px] truncate">{snapshot.gameId.slice(0, 8)}…</span>
+                  <span className="text-muted-foreground">Dealer:</span>
+                  <span className="font-mono text-[9px] truncate">{snapshot.dealerGameId ? `${snapshot.dealerGameId.slice(0, 8)}…` : "-"}</span>
                   <span className="text-muted-foreground">Hand:</span>
                   <span className={mismatch ? "text-destructive font-bold" : ""}>
                     {snapshot.gameCurrentHand ?? "-"}
