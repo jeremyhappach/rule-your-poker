@@ -1858,14 +1858,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           currentRoundNumber: game?.current_round ?? null,
         })
       : game?.rounds?.find((r: any) => r.round_number === game?.current_round) ?? null;
-    const stuckHolmState = 
-      game?.game_type === 'holm-game' &&
-      game?.status === 'in_progress' &&
-      game?.all_decisions_in === true &&
-      !game?.awaiting_next_round &&
-      latestRound?.status === 'betting' &&
-      currentPlayer;
-
     // CRITICAL: Detect stuck Holm showdown where the round is already in 'showdown' but the
     // last 2 community cards never flipped (community_cards_revealed stays at 2).
     // This can happen if the client that acquired the round lock disconnects mid-showdown.
@@ -1884,7 +1876,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (!game?.rounds || game?.rounds?.length === 0) &&
       currentPlayer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || stuckHolmState || holmShowdownStuck || holmNoRound;
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || holmShowdownStuck || holmNoRound;
     
     if (!shouldPoll) return;
     
@@ -1899,8 +1891,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       waitingForGameStart,
       hostWaitingForPlayers,
       observerWaitingForPlayers,
-      stuckHolmState,
-        holmShowdownStuck,
+      holmShowdownStuck,
       holmNoRound,
       showAnteDialog,
       gameStatus: game?.status,
@@ -1910,22 +1901,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Poll at reasonable intervals - NOT 250ms which hammers the DB
     // Critical states poll every 2 seconds, normal states every 3 seconds
     const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 3000 : 
-      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState || holmNoRound) ? 2000 : 3000;
+      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || holmNoRound) ? 2000 : 3000;
     
     const intervalId = setInterval(async () => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
-      
-      // If stuck in Holm state, try to fix it by resetting all_decisions_in
-      if (stuckHolmState) {
-        console.log('[CRITICAL POLL] Detected stuck Holm state - attempting recovery');
-        // Reset all_decisions_in to allow the game to continue
-        await supabase
-          .from('games')
-          .update({ all_decisions_in: false })
-          .eq('id', gameId)
-          .eq('all_decisions_in', true)
-          .eq('awaiting_next_round', false);
-      }
 
       // If Holm showdown is stuck (community cards never fully revealed), attempt to resume
       // the showdown safely (holmGameLogic has an atomic recovery claim).
