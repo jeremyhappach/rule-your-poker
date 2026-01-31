@@ -318,6 +318,16 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   // The unique constraint is now (dealer_game_id, hand_number, round_number).
   // Query only rounds for THIS dealer game to find the next hand number.
   const dealerGameId = gameConfig.current_game_uuid;
+  if (!dealerGameId) {
+    // This should never happen; dealer_game_id is the authoritative namespace for Holm rounds.
+    // If we proceed here, we'd create an orphan round that the app won't be able to find later.
+    console.error('[HOLM] CRITICAL: Missing current_game_uuid on game; aborting startHolmRound to prevent orphan rounds', {
+      gameId,
+      status: gameConfig.status,
+      gameType: gameConfig.game_type,
+    });
+    throw new Error('Holm game is missing current_game_uuid (dealer game id)');
+  }
   
   let handNumber: number;
   if (effectiveIsFirstHand) {
@@ -508,7 +518,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       chucky_active: false,
       current_turn_position: buckPosition,
       hand_number: handNumber,
-      dealer_game_id: gameConfig?.current_game_uuid || null
+      dealer_game_id: dealerGameId
     })
     .select()
     .single();
@@ -573,14 +583,14 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   // Update game status AND current_round for Holm games
   // CRITICAL: current_round MUST be updated so MobileGameTable can detect new rounds
   // Also set is_first_hand = false after first hand is dealt
-  console.log('[HOLM] Updating game status with current_round:', nextRoundNumber, 'is_first_hand will be set to false');
+  console.log('[HOLM] Updating game status with current_round:', round.round_number, 'is_first_hand will be set to false');
   const { error: gameUpdateError } = await supabase
     .from('games')
     .update({
       status: 'in_progress',
-      current_round: nextRoundNumber, // RESTORED: Must update for round detection
+      current_round: round.round_number, // Use inserted row to prevent hand/round drift
       buck_position: buckPosition,
-      total_hands: handNumber,
+      total_hands: round.hand_number, // Use inserted row to prevent hand/round drift
       all_decisions_in: false,
       last_round_result: null,
       is_first_hand: false, // CRITICAL: Clear flag after first hand is dealt
