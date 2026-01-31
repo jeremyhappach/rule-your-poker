@@ -683,9 +683,116 @@ export async function endHolmRound(gameId: string) {
     game_current_round: game.current_round,
   });
 
-  // Guard: Prevent multiple simultaneous calls - if round is completed, processing, or Chucky is already active, exit
-  // Check status and chucky_active to prevent race conditions
-  if (round.status === 'completed' || round.status === 'showdown' || round.status === 'processing' || round.chucky_active) {
+  // =============================
+  // SHOWDOWN RECOVERY (MULTI-PLAYER)
+  // =============================
+  // If the client that acquired the atomic 'betting'->'processing' lock disconnects after switching
+  // the round to 'showdown' but before revealing the last 2 community cards, the game can deadlock
+  // because other clients previously exited early on round.status === 'showdown'.
+  //
+  // Recovery rule: If we are already in showdown but community_cards_revealed < 4, attempt an
+  // atomic claim via decision_deadline (as a temporary lock token) and finish the showdown.
+  const roundCommunityRevealed = round.community_cards_revealed ?? 0;
+  if (round.status === 'showdown' && roundCommunityRevealed < 4) {
+    const recoveryToken = new Date(Date.now() + 15_000).toISOString();
+    console.warn('[HOLM END] ⚠️ Detected stuck showdown (community_cards_revealed < 4). Attempting recovery claim...', {
+      roundId: round.id,
+      community_cards_revealed: roundCommunityRevealed,
+    });
+
+    // Atomic claim: only one client should proceed.
+    const { data: recoveryClaim, error: recoveryClaimError } = await supabase
+      .from('rounds')
+      .update({ decision_deadline: recoveryToken })
+      .eq('id', round.id)
+      .eq('status', 'showdown')
+      .is('decision_deadline', null)
+      .or('community_cards_revealed.is.null,community_cards_revealed.lt.4')
+      .select();
+
+    if (recoveryClaimError || !recoveryClaim || recoveryClaim.length === 0) {
+      console.log('[HOLM END] Recovery claim failed or already claimed by another client - skipping', {
+        error: recoveryClaimError?.message,
+      });
+      return;
+    }
+
+    // Extract community cards for later use - ensure proper parsing from JSON
+    let communityCards: Card[] = [];
+    try {
+      const rawCommunity = round.community_cards;
+      if (Array.isArray(rawCommunity)) {
+        communityCards = rawCommunity.map((c: any) => ({
+          suit: (c.suit || c.Suit) as Suit,
+          rank: String(c.rank || c.Rank).toUpperCase() as Rank,
+        }));
+      } else if (typeof rawCommunity === 'string') {
+        const parsed = JSON.parse(rawCommunity);
+        communityCards = parsed.map((c: any) => ({
+          suit: (c.suit || c.Suit) as Suit,
+          rank: String(c.rank || c.Rank).toUpperCase() as Rank,
+        }));
+      }
+    } catch (e) {
+      console.error('[HOLM END] ERROR parsing community cards (recovery):', e);
+    }
+
+    const { data: players } = await supabase
+      .from('players')
+      .select('*, profiles(username)')
+      .eq('game_id', gameId)
+      .eq('status', 'active')
+      .eq('sitting_out', false)
+      .order('position');
+
+    const stayedPlayers = (players || []).filter((p: any) => p.current_decision === 'stay');
+
+    // Fetch ALL player cards now (same as the normal endHolmRound path)
+    const { data: allPlayerCardsData } = await supabase
+      .from('player_cards')
+      .select('*, players!inner(*, profiles(username))')
+      .eq('round_id', round.id);
+
+    try {
+      if (stayedPlayers.length >= 2) {
+        // Ensure visibility is correct (idempotent)
+        const seatedUserIds = (players || []).map((p: any) => p.user_id);
+        await supabase
+          .from('player_cards')
+          .update({ visible_to_user_ids: seatedUserIds })
+          .eq('round_id', round.id);
+
+        const roundPot = round.pot || game.pot || 0;
+        await handleMultiPlayerShowdown(
+          gameId,
+          round.id,
+          stayedPlayers,
+          communityCards,
+          game,
+          roundPot,
+          allPlayerCardsData || []
+        );
+      } else {
+        console.error('[HOLM END] Recovery detected showdown but stayedPlayers < 2 - bailing', {
+          stayedPlayers: stayedPlayers.length,
+        });
+      }
+    } finally {
+      // Release recovery token if it's still ours.
+      await supabase
+        .from('rounds')
+        .update({ decision_deadline: null })
+        .eq('id', round.id)
+        .eq('decision_deadline', recoveryToken);
+    }
+
+    return;
+  }
+
+  // Guard: Prevent multiple simultaneous calls.
+  // NOTE: We no longer exit early on round.status === 'showdown' because we have an explicit
+  // showdown recovery path above.
+  if (round.status === 'completed' || round.status === 'processing' || round.chucky_active) {
     console.log('[HOLM END] Round already being processed or completed, skipping', {
       status: round.status,
       chucky_active: round.chucky_active
@@ -1182,7 +1289,8 @@ async function handleChuckyShowdown(
     .select('*')
     .eq('player_id', player.id)
     .eq('round_id', roundId)
-    .order('created_at', { ascending: true })
+    // Deterministic ordering without timestamps (avoid created_at ordering)
+    .order('id', { ascending: true })
     .limit(1);
 
   if (cardsError || !playerCardsArray || playerCardsArray.length === 0) {
@@ -1976,12 +2084,13 @@ async function handleMultiPlayerShowdown(
         })
         .eq('id', gameId);
       
-      // Also update round1.pot so next hand has correct pot
+      // CRITICAL: Update the ACTIVE round ONLY.
+      // Never update by round_number alone (multiple game types share the same session/game_id,
+      // and 3-5-7 round_number cycles). Round ID is the authoritative key.
       await supabase
         .from('rounds')
         .update({ pot: newPot })
-        .eq('game_id', gameId)
-        .eq('round_number', 1);
+        .eq('id', roundId);
     } else {
       // Some (or all) tied players beat Chucky - GAME ENDS, Chucky lost
       console.log('[HOLM TIE] Players beat Chucky - GAME OVER');

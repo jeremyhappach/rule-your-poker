@@ -1865,6 +1865,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       !game?.awaiting_next_round &&
       latestRound?.status === 'betting' &&
       currentPlayer;
+
+    // CRITICAL: Detect stuck Holm showdown where the round is already in 'showdown' but the
+    // last 2 community cards never flipped (community_cards_revealed stays at 2).
+    // This can happen if the client that acquired the round lock disconnects mid-showdown.
+    const holmShowdownStuck =
+      game?.game_type === 'holm-game' &&
+      game?.status === 'in_progress' &&
+      latestRound?.status === 'showdown' &&
+      (latestRound?.community_cards_revealed ?? 0) < 4 &&
+      currentPlayer;
     
     // Also detect when Holm game started but no round was created
     // CRITICAL: Check rounds array, NOT game.current_round (which we no longer update for Holm)
@@ -1874,7 +1884,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (!game?.rounds || game?.rounds?.length === 0) &&
       currentPlayer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || stuckHolmState || holmNoRound;
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || stuckHolmState || holmShowdownStuck || holmNoRound;
     
     if (!shouldPoll) return;
     
@@ -1890,6 +1900,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       hostWaitingForPlayers,
       observerWaitingForPlayers,
       stuckHolmState,
+        holmShowdownStuck,
       holmNoRound,
       showAnteDialog,
       gameStatus: game?.status,
@@ -1914,6 +1925,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('id', gameId)
           .eq('all_decisions_in', true)
           .eq('awaiting_next_round', false);
+      }
+
+      // If Holm showdown is stuck (community cards never fully revealed), attempt to resume
+      // the showdown safely (holmGameLogic has an atomic recovery claim).
+      if (holmShowdownStuck) {
+        console.log('[CRITICAL POLL] Detected stuck Holm showdown - attempting to resume endHolmRound');
+        try {
+          await endHolmRound(gameId!);
+        } catch (e) {
+          console.error('[CRITICAL POLL] Failed to resume stuck Holm showdown:', e);
+        }
       }
       
       // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
