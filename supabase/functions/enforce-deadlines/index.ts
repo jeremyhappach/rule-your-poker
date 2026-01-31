@@ -706,6 +706,13 @@ serve(async (req) => {
 
           if (lockResult && lockResult.length > 0) {
             actionsTaken.push('All players decided - flagged for showdown');
+
+            // CRITICAL: Clear turn/timer so clients don't keep rendering a turn spotlight/timer
+            // while waiting for the client-side end-of-round logic to run.
+            await supabase
+              .from('rounds')
+              .update({ current_turn_position: null, decision_deadline: null })
+              .eq('id', currentRound.id);
           }
         }
       }

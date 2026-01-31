@@ -1906,6 +1906,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       latestRound?.status === 'showdown' &&
       (latestRound?.community_cards_revealed ?? 0) < 4 &&
       currentPlayer;
+
+    // CRITICAL: Detect Holm stuck state where all_decisions_in is already true (often set by backend timeout
+    // enforcement) but the round is still 'betting'. In this state, the UI can appear stuck (spotlight/turn
+    // confusion) unless a client calls endHolmRound.
+    const holmAllDecidedButBettingStuck =
+      game?.game_type === 'holm-game' &&
+      game?.status === 'in_progress' &&
+      game?.all_decisions_in === true &&
+      latestRound?.status === 'betting' &&
+      currentPlayer;
     
     // Also detect when Holm game started but no round was created
     // CRITICAL: Check rounds array, NOT game.current_round (which we no longer update for Holm)
@@ -1915,7 +1925,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (!game?.rounds || game?.rounds?.length === 0) &&
       currentPlayer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || holmShowdownStuck || holmNoRound;
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || holmShowdownStuck || holmAllDecidedButBettingStuck || holmNoRound;
     
     if (!shouldPoll) return;
     
@@ -1955,6 +1965,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           console.error('[CRITICAL POLL] Failed to resume stuck Holm showdown:', e);
         }
       }
+
+      // If backend already flagged all_decisions_in but the round is still betting, force recovery.
+      if (holmAllDecidedButBettingStuck) {
+        console.log('[CRITICAL POLL] Detected Holm all_decisions_in=true but round still betting - attempting to run endHolmRound');
+        try {
+          await endHolmRound(gameId!);
+        } catch (e) {
+          console.error('[CRITICAL POLL] Failed to recover Holm betting-stuck state:', e);
+        }
+      }
       
       // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
       // The proper flow is: ante collection (line 2959) -> startHolmRound -> round created.
@@ -1970,7 +1990,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[CRITICAL POLL] Stopping polling');
       clearInterval(intervalId);
     };
-  }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
+   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
   
   // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
   // More aggressive polling to prevent round desync between clients
