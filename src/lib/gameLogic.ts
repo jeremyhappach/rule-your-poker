@@ -365,9 +365,10 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   const currentPot = currentGameForPot?.pot || 0;
   
-  // Build game update object - update total_hands for EVERY round (each round = a hand)
+  // Build game update object - CRITICAL: use insertedRound values to prevent drift
+  // This ensures games.current_round/total_hands always match the actual round record
   const gameUpdate: Record<string, unknown> = {
-    current_round: roundNumber,
+    current_round: insertedRound.round_number, // Use inserted row, not local variable
     all_decisions_in: false,
     pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
     // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
@@ -376,8 +377,8 @@ export async function startRound(gameId: string, roundNumber: number) {
   };
 
   // Only bump hand count when starting Round 1 of a new hand
-  if (roundNumber === 1) {
-    gameUpdate.total_hands = handNumber;
+  if (insertedRound.round_number === 1) {
+    gameUpdate.total_hands = insertedRound.hand_number; // Use inserted row, not local variable
   }
   
   const { error: gameUpdateError } = await supabase
@@ -391,10 +392,10 @@ export async function startRound(gameId: string, roundNumber: number) {
   }
   
   console.log('[START_ROUND] Game state updated:', {
-    current_round: roundNumber,
+    current_round: insertedRound.round_number,
     all_decisions_in: false,
     pot: currentPot + initialPot,
-    total_hands: roundNumber === 1 ? handNumber : currentHandNumber,
+    total_hands: insertedRound.round_number === 1 ? insertedRound.hand_number : currentHandNumber,
   });
   
   // Update round pot to reflect the ante collection
