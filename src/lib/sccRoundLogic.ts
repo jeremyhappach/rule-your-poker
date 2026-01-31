@@ -28,24 +28,41 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     throw new Error('Failed to get game state');
   }
 
-  // Get the next round number based on existing rounds
-  const { data: latestRound, error: latestRoundError } = await supabase
-    .from('rounds')
-    .select('round_number')
-    .eq('game_id', gameId)
-    .order('round_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // CORRECT APPROACH: Each dealer_game_id has its own hand/round numbering starting at 1.
+  // The unique constraint is now (dealer_game_id, hand_number, round_number).
+  // Query only rounds for THIS dealer game to find the next hand/round number.
+  const dealerGameId = game.current_game_uuid;
+  
+  let newRoundNumber: number;
+  let newHandNumber: number;
+  
+  if (isFirstHand) {
+    // First hand of this dealer game = hand 1, round 1
+    newRoundNumber = 1;
+    newHandNumber = 1;
+    console.log('[SCC] First hand of dealer game - starting at hand_number=1, round_number=1');
+  } else {
+    // Find max hand/round within THIS dealer game only (for rollovers)
+    const { data: latestRound, error: latestRoundError } = await supabase
+      .from('rounds')
+      .select('hand_number, round_number')
+      .eq('dealer_game_id', dealerGameId)
+      .order('hand_number', { ascending: false })
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-  if (latestRoundError) {
-    console.warn('[SCC] Failed to read latest round_number (continuing):', latestRoundError);
+    if (latestRoundError) {
+      console.warn('[SCC] Failed to read latest round (continuing):', latestRoundError);
+    }
+
+    // For SCC, hand_number = round_number (one hand per round)
+    newHandNumber = (latestRound?.hand_number ?? 0) + 1;
+    newRoundNumber = newHandNumber;
+    console.log('[SCC] Rollover - next hand_number/round_number:', newHandNumber);
   }
-
-  const latestRoundNumber = latestRound?.round_number ?? 0;
-
-  const baseRoundNumber = (typeof game.current_round === 'number' ? game.current_round : latestRoundNumber) ?? 0;
-  const newRoundNumber = baseRoundNumber + 1;
-  const newHandNumber = (game.total_hands || 0) + 1;
+  
+  console.log('[SCC] Hand/Round numbering:', { dealerGameId, newHandNumber, newRoundNumber, isFirstHand });
 
   // CRITICAL: Prevent multi-client race where multiple players start the first hand at the same time,
   // OR multiple clients try to start the next hand after a rollover.
@@ -108,10 +125,12 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       return;
     }
   }
+  // Check if round already exists within THIS dealer game (race condition protection)
   const { data: existingRound } = await supabase
     .from('rounds')
     .select('id, pot, hand_number')
-    .eq('game_id', gameId)
+    .eq('dealer_game_id', dealerGameId)
+    .eq('hand_number', newHandNumber)
     .eq('round_number', newRoundNumber)
     .maybeSingle();
 
