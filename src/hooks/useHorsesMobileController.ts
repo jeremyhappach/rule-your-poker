@@ -1730,6 +1730,12 @@ export function useHorsesMobileController({
     if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
     if (winningPlayerIds.length === 0) return;
     
+    // CRITICAL: Block win processing when game is paused - prevents rollover triggering
+    if (isPaused) {
+      console.log("[HORSES] Win processing blocked - game is paused");
+      return;
+    }
+    
     // GUARD: Ensure all active players have completed results before processing
     // This prevents premature win processing from stale/cached state
     const activePlayerCount = activePlayers.length;
@@ -1899,6 +1905,7 @@ export function useHorsesMobileController({
     getPlayerUsername,
     myPlayer,
     candidateBotControllerUserId,
+    isPaused,
   ]);
 
   const rawFeltDice = useMemo(() => {
