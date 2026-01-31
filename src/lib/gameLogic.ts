@@ -666,7 +666,8 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       : baseRoundQuery;
 
     const { data: latestRound } = await roundQuery
-      .order('created_at', { ascending: false })
+      .order('hand_number', { ascending: false })
+      .order('round_number', { ascending: false })
       .limit(1)
       .maybeSingle();
 
