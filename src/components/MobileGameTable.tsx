@@ -1330,6 +1330,8 @@ export const MobileGameTable = ({
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+  // Track which handContextId the cached Chucky cards belong to
+  const cachedChuckyHandContextRef = useRef<string | null>(null);
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
@@ -1386,6 +1388,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
+      cachedChuckyHandContextRef.current = null;
     }
 
     prevRoundForCacheClearRef.current = currentRound;
@@ -1430,6 +1433,7 @@ export const MobileGameTable = ({
     setCachedChuckyCards(null);
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0);
+    cachedChuckyHandContextRef.current = null;
 
     // Solo-vs-Chucky tabling lock (must clear together with caches)
     setSoloVsChuckyTableLocked(false);
@@ -2257,7 +2261,26 @@ export const MobileGameTable = ({
         setCachedChuckyCards(null);
         setCachedChuckyActive(false);
         setCachedChuckyCardsRevealed(0);
+        cachedChuckyHandContextRef.current = null;
       }
+      return;
+    }
+    
+    // CRITICAL: Clear cached Chucky cards when handContextId changes (new hand started)
+    // This prevents stale Chucky cards from previous hand showing on new hand
+    if (
+      cachedChuckyHandContextRef.current !== null &&
+      handContextId !== null &&
+      cachedChuckyHandContextRef.current !== handContextId
+    ) {
+      console.log('[MOBILE_CHUCKY] handContextId changed - clearing stale Chucky cache', {
+        prev: cachedChuckyHandContextRef.current,
+        next: handContextId,
+      });
+      setCachedChuckyCards(null);
+      setCachedChuckyActive(false);
+      setCachedChuckyCardsRevealed(0);
+      cachedChuckyHandContextRef.current = null;
       return;
     }
     
@@ -2267,17 +2290,27 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
+      cachedChuckyHandContextRef.current = null;
       return;
     }
     
-    // Cache Chucky data when it's available
+    // Cache Chucky data when it's available AND track which hand it belongs to
     if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
-      console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length);
-      setCachedChuckyCards([...chuckyCards]);
-      setCachedChuckyActive(true);
-      setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
+      // Only update cache if handContextId matches or we don't have a cached context yet
+      if (cachedChuckyHandContextRef.current === null || cachedChuckyHandContextRef.current === handContextId) {
+        console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
+        setCachedChuckyCards([...chuckyCards]);
+        setCachedChuckyActive(true);
+        setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
+        cachedChuckyHandContextRef.current = handContextId ?? null;
+      } else {
+        console.warn('[MOBILE_CHUCKY] Skipping cache - handContextId mismatch:', {
+          cached: cachedChuckyHandContextRef.current,
+          current: handContextId,
+        });
+      }
     }
-  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards]);
+  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   // IMPORTANT: MobileGameTable can remount between hands/round transitions; we must NOT treat existing legs as "new" on mount.
