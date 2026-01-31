@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 import { getDisplayName } from "./botAlias";
 import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
+import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransition } from "./holmRoundUtils";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -14,42 +15,25 @@ export async function checkHolmRoundComplete(gameId: string) {
   // Reduced from 300ms - DB writes propagate quickly
   await new Promise(resolve => setTimeout(resolve, 50));
   
-  const { data: game } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
-    
-  if (!game) {
-    console.log('[HOLM CHECK] Game not found');
+  // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
+  const { game, round, error } = await getActiveHolmRoundWithGame(gameId);
+  
+  if (error || !game) {
+    console.log('[HOLM CHECK] Game not found:', error);
     return;
   }
-
-  // CRITICAL: scope ALL Holm round selection to the active dealer_game_id.
-  // round_number resets when starting a new dealer game (e.g., switching 3-5-7 -> Holm),
-  // so ordering by round_number across the whole session is unsafe.
-  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
-
-  const baseRoundQuery = supabase
-    .from('rounds')
-    .select('*')
-    .eq('game_id', gameId);
-
-  const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
-
-  const { data: round } = await roundQuery
-    .order('hand_number', { ascending: false })
-    .order('round_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-    
+  
   if (!round) {
     console.log('[HOLM CHECK] Round not found');
     return;
   }
   
+  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
+  
   console.log('[HOLM CHECK] Using latest round for dealer game:', {
     dealerGameId,
+    round_id: round.id,
+    hand_number: round.hand_number,
     round_number: round.round_number,
     game_current_round: game.current_round,
   });
@@ -170,40 +154,25 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
   console.log('[HOLM TURN] Using decision timer:', timerSeconds, 'seconds');
   
-  const { data: game } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
+  // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
+  const { game, round, error } = await getActiveHolmRoundWithGame(gameId);
     
-  if (!game) {
-    console.error('[HOLM TURN] ERROR: Game not found');
+  if (error || !game) {
+    console.error('[HOLM TURN] ERROR: Game not found:', error);
     return;
   }
   
-  // CRITICAL: scope to active dealer_game_id to avoid mixing rounds from previous games.
-  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
-
-  const baseRoundQuery = supabase
-    .from('rounds')
-    .select('*')
-    .eq('game_id', gameId);
-
-  const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
-
-  const { data: round } = await roundQuery
-    .order('hand_number', { ascending: false })
-    .order('round_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-    
   if (!round) {
     console.error('[HOLM TURN] ERROR: No rounds found for game');
     return;
   }
   
+  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
+  
   console.log('[HOLM TURN] Using latest round for dealer game:', {
     dealerGameId,
+    round_id: round.id,
+    hand_number: round.hand_number,
     round_number: round.round_number,
     game_current_round: game.current_round,
   });
@@ -639,14 +608,11 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] ========== Starting endHolmRound for game:', gameId, '==========');
 
-  const { data: game } = await supabase
-    .from('games')
-    .select('*')
-    .eq('id', gameId)
-    .single();
+  // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
+  const { game, round, error: fetchError } = await getActiveHolmRoundWithGame(gameId);
 
-  if (!game) {
-    console.log('[HOLM END] ERROR: Game not found');
+  if (fetchError || !game) {
+    console.log('[HOLM END] ERROR: Game not found:', fetchError);
     return;
   }
 
@@ -656,29 +622,17 @@ export async function endHolmRound(gameId: string) {
     status: game.status
   });
 
-  // CRITICAL: Fetch the active round within the current dealer game.
-  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
-
-  const baseRoundQuery = supabase
-    .from('rounds')
-    .select('*')
-    .eq('game_id', gameId);
-
-  const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
-
-  const { data: round } = await roundQuery
-    .order('hand_number', { ascending: false })
-    .order('round_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
   if (!round) {
     console.log('[HOLM END] ERROR: No rounds found for game');
     return;
   }
   
+  const dealerGameId = (game as any).current_game_uuid as string | null | undefined;
+  
   console.log('[HOLM END] Using most recent round for dealer game:', {
     dealerGameId,
+    round_id: round.id,
+    hand_number: round.hand_number,
     round_number: round.round_number,
     game_current_round: game.current_round,
   });

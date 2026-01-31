@@ -616,6 +616,70 @@ serve(async (req) => {
         }
       }
 
+      // ============= 3A-2. HOLM STUCK SHOWDOWN RECOVERY =============
+      // If a Holm round is stuck in 'showdown' status with community_cards_revealed < 4,
+      // the client that was supposed to reveal the cards died mid-process.
+      // Force-complete the showdown to unblock the game.
+      if (game.game_type === 'holm-game') {
+        const showdownQuery = supabase
+          .from('rounds')
+          .select('*')
+          .eq('game_id', gameId)
+          .eq('status', 'showdown');
+
+        const scopedShowdownQuery = game.current_game_uuid
+          ? showdownQuery.eq('dealer_game_id', game.current_game_uuid)
+          : showdownQuery;
+
+        const { data: showdownRounds } = await scopedShowdownQuery
+          .order('hand_number', { ascending: false })
+          .order('round_number', { ascending: false })
+          .limit(1);
+
+        const stuckShowdown = showdownRounds?.[0];
+
+        if (stuckShowdown) {
+          const cardsRevealed = stuckShowdown.community_cards_revealed ?? 0;
+          
+          // If stuck in showdown with cards not fully revealed, force completion
+          if (cardsRevealed < 4) {
+            console.log('[ENFORCE-CLIENT] Holm stuck showdown detected:', {
+              roundId: stuckShowdown.id,
+              community_cards_revealed: cardsRevealed,
+              status: stuckShowdown.status,
+            });
+
+            // Force reveal all 4 community cards and mark as completed
+            // The client-side recovery path will handle chip distribution on next poll
+            const { data: forceRevealResult } = await supabase
+              .from('rounds')
+              .update({ 
+                community_cards_revealed: 4,
+                status: 'completed',
+                decision_deadline: null,
+                current_turn_position: null,
+              })
+              .eq('id', stuckShowdown.id)
+              .eq('status', 'showdown')
+              .select();
+
+            if (forceRevealResult && forceRevealResult.length > 0) {
+              // Also set game to awaiting_next_round so clients can advance
+              await supabase
+                .from('games')
+                .update({ 
+                  awaiting_next_round: true,
+                  last_round_result: 'Showdown recovered - advancing to next hand',
+                  all_decisions_in: false,
+                })
+                .eq('id', gameId);
+
+              actionsTaken.push(`Holm showdown recovery: Force-revealed all community cards for round ${stuckShowdown.id}`);
+            }
+          }
+        }
+      }
+
       // ============= 3A. 3-5-7 (SIMULTANEOUS) DECISION TIMEOUTS =============
       // 3-5-7 round numbers cycle 1/2/3 each hand, so we MUST key the current round by
       // (hand_number, round_number) (and implicitly by game_id; dealer_game_id is stable per session).
