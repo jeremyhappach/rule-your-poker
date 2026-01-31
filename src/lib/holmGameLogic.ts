@@ -13,8 +13,9 @@ export async function checkHolmRoundComplete(gameId: string) {
   console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
   
   // Brief delay to ensure DB write has propagated before reading
-  // Reduced from 300ms - DB writes propagate quickly
-  await new Promise(resolve => setTimeout(resolve, 50));
+  // INCREASED from 50ms to 150ms - DB writes sometimes need more time to propagate
+  // This is critical for preventing the edge function from seeing stale decision_locked=false
+  await new Promise(resolve => setTimeout(resolve, 150));
   
   // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
   const { game, round, error } = await getActiveHolmRoundWithGame(gameId);
@@ -121,14 +122,31 @@ export async function checkHolmRoundComplete(gameId: string) {
   } else {
     // Check if current player has decided - if so, move to next player's turn
     // CRITICAL: Re-fetch the current player's state to ensure we have fresh data
-    const { data: freshCurrentPlayer } = await supabase
-      .from('players')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('position', round.current_turn_position)
-      .eq('status', 'active')
-      .eq('sitting_out', false)
-      .maybeSingle();
+    // Use a small retry loop in case the DB write is still propagating
+    let freshCurrentPlayer = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: playerData } = await supabase
+        .from('players')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('position', round.current_turn_position)
+        .eq('status', 'active')
+        .eq('sitting_out', false)
+        .maybeSingle();
+      
+      freshCurrentPlayer = playerData;
+      
+      // If player is locked, no need to retry
+      if (freshCurrentPlayer?.decision_locked) {
+        break;
+      }
+      
+      // If not locked and we have retries left, wait a bit and retry
+      if (attempt < 2) {
+        console.log('[HOLM CHECK] Player not locked yet, retrying in 100ms (attempt', attempt + 1, ')');
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
     
     console.log('[HOLM CHECK] Fresh current player data:', {
       position: freshCurrentPlayer?.position,
@@ -233,17 +251,26 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   console.log('[HOLM TURN] positions:', positions, 'currentIndex:', currentIndex, 'nextPosition (clockwise):', nextPosition);
   
   // Update turn position and reset timer using game_defaults
+  // CRITICAL: Use atomic guard to prevent race conditions with concurrent turn advancement calls
+  // Only update if current_turn_position matches what we expect (the player who just decided)
   const deadline = new Date(Date.now() + timerSeconds * 1000);
-  const { error: updateError } = await supabase
+  const { data: updateResult, error: updateError } = await supabase
     .from('rounds')
     .update({ 
       current_turn_position: nextPosition,
       decision_deadline: deadline.toISOString()
     })
-    .eq('id', round.id);
+    .eq('id', round.id)
+    .eq('current_turn_position', round.current_turn_position) // ATOMIC GUARD: only update if turn hasn't changed
+    .select();
   
   if (updateError) {
     console.error('[HOLM TURN] ERROR updating turn position:', updateError);
+    return;
+  }
+  
+  if (!updateResult || updateResult.length === 0) {
+    console.log('[HOLM TURN] Turn advance skipped - another client already advanced the turn');
     return;
   }
     
