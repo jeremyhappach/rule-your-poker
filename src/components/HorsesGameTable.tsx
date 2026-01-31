@@ -46,6 +46,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getBotAlias } from "@/lib/botAlias";
 import { snapshotPlayerChips } from "@/lib/gameLogic";
+import { logDiceEvent, logStateMismatch, logRaceConditionGuard, logDealerAnnouncement } from "@/lib/gameStateDebugLog";
 
 interface Player {
   id: string;
@@ -1245,8 +1246,37 @@ export function HorsesGameTable({
       // Mark as processed IMMEDIATELY
       processedWinRoundRef.current = currentRoundId;
 
+      // Log all completed results for debugging hand evaluation
+      const allResults = completedResults.map(r => {
+        const player = players.find(p => p.id === r.playerId);
+        const playerState = horsesState?.playerStates?.[r.playerId];
+        return {
+          playerId: r.playerId,
+          playerName: player?.is_bot ? getBotAlias(players, player.user_id) : player?.profiles?.username,
+          dice: playerState?.dice?.map((d: any) => d.value),
+          result: r.result,
+        };
+      });
+
+      await logDiceEvent(gameId, 'DICE_GAME_COMPLETE', 'HorsesGameTable:processWin', {
+        roundId: currentRoundId,
+        gameType,
+        winnerCount: winningPlayerIds.length,
+        winnerIds: winningPlayerIds,
+        tieDetected: winningPlayerIds.length > 1,
+        allResults,
+        pot,
+      });
+
       if (winningPlayerIds.length > 1) {
         // Tie - trigger re-ante flow (rollover)
+        await logDiceEvent(gameId, 'DICE_TIE_DETECTED', 'HorsesGameTable:processWin:tie', {
+          roundId: currentRoundId,
+          gameType,
+          tiedPlayerIds: winningPlayerIds,
+          tiedResults: allResults.filter(r => winningPlayerIds.includes(r.playerId)),
+        });
+
         // ATOMIC GUARD: Only one client claims the tie processing
         const { data: claimed, error: claimError } = await supabase
           .from("games")
@@ -1259,6 +1289,10 @@ export function HorsesGameTable({
           .select("id, total_hands, current_game_uuid");
 
         if (claimError || !claimed || claimed.length === 0) {
+          await logRaceConditionGuard(gameId, 'HorsesGameTable:processWin:tie', 'TIE_ALREADY_PROCESSED', {
+            roundId: currentRoundId,
+            claimError: claimError?.message,
+          });
           console.log("[HORSES] Tie already processed by another client");
           return;
         }
@@ -1276,6 +1310,12 @@ export function HorsesGameTable({
         const tiedResult = completedResults.find(r => winningPlayerIds.includes(r.playerId));
         const handNumber = (claimed[0] as any).total_hands || 1;
         const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
+
+        await logDealerAnnouncement(gameId, 'HorsesGameTable:processWin:tie', 'TIE_ROLLOVER', 
+          `${tiedPlayerNames} tied with ${tiedResult?.result.description}`, {
+            handNumber,
+            dealerGameId: currentGameUuid,
+          });
 
         await supabase.from("game_results").insert({
           game_id: gameId,
@@ -1332,6 +1372,31 @@ export function HorsesGameTable({
       const chipChanges: Record<string, number> = {};
       chipChanges[winnerId] = actualPot; // Winner receives the full pot
 
+      // Log before recording
+      const loserResults = completedResults.filter(r => r.playerId !== winnerId).map(r => {
+        const p = players.find(pl => pl.id === r.playerId);
+        const ps = horsesState?.playerStates?.[r.playerId];
+        return {
+          playerId: r.playerId,
+          name: p?.is_bot ? getBotAlias(players, p.user_id) : p?.profiles?.username,
+          dice: ps?.dice?.map((d: any) => d.value),
+          result: r.result,
+        };
+      });
+
+      await logDiceEvent(gameId, 'DICE_WIN_PROCESSING', 'HorsesGameTable:processWin:winner', {
+        dealerGameId: currentGameUuid,
+        roundId: currentRoundId,
+        handNumber,
+        winnerId,
+        winnerName,
+        winnerDice: horsesState?.playerStates?.[winnerId]?.dice?.map((d: any) => d.value),
+        winnerResult: winnerResult.result,
+        pot: actualPot,
+        loserResults,
+        gameType,
+      });
+
       await supabase.from("game_results").insert({
         game_id: gameId,
         hand_number: handNumber,
@@ -1344,6 +1409,13 @@ export function HorsesGameTable({
         game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
         dealer_game_id: currentGameUuid,
       });
+
+      await logDealerAnnouncement(gameId, 'HorsesGameTable:processWin:winner', 'WINNER',
+        `${winnerName} wins with ${winnerResult.result.description}`, {
+          handNumber,
+          dealerGameId: currentGameUuid,
+          pot: actualPot,
+        });
       
       // Snapshot player chips for session history AFTER awarding prize
       await snapshotPlayerChips(gameId, handNumber);
@@ -1361,7 +1433,7 @@ export function HorsesGameTable({
     };
 
     processWin();
-  }, [gamePhase, winningPlayerIds, pot, players, currentUserId, gameId, turnOrder, completedResults, currentRoundId, anteAmount]);
+  }, [gamePhase, winningPlayerIds, pot, players, currentUserId, gameId, turnOrder, completedResults, currentRoundId, anteAmount, horsesState?.playerStates, gameType]);
 
   // Get username for player
   const getPlayerUsername = (player: Player) => {

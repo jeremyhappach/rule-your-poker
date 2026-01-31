@@ -18,7 +18,29 @@ export type GameStateEventType =
   | 'END_HOLM_ROUND_CALLED'
   | 'END_HOLM_ROUND_RESULT'
   | 'BOT_DECISION'
-  | 'REJOIN_VISIBILITY_CHANGE';
+  | 'REJOIN_VISIBILITY_CHANGE'
+  // Dice game specific events
+  | 'DICE_ROUND_START'
+  | 'DICE_TURN_ADVANCE'
+  | 'DICE_ROLL'
+  | 'DICE_HOLD_CHANGE'
+  | 'DICE_TURN_COMPLETE'
+  | 'DICE_GAME_COMPLETE'
+  | 'DICE_WIN_PROCESSING'
+  | 'DICE_TIE_DETECTED'
+  | 'DICE_ROLLOVER_START'
+  | 'DICE_POT_AWARD'
+  | 'DICE_HAND_EVALUATION'
+  // 3-5-7 specific events
+  | 'ROUND_START_BLOCKED'
+  | 'LEG_AWARDED'
+  | 'GAME_COMPLETE'
+  // General events
+  | 'DEALER_ANNOUNCEMENT'
+  | 'STATE_MISMATCH'
+  | 'RACE_CONDITION_GUARD'
+  | 'ANTE_COLLECTION'
+  | 'CHIP_TRANSFER';
 
 interface LogGameStateParams {
   gameId: string;
@@ -199,5 +221,106 @@ export function logAllDecisionsIn(
     allDecisionsIn,
     sourceLocation: source,
     details: extra,
+  });
+}
+
+/**
+ * Helper to log dice game events with full context
+ */
+export function logDiceEvent(
+  gameId: string,
+  eventType: GameStateEventType,
+  source: string,
+  details: {
+    dealerGameId?: string | null;
+    roundId?: string | null;
+    playerId?: string | null;
+    handNumber?: number;
+    roundNumber?: number;
+    gameType?: string;
+    turnOrder?: string[];
+    currentTurnPlayerId?: string | null;
+    pot?: number;
+    winnerIds?: string[];
+    tieDetected?: boolean;
+    diceValues?: number[];
+    handResult?: { rank: number; description: string };
+    [key: string]: unknown;
+  }
+): Promise<void> {
+  return logGameState({
+    gameId,
+    dealerGameId: details.dealerGameId,
+    roundId: details.roundId,
+    playerId: details.playerId,
+    eventType,
+    currentRound: details.roundNumber,
+    totalHands: details.handNumber,
+    sourceLocation: source,
+    details,
+  });
+}
+
+/**
+ * Helper to log state mismatches (potential race conditions)
+ */
+export function logStateMismatch(
+  gameId: string,
+  source: string,
+  expected: Record<string, unknown>,
+  actual: Record<string, unknown>,
+  extra?: Record<string, unknown>
+): Promise<void> {
+  return logGameState({
+    gameId,
+    eventType: 'STATE_MISMATCH',
+    sourceLocation: source,
+    details: {
+      expected,
+      actual,
+      ...extra,
+    },
+  });
+}
+
+/**
+ * Helper to log race condition guard triggers
+ */
+export function logRaceConditionGuard(
+  gameId: string,
+  source: string,
+  guardType: string,
+  details?: Record<string, unknown>
+): Promise<void> {
+  return logGameState({
+    gameId,
+    eventType: 'RACE_CONDITION_GUARD',
+    sourceLocation: source,
+    details: {
+      guard_type: guardType,
+      ...details,
+    },
+  });
+}
+
+/**
+ * Helper to log dealer announcements
+ */
+export function logDealerAnnouncement(
+  gameId: string,
+  source: string,
+  announcementType: string,
+  message: string,
+  extra?: Record<string, unknown>
+): Promise<void> {
+  return logGameState({
+    gameId,
+    eventType: 'DEALER_ANNOUNCEMENT',
+    sourceLocation: source,
+    details: {
+      announcement_type: announcementType,
+      message,
+      ...extra,
+    },
   });
 }
