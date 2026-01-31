@@ -253,6 +253,8 @@ export async function startRound(gameId: string, roundNumber: number) {
       .from('rounds')
       .select('*')
       .eq('game_id', gameId)
+      // CRITICAL: Must scope to the active dealer game; round_number/hand_number repeat across dealer games in a session
+      .eq('dealer_game_id', currentGameUuid)
       .eq('round_number', roundNumber)
       .eq('hand_number', handNumber)
       .maybeSingle();
@@ -694,13 +696,24 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
         .maybeSingle();
       currentRound = round357;
     } else {
-      const { data: rounds } = await supabase
+      // Non-3-5-7 games can restart at round_number=1 when a new dealer game starts.
+      // Always scope to the active dealer_game_id when available and take the latest by (hand_number, round_number).
+      const baseRoundQuery = supabase
         .from('rounds')
         .select('*')
-        .eq('game_id', gameId)
-        .eq('round_number', game.current_round)
-        .single();
-      currentRound = rounds;
+        .eq('game_id', gameId);
+
+      const scopedQuery = game.current_game_uuid
+        ? baseRoundQuery.eq('dealer_game_id', game.current_game_uuid)
+        : baseRoundQuery;
+
+      const { data: latestRound } = await scopedQuery
+        .order('hand_number', { ascending: false })
+        .order('round_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      currentRound = latestRound;
     }
   }
   
@@ -1090,18 +1103,35 @@ export async function endRound(gameId: string) {
   // Get all player hands for this round
   const is357Game = game.game_type === '3-5-7' || game.game_type === '3-5-7-game' || game.game_type === '357';
   const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
-  const roundQuery = supabase
+  // CRITICAL: Round selection must never rely on (game_id, round_number) alone.
+  // When a new dealer game starts inside the same session, round_number can restart at 1.
+  // If we select by round_number we can target a historical round from a prior dealer game and stall progression.
+  const baseRoundQuery = supabase
     .from('rounds')
     .select('*')
-    .eq('game_id', gameId)
-    .eq('round_number', currentRound);
+    .eq('game_id', gameId);
 
-  const { data: round } = is357Game
-    ? await roundQuery
-        .eq('dealer_game_id', currentGameUuid)
-        .eq('hand_number', handNumber)
-        .maybeSingle()
-    : await roundQuery.single();
+  let round: any | null = null;
+
+  if (is357Game) {
+    const { data } = await baseRoundQuery
+      .eq('dealer_game_id', currentGameUuid)
+      .eq('hand_number', handNumber)
+      .eq('round_number', currentRound)
+      .maybeSingle();
+    round = data;
+  } else {
+    const scopedQuery = currentGameUuid
+      ? baseRoundQuery.eq('dealer_game_id', currentGameUuid)
+      : baseRoundQuery;
+
+    const { data } = await scopedQuery
+      .order('hand_number', { ascending: false })
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    round = data;
+  }
 
   if (!round) return;
   
