@@ -3193,6 +3193,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameStateAtTimerStart.current = null;
         
         try {
+          // CRITICAL: Re-check pause status when timer fires (game may have been paused during delay)
+          const { data: pauseCheck } = await supabase
+            .from('games')
+            .select('is_paused')
+            .eq('id', gameId)
+            .single();
+          
+          if (pauseCheck?.is_paused) {
+            console.log('[AWAITING_NEXT_ROUND] Game was paused during delay, skipping proceed');
+            return;
+          }
+          
           const isHolmGame = game?.game_type === 'holm-game';
           console.log('[AWAITING_NEXT_ROUND] Calling proceed function', { isHolmGame, gameId });
           
@@ -3203,13 +3215,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win')
+              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused')
               .eq('id', gameId)
               .single();
             
             // Skip if game is already over (357 sweep sets game_over after 5s)
             if (freshGame?.status === 'game_over') {
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
+              return;
+            }
+            
+            // CRITICAL: Skip if game was paused after timer started
+            if (freshGame?.is_paused) {
+              console.log('[AWAITING_NEXT_ROUND] Game is paused, skipping proceed');
               return;
             }
 

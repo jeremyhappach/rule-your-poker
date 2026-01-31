@@ -1235,6 +1235,12 @@ export function HorsesGameTable({
     if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
     if (winningPlayerIds.length === 0) return;
     
+    // CRITICAL: Block win processing when game is paused - prevents rollover triggering
+    if (isPaused) {
+      console.log("[HORSES] Win processing blocked - game is paused");
+      return;
+    }
+    
     // Prevent duplicate processing
     if (processedWinRoundRef.current === currentRoundId) return;
 
@@ -1435,7 +1441,7 @@ export function HorsesGameTable({
     };
 
     processWin();
-  }, [gamePhase, winningPlayerIds, pot, players, currentUserId, gameId, turnOrder, completedResults, currentRoundId, anteAmount, horsesState?.playerStates, gameType]);
+  }, [gamePhase, winningPlayerIds, pot, players, currentUserId, gameId, turnOrder, completedResults, currentRoundId, anteAmount, horsesState?.playerStates, gameType, isPaused]);
 
   // Get username for player
   const getPlayerUsername = (player: Player) => {

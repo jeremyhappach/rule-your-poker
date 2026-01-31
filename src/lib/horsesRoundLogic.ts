@@ -14,7 +14,7 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -24,6 +24,17 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   }
 
   const gameType = (game as any).game_type || 'horses';
+
+  // CRITICAL GUARD: Block round creation if game is paused
+  if ((game as any).is_paused) {
+    logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_PAUSED', {
+      currentStatus: game.status,
+      isFirstHand,
+      dealerGameId: game.current_game_uuid,
+    });
+    console.warn('[HORSES] Blocked round start - game is paused');
+    return;
+  }
 
   // CRITICAL GUARD: Block round creation if game is already over or ended
   if (game.status === 'game_over' || game.status === 'session_ended') {

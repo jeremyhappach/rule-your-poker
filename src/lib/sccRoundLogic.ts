@@ -26,13 +26,24 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, is_paused')
     .eq('id', gameId)
     .maybeSingle();
 
   if (gameError || !game) {
     console.error('[SCC] Failed to get game:', gameError);
     throw new Error('Failed to get game state');
+  }
+
+  // CRITICAL GUARD: Block round creation if game is paused
+  if ((game as any).is_paused) {
+    logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'BLOCKED_PAUSED', {
+      currentStatus: game.status,
+      isFirstHand,
+      dealerGameId: game.current_game_uuid,
+    });
+    console.warn('[SCC] Blocked round start - game is paused');
+    return;
   }
 
   // TERMINAL STATE GUARD: Don't start rounds if game is already over
