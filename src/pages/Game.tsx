@@ -4975,11 +4975,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    // CRITICAL: Fetch fresh game status from DB to prevent race conditions in multiplayer
-    // React state can be stale, causing both clients to attempt ante processing
+    // CRITICAL: Fetch fresh game status AND game_type from DB to prevent race conditions in multiplayer
+    // React state can be stale, causing both clients to attempt ante processing or use wrong game type
     const { data: freshGame, error: gameError } = await supabase
       .from('games')
-      .select('status')
+      .select('status, game_type, ante_amount')
       .eq('id', gameId)
       .single();
     
@@ -5128,12 +5128,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Start first round - let the round start functions handle the status change
     try {
-          const isHolmGame = game?.game_type === 'holm-game';
-          const isHorsesGame = game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew';
+          // CRITICAL: Use freshGame (from DB) for game_type, not stale React state!
+          // After transitioning from 3-5-7 to Holm, React state may still have old game_type
+          const isHolmGame = freshGame?.game_type === 'holm-game' || freshGame?.game_type === 'holm';
+          const isHorsesGame = freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
           const activePlayersBefore = players.filter(p => !p.sitting_out);
-          const perPlayerAmount = typeof game?.ante_amount === 'number' ? game.ante_amount : 0;
+          const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
 
           if (perPlayerAmount > 0 && activePlayersBefore.length > 0) {
             const preChipsSnapshot: Record<string, number> = {};
@@ -5159,8 +5161,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (isHolmGame) {
             await startHolmRound(gameId, true);
           } else if (isHorsesGame) {
-            // isHorsesGame now includes ship-captain-crew
-            if (game?.game_type === 'ship-captain-crew') {
+            // isHorsesGame now includes ship-captain-crew - use freshGame for type check
+            if (freshGame?.game_type === 'ship-captain-crew') {
               await startSCCRound(gameId, true);
             } else {
               await startHorsesRound(gameId, true);
