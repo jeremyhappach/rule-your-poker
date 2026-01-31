@@ -182,10 +182,10 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
 
   const formatId = (id: string | null) => (id ? `${id.slice(0, 8)}…` : "-");
 
-  // Inline mode: small button + expandable content below player info
+  // Inline mode: fixed floating button in top-left corner, expands upward
   if (inline) {
     return (
-      <div className="w-full mt-2">
+      <div className="fixed bottom-28 left-2 z-[200]">
         <button
           onClick={() => {
             setOpen((v) => !v);
@@ -196,15 +196,20 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
               setAutoRefresh(false);
             }
           }}
-          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors mx-auto"
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] transition-colors shadow-lg",
+            open 
+              ? "bg-primary text-primary-foreground" 
+              : "bg-background/95 backdrop-blur border border-border text-muted-foreground hover:text-foreground"
+          )}
         >
           <Bug className="h-3 w-3" />
           <span>Debug</span>
-          {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          {mismatch && !open && <span className="text-destructive font-bold">!</span>}
         </button>
 
         {open && (
-          <div className="mt-2 bg-background/95 backdrop-blur border border-border rounded-lg p-2 text-[10px] space-y-2">
+          <div className="absolute bottom-full left-0 mb-1 w-56 bg-background/95 backdrop-blur border border-border rounded-lg p-2 text-[10px] space-y-2 shadow-xl">
             <div className="flex items-center justify-between gap-2 border-b border-border pb-1">
               <span className="text-muted-foreground">
                 {snapshot?.ts ? new Date(snapshot.ts).toLocaleTimeString() : "..."}
