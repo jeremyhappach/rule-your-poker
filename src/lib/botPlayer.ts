@@ -349,7 +349,10 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     if (dealerGameId) {
       roundQuery = roundQuery.eq('dealer_game_id', dealerGameId);
     }
-    roundQuery = roundQuery.order('created_at', { ascending: false }).limit(1);
+    roundQuery = roundQuery
+      .order('hand_number', { ascending: false })
+      .order('round_number', { ascending: false })
+      .limit(1);
   }
   
   const { data: currentRound } = await roundQuery.maybeSingle();

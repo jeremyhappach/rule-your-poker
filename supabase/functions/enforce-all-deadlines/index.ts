@@ -744,12 +744,20 @@ serve(async (req) => {
             game.status === 'in_progress' && 
             game.all_decisions_in === false) {
           
-          // For Holm, get the latest round by created_at (round_number can have duplicates across hands)
-          const { data: currentRound } = await supabase
+          // For Holm, get the latest round by hand_number/round_number within the dealer game
+          const dealerGameId = (game as any).current_game_uuid;
+          const roundQuery = supabase
             .from('rounds')
             .select('id, status')
-            .eq('game_id', game.id)
-            .order('created_at', { ascending: false })
+            .eq('game_id', game.id);
+            
+          const scopedQuery = dealerGameId 
+            ? roundQuery.eq('dealer_game_id', dealerGameId)
+            : roundQuery;
+            
+          const { data: currentRound } = await scopedQuery
+            .order('hand_number', { ascending: false })
+            .order('round_number', { ascending: false })
             .limit(1)
             .maybeSingle();
           
@@ -1181,12 +1189,20 @@ serve(async (req) => {
               .maybeSingle();
             currentRound = data;
           } else {
-            // Non-3-5-7 games: use created_at DESC to get most recent round
-            const { data } = await supabase
+            // Non-3-5-7 games: scope to dealer_game_id and order by hand_number/round_number
+            const dealerGameId = (game as any).current_game_uuid;
+            const roundQuery = supabase
               .from('rounds')
               .select('*')
-              .eq('game_id', game.id)
-              .order('created_at', { ascending: false })
+              .eq('game_id', game.id);
+              
+            const scopedQuery = dealerGameId 
+              ? roundQuery.eq('dealer_game_id', dealerGameId)
+              : roundQuery;
+              
+            const { data } = await scopedQuery
+              .order('hand_number', { ascending: false })
+              .order('round_number', { ascending: false })
               .limit(1)
               .maybeSingle();
             currentRound = data;

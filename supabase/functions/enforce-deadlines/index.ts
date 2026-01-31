@@ -623,7 +623,8 @@ serve(async (req) => {
             .select('*')
             .eq('game_id', gameId)
             .eq('status', 'betting')
-            .order('created_at', { ascending: false })
+            .order('hand_number', { ascending: false })
+            .order('round_number', { ascending: false })
             .limit(1)
             .maybeSingle();
           currentRound = data;
@@ -700,12 +701,21 @@ serve(async (req) => {
 
       // ============= 3B. DICE GAME (HORSES/SCC) TURN TIMEOUTS =============
       if (game.game_type === 'horses' || game.game_type === 'ship-captain-crew') {
-        // Get the current round - use created_at DESC for dice games (round numbers increment indefinitely)
-        const { data: currentRound } = await supabase
+        // Get the current round - scope to dealer_game_id and order by hand_number/round_number
+        const roundQuery = supabase
           .from('rounds')
           .select('*')
-          .eq('game_id', gameId)
-          .order('created_at', { ascending: false })
+          .eq('game_id', gameId);
+          
+        // Scope to dealer game if available
+        const dealerGameId = (game as any).current_game_uuid;
+        const scopedQuery = dealerGameId 
+          ? roundQuery.eq('dealer_game_id', dealerGameId)
+          : roundQuery;
+          
+        const { data: currentRound } = await scopedQuery
+          .order('hand_number', { ascending: false })
+          .order('round_number', { ascending: false })
           .limit(1)
           .maybeSingle();
 

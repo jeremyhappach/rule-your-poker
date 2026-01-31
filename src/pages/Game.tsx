@@ -3458,7 +3458,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             : base;
 
           const { data } = await query
-            .order('created_at', { ascending: false })
+            .order('hand_number', { ascending: false })
+            .order('round_number', { ascending: false })
             .limit(1)
             .maybeSingle();
 
@@ -3482,17 +3483,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .eq('round_number', gameData.current_round)
-            .order('created_at', { ascending: false })
+            .order('hand_number', { ascending: false })
             .limit(1)
             .maybeSingle();
           roundData = data;
         } else {
-          // Fallback: get the most recent round by created_at
+          // Fallback: get the most recent round by hand_number, round_number
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
-            .order('created_at', { ascending: false })
+            .order('hand_number', { ascending: false })
+            .order('round_number', { ascending: false })
             .limit(1)
             .maybeSingle();
           roundData = data;

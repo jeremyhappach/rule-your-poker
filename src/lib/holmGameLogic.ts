@@ -38,7 +38,8 @@ export async function checkHolmRoundComplete(gameId: string) {
   const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
 
   const { data: round } = await roundQuery
-    .order('created_at', { ascending: false })
+    .order('hand_number', { ascending: false })
+    .order('round_number', { ascending: false })
     .limit(1)
     .maybeSingle();
     
@@ -191,7 +192,8 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
 
   const { data: round } = await roundQuery
-    .order('created_at', { ascending: false })
+    .order('hand_number', { ascending: false })
+    .order('round_number', { ascending: false })
     .limit(1)
     .maybeSingle();
     
@@ -665,7 +667,8 @@ export async function endHolmRound(gameId: string) {
   const roundQuery = dealerGameId ? baseRoundQuery.eq('dealer_game_id', dealerGameId) : baseRoundQuery;
 
   const { data: round } = await roundQuery
-    .order('created_at', { ascending: false })
+    .order('hand_number', { ascending: false })
+    .order('round_number', { ascending: false })
     .limit(1)
     .maybeSingle();
 
