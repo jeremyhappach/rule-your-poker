@@ -56,6 +56,7 @@ import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
+import { RoundHandDebugOverlay } from "./RoundHandDebugOverlay";
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
 // otherwise resets state and reintroduces the pot flash).
@@ -5526,6 +5527,9 @@ export const MobileGameTable = ({
                   {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
                 </Badge>}
             </div>
+            
+            {/* Inline Round/Hand Debug */}
+            <RoundHandDebugOverlay gameId={gameId} inline />
             
             {/* Emoticon fade-out animation */}
             <style>{`

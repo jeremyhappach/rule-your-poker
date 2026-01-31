@@ -1,17 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { Bug, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Bug, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 type Snapshot = {
   ts: string;
@@ -34,13 +28,13 @@ type Snapshot = {
   hasExactRoundForGameState: boolean;
 };
 
-export function RoundHandDebugOverlay({ gameId }: { gameId: string | undefined }) {
-  const location = useLocation();
-  const enabled = useMemo(() => {
-    const sp = new URLSearchParams(location.search);
-    return sp.get("debug") === "1" || sp.get("debug") === "true";
-  }, [location.search]);
+interface RoundHandDebugOverlayProps {
+  gameId: string | undefined;
+  /** Compact inline mode for player area */
+  inline?: boolean;
+}
 
+export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebugOverlayProps) {
   const [open, setOpen] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -90,12 +84,14 @@ export function RoundHandDebugOverlay({ gameId }: { gameId: string | undefined }
         return acc === null ? r.hand_number : Math.max(acc, r.hand_number);
       }, null);
 
+      // Max round number across ALL rounds in this dealer game
       const maxRoundFromRounds = rounds.reduce<number | null>((acc, r) => {
         const rn = typeof r.round_number === "number" ? r.round_number : null;
         if (rn === null) return acc;
         return acc === null ? rn : Math.max(acc, rn);
       }, null);
 
+      // Max round number within the max hand only
       const maxRoundInMaxHand =
         maxHandFromRounds === null
           ? null
@@ -150,16 +146,16 @@ export function RoundHandDebugOverlay({ gameId }: { gameId: string | undefined }
     }
   }, [gameId]);
 
+  // Fetch on open
   useEffect(() => {
-    if (!enabled) return;
-    // fetch once so it is populated when user opens it
-    fetchSnapshot();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, gameId]);
+    if (open && gameId) {
+      fetchSnapshot();
+    }
+  }, [open, gameId, fetchSnapshot]);
 
+  // Auto-refresh
   useEffect(() => {
-    if (!enabled) return;
-    if (!autoRefresh) {
+    if (!autoRefresh || !open) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -174,9 +170,9 @@ export function RoundHandDebugOverlay({ gameId }: { gameId: string | undefined }
         intervalRef.current = null;
       }
     };
-  }, [autoRefresh, enabled, fetchSnapshot]);
+  }, [autoRefresh, open, fetchSnapshot]);
 
-  if (!enabled || !gameId) return null;
+  if (!gameId) return null;
 
   const mismatch =
     snapshot &&
@@ -184,31 +180,144 @@ export function RoundHandDebugOverlay({ gameId }: { gameId: string | undefined }
     typeof snapshot.maxHandFromRounds === "number" &&
     snapshot.gameCurrentHand > snapshot.maxHandFromRounds;
 
-  const formatId = (id: string | null) => (id ? `${id.slice(0, 8)}…${id.slice(-6)}` : "-");
+  const formatId = (id: string | null) => (id ? `${id.slice(0, 8)}…` : "-");
 
+  // Inline mode: small button + expandable content below player info
+  if (inline) {
+    return (
+      <div className="w-full mt-2">
+        <button
+          onClick={() => {
+            setOpen((v) => !v);
+            if (!open) {
+              fetchSnapshot();
+              setAutoRefresh(true);
+            } else {
+              setAutoRefresh(false);
+            }
+          }}
+          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors mx-auto"
+        >
+          <Bug className="h-3 w-3" />
+          <span>Debug</span>
+          {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+
+        {open && (
+          <div className="mt-2 bg-background/95 backdrop-blur border border-border rounded-lg p-2 text-[10px] space-y-2">
+            <div className="flex items-center justify-between gap-2 border-b border-border pb-1">
+              <span className="text-muted-foreground">
+                {snapshot?.ts ? new Date(snapshot.ts).toLocaleTimeString() : "..."}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  className={cn(
+                    "px-1.5 py-0.5 rounded text-[9px]",
+                    autoRefresh ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  )}
+                  onClick={() => setAutoRefresh((v) => !v)}
+                >
+                  {autoRefresh ? "Auto ✓" : "Auto"}
+                </button>
+                <button
+                  className="p-0.5 rounded hover:bg-muted"
+                  onClick={fetchSnapshot}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />
+                </button>
+              </div>
+            </div>
+
+            {snapshot ? (
+              <div className="space-y-1.5">
+                {/* Game State */}
+                <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                  <span className="text-muted-foreground">Hand:</span>
+                  <span className={mismatch ? "text-destructive font-bold" : ""}>
+                    {snapshot.gameCurrentHand ?? "-"}
+                  </span>
+                  <span className="text-muted-foreground">Round:</span>
+                  <span className={!snapshot.hasExactRoundForGameState ? "text-destructive font-bold" : ""}>
+                    {snapshot.gameCurrentRound ?? "-"}
+                  </span>
+                </div>
+
+                {/* Rounds Table */}
+                <div className="border-t border-border pt-1">
+                  <div className="text-muted-foreground mb-0.5">Rounds (dealer game):</div>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                    <span className="text-muted-foreground">Count:</span>
+                    <span>{snapshot.roundsLoaded}</span>
+                    <span className="text-muted-foreground">Max hand:</span>
+                    <span className={mismatch ? "text-destructive font-bold" : ""}>
+                      {snapshot.maxHandFromRounds ?? "-"}
+                    </span>
+                    <span className="text-muted-foreground">Max round:</span>
+                    <span>{snapshot.maxRoundFromRounds ?? "-"}</span>
+                    <span className="text-muted-foreground">Max rnd in max hand:</span>
+                    <span>{snapshot.maxRoundInMaxHand ?? "-"}</span>
+                  </div>
+                </div>
+
+                {/* Latest Round */}
+                {snapshot.latestRoundKey && (
+                  <div className="border-t border-border pt-1">
+                    <div className="text-muted-foreground mb-0.5">Latest:</div>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                      <span className="text-muted-foreground">H/R:</span>
+                      <span>
+                        {snapshot.latestRoundKey.hand ?? "-"}/{snapshot.latestRoundKey.round}
+                      </span>
+                      <span className="text-muted-foreground">Status:</span>
+                      <span>{snapshot.latestRoundKey.status}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Warnings */}
+                {mismatch && (
+                  <div className="bg-destructive/20 text-destructive rounded px-1 py-0.5 text-center font-bold">
+                    ⚠ HAND MISMATCH: game says {snapshot.gameCurrentHand}, rounds max is {snapshot.maxHandFromRounds}
+                  </div>
+                )}
+                {!snapshot.hasExactRoundForGameState && snapshot.gameCurrentHand !== null && (
+                  <div className="bg-destructive/20 text-destructive rounded px-1 py-0.5 text-center font-bold">
+                    ⚠ ROUND MISSING: H{snapshot.gameCurrentHand}/R{snapshot.gameCurrentRound} not in table
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-2">Loading…</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Fixed overlay mode (original)
   return (
     <div className="fixed bottom-4 left-4 z-[210] max-w-sm">
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-between gap-2 bg-background/95 backdrop-blur border-muted-foreground/30"
-            onClick={() => {
-              // ensure fresh snapshot right when opening
-              if (!open) fetchSnapshot();
-            }}
-          >
-            <span className="flex items-center gap-2">
-              <Bug className="h-4 w-4" />
-              Round/Hand Debug
-            </span>
-            <span className="text-[10px] text-muted-foreground">debug=1</span>
-          </Button>
-        </CollapsibleTrigger>
+      <div className="flex flex-col">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-between gap-2 bg-background/95 backdrop-blur border-muted-foreground/30"
+          onClick={() => {
+            setOpen((v) => !v);
+            if (!open) fetchSnapshot();
+          }}
+        >
+          <span className="flex items-center gap-2">
+            <Bug className="h-4 w-4" />
+            Round/Hand Debug
+          </span>
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
 
-        <CollapsibleContent className="mt-2">
-          <div className="bg-background/95 backdrop-blur border border-border rounded-lg p-3 space-y-3 text-xs">
+        {open && (
+          <div className="mt-2 bg-background/95 backdrop-blur border border-border rounded-lg p-3 space-y-3 text-xs">
             <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
               <span className="text-muted-foreground">
                 {snapshot?.ts ? new Date(snapshot.ts).toLocaleTimeString() : "Loading…"}
@@ -308,13 +417,20 @@ export function RoundHandDebugOverlay({ gameId }: { gameId: string | undefined }
                     <span className="text-muted-foreground">No rounds found for current dealer game.</span>
                   )}
                 </div>
+
+                {/* Warnings */}
+                {mismatch && (
+                  <div className="bg-destructive/20 text-destructive rounded px-2 py-1 text-center font-bold text-xs">
+                    ⚠ HAND MISMATCH
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center text-muted-foreground py-4">Loading…</div>
             )}
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        )}
+      </div>
     </div>
   );
 }
