@@ -682,28 +682,41 @@ serve(async (req) => {
 
       // ============= 3A. 3-5-7 (SIMULTANEOUS) DECISION TIMEOUTS =============
       // 3-5-7 round numbers cycle 1/2/3 each hand, so we MUST key the current round by
-      // (hand_number, round_number) (and implicitly by game_id; dealer_game_id is stable per session).
+      // (dealer_game_id, hand_number, round_number). Within a session, multiple dealer games can exist.
       if (game.game_type === '3-5-7') {
         let currentRound: any = null;
+        const dealerGameId357 = (game as any).current_game_uuid;
 
         if (typeof (game as any).total_hands === 'number' && typeof (game as any).current_round === 'number') {
-          const { data } = await supabase
+          let query357 = supabase
             .from('rounds')
             .select('*')
             .eq('game_id', gameId)
             .eq('hand_number', (game as any).total_hands)
-            .eq('round_number', (game as any).current_round)
-            .maybeSingle();
+            .eq('round_number', (game as any).current_round);
+          
+          // CRITICAL: Scope to dealer_game_id to avoid selecting old rounds from prior games in the same session.
+          if (dealerGameId357) {
+            query357 = query357.eq('dealer_game_id', dealerGameId357);
+          }
+          
+          const { data } = await query357.maybeSingle();
           currentRound = data;
         }
 
         // Fallback: pick latest betting round if game row is briefly out-of-sync
         if (!currentRound) {
-          const { data } = await supabase
+          let fallbackQuery = supabase
             .from('rounds')
             .select('*')
             .eq('game_id', gameId)
-            .eq('status', 'betting')
+            .eq('status', 'betting');
+          
+          if (dealerGameId357) {
+            fallbackQuery = fallbackQuery.eq('dealer_game_id', dealerGameId357);
+          }
+          
+          const { data } = await fallbackQuery
             .order('hand_number', { ascending: false })
             .order('round_number', { ascending: false })
             .limit(1)
