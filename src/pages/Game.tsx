@@ -195,19 +195,45 @@ function pickActiveSingleRoundGameRound(
   params: {
     dealerGameId: string | null | undefined;
     currentRoundNumber: number | null | undefined;
+    currentHandNumber?: number | null | undefined;
   }
 ): Round | null {
   if (!rounds || rounds.length === 0) return null;
 
-  const { dealerGameId, currentRoundNumber } = params;
-  const dealerRounds = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+  const { dealerGameId, currentRoundNumber, currentHandNumber } = params;
 
-  if (typeof currentRoundNumber === 'number') {
-    const exact = dealerRounds.find((r) => r.round_number === currentRoundNumber);
+  // CRITICAL (isolation): single-round games MUST be scoped to dealer_game_id.
+  // Falling back to unscoped selection is the primary source of cross-game contamination.
+  if (!dealerGameId) return null;
+
+  const dealerRounds = rounds.filter((r) => r.dealer_game_id === dealerGameId);
+  if (dealerRounds.length === 0) return null;
+
+  // Prefer an exact (hand_number, round_number) match when available.
+  if (typeof currentHandNumber === 'number' && typeof currentRoundNumber === 'number') {
+    const exact = dealerRounds.find(
+      (r) => r.hand_number === currentHandNumber && r.round_number === currentRoundNumber
+    );
     if (exact) return exact;
   }
 
-  // Fallback to latest round within this dealer game.
+  // Next best: when multiple rounds share the same round_number (e.g., Holm uses round_number=1 each hand),
+  // choose the latest by hand_number.
+  if (typeof currentRoundNumber === 'number') {
+    const sameRoundNumber = dealerRounds.filter((r) => r.round_number === currentRoundNumber);
+    if (sameRoundNumber.length > 0) {
+      return (
+        [...sameRoundNumber].sort((a, b) => {
+          const aHand = typeof a.hand_number === 'number' ? a.hand_number : -1;
+          const bHand = typeof b.hand_number === 'number' ? b.hand_number : -1;
+          if (bHand !== aHand) return bHand - aHand;
+          return (b.round_number ?? -1) - (a.round_number ?? -1);
+        })[0] ?? null
+      );
+    }
+  }
+
+  // Fallback: latest round within this dealer game.
   return pickLatestRoundByKey(dealerRounds);
 }
 
@@ -728,6 +754,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       ? pickActiveSingleRoundGameRound(game.rounds, {
           dealerGameId: game.current_game_uuid,
           currentRoundNumber: game.current_round,
+          currentHandNumber: game.total_hands,
         })
       : game.rounds?.find((r) => r.round_number === game.current_round) ?? null;
     
@@ -1895,6 +1922,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       ? pickActiveSingleRoundGameRound(game?.rounds, {
           dealerGameId: game?.current_game_uuid ?? null,
           currentRoundNumber: game?.current_round ?? null,
+          currentHandNumber: game?.total_hands ?? null,
         })
       : game?.rounds?.find((r: any) => r.round_number === game?.current_round) ?? null;
     // CRITICAL: Detect stuck Holm showdown where the round is already in 'showdown' but the
@@ -2379,6 +2407,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return pickActiveSingleRoundGameRound(game.rounds, {
         dealerGameId: game.current_game_uuid,
         currentRoundNumber: game.current_round,
+        currentHandNumber: game.total_hands,
       });
     }
 
@@ -3731,6 +3760,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         currentRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
           dealerGameId: gameData.current_game_uuid,
           currentRoundNumber: gameData.current_round,
+          currentHandNumber: gameData.total_hands,
         });
       } else if (gameData.game_type === '3-5-7') {
         currentRound =
