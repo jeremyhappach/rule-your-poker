@@ -3544,13 +3544,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .maybeSingle();
           roundData = data;
         } else if (gameData.current_round) {
-          // 3-5-7 fallback without dealer_game_id (legacy) - get most recent round with matching round_number
+          // Legacy fallback without dealer_game_id - also order by hand_number to reduce chance of cross-game collision.
+          // This path should be extremely rare and only for old sessions without current_game_uuid.
+          console.warn('[FETCH] Using legacy round lookup without dealer_game_id - this may be unsafe');
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .eq('round_number', gameData.current_round)
             .order('hand_number', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
           roundData = data;

@@ -334,10 +334,18 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   // Get current round data - CRITICAL: use created_at DESC to get the newest round,
   // not round_number DESC which would incorrectly return Hand 1 Round 3 over Hand 2 Round 1
   // For 3-5-7, also filter by hand_number to ensure we get the correct round
+  // CRITICAL: ALL round queries MUST scope to dealer_game_id when available.
+  // Within a single session, multiple dealer games can exist (switching from 3-5-7 to Holm, etc.)
+  // and (game_id, hand_number, round_number) is NOT unique across different dealer games.
   let roundQuery = supabase
     .from('rounds')
     .select('id, current_turn_position, community_cards, hand_number, round_number')
     .eq('game_id', gameId);
+  
+  // Scope to dealer_game_id for ALL game types
+  if (dealerGameId) {
+    roundQuery = roundQuery.eq('dealer_game_id', dealerGameId);
+  }
   
   if (!isHolmGame) {
     // 3-5-7: filter by both hand_number and round_number for precise matching
@@ -345,10 +353,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
       .eq('hand_number', handNumber)
       .eq('round_number', roundNumber);
   } else {
-    // Holm: ALWAYS scope to the active dealer game to avoid mixing with prior games.
-    if (dealerGameId) {
-      roundQuery = roundQuery.eq('dealer_game_id', dealerGameId);
-    }
+    // Holm: order by hand/round to get the latest
     roundQuery = roundQuery
       .order('hand_number', { ascending: false })
       .order('round_number', { ascending: false })
