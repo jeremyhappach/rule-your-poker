@@ -454,7 +454,9 @@ serve(async (req) => {
           .select('*')
           .eq('game_id', gameId);
 
-        const activePlayers = players?.filter((p: any) => p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up') || [];
+        // HOLM NOTE: Do NOT filter on ante_decision here.
+        // Ante decisions only apply to the initial ante phase; later Holm hands still need turn enforcement.
+        const activePlayers = players?.filter((p: any) => p.status === 'active' && !p.sitting_out) || [];
         const currentTurnPos = currentRound.current_turn_position;
 
         if (!currentTurnPos) {
@@ -472,7 +474,71 @@ serve(async (req) => {
 
         const currentTurnPlayer = activePlayers.find((p: any) => p.position === currentTurnPos);
 
+        // IMPORTANT: If the turn points at a player who already acted, we must still progress.
+        // Otherwise the table can freeze after a fold/stay where the client-side checker didn't run.
+        const undecidedPlayersNow = activePlayers.filter((p: any) => !p.decision_locked);
+
         if (!currentTurnPlayer || currentTurnPlayer.decision_locked) {
+          // If nobody remains undecided, mark all_decisions_in so clients can proceed to showdown.
+          if (undecidedPlayersNow.length === 0) {
+            const { data: lockResult } = await supabase
+              .from('games')
+              .update({ all_decisions_in: true })
+              .eq('id', gameId)
+              .eq('all_decisions_in', false)
+              .select();
+
+            if (lockResult && lockResult.length > 0) {
+              actionsTaken.push('Holm recovery: all_decisions_in=true (no undecided players)');
+
+              // Clear round timer/turn so clients don't keep rendering timers.
+              await supabase
+                .from('rounds')
+                .update({ current_turn_position: null, decision_deadline: null })
+                .eq('id', currentRound.id);
+            }
+
+            return new Response(JSON.stringify({
+              success: true,
+              actionsTaken,
+              gameStatus: game.status,
+              timestamp: nowIso,
+              source,
+              requestId,
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          // Otherwise, advance turn to the next undecided player.
+          const sortedUndecided = undecidedPlayersNow.sort((a: any, b: any) => a.position - b.position);
+          const higherPositions = sortedUndecided.filter((p: any) => p.position > currentTurnPos);
+          const nextPlayer = higherPositions.length > 0 ? higherPositions[0] : sortedUndecided[0];
+
+          const { data: gameDefaults } = await supabase
+            .from('game_defaults')
+            .select('decision_timer_seconds')
+            .eq('game_type', 'holm')
+            .maybeSingle();
+          const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
+          const newDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
+
+          const { data: turnAdvanceResult } = await supabase
+            .from('rounds')
+            .update({
+              current_turn_position: nextPlayer.position,
+              decision_deadline: newDeadline,
+            })
+            .eq('id', currentRound.id)
+            .eq('current_turn_position', currentTurnPos)
+            .select();
+
+          if (turnAdvanceResult && turnAdvanceResult.length > 0) {
+            actionsTaken.push(`Holm recovery: advanced turn to position ${nextPlayer.position}`);
+          } else {
+            actionsTaken.push('Holm recovery: turn advance skipped - another client already advanced');
+          }
+
           return new Response(JSON.stringify({
             success: true,
             actionsTaken,
