@@ -996,9 +996,33 @@ serve(async (req) => {
            if (latestRound) {
             const horsesState = latestRound.horses_state as any;
             
+            // CRITICAL FIX: Do NOT race the client!
+            // The client (HorsesGameTable / useHorsesMobileController) is responsible for:
+            // 1. Detecting gamePhase === 'complete'
+            // 2. Awarding chips to the winner
+            // 3. Running the pot-to-player animation
+            // 4. Setting awaiting_next_round or game_over
+            //
+            // This cron should only be a FALLBACK for genuinely stuck games where the client
+            // disconnected or crashed. We add a 15-second grace period before server-side
+            // takeover to ensure client animations have time to run.
+            const roundCreatedAt = new Date(latestRound.created_at).getTime();
+            const nowMs = Date.now();
+            const roundAge = nowMs - roundCreatedAt;
+            const DICE_COMPLETION_GRACE_MS = 15_000; // 15 seconds for client to process
+            
             // Check if round is complete but game hasn't processed winner yet
+            // AND the round is old enough that the client should have already processed it
              if ((latestRound.status === 'completed' || horsesState?.gamePhase === 'complete') &&
-                 !game.awaiting_next_round) {
+                 !game.awaiting_next_round &&
+                 roundAge > DICE_COMPLETION_GRACE_MS) {
+              
+              console.log('[CRON-ENFORCE] 🎲 DICE RECOVERY: Round complete but client hasnt processed, taking over', {
+                gameId: game.id,
+                roundId: latestRound.id,
+                roundAgeMs: roundAge,
+                graceMs: DICE_COMPLETION_GRACE_MS,
+              });
 
                // HARD SAFETY GUARD:
                // Never process/award/rollover a dice hand unless *all active players* have completed.
