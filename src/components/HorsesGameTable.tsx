@@ -1258,7 +1258,7 @@ export function HorsesGameTable({
         };
       });
 
-      await logDiceEvent(gameId, 'DICE_GAME_COMPLETE', 'HorsesGameTable:processWin', {
+      logDiceEvent(gameId, 'DICE_GAME_COMPLETE', 'HorsesGameTable:processWin', {
         roundId: currentRoundId,
         gameType,
         winnerCount: winningPlayerIds.length,
@@ -1270,7 +1270,7 @@ export function HorsesGameTable({
 
       if (winningPlayerIds.length > 1) {
         // Tie - trigger re-ante flow (rollover)
-        await logDiceEvent(gameId, 'DICE_TIE_DETECTED', 'HorsesGameTable:processWin:tie', {
+        logDiceEvent(gameId, 'DICE_TIE_DETECTED', 'HorsesGameTable:processWin:tie', {
           roundId: currentRoundId,
           gameType,
           tiedPlayerIds: winningPlayerIds,
@@ -1289,7 +1289,7 @@ export function HorsesGameTable({
           .select("id, total_hands, current_game_uuid");
 
         if (claimError || !claimed || claimed.length === 0) {
-          await logRaceConditionGuard(gameId, 'HorsesGameTable:processWin:tie', 'TIE_ALREADY_PROCESSED', {
+          logRaceConditionGuard(gameId, 'HorsesGameTable:processWin:tie', 'TIE_ALREADY_PROCESSED', {
             roundId: currentRoundId,
             claimError: claimError?.message,
           });
@@ -1311,7 +1311,7 @@ export function HorsesGameTable({
         const handNumber = (claimed[0] as any).total_hands || 1;
         const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
 
-        await logDealerAnnouncement(gameId, 'HorsesGameTable:processWin:tie', 'TIE_ROLLOVER', 
+        logDealerAnnouncement(gameId, 'HorsesGameTable:processWin:tie', 'TIE_ROLLOVER', 
           `${tiedPlayerNames} tied with ${tiedResult?.result.description}`, {
             handNumber,
             dealerGameId: currentGameUuid,
@@ -1384,7 +1384,7 @@ export function HorsesGameTable({
         };
       });
 
-      await logDiceEvent(gameId, 'DICE_WIN_PROCESSING', 'HorsesGameTable:processWin:winner', {
+      logDiceEvent(gameId, 'DICE_WIN_PROCESSING', 'HorsesGameTable:processWin:winner', {
         dealerGameId: currentGameUuid,
         roundId: currentRoundId,
         handNumber,
@@ -1410,7 +1410,7 @@ export function HorsesGameTable({
         dealer_game_id: currentGameUuid,
       });
 
-      await logDealerAnnouncement(gameId, 'HorsesGameTable:processWin:winner', 'WINNER',
+      logDealerAnnouncement(gameId, 'HorsesGameTable:processWin:winner', 'WINNER',
         `${winnerName} wins with ${winnerResult.result.description}`, {
           handNumber,
           dealerGameId: currentGameUuid,
