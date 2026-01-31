@@ -373,31 +373,31 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 
   console.log('[HOLM] Game config - pot:', gameConfig.pot, 'buck_position:', gameConfig.buck_position);
 
-  // IMPORTANT: When transitioning from another game type (e.g., 3-5-7 -> Holm) we preserve old rounds.
-  // The rounds table has a uniqueness guard (commonly: game_id + hand_number + round_number).
-  // If Holm starts at hand_number=1/round_number=1, it can collide with existing 3-5-7 rows and get stuck
-  // in ante_decision with is_first_hand already consumed.
-  //
-  // To prevent collisions, we derive a NEW hand_number from the max existing hand_number in rounds.
-  // We treat ANY "ante_decision" start as a new-hand boundary (even if isFirstHand=false for recovery).
-  const { data: maxHandRow } = await supabase
-    .from('rounds')
-    .select('hand_number')
-    .eq('game_id', gameId)
-    .order('hand_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const maxHandFromRounds = maxHandRow?.hand_number ?? 0;
-  const baseHandNumber = Math.max(gameConfig.total_hands ?? 0, maxHandFromRounds);
-  const shouldStartNewHandNumber = effectiveIsFirstHand || gameConfig.status === 'ante_decision';
-  const handNumber = shouldStartNewHandNumber ? baseHandNumber + 1 : (baseHandNumber || 1);
-  console.log('[HOLM] Hand numbering:', {
-    total_hands: gameConfig.total_hands,
-    maxHandFromRounds,
-    handNumber,
-    shouldStartNewHandNumber,
-  });
+  // CORRECT APPROACH: Each dealer_game_id has its own hand numbering starting at 1.
+  // The unique constraint is now (dealer_game_id, hand_number, round_number).
+  // Query only rounds for THIS dealer game to find the next hand number.
+  const dealerGameId = gameConfig.current_game_uuid;
+  
+  let handNumber: number;
+  if (effectiveIsFirstHand) {
+    // First hand of this dealer game = hand 1
+    handNumber = 1;
+    console.log('[HOLM] First hand of dealer game - starting at hand_number=1');
+  } else {
+    // Find max hand_number within THIS dealer game only
+    const { data: maxHandRow } = await supabase
+      .from('rounds')
+      .select('hand_number')
+      .eq('dealer_game_id', dealerGameId)
+      .order('hand_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    handNumber = (maxHandRow?.hand_number ?? 0) + 1;
+    console.log('[HOLM] Subsequent hand - next hand_number:', handNumber);
+  }
+  
+  console.log('[HOLM] Hand numbering:', { dealerGameId, handNumber, effectiveIsFirstHand });
 
   const anteAmount = gameConfig.ante_amount || 1;
   const dealerPosition = gameConfig.dealer_position || 1;
@@ -515,38 +515,29 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
   console.log('[HOLM] Using decision timer:', timerSeconds, 'seconds');
 
-  // CRITICAL FIX: For Holm games, current_round = 1 and is_first_hand = true is set in DealerConfig
-  // On first hand: use current_round (already 1), then set is_first_hand = false
-  // On subsequent hands: only increment if is_first_hand = false
+  // For Holm, each dealer game starts at round_number=1
+  // Within a Holm game, round_number increments for each new hand (tie/rollover)
   let nextRoundNumber: number;
   
   if (effectiveIsFirstHand) {
-    console.log('[HOLM] FIRST HAND - using current_round = 1');
-    // Use current_round from game (pre-seeded to 1 during setup)
-    nextRoundNumber = gameConfig.current_round || 1;
+    // First hand of this dealer game = round 1
+    nextRoundNumber = 1;
+    console.log('[HOLM] FIRST HAND - starting at round_number=1');
   } else {
-    // Subsequent hand - check is_first_hand flag
-    // If is_first_hand = true, DON'T increment (just set flag to false)
-    // If is_first_hand = false, increment normally
-    if (gameConfig.is_first_hand) {
-      console.log('[HOLM] is_first_hand = true, using current_round without incrementing');
-      nextRoundNumber = gameConfig.current_round || 1;
-      // Set is_first_hand = false (done below in the game update)
-    } else {
-      // Normal increment from max existing round
-      const { data: maxRoundData } = await supabase
-        .from('rounds')
-        .select('round_number')
-        .eq('game_id', gameId)
-        .order('round_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      nextRoundNumber = (maxRoundData?.round_number || 0) + 1;
-    }
+    // Find max round_number within THIS dealer game only
+    const { data: maxRoundData } = await supabase
+      .from('rounds')
+      .select('round_number')
+      .eq('dealer_game_id', dealerGameId)
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    nextRoundNumber = (maxRoundData?.round_number || 0) + 1;
+    console.log('[HOLM] Subsequent round - next round_number:', nextRoundNumber);
   }
   
-  console.log('[HOLM] Creating new round:', nextRoundNumber);
+  console.log('[HOLM] Creating new round:', nextRoundNumber, 'for dealer_game:', dealerGameId);
 
   // Deal fresh cards
   const deadline = new Date(Date.now() + timerSeconds * 1000);
