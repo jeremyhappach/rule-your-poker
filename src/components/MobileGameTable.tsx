@@ -5528,9 +5528,6 @@ export const MobileGameTable = ({
                 </Badge>}
             </div>
             
-            {/* Inline Round/Hand Debug */}
-            <RoundHandDebugOverlay gameId={gameId} inline />
-            
             {/* Emoticon fade-out animation */}
             <style>{`
               @keyframes fadeOutEmoticon {
@@ -5677,5 +5674,8 @@ export const MobileGameTable = ({
           <MusicToggleButton variant="compact" />
         </div>
       )}
+      
+      {/* Inline Round/Hand Debug - fixed position overlay */}
+      <RoundHandDebugOverlay gameId={gameId} inline />
     </div>;
 };
