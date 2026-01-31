@@ -993,12 +993,43 @@ serve(async (req) => {
             .limit(1)
             .maybeSingle();
           
-          if (latestRound) {
+           if (latestRound) {
             const horsesState = latestRound.horses_state as any;
             
             // Check if round is complete but game hasn't processed winner yet
-            if ((latestRound.status === 'completed' || horsesState?.gamePhase === 'complete') && 
-                !game.awaiting_next_round) {
+             if ((latestRound.status === 'completed' || horsesState?.gamePhase === 'complete') &&
+                 !game.awaiting_next_round) {
+
+               // HARD SAFETY GUARD:
+               // Never process/award/rollover a dice hand unless *all active players* have completed.
+               // Otherwise we can create the exact symptom described: pot is awarded, but the bot
+               // never finished rolling and the UI never got a coherent "complete" moment.
+               const { data: activePlayersForCompletion } = await supabase
+                 .from('players')
+                 .select('id, sitting_out, status')
+                 .eq('game_id', game.id)
+                 .eq('status', 'active')
+                 .eq('sitting_out', false);
+
+               const activeIds = (activePlayersForCompletion || []).map((p: any) => p.id);
+               const completedCount = activeIds.filter((pid: string) => {
+                 const st = (horsesState?.playerStates || {})?.[pid];
+                 return !!(st?.isComplete && st?.result);
+               }).length;
+
+               if (activeIds.length > 0 && completedCount < activeIds.length) {
+                 console.log('[CRON-ENFORCE] 🎲 DICE GAME GUARD: Not all active players complete; skipping award/rollover', {
+                   gameId: game.id,
+                   gameType: game.game_type,
+                   activeCount: activeIds.length,
+                   completedCount,
+                   roundId: latestRound.id,
+                   handNumber: latestRound.hand_number,
+                   roundNumber: latestRound.round_number,
+                 });
+                 actionsTaken.push(`Dice game: Skipped completion (active ${activeIds.length}, complete ${completedCount})`);
+                 // Do NOT mutate game/round here.
+               } else {
               
               console.log('[CRON-ENFORCE] 🎲 DICE GAME STUCK: Round complete but game not updated', {
                 gameId: game.id,
@@ -1056,7 +1087,7 @@ serve(async (req) => {
               
               const playerMap = new Map((allPlayers || []).map((p: any) => [p.id, p]));
               
-              if (isTie && tieBreakPlayers.length > 1) {
+               if (isTie && tieBreakPlayers.length > 1) {
                 // CHOP/TIE - in Horses/SCC, ties trigger a rollover (one tie all tie)
                 // NO chips are distributed - the pot carries over and everyone re-antes
                 const winners = tieBreakPlayers.filter(p => 
@@ -1106,7 +1137,7 @@ serve(async (req) => {
                 await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
                 
                 actionsTaken.push(`Dice game: Tie with ${bestPlayer!.result.description}, pot ${roundPot} carries over`);
-              } else if (bestPlayer) {
+               } else if (bestPlayer) {
                 // Single winner
                 const winnerPlayer = playerMap.get(bestPlayer.playerId);
                 const winnerUsername = (winnerPlayer?.profiles as any)?.username || 'Player';
@@ -1154,7 +1185,7 @@ serve(async (req) => {
                 await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
                 
                 actionsTaken.push(`Dice game: ${winnerUsername} wins with ${bestPlayer.result.description}, pot ${roundPot}`);
-              } else {
+               } else {
                 // No valid results found - just move to awaiting_next_round
                 console.log('[CRON-ENFORCE] Dice game: No valid results found, forcing transition');
                 
@@ -1169,7 +1200,8 @@ serve(async (req) => {
                 await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
                 
                 actionsTaken.push('Dice game: No results, forced awaiting_next_round');
-              }
+               }
+               }
             }
           }
         }

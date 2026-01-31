@@ -36,15 +36,36 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     return;
   }
 
-  // CRITICAL GUARD: Block round creation if game is already over or ended
-  if (game.status === 'game_over' || game.status === 'session_ended') {
+  // TERMINAL STATE GUARD: Don't mutate ended sessions
+  if (game.status === 'session_ended') {
     logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_GAME_OVER', {
       currentStatus: game.status,
       isFirstHand,
       dealerGameId: game.current_game_uuid,
     });
-    console.warn('[HORSES] Blocked round start - game is in terminal state:', game.status);
+    console.warn('[HORSES] Blocked round start - session ended');
     return;
+  }
+
+  // CRITICAL GUARD: Non-first hands should only start after a win (game_over)
+  // or a tie rollover (awaiting_next_round). This prevents accidental hand creation
+  // while a hand is still actively being played.
+  if (!isFirstHand) {
+    const canStartNextHand = game.awaiting_next_round === true || game.status === 'game_over';
+    if (!canStartNextHand) {
+      logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_NOT_READY', {
+        currentStatus: game.status,
+        awaitingNextRound: game.awaiting_next_round,
+        dealerGameId: game.current_game_uuid,
+        currentRound: game.current_round,
+        totalHands: game.total_hands,
+      });
+      console.warn('[HORSES] Blocked round start - not ready for next hand', {
+        status: game.status,
+        awaiting_next_round: game.awaiting_next_round,
+      });
+      return;
+    }
   }
 
   // CORRECT APPROACH: Each dealer_game_id has its own hand/round numbering starting at 1.
@@ -152,6 +173,38 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
 
     if (!claim || claim.length === 0) {
       console.log('[HORSES] Another client claimed rollover start (or no longer awaiting), skipping');
+      return;
+    }
+  } else if (game.status === 'game_over') {
+    // Next-hand start after a completed hand: only one client should clear game_over and start the next hand.
+    // This prevents duplicate hand creation across multiple connected clients.
+    let q = supabase
+      .from('games')
+      .update({
+        status: 'in_progress',
+        current_round: newRoundNumber,
+        total_hands: newHandNumber,
+        awaiting_next_round: false,
+        all_decisions_in: false,
+        last_round_result: null,
+        game_over_at: null,
+        is_first_hand: false,
+      })
+      .eq('id', gameId)
+      .eq('status', 'game_over');
+
+    // Only one client should succeed: require the current_round we observed.
+    if (typeof game.current_round === 'number') q = q.eq('current_round', game.current_round);
+    else q = q.is('current_round', null);
+
+    const { data: claim, error: claimError } = await q.select('id');
+
+    if (claimError) {
+      console.warn('[HORSES] Failed to claim game_over next-hand start (continuing):', claimError);
+    }
+
+    if (!claim || claim.length === 0) {
+      console.log('[HORSES] Another client claimed game_over next-hand start (or no longer game_over), skipping');
       return;
     }
   }
