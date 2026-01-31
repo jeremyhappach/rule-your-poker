@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
 import { getBotAlias } from "./botAlias";
+import { logPlayerDecision, logGameState } from "./gameStateDebugLog";
 
 /**
  * Snapshot all players' chip counts after a hand completes.
@@ -754,6 +755,14 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       })
       .eq('id', playerId);
     console.log('[MAKE DECISION] Stay decision locked in database');
+    
+    // DEBUG LOG: Player stay decision
+    await logPlayerDecision(gameId, playerId, 'stay', true, 'gameLogic:makeDecision', {
+      round_id: currentRound.id,
+      round_number: currentRound.round_number,
+      position: player.position,
+      game_type: game.game_type,
+    });
   } else {
     // In Holm game, folding only affects current hand - keep status 'active'
     // In 3-5-7 game, folding eliminates player from entire session - set status 'folded'
@@ -766,6 +775,15 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       })
       .eq('id', playerId);
     console.log('[MAKE DECISION] Fold decision locked in database');
+    
+    // DEBUG LOG: Player fold decision
+    await logPlayerDecision(gameId, playerId, 'fold', true, 'gameLogic:makeDecision', {
+      round_id: currentRound.id,
+      round_number: currentRound.round_number,
+      position: player.position,
+      game_type: game.game_type,
+      status_change: isHolmGame ? 'none' : 'folded',
+    });
   }
 
   console.log('[MAKE DECISION] Is Holm game?', isHolmGame);

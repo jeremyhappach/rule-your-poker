@@ -478,6 +478,69 @@ export type Database = {
           },
         ]
       }
+      game_state_debug_log: {
+        Row: {
+          all_decisions_in: boolean | null
+          auto_fold: boolean | null
+          created_at: string
+          current_round: number | null
+          deadline_expired: boolean | null
+          dealer_game_id: string | null
+          decision_locked: boolean | null
+          details: Json | null
+          event_type: string
+          game_id: string
+          game_status: string | null
+          id: string
+          player_decision: string | null
+          player_id: string | null
+          round_id: string | null
+          round_status: string | null
+          source_location: string | null
+          total_hands: number | null
+        }
+        Insert: {
+          all_decisions_in?: boolean | null
+          auto_fold?: boolean | null
+          created_at?: string
+          current_round?: number | null
+          deadline_expired?: boolean | null
+          dealer_game_id?: string | null
+          decision_locked?: boolean | null
+          details?: Json | null
+          event_type: string
+          game_id: string
+          game_status?: string | null
+          id?: string
+          player_decision?: string | null
+          player_id?: string | null
+          round_id?: string | null
+          round_status?: string | null
+          source_location?: string | null
+          total_hands?: number | null
+        }
+        Update: {
+          all_decisions_in?: boolean | null
+          auto_fold?: boolean | null
+          created_at?: string
+          current_round?: number | null
+          deadline_expired?: boolean | null
+          dealer_game_id?: string | null
+          decision_locked?: boolean | null
+          details?: Json | null
+          event_type?: string
+          game_id?: string
+          game_status?: string | null
+          id?: string
+          player_decision?: string | null
+          player_id?: string | null
+          round_id?: string | null
+          round_status?: string | null
+          source_location?: string | null
+          total_hands?: number | null
+        }
+        Relationships: []
+      }
       games: {
         Row: {
           all_decisions_in: boolean | null
