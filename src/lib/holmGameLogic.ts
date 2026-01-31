@@ -8,14 +8,18 @@ import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDeb
 /**
  * Check if all players have decided in a Holm game round
  * In Holm, decisions are TURN-BASED starting from buck and rotating clockwise
+ * 
+ * @param gameId - The game ID
+ * @param decidingPlayerPosition - OPTIONAL but CRITICAL: The position of the player who just made a decision.
+ *                                  When provided, we KNOW this player just decided and should advance turn.
+ *                                  When omitted, we infer from current_turn_position (legacy/recovery behavior).
  */
-export async function checkHolmRoundComplete(gameId: string) {
-  console.log('[HOLM CHECK] Checking if round is complete for game:', gameId);
+export async function checkHolmRoundComplete(gameId: string, decidingPlayerPosition?: number) {
+  console.log('[HOLM CHECK] Checking if round is complete for game:', gameId, 'decidingPlayerPosition:', decidingPlayerPosition);
   
   // Brief delay to ensure DB write has propagated before reading
-  // INCREASED from 50ms to 150ms - DB writes sometimes need more time to propagate
   // This is critical for preventing the edge function from seeing stale decision_locked=false
-  await new Promise(resolve => setTimeout(resolve, 150));
+  await new Promise(resolve => setTimeout(resolve, 100));
   
   // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
   const { game, round, error } = await getActiveHolmRoundWithGame(gameId);
@@ -38,6 +42,7 @@ export async function checkHolmRoundComplete(gameId: string) {
     hand_number: round.hand_number,
     round_number: round.round_number,
     game_current_round: game.current_round,
+    current_turn_position: round.current_turn_position,
   });
   
   const { data: players } = await supabase
@@ -120,43 +125,32 @@ export async function checkHolmRoundComplete(gameId: string) {
       throw error;
     }
   } else {
-    // Check if current player has decided - if so, move to next player's turn
-    // CRITICAL: Re-fetch the current player's state to ensure we have fresh data
-    // Use a small retry loop in case the DB write is still propagating
-    let freshCurrentPlayer = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const { data: playerData } = await supabase
-        .from('players')
-        .select('*')
-        .eq('game_id', gameId)
-        .eq('position', round.current_turn_position)
-        .eq('status', 'active')
-        .eq('sitting_out', false)
-        .maybeSingle();
-      
-      freshCurrentPlayer = playerData;
-      
-      // If player is locked, no need to retry
-      if (freshCurrentPlayer?.decision_locked) {
-        break;
-      }
-      
-      // If not locked and we have retries left, wait a bit and retry
-      if (attempt < 2) {
-        console.log('[HOLM CHECK] Player not locked yet, retrying in 100ms (attempt', attempt + 1, ')');
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
+    // CRITICAL FIX: When decidingPlayerPosition is provided, we KNOW this player just made a decision.
+    // We don't need to re-fetch and verify - we should just advance the turn.
+    // This eliminates the race condition where current_turn_position might have already been advanced.
     
-    console.log('[HOLM CHECK] Fresh current player data:', {
-      position: freshCurrentPlayer?.position,
-      decision_locked: freshCurrentPlayer?.decision_locked,
-      current_decision: freshCurrentPlayer?.current_decision
+    const positionToCheck = decidingPlayerPosition ?? round.current_turn_position;
+    
+    // Find the player at the position we're checking
+    const playerAtPosition = players.find(p => p.position === positionToCheck);
+    
+    console.log('[HOLM CHECK] Checking player at position:', positionToCheck, {
+      decidingPlayerPosition,
+      round_current_turn_position: round.current_turn_position,
+      playerFound: !!playerAtPosition,
+      decision_locked: playerAtPosition?.decision_locked,
+      current_decision: playerAtPosition?.current_decision
     });
     
-    if (freshCurrentPlayer?.decision_locked && freshCurrentPlayer.current_decision !== null) {
+    // If we have a decidingPlayerPosition, we KNOW they just decided - don't second-guess it
+    // Just advance the turn immediately
+    if (decidingPlayerPosition !== undefined) {
+      console.log('[HOLM CHECK] Player at position', decidingPlayerPosition, 'just decided, advancing turn');
+      await moveToNextHolmPlayerTurn(gameId, decidingPlayerPosition);
+    } else if (playerAtPosition?.decision_locked && playerAtPosition.current_decision !== null) {
+      // Legacy/recovery path: check if current turn player has decided
       console.log('[HOLM CHECK] Current player decided, moving to next turn from position', round.current_turn_position);
-      await moveToNextHolmPlayerTurn(gameId);
+      await moveToNextHolmPlayerTurn(gameId, round.current_turn_position);
     } else {
       console.log('[HOLM CHECK] Waiting for player at position', round.current_turn_position, 'to decide');
     }
@@ -165,9 +159,13 @@ export async function checkHolmRoundComplete(gameId: string) {
 
 /**
  * Move to the next player's turn in Holm game (clockwise from buck)
+ * 
+ * @param gameId - The game ID
+ * @param fromPosition - The position of the player who just finished their turn.
+ *                       Used for atomic guard and calculating next position.
  */
-async function moveToNextHolmPlayerTurn(gameId: string) {
-  console.log('[HOLM TURN] ========== Starting moveToNextHolmPlayerTurn ==========');
+async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
+  console.log('[HOLM TURN] ========== Starting moveToNextHolmPlayerTurn from position', fromPosition, '==========');
   
   // Fetch game_defaults for decision timer
   const { data: gameDefaults } = await supabase
@@ -200,6 +198,8 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     hand_number: round.hand_number,
     round_number: round.round_number,
     game_current_round: game.current_round,
+    current_turn_position: round.current_turn_position,
+    fromPosition,
   });
   
   const { data: allPlayers } = await supabase
@@ -224,21 +224,47 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   console.log('[HOLM TURN] Undecided players:', undecidedPlayers.map(p => p.position));
   
   if (undecidedPlayers.length === 0) {
-    console.log('[HOLM TURN] No undecided players left - should trigger round completion');
+    console.log('[HOLM TURN] No undecided players left - triggering round completion via all_decisions_in');
+    
+    // All players have decided - set all_decisions_in and end the round
+    const { data: updateResult } = await supabase
+      .from('games')
+      .update({ all_decisions_in: true })
+      .eq('id', gameId)
+      .eq('all_decisions_in', false)
+      .select();
+    
+    if (updateResult && updateResult.length > 0) {
+      console.log('[HOLM TURN] Successfully set all_decisions_in, calling endHolmRound');
+      
+      // Clear the timer and turn position
+      await supabase
+        .from('rounds')
+        .update({ 
+          current_turn_position: null,
+          decision_deadline: null
+        })
+        .eq('id', round.id);
+      
+      try {
+        await endHolmRound(gameId);
+      } catch (err) {
+        console.error('[HOLM TURN] ERROR calling endHolmRound:', err);
+      }
+    } else {
+      console.log('[HOLM TURN] Another client already set all_decisions_in - skipping');
+    }
     return;
   }
   
   const positions = undecidedPlayers.map(p => p.position).sort((a, b) => a - b);
-  const currentIndex = positions.indexOf(round.current_turn_position);
   
-  // CRITICAL: Turn order should be CLOCKWISE from buck, which means:
-  // In a 7-seat table with positions [1,2,4], if we're at position 4,
-  // the next clockwise position is 1 (wrapping around), not 2
-  // We need to find the next HIGHER position, wrapping to lowest if at max
+  // CRITICAL: Use fromPosition (the position we KNOW just decided) instead of round.current_turn_position
+  // This eliminates the race condition where current_turn_position might have already been updated by another client
   let nextPosition: number;
   
-  // Find the next position that is HIGHER than current, or wrap to lowest
-  const higherPositions = positions.filter(p => p > round.current_turn_position);
+  // Find the next position that is HIGHER than fromPosition, or wrap to lowest
+  const higherPositions = positions.filter(p => p > fromPosition);
   if (higherPositions.length > 0) {
     // There's a higher position, take the lowest one (next clockwise)
     nextPosition = Math.min(...higherPositions);
@@ -247,12 +273,12 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
     nextPosition = Math.min(...positions);
   }
   
-  console.log('[HOLM TURN] *** MOVING TURN from position', round.current_turn_position, 'to', nextPosition, '***');
-  console.log('[HOLM TURN] positions:', positions, 'currentIndex:', currentIndex, 'nextPosition (clockwise):', nextPosition);
+  console.log('[HOLM TURN] *** MOVING TURN from position', fromPosition, 'to', nextPosition, '***');
+  console.log('[HOLM TURN] undecided positions:', positions, 'nextPosition (clockwise):', nextPosition);
   
   // Update turn position and reset timer using game_defaults
-  // CRITICAL: Use atomic guard to prevent race conditions with concurrent turn advancement calls
-  // Only update if current_turn_position matches what we expect (the player who just decided)
+  // CRITICAL: Use atomic guard - only update if current_turn_position equals fromPosition
+  // This ensures only the client whose player just decided can advance the turn
   const deadline = new Date(Date.now() + timerSeconds * 1000);
   const { data: updateResult, error: updateError } = await supabase
     .from('rounds')
@@ -261,7 +287,7 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
       decision_deadline: deadline.toISOString()
     })
     .eq('id', round.id)
-    .eq('current_turn_position', round.current_turn_position) // ATOMIC GUARD: only update if turn hasn't changed
+    .eq('current_turn_position', fromPosition) // ATOMIC GUARD: only update if turn matches the player who just decided
     .select();
   
   if (updateError) {
@@ -270,7 +296,7 @@ async function moveToNextHolmPlayerTurn(gameId: string) {
   }
   
   if (!updateResult || updateResult.length === 0) {
-    console.log('[HOLM TURN] Turn advance skipped - another client already advanced the turn');
+    console.log('[HOLM TURN] Turn advance skipped - current_turn_position no longer matches fromPosition (another client already advanced)');
     return;
   }
     
