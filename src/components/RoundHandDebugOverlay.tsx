@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bug, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { Bug, ChevronDown, ChevronUp, RefreshCw, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,46 @@ interface RoundHandDebugOverlayProps {
   gameId: string | undefined;
   /** Compact inline mode for player area */
   inline?: boolean;
+}
+
+/** Small inline copy row for UUIDs */
+function CopyRow({ label, value }: { label: string; value: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const display = value ? `${value.slice(0, 8)}…` : "-";
+
+  const handleCopy = async () => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(`${label} ID copied`);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-1">
+      <span className="text-muted-foreground">{label}:</span>
+      <div className="flex items-center gap-1">
+        <span className="font-mono text-[9px] truncate max-w-[80px]">{display}</span>
+        {value && (
+          <button
+            onClick={handleCopy}
+            className="p-0.5 rounded hover:bg-muted"
+            title={`Copy full ${label} ID`}
+          >
+            {copied ? (
+              <Check className="h-2.5 w-2.5 text-primary" />
+            ) : (
+              <Copy className="h-2.5 w-2.5 text-muted-foreground" />
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebugOverlayProps) {
@@ -236,6 +277,12 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
 
             {snapshot ? (
               <div className="space-y-1.5">
+                {/* IDs with Copy */}
+                <div className="border-b border-border pb-1 space-y-0.5">
+                  <CopyRow label="Game" value={snapshot.gameId} />
+                  <CopyRow label="Dealer" value={snapshot.dealerGameId} />
+                </div>
+
                 {/* Game State */}
                 <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
                   <span className="text-muted-foreground">Hand:</span>
