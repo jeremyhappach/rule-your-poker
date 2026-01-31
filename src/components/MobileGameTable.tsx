@@ -615,6 +615,15 @@ export const MobileGameTable = ({
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
   
+  // SPOTLIGHT FIX: Sticky turn position tracking to prevent "snap back" during DB sync delays.
+  // The spotlight should only move forward to the next player, never jump back to a previous position.
+  // We track the last confirmed turn position and the handContextId it belongs to.
+  const stickyTurnPositionRef = useRef<{ position: number | null; handContextId: string | null }>({
+    position: null,
+    handContextId: null,
+  });
+
+  
   // Flash triggers for winner's chipstack when receiving legs/pot
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
   const [winnerPotFlashTrigger, setWinnerPotFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
@@ -1442,6 +1451,13 @@ export const MobileGameTable = ({
     
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
     setShowdownModeLocked(false);
+    
+    // Spotlight sticky turn position (prevents spotlight snap-back on new hand)
+    stickyTurnPositionRef.current = { position: null, handContextId: to };
+    
+    // NOTE: currentPlayerCardsRef is reset separately in the useMemo that computes currentPlayerCards
+    // because it's defined later in the component (after currentPlayer is computed)
+
 
     // External lifted community cache (parent)
     if (externalCommunityCardsCache) {
@@ -1802,7 +1818,55 @@ export const MobileGameTable = ({
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
-  const currentPlayerCards = currentPlayer ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] : [];
+  
+  // CRITICAL FIX: Use handContextId to validate current player cards.
+  // During hand transitions, playerCards may briefly contain stale data from the previous hand.
+  // We cache the last valid cards for the current player and only update when we can confirm
+  // the new cards are for the CURRENT hand (via handContextId match).
+  const currentPlayerCardsRef = useRef<{ cards: CardType[]; handContextId: string | null }>({
+    cards: [],
+    handContextId: null,
+  });
+  
+  const rawCurrentPlayerCards = currentPlayer 
+    ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
+    : [];
+  
+  // Update cache only when:
+  // 1. handContextId changes (new hand started) - reset to new cards (or empty if not yet received)
+  // 2. handContextId is the same AND we have new cards - update with fresh cards
+  // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
+  const currentPlayerCards = useMemo(() => {
+    const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
+    const cachedCards = currentPlayerCardsRef.current.cards;
+    
+    // Case 1: handContextId changed - this is a new hand
+    if (handContextId !== cachedHandContextId) {
+      // If we have cards for the new hand, use them
+      if (rawCurrentPlayerCards.length > 0) {
+        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+        return rawCurrentPlayerCards;
+      }
+      // New hand but no cards yet - clear the cache and return empty
+      // This prevents stale cards from flashing
+      currentPlayerCardsRef.current = { cards: [], handContextId: handContextId ?? null };
+      return [];
+    }
+    
+    // Case 2: Same hand - prefer new cards if available, otherwise keep cached
+    if (rawCurrentPlayerCards.length > 0) {
+      // Check if cards actually changed (different fingerprint)
+      const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
+      const cachedFp = cachedCards.map(c => `${c.rank}${c.suit}`).join('|');
+      if (rawFp !== cachedFp) {
+        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+      }
+      return rawCurrentPlayerCards;
+    }
+    
+    // No new cards but we have cached - keep cached (prevents flicker during brief DB gaps)
+    return cachedCards;
+  }, [rawCurrentPlayerCards, handContextId]);
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
@@ -3241,24 +3305,48 @@ export const MobileGameTable = ({
         
         
         {/* Turn Spotlight - Holm games and Dice games */}
-        {gameType === 'holm-game' && (
-          <TurnSpotlight
-            currentTurnPosition={currentTurnPosition ?? null}
-            currentPlayerPosition={currentPlayer?.position ?? null}
-            isObserver={!currentPlayer}
-            getClockwiseDistance={getClockwiseDistance}
-            containerRef={tableContainerRef}
-            isVisible={
-              roundStatus === 'betting' && 
-              !allDecisionsIn && 
-              !awaitingNextRound && 
-              currentTurnPosition !== null &&
-              !isWaitingPhase &&
-              !isSoloVsChucky &&
-              !soloVsChuckyTableLocked
-            }
-          />
-        )}
+        {gameType === 'holm-game' && (() => {
+          // SPOTLIGHT FIX: Compute sticky turn position to prevent "snap back" during DB sync.
+          // The spotlight should only move to a NEW position, never revert to a previous one.
+          const rawTurnPos = currentTurnPosition ?? null;
+          const cachedPos = stickyTurnPositionRef.current.position;
+          const cachedHand = stickyTurnPositionRef.current.handContextId;
+          
+          // Reset sticky position on new hand
+          if (handContextId !== cachedHand) {
+            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null };
+          } else if (rawTurnPos !== null && rawTurnPos !== cachedPos) {
+            // New position within the same hand - update the sticky cache
+            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null };
+          }
+          // If rawTurnPos is null but we have a cached position for the SAME hand, keep showing cached
+          // This prevents the spotlight from briefly disappearing during DB sync gaps.
+          // EXCEPTION: If allDecisionsIn is true, the spotlight should hide (round is complete).
+          
+          const stickyTurnPosition = allDecisionsIn 
+            ? null 
+            : (rawTurnPos ?? (handContextId === cachedHand ? cachedPos : null));
+          
+          return (
+            <TurnSpotlight
+              currentTurnPosition={stickyTurnPosition}
+              currentPlayerPosition={currentPlayer?.position ?? null}
+              isObserver={!currentPlayer}
+              getClockwiseDistance={getClockwiseDistance}
+              containerRef={tableContainerRef}
+              isVisible={
+                roundStatus === 'betting' && 
+                !allDecisionsIn && 
+                !awaitingNextRound && 
+                stickyTurnPosition !== null &&
+                !isWaitingPhase &&
+                !isSoloVsChucky &&
+                !soloVsChuckyTableLocked
+              }
+            />
+          );
+        })()}
+
         
         {/* Turn Spotlight - Dice games (Horses/SCC) - DISABLED */}
         {isDiceGame && horsesController.enabled && (

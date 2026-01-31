@@ -41,15 +41,11 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   useEffect(() => {
     // Must have valid turn position and visibility
     if (!isVisible || currentTurnPosition === null || currentTurnPosition === undefined) {
-      console.log('[SPOTLIGHT] Hidden - isVisible:', isVisible, 'turnPos:', currentTurnPosition);
       setOpacity(0);
       return;
     }
 
     let angle: number;
-
-    console.log('[SPOTLIGHT] Calculating angle - isObserver:', isObserver, 
-      'turnPos:', currentTurnPosition, 'myPos:', currentPlayerPosition);
 
     if (isObserver) {
       // OBSERVER MODE: Use absolute positions (1-7)
@@ -63,12 +59,10 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
         7: 45,    // Top-right
       };
       angle = observerAngles[currentTurnPosition] ?? 0;
-      console.log('[SPOTLIGHT] Observer mode - pos:', currentTurnPosition, '-> angle:', angle);
     } else {
       // SEATED PLAYER MODE: Use relative slots based on clockwise distance
       // Require valid currentPlayerPosition for seated mode
       if (currentPlayerPosition === null || currentPlayerPosition === undefined) {
-        console.log('[SPOTLIGHT] Seated mode but no player position, hiding');
         setOpacity(0);
         return;
       }
@@ -79,7 +73,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
       if (isMyTurn) {
         // Current player's turn - point to bottom center
         angle = 180;
-        console.log('[SPOTLIGHT] Seated mode - MY TURN (pos', currentPlayerPosition, ') -> angle:', angle);
       } else {
         // Calculate relative slot using clockwise distance from current player
         const distance = getClockwiseDistance(currentTurnPosition);
@@ -98,10 +91,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
           5: 135,   // Bottom-right (6 seats away)
         };
         angle = slotAngles[relativeSlot] ?? 0;
-        
-        console.log('[SPOTLIGHT] Seated mode - turnPos:', currentTurnPosition, 
-          'myPos:', currentPlayerPosition, 'distance:', distance, 
-          'slot:', relativeSlot, '-> angle:', angle);
       }
     }
 
