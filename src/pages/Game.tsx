@@ -42,7 +42,6 @@ import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
-import { RoundHandDebugOverlay } from "@/components/RoundHandDebugOverlay";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -6293,8 +6292,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })()}
 
       </div>
-
-      <RoundHandDebugOverlay gameId={gameId} />
 
       {/* Player click dialog for host */}
       <PlayerClickDialog
