@@ -680,6 +680,26 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   console.log('[MAKE DECISION] Game status:', game.status, 'Type:', game.game_type);
 
+  // CRITICAL GUARD: Dice games (horses, ship-captain-crew) do NOT use makeDecision.
+  // They have their own turn-based dice rolling logic. If makeDecision is called for a dice game,
+  // it's a bug that will corrupt game state. Bail out immediately.
+  const isDiceGame = game.game_type === 'horses' || game.game_type === 'ship-captain-crew';
+  if (isDiceGame) {
+    console.error('[MAKE DECISION] BLOCKED: makeDecision called for dice game - this is a bug!', {
+      gameId,
+      gameType: game.game_type,
+      playerId,
+      decision,
+    });
+    // Fire-and-forget diagnostic log
+    logRaceConditionGuard(gameId, 'gameLogic:makeDecision', 'BLOCKED_DICE_GAME', {
+      gameType: game.game_type,
+      playerId,
+      decision,
+    });
+    return; // Do not throw - just silently return to prevent state corruption
+  }
+
   // CRITICAL: For Holm games, fetch the LATEST round by round_number DESC
   // game.current_round is NOT updated for Holm (to avoid check constraint violation)
   const isHolmGame = game.game_type === 'holm-game';

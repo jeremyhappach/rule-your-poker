@@ -2731,8 +2731,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const instant357AutoFoldKeyRef = useRef<string | null>(null);
   
   // 3-5-7 instant auto-fold: fold immediately when round starts if auto_fold=true
+  // CRITICAL: This is ONLY for 3-5-7 games. In dice games (horses, SCC), auto_fold means "auto-roll",
+  // NOT "fold the round". Triggering makeDecision(fold) for dice games corrupts game state.
   useEffect(() => {
-    if (game?.game_type === 'holm-game') return; // Only for 3-5-7
+    // Guard: Only run for 3-5-7 games
+    const is357Game = game?.game_type === '3-5-7' || game?.game_type === '3-5-7-game' || game?.game_type === '357';
+    if (!is357Game) return;
     if (game?.status !== 'in_progress') return;
     if (!currentRound || currentRound.status !== 'betting') return;
     if (game?.is_paused) return;
