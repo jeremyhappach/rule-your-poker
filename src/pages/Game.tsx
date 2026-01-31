@@ -21,7 +21,7 @@ import { HighCardDealerSelection, DealerSelectionCard } from "@/components/HighC
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
-import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
+// useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer } from "@/lib/gameLogic";
@@ -2526,18 +2526,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
-  // DISABLED: useBotDecisionEnforcer was a band-aid for stuck Holm bots that caused
-  // race conditions in dice games (Horses/SCC) by incorrectly applying poker decisions.
-  // Root cause of stuck Holm bots needs to be addressed via proper dealer_game_id scoping.
-  // useBotDecisionEnforcer({
-  //   gameId,
-  //   gameStatus: game?.status,
-  //   isPaused: game?.is_paused,
-  //   allDecisionsIn: game?.all_decisions_in,
-  //   gameType: game?.game_type,
-  //   currentTurnPosition: currentRound?.current_turn_position,
-  //   roundId: currentRound?.id,
-  // });
+  // useBotDecisionEnforcer was removed entirely - it was a band-aid that caused race conditions
 
   // DEBUG: show a "Round: X" toast whenever round number/id changes
 
