@@ -1023,6 +1023,45 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     prevRoundForCacheRef.current = currentRoundNum;
   }, [game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
+  // CRITICAL: Clear ALL card caches when current_game_uuid (dealer game ID) changes.
+  // This is the PRIMARY guard against cross-dealer-game contamination when switching
+  // from 3-5-7 to Holm or vice versa. The new dealer game has its own hand/round numbering.
+  const prevDealerGameIdRef = useRef<string | null | undefined>(undefined);
+  useLayoutEffect(() => {
+    const prevDealerGameId = prevDealerGameIdRef.current;
+    const currentDealerGameId = game?.current_game_uuid ?? null;
+
+    // On first render, just record the current value
+    if (prevDealerGameId === undefined) {
+      prevDealerGameIdRef.current = currentDealerGameId;
+      return;
+    }
+
+    // If dealer game ID changed and we had a previous one, clear all caches
+    if (prevDealerGameId !== null && currentDealerGameId !== null && prevDealerGameId !== currentDealerGameId) {
+      console.log('[CACHE_GUARD] 🔄 dealer_game_id changed - CLEARING ALL CACHES to prevent cross-game contamination', {
+        prevDealerGameId,
+        currentDealerGameId,
+        gameType: game?.game_type,
+        status: game?.status,
+      });
+      
+      clearLiftedCardCaches('DEALER_GAME_ID_CHANGED', { prevDealerGameId, currentDealerGameId });
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      setPlayerCards([]);
+      setCardStateContext(null);
+      maxRevealedRef.current = 0;
+      cardIdentityRef.current = '';
+      
+      // Also reset turn tracking to prevent spotlight flicker
+      setLastTurnPosition(null);
+      setTimerTurnPosition(null);
+    }
+
+    prevDealerGameIdRef.current = currentDealerGameId;
+  }, [game?.current_game_uuid, game?.game_type, game?.status, clearLiftedCardCaches]);
+
   // NOTE: Buck passed cache clear was removed - redundant with NEW HAND DETECTED
   // The round number change is more reliable and fires shortly after buck passes
 
