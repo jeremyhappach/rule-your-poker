@@ -16,10 +16,10 @@ import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDeb
  */
 export async function checkHolmRoundComplete(gameId: string, decidingPlayerPosition?: number) {
   console.log('[HOLM CHECK] Checking if round is complete for game:', gameId, 'decidingPlayerPosition:', decidingPlayerPosition);
-  
-  // Brief delay to ensure DB write has propagated before reading
-  // This is critical for preventing the edge function from seeing stale decision_locked=false
-  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // IMPORTANT: Avoid artificial delays here.
+  // makeDecision awaits the DB write, so delaying just widens the race window where bots/other clients
+  // can advance state and cause split-brain (all_decisions_in true but round not completed).
   
   // ARCHITECTURAL STANDARD: Use centralized round-fetching utility
   const { game, round, error } = await getActiveHolmRoundWithGame(gameId);
@@ -220,34 +220,36 @@ async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
   
   if (undecidedPlayers.length === 0) {
     console.log('[HOLM TURN] No undecided players left - triggering round completion via all_decisions_in');
-    
-    // All players have decided - set all_decisions_in and end the round
-    const { data: updateResult } = await supabase
+
+    // All players have decided - attempt to set all_decisions_in (best-effort), but ALWAYS attempt
+    // to end the round. endHolmRound has its own atomic (betting -> processing) lock.
+    const { error: allDecisionsError } = await supabase
       .from('games')
       .update({ all_decisions_in: true })
       .eq('id', gameId)
-      .eq('all_decisions_in', false)
-      .select();
-    
-    if (updateResult && updateResult.length > 0) {
-      console.log('[HOLM TURN] Successfully set all_decisions_in, calling endHolmRound');
-      
-      // Clear the timer and turn position
-      await supabase
-        .from('rounds')
-        .update({ 
-          current_turn_position: null,
-          decision_deadline: null
-        })
-        .eq('id', round.id);
-      
-      try {
-        await endHolmRound(gameId);
-      } catch (err) {
-        console.error('[HOLM TURN] ERROR calling endHolmRound:', err);
-      }
-    } else {
-      console.log('[HOLM TURN] Another client already set all_decisions_in - skipping');
+      .eq('all_decisions_in', false);
+
+    if (allDecisionsError) {
+      console.warn('[HOLM TURN] Failed to set all_decisions_in (non-fatal):', allDecisionsError.message);
+    }
+
+    // Clear the timer and turn position (prevents ghost spotlight)
+    const { error: clearError } = await supabase
+      .from('rounds')
+      .update({
+        current_turn_position: null,
+        decision_deadline: null,
+      })
+      .eq('id', round.id);
+
+    if (clearError) {
+      console.warn('[HOLM TURN] Failed to clear turn/deadline (non-fatal):', clearError.message);
+    }
+
+    try {
+      await endHolmRound(gameId);
+    } catch (err) {
+      console.error('[HOLM TURN] ERROR calling endHolmRound:', err);
     }
     return;
   }
