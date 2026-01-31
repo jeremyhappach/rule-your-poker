@@ -2526,16 +2526,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
-  // Bot decision enforcement - polls every 2 seconds to detect and fix stuck bot decisions
-  useBotDecisionEnforcer({
-    gameId,
-    gameStatus: game?.status,
-    isPaused: game?.is_paused,
-    allDecisionsIn: game?.all_decisions_in,
-    gameType: game?.game_type,
-    currentTurnPosition: currentRound?.current_turn_position,
-    roundId: currentRound?.id,
-  });
+  // DISABLED: useBotDecisionEnforcer was a band-aid for stuck Holm bots that caused
+  // race conditions in dice games (Horses/SCC) by incorrectly applying poker decisions.
+  // Root cause of stuck Holm bots needs to be addressed via proper dealer_game_id scoping.
+  // useBotDecisionEnforcer({
+  //   gameId,
+  //   gameStatus: game?.status,
+  //   isPaused: game?.is_paused,
+  //   allDecisionsIn: game?.all_decisions_in,
+  //   gameType: game?.game_type,
+  //   currentTurnPosition: currentRound?.current_turn_position,
+  //   roundId: currentRound?.id,
+  // });
 
   // DEBUG: show a "Round: X" toast whenever round number/id changes
 
