@@ -2149,9 +2149,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
   useEffect(() => {
+    console.log('[ANTE CHECK] Effect triggered - status:', game?.status, 'gameId:', gameId, 'paused:', game?.is_paused);
+    
     if (game?.status !== 'ante_decision') {
       // Reset the ref when we exit ante_decision status
       anteProcessingRef.current = false;
+      console.log('[ANTE CHECK] Not in ante_decision status, resetting ref');
       return;
     }
     
@@ -2162,6 +2165,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const checkAnteDecisions = async () => {
+      console.log('[ANTE CHECK] checkAnteDecisions called, anteProcessingRef:', anteProcessingRef.current);
       // Skip if already processing
       if (anteProcessingRef.current) {
         console.log('[ANTE CHECK] Already processing, skipping');
