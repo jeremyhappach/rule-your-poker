@@ -802,14 +802,25 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   // Lock in decision - no chips deducted yet
   // isHolmGame already defined above
   
+  // CRITICAL: Use atomic guard to prevent race conditions with enforce-deadlines.
+  // The .eq('decision_locked', false) ensures only ONE writer wins if the user clicks
+  // Stay/Fold at the same moment the timer expires and calls the edge function.
   if (decision === 'stay') {
-    await supabase
+    const { data: stayResult, error: stayError } = await supabase
       .from('players')
       .update({ 
         current_decision: 'stay',
         decision_locked: true
       })
-      .eq('id', playerId);
+      .eq('id', playerId)
+      .eq('decision_locked', false) // ATOMIC GUARD: only update if not already locked
+      .select();
+    
+    if (!stayResult || stayResult.length === 0) {
+      console.log('[MAKE DECISION] Stay update skipped - player already locked (race condition avoided)');
+      return; // Another process already locked this player
+    }
+    
     console.log('[MAKE DECISION] Stay decision locked in database');
     
     // DEBUG LOG: Player stay decision (fire-and-forget)
@@ -822,14 +833,22 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   } else {
     // In Holm game, folding only affects current hand - keep status 'active'
     // In 3-5-7 game, folding eliminates player from entire session - set status 'folded'
-    await supabase
+    const { data: foldResult, error: foldError } = await supabase
       .from('players')
       .update({ 
         current_decision: 'fold',
         decision_locked: true,
         ...(isHolmGame ? {} : { status: 'folded' })
       })
-      .eq('id', playerId);
+      .eq('id', playerId)
+      .eq('decision_locked', false) // ATOMIC GUARD: only update if not already locked
+      .select();
+    
+    if (!foldResult || foldResult.length === 0) {
+      console.log('[MAKE DECISION] Fold update skipped - player already locked (race condition avoided)');
+      return; // Another process already locked this player
+    }
+    
     console.log('[MAKE DECISION] Fold decision locked in database');
     
     // DEBUG LOG: Player fold decision (fire-and-forget)
