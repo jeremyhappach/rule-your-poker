@@ -1963,7 +1963,12 @@ serve(async (req) => {
               p.current_decision === 'fold'
             ) || [];
             
-            console.log('[CRON-ENFORCE] Showdown: stayers=', stayedPlayers.length, 'folders=', foldedPlayers.length);
+             console.log('[CRON-ENFORCE] Showdown: stayers=', stayedPlayers.length, 'folders=', foldedPlayers.length);
+
+             // CRITICAL (Holm): NEVER advance hand_number based on games.total_hands.
+             // games.total_hands can be stale and must not drift ahead of rounds.
+             // Use the authoritative round.hand_number.
+             const holmHandNumber = (currentRound as any)?.hand_number ?? (game.total_hands || 1);
             
             if (stayedPlayers.length === 0) {
               // Everyone folded - apply pussy tax if enabled
@@ -1987,9 +1992,9 @@ serve(async (req) => {
               const newPot = (game.pot || 0) + totalTaxCollected;
               
               // Record result
-              await supabase.from('game_results').insert({
-                game_id: game.id,
-                hand_number: (game.total_hands || 0) + 1,
+               await supabase.from('game_results').insert({
+                 game_id: game.id,
+                 hand_number: holmHandNumber,
                 winner_player_id: null,
                 winner_username: null,
                 pot_won: 0,
@@ -2007,7 +2012,9 @@ serve(async (req) => {
                   last_round_result: totalTaxCollected > 0 ? 'Pussy Tax' : 'Everyone folded!',
                   awaiting_next_round: true,
                   all_decisions_in: false,
-                  total_hands: (game.total_hands || 0) + 1,
+                   // CRITICAL (Holm): Keep total_hands aligned to the active round's hand_number.
+                   // Never increment here; no new round was inserted.
+                   total_hands: holmHandNumber,
                 })
                 .eq('id', game.id);
               
@@ -2079,9 +2086,9 @@ serve(async (req) => {
                     p_amount: roundPot
                   });
                   
-                  await supabase.from('game_results').insert({
-                    game_id: game.id,
-                    hand_number: (game.total_hands || 0) + 1,
+                   await supabase.from('game_results').insert({
+                     game_id: game.id,
+                     hand_number: holmHandNumber,
                     winner_player_id: player.id,
                     pot_won: roundPot,
                     winning_hand_description: `Beat Chucky with ${playerEval.rank}`,
@@ -2104,7 +2111,8 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                       last_round_result: `Player beat Chucky!`,
                     })
                     .eq('id', game.id);
@@ -2132,7 +2140,8 @@ serve(async (req) => {
                       last_round_result: `Chucky wins with ${chuckyEval.rank}!`,
                       awaiting_next_round: true,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                     })
                     .eq('id', game.id);
                   
@@ -2175,9 +2184,9 @@ serve(async (req) => {
                     p_amount: roundPot
                   });
                   
-                  await supabase.from('game_results').insert({
-                    game_id: game.id,
-                    hand_number: (game.total_hands || 0) + 1,
+                   await supabase.from('game_results').insert({
+                     game_id: game.id,
+                     hand_number: holmHandNumber,
                     winner_player_id: winner.player.id,
                     pot_won: roundPot,
                     winning_hand_description: `${winner.eval.rank}`,
@@ -2203,7 +2212,8 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                       last_round_result: `${winnerName} won with ${winner.eval.rank}|||WINNER:${winner.player.id}|||POT:${roundPot}`,
                     })
                     .eq('id', game.id);
@@ -2224,9 +2234,9 @@ serve(async (req) => {
                     playerChipChanges[winner.player.id] = splitAmount;
                   }
                   
-                  await supabase.from('game_results').insert({
-                    game_id: game.id,
-                    hand_number: (game.total_hands || 0) + 1,
+                   await supabase.from('game_results').insert({
+                     game_id: game.id,
+                     hand_number: holmHandNumber,
                     winner_player_id: winners[0].player.id,
                     pot_won: roundPot,
                     winning_hand_description: `Chopped: ${winners.length}-way split with ${winners[0].eval.rank}`,
@@ -2249,7 +2259,8 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                       last_round_result: `Chopped: ${winners.length}-way split`,
                     })
                     .eq('id', game.id);
