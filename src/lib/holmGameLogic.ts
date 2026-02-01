@@ -1012,15 +1012,6 @@ export async function endHolmRound(gameId: string) {
       })
       .eq('id', capturedRoundId);
 
-    // VISIBILITY: At Holm showdown, ALL seated players can see ALL cards
-    // Update player_cards to mark them visible to all seated players
-    const seatedUserIds = players.map(p => p.user_id);
-    console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
-    await supabase
-      .from('player_cards')
-      .update({ visible_to_user_ids: seatedUserIds })
-      .eq('round_id', capturedRoundId);
-
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
     
     // Reveal Chucky's cards one at a time with suspenseful delays
@@ -1108,14 +1099,6 @@ export async function endHolmRound(gameId: string) {
     .from('rounds')
     .update({ status: 'showdown' })
     .eq('id', capturedRoundId);
-  
-  // VISIBILITY: At Holm multi-player showdown, ALL seated players can see ALL cards
-  const seatedUserIds = players.map(p => p.user_id);
-  console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
-  await supabase
-    .from('player_cards')
-    .update({ visible_to_user_ids: seatedUserIds })
-    .eq('round_id', capturedRoundId);
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
   console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');

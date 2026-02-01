@@ -1054,7 +1054,7 @@ export async function endRound(gameId: string) {
   // Fetch game configuration
   const { data: gameConfig } = await supabase
     .from('games')
-    .select('leg_value, legs_to_win, pot_max_enabled, pot_max_value, pussy_tax_enabled, pussy_tax_value, current_game_uuid, reveal_at_showdown')
+    .select('leg_value, legs_to_win, pot_max_enabled, pot_max_value, pussy_tax_enabled, pussy_tax_value, current_game_uuid')
     .eq('id', gameId)
     .single();
   
@@ -1066,7 +1066,6 @@ export async function endRound(gameId: string) {
   const potMaxValue = gameConfig?.pot_max_value || 10;
   const pussyTaxEnabled = gameConfig?.pussy_tax_enabled ?? true;
   const pussyTaxValue = gameConfig?.pussy_tax_value || 1;
-  const revealAtShowdown = gameConfig?.reveal_at_showdown ?? true;
   const betAmount = legValue;
 
   const currentRound = game.current_round;
@@ -1356,24 +1355,6 @@ export async function endRound(gameId: string) {
 
     if (playerCards && playerCards.length > 0) {
       console.log('[endRound] SHOWDOWN: Processing cards for evaluation');
-      
-      // VISIBILITY: Set card visibility based on round and reveal settings
-      // Round 3: all seated players see cards
-      // Round 1/2 with reveal: only showdown participants see cards
-      const stayedPlayerIds = playersWhoStayed.map(p => p.id);
-      const seatedUserIds = allPlayers.map(p => p.user_id);
-      const showdownUserIds = playersWhoStayed.map(p => p.user_id);
-      
-      if (currentRound === 3 || revealAtShowdown) {
-        // Round 3 or reveal enabled: set visibility
-        const visibleTo = currentRound === 3 ? seatedUserIds : showdownUserIds;
-        console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users');
-        await supabase
-          .from('player_cards')
-          .update({ visible_to_user_ids: visibleTo })
-          .eq('round_id', round.id)
-          .in('player_id', stayedPlayerIds);
-      }
       // Only evaluate hands of players who stayed
       // 3-5-7 game uses wildcards based on round - determine explicit wild rank
       const wildRank = currentRound === 1 ? '3' : currentRound === 2 ? '5' : '7';
