@@ -676,6 +676,39 @@ export type Database = {
         }
         Relationships: []
       }
+      insert_audit_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          operation: string
+          record_id: string
+          success: boolean
+          table_name: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          operation?: string
+          record_id: string
+          success?: boolean
+          table_name: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          operation?: string
+          record_id?: string
+          success?: boolean
+          table_name?: string
+        }
+        Relationships: []
+      }
       performance_traces: {
         Row: {
           created_at: string
