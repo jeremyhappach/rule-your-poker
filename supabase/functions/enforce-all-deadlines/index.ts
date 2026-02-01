@@ -1047,37 +1047,52 @@ serve(async (req) => {
               const playerMap = new Map((allPlayers || []).map((p: any) => [p.id, p]));
               
               if (isTie && tieBreakPlayers.length > 1) {
-                // CHOP/TIE - in Horses/SCC, ties trigger a rollover (one tie all tie)
-                // NO chips are distributed - the pot carries over and everyone re-antes
+                // CHOP - split the pot
                 const winners = tieBreakPlayers.filter(p => 
                   p.result.rank === bestPlayer!.result.rank && 
                   p.result.highValue === bestPlayer!.result.highValue
                 );
                 
+                const shareAmount = Math.floor(roundPot / winners.length);
+                const remainder = roundPot % winners.length;
+                const playerChipChanges: Record<string, number> = {};
                 const winnerNames: string[] = [];
-                for (const winner of winners) {
+                const winnerIds = new Set(winners.map(w => w.playerId));
+                
+                for (let i = 0; i < winners.length; i++) {
+                  const winner = winners[i];
                   const player = playerMap.get(winner.playerId);
                   if (player) {
+                    const winAmount = shareAmount + (i === 0 ? remainder : 0);
+                    // Use atomic increment to prevent race conditions
+                    await supabase.rpc('increment_player_chips', {
+                      p_player_id: winner.playerId,
+                      p_amount: winAmount
+                    });
+                    playerChipChanges[winner.playerId] = winAmount;
                     winnerNames.push((player.profiles as any)?.username || 'Player');
                   }
                 }
                 
-                // CRITICAL: For rollover ties, do NOT award any chips!
-                // The pot carries over unchanged and players will re-ante.
-                // Recording this as a "tie" event with zero chip changes for audit purposes.
-                console.log('[CRON-ENFORCE] Dice tie/rollover: no chip changes, pot carries over');
+                // ACCOUNTING FIX: Include loser ante losses in chip changes
+                const anteAmount = game.ante_amount || 1;
+                for (const [playerId, player] of playerMap.entries()) {
+                  if (!winnerIds.has(playerId) && !player.sitting_out) {
+                    playerChipChanges[playerId] = -anteAmount;
+                  }
+                }
+                console.log('[CRON-ENFORCE] Dice chop: balanced chip changes', playerChipChanges);
                 
                 await supabase.from('game_results').insert({
                   game_id: game.id,
                   hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
                   winner_player_id: null,
                   winner_username: winnerNames.join(' & '),
-                  pot_won: 0, // No chips awarded in a rollover
-                  winning_hand_description: `TIE: ${bestPlayer!.result.description} - Rollover`,
+                  pot_won: roundPot,
+                  winning_hand_description: `CHOP: ${bestPlayer!.result.description}`,
                   is_chopped: true,
-                  player_chip_changes: {}, // Empty - no chip movements
+                  player_chip_changes: playerChipChanges,
                   game_type: game.game_type,
-                  dealer_game_id: game.current_game_uuid || null,
                 });
                 
                 // For dice game ties, pot carries over to next round (rollover)
@@ -1095,7 +1110,7 @@ serve(async (req) => {
                 
                 await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
                 
-                actionsTaken.push(`Dice game: Tie with ${bestPlayer!.result.description}, pot ${roundPot} carries over`);
+                actionsTaken.push(`Dice game: ${winners.length}-way chop with ${bestPlayer!.result.description}, pot ${roundPot}`);
               } else if (bestPlayer) {
                 // Single winner
                 const winnerPlayer = playerMap.get(bestPlayer.playerId);
@@ -1109,13 +1124,17 @@ serve(async (req) => {
                   });
                 }
                 
-                // ZERO-SUM ACCOUNTING: Since antes are recorded separately as negative chip changes,
-                // the showdown event only records the winner's GROSS pot award.
-                // This keeps the ledger balanced: sum(antes) = -pot, showdown = +pot, net = 0
+                // ACCOUNTING FIX: Include loser ante losses in chip changes
+                const anteAmount = game.ante_amount || 1;
                 const playerChipChanges: Record<string, number> = {
-                  [bestPlayer.playerId]: roundPot // Winner receives the full pot
+                  [bestPlayer.playerId]: roundPot
                 };
-                console.log('[CRON-ENFORCE] Dice single winner: winner gets full pot', playerChipChanges);
+                for (const [playerId, player] of playerMap.entries()) {
+                  if (playerId !== bestPlayer.playerId && !player.sitting_out) {
+                    playerChipChanges[playerId] = -anteAmount;
+                  }
+                }
+                console.log('[CRON-ENFORCE] Dice single winner: balanced chip changes', playerChipChanges);
                 
                 await supabase.from('game_results').insert({
                   game_id: game.id,
@@ -1127,7 +1146,6 @@ serve(async (req) => {
                   is_chopped: false,
                   player_chip_changes: playerChipChanges,
                   game_type: game.game_type,
-                  dealer_game_id: game.current_game_uuid || null,
                 });
                 
                 await supabase
@@ -1888,7 +1906,6 @@ serve(async (req) => {
                 is_chopped: false,
                 player_chip_changes: playerChipChanges,
                 game_type: game.game_type,
-                dealer_game_id: game.current_game_uuid || null,
               });
               
               await supabase
@@ -1979,7 +1996,6 @@ serve(async (req) => {
                     is_chopped: false,
                     player_chip_changes: { [player.id]: roundPot },
                     game_type: game.game_type,
-                    dealer_game_id: game.current_game_uuid || null,
                   });
                   
                   await supabase
@@ -2075,7 +2091,6 @@ serve(async (req) => {
                     is_chopped: false,
                     player_chip_changes: { [winner.player.id]: roundPot },
                     game_type: game.game_type,
-                    dealer_game_id: game.current_game_uuid || null,
                   });
                   
                   await supabase
@@ -2124,7 +2139,6 @@ serve(async (req) => {
                     is_chopped: true,
                     player_chip_changes: playerChipChanges,
                     game_type: game.game_type,
-                    dealer_game_id: game.current_game_uuid || null,
                   });
                   
                   await supabase

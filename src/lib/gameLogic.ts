@@ -1503,7 +1503,6 @@ export async function endRound(gameId: string) {
               totalWinnings, // pot_won = what winner received from losers
               showdownChipChanges,
               false,
-              '357', // game_type
               currentGameUuid // dealer_game_id
             );
             console.log('[endRound] SHOWDOWN: Recorded chip changes:', showdownChipChanges);

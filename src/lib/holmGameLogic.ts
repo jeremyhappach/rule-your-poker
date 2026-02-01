@@ -413,28 +413,6 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       console.error('[HOLM] ERROR collecting antes:', anteError);
     } else {
       console.log('[HOLM] Antes collected atomically from', playerIds.length, 'players, amount:', anteAmount);
-      
-      // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
-      // Each player's ante payment is tracked as a negative chip change
-      const anteChipChanges: Record<string, number> = {};
-      for (const player of players) {
-        anteChipChanges[player.id] = -anteAmount;
-      }
-      
-      // Record antes as a game result entry with no winner (just ante collection)
-      await recordGameResult(
-        gameId,
-        1, // First hand
-        null, // no winner - this is ante collection
-        'Ante', // Description
-        `${players.length} players anted $${anteAmount}`,
-        0, // pot_won is 0 - this is money going INTO the pot
-        anteChipChanges,
-        false,
-        'holm', // game_type
-        gameConfig.current_game_uuid || null // dealer_game_id
-      );
-      console.log('[HOLM] Recorded ante chip changes in game_results:', anteChipChanges);
     }
     
     potForRound = players.length * anteAmount;
@@ -858,11 +836,11 @@ export async function endHolmRound(gameId: string) {
     // RECORD GAME RESULT for "everyone folded" case
     // This tracks that a hand happened even though there was no winner
     // The pot is carried forward, but we record the chip changes (pussy tax deductions)
-    // CRITICAL: Use player.id as key for consistent accounting
     const playerChipChanges: Record<string, number> = {};
     if (pussyTaxAmount > 0) {
       for (const player of activePlayers) {
-        playerChipChanges[player.id] = -pussyTaxAmount;
+        const username = player.profiles?.username || player.user_id;
+        playerChipChanges[username] = -pussyTaxAmount;
       }
     }
     
@@ -873,12 +851,12 @@ export async function endHolmRound(gameId: string) {
         game_id: gameId,
         hand_number: capturedRoundNumber,
         winner_player_id: null,
-        winner_username: 'Pussy Tax',
+        winner_username: null,
         pot_won: 0, // No pot won - carried forward
         winning_hand_description: 'Everyone folded - Pussy Tax applied',
         is_chopped: false,
         player_chip_changes: playerChipChanges,
-        game_type: 'holm',
+        game_type: 'holm-game',
         dealer_game_id: game.current_game_uuid || null,
       });
     
@@ -1335,24 +1313,10 @@ async function handleChuckyShowdown(
 
     console.log('[HOLM SHOWDOWN] Pot update - old:', roundPot, 'adding:', potMatchAmount, 'new:', newPot);
 
-    // CRITICAL: Record pot match event in game_results
-    // Even though the game continues, this is a player-to-pot transaction that must be logged
-    const potMatchChipChanges: Record<string, number> = {};
-    potMatchChipChanges[player.id] = -potMatchAmount;
-    
-    await recordGameResult(
-      gameId,
-      game.total_hands || 1, // Use current hand number from game
-      null, // no winner - this is a pot match
-      'Chucky Win', // Description
-      isTie ? 'Tie - player matches pot' : `Chucky beat player with ${chuckyHandDesc}`,
-      0, // pot_won is 0 - this is money going INTO the pot
-      potMatchChipChanges,
-      false,
-      'holm',
-      game.current_game_uuid || null
-    );
-    console.log('[HOLM SHOWDOWN] Recorded pot match chip change in game_results:', potMatchChipChanges);
+    // NOTE: No game_result is recorded here because the game continues
+    // The accounting invariant is: sum(player_chips) + pot = constant
+    // Chips moved from player to pot, pot grows, game continues until someone beats Chucky
+    console.log('[HOLM SHOWDOWN] Chucky won - game continues, no game_result recorded (chips went to pot)');
 
     // Use different message for tie vs actual loss
     const resultMessage = isTie 
@@ -1625,27 +1589,11 @@ async function handleMultiPlayerShowdown(
     // Set pot to losers' matched amount (no re-anting in Holm)
     console.log('[HOLM MULTI] New pot from losers match:', newPot);
     
-    // CRITICAL: Record this round's chip transactions in game_results
-    // Winner takes pot, losers pay into new pot - both must be logged
-    const chipChanges: Record<string, number> = {};
-    chipChanges[winner.player.id] = roundPot; // Winner gains pot
-    for (const loser of losers) {
-      chipChanges[loser.player.id] = -potMatchAmount; // Losers pay pot match
-    }
-    
-    await recordGameResult(
-      gameId,
-      currentRoundNumber,
-      winner.player.id,
-      winnerUsername,
-      `Won showdown (continues vs Chucky)`,
-      roundPot,
-      chipChanges,
-      false,
-      'holm',
-      game.current_game_uuid || null
-    );
-    console.log('[HOLM MULTI] Recorded showdown chip changes in game_results:', chipChanges);
+    // NOTE: No game_result is recorded here because the game continues
+    // The accounting invariant is: sum(player_chips) + pot = constant
+    // Winner takes old pot (+roundPot), losers pay into new pot (-potMatchAmount each)
+    // Game only ends when someone beats Chucky
+    console.log('[HOLM MULTI] Single winner - game continues, no game_result recorded');
     
     // Get detailed hand description for winner (for result message)
     const winnerAllCards = [...winner.cards, ...communityCards];
@@ -1736,29 +1684,10 @@ async function handleMultiPlayerShowdown(
     const winnerAllCards = [...winners[0].cards, ...communityCards];
     const winnerHandDesc = formatHandRankDetailed(winnerAllCards, false);
     
-    // CRITICAL: Record this round's chip transactions in game_results
-    // Winners split pot, losers pay pot match - all must be logged
-    const chipChanges: Record<string, number> = {};
-    for (const winner of winners) {
-      chipChanges[winner.player.id] = splitAmount; // Each winner gains split
-    }
-    for (const loser of losers) {
-      chipChanges[loser.player.id] = -potMatchAmount; // Losers pay pot match
-    }
-    
-    await recordGameResult(
-      gameId,
-      currentRoundNumber,
-      null, // multiple winners - no single winner
-      winnerNames.join(' and '),
-      `Tied and split pot (continues vs Chucky)`,
-      roundPot,
-      chipChanges,
-      true, // is_chopped = true for partial tie
-      'holm',
-      game.current_game_uuid || null
-    );
-    console.log('[HOLM PARTIAL TIE] Recorded chip changes in game_results:', chipChanges);
+    // NOTE: No game_result is recorded here because the game continues
+    // The accounting invariant is: sum(player_chips) + pot = constant
+    // Winners split old pot, losers pay into new pot - game continues until someone beats Chucky
+    console.log('[HOLM PARTIAL TIE] Partial tie - game continues, no game_result recorded');
     
     // Build debug data object to embed in result message
     const debugData = {
@@ -1904,26 +1833,10 @@ async function handleMultiPlayerShowdown(
       
       const newPot = roundPot + totalMatched;
       
-      // CRITICAL: Record pot match event in game_results
-      // Even though the game continues, this is a player-to-pot transaction that must be logged
-      const chipChanges: Record<string, number> = {};
-      for (const loser of playersLoseToChucky) {
-        chipChanges[loser.player.id] = -potMatchAmount;
-      }
-      
-      await recordGameResult(
-        gameId,
-        currentRoundNumber,
-        null, // no winner - Chucky won
-        'Chucky Win (Tie Breaker)',
-        allTiedWithChucky ? 'Tie - all match pot' : `Chucky beat tied players with ${chuckyHandDesc}`,
-        0, // pot_won is 0 - this is money going INTO the pot
-        chipChanges,
-        false,
-        'holm',
-        game.current_game_uuid || null
-      );
-      console.log('[HOLM TIE] Recorded pot match chip changes in game_results:', chipChanges);
+      // NOTE: No game_result is recorded here because the game continues
+      // The accounting invariant is: sum(player_chips) + pot = constant
+      // Chips moved from players to pot, pot grows, game continues until someone beats Chucky
+      console.log('[HOLM TIE] Chucky won - game continues, no game_result recorded (chips went to pot)');
       
       // Use different message for tie vs actual loss
       const resultMessage = allTiedWithChucky 
@@ -2005,7 +1918,7 @@ async function handleMultiPlayerShowdown(
         roundPot,
         playerChipChanges,
         playersBeatChucky.length > 1, // is_chopped = true if multiple winners
-        'holm',
+        'holm-game',
         game.current_game_uuid
       );
       

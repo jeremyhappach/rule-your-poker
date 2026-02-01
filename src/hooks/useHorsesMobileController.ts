@@ -139,7 +139,6 @@ export interface UseHorsesMobileControllerArgs {
   currentRoundId: string | null;
   horsesState: HorsesStateFromDB | null;
   gameType?: string; // 'horses' or 'ship-captain-crew'
-  isPaused?: boolean; // When true, timers freeze and no timeouts are enforced
 }
 
 // === DICE ANIMATION TIMING CONSTANTS (SINGLE SOURCE OF TRUTH) ===
@@ -163,7 +162,6 @@ export function useHorsesMobileController({
   currentRoundId,
   horsesState,
   gameType = 'horses',
-  isPaused = false,
 }: UseHorsesMobileControllerArgs) {
   // Determine if this is a Ship Captain Crew game
   const isSCC = gameType === 'ship-captain-crew';
@@ -377,7 +375,6 @@ export function useHorsesMobileController({
       lastResetTurnKeyRef.current = myKey;
       lastLocalEditAtRef.current = 0; // Clear protection window for fresh turn
       heldMaskAtLastRollStartRef.current = null;
-      timeoutProcessedRef.current = null; // Clear timeout lock for new turn
       console.log(`[SYNC_DEBUG] New turn detected, clearing protection: ${myKey}`);
       logDebug("new_turn", `Cleared protection for ${myKey}`);
       
@@ -1009,23 +1006,14 @@ export function useHorsesMobileController({
   // Timer countdown effect - calculate time remaining from deadline
   // NOTE: If no server deadline is present yet, we still show a local countdown for UI,
   // but we DO NOT process timeouts unless a real deadline exists.
-  // CRITICAL FIX: We ONLY set timeLeft=0 after a gradual countdown, never immediately on mount.
-  // This prevents false timeouts when mounting with a stale deadline from a previous turn.
   useEffect(() => {
-    // Don't run timer when paused - time freezes
-    if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId || isPaused) {
+    if (!enabled || gamePhase !== "playing" || !currentTurnPlayerId) {
       setTimeLeft(null);
       return;
     }
 
     // Bots don't need a visible timer
     if (currentTurnPlayer?.is_bot) {
-      setTimeLeft(null);
-      return;
-    }
-
-    // Players in auto-roll mode don't need a visible timer - bot loop handles them
-    if (currentTurnPlayer?.auto_fold) {
       setTimeLeft(null);
       return;
     }
@@ -1044,30 +1032,24 @@ export function useHorsesMobileController({
       return () => window.clearInterval(interval);
     }
 
-    const deadlineTime = new Date(deadline).getTime();
-    const now = Date.now();
-    const initialRemaining = Math.max(0, Math.ceil((deadlineTime - now) / 1000));
+    const updateTimeLeft = () => {
+      const deadlineTime = new Date(deadline).getTime();
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((deadlineTime - now) / 1000));
+      setTimeLeft(remaining);
+      return remaining;
+    };
 
-    // CRITICAL FIX: If the deadline is already in the past when we mount, DON'T immediately
-    // set timeLeft=0 as that would trigger a false timeout. Instead, set to null and let
-    // the timeout handler's own guards (checking if player already completed, etc.) decide.
-    // This handles stale deadlines from previous turns that haven't been updated yet.
-    if (initialRemaining <= 0) {
-      // Don't set timeLeft at all for already-expired deadlines on mount
-      // The timeout handler requires a real countdown to 0, not instant 0
-      console.log('[TIMER] Deadline already past on mount - not setting timeLeft to avoid false timeout');
-      setTimeLeft(null);
+    // Initial calculation
+    const initial = updateTimeLeft();
+    if (initial <= 0) {
+      setTimeLeft(0);
       return;
     }
 
-    // Start with actual remaining time
-    setTimeLeft(initialRemaining);
-
-    // Update every second - only the countdown reaching 0 triggers timeout
+    // Update every second
     const interval = window.setInterval(() => {
-      const currentTime = Date.now();
-      const remaining = Math.max(0, Math.ceil((deadlineTime - currentTime) / 1000));
-      setTimeLeft(remaining);
+      const remaining = updateTimeLeft();
       if (remaining <= 0) {
         window.clearInterval(interval);
       }
@@ -1079,36 +1061,19 @@ export function useHorsesMobileController({
     gamePhase,
     currentTurnPlayerId,
     currentTurnPlayer?.is_bot,
-    currentTurnPlayer?.auto_fold,
     horsesState?.turnDeadline,
-    isPaused,
   ]);
 
   // Timeout handler - set auto_fold so bot loop takes over with animated rolls
   // NOTE: We no longer force-complete here. The bot auto-play loop (below) handles
   // players with auto_fold=true and animates their rolls properly.
-  // CRITICAL: This only fires when timeLeft counts down to 0 (not when it starts at 0/null).
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
-    if (isPaused) return; // Never enforce timeouts when game is paused
     if (!currentRoundId || !currentTurnPlayerId) return;
     if (currentTurnPlayer?.is_bot) return; // Bots handle themselves via bot loop
     if (currentTurnPlayer?.auto_fold) return; // Already in auto-roll mode, let bot loop handle
     if (!horsesState?.turnDeadline) return; // Only process timeouts when a real server deadline exists
-    
-    // CRITICAL: timeLeft must be exactly 0 (counted down), not null (never started)
-    // This prevents false timeouts when the component mounts with stale deadline data
-    if (timeLeft !== 0) return;
-
-    // Additional safety: verify the deadline is actually for the current turn
-    // by checking it's not too far in the past (> 30 seconds = definitely stale)
-    const deadlineTime = new Date(horsesState.turnDeadline).getTime();
-    const now = Date.now();
-    const msSinceDeadline = now - deadlineTime;
-    if (msSinceDeadline > 30000) {
-      console.log("[HORSES] Ignoring stale deadline (>30s old):", msSinceDeadline, "ms");
-      return;
-    }
+    if (timeLeft === null || timeLeft > 0) return;
 
     // Only the player whose turn it is OR the bot controller should handle the timeout
     const iAmTurnOwner = currentTurnPlayer?.user_id === currentUserId;
@@ -1180,7 +1145,6 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
-    isPaused,
     currentRoundId,
     currentTurnPlayerId,
     currentTurnPlayer,
@@ -1771,41 +1735,12 @@ export function useHorsesMobileController({
           })
           .eq("id", gameId)
           .eq("status", "in_progress") // Only succeeds if not already processed
-          .select("id, total_hands, current_game_uuid");
+          .select("id");
 
         if (claimError || !claimed || claimed.length === 0) {
           console.log("[HORSES] Tie already processed by another client");
           return;
         }
-
-        // Record CHOP event for history with EMPTY chip changes
-        // In dice games, pot carries over - no chips are distributed during rollover
-        const tiedPlayerNames = winningPlayerIds
-          .map(id => {
-            const p = players.find(pl => pl.id === id);
-            if (!p) return "Unknown";
-            return getPlayerUsername(p);
-          })
-          .join(" & ");
-
-        const tiedResult = completedResults.find(r => winningPlayerIds.includes(r.playerId));
-        const handNumber = (claimed[0] as any).total_hands || 1;
-        const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
-
-        await supabase.from("game_results").insert({
-          game_id: gameId,
-          hand_number: handNumber,
-          winner_player_id: null, // No winner in a rollover
-          winner_username: tiedPlayerNames,
-          winning_hand_description: `TIE: ${tiedResult?.result.description || "Unknown"} - Rollover`,
-          pot_won: 0, // No chips awarded in a rollover
-          player_chip_changes: {}, // Empty - no chip movements
-          is_chopped: true,
-          game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
-          dealer_game_id: currentGameUuid,
-        });
-
-        console.log("[HORSES] Recorded rollover tie event with empty chip changes");
         return;
       }
 
@@ -1849,11 +1784,15 @@ export function useHorsesMobileController({
 
       const winnerName = getPlayerUsername(winnerPlayer);
 
-      // ZERO-SUM ACCOUNTING: Since antes are recorded separately as negative chip changes,
-      // the showdown event only records the winner's GROSS pot award.
-      // This keeps the ledger balanced: sum(antes) = -pot, showdown = +pot, net = 0
+      // Record the game result
       const chipChanges: Record<string, number> = {};
-      chipChanges[winnerId] = actualPot; // Winner receives the full pot
+      players.forEach((p) => {
+        if (p.id === winnerId) {
+          chipChanges[p.id] = actualPot; // Winner gains pot
+        } else if (!p.sitting_out) {
+          chipChanges[p.id] = -(anteAmount || 0); // Others lost their ante
+        }
+      });
 
       await supabase.from("game_results").insert({
         game_id: gameId,

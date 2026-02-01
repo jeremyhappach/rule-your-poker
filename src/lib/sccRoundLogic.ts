@@ -6,7 +6,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
-import { recordGameResult } from "./gameLogic";
 
 /**
  * Start a new Ship Captain Crew round
@@ -285,30 +284,6 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       console.error('[SCC] ERROR collecting antes:', anteError);
     } else {
       console.log('[SCC] Antes collected from', playerIds.length, 'players, amount:', anteAmount);
-      
-      // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
-      // Each player's ante payment is tracked as a negative chip change
-      const anteChipChanges: Record<string, number> = {};
-      for (const player of activePlayers) {
-        anteChipChanges[player.id] = -anteAmount;
-      }
-      
-      const eventType = isFirstHand ? 'Ante' : 'Re-Ante (Rollover)';
-      
-      // Record antes as a game result entry with no winner (just ante collection)
-      await recordGameResult(
-        gameId,
-        newHandNumber,
-        null, // no winner - this is ante collection
-        eventType, // Description
-        `${activePlayers.length} players ${isFirstHand ? 'anted' : 're-anted'} $${anteAmount}`,
-        0, // pot_won is 0 - this is money going INTO the pot
-        anteChipChanges,
-        false,
-        'ship-captain-crew', // game_type
-        game.current_game_uuid || null // dealer_game_id
-      );
-      console.log('[SCC] Recorded ante chip changes in game_results:', anteChipChanges);
     }
   }
 }

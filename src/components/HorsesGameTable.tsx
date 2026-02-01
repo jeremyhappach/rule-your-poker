@@ -73,7 +73,6 @@ interface HorsesGameTableProps {
   gameType?: string;
   isHost?: boolean;
   onPlayerClick?: (player: Player) => void;
-  isPaused?: boolean;
 }
 
 // Database state structure - supports both Horses and SCC dice types
@@ -160,7 +159,6 @@ export function HorsesGameTable({
   gameType = 'horses',
   isHost = false,
   onPlayerClick,
-  isPaused = false,
 }: HorsesGameTableProps) {
   // Determine display title based on game type
   const gameTitle = gameType === 'ship-captain-crew' ? 'Ship' : 'Horses';
@@ -1246,51 +1244,14 @@ export function HorsesGameTable({
       processedWinRoundRef.current = currentRoundId;
 
       if (winningPlayerIds.length > 1) {
-        // Tie - trigger re-ante flow (rollover)
-        // ATOMIC GUARD: Only one client claims the tie processing
-        const { data: claimed, error: claimError } = await supabase
+        // Tie - trigger re-ante flow
+        await supabase
           .from("games")
           .update({
             awaiting_next_round: true,
-            last_round_result: "One tie all tie - rollover",
+            last_round_result: "Roll Over",
           })
-          .eq("id", gameId)
-          .eq("status", "in_progress") // Only succeeds if not already processed
-          .select("id, total_hands, current_game_uuid");
-
-        if (claimError || !claimed || claimed.length === 0) {
-          console.log("[HORSES] Tie already processed by another client");
-          return;
-        }
-
-        // Record CHOP event for history with EMPTY chip changes
-        // In dice games, pot carries over - no chips are distributed during rollover
-        const tiedPlayerNames = winningPlayerIds
-          .map(id => {
-            const p = players.find(pl => pl.id === id);
-            if (!p) return "Unknown";
-            return p.is_bot ? getBotAlias(players, p.user_id) : (p.profiles?.username || "Unknown");
-          })
-          .join(" & ");
-
-        const tiedResult = completedResults.find(r => winningPlayerIds.includes(r.playerId));
-        const handNumber = (claimed[0] as any).total_hands || 1;
-        const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
-
-        await supabase.from("game_results").insert({
-          game_id: gameId,
-          hand_number: handNumber,
-          winner_player_id: null, // No winner in a rollover
-          winner_username: tiedPlayerNames,
-          winning_hand_description: `TIE: ${tiedResult?.result.description || "Unknown"} - Rollover`,
-          pot_won: 0, // No chips awarded in a rollover
-          player_chip_changes: {}, // Empty - no chip movements
-          is_chopped: true,
-          game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
-          dealer_game_id: currentGameUuid,
-        });
-
-        console.log("[HORSES] Recorded rollover tie event with empty chip changes");
+          .eq("id", gameId);
         return;
       }
 
@@ -1326,11 +1287,15 @@ export function HorsesGameTable({
         ? getBotAlias(players, winnerPlayer.user_id)
         : (winnerPlayer.profiles?.username || "Unknown");
 
-      // ZERO-SUM ACCOUNTING: Since antes are recorded separately as negative chip changes,
-      // the showdown event only records the winner's GROSS pot award.
-      // This keeps the ledger balanced: sum(antes) = -pot, showdown = +pot, net = 0
+      // Record the game result
       const chipChanges: Record<string, number> = {};
-      chipChanges[winnerId] = actualPot; // Winner receives the full pot
+      players.forEach((p) => {
+        if (p.id === winnerId) {
+          chipChanges[p.id] = actualPot;
+        } else if (!p.sitting_out) {
+          chipChanges[p.id] = -(anteAmount || 0);
+        }
+      });
 
       await supabase.from("game_results").insert({
         game_id: gameId,
