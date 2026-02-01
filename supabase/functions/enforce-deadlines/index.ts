@@ -120,6 +120,43 @@ serve(async (req) => {
       });
     }
 
+    // DEBUG: allow temporarily disabling client-side enforcement to isolate race conditions.
+    // Set system_settings.key = 'debug_disable_enforcement' with value:
+    // - true (disables everything)
+    // - { client: true } (disables client enforcement only)
+    try {
+      const { data: debugSetting } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'debug_disable_enforcement')
+        .maybeSingle();
+
+      const v: any = (debugSetting as any)?.value;
+      const clientDisabled =
+        v === true ||
+        v === 'true' ||
+        (typeof v === 'object' && v && (v.all === true || v.disabled === true || v.client === true));
+
+      if (clientDisabled) {
+        console.log('[ENFORCE-CLIENT] Disabled via system_settings.debug_disable_enforcement', { gameId, source, requestId });
+        return new Response(JSON.stringify({
+          success: true,
+          disabled: true,
+          actionsTaken: [],
+          gameId,
+          gameStatus: null,
+          timestamp: new Date().toISOString(),
+          source,
+          requestId,
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (e) {
+      console.warn('[ENFORCE-CLIENT] Failed to read debug_disable_enforcement (continuing):', e);
+    }
+
     const now = new Date();
     const nowIso = now.toISOString();
     const actionsTaken: string[] = [];

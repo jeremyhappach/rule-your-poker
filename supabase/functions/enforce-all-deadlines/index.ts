@@ -192,6 +192,34 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, keyToUse);
+
+    // DEBUG: allow temporarily disabling the cron enforcer to isolate race conditions.
+    // Set system_settings.key = 'debug_disable_enforcement' with value:
+    // - true (disables everything)
+    // - { cron: true } (disables cron only)
+    try {
+      const { data: debugSetting } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'debug_disable_enforcement')
+        .maybeSingle();
+
+      const v: any = (debugSetting as any)?.value;
+      const cronDisabled =
+        v === true ||
+        v === 'true' ||
+        (typeof v === 'object' && v && (v.all === true || v.disabled === true || v.cron === true));
+
+      if (cronDisabled) {
+        console.log('[CRON-ENFORCE] Disabled via system_settings.debug_disable_enforcement', { cronRunId });
+        return new Response(JSON.stringify({ success: true, disabled: true, cronRunId }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (e) {
+      console.warn('[CRON-ENFORCE] Failed to read debug_disable_enforcement (continuing):', e);
+    }
     const now = new Date();
     const nowIso = now.toISOString();
 
