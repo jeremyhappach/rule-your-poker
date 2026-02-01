@@ -1730,6 +1730,12 @@ export function useHorsesMobileController({
     if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
     if (winningPlayerIds.length === 0) return;
     
+    // CRITICAL: Block win processing when game is paused - prevents rollover triggering
+    if (isPaused) {
+      console.log("[HORSES] Win processing blocked - game is paused");
+      return;
+    }
+    
     // GUARD: Ensure all active players have completed results before processing
     // This prevents premature win processing from stale/cached state
     const activePlayerCount = activePlayers.length;
@@ -1855,7 +1861,8 @@ export function useHorsesMobileController({
       const chipChanges: Record<string, number> = {};
       chipChanges[winnerId] = actualPot; // Winner receives the full pot
 
-      await supabase.from("game_results").insert({
+      // Fire-and-forget: Record game result (audit trail only)
+      supabase.from("game_results").insert({
         game_id: gameId,
         hand_number: handNumber,
         winner_player_id: winnerId,
@@ -1870,8 +1877,8 @@ export function useHorsesMobileController({
 
       // Note: No toast here - dealer announcement already shows the win message
       
-      // Snapshot player chips for session history (enables "Run Back" option)
-      await snapshotPlayerChips(gameId, handNumber);
+      // Fire-and-forget: Snapshot player chips (audit trail only)
+      snapshotPlayerChips(gameId, handNumber);
 
       // Update pot and result description (status already set in atomic claim)
       await supabase
@@ -1898,6 +1905,7 @@ export function useHorsesMobileController({
     getPlayerUsername,
     myPlayer,
     candidateBotControllerUserId,
+    isPaused,
   ]);
 
   const rawFeltDice = useMemo(() => {

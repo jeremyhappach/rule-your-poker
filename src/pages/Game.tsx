@@ -21,7 +21,7 @@ import { HighCardDealerSelection, DealerSelectionCard } from "@/components/HighC
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
-import { useBotDecisionEnforcer } from "@/hooks/useBotDecisionEnforcer";
+// useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer } from "@/lib/gameLogic";
@@ -36,6 +36,7 @@ import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot } from "lucide-react";
 import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
+import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
@@ -124,6 +125,9 @@ interface Round {
   id: string;
   game_id: string;
   round_number: number;
+  // 3-5-7: round_number cycles each hand, so we must also key by hand_number (and usually dealer_game_id).
+  hand_number?: number | null;
+  dealer_game_id?: string | null;
   cards_dealt: number;
   pot: number;
   status: string;
@@ -136,6 +140,102 @@ interface Round {
   current_turn_position?: number | null;
   created_at?: string;
   horses_state?: any; // Horses dice game state
+}
+
+function pickActive357Round(
+  rounds: Round[] | undefined,
+  params: {
+    currentRoundNumber: number | null | undefined;
+    currentHandNumber: number | null | undefined;
+    dealerGameId: string | null | undefined;
+  }
+): Round | null {
+  if (!rounds || rounds.length === 0) return null;
+
+  const { currentRoundNumber, currentHandNumber, dealerGameId } = params;
+
+  if (typeof currentRoundNumber === 'number' && typeof currentHandNumber === 'number') {
+    const exact = rounds.find((r) =>
+      r.round_number === currentRoundNumber &&
+      r.hand_number === currentHandNumber &&
+      (dealerGameId ? r.dealer_game_id === dealerGameId : true)
+    );
+    if (exact) return exact;
+  }
+
+  // Fallback: most recent betting round (prefer within this dealer game if provided).
+  // IMPORTANT: Never use created_at ordering for round selection.
+  const candidates = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+  const sorted = [...candidates].sort((a, b) => {
+    const aHand = typeof a.hand_number === 'number' ? a.hand_number : 0;
+    const bHand = typeof b.hand_number === 'number' ? b.hand_number : 0;
+    if (bHand !== aHand) return bHand - aHand;
+    return (b.round_number ?? 0) - (a.round_number ?? 0);
+  });
+
+  return sorted.find((r) => r.status === 'betting') ?? sorted[0] ?? null;
+}
+
+function pickLatestRoundByKey(rounds: Round[] | undefined, dealerGameId?: string | null): Round | null {
+  if (!rounds || rounds.length === 0) return null;
+  const candidates = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+  if (candidates.length === 0) return null;
+
+  return (
+    [...candidates].sort((a, b) => {
+      const aHand = typeof a.hand_number === 'number' ? a.hand_number : 0;
+      const bHand = typeof b.hand_number === 'number' ? b.hand_number : 0;
+      if (bHand !== aHand) return bHand - aHand;
+      return (b.round_number ?? 0) - (a.round_number ?? 0);
+    })[0] ?? null
+  );
+}
+
+function pickActiveSingleRoundGameRound(
+  rounds: Round[] | undefined,
+  params: {
+    dealerGameId: string | null | undefined;
+    currentRoundNumber: number | null | undefined;
+    currentHandNumber?: number | null | undefined;
+  }
+): Round | null {
+  if (!rounds || rounds.length === 0) return null;
+
+  const { dealerGameId, currentRoundNumber, currentHandNumber } = params;
+
+  // CRITICAL (isolation): single-round games MUST be scoped to dealer_game_id.
+  // Falling back to unscoped selection is the primary source of cross-game contamination.
+  if (!dealerGameId) return null;
+
+  const dealerRounds = rounds.filter((r) => r.dealer_game_id === dealerGameId);
+  if (dealerRounds.length === 0) return null;
+
+  // Prefer an exact (hand_number, round_number) match when available.
+  if (typeof currentHandNumber === 'number' && typeof currentRoundNumber === 'number') {
+    const exact = dealerRounds.find(
+      (r) => r.hand_number === currentHandNumber && r.round_number === currentRoundNumber
+    );
+    if (exact) return exact;
+  }
+
+  // Next best: when multiple rounds share the same round_number (e.g., Holm uses round_number=1 each hand),
+  // choose the latest by hand_number.
+  if (typeof currentRoundNumber === 'number') {
+    const sameRoundNumber = dealerRounds.filter((r) => r.round_number === currentRoundNumber);
+    if (sameRoundNumber.length > 0) {
+      return (
+        [...sameRoundNumber].sort((a, b) => {
+          const aHand = typeof a.hand_number === 'number' ? a.hand_number : -1;
+          const bHand = typeof b.hand_number === 'number' ? b.hand_number : -1;
+          if (bHand !== aHand) return bHand - aHand;
+          return (b.round_number ?? -1) - (a.round_number ?? -1);
+        })[0] ?? null
+      );
+    }
+  }
+
+  // Fallback: latest round within this dealer game.
+  return pickLatestRoundByKey(dealerRounds);
 }
 
 interface PlayerCards {
@@ -175,6 +275,9 @@ const Game = () => {
   }, [game?.pot, game?.status, gameId]);
 
   const potForDisplay = game?.pot ?? lastNonNullPotRef.current ?? 0;
+
+  // DEBUG: disable polling-based safety nets to isolate race conditions (reload to apply)
+  const safetyPollsDisabled = useMemo(() => isSafetyPollingDisabled(), []);
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
@@ -649,10 +752,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     const newPausedState = !game.is_paused;
     
-    // Get current round for deadline updates - use latest round for Holm and Horses games
+    // Get current round for deadline updates.
+    // CRITICAL: Must be scoped to dealer_game_id, otherwise 3-5-7 Round 1 can be mistaken for Holm Round 1.
     const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses' || game.game_type === 'ship-captain-crew')
-      ? game.rounds?.reduce((latest, r) => (!latest || r.round_number > latest.round_number) ? r : latest, null as Round | null)
-      : game.rounds?.find(r => r.round_number === game.current_round);
+      ? pickActiveSingleRoundGameRound(game.rounds, {
+          dealerGameId: game.current_game_uuid,
+          currentRoundNumber: game.current_round,
+          currentHandNumber: game.total_hands,
+        })
+      : pickActive357Round(game.rounds, {
+          currentRoundNumber: game.current_round,
+          currentHandNumber: game.total_hands,
+          dealerGameId: game.current_game_uuid,
+        }) ?? null;
     
     if (newPausedState) {
       // PAUSING: Save current remaining time
@@ -946,6 +1058,45 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     prevRoundForCacheRef.current = currentRoundNum;
   }, [game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
+  // CRITICAL: Clear ALL card caches when current_game_uuid (dealer game ID) changes.
+  // This is the PRIMARY guard against cross-dealer-game contamination when switching
+  // from 3-5-7 to Holm or vice versa. The new dealer game has its own hand/round numbering.
+  const prevDealerGameIdRef = useRef<string | null | undefined>(undefined);
+  useLayoutEffect(() => {
+    const prevDealerGameId = prevDealerGameIdRef.current;
+    const currentDealerGameId = game?.current_game_uuid ?? null;
+
+    // On first render, just record the current value
+    if (prevDealerGameId === undefined) {
+      prevDealerGameIdRef.current = currentDealerGameId;
+      return;
+    }
+
+    // If dealer game ID changed and we had a previous one, clear all caches
+    if (prevDealerGameId !== null && currentDealerGameId !== null && prevDealerGameId !== currentDealerGameId) {
+      console.log('[CACHE_GUARD] 🔄 dealer_game_id changed - CLEARING ALL CACHES to prevent cross-game contamination', {
+        prevDealerGameId,
+        currentDealerGameId,
+        gameType: game?.game_type,
+        status: game?.status,
+      });
+      
+      clearLiftedCardCaches('DEALER_GAME_ID_CHANGED', { prevDealerGameId, currentDealerGameId });
+      setCachedRoundData(null);
+      cachedRoundRef.current = null;
+      setPlayerCards([]);
+      setCardStateContext(null);
+      maxRevealedRef.current = 0;
+      cardIdentityRef.current = '';
+      
+      // Also reset turn tracking to prevent spotlight flicker
+      setLastTurnPosition(null);
+      setTimerTurnPosition(null);
+    }
+
+    prevDealerGameIdRef.current = currentDealerGameId;
+  }, [game?.current_game_uuid, game?.game_type, game?.status, clearLiftedCardCaches]);
+
   // NOTE: Buck passed cache clear was removed - redundant with NEW HAND DETECTED
   // The round number change is more reliable and fires shortly after buck passes
 
@@ -1048,6 +1199,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This prevents "frozen" games when the realtime channel enters CHANNEL_ERROR.
     let fallbackPollInterval: ReturnType<typeof setInterval> | null = null;
     const startFallbackPolling = () => {
+      if (safetyPollsDisabled) return;
       if (fallbackPollInterval) return;
       // Poll every 5 seconds when fallback is needed (not 1.5s which hammers DB)
       fallbackPollInterval = setInterval(() => {
@@ -1545,6 +1697,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // This catches cases where realtime subscription misses the status update
   useEffect(() => {
     if (!gameId || !game) return;
+
+    if (safetyPollsDisabled) return;
     
     // Only poll when we think we're in_progress with awaiting_next_round
     // but might actually be game_over
@@ -1593,6 +1747,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Fallback polling for pause state - ensures observers get pause updates even if realtime fails
   useEffect(() => {
     if (!gameId) return;
+
+    if (safetyPollsDisabled) return;
     
     const pollPauseState = async () => {
       const { data } = await supabase
@@ -1714,6 +1870,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
   useEffect(() => {
     if (!gameId || !user) return;
+
+    if (safetyPollsDisabled) return;
     
     const currentPlayer = players.find(p => p.user_id === user?.id);
     const isSittingOut = currentPlayer?.sitting_out === true;
@@ -1776,13 +1934,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
     // and no one can make a decision. This can happen due to race conditions.
     const latestRound = game?.game_type === 'holm-game'
-      ? game?.rounds?.reduce((latest: any, r: any) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
-      : game?.rounds?.find((r: any) => r.round_number === game?.current_round);
-    const stuckHolmState = 
+      ? pickActiveSingleRoundGameRound(game?.rounds, {
+          dealerGameId: game?.current_game_uuid ?? null,
+          currentRoundNumber: game?.current_round ?? null,
+          currentHandNumber: game?.total_hands ?? null,
+        })
+      : pickActive357Round(game?.rounds, {
+          currentRoundNumber: game?.current_round,
+          currentHandNumber: game?.total_hands,
+          dealerGameId: game?.current_game_uuid,
+        }) ?? null;
+    // CRITICAL: Detect stuck Holm showdown where the round is already in 'showdown' but the
+    // last 2 community cards never flipped (community_cards_revealed stays at 2).
+    // This can happen if the client that acquired the round lock disconnects mid-showdown.
+    const holmShowdownStuck =
+      game?.game_type === 'holm-game' &&
+      game?.status === 'in_progress' &&
+      latestRound?.status === 'showdown' &&
+      (latestRound?.community_cards_revealed ?? 0) < 4 &&
+      currentPlayer;
+
+    // CRITICAL: Detect Holm stuck state where all_decisions_in is already true (often set by backend timeout
+    // enforcement) but the round is still 'betting'. In this state, the UI can appear stuck (spotlight/turn
+    // confusion) unless a client calls endHolmRound.
+    const holmAllDecidedButBettingStuck =
       game?.game_type === 'holm-game' &&
       game?.status === 'in_progress' &&
       game?.all_decisions_in === true &&
-      !game?.awaiting_next_round &&
       latestRound?.status === 'betting' &&
       currentPlayer;
     
@@ -1794,7 +1972,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (!game?.rounds || game?.rounds?.length === 0) &&
       currentPlayer;
     
-    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || stuckHolmState || holmNoRound;
+    const shouldPoll = isSittingOut || needsAnteDecision || justAntedUpNoCards || waitingForAnteStatus || stuckOnGameOver || waitingForConfig || waitingForGameStart || hostWaitingForPlayers || observerWaitingForPlayers || holmShowdownStuck || holmAllDecidedButBettingStuck || holmNoRound;
     
     if (!shouldPoll) return;
     
@@ -1809,7 +1987,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       waitingForGameStart,
       hostWaitingForPlayers,
       observerWaitingForPlayers,
-      stuckHolmState,
+      holmShowdownStuck,
       holmNoRound,
       showAnteDialog,
       gameStatus: game?.status,
@@ -1819,21 +1997,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Poll at reasonable intervals - NOT 250ms which hammers the DB
     // Critical states poll every 2 seconds, normal states every 3 seconds
     const pollInterval = (hostWaitingForPlayers || observerWaitingForPlayers) ? 3000 : 
-      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || stuckHolmState || holmNoRound) ? 2000 : 3000;
+      (waitingForAnteDialog || stuckOnGameOver || waitingForConfig || waitingForGameStart || holmNoRound) ? 2000 : 3000;
     
     const intervalId = setInterval(async () => {
       console.log('[CRITICAL POLL] Polling game data... interval:', pollInterval);
-      
-      // If stuck in Holm state, try to fix it by resetting all_decisions_in
-      if (stuckHolmState) {
-        console.log('[CRITICAL POLL] Detected stuck Holm state - attempting recovery');
-        // Reset all_decisions_in to allow the game to continue
-        await supabase
-          .from('games')
-          .update({ all_decisions_in: false })
-          .eq('id', gameId)
-          .eq('all_decisions_in', true)
-          .eq('awaiting_next_round', false);
+
+      // If Holm showdown is stuck (community cards never fully revealed), attempt to resume
+      // the showdown safely (holmGameLogic has an atomic recovery claim).
+      if (holmShowdownStuck) {
+        console.log('[CRITICAL POLL] Detected stuck Holm showdown - attempting to resume endHolmRound');
+        try {
+          await endHolmRound(gameId!);
+        } catch (e) {
+          console.error('[CRITICAL POLL] Failed to resume stuck Holm showdown:', e);
+        }
+      }
+
+      // If backend already flagged all_decisions_in but the round is still betting, force recovery.
+      if (holmAllDecidedButBettingStuck) {
+        console.log('[CRITICAL POLL] Detected Holm all_decisions_in=true but round still betting - attempting to run endHolmRound');
+        try {
+          await endHolmRound(gameId!);
+        } catch (e) {
+          console.error('[CRITICAL POLL] Failed to recover Holm betting-stuck state:', e);
+        }
       }
       
       // NOTE: Removed startHolmRound call from polling - it was causing duplicate round creation.
@@ -1850,12 +2037,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[CRITICAL POLL] Stopping polling');
       clearInterval(intervalId);
     };
-  }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
+   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
   
   // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
   // More aggressive polling to prevent round desync between clients
   useEffect(() => {
     if (!gameId || !game) return;
+
+    if (safetyPollsDisabled) return;
     
     const is357Game = game?.game_type === '3-5-7-game';
     const isActiveGame = game?.status === 'in_progress';
@@ -2114,9 +2303,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
   useEffect(() => {
+    console.log('[ANTE CHECK] Effect triggered - status:', game?.status, 'gameId:', gameId, 'paused:', game?.is_paused);
+    
     if (game?.status !== 'ante_decision') {
       // Reset the ref when we exit ante_decision status
       anteProcessingRef.current = false;
+      console.log('[ANTE CHECK] Not in ante_decision status, resetting ref');
       return;
     }
     
@@ -2127,6 +2319,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const checkAnteDecisions = async () => {
+      console.log('[ANTE CHECK] checkAnteDecisions called, anteProcessingRef:', anteProcessingRef.current);
       // Skip if already processing
       if (anteProcessingRef.current) {
         console.log('[ANTE CHECK] Already processing, skipping');
@@ -2215,6 +2408,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Check immediately
     checkAnteDecisions();
 
+    if (safetyPollsDisabled) return;
+
     // Poll every 3 seconds as fallback for ante detection (not 1 second which hammers DB)
     const pollInterval = setInterval(() => {
       checkAnteDecisions();
@@ -2231,33 +2426,65 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!game?.rounds?.length) return null as Round | null;
 
     if (game.game_type === "holm-game") {
-      // Holm: current_round can be stale, so prefer the latest by round_number.
-      return game.rounds.reduce(
-        (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
-        null as Round | null,
-      );
+      // Holm: always scope to dealer_game_id to avoid collisions with 3-5-7 Round 1.
+      return pickActiveSingleRoundGameRound(game.rounds, {
+        dealerGameId: game.current_game_uuid,
+        currentRoundNumber: game.current_round,
+        currentHandNumber: game.total_hands,
+      });
     }
 
     if (game.game_type === "horses" || game.game_type === "ship-captain-crew") {
       // Dice games: current_round is authoritative; never show the previous round during the creation gap.
       if (typeof game.current_round === "number") {
-        return game.rounds.find((r) => r.round_number === game.current_round) ?? null;
+        const dealerRounds = game.current_game_uuid
+          ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
+          : game.rounds;
+        // CRITICAL: Must use hand_number scoping to prevent cross-hand contamination
+        const matchingRounds = dealerRounds.filter((r) => r.round_number === game.current_round);
+        if (matchingRounds.length === 1) return matchingRounds[0];
+        // Multiple rounds with same round_number -> pick latest hand_number
+        return matchingRounds.reduce<typeof dealerRounds[0] | null>(
+          (best, r) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+          null
+        );
       }
-      return game.rounds.reduce(
-        (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
-        null as Round | null,
+      return pickLatestRoundByKey(game.rounds, game.current_game_uuid);
+    }
+
+    if (game.game_type === '3-5-7') {
+      // Derive max hand_number from rounds for this dealer_game - don't trust game.total_hands which can be stale
+      const dealerRounds = game.current_game_uuid
+        ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
+        : game.rounds;
+      const maxHandNumber = dealerRounds.reduce(
+        (max, r) => (typeof r.hand_number === 'number' && r.hand_number > max ? r.hand_number : max),
+        0
+      );
+      return (
+        pickActive357Round(game.rounds, {
+          currentRoundNumber: game.current_round,
+          currentHandNumber: maxHandNumber || game.total_hands,
+          dealerGameId: game.current_game_uuid,
+        }) ?? null
       );
     }
 
     // Default behavior for other games.
     if (typeof game.current_round === "number") {
-      return game.rounds.find((r) => r.round_number === game.current_round) ?? null;
+      const dealerRounds = game.current_game_uuid
+        ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
+        : game.rounds;
+      // CRITICAL: Must scope by hand_number to prevent cross-hand contamination
+      const matchingRounds = dealerRounds.filter((r) => r.round_number === game.current_round);
+      if (matchingRounds.length === 1) return matchingRounds[0];
+      return matchingRounds.reduce<typeof dealerRounds[0] | null>(
+        (best, r) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+        null
+      );
     }
 
-    return game.rounds.reduce(
-      (latest, r) => (!latest || r.round_number > latest.round_number ? r : latest),
-      null as Round | null,
-    );
+    return pickLatestRoundByKey(game.rounds, game.current_game_uuid);
   })();
   
   // DEBUG: Always log liveRound details during in_progress Holm games
@@ -2384,16 +2611,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
-  // Bot decision enforcement - polls every 2 seconds to detect and fix stuck bot decisions
-  useBotDecisionEnforcer({
-    gameId,
-    gameStatus: game?.status,
-    isPaused: game?.is_paused,
-    allDecisionsIn: game?.all_decisions_in,
-    gameType: game?.game_type,
-    currentTurnPosition: currentRound?.current_turn_position,
-    roundId: currentRound?.id,
-  });
+  // useBotDecisionEnforcer was removed entirely - it was a band-aid that caused race conditions
 
   // DEBUG: show a "Round: X" toast whenever round number/id changes
 
@@ -2474,6 +2692,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const needsHealing = needsCommunityHealing || needsPlayerCardHealing;
     
     if (needsHealing) {
+      if (safetyPollsDisabled) return;
       console.log('[ROUND HEAL] 🚑 Holm game needs healing:', {
         needsCommunityHealing,
         needsPlayerCardHealing,
@@ -2509,6 +2728,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // SKIP if game is paused
   const botProcessingRef = useRef(false);
   useEffect(() => {
+    if (safetyPollsDisabled) {
+      if (awaitingPollRef.current) {
+        clearInterval(awaitingPollRef.current);
+        awaitingPollRef.current = null;
+      }
+      return;
+    }
+
     const isHolmGame = game?.game_type === 'holm-game';
     
     // CRITICAL: Skip bot decisions if game is paused
@@ -2589,8 +2816,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const instant357AutoFoldKeyRef = useRef<string | null>(null);
   
   // 3-5-7 instant auto-fold: fold immediately when round starts if auto_fold=true
+  // CRITICAL: This is ONLY for 3-5-7 games. In dice games (horses, SCC), auto_fold means "auto-roll",
+  // NOT "fold the round". Triggering makeDecision(fold) for dice games corrupts game state.
   useEffect(() => {
-    if (game?.game_type === 'holm-game') return; // Only for 3-5-7
+    // Guard: Only run for 3-5-7 games
+    const is357Game = game?.game_type === '3-5-7' || game?.game_type === '3-5-7-game' || game?.game_type === '357';
+    if (!is357Game) return;
     if (game?.status !== 'in_progress') return;
     if (!currentRound || currentRound.status !== 'betting') return;
     if (game?.is_paused) return;
@@ -2696,10 +2927,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     user?.id,
   ]);
 
-  // Auto-fold when timer reaches 0 - but give a grace period for fresh rounds
+  // Auto-fold when timer reaches 0
+  // IMPORTANT (3-5-7): only trigger when we have actually observed a running countdown for this round.
+  // This prevents false "instant timeout" when timeLeft briefly initializes to 0 or the round deadline is stale.
   const autoFoldingRef = useRef(false);
+  const countdownArmedRoundIdRef = useRef<string | null>(null);
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
+
+    // Arm the timeout only after we have seen a positive countdown for the current round.
+    // If timeLeft is 0 immediately on mount/round-change, we do NOT treat that as a real expiry.
+    if (currentRound?.id && timeLeft !== null && timeLeft > 0) {
+      countdownArmedRoundIdRef.current = currentRound.id;
+    }
     
     console.log('[TIMER CHECK]', { 
       timeLeft, 
@@ -2723,7 +2963,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         !autoFoldingRef.current &&
         (isHolmGame 
           ? (timerTurnPosition !== null && currentRound?.current_turn_position === timerTurnPosition)
-          : true); // For 3-5-7, just check timer reached 0
+          : (currentRound?.id ? countdownArmedRoundIdRef.current === currentRound.id : false));
     
     if (shouldAutoFold) {
       autoFoldingRef.current = true;
@@ -3036,6 +3276,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameStateAtTimerStart.current = null;
         
         try {
+          // CRITICAL: Re-check pause status when timer fires (game may have been paused during delay)
+          const { data: pauseCheck } = await supabase
+            .from('games')
+            .select('is_paused')
+            .eq('id', gameId)
+            .single();
+          
+          if (pauseCheck?.is_paused) {
+            console.log('[AWAITING_NEXT_ROUND] Game was paused during delay, skipping proceed');
+            return;
+          }
+          
           const isHolmGame = game?.game_type === 'holm-game';
           console.log('[AWAITING_NEXT_ROUND] Calling proceed function', { isHolmGame, gameId });
           
@@ -3046,13 +3298,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win')
+              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused')
               .eq('id', gameId)
               .single();
             
             // Skip if game is already over (357 sweep sets game_over after 5s)
             if (freshGame?.status === 'game_over') {
               console.log('[AWAITING_NEXT_ROUND] Game already over, skipping proceed');
+              return;
+            }
+            
+            // CRITICAL: Skip if game was paused after timer started
+            if (freshGame?.is_paused) {
+              console.log('[AWAITING_NEXT_ROUND] Game is paused, skipping proceed');
               return;
             }
 
@@ -3379,34 +3637,58 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         let roundData: { id: string; round_number: number; cards_dealt: number } | null = null;
         
         if (isHolmGame) {
-          // HOLM: Always fetch most recent round - current_round can be stale
+          // HOLM: Round selection MUST be scoped to the active dealer_game_id.
+          // round_number can reset to 1 when transitioning 3-5-7 -> Holm, so ordering by round_number
+          // across the whole session will pick the wrong round and show the wrong card count.
+          const base = supabase
+            .from('rounds')
+            .select('id, round_number, cards_dealt')
+            .eq('game_id', gameId);
+
+          const query = gameData.current_game_uuid
+            ? base.eq('dealer_game_id', gameData.current_game_uuid)
+            : base;
+
+          const { data } = await query
+            .order('hand_number', { ascending: false })
+            .order('round_number', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          roundData = data;
+        } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
+          // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
+          // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
-            .order('round_number', { ascending: false })
-            .limit(1)
+            .eq('dealer_game_id', gameData.current_game_uuid)
+            .eq('hand_number', gameData.total_hands)
+            .eq('round_number', gameData.current_round)
             .maybeSingle();
           roundData = data;
-          
-          if (roundData && gameData.current_round && roundData.round_number !== gameData.current_round) {
-            console.warn('[FETCH] ⚠️ Round mismatch! game.current_round:', gameData.current_round, 'most recent round:', roundData.round_number);
-          }
         } else if (gameData.current_round) {
-          // 3-5-7: Use current_round as it's critical for determining wild cards
+          // Legacy fallback without dealer_game_id - also order by hand_number to reduce chance of cross-game collision.
+          // This path should be extremely rare and only for old sessions without current_game_uuid.
+          console.warn('[FETCH] Using legacy round lookup without dealer_game_id - this may be unsafe');
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
             .eq('round_number', gameData.current_round)
+            .order('hand_number', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
           roundData = data;
         } else {
-          // Fallback: get the most recent round
+          // Fallback: get the most recent round by hand_number, round_number
           const { data } = await supabase
             .from('rounds')
             .select('id, round_number, cards_dealt')
             .eq('game_id', gameId)
+            .order('hand_number', { ascending: false })
             .order('round_number', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -3518,15 +3800,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const isHolm = gameData.game_type === 'holm-game';
       const isDice = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
 
-      const currentRound = isHolm
-        ? gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
-        : (typeof gameData.current_round === 'number'
-            ? (gameData.rounds.find((r: Round) => r.round_number === gameData.current_round) || null)
-            : (isDice
-                ? null
-                : gameData.rounds.reduce((latest: Round | null, r: Round) => (!latest || r.round_number > latest.round_number) ? r : latest, null)
-              )
-          );
+      let currentRound: Round | null = null;
+      if (isHolm) {
+        currentRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
+          dealerGameId: gameData.current_game_uuid,
+          currentRoundNumber: gameData.current_round,
+          currentHandNumber: gameData.total_hands,
+        });
+      } else if (gameData.game_type === '3-5-7') {
+        currentRound =
+          pickActive357Round(gameData.rounds as Round[], {
+            currentRoundNumber: gameData.current_round,
+            currentHandNumber: gameData.total_hands,
+            dealerGameId: gameData.current_game_uuid,
+          }) ?? null;
+      } else if (typeof gameData.current_round === 'number') {
+        // CRITICAL: Scope by dealer_game_id AND hand_number to prevent cross-contamination
+        const dealerRounds = gameData.current_game_uuid
+          ? (gameData.rounds as Round[]).filter((r) => r.dealer_game_id === gameData.current_game_uuid)
+          : (gameData.rounds as Round[]);
+        const matching = dealerRounds.filter((r) => r.round_number === gameData.current_round);
+        currentRound = matching.reduce<Round | null>(
+          (best, r) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+          null
+        );
+      } else if (isDice) {
+        currentRound = null;
+      } else {
+        currentRound = pickLatestRoundByKey(gameData.rounds as Round[], gameData.current_game_uuid);
+      }
       
       console.log('[FETCH] Round data:', {
         gameType: gameData.game_type,
@@ -4301,6 +4603,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     };
 
+    if (safetyPollsDisabled) {
+      poll357KeyRef.current = null;
+      clearPollTimers();
+      return;
+    }
+
     // Only start polling AFTER the win animation is done.
     if (!is357GameOverNeedingProgress || is357WinAnimationActiveRef.current) {
       poll357KeyRef.current = null;
@@ -4745,7 +5053,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Fallback to cached or live pot (use potForDisplay which never flashes to 0)
      if (potAmount === 0) {
        // Try round.pot first (usually persists longer), then cached max, then stable pot
-       const liveRound = game?.rounds?.find((r: any) => r.round_number === game.current_round);
+       // CRITICAL: Scope by dealer_game_id + hand_number to prevent cross-contamination
+       const dealerRounds357 = game?.current_game_uuid
+         ? game?.rounds?.filter((r: any) => r.dealer_game_id === game.current_game_uuid)
+         : game?.rounds;
+       const matching357 = dealerRounds357?.filter((r: any) => r.round_number === game.current_round) ?? [];
+       const liveRound = matching357.reduce<any>(
+         (best: any, r: any) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+         null
+       );
        const liveRoundPot = liveRound?.pot || 0;
        potAmount = Math.max(liveRoundPot, cachedPotFor357WinRef.current, potForDisplay);
      }
@@ -4885,11 +5201,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    // CRITICAL: Fetch fresh game status from DB to prevent race conditions in multiplayer
-    // React state can be stale, causing both clients to attempt ante processing
+    // CRITICAL: Fetch fresh game status AND game_type from DB to prevent race conditions in multiplayer
+    // React state can be stale, causing both clients to attempt ante processing or use wrong game type
     const { data: freshGame, error: gameError } = await supabase
       .from('games')
-      .select('status')
+      .select('status, game_type, ante_amount, is_first_hand, pot')
       .eq('id', gameId)
       .single();
     
@@ -5038,12 +5354,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Start first round - let the round start functions handle the status change
     try {
-          const isHolmGame = game?.game_type === 'holm-game';
-          const isHorsesGame = game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew';
+          // CRITICAL: Use freshGame (from DB) for game_type, not stale React state!
+          // After transitioning from 3-5-7 to Holm, React state may still have old game_type
+          const isHolmGame = freshGame?.game_type === 'holm-game' || freshGame?.game_type === 'holm';
+          const isHorsesGame = freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
           const activePlayersBefore = players.filter(p => !p.sitting_out);
-          const perPlayerAmount = typeof game?.ante_amount === 'number' ? game.ante_amount : 0;
+          const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
 
           if (perPlayerAmount > 0 && activePlayersBefore.length > 0) {
             const preChipsSnapshot: Record<string, number> = {};
@@ -5067,10 +5385,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // Now start the round (animation already triggered above)
           if (isHolmGame) {
-            await startHolmRound(gameId, true);
+            const pot = typeof freshGame?.pot === 'number' ? freshGame.pot : 0;
+            const shouldRunHolmFirstHand = freshGame?.is_first_hand === true;
+            // Recovery: if first-hand flag was already consumed but we're still stuck in ante_decision,
+            // start without first-hand lock/ante collection (pot should already be set).
+            const holmIsRecovery = !shouldRunHolmFirstHand && pot > 0;
+
+            if (holmIsRecovery) {
+              console.warn('[ANTE][HOLM] Recovery start: is_first_hand=false but still in ante_decision; starting Holm without first-hand flag');
+            }
+
+            await startHolmRound(gameId, shouldRunHolmFirstHand);
           } else if (isHorsesGame) {
-            // isHorsesGame now includes ship-captain-crew
-            if (game?.game_type === 'ship-captain-crew') {
+            // isHorsesGame now includes ship-captain-crew - use freshGame for type check
+            if (freshGame?.game_type === 'ship-captain-crew') {
               await startSCCRound(gameId, true);
             } else {
               await startHorsesRound(gameId, true);
@@ -6133,7 +6461,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })()}
 
       </div>
-
       {/* Player click dialog for host */}
       <PlayerClickDialog
         open={showPlayerOptions}

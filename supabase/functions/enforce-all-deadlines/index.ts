@@ -192,6 +192,34 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, keyToUse);
+
+    // DEBUG: allow temporarily disabling the cron enforcer to isolate race conditions.
+    // Set system_settings.key = 'debug_disable_enforcement' with value:
+    // - true (disables everything)
+    // - { cron: true } (disables cron only)
+    try {
+      const { data: debugSetting } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'debug_disable_enforcement')
+        .maybeSingle();
+
+      const v: any = (debugSetting as any)?.value;
+      const cronDisabled =
+        v === true ||
+        v === 'true' ||
+        (typeof v === 'object' && v && (v.all === true || v.disabled === true || v.cron === true));
+
+      if (cronDisabled) {
+        console.log('[CRON-ENFORCE] Disabled via system_settings.debug_disable_enforcement', { cronRunId });
+        return new Response(JSON.stringify({ success: true, disabled: true, cronRunId }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (e) {
+      console.warn('[CRON-ENFORCE] Failed to read debug_disable_enforcement (continuing):', e);
+    }
     const now = new Date();
     const nowIso = now.toISOString();
 
@@ -744,14 +772,25 @@ serve(async (req) => {
             game.status === 'in_progress' && 
             game.all_decisions_in === false) {
           
-          const { data: currentRound } = await supabase
+          // For Holm, get the latest round by hand_number/round_number within the dealer game
+          const dealerGameId = (game as any).current_game_uuid;
+          const roundQuery = supabase
             .from('rounds')
             .select('id, status')
-            .eq('game_id', game.id)
-            .eq('round_number', game.current_round || 1)
+            .eq('game_id', game.id);
+            
+          const scopedQuery = dealerGameId 
+            ? roundQuery.eq('dealer_game_id', dealerGameId)
+            : roundQuery;
+            
+          const { data: currentRound } = await scopedQuery
+            // CRITICAL: NULLS LAST so null hand_number/round_number rows don't win DESC ordering.
+            .order('hand_number', { ascending: false, nullsFirst: false })
+            .order('round_number', { ascending: false, nullsFirst: false })
+            .limit(1)
             .maybeSingle();
           
-          if (currentRound && (currentRound.status === 'processing' || currentRound.status === 'active')) {
+          if (currentRound && (currentRound.status === 'processing' || currentRound.status === 'active' || currentRound.status === 'betting')) {
             const { data: holmPlayers } = await supabase
               .from('players')
               .select('id, position, decision_locked, current_decision, sitting_out, status')
@@ -967,198 +1006,222 @@ serve(async (req) => {
         }
 
         // ============= HORSES/SCC COMPLETED ROUND PROCESSING =============
-        // Detect when a dice game has a completed round waiting for winner evaluation
-        // CRITICAL FIX: Do NOT run this during ante_decision! The game is waiting for antes,
-        // not stuck in a completed round. Running this logic during ante_decision incorrectly
-        // re-asserts old results and causes the UI to show stale data.
+        // CRITICAL: Only process dice game winners if NO active human players are present.
+        // When human players are connected, the CLIENT handles winner evaluation and pot awards.
+        // This cron logic is a FALLBACK for abandoned games (all bots or all humans disconnected).
         if ((game.game_type === 'horses' || game.game_type === 'ship-captain-crew') && 
             (game.status === 'in_progress' || game.status === 'betting')) {
           
-          // Find the latest round for this game
-          const { data: latestRound } = await supabase
-            .from('rounds')
-            .select('*')
+          // Check for active human players FIRST
+          const { data: activeHumans } = await supabase
+            .from('players')
+            .select('id')
             .eq('game_id', game.id)
-            .order('round_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .eq('is_bot', false)
+            .eq('sitting_out', false)
+            .eq('status', 'active');
           
-          if (latestRound) {
-            const horsesState = latestRound.horses_state as any;
+          const hasActiveHumans = (activeHumans?.length || 0) > 0;
+          
+          if (hasActiveHumans) {
+            // Human player is active - let the client handle winner evaluation
+            console.log('[CRON-ENFORCE] 🎲 Dice game has active human players, skipping server-side processing', {
+              gameId: game.id,
+              activeHumanCount: activeHumans?.length,
+            });
+          } else {
+            // NO active humans - this is an abandoned game, cron should take over
+            console.log('[CRON-ENFORCE] 🎲 Dice game has NO active humans, cron taking over', {
+              gameId: game.id,
+            });
             
-            // Check if round is complete but game hasn't processed winner yet
-            if ((latestRound.status === 'completed' || horsesState?.gamePhase === 'complete') && 
-                !game.awaiting_next_round) {
+            // Find the latest round for this game
+            const { data: latestRound } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', game.id)
+              .order('round_number', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            
+            if (latestRound) {
+              const horsesState = latestRound.horses_state as any;
               
-              console.log('[CRON-ENFORCE] 🎲 DICE GAME STUCK: Round complete but game not updated', {
-                gameId: game.id,
-                gameType: game.game_type,
-                gameStatus: game.status,
-                roundStatus: latestRound.status,
-                gamePhase: horsesState?.gamePhase,
-              });
-              
-              const playerStates = horsesState?.playerStates || {};
-              const turnOrder = (horsesState?.turnOrder || []) as string[];
-              const roundPot = latestRound.pot || game.pot || 0;
-              
-              // Determine winner based on hand results
-              let bestPlayer: { playerId: string; result: any } | null = null;
-              let isTie = false;
-              const tieBreakPlayers: { playerId: string; result: any }[] = [];
-              
-              for (const playerId of turnOrder) {
-                const state = playerStates[playerId];
-                if (!state?.isComplete || !state?.result) continue;
+              // Check if round is complete but game hasn't processed winner yet
+              if ((latestRound.status === 'completed' || horsesState?.gamePhase === 'complete') &&
+                  !game.awaiting_next_round) {
                 
-                const result = state.result;
-                
-                if (!bestPlayer) {
-                  bestPlayer = { playerId, result };
-                  tieBreakPlayers.push({ playerId, result });
+                // Safety guard: all active players must have completed
+                const { data: activePlayersForCompletion } = await supabase
+                  .from('players')
+                  .select('id, sitting_out, status')
+                  .eq('game_id', game.id)
+                  .eq('status', 'active')
+                  .eq('sitting_out', false);
+
+                const activeIds = (activePlayersForCompletion || []).map((p: any) => p.id);
+                const completedCount = activeIds.filter((pid: string) => {
+                  const st = (horsesState?.playerStates || {})?.[pid];
+                  return !!(st?.isComplete && st?.result);
+                }).length;
+
+                if (activeIds.length > 0 && completedCount < activeIds.length) {
+                  console.log('[CRON-ENFORCE] 🎲 DICE GUARD: Not all players complete, skipping', {
+                    gameId: game.id,
+                    activeCount: activeIds.length,
+                    completedCount,
+                  });
                 } else {
-                  // Compare hands: higher rank wins, then highValue for ties
-                  if (result.rank > bestPlayer.result.rank) {
-                    bestPlayer = { playerId, result };
-                    tieBreakPlayers.length = 0;
-                    tieBreakPlayers.push({ playerId, result });
-                    isTie = false;
-                  } else if (result.rank === bestPlayer.result.rank) {
-                    // Same rank - compare highValue
-                    if (result.highValue > bestPlayer.result.highValue) {
+                  // All players complete, evaluate winner
+                  console.log('[CRON-ENFORCE] 🎲 DICE ABANDONED: Processing winner for abandoned game', {
+                    gameId: game.id,
+                  });
+                  
+                  const playerStates = horsesState?.playerStates || {};
+                  const turnOrder = (horsesState?.turnOrder || []) as string[];
+                  const roundPot = latestRound.pot || game.pot || 0;
+                  
+                  // Determine winner based on hand results
+                  let bestPlayer: { playerId: string; result: any } | null = null;
+                  let isTie = false;
+                  const tieBreakPlayers: { playerId: string; result: any }[] = [];
+                  
+                  for (const playerId of turnOrder) {
+                    const state = playerStates[playerId];
+                    if (!state?.isComplete || !state?.result) continue;
+                    
+                    const result = state.result;
+                    
+                    if (!bestPlayer) {
                       bestPlayer = { playerId, result };
-                      tieBreakPlayers.length = 0;
                       tieBreakPlayers.push({ playerId, result });
-                      isTie = false;
-                    } else if (result.highValue === bestPlayer.result.highValue) {
-                      tieBreakPlayers.push({ playerId, result });
-                      isTie = tieBreakPlayers.length > 1;
+                    } else {
+                      if (result.rank > bestPlayer.result.rank) {
+                        bestPlayer = { playerId, result };
+                        tieBreakPlayers.length = 0;
+                        tieBreakPlayers.push({ playerId, result });
+                        isTie = false;
+                      } else if (result.rank === bestPlayer.result.rank) {
+                        if (result.highValue > bestPlayer.result.highValue) {
+                          bestPlayer = { playerId, result };
+                          tieBreakPlayers.length = 0;
+                          tieBreakPlayers.push({ playerId, result });
+                          isTie = false;
+                        } else if (result.highValue === bestPlayer.result.highValue) {
+                          tieBreakPlayers.push({ playerId, result });
+                          isTie = tieBreakPlayers.length > 1;
+                        }
+                      }
                     }
                   }
-                }
-              }
-              
-              // Get player profiles for username lookup
-              const { data: allPlayers } = await supabase
-                .from('players')
-                .select('id, user_id, chips, legs, is_bot, profiles(username)')
-                .eq('game_id', game.id);
-              
-              const playerMap = new Map((allPlayers || []).map((p: any) => [p.id, p]));
-              
-              if (isTie && tieBreakPlayers.length > 1) {
-                // CHOP/TIE - in Horses/SCC, ties trigger a rollover (one tie all tie)
-                // NO chips are distributed - the pot carries over and everyone re-antes
-                const winners = tieBreakPlayers.filter(p => 
-                  p.result.rank === bestPlayer!.result.rank && 
-                  p.result.highValue === bestPlayer!.result.highValue
-                );
-                
-                const winnerNames: string[] = [];
-                for (const winner of winners) {
-                  const player = playerMap.get(winner.playerId);
-                  if (player) {
-                    winnerNames.push((player.profiles as any)?.username || 'Player');
+                  
+                  // Get player profiles for username lookup
+                  const { data: allPlayers } = await supabase
+                    .from('players')
+                    .select('id, user_id, chips, legs, is_bot, profiles(username)')
+                    .eq('game_id', game.id);
+                  
+                  const playerMap = new Map((allPlayers || []).map((p: any) => [p.id, p]));
+                  
+                  if (isTie && tieBreakPlayers.length > 1) {
+                    // TIE - rollover
+                    const winners = tieBreakPlayers.filter(p => 
+                      p.result.rank === bestPlayer!.result.rank && 
+                      p.result.highValue === bestPlayer!.result.highValue
+                    );
+                    
+                    const winnerNames: string[] = [];
+                    for (const winner of winners) {
+                      const player = playerMap.get(winner.playerId);
+                      if (player) {
+                        winnerNames.push((player.profiles as any)?.username || 'Player');
+                      }
+                    }
+                    
+                    await supabase.from('game_results').insert({
+                      game_id: game.id,
+                      hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
+                      winner_player_id: null,
+                      winner_username: winnerNames.join(' & '),
+                      pot_won: 0,
+                      winning_hand_description: `TIE: ${bestPlayer!.result.description} - Rollover`,
+                      is_chopped: true,
+                      player_chip_changes: {},
+                      game_type: game.game_type,
+                      dealer_game_id: game.current_game_uuid || null,
+                    });
+                    
+                    await supabase
+                      .from('games')
+                      .update({
+                        last_round_result: "One tie all tie - rollover",
+                        awaiting_next_round: true,
+                        total_hands: (game.total_hands || 0) + 1,
+                        status: 'in_progress',
+                      })
+                      .eq('id', game.id);
+                    
+                    await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
+                    
+                    actionsTaken.push(`Abandoned dice game: Tie, rollover`);
+                  } else if (bestPlayer) {
+                    // Single winner
+                    const winnerPlayer = playerMap.get(bestPlayer.playerId);
+                    const winnerUsername = (winnerPlayer?.profiles as any)?.username || 'Player';
+                    
+                    if (winnerPlayer) {
+                      await supabase.rpc('increment_player_chips', {
+                        p_player_id: bestPlayer.playerId,
+                        p_amount: roundPot
+                      });
+                    }
+                    
+                    const playerChipChanges: Record<string, number> = {
+                      [bestPlayer.playerId]: roundPot
+                    };
+                    
+                    await supabase.from('game_results').insert({
+                      game_id: game.id,
+                      hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
+                      winner_player_id: bestPlayer.playerId,
+                      winner_username: winnerUsername,
+                      pot_won: roundPot,
+                      winning_hand_description: bestPlayer.result.description,
+                      is_chopped: false,
+                      player_chip_changes: playerChipChanges,
+                      game_type: game.game_type,
+                      dealer_game_id: game.current_game_uuid || null,
+                    });
+                    
+                    await supabase
+                      .from('games')
+                      .update({
+                        pot: 0,
+                        last_round_result: `${winnerUsername} wins with ${bestPlayer.result.description}!`,
+                        awaiting_next_round: true,
+                        total_hands: (game.total_hands || 0) + 1,
+                        status: 'in_progress',
+                      })
+                      .eq('id', game.id);
+                    
+                    await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
+                    
+                    actionsTaken.push(`Abandoned dice game: ${winnerUsername} wins, pot ${roundPot}`);
+                  } else {
+                    // No valid results - force transition
+                    await supabase
+                      .from('games')
+                      .update({
+                        awaiting_next_round: true,
+                        status: 'in_progress',
+                      })
+                      .eq('id', game.id);
+                    
+                    await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
+                    
+                    actionsTaken.push('Abandoned dice game: No results, forced transition');
                   }
                 }
-                
-                // CRITICAL: For rollover ties, do NOT award any chips!
-                // The pot carries over unchanged and players will re-ante.
-                // Recording this as a "tie" event with zero chip changes for audit purposes.
-                console.log('[CRON-ENFORCE] Dice tie/rollover: no chip changes, pot carries over');
-                
-                await supabase.from('game_results').insert({
-                  game_id: game.id,
-                  hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
-                  winner_player_id: null,
-                  winner_username: winnerNames.join(' & '),
-                  pot_won: 0, // No chips awarded in a rollover
-                  winning_hand_description: `TIE: ${bestPlayer!.result.description} - Rollover`,
-                  is_chopped: true,
-                  player_chip_changes: {}, // Empty - no chip movements
-                  game_type: game.game_type,
-                  dealer_game_id: game.current_game_uuid || null,
-                });
-                
-                // For dice game ties, pot carries over to next round (rollover)
-                // Do NOT reset pot to 0 - this is a "one tie all tie" situation
-                await supabase
-                  .from('games')
-                  .update({
-                    // pot stays unchanged - it carries over for the rollover
-                    last_round_result: "One tie all tie - rollover",
-                    awaiting_next_round: true,
-                    total_hands: (game.total_hands || 0) + 1,
-                    status: 'in_progress',
-                  })
-                  .eq('id', game.id);
-                
-                await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
-                
-                actionsTaken.push(`Dice game: Tie with ${bestPlayer!.result.description}, pot ${roundPot} carries over`);
-              } else if (bestPlayer) {
-                // Single winner
-                const winnerPlayer = playerMap.get(bestPlayer.playerId);
-                const winnerUsername = (winnerPlayer?.profiles as any)?.username || 'Player';
-                
-                // Award pot using atomic increment
-                if (winnerPlayer) {
-                  await supabase.rpc('increment_player_chips', {
-                    p_player_id: bestPlayer.playerId,
-                    p_amount: roundPot
-                  });
-                }
-                
-                // ZERO-SUM ACCOUNTING: Since antes are recorded separately as negative chip changes,
-                // the showdown event only records the winner's GROSS pot award.
-                // This keeps the ledger balanced: sum(antes) = -pot, showdown = +pot, net = 0
-                const playerChipChanges: Record<string, number> = {
-                  [bestPlayer.playerId]: roundPot // Winner receives the full pot
-                };
-                console.log('[CRON-ENFORCE] Dice single winner: winner gets full pot', playerChipChanges);
-                
-                await supabase.from('game_results').insert({
-                  game_id: game.id,
-                  hand_number: latestRound.hand_number || (game.total_hands || 0) + 1,
-                  winner_player_id: bestPlayer.playerId,
-                  winner_username: winnerUsername,
-                  pot_won: roundPot,
-                  winning_hand_description: bestPlayer.result.description,
-                  is_chopped: false,
-                  player_chip_changes: playerChipChanges,
-                  game_type: game.game_type,
-                  dealer_game_id: game.current_game_uuid || null,
-                });
-                
-                await supabase
-                  .from('games')
-                  .update({
-                    pot: 0,
-                    last_round_result: `${winnerUsername} wins with ${bestPlayer.result.description}!`,
-                    awaiting_next_round: true,
-                    total_hands: (game.total_hands || 0) + 1,
-                    status: 'in_progress',
-                  })
-                  .eq('id', game.id);
-                
-                await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
-                
-                actionsTaken.push(`Dice game: ${winnerUsername} wins with ${bestPlayer.result.description}, pot ${roundPot}`);
-              } else {
-                // No valid results found - just move to awaiting_next_round
-                console.log('[CRON-ENFORCE] Dice game: No valid results found, forcing transition');
-                
-                await supabase
-                  .from('games')
-                  .update({
-                    awaiting_next_round: true,
-                    status: 'in_progress',
-                  })
-                  .eq('id', game.id);
-                
-                await supabase.from('rounds').update({ status: 'completed' }).eq('id', latestRound.id);
-                
-                actionsTaken.push('Dice game: No results, forced awaiting_next_round');
               }
             }
           }
@@ -1166,12 +1229,36 @@ serve(async (req) => {
 
         // ============= STALE IN_PROGRESS CLEANUP =============
         if (game.status === 'in_progress') {
-          const { data: currentRound } = await supabase
-            .from('rounds')
-            .select('*')
-            .eq('game_id', game.id)
-            .eq('round_number', game.current_round ?? 0)
-            .maybeSingle();
+          // CRITICAL: ALL round lookups MUST be scoped by dealer_game_id to prevent cross-game contamination.
+          // round_number cycles (1,2,3) in 3-5-7 and round_number=1 repeats for each Holm hand.
+          let currentRound: any = null;
+          const dealerGameId = (game as any).current_game_uuid;
+          
+          if (game.game_type === '3-5-7' && game.total_hands && game.current_round && dealerGameId) {
+            // 3-5-7: Use triple-key scoping (dealer_game_id, hand_number, round_number)
+            const { data } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', game.id)
+              .eq('dealer_game_id', dealerGameId)
+              .eq('hand_number', game.total_hands)
+              .eq('round_number', game.current_round)
+              .maybeSingle();
+            currentRound = data;
+          } else if (dealerGameId) {
+            // All other games: scope to dealer_game_id and order by hand_number/round_number
+            const { data } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', game.id)
+              .eq('dealer_game_id', dealerGameId)
+              .order('hand_number', { ascending: false, nullsFirst: false })
+              .order('round_number', { ascending: false, nullsFirst: false })
+              .limit(1)
+              .maybeSingle();
+            currentRound = data;
+          }
+          // If no dealer_game_id, skip - cannot safely identify round
           
           const hasDecisionDeadline = !!currentRound?.decision_deadline;
           const deadlineTime = hasDecisionDeadline ? new Date(currentRound.decision_deadline).getTime() : 0;
@@ -1287,7 +1374,7 @@ serve(async (req) => {
                 .from('players')
                 .select('*')
                 .eq('game_id', game.id)
-                .eq('ante_decision', 'ante_up')
+                .eq('status', 'active')
                 .eq('sitting_out', false);
               
               if (activePlayers && activePlayers.length >= 2) {
@@ -1300,16 +1387,41 @@ serve(async (req) => {
                 const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
                 const decisionDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
                 
-                // Create new round
-                const newRoundNumber = (game.current_round || 0) + 1;
-                
-                // Delete any existing round with same number
-                const { data: existingRound } = await supabase
+                // Create new Holm hand.
+                // CRITICAL HOLM INVARIANT: round_number MUST always be 1; hand_number increments per hand.
+                const dealerGameIdHolm = (game as any).current_game_uuid;
+
+                if (!dealerGameIdHolm) {
+                  actionsTaken.push('Watchdog: Missing dealer_game_id for Holm; cannot start new hand');
+                  results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+                  continue;
+                }
+
+                const { data: latestRoundRow } = await supabase
                   .from('rounds')
-                  .select('id')
+                  .select('hand_number')
                   .eq('game_id', game.id)
-                  .eq('round_number', newRoundNumber)
+                  .eq('dealer_game_id', dealerGameIdHolm)
+                  .order('hand_number', { ascending: false, nullsFirst: false })
+                  .limit(1)
                   .maybeSingle();
+
+                const newHandNumber = (latestRoundRow?.hand_number ?? (game.total_hands || 0)) + 1;
+                const newRoundNumber = 1;
+                
+                // CRITICAL: Scope existing round check to dealer_game_id to prevent cross-game contamination
+                let existingRound: any = null;
+                if (dealerGameIdHolm) {
+                  const { data } = await supabase
+                    .from('rounds')
+                    .select('id')
+                    .eq('game_id', game.id)
+                    .eq('dealer_game_id', dealerGameIdHolm)
+                    .eq('hand_number', newHandNumber)
+                    .eq('round_number', newRoundNumber)
+                    .maybeSingle();
+                  existingRound = data;
+                }
                 
                 if (existingRound?.id) {
                   await supabase.from('player_cards').delete().eq('round_id', existingRound.id);
@@ -1329,19 +1441,27 @@ serve(async (req) => {
                 const playerCardInserts: any[] = [];
                 
                 // Insert round first
+                // Start turn at buck_position if valid; otherwise fall back to lowest active seat.
+                const sortedActiveByPos = [...activePlayers].sort((a: any, b: any) => a.position - b.position);
+                const buckPos = typeof (game as any).buck_position === 'number' ? (game as any).buck_position : null;
+                const startingTurnPos = buckPos && sortedActiveByPos.some((p: any) => p.position === buckPos)
+                  ? buckPos
+                  : (sortedActiveByPos[0]?.position ?? 1);
+
                 const { data: newRound, error: roundError } = await supabase
                   .from('rounds')
                   .insert({
                     game_id: game.id,
+                    dealer_game_id: dealerGameIdHolm, // CRITICAL: Always set dealer_game_id
                     round_number: newRoundNumber,
-                    hand_number: (game.total_hands || 0) + 1,
+                    hand_number: newHandNumber,
                     cards_dealt: 4,
                     pot: game.pot || 0,
                     status: 'betting',
                     decision_deadline: decisionDeadline,
                     community_cards: communityCards,
                     community_cards_revealed: 0,
-                    current_turn_position: activePlayers.sort((a: any, b: any) => a.position - b.position)[0].position,
+                    current_turn_position: startingTurnPos,
                   })
                   .select()
                   .single();
@@ -1362,23 +1482,26 @@ serve(async (req) => {
                   await supabase.from('player_cards').insert(playerCardInserts);
                   
                   // Update game
-                  await supabase
-                    .from('games')
-                    .update({
-                      current_round: newRoundNumber,
-                      awaiting_next_round: false,
-                      all_decisions_in: false,
-                    })
-                    .eq('id', game.id);
+                   await supabase
+                     .from('games')
+                     .update({
+                       // Keep Holm round counter stable; hand progression is tracked via rounds.hand_number.
+                       current_round: 1,
+                       total_hands: newHandNumber,
+                       awaiting_next_round: false,
+                       all_decisions_in: false,
+                     })
+                     .eq('id', game.id);
                   
                   // Reset player decisions
-                  await supabase
-                    .from('players')
-                    .update({ current_decision: null, decision_locked: false })
-                    .eq('game_id', game.id)
-                    .eq('ante_decision', 'ante_up');
+                   await supabase
+                     .from('players')
+                     .update({ current_decision: null, decision_locked: false })
+                     .eq('game_id', game.id)
+                     .eq('status', 'active')
+                     .eq('sitting_out', false);
                   
-                  actionsTaken.push(`Watchdog: Started Holm round ${newRoundNumber} with ${activePlayers.length} players`);
+                   actionsTaken.push(`Watchdog: Started Holm hand ${newHandNumber} with ${activePlayers.length} players`);
                 }
               } else {
                 // Not enough players - end session
@@ -1422,33 +1545,31 @@ serve(async (req) => {
                   // Cards to deal based on round (3, 5, or 7)
                   const cardsToDeal = nextRoundNum === 1 ? 3 : nextRoundNum === 2 ? 5 : 7;
                   
-                  // Get next round number in DB
-                  const { data: latestRound } = await supabase
-                    .from('rounds')
-                    .select('round_number')
-                    .eq('game_id', game.id)
-                    .order('round_number', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-                  
-                  const newRoundNumber = (latestRound?.round_number || 0) + 1;
+                  // CRITICAL: For 3-5-7, round numbers cycle 1/2/3 per hand.
+                  // Use the round_number from next_round_number (which is 1, 2, or 3).
+                  // The unique constraint is (game_id, hand_number, round_number).
+                  const newRoundNumber = nextRoundNum; // 1, 2, or 3 based on game state
+                  const newHandNumber = nextRoundNum === 1 
+                    ? (game.total_hands || 0) + 1  // New hand starts with round 1
+                    : (game.total_hands || 1);      // Rounds 2/3 continue same hand
                   
                   // Deal cards
                   const deck = shuffleDeck(createDeck());
                   let deckIndex = 0;
                   
-                  // Create round
+                  // Create round - use the correctly calculated hand number
                   const { data: newRound, error: roundError } = await supabase
                     .from('rounds')
                     .insert({
                       game_id: game.id,
                       round_number: newRoundNumber,
-                      hand_number: (game.total_hands || 0) + 1,
+                      hand_number: newHandNumber,
                       cards_dealt: cardsToDeal,
                       pot: game.pot || 0,
                       status: 'betting',
                       decision_deadline: decisionDeadline,
                       current_turn_position: players[0].position,
+                      dealer_game_id: game.current_game_uuid || null,
                     })
                     .select()
                     .single();
@@ -1469,17 +1590,21 @@ serve(async (req) => {
                     
                     await supabase.from('player_cards').insert(playerCardInserts);
                     
-                    // Update game
+                    // Update game - CRITICAL: update total_hands when starting round 1 of new hand
+                    const gameUpdateFields: Record<string, any> = {
+                      current_round: newRoundNumber,
+                      awaiting_next_round: false,
+                      next_round_number: null,
+                      last_round_result: null,
+                      all_decisions_in: false,
+                      status: 'in_progress',
+                    };
+                    if (newRoundNumber === 1) {
+                      gameUpdateFields.total_hands = newHandNumber;
+                    }
                     await supabase
                       .from('games')
-                      .update({
-                        current_round: newRoundNumber,
-                        awaiting_next_round: false,
-                        next_round_number: null,
-                        last_round_result: null,
-                        all_decisions_in: false,
-                        status: 'in_progress',
-                      })
+                      .update(gameUpdateFields)
                       .eq('id', game.id);
                     
                     // Reset player decisions
@@ -1774,12 +1899,22 @@ serve(async (req) => {
         // This prevents the cron from racing ahead of client animations
         if ((game.status === 'in_progress' || game.status === 'betting') && game.all_decisions_in === true && game.game_type === 'holm-game') {
           
-          const { data: currentRound } = await supabase
-            .from('rounds')
-            .select('*')
-            .eq('game_id', game.id)
-            .eq('round_number', game.current_round ?? 0)
-            .maybeSingle();
+          // CRITICAL: Scope to dealer_game_id and order by hand_number to get the active Holm round
+          const dealerGameIdShowdown = (game as any).current_game_uuid;
+          let currentRound: any = null;
+          
+          if (dealerGameIdShowdown) {
+            const { data } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', game.id)
+              .eq('dealer_game_id', dealerGameIdShowdown)
+              .order('hand_number', { ascending: false })
+              .order('round_number', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            currentRound = data;
+          }
           
           // GRACE PERIOD CHECK: Only process if either:
           // 1. No decision_deadline exists (already processed/cleared)
@@ -1834,7 +1969,9 @@ serve(async (req) => {
               continue;
             }
           
-            if (currentRound.status === 'betting') {
+            // CRITICAL: Process both 'betting' AND 'processing' status rounds.
+            // 'processing' status means a client claimed the round but crashed before completing showdown.
+            if (currentRound.status === 'betting' || currentRound.status === 'processing') {
             const { data: players } = await supabase
               .from('players')
               .select('*')
@@ -1854,7 +1991,12 @@ serve(async (req) => {
               p.current_decision === 'fold'
             ) || [];
             
-            console.log('[CRON-ENFORCE] Showdown: stayers=', stayedPlayers.length, 'folders=', foldedPlayers.length);
+             console.log('[CRON-ENFORCE] Showdown: stayers=', stayedPlayers.length, 'folders=', foldedPlayers.length);
+
+             // CRITICAL (Holm): NEVER advance hand_number based on games.total_hands.
+             // games.total_hands can be stale and must not drift ahead of rounds.
+             // Use the authoritative round.hand_number.
+             const holmHandNumber = (currentRound as any)?.hand_number ?? (game.total_hands || 1);
             
             if (stayedPlayers.length === 0) {
               // Everyone folded - apply pussy tax if enabled
@@ -1878,9 +2020,9 @@ serve(async (req) => {
               const newPot = (game.pot || 0) + totalTaxCollected;
               
               // Record result
-              await supabase.from('game_results').insert({
-                game_id: game.id,
-                hand_number: (game.total_hands || 0) + 1,
+               await supabase.from('game_results').insert({
+                 game_id: game.id,
+                 hand_number: holmHandNumber,
                 winner_player_id: null,
                 winner_username: null,
                 pot_won: 0,
@@ -1898,7 +2040,9 @@ serve(async (req) => {
                   last_round_result: totalTaxCollected > 0 ? 'Pussy Tax' : 'Everyone folded!',
                   awaiting_next_round: true,
                   all_decisions_in: false,
-                  total_hands: (game.total_hands || 0) + 1,
+                   // CRITICAL (Holm): Keep total_hands aligned to the active round's hand_number.
+                   // Never increment here; no new round was inserted.
+                   total_hands: holmHandNumber,
                 })
                 .eq('id', game.id);
               
@@ -1970,9 +2114,9 @@ serve(async (req) => {
                     p_amount: roundPot
                   });
                   
-                  await supabase.from('game_results').insert({
-                    game_id: game.id,
-                    hand_number: (game.total_hands || 0) + 1,
+                   await supabase.from('game_results').insert({
+                     game_id: game.id,
+                     hand_number: holmHandNumber,
                     winner_player_id: player.id,
                     pot_won: roundPot,
                     winning_hand_description: `Beat Chucky with ${playerEval.rank}`,
@@ -1995,7 +2139,8 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                       last_round_result: `Player beat Chucky!`,
                     })
                     .eq('id', game.id);
@@ -2023,7 +2168,8 @@ serve(async (req) => {
                       last_round_result: `Chucky wins with ${chuckyEval.rank}!`,
                       awaiting_next_round: true,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                     })
                     .eq('id', game.id);
                   
@@ -2066,9 +2212,9 @@ serve(async (req) => {
                     p_amount: roundPot
                   });
                   
-                  await supabase.from('game_results').insert({
-                    game_id: game.id,
-                    hand_number: (game.total_hands || 0) + 1,
+                   await supabase.from('game_results').insert({
+                     game_id: game.id,
+                     hand_number: holmHandNumber,
                     winner_player_id: winner.player.id,
                     pot_won: roundPot,
                     winning_hand_description: `${winner.eval.rank}`,
@@ -2094,7 +2240,8 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                       last_round_result: `${winnerName} won with ${winner.eval.rank}|||WINNER:${winner.player.id}|||POT:${roundPot}`,
                     })
                     .eq('id', game.id);
@@ -2115,9 +2262,9 @@ serve(async (req) => {
                     playerChipChanges[winner.player.id] = splitAmount;
                   }
                   
-                  await supabase.from('game_results').insert({
-                    game_id: game.id,
-                    hand_number: (game.total_hands || 0) + 1,
+                   await supabase.from('game_results').insert({
+                     game_id: game.id,
+                     hand_number: holmHandNumber,
                     winner_player_id: winners[0].player.id,
                     pot_won: roundPot,
                     winning_hand_description: `Chopped: ${winners.length}-way split with ${winners[0].eval.rank}`,
@@ -2140,7 +2287,8 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
-                      total_hands: (game.total_hands || 0) + 1,
+                       // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
+                       total_hands: holmHandNumber,
                       last_round_result: `Chopped: ${winners.length}-way split`,
                     })
                     .eq('id', game.id);

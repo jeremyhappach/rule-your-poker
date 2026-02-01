@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
 import { getBotAlias } from "./botAlias";
+import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent } from "./gameStateDebugLog";
 
 /**
  * Snapshot all players' chip counts after a hand completes.
@@ -180,7 +181,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
-      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at')
       .eq('id', gameId)
       .single(),
     supabase
@@ -193,8 +194,24 @@ export async function startRound(gameId: string, roundNumber: number) {
   const gameConfig = gameConfigResult.data;
   const gameDefaults = gameDefaultsResult.data;
 
+  // CRITICAL GUARD: Block round creation if game is already over or ended
+  if (gameConfig?.status === 'game_over' || gameConfig?.status === 'session_ended') {
+    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'BLOCKED_GAME_OVER', {
+      roundNumber,
+      currentStatus: gameConfig?.status,
+      gameOverAt: gameConfig?.game_over_at,
+      dealerGameId: gameConfig?.current_game_uuid,
+    });
+    console.warn('[START_ROUND] Blocked - game is in terminal state:', gameConfig?.status);
+    return;
+  }
+
   // Prevent starting if already in progress with this round
   if (gameConfig?.status === 'in_progress' && gameConfig?.current_round === roundNumber) {
+    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_ALREADY_IN_PROGRESS', {
+      roundNumber,
+      currentRound: gameConfig?.current_round,
+    });
     console.log('[START_ROUND] Round', roundNumber, 'already in progress, skipping');
     return;
   }
@@ -205,89 +222,22 @@ export async function startRound(gameId: string, roundNumber: number) {
   const cardsToDeal = roundNumber === 1 ? 3 : roundNumber === 2 ? 5 : 7;
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
 
-  // If starting round 1, ensure all old rounds are deleted - FIRE AND FORGET to avoid blocking
-  // NOTE: player_cards are preserved for hand history (retention policy)
-  if (roundNumber === 1) {
-    console.log('[START_ROUND] Cleaning up old rounds for round 1 (fire-and-forget, preserving player_cards)');
-    
-    // Fire-and-forget: Don't block on cleanup
-    // IMPORTANT: We preserve player_cards for hand history display
-    void (async () => {
-      try {
-        await supabase.from('rounds').delete().eq('game_id', gameId);
-        console.log('[START_ROUND] Background cleanup completed (rounds only, cards preserved)');
-      } catch (err) {
-        console.error('[START_ROUND] Background cleanup error (non-fatal):', err);
-      }
-    })();
-  }
+  // NOTE: We no longer delete old rounds - they are preserved for hand history
+  // The card rendering now uses dealer_game_id + round_number to prevent stale card matching
+  console.log('[START_ROUND] Preserving existing rounds for hand history');
 
-  // Reset all players to active for the new round (must happen BEFORE we decide who gets dealt in later rounds)
-  const { error: resetError } = await supabase
-    .from('players')
-    .update({
-      current_decision: null,
-      decision_locked: false,
-      status: 'active'
-    })
-    .eq('game_id', gameId);
-
-  if (resetError) {
-    console.error('[START_ROUND] Failed to reset players:', resetError);
-  }
-
-  // CRITICAL: Fetch players AFTER the reset so we don't use stale fold/decision state (fixes missing cards in rounds 1-3)
-  const { data: players, error: playersError } = await supabase
-    .from('players')
-    .select('*')
-    .eq('game_id', gameId)
-    .order('position');
-
-  if (playersError) {
-    console.error('[START_ROUND] Error fetching players:', playersError);
-    throw new Error(`Failed to fetch players: ${playersError.message}`);
-  }
-
-  if (!players || players.length === 0) {
-    throw new Error('No players found in game');
-  }
-
-  // Deal to all non-sitting-out players. Status can be stale if reset failed; sitting_out is the true exclusion.
-  const activePlayers = players.filter(p => !p.sitting_out);
-  console.log('[START_ROUND] Players eligible for dealing:', {
-    roundNumber,
-    totalPlayers: players.length,
-    activeCount: activePlayers.length,
-    active: activePlayers.map(p => ({ id: p.id, position: p.position, status: p.status, sitting_out: p.sitting_out }))
-  });
+  // IMPORTANT (CONCURRENCY): We only reset players + charge antes + deal cards if THIS client
+  // wins the round creation lock. Losing clients must not reset decisions mid-round.
   let initialPot = 0;
   
   // timerSeconds already fetched in parallel at start
   console.log('[START_ROUND] Using decision timer:', timerSeconds, 'seconds');
-  
-  // Get current hand_number for this session
-  // For round 1, use total_hands + 1 (new game starting)
-  // For rounds 2-3, use the same hand_number as round 1
-  let handNumber = 1;
-  if (roundNumber === 1) {
-    // New game starting - use total_hands + 1
-    const { data: gameForHand } = await supabase
-      .from('games')
-      .select('total_hands')
-      .eq('id', gameId)
-      .single();
-    handNumber = (gameForHand?.total_hands || 0) + 1;
-  } else {
-    // Continuing game - use same hand_number as existing rounds
-    const { data: existingRoundForHand } = await supabase
-      .from('rounds')
-      .select('hand_number')
-      .eq('game_id', gameId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    handNumber = existingRoundForHand?.hand_number || 1;
-  }
+
+  // 3-5-7 HAND MODEL:
+  // hand_number increments ONLY when starting a NEW Round 1.
+  // Rounds 1/2/3 share the same hand_number.
+  const currentHandNumber = typeof gameConfig?.total_hands === 'number' ? gameConfig.total_hands : 0;
+  const handNumber = roundNumber === 1 ? currentHandNumber + 1 : (currentHandNumber || 1);
 
   // Create round with configured deadline (accounts for ~2s of processing/fetch time)
   const deadline = new Date(Date.now() + (timerSeconds + 2) * 1000);
@@ -305,7 +255,7 @@ export async function startRound(gameId: string, roundNumber: number) {
       pot: 0, // Will be updated after ante collection
       decision_deadline: deadline.toISOString(),
       hand_number: handNumber,
-      dealer_game_id: gameConfig?.current_game_uuid || null
+      dealer_game_id: currentGameUuid
     })
     .select()
     .single();
@@ -313,6 +263,12 @@ export async function startRound(gameId: string, roundNumber: number) {
   // Check if this client won the race to create the round
   if (roundInsertError) {
     // Unique constraint violation or other error - another client already created the round
+    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_INSERT_RACE_LOST', {
+      roundNumber,
+      handNumber,
+      error: roundInsertError.message,
+      dealerGameId: currentGameUuid,
+    });
     console.log('[START_ROUND] ⚠️ Round already exists (race lost or error):', roundInsertError.message);
     
     // Fetch the existing round so we can still return it (for callers that need round data)
@@ -320,6 +276,8 @@ export async function startRound(gameId: string, roundNumber: number) {
       .from('rounds')
       .select('*')
       .eq('game_id', gameId)
+      // CRITICAL: Must scope to the active dealer game; round_number/hand_number repeat across dealer games in a session
+      .eq('dealer_game_id', currentGameUuid)
       .eq('round_number', roundNumber)
       .eq('hand_number', handNumber)
       .maybeSingle();
@@ -334,7 +292,60 @@ export async function startRound(gameId: string, roundNumber: number) {
   }
 
   // This client WON the race - we are the only one that will charge antes
+  logGameState({
+    gameId,
+    dealerGameId: currentGameUuid,
+    roundId: insertedRound.id,
+    eventType: 'ROUND_CREATED',
+    currentRound: roundNumber,
+    totalHands: handNumber,
+    sourceLocation: 'gameLogic:startRound:wonRace',
+    details: {
+      cardsToDeal,
+      timerSeconds,
+      anteAmount,
+    },
+  });
   console.log('[START_ROUND] ✅ WON round creation race for round', roundNumber, 'id:', insertedRound.id);
+
+  // Reset all players to active for the new round (winner only)
+  const { error: resetError } = await supabase
+    .from('players')
+    .update({
+      current_decision: null,
+      decision_locked: false,
+      status: 'active',
+    })
+    .eq('game_id', gameId);
+
+  if (resetError) {
+    console.error('[START_ROUND] Failed to reset players:', resetError);
+  }
+
+  // Fetch players AFTER the reset so we don't use stale fold/decision state
+  const { data: players, error: playersError } = await supabase
+    .from('players')
+    .select('*')
+    .eq('game_id', gameId)
+    .order('position');
+
+  if (playersError) {
+    console.error('[START_ROUND] Error fetching players:', playersError);
+    throw new Error(`Failed to fetch players: ${playersError.message}`);
+  }
+
+  if (!players || players.length === 0) {
+    throw new Error('No players found in game');
+  }
+
+  // Deal to all non-sitting-out players.
+  const activePlayers = players.filter((p) => !p.sitting_out);
+  console.log('[START_ROUND] Players eligible for dealing:', {
+    roundNumber,
+    totalPlayers: players.length,
+    activeCount: activePlayers.length,
+    active: activePlayers.map((p) => ({ id: p.id, position: p.position, status: p.status, sitting_out: p.sitting_out })),
+  });
   
   // Charge antes only for round 1 (initial ante or re-ante after round 3 wraps)
   if (roundNumber === 1) {
@@ -363,8 +374,8 @@ export async function startRound(gameId: string, roundNumber: number) {
         anteChipChanges[player.id] = -anteAmount;
       }
       
-      // Record antes as a game result entry with no winner (just ante collection)
-      await recordGameResult(
+      // Fire-and-forget: Record antes as a game result entry (audit trail only)
+      recordGameResult(
         gameId,
         handNumber,
         null, // no winner - this is ante collection
@@ -391,22 +402,20 @@ export async function startRound(gameId: string, roundNumber: number) {
   
   const currentPot = currentGameForPot?.pot || 0;
   
-  // Build game update object - CRITICAL: For Round 1, also update total_hands to match handNumber
-  // This ensures the unique constraint (game_id, hand_number, round_number) works correctly for subsequent hands
-  // Similar to how Horses/SCC atomically update total_hands when starting a new hand
+  // Build game update object - CRITICAL: use insertedRound values to prevent drift
+  // This ensures games.current_round/total_hands always match the actual round record
   const gameUpdate: Record<string, unknown> = {
-    current_round: roundNumber,
+    current_round: insertedRound.round_number, // Use inserted row, not local variable
     all_decisions_in: false,
     pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
     // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
     config_deadline: null,
     ante_decision_deadline: null,
   };
-  
-  // For Round 1, atomically update total_hands to ensure the next hand gets a unique hand_number
-  if (roundNumber === 1) {
-    gameUpdate.total_hands = handNumber;
-    console.log('[START_ROUND] Round 1: Setting total_hands to', handNumber);
+
+  // Only bump hand count when starting Round 1 of a new hand
+  if (insertedRound.round_number === 1) {
+    gameUpdate.total_hands = insertedRound.hand_number; // Use inserted row, not local variable
   }
   
   const { error: gameUpdateError } = await supabase
@@ -419,7 +428,12 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error(`Failed to update game state: ${gameUpdateError.message}`);
   }
   
-  console.log('[START_ROUND] Game state updated: current_round =', roundNumber, ', all_decisions_in = false, pot =', currentPot + initialPot, roundNumber === 1 ? ', total_hands = ' + handNumber : '');
+  console.log('[START_ROUND] Game state updated:', {
+    current_round: insertedRound.round_number,
+    all_decisions_in: false,
+    pot: currentPot + initialPot,
+    total_hands: insertedRound.round_number === 1 ? insertedRound.hand_number : currentHandNumber,
+  });
   
   // Update round pot to reflect the ante collection
   if (initialPot > 0) {
@@ -436,18 +450,21 @@ export async function startRound(gameId: string, roundNumber: number) {
   let deck = shuffleDeck(createDeck());
   let cardIndex = 0;
 
-  // Get previous round cards if this isn't round 1
+  // Get previous round cards if this isn't round 1 (of the current 3-5-7 game)
+  // CRITICAL: Use dealer_game_id to ensure we only get cards from THIS game, not previous games
   let previousRoundCards: Map<string, Card[]> = new Map();
   let alreadyDealtCards: Card[] = [];
   
-  if (roundNumber > 1) {
+  if (roundNumber > 1 && currentGameUuid) {
     const previousRoundNumber = roundNumber - 1;
     const { data: previousRound } = await supabase
       .from('rounds')
       .select('id')
       .eq('game_id', gameId)
+      .eq('dealer_game_id', currentGameUuid)  // Only from current 3-5-7 game
+      .eq('hand_number', handNumber)          // Only from current HAND within the game
       .eq('round_number', previousRoundNumber)
-      .single();
+      .maybeSingle();
 
     if (previousRound) {
       const { data: previousCards } = await supabase
@@ -631,8 +648,7 @@ export async function startRound(gameId: string, roundNumber: number) {
             await supabase
               .from('games')
               .update({ 
-                pot: 0,
-                total_hands: (guardResult.total_hands || 0) + 1
+                pot: 0
               })
               .eq('id', gameId);
           }, 5000);
@@ -664,29 +680,99 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   console.log('[MAKE DECISION] Game status:', game.status, 'Type:', game.game_type);
 
+  // CRITICAL GUARD: Dice games (horses, ship-captain-crew) do NOT use makeDecision.
+  // They have their own turn-based dice rolling logic. If makeDecision is called for a dice game,
+  // it's a bug that will corrupt game state. Bail out immediately.
+  const isDiceGame = game.game_type === 'horses' || game.game_type === 'ship-captain-crew';
+  if (isDiceGame) {
+    console.error('[MAKE DECISION] BLOCKED: makeDecision called for dice game - this is a bug!', {
+      gameId,
+      gameType: game.game_type,
+      playerId,
+      decision,
+    });
+    // Fire-and-forget diagnostic log
+    logRaceConditionGuard(gameId, 'gameLogic:makeDecision', 'BLOCKED_DICE_GAME', {
+      gameType: game.game_type,
+      playerId,
+      decision,
+    });
+    return; // Do not throw - just silently return to prevent state corruption
+  }
+
   // CRITICAL: For Holm games, fetch the LATEST round by round_number DESC
   // game.current_round is NOT updated for Holm (to avoid check constraint violation)
   const isHolmGame = game.game_type === 'holm-game';
+  const is357Game = game.game_type === '3-5-7' || game.game_type === '3-5-7-game' || game.game_type === '357';
+  const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
+  const roundNumber = typeof game.current_round === 'number' ? game.current_round : null;
+
+  if (!isHolmGame && roundNumber === null) {
+    console.error('[MAKE DECISION] No current_round set for non-Holm game', { gameId, gameType: game.game_type });
+    throw new Error('No current round');
+  }
   
   let currentRound;
   if (isHolmGame) {
-    const { data: latestRound } = await supabase
+    // CRITICAL: Holm round selection must be scoped to dealer_game_id.
+    // round_number can reset to 1 when switching game types, so round_number DESC across the session is unsafe.
+    const baseRoundQuery = supabase
       .from('rounds')
       .select('*')
-      .eq('game_id', gameId)
+      .eq('game_id', gameId);
+
+    const roundQuery = game.current_game_uuid
+      ? baseRoundQuery.eq('dealer_game_id', game.current_game_uuid)
+      : baseRoundQuery;
+
+    const { data: latestRound } = await roundQuery
+      .order('hand_number', { ascending: false })
       .order('round_number', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
+
+    if (!latestRound) {
+      console.error('[MAKE DECISION] Holm game - no round found for dealer_game_id', {
+        gameId,
+        dealerGameId: game.current_game_uuid,
+      });
+      throw new Error('Round not found');
+    }
     currentRound = latestRound;
     console.log('[MAKE DECISION] Holm game - using latest round by round_number:', latestRound?.round_number);
   } else {
-    const { data: rounds } = await supabase
-      .from('rounds')
-      .select('*')
-      .eq('game_id', gameId)
-      .eq('round_number', game.current_round)
-      .single();
-    currentRound = rounds;
+    if (is357Game) {
+      // 3-5-7 can have multiple round_number=1/2/3 rows across hands.
+      // Disambiguate via (dealer_game_id, hand_number, round_number).
+      const { data: round357 } = await supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', game.current_game_uuid)
+        .eq('hand_number', handNumber)
+        .eq('round_number', roundNumber)
+        .maybeSingle();
+      currentRound = round357;
+    } else {
+      // Non-3-5-7 games can restart at round_number=1 when a new dealer game starts.
+      // Always scope to the active dealer_game_id when available and take the latest by (hand_number, round_number).
+      const baseRoundQuery = supabase
+        .from('rounds')
+        .select('*')
+        .eq('game_id', gameId);
+
+      const scopedQuery = game.current_game_uuid
+        ? baseRoundQuery.eq('dealer_game_id', game.current_game_uuid)
+        : baseRoundQuery;
+
+      const { data: latestRound } = await scopedQuery
+        .order('hand_number', { ascending: false })
+        .order('round_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      currentRound = latestRound;
+    }
   }
   
   if (!currentRound) {
@@ -716,27 +802,63 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   // Lock in decision - no chips deducted yet
   // isHolmGame already defined above
   
+  // CRITICAL: Use atomic guard to prevent race conditions with enforce-deadlines.
+  // The .eq('decision_locked', false) ensures only ONE writer wins if the user clicks
+  // Stay/Fold at the same moment the timer expires and calls the edge function.
   if (decision === 'stay') {
-    await supabase
+    const { data: stayResult, error: stayError } = await supabase
       .from('players')
       .update({ 
         current_decision: 'stay',
         decision_locked: true
       })
-      .eq('id', playerId);
+      .eq('id', playerId)
+      .eq('decision_locked', false) // ATOMIC GUARD: only update if not already locked
+      .select();
+    
+    if (!stayResult || stayResult.length === 0) {
+      console.log('[MAKE DECISION] Stay update skipped - player already locked (race condition avoided)');
+      return; // Another process already locked this player
+    }
+    
     console.log('[MAKE DECISION] Stay decision locked in database');
+    
+    // DEBUG LOG: Player stay decision (fire-and-forget)
+    logPlayerDecision(gameId, playerId, 'stay', true, 'gameLogic:makeDecision', {
+      round_id: currentRound.id,
+      round_number: currentRound.round_number,
+      position: player.position,
+      game_type: game.game_type,
+    });
   } else {
     // In Holm game, folding only affects current hand - keep status 'active'
     // In 3-5-7 game, folding eliminates player from entire session - set status 'folded'
-    await supabase
+    const { data: foldResult, error: foldError } = await supabase
       .from('players')
       .update({ 
         current_decision: 'fold',
         decision_locked: true,
         ...(isHolmGame ? {} : { status: 'folded' })
       })
-      .eq('id', playerId);
+      .eq('id', playerId)
+      .eq('decision_locked', false) // ATOMIC GUARD: only update if not already locked
+      .select();
+    
+    if (!foldResult || foldResult.length === 0) {
+      console.log('[MAKE DECISION] Fold update skipped - player already locked (race condition avoided)');
+      return; // Another process already locked this player
+    }
+    
     console.log('[MAKE DECISION] Fold decision locked in database');
+    
+    // DEBUG LOG: Player fold decision (fire-and-forget)
+    logPlayerDecision(gameId, playerId, 'fold', true, 'gameLogic:makeDecision', {
+      round_id: currentRound.id,
+      round_number: currentRound.round_number,
+      position: player.position,
+      game_type: game.game_type,
+      status_change: isHolmGame ? 'none' : 'folded',
+    });
   }
 
   console.log('[MAKE DECISION] Is Holm game?', isHolmGame);
@@ -744,9 +866,11 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   if (isHolmGame) {
     // For Holm games, check if round is complete and advance turn
     // Import dynamically to avoid circular dependency
+    // CRITICAL: Pass player.position so checkHolmRoundComplete knows exactly who decided
+    // This eliminates the race condition where current_turn_position might have already changed
     const { checkHolmRoundComplete } = await import('./holmGameLogic');
-    console.log('[MAKE DECISION] Holm game - calling checkHolmRoundComplete');
-    await checkHolmRoundComplete(gameId);
+    console.log('[MAKE DECISION] Holm game - calling checkHolmRoundComplete with position', player.position);
+    await checkHolmRoundComplete(gameId, player.position);
   } else {
     // Check if all players have decided (only for non-Holm games)
     await checkAllDecisionsIn(gameId);
@@ -903,7 +1027,8 @@ async function handleGameOver(
   
   // Use the pot value from the atomic guard result to ensure consistency
   const actualPot = guardResult.pot || currentPot;
-  const newTotalHands = (guardResult.total_hands || 0) + 1;
+  // 3-5-7 HAND MODEL: total_hands == current hand_number (increments when a NEW Round 1 starts)
+  const handNumber = Math.max(guardResult.total_hands || 0, 1);
   
   // Calculate total leg value from all players (legs are separate from pot)
   // Winner gets pot + all leg values when they win the game
@@ -925,10 +1050,16 @@ async function handleGameOver(
     }
   }
   
-  // Record game result for hand history
-  await recordGameResult(
+  // Award the winner using atomic increment FIRST (critical path)
+  await supabase.rpc('increment_player_chips', {
+    p_player_id: winnerId,
+    p_amount: totalPrize
+  });
+  
+  // Fire-and-forget: Record game result for hand history (audit trail only)
+  recordGameResult(
     gameId,
-    newTotalHands,
+    handNumber,
     winnerId,
     winnerUsername,
     `${winnerLegs} legs`,
@@ -939,14 +1070,8 @@ async function handleGameOver(
     currentGameUuid // dealer_game_id
   );
   
-  // Award the winner using atomic increment
-  await supabase.rpc('increment_player_chips', {
-    p_player_id: winnerId,
-    p_amount: totalPrize
-  });
-  
-  // Snapshot player chips AFTER awarding prize but BEFORE resetting player states
-  await snapshotPlayerChips(gameId, newTotalHands);
+  // Fire-and-forget: Snapshot player chips (audit trail only)
+  snapshotPlayerChips(gameId, handNumber);
   
   const gameWinMessage = `🏆 ${winnerUsername} won the game!`;
   
@@ -984,7 +1109,7 @@ async function handleGameOver(
         status: 'session_ended',
         session_ended_at: new Date().toISOString(),
         game_over_at: new Date().toISOString(),
-        total_hands: newTotalHands,
+        total_hands: handNumber,
         pending_session_end: false,
         last_round_result: gameWinMessage,
         pot: 0
@@ -1011,7 +1136,7 @@ async function handleGameOver(
       last_round_result: gameWinMessage,
       game_over_at: null,  // NULL - frontend animation will set this after completing
       pot: 0,  // Critical: always reset pot
-      total_hands: newTotalHands
+      total_hands: handNumber
     })
     .eq('id', gameId)
     .select();
@@ -1054,7 +1179,7 @@ export async function endRound(gameId: string) {
   // Fetch game configuration
   const { data: gameConfig } = await supabase
     .from('games')
-    .select('leg_value, legs_to_win, pot_max_enabled, pot_max_value, pussy_tax_enabled, pussy_tax_value, current_game_uuid')
+    .select('leg_value, legs_to_win, pot_max_enabled, pot_max_value, pussy_tax_enabled, pussy_tax_value, current_game_uuid, reveal_at_showdown')
     .eq('id', gameId)
     .single();
   
@@ -1066,17 +1191,43 @@ export async function endRound(gameId: string) {
   const potMaxValue = gameConfig?.pot_max_value || 10;
   const pussyTaxEnabled = gameConfig?.pussy_tax_enabled ?? true;
   const pussyTaxValue = gameConfig?.pussy_tax_value || 1;
+  const revealAtShowdown = gameConfig?.reveal_at_showdown ?? true;
   const betAmount = legValue;
 
   const currentRound = game.current_round;
 
   // Get all player hands for this round
-  const { data: round } = await supabase
+  const is357Game = game.game_type === '3-5-7' || game.game_type === '3-5-7-game' || game.game_type === '357';
+  const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
+  // CRITICAL: Round selection must never rely on (game_id, round_number) alone.
+  // When a new dealer game starts inside the same session, round_number can restart at 1.
+  // If we select by round_number we can target a historical round from a prior dealer game and stall progression.
+  const baseRoundQuery = supabase
     .from('rounds')
     .select('*')
-    .eq('game_id', gameId)
-    .eq('round_number', currentRound)
-    .single();
+    .eq('game_id', gameId);
+
+  let round: any | null = null;
+
+  if (is357Game) {
+    const { data } = await baseRoundQuery
+      .eq('dealer_game_id', currentGameUuid)
+      .eq('hand_number', handNumber)
+      .eq('round_number', currentRound)
+      .maybeSingle();
+    round = data;
+  } else {
+    const scopedQuery = currentGameUuid
+      ? baseRoundQuery.eq('dealer_game_id', currentGameUuid)
+      : baseRoundQuery;
+
+    const { data } = await scopedQuery
+      .order('hand_number', { ascending: false })
+      .order('round_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    round = data;
+  }
 
   if (!round) return;
   
@@ -1262,7 +1413,8 @@ export async function endRound(gameId: string) {
     legChipChanges[soloStayer.id] = -betAmount;
     
     const currentHandNumber = game.total_hands || 1;
-    await recordGameResult(
+    // Fire-and-forget: Record leg purchase (audit trail only)
+    recordGameResult(
       gameId,
       currentHandNumber,
       null, // no winner - this is a leg purchase
@@ -1336,8 +1488,22 @@ export async function endRound(gameId: string) {
       return; // Exit early, game over will be handled after delay
     }
     
-    console.log('[endRound] Not final leg, continuing to set awaiting_next_round');
-    // If not final leg, just continue - result message will be set at end of function
+    console.log('[endRound] Not final leg, setting awaiting_next_round for solo stayer');
+    
+    // CRITICAL FIX: Solo stayer with non-final leg must explicitly set awaiting_next_round
+    // Previously this fell through to the showdown/pussy-tax branches incorrectly
+    const nextRound = currentRound < 3 ? currentRound + 1 : 1;
+    await supabase
+      .from('games')
+      .update({ 
+        awaiting_next_round: true,
+        next_round_number: nextRound,
+        last_round_result: resultMessage
+      })
+      .eq('id', gameId);
+    
+    console.log('[endRound] Solo stayer leg awarded, awaiting_next_round set. Next round:', nextRound);
+    return; // Exit - solo stayer handled
   } else if (playersWhoStayed.length > 1) {
     console.log('[endRound] SHOWDOWN: Multiple players stayed, evaluating hands');
     // Multiple players stayed - evaluate hands for showdown
@@ -1355,6 +1521,25 @@ export async function endRound(gameId: string) {
 
     if (playerCards && playerCards.length > 0) {
       console.log('[endRound] SHOWDOWN: Processing cards for evaluation');
+      
+      // VISIBILITY: Set card visibility based on round and reveal settings
+      // Round 3: all seated players see cards
+      // Round 1/2 with reveal: only showdown participants see cards
+      const stayedPlayerIds = playersWhoStayed.map(p => p.id);
+      const seatedUserIds = allPlayers.map(p => p.user_id);
+      const showdownUserIds = playersWhoStayed.map(p => p.user_id);
+      
+      if (currentRound === 3 || revealAtShowdown) {
+        // Round 3 or reveal enabled: set visibility
+        const visibleTo = currentRound === 3 ? seatedUserIds : showdownUserIds;
+        console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users');
+        // Fire-and-forget: visibility update is for history only
+        supabase
+          .from('player_cards')
+          .update({ visible_to_user_ids: visibleTo })
+          .eq('round_id', round.id)
+          .in('player_id', stayedPlayerIds);
+      }
       // Only evaluate hands of players who stayed
       // 3-5-7 game uses wildcards based on round - determine explicit wild rank
       const wildRank = currentRound === 1 ? '3' : currentRound === 2 ? '5' : '7';
@@ -1486,7 +1671,8 @@ export async function endRound(gameId: string) {
             // Get current hand number
             const currentHandNumber = game.total_hands || 1;
             
-            await recordGameResult(
+            // Fire-and-forget: Record showdown result (audit trail only)
+            recordGameResult(
               gameId,
               currentHandNumber,
               winner.playerId,
@@ -1592,7 +1778,8 @@ export async function endRound(gameId: string) {
         }
         
         const currentHandNumber = game.total_hands || 1;
-        await recordGameResult(
+        // Fire-and-forget: Record pussy tax (audit trail only)
+        recordGameResult(
           gameId,
           currentHandNumber,
           null, // no winner - this is tax going into pot
