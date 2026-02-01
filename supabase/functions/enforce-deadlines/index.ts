@@ -428,9 +428,10 @@ serve(async (req) => {
           ? baseRoundQuery.eq('dealer_game_id', game.current_game_uuid)
           : baseRoundQuery;
 
-        const { data: roundRows } = await scopedRoundQuery
-          .order('hand_number', { ascending: false })
-          .order('round_number', { ascending: false })
+         const { data: roundRows } = await scopedRoundQuery
+           // CRITICAL: NULLS LAST so null hand_number/round_number rows don't win DESC ordering.
+           .order('hand_number', { ascending: false, nullsFirst: false })
+           .order('round_number', { ascending: false, nullsFirst: false })
           .limit(1);
 
         const currentRound = roundRows?.[0];
@@ -586,82 +587,95 @@ serve(async (req) => {
           });
         }
 
-        // Bots should never stall the table. If it's a bot's turn and it hasn't decided, force a decision immediately.
-        // (Client-side bot logic should handle this normally; this is the safety net.)
-        if (currentTurnPlayer.is_bot) {
-          const botDecision = Math.random() < 0.5 ? 'stay' : 'fold';
-          const { data: botUpdateResult } = await supabase
-            .from('players')
-            .update({ current_decision: botDecision, decision_locked: true })
-            .eq('id', currentTurnPlayer.id)
-            .eq('decision_locked', false)
-            .select();
+         // Only enforce when the DB deadline is actually overdue.
+         const decisionDeadline = new Date(currentRound.decision_deadline);
+         if (now <= decisionDeadline) {
+           return new Response(JSON.stringify({
+             success: true,
+             actionsTaken,
+             gameStatus: game.status,
+             timestamp: nowIso,
+             source,
+             requestId,
+           }), {
+             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+           });
+         }
 
-          if (botUpdateResult && botUpdateResult.length > 0) {
-            actionsTaken.push(`Bot turn: Forced decision '${botDecision}' for position ${currentTurnPos}`);
-          } else {
-            actionsTaken.push('Bot turn: Skipped (already processed)');
-          }
-        } else {
-          // Human turn: only enforce if deadline is overdue.
-          const decisionDeadline = new Date(currentRound.decision_deadline);
-          if (now <= decisionDeadline) {
-            return new Response(JSON.stringify({
-              success: true,
-              actionsTaken,
-              gameStatus: game.status,
-              timestamp: nowIso,
-              source,
-              requestId,
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
-          }
+         console.log('[ENFORCE-CLIENT] Decision deadline expired for game', gameId, 'round', currentRound.round_number);
 
-          console.log('[ENFORCE-CLIENT] Decision deadline expired for game', gameId, 'round', currentRound.round_number);
+         // Bots should never stall the table. If it's a bot's turn and it hasn't decided, force a decision.
+         // CRITICAL: Respect configured bot defaults (no 50/50 random folding).
+         if (currentTurnPlayer.is_bot) {
+           const { data: botDefaults } = await supabase
+             .from('game_defaults')
+             .select('bot_fold_probability')
+             .eq('game_type', 'holm')
+             .maybeSingle();
 
-          const { data: humanUpdateResult } = await supabase
-            .from('players')
-            .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
-            .eq('id', currentTurnPlayer.id)
-            .eq('decision_locked', false)
-            .select();
+           const foldProbability = typeof (botDefaults as any)?.bot_fold_probability === 'number'
+             ? (botDefaults as any).bot_fold_probability
+             : 0;
 
-          if (!humanUpdateResult || humanUpdateResult.length === 0) {
-            console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
-            actionsTaken.push('Skipped - player already processed');
-          } else {
-            actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPos}`);
-            
-            // DEBUG LOG: Log the auto_fold + decision change to debug table
-            try {
-              await supabase
-                .from('game_state_debug_log')
-                .insert({
-                  game_id: gameId,
-                  dealer_game_id: game.current_game_uuid || null,
-                  round_id: currentRound.id,
-                  player_id: currentTurnPlayer.id,
-                  event_type: 'DEADLINE_EXPIRED',
-                  game_status: game.status,
-                  round_status: currentRound.status,
-                  player_decision: 'fold',
-                  decision_locked: true,
-                  auto_fold: true,
-                  deadline_expired: true,
-                  source_location: 'enforce-deadlines:holm-timeout',
-                  details: { 
-                    position: currentTurnPos, 
-                    deadline: currentRound.decision_deadline,
-                    source,
-                    requestId,
-                  },
-                });
-            } catch (logErr) {
-              console.warn('[ENFORCE-CLIENT] Failed to log debug event:', logErr);
-            }
-          }
-        }
+           const shouldFold = Math.random() * 100 < foldProbability;
+           const botDecision: 'stay' | 'fold' = shouldFold ? 'fold' : 'stay';
+
+           const { data: botUpdateResult } = await supabase
+             .from('players')
+             .update({ current_decision: botDecision, decision_locked: true })
+             .eq('id', currentTurnPlayer.id)
+             .eq('decision_locked', false)
+             .select();
+
+           if (botUpdateResult && botUpdateResult.length > 0) {
+             actionsTaken.push(`Bot timeout: Forced decision '${botDecision}' for position ${currentTurnPos}`);
+           } else {
+             actionsTaken.push('Bot timeout: Skipped (already processed)');
+           }
+         } else {
+           // Human turn: lock the decision to fold, but NEVER mutate persistent auto_fold.
+           const { data: humanUpdateResult } = await supabase
+             .from('players')
+             .update({ current_decision: 'fold', decision_locked: true })
+             .eq('id', currentTurnPlayer.id)
+             .eq('decision_locked', false)
+             .select();
+
+           if (!humanUpdateResult || humanUpdateResult.length === 0) {
+             console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
+             actionsTaken.push('Skipped - player already processed');
+           } else {
+             actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPos}`);
+
+             // DEBUG LOG: Log the timeout decision (auto_fold is the player's existing preference; we do not change it)
+             try {
+               await supabase
+                 .from('game_state_debug_log')
+                 .insert({
+                   game_id: gameId,
+                   dealer_game_id: game.current_game_uuid || null,
+                   round_id: currentRound.id,
+                   player_id: currentTurnPlayer.id,
+                   event_type: 'DEADLINE_EXPIRED',
+                   game_status: game.status,
+                   round_status: currentRound.status,
+                   player_decision: 'fold',
+                   decision_locked: true,
+                   auto_fold: !!(currentTurnPlayer as any).auto_fold,
+                   deadline_expired: true,
+                   source_location: 'enforce-deadlines:holm-timeout',
+                   details: {
+                     position: currentTurnPos,
+                     deadline: currentRound.decision_deadline,
+                     source,
+                     requestId,
+                   },
+                 });
+             } catch (logErr) {
+               console.warn('[ENFORCE-CLIENT] Failed to log debug event:', logErr);
+             }
+           }
+         }
 
         // Advance turn to next undecided player (after bot forced decision OR human timeout).
         const { data: freshPlayers } = await supabase
@@ -669,9 +683,10 @@ serve(async (req) => {
           .select('*')
           .eq('game_id', gameId);
 
-        const freshActivePlayers = freshPlayers?.filter((p: any) =>
-          p.status === 'active' && !p.sitting_out && p.ante_decision === 'ante_up'
-        ) || [];
+         // HOLM NOTE: Do NOT filter on ante_decision here.
+         const freshActivePlayers = freshPlayers?.filter((p: any) =>
+           p.status === 'active' && !p.sitting_out
+         ) || [];
         const undecidedPlayers = freshActivePlayers.filter((p: any) => !p.decision_locked);
 
         if (undecidedPlayers.length > 0) {
@@ -732,9 +747,9 @@ serve(async (req) => {
           ? showdownQuery.eq('dealer_game_id', game.current_game_uuid)
           : showdownQuery;
 
-        const { data: showdownRounds } = await scopedShowdownQuery
-          .order('hand_number', { ascending: false })
-          .order('round_number', { ascending: false })
+         const { data: showdownRounds } = await scopedShowdownQuery
+           .order('hand_number', { ascending: false, nullsFirst: false })
+           .order('round_number', { ascending: false, nullsFirst: false })
           .limit(1);
 
         const stuckShowdown = showdownRounds?.[0];

@@ -363,8 +363,9 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   } else {
     // Holm: order by hand/round to get the latest
     roundQuery = roundQuery
-      .order('hand_number', { ascending: false })
-      .order('round_number', { ascending: false })
+      // CRITICAL: NULLS LAST so null hand_number/round_number rows don't win DESC ordering.
+      .order('hand_number', { ascending: false, nullsFirst: false })
+      .order('round_number', { ascending: false, nullsFirst: false })
       .limit(1);
   }
   
