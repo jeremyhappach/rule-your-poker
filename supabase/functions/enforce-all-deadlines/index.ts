@@ -21,13 +21,17 @@ const corsHeaders = {
 };
 
 // ============== CARD UTILITIES ==============
+// CANONICAL SUIT FORMAT: Always use symbols (♠♥♦♣), never text ('hearts', 'clubs')
+// This matches the client-side cardUtils.ts format exactly.
+type Suit = '♠' | '♥' | '♦' | '♣';
+
 interface Card {
-  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  suit: Suit;
   rank: string;
 }
 
 function createDeck(): Card[] {
-  const suits: Card['suit'][] = ['hearts', 'diamonds', 'clubs', 'spades'];
+  const suits: Suit[] = ['♠', '♥', '♦', '♣'];
   const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   const deck: Card[] = [];
   for (const suit of suits) {
@@ -247,7 +251,7 @@ serve(async (req) => {
     const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
     const PAUSED_STALE_THRESHOLD_MS = 4 * 60 * 60 * 1000; // 4 hours
     const DEALER_SELECTION_TIMEOUT_MS = 60000; // 60 seconds
-    const AWAITING_NEXT_ROUND_THRESHOLD_MS = 10000; // 10 seconds
+    const AWAITING_NEXT_ROUND_THRESHOLD_MS = 30000; // 30 seconds - prevents race with client animations/transitions
 
     for (const game of games || []) {
       const actionsTaken: string[] = [];
