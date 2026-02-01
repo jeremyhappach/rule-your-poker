@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScreenRecorderButton } from "@/components/ScreenRecorderButton";
 
 type Snapshot = {
   ts: string;
@@ -235,11 +234,7 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
   // Inline mode: fixed floating button in top-left corner, expands upward
   if (inline) {
     return (
-      <div className="fixed bottom-28 left-2 z-[200] flex items-center gap-2">
-        {import.meta.env.DEV && (
-          <ScreenRecorderButton enabled className="h-7 px-2 text-[10px]" />
-        )}
-
+      <div className="fixed bottom-28 left-2 z-[200]">
         <div className="relative">
           <button
             onClick={() => {
@@ -382,7 +377,6 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
     <div className="fixed bottom-4 left-4 z-[210] max-w-sm">
       <div className="flex flex-col">
         <div className="flex items-center gap-2">
-          {import.meta.env.DEV && <ScreenRecorderButton enabled className="shrink-0" />}
           <Button
             variant="outline"
             size="sm"
