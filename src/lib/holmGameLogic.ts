@@ -503,8 +503,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       .from('games')
       .update({
         pot: potForRound,
-        buck_position: buckPosition,
-        total_hands: handNumber
+        buck_position: buckPosition
       })
       .eq('id', gameId);
   } else {
@@ -1440,7 +1439,7 @@ async function handleChuckyShowdown(
     // Fire-and-forget: Record game result (audit trail only)
     recordGameResult(
       gameId,
-      (game.total_hands || 0) + 1,
+      game.total_hands || 1,
       player.id,
       playerUsername,
       playerHandDesc,
@@ -1452,7 +1451,7 @@ async function handleChuckyShowdown(
     );
     
     // Fire-and-forget: Snapshot player chips (audit trail only)
-    snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
+    snapshotPlayerChips(gameId, game.total_hands || 1);
 
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
@@ -1495,8 +1494,7 @@ async function handleChuckyShowdown(
         pot: 0,
         awaiting_next_round: false,
         // dealer_position is NOT updated here - rotation happens after player state evaluation
-        buck_position: null,
-        total_hands: (game.total_hands || 0) + 1
+        buck_position: null
       })
       .eq('id', gameId);
     
@@ -2207,7 +2205,7 @@ async function handleMultiPlayerShowdown(
       // Fire-and-forget: Record game result (audit trail only)
       recordGameResult(
         gameId,
-        (game.total_hands || 0) + 1,
+        game.total_hands || 1,
         playersBeatChucky[0].player.id,
         winnerNames.join(' and '),
         winnerHandDesc,
@@ -2219,7 +2217,7 @@ async function handleMultiPlayerShowdown(
       );
       
       // Fire-and-forget: Snapshot player chips (audit trail only)
-      snapshotPlayerChips(gameId, (game.total_hands || 0) + 1);
+      snapshotPlayerChips(gameId, game.total_hands || 1);
       
       // Reset all players for new game
       console.log('[HOLM TIE] Resetting player states for new game');
@@ -2261,7 +2259,6 @@ async function handleMultiPlayerShowdown(
           game_over_at: null, // NULL - frontend celebration will set this after completing
           // dealer_position is NOT updated here - rotation happens after player state evaluation
           buck_position: null,
-          total_hands: (game.total_hands || 0) + 1,
           pot: 0,
           awaiting_next_round: false // Set to false since game is over, not awaiting next round
         })
@@ -2336,8 +2333,6 @@ export async function proceedToNextHolmRound(gameId: string) {
   const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
   const newBuckPosition = positions[nextBuckIndex];
 
-  const newTotalHands = (game.total_hands || 0) + 1;
-
   console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
 
   // CRITICAL: Atomic guard so only ONE client proceeds (prevents duplicate round inserts)
@@ -2347,7 +2342,6 @@ export async function proceedToNextHolmRound(gameId: string) {
       awaiting_next_round: false,
       buck_position: newBuckPosition,
       last_round_result: null,
-      total_hands: newTotalHands,
     })
     .eq('id', gameId)
     .eq('awaiting_next_round', true)
@@ -2366,7 +2360,7 @@ export async function proceedToNextHolmRound(gameId: string) {
     .eq('game_id', gameId)
     .neq('status', 'completed');
 
-  console.log('[HOLM NEXT] Updated total_hands to', newTotalHands);
+  console.log('[HOLM NEXT] Cleared awaiting_next_round; starting next hand');
 
   // Start new hand (preserve pot), passing the buck explicitly
   await startHolmRound(gameId, false, newBuckPosition);
