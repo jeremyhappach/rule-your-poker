@@ -1784,15 +1784,10 @@ export function useHorsesMobileController({
 
       const winnerName = getPlayerUsername(winnerPlayer);
 
-      // Record the game result
+      // Record winner's pot win (antes are already logged separately when collected)
+      // Winner receives the full pot - this is a pot-to-player transaction
       const chipChanges: Record<string, number> = {};
-      players.forEach((p) => {
-        if (p.id === winnerId) {
-          chipChanges[p.id] = actualPot; // Winner gains pot
-        } else if (!p.sitting_out) {
-          chipChanges[p.id] = -(anteAmount || 0); // Others lost their ante
-        }
-      });
+      chipChanges[winnerId] = actualPot;
 
       await supabase.from("game_results").insert({
         game_id: gameId,
