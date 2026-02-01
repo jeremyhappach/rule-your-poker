@@ -10,6 +10,7 @@ import { User } from "@supabase/supabase-js";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { HorsesGameTable, HorsesStateFromDB } from "@/components/HorsesGameTable";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
+import { TriviaGameTable } from "@/components/TriviaGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
@@ -6330,6 +6331,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 anteAmount={game.ante_amount || 1}
                 pot={potForDisplay}
                 onGameComplete={fetchGameData}
+              />
+            );
+          }
+
+          // TRIVIA GAME
+          if (isInProgress && game.game_type === 'trivia') {
+            const currentPlayer = players.find(p => p.user_id === user?.id);
+            const currentUsername = currentPlayer?.profiles?.username || 'Player';
+            return (
+              <TriviaGameTable
+                gameId={gameId!}
+                roundId={currentRound?.id || ''}
+                players={players}
+                currentPlayerId={currentPlayer?.id || ''}
+                currentUsername={currentUsername}
+                pot={potForDisplay}
+                anteAmount={game.ante_amount || 1}
+                onRoundComplete={(winnerIds, amount) => {
+                  // Handle round completion - refresh game data
+                  fetchGameData();
+                }}
               />
             );
           }
