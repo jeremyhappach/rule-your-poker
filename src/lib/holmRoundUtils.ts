@@ -43,8 +43,9 @@ export async function getActiveHolmRound(
     }
 
     const { data: round, error } = await query
-      .order('hand_number', { ascending: false })
-      .order('round_number', { ascending: false })
+      // CRITICAL: NULLS LAST so null hand_number/round_number rows don't win DESC ordering.
+      .order('hand_number', { ascending: false, nullsFirst: false })
+      .order('round_number', { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle();
 

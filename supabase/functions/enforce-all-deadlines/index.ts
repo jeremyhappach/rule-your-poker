@@ -756,8 +756,9 @@ serve(async (req) => {
             : roundQuery;
             
           const { data: currentRound } = await scopedQuery
-            .order('hand_number', { ascending: false })
-            .order('round_number', { ascending: false })
+            // CRITICAL: NULLS LAST so null hand_number/round_number rows don't win DESC ordering.
+            .order('hand_number', { ascending: false, nullsFirst: false })
+            .order('round_number', { ascending: false, nullsFirst: false })
             .limit(1)
             .maybeSingle();
           
@@ -1223,8 +1224,8 @@ serve(async (req) => {
               .select('*')
               .eq('game_id', game.id)
               .eq('dealer_game_id', dealerGameId)
-              .order('hand_number', { ascending: false })
-              .order('round_number', { ascending: false })
+              .order('hand_number', { ascending: false, nullsFirst: false })
+              .order('round_number', { ascending: false, nullsFirst: false })
               .limit(1)
               .maybeSingle();
             currentRound = data;
@@ -1345,7 +1346,7 @@ serve(async (req) => {
                 .from('players')
                 .select('*')
                 .eq('game_id', game.id)
-                .eq('ante_decision', 'ante_up')
+                .eq('status', 'active')
                 .eq('sitting_out', false);
               
               if (activePlayers && activePlayers.length >= 2) {
@@ -1358,10 +1359,27 @@ serve(async (req) => {
                 const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
                 const decisionDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
                 
-                // Create new round - must scope to dealer_game_id
+                // Create new Holm hand.
+                // CRITICAL HOLM INVARIANT: round_number MUST always be 1; hand_number increments per hand.
                 const dealerGameIdHolm = (game as any).current_game_uuid;
-                const newRoundNumber = (game.current_round || 0) + 1;
-                const newHandNumber = (game.total_hands || 0) + 1;
+
+                if (!dealerGameIdHolm) {
+                  actionsTaken.push('Watchdog: Missing dealer_game_id for Holm; cannot start new hand');
+                  results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+                  continue;
+                }
+
+                const { data: latestRoundRow } = await supabase
+                  .from('rounds')
+                  .select('hand_number')
+                  .eq('game_id', game.id)
+                  .eq('dealer_game_id', dealerGameIdHolm)
+                  .order('hand_number', { ascending: false, nullsFirst: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                const newHandNumber = (latestRoundRow?.hand_number ?? (game.total_hands || 0)) + 1;
+                const newRoundNumber = 1;
                 
                 // CRITICAL: Scope existing round check to dealer_game_id to prevent cross-game contamination
                 let existingRound: any = null;
@@ -1395,6 +1413,13 @@ serve(async (req) => {
                 const playerCardInserts: any[] = [];
                 
                 // Insert round first
+                // Start turn at buck_position if valid; otherwise fall back to lowest active seat.
+                const sortedActiveByPos = [...activePlayers].sort((a: any, b: any) => a.position - b.position);
+                const buckPos = typeof (game as any).buck_position === 'number' ? (game as any).buck_position : null;
+                const startingTurnPos = buckPos && sortedActiveByPos.some((p: any) => p.position === buckPos)
+                  ? buckPos
+                  : (sortedActiveByPos[0]?.position ?? 1);
+
                 const { data: newRound, error: roundError } = await supabase
                   .from('rounds')
                   .insert({
@@ -1408,7 +1433,7 @@ serve(async (req) => {
                     decision_deadline: decisionDeadline,
                     community_cards: communityCards,
                     community_cards_revealed: 0,
-                    current_turn_position: activePlayers.sort((a: any, b: any) => a.position - b.position)[0].position,
+                    current_turn_position: startingTurnPos,
                   })
                   .select()
                   .single();
@@ -1429,23 +1454,26 @@ serve(async (req) => {
                   await supabase.from('player_cards').insert(playerCardInserts);
                   
                   // Update game
-                  await supabase
-                    .from('games')
-                    .update({
-                      current_round: newRoundNumber,
-                      awaiting_next_round: false,
-                      all_decisions_in: false,
-                    })
-                    .eq('id', game.id);
+                   await supabase
+                     .from('games')
+                     .update({
+                       // Keep Holm round counter stable; hand progression is tracked via rounds.hand_number.
+                       current_round: 1,
+                       total_hands: newHandNumber,
+                       awaiting_next_round: false,
+                       all_decisions_in: false,
+                     })
+                     .eq('id', game.id);
                   
                   // Reset player decisions
-                  await supabase
-                    .from('players')
-                    .update({ current_decision: null, decision_locked: false })
-                    .eq('game_id', game.id)
-                    .eq('ante_decision', 'ante_up');
+                   await supabase
+                     .from('players')
+                     .update({ current_decision: null, decision_locked: false })
+                     .eq('game_id', game.id)
+                     .eq('status', 'active')
+                     .eq('sitting_out', false);
                   
-                  actionsTaken.push(`Watchdog: Started Holm round ${newRoundNumber} with ${activePlayers.length} players`);
+                   actionsTaken.push(`Watchdog: Started Holm hand ${newHandNumber} with ${activePlayers.length} players`);
                 }
               } else {
                 // Not enough players - end session
