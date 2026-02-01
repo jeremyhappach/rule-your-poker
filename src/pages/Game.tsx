@@ -756,7 +756,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           currentRoundNumber: game.current_round,
           currentHandNumber: game.total_hands,
         })
-      : game.rounds?.find((r) => r.round_number === game.current_round) ?? null;
+      : pickActive357Round(game.rounds, {
+          currentRoundNumber: game.current_round,
+          currentHandNumber: game.total_hands,
+          dealerGameId: game.current_game_uuid,
+        }) ?? null;
     
     if (newPausedState) {
       // PAUSING: Save current remaining time
@@ -1924,7 +1928,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           currentRoundNumber: game?.current_round ?? null,
           currentHandNumber: game?.total_hands ?? null,
         })
-      : game?.rounds?.find((r: any) => r.round_number === game?.current_round) ?? null;
+      : pickActive357Round(game?.rounds, {
+          currentRoundNumber: game?.current_round,
+          currentHandNumber: game?.total_hands,
+          dealerGameId: game?.current_game_uuid,
+        }) ?? null;
     // CRITICAL: Detect stuck Holm showdown where the round is already in 'showdown' but the
     // last 2 community cards never flipped (community_cards_revealed stays at 2).
     // This can happen if the client that acquired the round lock disconnects mid-showdown.
@@ -2417,7 +2425,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const dealerRounds = game.current_game_uuid
           ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
           : game.rounds;
-        return dealerRounds.find((r) => r.round_number === game.current_round) ?? null;
+        // CRITICAL: Must use hand_number scoping to prevent cross-hand contamination
+        const matchingRounds = dealerRounds.filter((r) => r.round_number === game.current_round);
+        if (matchingRounds.length === 1) return matchingRounds[0];
+        // Multiple rounds with same round_number -> pick latest hand_number
+        return matchingRounds.reduce<typeof dealerRounds[0] | null>(
+          (best, r) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+          null
+        );
       }
       return pickLatestRoundByKey(game.rounds, game.current_game_uuid);
     }
@@ -2445,7 +2460,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const dealerRounds = game.current_game_uuid
         ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
         : game.rounds;
-      return dealerRounds.find((r) => r.round_number === game.current_round) ?? null;
+      // CRITICAL: Must scope by hand_number to prevent cross-hand contamination
+      const matchingRounds = dealerRounds.filter((r) => r.round_number === game.current_round);
+      if (matchingRounds.length === 1) return matchingRounds[0];
+      return matchingRounds.reduce<typeof dealerRounds[0] | null>(
+        (best, r) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+        null
+      );
     }
 
     return pickLatestRoundByKey(game.rounds, game.current_game_uuid);
@@ -3770,7 +3791,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             dealerGameId: gameData.current_game_uuid,
           }) ?? null;
       } else if (typeof gameData.current_round === 'number') {
-        currentRound = gameData.rounds.find((r: Round) => r.round_number === gameData.current_round) || null;
+        // CRITICAL: Scope by dealer_game_id AND hand_number to prevent cross-contamination
+        const dealerRounds = gameData.current_game_uuid
+          ? (gameData.rounds as Round[]).filter((r) => r.dealer_game_id === gameData.current_game_uuid)
+          : (gameData.rounds as Round[]);
+        const matching = dealerRounds.filter((r) => r.round_number === gameData.current_round);
+        currentRound = matching.reduce<Round | null>(
+          (best, r) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+          null
+        );
       } else if (isDice) {
         currentRound = null;
       } else {
@@ -4994,7 +5023,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Fallback to cached or live pot (use potForDisplay which never flashes to 0)
      if (potAmount === 0) {
        // Try round.pot first (usually persists longer), then cached max, then stable pot
-       const liveRound = game?.rounds?.find((r: any) => r.round_number === game.current_round);
+       // CRITICAL: Scope by dealer_game_id + hand_number to prevent cross-contamination
+       const dealerRounds357 = game?.current_game_uuid
+         ? game?.rounds?.filter((r: any) => r.dealer_game_id === game.current_game_uuid)
+         : game?.rounds;
+       const matching357 = dealerRounds357?.filter((r: any) => r.round_number === game.current_round) ?? [];
+       const liveRound = matching357.reduce<any>(
+         (best: any, r: any) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+         null
+       );
        const liveRoundPot = liveRound?.pot || 0;
        potAmount = Math.max(liveRoundPot, cachedPotFor357WinRef.current, potForDisplay);
      }
