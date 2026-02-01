@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Lock, Spade, Dice5, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -7,39 +6,41 @@ interface GameSelectionProps {
   onSelectGame: (gameType: string) => void;
   lastGameType?: string | null;
   isFirstHand?: boolean;
+  activePlayerCount?: number;
 }
-
-type SelectionStep = 'category' | 'cards' | 'dice';
 
 export const GameSelection = ({ 
   onSelectGame, 
   lastGameType = null,
-  isFirstHand = true 
+  isFirstHand = true,
+  activePlayerCount = 0
 }: GameSelectionProps) => {
-  const [step, setStep] = useState<SelectionStep>('category');
-
-  // Reset to category view when component mounts (new game selection)
-  useEffect(() => {
-    setStep('category');
-  }, []);
 
   const cardGames = [
     {
       id: "3-5-7",
       name: "3-5-7",
-      description: "Classic Three, Five, Seven poker",
+      description: "Classic wild card poker",
       enabled: true,
     },
     {
       id: "holm-game",
-      name: "Holm Game",
-      description: "4 cards + 4 community cards vs the table",
+      name: "Holm",
+      description: "4 cards vs community + Chucky",
       enabled: true,
     },
     {
+      id: "cribbage",
+      name: "Cribbage",
+      description: "Pegging to 121",
+      enabled: true,
+      maxPlayers: 4,
+      comingSoon: true,
+    },
+    {
       id: "sports-trivia",
-      name: "Sports Trivia",
-      description: "Answer trivia, winner takes the pot",
+      name: "Trivia",
+      description: "Answer trivia, win the pot",
       enabled: true,
     },
   ];
@@ -48,13 +49,13 @@ export const GameSelection = ({
     {
       id: "horses",
       name: "Horses",
-      description: "5 dice, wilds & of-a-kind",
+      description: "5 dice, best hand wins",
       enabled: true,
     },
     {
       id: "ship-captain-crew",
       name: "Ship Captain Crew",
-      description: "Get 6-5-4, then max cargo",
+      description: "Get 6-5-4, max cargo",
       enabled: true,
     },
   ];
@@ -66,12 +67,9 @@ export const GameSelection = ({
       case 'horses': return 'Horses';
       case 'ship-captain-crew': return 'Ship';
       case 'sports-trivia': return 'Trivia';
+      case 'cribbage': return 'Cribbage';
       default: return gameType;
     }
-  };
-
-  const handleCategorySelect = (category: 'cards' | 'dice') => {
-    setStep(category);
   };
 
   const handleRunBack = () => {
@@ -80,170 +78,153 @@ export const GameSelection = ({
     }
   };
 
-  const handleGameSelect = (gameId: string, comingSoon?: boolean) => {
-    if (comingSoon) {
+  const handleGameSelect = (game: typeof cardGames[0]) => {
+    if (game.comingSoon) {
       toast.info("Coming soon!");
       return;
     }
-    onSelectGame(gameId);
+    if (!game.enabled) {
+      return;
+    }
+    // Check player count restriction
+    if (game.maxPlayers && activePlayerCount > game.maxPlayers) {
+      toast.error(`${game.name} requires ${game.maxPlayers} or fewer players`);
+      return;
+    }
+    onSelectGame(game.id);
   };
 
-  const handleBack = () => {
-    setStep('category');
+  const isGameDisabled = (game: typeof cardGames[0]) => {
+    if (!game.enabled) return true;
+    if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
+    return false;
   };
 
-  // Category selection step
-  if (step === 'category') {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <Card className="max-w-2xl mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-          <CardContent className="pt-8 pb-8 space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold text-poker-gold">Select Game Type</h2>
-              <p className="text-amber-100">Dealer chooses the game</p>
+  const getPlayerRestrictionLabel = (game: typeof cardGames[0]) => {
+    if (game.maxPlayers) {
+      return `${game.maxPlayers} max`;
+    }
+    return null;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="max-w-2xl w-full border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[90vh] overflow-y-auto">
+        <CardContent className="pt-6 pb-6 space-y-5">
+          <div className="text-center space-y-1">
+            <h2 className="text-2xl font-bold text-poker-gold">Select Game</h2>
+            <p className="text-amber-100 text-sm">Dealer chooses the game</p>
+          </div>
+
+          {/* Card Games Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Spade className="w-5 h-5 text-poker-gold" />
+              <h3 className="text-lg font-semibold text-poker-gold uppercase tracking-wide">
+                Card Games
+              </h3>
+              <div className="flex-1 h-px bg-poker-gold/30" />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Cards option */}
-              <button
-                onClick={() => handleCategorySelect('cards')}
-                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
-              >
-                <div className="flex flex-col items-center space-y-3">
-                  <Spade className="w-12 h-12 text-poker-gold" />
-                  <h3 className="text-xl font-bold text-poker-gold">Cards</h3>
-                  <p className="text-sm text-amber-200">Poker games</p>
-                </div>
-              </button>
-
-              {/* Dice option */}
-              <button
-                onClick={() => handleCategorySelect('dice')}
-                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
-              >
-                <div className="flex flex-col items-center space-y-3">
-                  <Dice5 className="w-12 h-12 text-poker-gold" />
-                  <h3 className="text-xl font-bold text-poker-gold">Dice</h3>
-                  <p className="text-sm text-amber-200">Dice games</p>
-                </div>
-              </button>
-            </div>
-
-            {/* Run Back option - only show on 2nd+ game of session */}
-            {!isFirstHand && lastGameType && (
-              <div className="pt-4 border-t border-poker-gold/30">
-                <button
-                  onClick={handleRunBack}
-                  className="w-full p-4 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-3"
-                >
-                  <RotateCcw className="w-6 h-6 text-amber-400" />
-                  <span className="text-lg font-bold text-amber-400">
-                    Run Back {getGameDisplayName(lastGameType)}
-                  </span>
-                </button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Card games selection
-  if (step === 'cards') {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <Card className="max-w-2xl mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-          <CardContent className="pt-8 pb-8 space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold text-poker-gold">Select Card Game</h2>
-              <p className="text-amber-100">Choose a poker variant</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {cardGames.map((game) => (
-                <button
-                  key={game.id}
-                  onClick={() => handleGameSelect(game.id)}
-                  disabled={!game.enabled}
-                  className={`
-                    relative p-6 rounded-lg border-2 transition-all
-                    ${game.enabled
-                      ? 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer'
-                      : 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
-                    }
-                  `}
-                >
-                  {!game.enabled && (
-                    <div className="absolute top-2 right-2">
-                      <Lock className="w-5 h-5 text-gray-400" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {cardGames.map((game) => {
+                const disabled = isGameDisabled(game);
+                const restriction = getPlayerRestrictionLabel(game);
+                
+                return (
+                  <button
+                    key={game.id}
+                    onClick={() => handleGameSelect(game)}
+                    disabled={disabled && !game.comingSoon}
+                    className={`
+                      relative p-4 rounded-lg border-2 transition-all text-left
+                      ${disabled
+                        ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
+                        : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer'
+                      }
+                    `}
+                  >
+                    {!game.enabled && (
+                      <div className="absolute top-2 right-2">
+                        <Lock className="w-4 h-4 text-gray-400" />
+                      </div>
+                    )}
+                    {game.comingSoon && (
+                      <div className="absolute top-1 right-1">
+                        <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-medium">
+                          SOON
+                        </span>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <h4 className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
+                        {game.name}
+                      </h4>
+                      <p className={`text-xs ${disabled ? 'text-gray-500' : 'text-amber-200'}`}>
+                        {game.description}
+                      </p>
+                      {restriction && (
+                        <p className={`text-xs font-medium ${
+                          activePlayerCount > (game.maxPlayers || 99) 
+                            ? 'text-red-400' 
+                            : 'text-amber-400'
+                        }`}>
+                          {restriction}
+                        </p>
+                      )}
                     </div>
-                  )}
-                  <div className="space-y-2">
-                    <h3 className={`text-xl font-bold ${game.enabled ? 'text-poker-gold' : 'text-gray-400'}`}>
-                      {game.name}
-                    </h3>
-                    <p className={`text-sm ${game.enabled ? 'text-amber-200' : 'text-gray-500'}`}>
-                      {game.description}
-                    </p>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            <button
-              onClick={handleBack}
-              className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
-            >
-              ← Back to Game Types
-            </button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Dice games selection
-  if (step === 'dice') {
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <Card className="max-w-2xl mx-4 border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-          <CardContent className="pt-8 pb-8 space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold text-poker-gold">Select Dice Game</h2>
-              <p className="text-amber-100">Choose a dice game</p>
+          {/* Dice Games Section */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Dice5 className="w-5 h-5 text-poker-gold" />
+              <h3 className="text-lg font-semibold text-poker-gold uppercase tracking-wide">
+                Dice Games
+              </h3>
+              <div className="flex-1 h-px bg-poker-gold/30" />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {diceGames.map((game) => (
                 <button
                   key={game.id}
-                  onClick={() => handleGameSelect(game.id)}
-                  className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+                  onClick={() => handleGameSelect(game)}
+                  className="relative p-4 rounded-lg border-2 transition-all text-left border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
                 >
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-poker-gold">
+                  <div className="space-y-1">
+                    <h4 className="text-base font-bold text-poker-gold">
                       {game.name}
-                    </h3>
-                    <p className="text-sm text-amber-200">
+                    </h4>
+                    <p className="text-xs text-amber-200">
                       {game.description}
                     </p>
                   </div>
                 </button>
               ))}
             </div>
+          </div>
 
-            <button
-              onClick={handleBack}
-              className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
-            >
-              ← Back to Game Types
-            </button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return null;
+          {/* Run Back option - only show on 2nd+ game of session */}
+          {!isFirstHand && lastGameType && (
+            <div className="pt-3 border-t border-poker-gold/30">
+              <button
+                onClick={handleRunBack}
+                className="w-full p-3 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-5 h-5 text-amber-400" />
+                <span className="text-base font-bold text-amber-400">
+                  Run Back {getGameDisplayName(lastGameType)}
+                </span>
+              </button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
