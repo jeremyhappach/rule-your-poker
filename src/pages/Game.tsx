@@ -36,6 +36,7 @@ import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot } from "lucide-react";
 import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
+import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
@@ -274,6 +275,9 @@ const Game = () => {
   }, [game?.pot, game?.status, gameId]);
 
   const potForDisplay = game?.pot ?? lastNonNullPotRef.current ?? 0;
+
+  // DEBUG: disable polling-based safety nets to isolate race conditions (reload to apply)
+  const safetyPollsDisabled = useMemo(() => isSafetyPollingDisabled(), []);
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
@@ -1195,6 +1199,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This prevents "frozen" games when the realtime channel enters CHANNEL_ERROR.
     let fallbackPollInterval: ReturnType<typeof setInterval> | null = null;
     const startFallbackPolling = () => {
+      if (safetyPollsDisabled) return;
       if (fallbackPollInterval) return;
       // Poll every 5 seconds when fallback is needed (not 1.5s which hammers DB)
       fallbackPollInterval = setInterval(() => {
@@ -1692,6 +1697,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // This catches cases where realtime subscription misses the status update
   useEffect(() => {
     if (!gameId || !game) return;
+
+    if (safetyPollsDisabled) return;
     
     // Only poll when we think we're in_progress with awaiting_next_round
     // but might actually be game_over
@@ -1740,6 +1747,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Fallback polling for pause state - ensures observers get pause updates even if realtime fails
   useEffect(() => {
     if (!gameId) return;
+
+    if (safetyPollsDisabled) return;
     
     const pollPauseState = async () => {
       const { data } = await supabase
@@ -1861,6 +1870,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
   useEffect(() => {
     if (!gameId || !user) return;
+
+    if (safetyPollsDisabled) return;
     
     const currentPlayer = players.find(p => p.user_id === user?.id);
     const isSittingOut = currentPlayer?.sitting_out === true;
@@ -2032,6 +2043,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // More aggressive polling to prevent round desync between clients
   useEffect(() => {
     if (!gameId || !game) return;
+
+    if (safetyPollsDisabled) return;
     
     const is357Game = game?.game_type === '3-5-7-game';
     const isActiveGame = game?.status === 'in_progress';
@@ -2395,6 +2408,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Check immediately
     checkAnteDecisions();
 
+    if (safetyPollsDisabled) return;
+
     // Poll every 3 seconds as fallback for ante detection (not 1 second which hammers DB)
     const pollInterval = setInterval(() => {
       checkAnteDecisions();
@@ -2677,6 +2692,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const needsHealing = needsCommunityHealing || needsPlayerCardHealing;
     
     if (needsHealing) {
+      if (safetyPollsDisabled) return;
       console.log('[ROUND HEAL] 🚑 Holm game needs healing:', {
         needsCommunityHealing,
         needsPlayerCardHealing,
@@ -2712,6 +2728,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // SKIP if game is paused
   const botProcessingRef = useRef(false);
   useEffect(() => {
+    if (safetyPollsDisabled) {
+      if (awaitingPollRef.current) {
+        clearInterval(awaitingPollRef.current);
+        awaitingPollRef.current = null;
+      }
+      return;
+    }
+
     const isHolmGame = game?.game_type === 'holm-game';
     
     // CRITICAL: Skip bot decisions if game is paused
@@ -4578,6 +4602,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         poll357StopTimerRef.current = null;
       }
     };
+
+    if (safetyPollsDisabled) {
+      poll357KeyRef.current = null;
+      clearPollTimers();
+      return;
+    }
 
     // Only start polling AFTER the win animation is done.
     if (!is357GameOverNeedingProgress || is357WinAnimationActiveRef.current) {
