@@ -21,13 +21,17 @@ const corsHeaders = {
 };
 
 // ============== CARD UTILITIES ==============
+// CRITICAL: Use SYMBOL format for suits to match client-side cardUtils.ts
+// This ensures consistent card data format across client and server
+type Suit = '♠' | '♥' | '♦' | '♣';
+
 interface Card {
-  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  suit: Suit;
   rank: string;
 }
 
 function createDeck(): Card[] {
-  const suits: Card['suit'][] = ['hearts', 'diamonds', 'clubs', 'spades'];
+  const suits: Suit[] = ['♠', '♥', '♦', '♣'];
   const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   const deck: Card[] = [];
   for (const suit of suits) {
