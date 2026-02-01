@@ -206,16 +206,24 @@ export async function startRound(gameId: string, roundNumber: number) {
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 10;
 
   // If starting round 1, ensure all old rounds are deleted - FIRE AND FORGET to avoid blocking
-  // NOTE: player_cards are preserved for hand history (retention policy)
   if (roundNumber === 1) {
-    console.log('[START_ROUND] Cleaning up old rounds for round 1 (fire-and-forget, preserving player_cards)');
+    console.log('[START_ROUND] Cleaning up old rounds for round 1 (fire-and-forget)');
     
     // Fire-and-forget: Don't block on cleanup
-    // IMPORTANT: We preserve player_cards for hand history display
     void (async () => {
       try {
-        await supabase.from('rounds').delete().eq('game_id', gameId);
-        console.log('[START_ROUND] Background cleanup completed (rounds only, cards preserved)');
+        const { data: oldRounds } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameId);
+
+        if (oldRounds && oldRounds.length > 0) {
+          await Promise.all([
+            supabase.from('player_cards').delete().in('round_id', oldRounds.map(r => r.id)),
+            supabase.from('rounds').delete().eq('game_id', gameId)
+          ]);
+          console.log('[START_ROUND] Background cleanup completed:', oldRounds.length, 'old rounds');
+        }
       } catch (err) {
         console.error('[START_ROUND] Background cleanup error (non-fatal):', err);
       }
