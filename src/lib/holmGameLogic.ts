@@ -836,7 +836,10 @@ export async function endHolmRound(gameId: string) {
   // transition from 'betting' to 'processing' will proceed
   const capturedRoundId = round.id;
   const capturedRoundNumber = round.round_number;
-  console.log('[HOLM END] Attempting atomic lock on round:', capturedRoundId, 'round_number:', capturedRoundNumber);
+  // CRITICAL: Also capture hand_number for game_results recording - NOT round_number
+  // In Holm, round_number is ALWAYS 1, but hand_number increments each match
+  const capturedHandNumber = round.hand_number ?? 1;
+  console.log('[HOLM END] Attempting atomic lock on round:', capturedRoundId, 'round_number:', capturedRoundNumber, 'hand_number:', capturedHandNumber);
   
   const { data: lockResult, error: lockError } = await supabase
     .from('rounds')
@@ -1035,7 +1038,7 @@ export async function endHolmRound(gameId: string) {
       .from('game_results')
       .insert({
         game_id: gameId,
-        hand_number: capturedRoundNumber,
+        hand_number: capturedHandNumber, // CRITICAL: Use hand_number, not round_number (round_number is always 1 in Holm)
         winner_player_id: null,
         winner_username: 'Pussy Tax',
         pot_won: 0, // No pot won - carried forward
