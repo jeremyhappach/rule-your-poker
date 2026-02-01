@@ -1735,12 +1735,41 @@ export function useHorsesMobileController({
           })
           .eq("id", gameId)
           .eq("status", "in_progress") // Only succeeds if not already processed
-          .select("id");
+          .select("id, total_hands, current_game_uuid");
 
         if (claimError || !claimed || claimed.length === 0) {
           console.log("[HORSES] Tie already processed by another client");
           return;
         }
+
+        // Record CHOP event for history with EMPTY chip changes
+        // In dice games, pot carries over - no chips are distributed during rollover
+        const tiedPlayerNames = winningPlayerIds
+          .map(id => {
+            const p = players.find(pl => pl.id === id);
+            if (!p) return "Unknown";
+            return getPlayerUsername(p);
+          })
+          .join(" & ");
+
+        const tiedResult = completedResults.find(r => winningPlayerIds.includes(r.playerId));
+        const handNumber = (claimed[0] as any).total_hands || 1;
+        const currentGameUuid = (claimed[0] as any).current_game_uuid || null;
+
+        await supabase.from("game_results").insert({
+          game_id: gameId,
+          hand_number: handNumber,
+          winner_player_id: null, // No winner in a rollover
+          winner_username: tiedPlayerNames,
+          winning_hand_description: `TIE: ${tiedResult?.result.description || "Unknown"} - Rollover`,
+          pot_won: 0, // No chips awarded in a rollover
+          player_chip_changes: {}, // Empty - no chip movements
+          is_chopped: true,
+          game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
+          dealer_game_id: currentGameUuid,
+        });
+
+        console.log("[HORSES] Recorded rollover tie event with empty chip changes");
         return;
       }
 
@@ -1784,10 +1813,11 @@ export function useHorsesMobileController({
 
       const winnerName = getPlayerUsername(winnerPlayer);
 
-      // Record winner's pot win (antes are already logged separately when collected)
-      // Winner receives the full pot - this is a pot-to-player transaction
+      // ZERO-SUM ACCOUNTING: Since antes are recorded separately as negative chip changes,
+      // the showdown event only records the winner's GROSS pot award.
+      // This keeps the ledger balanced: sum(antes) = -pot, showdown = +pot, net = 0
       const chipChanges: Record<string, number> = {};
-      chipChanges[winnerId] = actualPot;
+      chipChanges[winnerId] = actualPot; // Winner receives the full pot
 
       await supabase.from("game_results").insert({
         game_id: gameId,

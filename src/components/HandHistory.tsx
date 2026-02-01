@@ -6,6 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { cn, formatChipValue } from "@/lib/utils";
+import { HandHistoryEventRow } from "@/components/hand-history/HandHistoryEventRow";
 
 interface GameResult {
   id: string;
@@ -94,6 +95,7 @@ export const HandHistory = ({
 }: HandHistoryProps) => {
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [dealerGames, setDealerGames] = useState<Map<string, DealerGame>>(new Map());
+  const [dealerGameNumberById, setDealerGameNumberById] = useState<Map<string, number>>(new Map());
   const [rounds, setRounds] = useState<Round[]>([]);
   const [playerNames, setPlayerNames] = useState<Map<string, string>>(new Map()); // playerId -> username
   const [userIdToName, setUserIdToName] = useState<Map<string, string>>(new Map()); // userId -> username (for resolving UUIDs in winner_username)
@@ -140,24 +142,35 @@ export const HandHistory = ({
         setIsSessionEnded(!!gameData.session_ended_at);
       }
 
-      // Fetch all dealer_games for this session with dealer profile info
+      // Fetch all dealer_games for this session.
+      // NOTE: We cannot join dealer_user_id -> profiles via PostgREST because there's no FK.
       const { data: dealerGamesData, error: dealerGamesError } = await supabase
-        .from('dealer_games')
-        .select(`
-          id,
-          game_type,
-          dealer_user_id,
-          started_at,
-          config,
-          profiles:dealer_user_id (username)
-        `)
-        .eq('session_id', gameId)
-        .order('started_at', { ascending: true });
+        .from("dealer_games")
+        .select("id, game_type, dealer_user_id, started_at, config")
+        .eq("session_id", gameId)
+        .order("started_at", { ascending: true });
 
       if (dealerGamesError) {
-        console.error('[HandHistory] Error fetching dealer_games:', dealerGamesError);
+        console.error("[HandHistory] Error fetching dealer_games:", dealerGamesError);
       } else if (dealerGamesData) {
+        const dealerUserIds = Array.from(
+          new Set(dealerGamesData.map((dg: any) => dg.dealer_user_id).filter(Boolean)),
+        );
+
+        const dealerNameByUserId = new Map<string, string>();
+        if (dealerUserIds.length > 0) {
+          const { data: dealerProfiles, error: dealerProfilesError } = await supabase
+            .from("profiles")
+            .select("id, username")
+            .in("id", dealerUserIds);
+          if (dealerProfilesError) {
+            console.error("[HandHistory] Error fetching dealer profiles:", dealerProfilesError);
+          }
+          dealerProfiles?.forEach((p) => dealerNameByUserId.set(p.id, p.username));
+        }
+
         const dealerGamesMap = new Map<string, DealerGame>();
+        const numberMap = new Map<string, number>();
         dealerGamesData.forEach((dg: any) => {
           dealerGamesMap.set(dg.id, {
             id: dg.id,
@@ -165,11 +178,17 @@ export const HandHistory = ({
             dealer_user_id: dg.dealer_user_id,
             started_at: dg.started_at,
             config: dg.config || {},
-            dealer_username: dg.profiles?.username || 'Unknown',
+            dealer_username: dealerNameByUserId.get(dg.dealer_user_id) || "Unknown",
           });
         });
+
+        // Stable numbering: 1..N by started_at (ascending)
+        dealerGamesData.forEach((dg: any, idx: number) => {
+          numberMap.set(dg.id, idx + 1);
+        });
         setDealerGames(dealerGamesMap);
-        
+        setDealerGameNumberById(numberMap);
+
         // Find the current dealer game (most recent or matching current_game_uuid)
         if (gameData?.current_game_uuid && dealerGamesMap.has(gameData.current_game_uuid)) {
           setCurrentDealerGame(dealerGamesMap.get(gameData.current_game_uuid) || null);
@@ -195,17 +214,8 @@ export const HandHistory = ({
         }));
         setGameResults(enrichedResults);
         
-        // CRITICAL: Pass both dealerGamesMap AND freshGameResults to avoid stale state
-        const dealerGamesMap = dealerGamesData ? new Map(dealerGamesData.map((dg: any) => [dg.id, {
-          id: dg.id,
-          game_type: dg.game_type,
-          dealer_user_id: dg.dealer_user_id,
-          started_at: dg.started_at,
-          config: dg.config || {},
-          dealer_username: dg.profiles?.username || 'Unknown',
-        }])) : new Map();
-        
-        await fetchRoundsData(dealerGamesMap, enrichedResults);
+        // Pass fresh game results to round/name enrichment
+        await fetchRoundsData(new Map(), enrichedResults);
       }
     } finally {
       if (showLoading) setLoading(false);
@@ -304,7 +314,14 @@ export const HandHistory = ({
     if (!winnerUsername) return null;
     
     // If it's a system event name, return as-is
-    const systemWinners = ['Ante', 'Leg Purchase', 'Pussy Tax'];
+    const systemWinners = [
+      "Ante",
+      "Leg Purchase",
+      "Pussy Tax",
+      "Pot Refund",
+      "CHOP Ante Correction",
+      "Ante Correction",
+    ];
     if (systemWinners.includes(winnerUsername)) return winnerUsername;
     
     // If it looks like a UUID, try to resolve it
@@ -329,8 +346,15 @@ export const HandHistory = ({
 
   // Helper to check if a result is a "system" event vs actual showdown
   const isSystemEvent = (result: GameResult): boolean => {
-    const systemWinners = ['Ante', 'Leg Purchase', 'Pussy Tax'];
-    return systemWinners.includes(result.winner_username || '');
+    const systemWinners = [
+      "Ante",
+      "Leg Purchase",
+      "Pussy Tax",
+      "Pot Refund",
+      "CHOP Ante Correction",
+      "Ante Correction",
+    ];
+    return systemWinners.includes(result.winner_username || "");
   };
 
   // Check if this result represents a game completion (someone won the full game)
@@ -362,56 +386,96 @@ export const HandHistory = ({
     return legsPattern.test(desc);
   };
 
-  // Group game results into logical games (bounded by dealer_game_id or fallback to game completion detection)
-  const groupResultsByHand = (): HandGroup[] => {
-    // Sort all results chronologically (oldest first) to process in order
-    const sortedResults = [...gameResults].sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-
-    const games: GameResult[][] = [];
-    let currentGame: GameResult[] = [];
-    let currentDealerGameId: string | null = null;
-
-    sortedResults.forEach(result => {
-      const resultDealerGameId = result.dealer_game_id || null;
-      
-      // If dealer_game_id changes and we have events, close out the previous game
-      if (currentGame.length > 0 && resultDealerGameId !== currentDealerGameId && currentDealerGameId !== null) {
-        games.push(currentGame);
-        currentGame = [];
-      }
-      
-      currentGame.push(result);
-      currentDealerGameId = resultDealerGameId;
-      
-      // Fallback: If no dealer_game_id, use completion detection
-      if (!resultDealerGameId && isGameCompletion(result)) {
-        games.push(currentGame);
-        currentGame = [];
-        currentDealerGameId = null;
+  // Group game results strictly by dealer_game_id
+  // Each dealer_game_id represents a complete "dealer game" (e.g., a full 357 game until someone wins with legs)
+  const groupResultsByDealerGame = (): HandGroup[] => {
+    // Group all results by their dealer_game_id
+    const gamesByDealerId = new Map<string, GameResult[]>();
+    const orphanedResults: GameResult[] = []; // Results without dealer_game_id (legacy data)
+    
+    gameResults.forEach(result => {
+      const dealerGameId = result.dealer_game_id;
+      if (dealerGameId) {
+        if (!gamesByDealerId.has(dealerGameId)) {
+          gamesByDealerId.set(dealerGameId, []);
+        }
+        gamesByDealerId.get(dealerGameId)!.push(result);
+      } else {
+        orphanedResults.push(result);
       }
     });
-
-    // Add any remaining events as an in-progress game
-    if (currentGame.length > 0) {
-      games.push(currentGame);
+    
+    // Convert to array and sort each group's events chronologically
+    const dealerGameGroups: { dealerGameId: string; events: GameResult[]; startedAt: string }[] = [];
+    
+    gamesByDealerId.forEach((events, dealerGameId) => {
+      // Sort events within this game by hand_number then by created_at
+      const sortedEvents = [...events].sort((a, b) => {
+        if (a.hand_number !== b.hand_number) {
+          return a.hand_number - b.hand_number;
+        }
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+      
+      const dealerGame = dealerGames.get(dealerGameId);
+      dealerGameGroups.push({
+        dealerGameId,
+        events: sortedEvents,
+        startedAt: dealerGame?.started_at || events[0]?.created_at || '',
+      });
+    });
+    
+    // Sort dealer games by started_at (oldest first for numbering)
+    dealerGameGroups.sort((a, b) => 
+      new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
+    );
+    
+    // Handle orphaned results (legacy data without dealer_game_id)
+    // Group them by completion boundaries as before
+    if (orphanedResults.length > 0) {
+      const sortedOrphans = [...orphanedResults].sort((a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      
+      let currentOrphanGame: GameResult[] = [];
+      sortedOrphans.forEach(result => {
+        currentOrphanGame.push(result);
+        if (isGameCompletion(result)) {
+          dealerGameGroups.push({
+            dealerGameId: `orphan-${dealerGameGroups.length}`,
+            events: currentOrphanGame,
+            startedAt: currentOrphanGame[0]?.created_at || '',
+          });
+          currentOrphanGame = [];
+        }
+      });
+      if (currentOrphanGame.length > 0) {
+        dealerGameGroups.push({
+          dealerGameId: `orphan-${dealerGameGroups.length}`,
+          events: currentOrphanGame,
+          startedAt: currentOrphanGame[0]?.created_at || '',
+        });
+      }
     }
 
-    // Convert to HandGroup array
-    const groups: HandGroup[] = games.map((events, index) => {
+    // Convert to HandGroup array with stable display numbers (based on dealer_games ordering)
+    const maxDealerGameNumber = Math.max(0, ...Array.from(dealerGameNumberById.values()));
+
+    const groups: HandGroup[] = dealerGameGroups.map((group, index) => {
+      const events = group.events;
+      
       // Find the showdown result that completed the game (the legs winner)
       const gameWinner = events.find(e => isGameCompletion(e));
-      // Find any showdown results (non-system events)
-      const showdownEvents = events.filter(e => !isSystemEvent(e));
-      const lastShowdown = showdownEvents[showdownEvents.length - 1];
+      // Find any non-system results (true outcomes)
+      const outcomeEvents = events.filter((e) => !isSystemEvent(e));
+      const lastOutcome = outcomeEvents[outcomeEvents.length - 1];
       
-      // Get dealer_game_id from first event (all events in a group share the same dealer_game_id)
-      const dealerGameId = events[0]?.dealer_game_id;
-      const dealerGame = dealerGameId ? dealerGames.get(dealerGameId) : undefined;
+      // Get dealer_game from the map
+      const dealerGame = group.dealerGameId.startsWith('orphan-') 
+        ? undefined 
+        : dealerGames.get(group.dealerGameId);
       
       // Get game type from dealer_games table OR fallback to game_results.game_type
-      // (Older results don't have dealer_game_id but do have game_type directly)
       const gameTypeFromResult = (events[0] as any)?.game_type || null;
       const resolvedGameType = dealerGame?.game_type || gameTypeFromResult;
       
@@ -433,28 +497,24 @@ export const HandHistory = ({
       let allGameRounds: Round[] | undefined;
       const isDiceGame = resolvedGameType === 'horses' || resolvedGameType === 'ship-captain-crew';
       
-      if (isDiceGame && lastShowdown) {
-        const resultDealerGameId = lastShowdown.dealer_game_id;
+      if (isDiceGame && !group.dealerGameId.startsWith('orphan-')) {
+        // DIRECT MATCH: Get ALL rounds for this dealer_game_id
+        const candidateRounds = rounds.filter(r => 
+          r.dealer_game_id === group.dealerGameId && 
+          r.horses_state?.playerStates
+        );
         
-        if (resultDealerGameId) {
-          // DIRECT MATCH: Get ALL rounds for this dealer_game_id
-          const candidateRounds = rounds.filter(r => 
-            r.dealer_game_id === resultDealerGameId && 
-            r.horses_state?.playerStates
-          );
-          
-          // Sort chronologically to show progression
-          allGameRounds = candidateRounds.sort((a, b) => a.round_number - b.round_number);
-        }
+        // Sort chronologically to show progression
+        allGameRounds = candidateRounds.sort((a, b) => a.round_number - b.round_number);
         
         // For the summary, use the FINAL round
-        const finalRound = allGameRounds && allGameRounds.length > 0 
+        const finalRound = allGameRounds.length > 0 
           ? allGameRounds[allGameRounds.length - 1] 
           : undefined;
         
         if (finalRound?.horses_state?.playerStates) {
           const playerStates = finalRound.horses_state.playerStates as Record<string, any>;
-          const winnerPlayerId = lastShowdown.winner_player_id;
+          const winnerPlayerId = lastOutcome?.winner_player_id;
           
           playerDiceResults = Object.entries(playerStates)
             .filter(([, state]) => state.isComplete && state.dice)
@@ -473,20 +533,42 @@ export const HandHistory = ({
       }
 
       // Resolve the winner name (handles UUIDs for bots)
-      const rawWinner = gameWinner?.winner_username || lastShowdown?.winner_username || null;
-      const winnerPlayerId = gameWinner?.winner_player_id || lastShowdown?.winner_player_id || null;
+      // Prefer the actual game-completion winner; otherwise, fallback to last non-system outcome.
+      // If the dealer game only contains system adjustments (refund/correction), show that instead.
+      const latestSystem = [...events].reverse().find((e) => isSystemEvent(e));
+      const rawWinner =
+        gameWinner?.winner_username ||
+        lastOutcome?.winner_username ||
+        latestSystem?.winner_username ||
+        null;
+      const winnerPlayerId = gameWinner?.winner_player_id || lastOutcome?.winner_player_id || null;
       const resolvedWinner = resolveWinnerName(rawWinner, winnerPlayerId);
+
+      const normalizeSystemWinnerName = (name: string | null): string | null => {
+        if (!name) return null;
+        if (name === "CHOP Ante Correction" || name === "Ante Correction") return "Correction";
+        if (name === "Pot Refund") return "Refund";
+        return name;
+      };
       
       // For 357 games: if there's no showdown winner (everyone folded), it's a Pussy Tax round
-      const isPussyTaxOnly = !resolvedWinner && events.some(e => e.winner_username === 'Pussy Tax');
-      const displayWinner = isPussyTaxOnly ? 'Pussy Tax' : resolvedWinner;
+      const isPussyTaxOnly = !resolvedWinner && events.some((e) => e.winner_username === "Pussy Tax");
+      const displayWinner = isPussyTaxOnly ? "Pussy Tax" : normalizeSystemWinnerName(resolvedWinner);
+
+      const displayNumber = group.dealerGameId.startsWith("orphan-")
+        ? maxDealerGameNumber + index + 1
+        : dealerGameNumberById.get(group.dealerGameId) ?? index + 1;
 
       return {
-        hand_number: index + 1, // Display number (1 = first game played)
+        hand_number: displayNumber,
         events,
         totalChipChange,
         showdownWinner: displayWinner,
-        showdownDescription: gameWinner?.winning_hand_description || lastShowdown?.winning_hand_description || null,
+        showdownDescription:
+          gameWinner?.winning_hand_description ||
+          lastOutcome?.winning_hand_description ||
+          latestSystem?.winning_hand_description ||
+          null,
         isWinner: gameWinner?.winner_player_id === currentPlayerId,
         totalPot,
         latestTimestamp: events[events.length - 1]?.created_at || '',
@@ -504,8 +586,8 @@ export const HandHistory = ({
   // Use useMemo to compute hand groups only when data changes (ensures enrichment is complete)
   const handGroups = useMemo(() => {
     if (gameResults.length === 0) return [];
-    return groupResultsByHand();
-  }, [gameResults, rounds, dealerGames, playerNames, userIdToName, currentPlayerId]);
+    return groupResultsByDealerGame();
+  }, [gameResults, rounds, dealerGames, dealerGameNumberById, playerNames, userIdToName, currentPlayerId]);
 
   const updateInProgressGame = () => {
     // Don't show in-progress if session has ended
@@ -585,24 +667,35 @@ export const HandHistory = ({
     });
   };
 
-  // Format event for display in expanded section
-  const formatEventDescription = (event: GameResult): { label: string; description: string; chipChange: number | null } => {
+  // Format event for display in expanded section - resolves UUIDs to usernames
+  const formatEventDescription = (event: GameResult): { label: string; description: string; chipChange: number | null; handNumber?: number } => {
     const chipChange = currentPlayerId ? (event.player_chip_changes[currentPlayerId] ?? null) : null;
+    const handNum = event.hand_number;
     
     if (event.winner_username === 'Ante') {
-      return { label: 'Ante', description: event.winning_hand_description || 'Ante collected', chipChange };
+      return { label: 'Ante', description: event.winning_hand_description || 'Ante collected', chipChange, handNumber: handNum };
     }
     if (event.winner_username === 'Leg Purchase') {
-      return { label: 'Leg', description: event.winning_hand_description || 'Leg purchased', chipChange };
+      return { label: 'Leg', description: event.winning_hand_description || 'Leg purchased', chipChange, handNumber: handNum };
     }
     if (event.winner_username === 'Pussy Tax') {
-      return { label: 'Tax', description: event.winning_hand_description || 'Pussy tax collected', chipChange };
+      return { label: 'Tax', description: event.winning_hand_description || 'Pussy tax collected', chipChange, handNumber: handNum };
     }
-    // Showdown result
+
+    if (event.winner_username === "Pot Refund") {
+      return { label: "Refund", description: event.winning_hand_description || "Pot refunded", chipChange, handNumber: handNum };
+    }
+
+    if (event.winner_username === "CHOP Ante Correction" || event.winner_username === "Ante Correction") {
+      return { label: "Fix", description: event.winning_hand_description || "Ante correction", chipChange, handNumber: handNum };
+    }
+    
+    // Showdown result - resolve the winner name (may be a UUID for bots)
+    const resolvedWinner = resolveWinnerName(event.winner_username, event.winner_player_id);
     const desc = event.is_chopped 
       ? `Chopped: ${event.winning_hand_description || 'Split pot'}`
-      : `${event.winner_username} won with ${event.winning_hand_description || 'best hand'}`;
-    return { label: 'Showdown', description: desc, chipChange };
+      : `${resolvedWinner || 'Unknown'} won with ${event.winning_hand_description || 'best hand'}`;
+    return { label: 'Showdown', description: desc, chipChange, handNumber: handNum };
   };
 
   // Calculate display game number
@@ -613,14 +706,17 @@ export const HandHistory = ({
     return handGroup.hand_number;
   };
 
-  // Format game type for display
+  // Format game type for display - handles both '357' and '3-5-7' variations
   const formatGameType = (type: string | null | undefined): string => {
     if (!type) return '';
-    switch (type) {
-      case 'holm-game': return 'Holm';
+    // Sometimes buggy writes put a UUID into game_type — never display that.
+    if (isUUID(type)) return '';
+    const normalized = type.toLowerCase().replace(/-/g, '');
+    switch (normalized) {
+      case 'holmgame': return 'Holm';
       case '357': return '3-5-7';
       case 'horses': return 'Horses';
-      case 'ship-captain-crew': return 'SCC';
+      case 'shipcaptaincrew': return 'SCC';
       default: return type;
     }
   };
@@ -647,8 +743,9 @@ export const HandHistory = ({
     );
   }
 
+
   return (
-    <ScrollArea className="h-full max-h-[400px]">
+    <ScrollArea className="h-full max-h-[400px] overflow-x-hidden">
       <div className="space-y-2 p-2">
         <Accordion 
           type="single" 
@@ -660,35 +757,35 @@ export const HandHistory = ({
           {inProgressGame && (
             <AccordionItem 
               value="in-progress"
-              className="border border-amber-500/50 rounded-lg mb-2 overflow-hidden bg-amber-500/10"
+              className="border border-poker-gold/50 rounded-lg mb-2 overflow-hidden bg-poker-gold/10"
             >
-              <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                <div className="flex items-center justify-between w-full pr-2 gap-2">
+              <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30 overflow-hidden">
+                <div className="grid grid-cols-[5rem_1fr_4.5rem] items-center w-full gap-1 overflow-hidden">
                   {/* Game number + type - compact left */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="text-sm font-medium whitespace-nowrap">
-                      #{totalGames}
-                    </span>
+                  <div className="flex items-center gap-1 truncate">
+                    <span className="text-sm font-medium">#{totalGames}</span>
                     {inProgressGame.dealerGame && (
-                      <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">
+                      <span className="text-xs text-muted-foreground">
                         {formatGameType(inProgressGame.dealerGame.game_type)}
                       </span>
                     )}
-                    <Badge variant="outline" className="text-[10px] py-0 h-5 border-amber-500/50 text-amber-500">
+                  </div>
+                  
+                  {/* Badge - middle */}
+                  <div className="flex justify-center">
+                    <Badge variant="outline" className="text-[10px] py-0 h-5 border-poker-gold/50 text-poker-gold">
                       In Progress
                     </Badge>
                   </div>
                   
-                  {/* Chip change - compact right */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0 ml-auto">
-                    <span className={cn(
-                      "text-sm font-bold w-[48px] text-right tabular-nums",
-                      inProgressGame.currentChipChange > 0 ? "text-green-500" : 
-                      inProgressGame.currentChipChange < 0 ? "text-red-500" : "text-muted-foreground"
-                    )}>
-                      {inProgressGame.currentChipChange > 0 ? '+' : ''}{formatChipValue(inProgressGame.currentChipChange)}
-                    </span>
-                  </div>
+                  {/* Chip change - right */}
+                  <span className={cn(
+                    "text-sm font-bold tabular-nums text-right truncate",
+                    inProgressGame.currentChipChange > 0 ? "text-poker-chip-green" : 
+                    inProgressGame.currentChipChange < 0 ? "text-poker-chip-red" : "text-muted-foreground"
+                  )}>
+                    {inProgressGame.currentChipChange > 0 ? '+' : ''}{formatChipValue(inProgressGame.currentChipChange)}
+                  </span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-3 pb-3">
@@ -701,22 +798,13 @@ export const HandHistory = ({
                     inProgressGame.events.map((event) => {
                       const { label, description, chipChange } = formatEventDescription(event);
                       return (
-                        <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
-                              {label}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">{description}</span>
-                          </div>
-                          {chipChange !== null && chipChange !== 0 && (
-                            <span className={cn(
-                              "text-xs font-medium",
-                              chipChange > 0 ? "text-green-500" : "text-red-500"
-                            )}>
-                              {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
-                            </span>
-                          )}
-                        </div>
+                        <HandHistoryEventRow
+                          key={event.id}
+                          label={label}
+                          description={description}
+                          delta={chipChange}
+                          tone="gold"
+                        />
                       );
                     })
                   )}
@@ -725,7 +813,7 @@ export const HandHistory = ({
             </AccordionItem>
           )}
 
-          {/* Completed Hands - grouped by hand_number, sorted DESC (most recent first) */}
+          {/* Completed Hands - grouped by dealer_game_id, sorted DESC (most recent first) */}
           {handGroups.map((hand) => {
             const displayGameNumber = hand.hand_number;
 
@@ -735,47 +823,38 @@ export const HandHistory = ({
                 value={`hand-${hand.hand_number}`}
                 className="border border-border/50 rounded-lg mb-2 overflow-hidden bg-card/50"
               >
-                <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30">
-                  <div className="flex items-center justify-between w-full pr-2 gap-2">
-                    {/* Game number + type - compact left */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <span className="text-sm font-medium whitespace-nowrap">
-                        #{displayGameNumber}
-                      </span>
+                <AccordionTrigger className="px-3 py-2 hover:no-underline hover:bg-muted/30 overflow-hidden">
+                  <div className="grid grid-cols-[5rem_1fr_4.5rem] items-center w-full gap-1 overflow-hidden">
+                    {/* Game number + type */}
+                    <div className="flex items-center gap-1 truncate">
+                      <span className="text-sm font-medium">#{displayGameNumber}</span>
                       {hand.gameType && (
-                        <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">
+                        <span className="text-xs text-muted-foreground">
                           {formatGameType(hand.gameType)}
                         </span>
                       )}
                     </div>
                     
-                    {/* Winner name - fixed width, truncated */}
-                    <div className="flex-1 min-w-0 max-w-[120px]">
+                    {/* Winner info - middle (truncated) */}
+                    <div className="min-w-0 truncate text-center">
                       <span className={cn(
-                        "text-xs truncate block",
+                        "text-xs",
                         hand.showdownWinner === 'Pussy Tax' 
-                          ? "text-amber-500 font-medium" 
+                          ? "text-poker-gold font-medium" 
                           : "text-muted-foreground"
                       )}>
                         {hand.showdownWinner || 'No winner'}
                       </span>
                     </div>
                     
-                    {/* Hand description + chip change - compact right */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {hand.showdownDescription && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 whitespace-nowrap">
-                          {hand.showdownDescription}
-                        </Badge>
-                      )}
-                      <span className={cn(
-                        "text-sm font-bold w-[48px] text-right tabular-nums",
-                        hand.totalChipChange > 0 ? "text-green-500" : 
-                        hand.totalChipChange < 0 ? "text-red-500" : "text-muted-foreground"
-                      )}>
-                        {hand.totalChipChange > 0 ? '+' : ''}{formatChipValue(hand.totalChipChange)}
-                      </span>
-                    </div>
+                    {/* Chip change - right */}
+                    <span className={cn(
+                      "text-sm font-bold tabular-nums text-right truncate",
+                      hand.totalChipChange > 0 ? "text-poker-chip-green" : 
+                      hand.totalChipChange < 0 ? "text-poker-chip-red" : "text-muted-foreground"
+                    )}>
+                      {hand.totalChipChange > 0 ? '+' : ''}{formatChipValue(hand.totalChipChange)}
+                    </span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-3 pb-3">
@@ -810,10 +889,10 @@ export const HandHistory = ({
                           return (
                             <div key={round.id}>
                               {roundIndex > 0 && (
-                                <div className="flex items-center gap-2 my-2 text-[10px] text-yellow-500 font-semibold">
-                                  <div className="h-px bg-yellow-500/30 flex-1" />
+                                   <div className="flex items-center gap-2 my-2 text-[10px] text-poker-gold font-semibold">
+                                    <div className="h-px bg-poker-gold/30 flex-1" />
                                   <span>🔄 ROLLOVER - ONE TIE ALL TIE</span>
-                                  <div className="h-px bg-yellow-500/30 flex-1" />
+                                    <div className="h-px bg-poker-gold/30 flex-1" />
                                 </div>
                               )}
                               
@@ -899,28 +978,62 @@ export const HandHistory = ({
                         ))}
                       </div>
                     ) : (
-                      // For non-dice games, show regular events
-                      hand.events.map((event) => {
-                        const { label, description, chipChange } = formatEventDescription(event);
+                      // For non-dice games, show regular events grouped by hand_number
+                      (() => {
+                        // Group events by hand_number
+                        const eventsByHand = new Map<number, GameResult[]>();
+                        hand.events.forEach(event => {
+                          const handNum = event.hand_number;
+                          if (!eventsByHand.has(handNum)) {
+                            eventsByHand.set(handNum, []);
+                          }
+                          eventsByHand.get(handNum)!.push(event);
+                        });
+                        
+                        // Sort hands and get array
+                        const sortedHands = Array.from(eventsByHand.entries())
+                          .sort(([a], [b]) => a - b);
+                        
+                        // Check if we have multiple hands (for showing separators)
+                        const hasMultipleHands = sortedHands.length > 1;
+                        
                         return (
-                          <div key={event.id} className="flex items-center justify-between bg-muted/20 rounded px-2 py-1.5">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-[10px] py-0 h-5 min-w-[50px] justify-center">
-                                {label}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">{description}</span>
-                            </div>
-                            {chipChange !== null && chipChange !== 0 && (
-                              <span className={cn(
-                                "text-xs font-medium",
-                                chipChange > 0 ? "text-green-500" : "text-red-500"
-                              )}>
-                                {chipChange > 0 ? '+' : ''}{formatChipValue(chipChange)}
-                              </span>
-                            )}
+                          <div className="space-y-2">
+                            {sortedHands.map(([handNum, handEvents], handIdx) => (
+                              <div key={handNum}>
+                                {/* Hand separator for multi-hand games */}
+                                {hasMultipleHands && handIdx > 0 && (
+                                  <div className="flex items-center gap-2 my-2 text-[10px] text-muted-foreground font-medium">
+                                    <div className="h-px bg-border flex-1" />
+                                    <span>Hand {handNum}</span>
+                                    <div className="h-px bg-border flex-1" />
+                                  </div>
+                                )}
+                                {hasMultipleHands && handIdx === 0 && (
+                                  <div className="text-[10px] text-muted-foreground font-medium mb-1">
+                                    Hand {handNum}
+                                  </div>
+                                )}
+                                
+                                {/* Events within this hand */}
+                                <div className="space-y-1">
+                                    {handEvents.map((event) => {
+                                      const { label, description, chipChange } = formatEventDescription(event);
+                                      return (
+                                        <HandHistoryEventRow
+                                          key={event.id}
+                                          label={label}
+                                          description={description}
+                                          delta={chipChange}
+                                        />
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         );
-                      })
+                      })()
                     )}
                   </div>
                 </AccordionContent>
