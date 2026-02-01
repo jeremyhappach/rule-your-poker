@@ -787,13 +787,11 @@ export async function endHolmRound(gameId: string) {
     try {
       if (stayedPlayers.length >= 2) {
         // Fire-and-forget: Ensure visibility is correct (idempotent)
-        // TEMPORARY DIAGNOSTIC: Disabled to test if player_cards writes cause UI sticking
-        console.log('[HOLM] 🔴 DIAGNOSTIC: Skipping player_cards visibility update (recovery path)');
-        // const seatedUserIds = (players || []).map((p: any) => p.user_id);
-        // supabase
-        //   .from('player_cards')
-        //   .update({ visible_to_user_ids: seatedUserIds })
-        //   .eq('round_id', round.id);
+        const seatedUserIds = (players || []).map((p: any) => p.user_id);
+        supabase
+          .from('player_cards')
+          .update({ visible_to_user_ids: seatedUserIds })
+          .eq('round_id', round.id);
 
         const roundPot = round.pot || game.pot || 0;
         await handleMultiPlayerShowdown(
@@ -1182,13 +1180,13 @@ export async function endHolmRound(gameId: string) {
       .eq('id', capturedRoundId);
 
     // VISIBILITY: At Holm showdown, ALL seated players can see ALL cards
-    // TEMPORARY DIAGNOSTIC: Disabled to test if player_cards writes cause UI sticking
+    // Fire-and-forget: visibility update is for history only
     const seatedUserIds = players.map(p => p.user_id);
-    console.log('[HOLM END] 🔴 DIAGNOSTIC: Skipping player_cards visibility update (chucky path), would set', seatedUserIds.length, 'user_ids');
-    // supabase
-    //   .from('player_cards')
-    //   .update({ visible_to_user_ids: seatedUserIds })
-    //   .eq('round_id', capturedRoundId);
+    console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
+    supabase
+      .from('player_cards')
+      .update({ visible_to_user_ids: seatedUserIds })
+      .eq('round_id', capturedRoundId);
 
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
     
@@ -1296,13 +1294,13 @@ export async function endHolmRound(gameId: string) {
     .eq('id', capturedRoundId);
   
   // VISIBILITY: At Holm multi-player showdown, ALL seated players can see ALL cards
-  // TEMPORARY DIAGNOSTIC: Disabled to test if player_cards writes cause UI sticking
+  // Fire-and-forget: visibility update is for history only
   const seatedUserIds = players.map(p => p.user_id);
-  console.log('[HOLM END] 🔴 DIAGNOSTIC: Skipping player_cards visibility update (multiplayer path), would set', seatedUserIds.length, 'user_ids');
-  // supabase
-  //   .from('player_cards')
-  //   .update({ visible_to_user_ids: seatedUserIds })
-  //   .eq('round_id', capturedRoundId);
+  console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
+  supabase
+    .from('player_cards')
+    .update({ visible_to_user_ids: seatedUserIds })
+    .eq('round_id', capturedRoundId);
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
   console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');
