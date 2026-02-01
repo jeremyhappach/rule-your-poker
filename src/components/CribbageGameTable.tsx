@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import {
   getPhaseDisplayName 
 } from '@/lib/cribbageGameLogic';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
+import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 
@@ -21,6 +22,7 @@ interface Player {
   user_id: string;
   position: number;
   chips: number;
+  is_bot?: boolean;
   profiles?: { username: string };
 }
 
@@ -117,6 +119,107 @@ export const CribbageGameTable = ({
       supabase.removeChannel(channel);
     };
   }, [roundId, onGameComplete]);
+
+  // Bot decision ref to prevent duplicate actions
+  const botActionInProgress = useRef(false);
+
+  // Bot decision logic
+  useEffect(() => {
+    if (!cribbageState || isProcessing || botActionInProgress.current) return;
+    if (cribbageState.phase === 'complete') return;
+
+    const processBotActions = async () => {
+      // Check if any bot needs to act
+      if (cribbageState.phase === 'discarding') {
+        // Find bots that haven't discarded yet
+        const expectedDiscard = players.length === 2 ? 2 : 1;
+        for (const player of players) {
+          if (!player.is_bot) continue;
+          
+          const botState = cribbageState.playerStates[player.id];
+          if (!botState || botState.discardedToCrib.length > 0) continue;
+          
+          // Bot needs to discard
+          botActionInProgress.current = true;
+          console.log('[CRIBBAGE BOT] Bot discarding:', player.id);
+          
+          const isDealer = player.id === cribbageState.dealerPlayerId;
+          const discardIndices = getBotDiscardIndices(
+            botState.hand,
+            players.length,
+            isDealer
+          );
+          
+          // Add small delay to make it feel natural
+          await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
+          
+          try {
+            const newState = discardToCrib(cribbageState, player.id, discardIndices);
+            await supabase
+              .from('rounds')
+              .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
+              .eq('id', roundId);
+          } catch (err) {
+            console.error('[CRIBBAGE BOT] Discard error:', err);
+          } finally {
+            botActionInProgress.current = false;
+          }
+          return; // Process one bot at a time
+        }
+      }
+
+      if (cribbageState.phase === 'pegging') {
+        const currentTurnId = cribbageState.pegging.currentTurnPlayerId;
+        if (!currentTurnId) return;
+
+        const currentTurnPlayer = players.find(p => p.id === currentTurnId);
+        if (!currentTurnPlayer?.is_bot) return;
+
+        const botState = cribbageState.playerStates[currentTurnId];
+        if (!botState) return;
+
+        botActionInProgress.current = true;
+        console.log('[CRIBBAGE BOT] Bot pegging turn:', currentTurnId);
+
+        // Add small delay
+        await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
+
+        try {
+          if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
+            // Must call go
+            const newState = callGo(cribbageState, currentTurnId);
+            await supabase
+              .from('rounds')
+              .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
+              .eq('id', roundId);
+          } else {
+            // Play a card
+            const cardIndex = getBotPeggingCardIndex(
+              botState,
+              cribbageState.pegging.currentCount,
+              cribbageState.pegging.playedCards
+            );
+
+            if (cardIndex !== null) {
+              const newState = playPeggingCard(cribbageState, currentTurnId, cardIndex);
+              await supabase
+                .from('rounds')
+                .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
+                .eq('id', roundId);
+            }
+          }
+        } catch (err) {
+          console.error('[CRIBBAGE BOT] Pegging error:', err);
+        } finally {
+          botActionInProgress.current = false;
+        }
+      }
+    };
+
+    // Small timeout to let state settle
+    const timeout = setTimeout(processBotActions, 100);
+    return () => clearTimeout(timeout);
+  }, [cribbageState, isProcessing, players, roundId]);
 
   const updateState = async (newState: CribbageState) => {
     setIsProcessing(true);
