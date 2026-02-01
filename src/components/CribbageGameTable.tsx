@@ -27,20 +27,20 @@ interface Player {
 interface CribbageGameTableProps {
   gameId: string;
   roundId: string;
-  dealerGameId: string;
   players: Player[];
   currentUserId: string;
+  dealerPosition: number;
   anteAmount: number;
   pot: number;
-  onGameComplete: (winnerId: string, payoutMultiplier: number) => void;
+  onGameComplete: () => void;
 }
 
 export const CribbageGameTable = ({
   gameId,
   roundId,
-  dealerGameId,
   players,
   currentUserId,
+  dealerPosition,
   anteAmount,
   pot,
   onGameComplete,
@@ -69,8 +69,8 @@ export const CribbageGameTable = ({
       if (roundData?.cribbage_state) {
         setCribbageState(roundData.cribbage_state as unknown as CribbageState);
       } else {
-        // Initialize new game
-        const dealerPlayer = players.find(p => p.position === 1) || players[0];
+        // Initialize new game - use dealerPosition prop
+        const dealerPlayer = players.find(p => p.position === dealerPosition) || players[0];
         const playerIds = players.map(p => p.id);
         const newState = initializeCribbageGame(playerIds, dealerPlayer.id, anteAmount);
         
@@ -85,7 +85,7 @@ export const CribbageGameTable = ({
     };
 
     loadOrInitializeState();
-  }, [roundId, players, anteAmount]);
+  }, [roundId, players, anteAmount, dealerPosition]);
 
   // Subscribe to realtime updates
   useEffect(() => {
@@ -106,10 +106,7 @@ export const CribbageGameTable = ({
             
             // Check for game completion
             if (newState.cribbage_state.phase === 'complete' && newState.cribbage_state.winnerPlayerId) {
-              onGameComplete(
-                newState.cribbage_state.winnerPlayerId,
-                newState.cribbage_state.payoutMultiplier
-              );
+              onGameComplete();
             }
           }
         }
