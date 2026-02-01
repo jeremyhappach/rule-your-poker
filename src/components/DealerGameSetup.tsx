@@ -1285,7 +1285,15 @@ export const DealerGameSetup = ({
     setSelectionStep('game');
   };
 
-  // Game selection step - unified grid with all games
+  // Determine which tab to default to based on previous game
+  const getDefaultTab = () => {
+    if (previousGameType) {
+      return isDiceGame(previousGameType) ? 'dice' : 'cards';
+    }
+    return 'cards';
+  };
+
+  // Game selection step - tabbed layout with Cards vs Dice
   if (selectionStep === 'game') {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1308,98 +1316,102 @@ export const DealerGameSetup = ({
               )}
             </div>
 
-            {/* Card Games Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <Spade className="w-5 h-5 text-poker-gold" />
-                <h3 className="text-lg font-semibold text-poker-gold uppercase tracking-wide">
+            {/* Tabbed Game Selection */}
+            <Tabs defaultValue={getDefaultTab()} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-poker-felt-dark border border-poker-gold/30">
+                <TabsTrigger 
+                  value="cards" 
+                  className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
+                >
+                  <Spade className="w-4 h-4" />
                   Card Games
-                </h3>
-                <div className="flex-1 h-px bg-poker-gold/30" />
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {cardGames.map((game) => {
-                  const disabled = isGameDisabled(game);
-                  const restriction = getPlayerRestrictionLabel(game);
-                  
-                  return (
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="dice" 
+                  className="data-[state=active]:bg-poker-gold data-[state=active]:text-poker-felt-dark flex items-center gap-2"
+                >
+                  <Dice5 className="w-4 h-4" />
+                  Dice Games
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Card Games Tab */}
+              <TabsContent value="cards" className="mt-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {cardGames.map((game) => {
+                    const disabled = isGameDisabled(game);
+                    const restriction = getPlayerRestrictionLabel(game);
+                    
+                    return (
+                      <button
+                        key={game.id}
+                        onClick={() => handleGameSelect(game.id, game.comingSoon)}
+                        disabled={disabled && !game.comingSoon}
+                        className={`
+                          relative p-4 rounded-lg border-2 transition-all text-left
+                          ${disabled
+                            ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
+                            : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer'
+                          }
+                        `}
+                      >
+                        {!game.enabled && (
+                          <div className="absolute top-2 right-2">
+                            <Lock className="w-4 h-4 text-gray-400" />
+                          </div>
+                        )}
+                        {game.comingSoon && (
+                          <div className="absolute top-1 right-1">
+                            <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-medium">
+                              SOON
+                            </span>
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <h4 className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
+                            {game.name}
+                          </h4>
+                          <p className={`text-xs ${disabled ? 'text-gray-500' : 'text-amber-200'}`}>
+                            {game.description}
+                          </p>
+                          {restriction && (
+                            <p className={`text-xs font-medium ${
+                              activePlayerCount > (game.maxPlayers || 99) 
+                                ? 'text-red-400' 
+                                : 'text-amber-400'
+                            }`}>
+                              {restriction}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+
+              {/* Dice Games Tab */}
+              <TabsContent value="dice" className="mt-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {diceGames.map((game) => (
                     <button
                       key={game.id}
-                      onClick={() => handleGameSelect(game.id, game.comingSoon)}
-                      disabled={disabled && !game.comingSoon}
-                      className={`
-                        relative p-4 rounded-lg border-2 transition-all text-left
-                        ${disabled
-                          ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
-                          : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer'
-                        }
-                      `}
+                      onClick={() => handleGameSelect(game.id)}
+                      className="relative p-4 rounded-lg border-2 transition-all text-left border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
                     >
-                      {!game.enabled && (
-                        <div className="absolute top-2 right-2">
-                          <Lock className="w-4 h-4 text-gray-400" />
-                        </div>
-                      )}
-                      {game.comingSoon && (
-                        <div className="absolute top-1 right-1">
-                          <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-medium">
-                            SOON
-                          </span>
-                        </div>
-                      )}
                       <div className="space-y-1">
-                        <h4 className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
+                        <h4 className="text-base font-bold text-poker-gold">
                           {game.name}
                         </h4>
-                        <p className={`text-xs ${disabled ? 'text-gray-500' : 'text-amber-200'}`}>
+                        <p className="text-xs text-amber-200">
                           {game.description}
                         </p>
-                        {restriction && (
-                          <p className={`text-xs font-medium ${
-                            activePlayerCount > (game.maxPlayers || 99) 
-                              ? 'text-red-400' 
-                              : 'text-amber-400'
-                          }`}>
-                            {restriction}
-                          </p>
-                        )}
                       </div>
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Dice Games Section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <Dice5 className="w-5 h-5 text-poker-gold" />
-                <h3 className="text-lg font-semibold text-poker-gold uppercase tracking-wide">
-                  Dice Games
-                </h3>
-                <div className="flex-1 h-px bg-poker-gold/30" />
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {diceGames.map((game) => (
-                  <button
-                    key={game.id}
-                    onClick={() => handleGameSelect(game.id)}
-                    className="relative p-4 rounded-lg border-2 transition-all text-left border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
-                  >
-                    <div className="space-y-1">
-                      <h4 className="text-base font-bold text-poker-gold">
-                        {game.name}
-                      </h4>
-                      <p className="text-xs text-amber-200">
-                        {game.description}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
 
             {/* Run Back option - only show on 2nd+ game of session */}
             {!isFirstHand && previousGameType && previousGameConfig && (
