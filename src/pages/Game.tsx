@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { HorsesGameTable, HorsesStateFromDB } from "@/components/HorsesGameTable";
+import { CribbageGameTable } from "@/components/CribbageGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
@@ -28,6 +29,7 @@ import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLas
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
+import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -3799,9 +3801,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // For dice games, never fall back to the previous round while the new round row is still being created.
       const isHolm = gameData.game_type === 'holm-game';
       const isDice = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
+      const isCribbage = gameData.game_type === 'cribbage';
 
       let currentRound: Round | null = null;
-      if (isHolm) {
+      if (isHolm || isCribbage) {
+        // Holm and Cribbage use single-round-per-hand pattern
         currentRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
           dealerGameId: gameData.current_game_uuid,
           currentRoundNumber: gameData.current_round,
@@ -5358,6 +5362,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // After transitioning from 3-5-7 to Holm, React state may still have old game_type
           const isHolmGame = freshGame?.game_type === 'holm-game' || freshGame?.game_type === 'holm';
           const isHorsesGame = freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew';
+          const isCribbageGame = freshGame?.game_type === 'cribbage';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
           const activePlayersBefore = players.filter(p => !p.sitting_out);
@@ -5376,7 +5381,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setExpectedPostAnteChips(expectedChips);
             setAnteAnimationExpectedPot(expectedPot);
 
-            const triggerKey = `${isHolmGame ? 'holm' : isHorsesGame ? 'horses' : '357'}-first-ante-${expectedPot}`;
+            const triggerKey = `${isHolmGame ? 'holm' : isHorsesGame ? 'horses' : isCribbageGame ? 'cribbage' : '357'}-first-ante-${expectedPot}`;
             if (anteAnimationFiredRef.current !== triggerKey) {
               anteAnimationFiredRef.current = triggerKey;
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
@@ -5403,6 +5408,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             } else {
               await startHorsesRound(gameId, true);
             }
+          } else if (isCribbageGame) {
+            // Cribbage has its own round start logic
+            await startCribbageRound(gameId!, true);
           } else {
             await supabase
               .from('games')
@@ -6306,6 +6314,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 gameType={game.game_type || 'horses'}
                 isHost={isCreator}
                 onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
+              />
+            );
+          }
+
+          // CRIBBAGE GAME
+          if (isInProgress && game.game_type === 'cribbage') {
+            return (
+              <CribbageGameTable
+                gameId={gameId!}
+                roundId={currentRound?.id || ''}
+                players={players}
+                currentUserId={user?.id || ''}
+                dealerPosition={game.dealer_position || 1}
+                anteAmount={game.ante_amount || 1}
+                pot={potForDisplay}
+                onGameComplete={fetchGameData}
               />
             );
           }
