@@ -6084,6 +6084,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isFirstHand={!hasSessionHistory && !previousGameConfig}
                     gameSetupTimerSeconds={game.game_setup_timer_seconds || 30}
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
+                    activePlayerCount={players.filter(p => !p.sitting_out).length}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />

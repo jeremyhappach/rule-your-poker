@@ -13,7 +13,7 @@ import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { toast } from "sonner";
 
-type SelectionStep = 'category' | 'cards' | 'dice';
+type SelectionStep = 'game' | 'config';
 
 interface PreviousGameConfig {
   game_type: string | null;
@@ -43,6 +43,7 @@ interface DealerGameSetupProps {
   isFirstHand?: boolean; // Whether this is the first hand of the session (no run back option)
   gameSetupTimerSeconds: number; // Cached at session start
   anteDecisionTimerSeconds: number; // Cached at session start
+  activePlayerCount?: number; // Number of active players for game restrictions
   onConfigComplete: () => void;
   onSessionEnd: () => void;
 }
@@ -72,11 +73,12 @@ export const DealerGameSetup = ({
   isFirstHand = true,
   gameSetupTimerSeconds,
   anteDecisionTimerSeconds,
+  activePlayerCount = 0,
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
-  // Selection step: category -> cards/dice
-  const [selectionStep, setSelectionStep] = useState<SelectionStep>('category');
+  // Selection step: game selection -> config
+  const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
   // Timer settings are passed as props (cached at session start)
@@ -1080,33 +1082,27 @@ export const DealerGameSetup = ({
     return isDiceGame(gameType) || gameType === 'sports-trivia';
   };
 
-  const handleCategorySelect = (category: 'cards' | 'dice') => {
-    setSelectionStep(category);
-
-    // If we're going to the card setup screen, make sure we start with a CARD game type.
-    // Otherwise we can accidentally submit the previous dice game type.
-    if (category === 'cards') {
-      const defaultCardType = previousGameType && !isDiceGame(previousGameType)
-        ? previousGameType
-        : 'holm-game';
-      handleGameTypeChange(defaultCardType);
+  const handleGameSelect = async (gameType: string, comingSoon?: boolean) => {
+    if (comingSoon) {
+      toast.info("Coming soon!");
+      return;
     }
     
-    // If we're going to dice selection, CLEAR the selected game type so we show the
-    // game selection screen instead of jumping straight to config of the previous dice game.
-    if (category === 'dice') {
-      // Reset to a non-dice placeholder so the dice selection UI shows
-      setSelectedGameType('');
+    // Check player count restrictions
+    const gameInfo = allGames.find(g => g.id === gameType);
+    if (gameInfo?.maxPlayers && activePlayerCount > gameInfo.maxPlayers) {
+      toast.error(`${gameInfo.name} requires ${gameInfo.maxPlayers} or fewer players`);
+      return;
     }
-  };
-
-  const handleDiceGameSelect = async (gameType: string) => {
-    if (gameType === 'horses' || gameType === 'ship-captain-crew') {
-      // Dice games are ready - set game type and go to config step
-      setSelectedGameType(gameType);
-      setSelectionStep('dice');
-      
-      // Fetch defaults for this game type (fall back to horses defaults if SCC doesn't have its own)
+    
+    setSelectedGameType(gameType);
+    setSelectionStep('config');
+    
+    // For card games, load session config or defaults
+    if (gameType === 'holm-game' || gameType === '3-5-7') {
+      handleGameTypeChange(gameType);
+    } else if (isDiceGame(gameType) || gameType === 'sports-trivia') {
+      // Fetch defaults for dice/trivia games
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
         .select('ante_amount')
@@ -1115,8 +1111,8 @@ export const DealerGameSetup = ({
       
       if (gameDefaults) {
         setAnteAmount(String(gameDefaults.ante_amount));
-      } else {
-        // Fall back to horses defaults for SCC
+      } else if (gameType !== 'sports-trivia') {
+        // Fall back to horses defaults for other dice games
         const { data: horsesDefaults } = await supabase
           .from('game_defaults')
           .select('ante_amount')
@@ -1126,9 +1122,35 @@ export const DealerGameSetup = ({
           setAnteAmount(String(horsesDefaults.ante_amount));
         }
       }
-    } else {
-      toast.info("Coming soon!");
     }
+  };
+
+  // Game definitions for unified grid
+  const allGames = [
+    // Card Games
+    { id: 'holm-game', name: 'Holm', description: '4 cards vs community + Chucky', category: 'cards', enabled: true },
+    { id: '3-5-7', name: '3-5-7', description: 'Classic wild card poker', category: 'cards', enabled: true },
+    { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4, comingSoon: true },
+    { id: 'sports-trivia', name: 'Trivia', description: 'Answer trivia, win the pot', category: 'cards', enabled: true },
+    // Dice Games
+    { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
+    { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: 'Get 6-5-4, max cargo', category: 'dice', enabled: true },
+  ];
+
+  const cardGames = allGames.filter(g => g.category === 'cards');
+  const diceGames = allGames.filter(g => g.category === 'dice');
+
+  const isGameDisabled = (game: typeof allGames[0]) => {
+    if (!game.enabled) return true;
+    if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
+    return false;
+  };
+
+  const getPlayerRestrictionLabel = (game: typeof allGames[0]) => {
+    if (game.maxPlayers) {
+      return `${game.maxPlayers} max`;
+    }
+    return null;
   };
   
   const handleSimpleAnteGameSubmit = async (overrideGameType?: string) => {
@@ -1259,16 +1281,16 @@ export const DealerGameSetup = ({
     }
   };
 
-  const handleBackToCategory = () => {
-    setSelectionStep('category');
+  const handleBackToGameSelection = () => {
+    setSelectionStep('game');
   };
 
-  // Category selection step
-  if (selectionStep === 'category') {
+  // Game selection step - unified grid with all games
+  if (selectionStep === 'game') {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-          <CardContent className="pt-6 pb-6 space-y-6">
+        <Card className="w-full max-w-2xl border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[90vh] overflow-y-auto">
+          <CardContent className="pt-6 pb-6 space-y-5">
             {/* Header with Timer */}
             <div className="flex items-center justify-between">
               <div>
@@ -1286,42 +1308,108 @@ export const DealerGameSetup = ({
               )}
             </div>
 
-            {/* Category Selection */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Cards option */}
-              <button
-                onClick={() => handleCategorySelect('cards')}
-                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
-              >
-                <div className="flex flex-col items-center space-y-3">
-                  <Spade className="w-12 h-12 text-poker-gold" />
-                  <h3 className="text-xl font-bold text-poker-gold">Cards</h3>
-                  <p className="text-sm text-amber-200">Poker games</p>
-                </div>
-              </button>
+            {/* Card Games Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Spade className="w-5 h-5 text-poker-gold" />
+                <h3 className="text-lg font-semibold text-poker-gold uppercase tracking-wide">
+                  Card Games
+                </h3>
+                <div className="flex-1 h-px bg-poker-gold/30" />
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {cardGames.map((game) => {
+                  const disabled = isGameDisabled(game);
+                  const restriction = getPlayerRestrictionLabel(game);
+                  
+                  return (
+                    <button
+                      key={game.id}
+                      onClick={() => handleGameSelect(game.id, game.comingSoon)}
+                      disabled={disabled && !game.comingSoon}
+                      className={`
+                        relative p-4 rounded-lg border-2 transition-all text-left
+                        ${disabled
+                          ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
+                          : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer'
+                        }
+                      `}
+                    >
+                      {!game.enabled && (
+                        <div className="absolute top-2 right-2">
+                          <Lock className="w-4 h-4 text-gray-400" />
+                        </div>
+                      )}
+                      {game.comingSoon && (
+                        <div className="absolute top-1 right-1">
+                          <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-medium">
+                            SOON
+                          </span>
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <h4 className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
+                          {game.name}
+                        </h4>
+                        <p className={`text-xs ${disabled ? 'text-gray-500' : 'text-amber-200'}`}>
+                          {game.description}
+                        </p>
+                        {restriction && (
+                          <p className={`text-xs font-medium ${
+                            activePlayerCount > (game.maxPlayers || 99) 
+                              ? 'text-red-400' 
+                              : 'text-amber-400'
+                          }`}>
+                            {restriction}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-              {/* Dice option */}
-              <button
-                onClick={() => handleCategorySelect('dice')}
-                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
-              >
-                <div className="flex flex-col items-center space-y-3">
-                  <Dice5 className="w-12 h-12 text-poker-gold" />
-                  <h3 className="text-xl font-bold text-poker-gold">Dice</h3>
-                  <p className="text-sm text-amber-200">Dice games</p>
-                </div>
-              </button>
+            {/* Dice Games Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Dice5 className="w-5 h-5 text-poker-gold" />
+                <h3 className="text-lg font-semibold text-poker-gold uppercase tracking-wide">
+                  Dice Games
+                </h3>
+                <div className="flex-1 h-px bg-poker-gold/30" />
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {diceGames.map((game) => (
+                  <button
+                    key={game.id}
+                    onClick={() => handleGameSelect(game.id)}
+                    className="relative p-4 rounded-lg border-2 transition-all text-left border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+                  >
+                    <div className="space-y-1">
+                      <h4 className="text-base font-bold text-poker-gold">
+                        {game.name}
+                      </h4>
+                      <p className="text-xs text-amber-200">
+                        {game.description}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Run Back option - only show on 2nd+ game of session */}
             {!isFirstHand && previousGameType && previousGameConfig && (
-              <div className="pt-4 border-t border-poker-gold/30">
+              <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
-                  className="w-full p-4 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-3"
+                  className="w-full p-3 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <RotateCcw className="w-6 h-6 text-amber-400" />
-                  <span className="text-lg font-bold text-amber-400">
+                  <RotateCcw className="w-5 h-5 text-amber-400" />
+                  <span className="text-base font-bold text-amber-400">
                     Run Back {getGameDisplayName(previousGameType)}
                   </span>
                 </button>
@@ -1337,15 +1425,20 @@ export const DealerGameSetup = ({
     );
   }
 
-  // Dice games selection step - show Horses config if selected
-  if (selectionStep === 'dice') {
-    // If a dice game is selected, show config UI
-    if (selectedGameType === 'horses' || selectedGameType === 'ship-captain-crew') {
+  // Config step - show config UI based on selected game type
+  if (selectionStep === 'config') {
+    // Simple ante games (dice + trivia) - just need ante config
+    if (isSimpleAnteGame(selectedGameType)) {
       const isSCC = selectedGameType === 'ship-captain-crew';
-      const gameDisplayName = isSCC ? 'Ship' : 'Horses';
+      const isHorses = selectedGameType === 'horses';
+      const isTrivia = selectedGameType === 'sports-trivia';
+      
+      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : 'Trivia';
       const gameRulesText = isSCC 
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
-        : '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins';
+        : isHorses 
+          ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
+          : 'Answer trivia questions • Win the pot';
       
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1368,12 +1461,12 @@ export const DealerGameSetup = ({
                 )}
               </div>
 
-              {/* Dice Game Config */}
+              {/* Simple Game Config */}
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <Label htmlFor="ante-dice" className="text-amber-100 text-sm">Ante ($)</Label>
+                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">Ante ($)</Label>
                   <Input
-                    id="ante-dice"
+                    id="ante-simple"
                     type="text"
                     inputMode="numeric"
                     value={anteAmount}
@@ -1389,10 +1482,7 @@ export const DealerGameSetup = ({
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    // Go back to dice game selection, not category
-                    setSelectedGameType('');
-                  }}
+                  onClick={handleBackToGameSelection}
                   className="flex-1 p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
                 >
                   ← Back
@@ -1411,66 +1501,6 @@ export const DealerGameSetup = ({
         </div>
       );
     }
-    
-    // Show dice game selection
-    return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark">
-          <CardContent className="pt-6 pb-6 space-y-6">
-            {/* Header with Timer */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-poker-gold">Select Dice Game</h2>
-                <p className="text-amber-100 text-sm">{dealerUsername}, choose a dice game</p>
-              </div>
-              {timeLeft !== null && (
-                <Badge 
-                  variant={timeLeft <= 10 ? "destructive" : "default"} 
-                  className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-                >
-                  <Timer className="w-4 h-4" />
-                  {timeLeft}s
-                </Badge>
-              )}
-            </div>
-
-            {/* Dice Game Selection */}
-            <div className="grid grid-cols-1 gap-4">
-              <button
-                onClick={() => handleDiceGameSelect('horses')}
-                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
-              >
-                <div className="space-y-2 text-center">
-                  <h3 className="text-xl font-bold text-poker-gold">Horses</h3>
-                  <p className="text-sm text-amber-200">5 dice poker • Up to 3 rolls</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleDiceGameSelect('ship-captain-crew')}
-                className="relative p-6 rounded-lg border-2 transition-all border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
-              >
-                <div className="space-y-2 text-center">
-                  <h3 className="text-xl font-bold text-poker-gold">Ship Captain Crew</h3>
-                  <p className="text-sm text-amber-200">Get 6-5-4, then max cargo</p>
-                </div>
-              </button>
-            </div>
-
-            <button
-              onClick={handleBackToCategory}
-              className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
-            >
-              ← Back to Game Types
-            </button>
-
-            <p className="text-xs text-amber-200/60 text-center">
-              If timer expires without action, you'll be marked as sitting out
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
   }
 
   // Cards selection step - show poker game tabs
@@ -1712,7 +1742,7 @@ export const DealerGameSetup = ({
 
           {/* Back Button */}
           <button
-            onClick={handleBackToCategory}
+            onClick={handleBackToGameSelection}
             className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
           >
             ← Back to Game Types
