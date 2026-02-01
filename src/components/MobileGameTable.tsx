@@ -56,7 +56,6 @@ import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
-import { RoundHandDebugOverlay } from "./RoundHandDebugOverlay";
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
 // otherwise resets state and reintroduces the pot flash).
@@ -614,15 +613,6 @@ export const MobileGameTable = ({
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
-  
-  // SPOTLIGHT FIX: Sticky turn position tracking to prevent "snap back" during DB sync delays.
-  // The spotlight should only move forward to the next player, never jump back to a previous position.
-  // We track the last confirmed turn position and the handContextId it belongs to.
-  const stickyTurnPositionRef = useRef<{ position: number | null; handContextId: string | null }>({
-    position: null,
-    handContextId: null,
-  });
-
   
   // Flash triggers for winner's chipstack when receiving legs/pot
   const [winnerLegsFlashTrigger, setWinnerLegsFlashTrigger] = useState<{ id: string; amount: number; playerId: string } | null>(null);
@@ -1339,8 +1329,6 @@ export const MobileGameTable = ({
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
-  // Track which handContextId the cached Chucky cards belong to
-  const cachedChuckyHandContextRef = useRef<string | null>(null);
   
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
@@ -1397,7 +1385,6 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
-      cachedChuckyHandContextRef.current = null;
     }
 
     prevRoundForCacheClearRef.current = currentRound;
@@ -1442,7 +1429,6 @@ export const MobileGameTable = ({
     setCachedChuckyCards(null);
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0);
-    cachedChuckyHandContextRef.current = null;
 
     // Solo-vs-Chucky tabling lock (must clear together with caches)
     setSoloVsChuckyTableLocked(false);
@@ -1451,13 +1437,6 @@ export const MobileGameTable = ({
     
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
     setShowdownModeLocked(false);
-    
-    // Spotlight sticky turn position (prevents spotlight snap-back on new hand)
-    stickyTurnPositionRef.current = { position: null, handContextId: to };
-    
-    // NOTE: currentPlayerCardsRef is reset separately in the useMemo that computes currentPlayerCards
-    // because it's defined later in the component (after currentPlayer is computed)
-
 
     // External lifted community cache (parent)
     if (externalCommunityCardsCache) {
@@ -1758,21 +1737,14 @@ export const MobileGameTable = ({
     const liveCards = playerCards.find(pc => pc.player_id === playerId)?.cards || [];
 
     // Cache validity rules:
-    // - ALWAYS prefer strict handContextId match when available
+    // - Prefer strict handContextId match when available
     // - If handContextId is temporarily missing, fall back to round match (NEVER blindly trust cache)
-    // - CRITICAL: handContextId mismatch means stale cache - NEVER return stale cards
     const isCacheValidForCurrentHand =
       handContextId != null
         ? showdownHandContextRef.current === handContextId
         : showdownRoundRef.current !== null && showdownRoundRef.current === currentRound;
 
     const cachedCards = showdownCardsCache.current.get(playerId);
-
-    // CRITICAL: If cache is invalid (wrong hand), return live cards only - never stale cache
-    // This prevents wrong cards from flashing at showdown on new hands
-    if (!isCacheValidForCurrentHand) {
-      return liveCards;
-    }
 
     // If we have both cached + live and they differ, the cache is stale.
     // Prefer live cards and refresh the cache so exposed/tabled cards match the actual hand.
@@ -1786,9 +1758,9 @@ export const MobileGameTable = ({
     }
 
     // During game_over, use cached cards for pot animation visibility
-    // Cache validity is already confirmed above
+    // But ONLY if the cache is valid for this hand/round.
     if (isInGameOverStatus) {
-      if (cachedCards && cachedCards.length > 0) {
+      if (cachedCards && cachedCards.length > 0 && isCacheValidForCurrentHand) {
         return cachedCards;
       }
       if (liveCards.length > 0) {
@@ -1798,7 +1770,7 @@ export const MobileGameTable = ({
 
     // Once cards are cached for this round AND same hand context, ALWAYS use cache
     // This prevents flickering when isShowdownActive temporarily becomes false
-    if (showdownRoundRef.current === currentRound) {
+    if (showdownRoundRef.current === currentRound && isCacheValidForCurrentHand) {
       if (cachedCards && cachedCards.length > 0) {
         return cachedCards;
       }
@@ -1814,71 +1786,18 @@ export const MobileGameTable = ({
       ? showdownHandContextRef.current === handContextId && showdownRoundRef.current === currentRound
       : showdownRoundRef.current !== null && showdownRoundRef.current === currentRound;
     
-    // CRITICAL: If cache is invalid (wrong hand), cards are NOT exposed - prevents stale exposure
-    if (!isCacheValidForCurrentHand) {
-      return false;
-    }
-    
-    // During game_over, show cached cards only if cache is valid (already confirmed above)
-    if (isInGameOverStatus && showdownCardsCache.current.has(playerId)) {
+    // During game_over, show cached cards only if cache is valid
+    if (isInGameOverStatus && showdownCardsCache.current.has(playerId) && isCacheValidForCurrentHand) {
       return true;
     }
     if (!currentRound) return false;
     // Cards are exposed if: cache is valid AND player has cached cards
-    return showdownCardsCache.current.has(playerId);
+    return isCacheValidForCurrentHand && showdownCardsCache.current.has(playerId);
   };
 
   // Find current player and their cards
   const currentPlayer = players.find(p => p.user_id === currentUserId);
-  
-  // CRITICAL FIX: Use handContextId to validate current player cards.
-  // During hand transitions, playerCards may briefly contain stale data from the previous hand.
-  // We cache the last valid cards for the current player and only update when we can confirm
-  // the new cards are for the CURRENT hand (via handContextId match).
-  const currentPlayerCardsRef = useRef<{ cards: CardType[]; handContextId: string | null }>({
-    cards: [],
-    handContextId: null,
-  });
-  
-  const rawCurrentPlayerCards = currentPlayer 
-    ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
-    : [];
-  
-  // Update cache only when:
-  // 1. handContextId changes (new hand started) - reset to new cards (or empty if not yet received)
-  // 2. handContextId is the same AND we have new cards - update with fresh cards
-  // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
-  const currentPlayerCards = useMemo(() => {
-    const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
-    const cachedCards = currentPlayerCardsRef.current.cards;
-    
-    // Case 1: handContextId changed - this is a new hand
-    if (handContextId !== cachedHandContextId) {
-      // If we have cards for the new hand, use them
-      if (rawCurrentPlayerCards.length > 0) {
-        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
-        return rawCurrentPlayerCards;
-      }
-      // New hand but no cards yet - clear the cache and return empty
-      // This prevents stale cards from flashing
-      currentPlayerCardsRef.current = { cards: [], handContextId: handContextId ?? null };
-      return [];
-    }
-    
-    // Case 2: Same hand - prefer new cards if available, otherwise keep cached
-    if (rawCurrentPlayerCards.length > 0) {
-      // Check if cards actually changed (different fingerprint)
-      const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
-      const cachedFp = cachedCards.map(c => `${c.rank}${c.suit}`).join('|');
-      if (rawFp !== cachedFp) {
-        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
-      }
-      return rawCurrentPlayerCards;
-    }
-    
-    // No new cards but we have cached - keep cached (prevents flicker during brief DB gaps)
-    return cachedCards;
-  }, [rawCurrentPlayerCards, handContextId]);
+  const currentPlayerCards = currentPlayer ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] : [];
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
@@ -2337,26 +2256,7 @@ export const MobileGameTable = ({
         setCachedChuckyCards(null);
         setCachedChuckyActive(false);
         setCachedChuckyCardsRevealed(0);
-        cachedChuckyHandContextRef.current = null;
       }
-      return;
-    }
-    
-    // CRITICAL: Clear cached Chucky cards when handContextId changes (new hand started)
-    // This prevents stale Chucky cards from previous hand showing on new hand
-    if (
-      cachedChuckyHandContextRef.current !== null &&
-      handContextId !== null &&
-      cachedChuckyHandContextRef.current !== handContextId
-    ) {
-      console.log('[MOBILE_CHUCKY] handContextId changed - clearing stale Chucky cache', {
-        prev: cachedChuckyHandContextRef.current,
-        next: handContextId,
-      });
-      setCachedChuckyCards(null);
-      setCachedChuckyActive(false);
-      setCachedChuckyCardsRevealed(0);
-      cachedChuckyHandContextRef.current = null;
       return;
     }
     
@@ -2366,27 +2266,17 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
-      cachedChuckyHandContextRef.current = null;
       return;
     }
     
-    // Cache Chucky data when it's available AND track which hand it belongs to
+    // Cache Chucky data when it's available
     if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
-      // Only update cache if handContextId matches or we don't have a cached context yet
-      if (cachedChuckyHandContextRef.current === null || cachedChuckyHandContextRef.current === handContextId) {
-        console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
-        setCachedChuckyCards([...chuckyCards]);
-        setCachedChuckyActive(true);
-        setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
-        cachedChuckyHandContextRef.current = handContextId ?? null;
-      } else {
-        console.warn('[MOBILE_CHUCKY] Skipping cache - handContextId mismatch:', {
-          cached: cachedChuckyHandContextRef.current,
-          current: handContextId,
-        });
-      }
+      console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length);
+      setCachedChuckyCards([...chuckyCards]);
+      setCachedChuckyActive(true);
+      setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
     }
-  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase]);
+  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards]);
 
   // Detect when a player earns a leg (3-5-7 games only)
   // IMPORTANT: MobileGameTable can remount between hands/round transitions; we must NOT treat existing legs as "new" on mount.
@@ -3317,48 +3207,24 @@ export const MobileGameTable = ({
         
         
         {/* Turn Spotlight - Holm games and Dice games */}
-        {gameType === 'holm-game' && (() => {
-          // SPOTLIGHT FIX: Compute sticky turn position to prevent "snap back" during DB sync.
-          // The spotlight should only move to a NEW position, never revert to a previous one.
-          const rawTurnPos = currentTurnPosition ?? null;
-          const cachedPos = stickyTurnPositionRef.current.position;
-          const cachedHand = stickyTurnPositionRef.current.handContextId;
-          
-          // Reset sticky position on new hand
-          if (handContextId !== cachedHand) {
-            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null };
-          } else if (rawTurnPos !== null && rawTurnPos !== cachedPos) {
-            // New position within the same hand - update the sticky cache
-            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null };
-          }
-          // If rawTurnPos is null but we have a cached position for the SAME hand, keep showing cached
-          // This prevents the spotlight from briefly disappearing during DB sync gaps.
-          // EXCEPTION: If allDecisionsIn is true, the spotlight should hide (round is complete).
-          
-          const stickyTurnPosition = allDecisionsIn 
-            ? null 
-            : (rawTurnPos ?? (handContextId === cachedHand ? cachedPos : null));
-          
-          return (
-            <TurnSpotlight
-              currentTurnPosition={stickyTurnPosition}
-              currentPlayerPosition={currentPlayer?.position ?? null}
-              isObserver={!currentPlayer}
-              getClockwiseDistance={getClockwiseDistance}
-              containerRef={tableContainerRef}
-              isVisible={
-                roundStatus === 'betting' && 
-                !allDecisionsIn && 
-                !awaitingNextRound && 
-                stickyTurnPosition !== null &&
-                !isWaitingPhase &&
-                !isSoloVsChucky &&
-                !soloVsChuckyTableLocked
-              }
-            />
-          );
-        })()}
-
+        {gameType === 'holm-game' && (
+          <TurnSpotlight
+            currentTurnPosition={currentTurnPosition ?? null}
+            currentPlayerPosition={currentPlayer?.position ?? null}
+            isObserver={!currentPlayer}
+            getClockwiseDistance={getClockwiseDistance}
+            containerRef={tableContainerRef}
+            isVisible={
+              roundStatus === 'betting' && 
+              !allDecisionsIn && 
+              !awaitingNextRound && 
+              currentTurnPosition !== null &&
+              !isWaitingPhase &&
+              !isSoloVsChucky &&
+              !soloVsChuckyTableLocked
+            }
+          />
+        )}
         
         {/* Turn Spotlight - Dice games (Horses/SCC) - DISABLED */}
         {isDiceGame && horsesController.enabled && (
@@ -5807,8 +5673,5 @@ export const MobileGameTable = ({
           <MusicToggleButton variant="compact" />
         </div>
       )}
-      
-      {/* Inline Round/Hand Debug - fixed position overlay */}
-      <RoundHandDebugOverlay gameId={gameId} inline />
     </div>;
 };

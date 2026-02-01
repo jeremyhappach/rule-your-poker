@@ -116,26 +116,14 @@ export const DeadlineDebugPanel = ({ gameId, userId }: DeadlineDebugPanelProps) 
         .order('position');
 
       // Fetch round deadline if we have a current round
-      // CRITICAL: Use created_at DESC to get most recent round, not round_number alone
-      // (3-5-7 rounds cycle 1/2/3 per hand and old rounds are preserved)
       let roundDeadline: string | null = null;
       if (gameData.current_round) {
-        // Scope to dealer_game_id and order by hand_number/round_number
-        const dealerGameId = (gameData as any).current_game_uuid;
-        const roundQuery = supabase
+        const { data: roundData } = await supabase
           .from('rounds')
           .select('decision_deadline')
-          .eq('game_id', gameId);
-          
-        const scopedQuery = dealerGameId 
-          ? roundQuery.eq('dealer_game_id', dealerGameId)
-          : roundQuery;
-          
-        const { data: roundData } = await scopedQuery
-          .order('hand_number', { ascending: false })
-          .order('round_number', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .eq('game_id', gameId)
+          .eq('round_number', gameData.current_round)
+          .single();
         roundDeadline = roundData?.decision_deadline ?? null;
       }
 

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { isClientDeadlineEnforcementDisabled } from '@/lib/debugFlags';
 
 /**
  * Smart deadline enforcer that polls the enforce-deadlines edge function.
@@ -11,9 +10,6 @@ export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: stri
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (isClientDeadlineEnforcementDisabled()) {
-      return;
-    }
     if (!gameId) return;
     
     // Only enforce for active game states - must include ALL states with deadlines

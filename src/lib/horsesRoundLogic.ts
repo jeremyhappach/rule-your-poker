@@ -6,7 +6,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
-import { logDiceEvent, logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
 
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[HORSES] 🎲 Starting round', { gameId, isFirstHand });
@@ -14,7 +13,7 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -23,97 +22,27 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     throw new Error('Failed to get game state');
   }
 
-  const gameType = (game as any).game_type || 'horses';
+  // IMPORTANT:
+  // This app keeps historical rounds in the same session (gameId) when starting a "new game".
+  // That means round_number=1 may already exist from a previous Horses game.
+  // So we must choose the next round_number based on (game.current_round OR max(round_number)).
+  const { data: latestRound, error: latestRoundError } = await supabase
+    .from('rounds')
+    .select('round_number')
+    .eq('game_id', gameId)
+    .order('round_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  // CRITICAL GUARD: Block round creation if game is paused
-  if ((game as any).is_paused) {
-    logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_PAUSED', {
-      currentStatus: game.status,
-      isFirstHand,
-      dealerGameId: game.current_game_uuid,
-    });
-    console.warn('[HORSES] Blocked round start - game is paused');
-    return;
+  if (latestRoundError) {
+    console.warn('[HORSES] Failed to read latest round_number (continuing):', latestRoundError);
   }
 
-  // TERMINAL STATE GUARD: Don't mutate ended sessions
-  if (game.status === 'session_ended') {
-    logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_GAME_OVER', {
-      currentStatus: game.status,
-      isFirstHand,
-      dealerGameId: game.current_game_uuid,
-    });
-    console.warn('[HORSES] Blocked round start - session ended');
-    return;
-  }
+  const latestRoundNumber = latestRound?.round_number ?? 0;
 
-  // CRITICAL GUARD: Non-first hands should only start after a win (game_over)
-  // or a tie rollover (awaiting_next_round). This prevents accidental hand creation
-  // while a hand is still actively being played.
-  if (!isFirstHand) {
-    const canStartNextHand = game.awaiting_next_round === true || game.status === 'game_over';
-    if (!canStartNextHand) {
-      logRaceConditionGuard(gameId, 'horsesRoundLogic:startHorsesRound', 'BLOCKED_NOT_READY', {
-        currentStatus: game.status,
-        awaitingNextRound: game.awaiting_next_round,
-        dealerGameId: game.current_game_uuid,
-        currentRound: game.current_round,
-        totalHands: game.total_hands,
-      });
-      console.warn('[HORSES] Blocked round start - not ready for next hand', {
-        status: game.status,
-        awaiting_next_round: game.awaiting_next_round,
-      });
-      return;
-    }
-  }
-
-  // CORRECT APPROACH: Each dealer_game_id has its own hand/round numbering starting at 1.
-  // The unique constraint is now (dealer_game_id, hand_number, round_number).
-  // Query only rounds for THIS dealer game to find the next hand/round number.
-  const dealerGameId = game.current_game_uuid;
-  
-  let newRoundNumber: number;
-  let newHandNumber: number;
-  
-  if (isFirstHand) {
-    // First hand of this dealer game = hand 1, round 1
-    newRoundNumber = 1;
-    newHandNumber = 1;
-    console.log('[HORSES] First hand of dealer game - starting at hand_number=1, round_number=1');
-  } else {
-    // Find max hand/round within THIS dealer game only (for rollovers)
-    const { data: latestRound, error: latestRoundError } = await supabase
-      .from('rounds')
-      .select('hand_number, round_number')
-      .eq('dealer_game_id', dealerGameId)
-      .order('hand_number', { ascending: false })
-      .order('round_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (latestRoundError) {
-      console.warn('[HORSES] Failed to read latest round (continuing):', latestRoundError);
-    }
-
-    // For Horses, hand_number = round_number (one hand per round)
-    newHandNumber = (latestRound?.hand_number ?? 0) + 1;
-    newRoundNumber = newHandNumber;
-    console.log('[HORSES] Rollover - next hand_number/round_number:', newHandNumber);
-  }
-  
-  // Fire-and-forget diagnostic logging
-  logDiceEvent(gameId, 'DICE_ROUND_START', 'horsesRoundLogic:startHorsesRound', {
-    dealerGameId,
-    handNumber: newHandNumber,
-    roundNumber: newRoundNumber,
-    gameType,
-    isFirstHand,
-    currentGameStatus: game.status,
-    pot: game.pot,
-  });
-  
-  console.log('[HORSES] Hand/Round numbering:', { dealerGameId, newHandNumber, newRoundNumber, isFirstHand });
+  const baseRoundNumber = (typeof game.current_round === 'number' ? game.current_round : latestRoundNumber) ?? 0;
+  const newRoundNumber = baseRoundNumber + 1;
+  const newHandNumber = (game.total_hands || 0) + 1;
 
   // CRITICAL: Prevent multi-client race where multiple players start the first hand at the same time,
   // OR multiple clients try to start the next hand after a rollover.
@@ -175,45 +104,12 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       console.log('[HORSES] Another client claimed rollover start (or no longer awaiting), skipping');
       return;
     }
-  } else if (game.status === 'game_over') {
-    // Next-hand start after a completed hand: only one client should clear game_over and start the next hand.
-    // This prevents duplicate hand creation across multiple connected clients.
-    let q = supabase
-      .from('games')
-      .update({
-        status: 'in_progress',
-        current_round: newRoundNumber,
-        total_hands: newHandNumber,
-        awaiting_next_round: false,
-        all_decisions_in: false,
-        last_round_result: null,
-        game_over_at: null,
-        is_first_hand: false,
-      })
-      .eq('id', gameId)
-      .eq('status', 'game_over');
-
-    // Only one client should succeed: require the current_round we observed.
-    if (typeof game.current_round === 'number') q = q.eq('current_round', game.current_round);
-    else q = q.is('current_round', null);
-
-    const { data: claim, error: claimError } = await q.select('id');
-
-    if (claimError) {
-      console.warn('[HORSES] Failed to claim game_over next-hand start (continuing):', claimError);
-    }
-
-    if (!claim || claim.length === 0) {
-      console.log('[HORSES] Another client claimed game_over next-hand start (or no longer game_over), skipping');
-      return;
-    }
   }
-  // Check if round already exists within THIS dealer game (race condition protection)
+  // IMPORTANT: Because newRoundNumber is always "next" (never reuses old round #1), this will not resurrect old state.
   const { data: existingRound } = await supabase
     .from('rounds')
     .select('id, pot, hand_number')
-    .eq('dealer_game_id', dealerGameId)
-    .eq('hand_number', newHandNumber)
+    .eq('game_id', gameId)
     .eq('round_number', newRoundNumber)
     .maybeSingle();
 
@@ -403,8 +299,8 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       
       const eventType = isFirstHand ? 'Ante' : 'Re-Ante (Rollover)';
       
-      // Fire-and-forget: Record antes (audit trail only)
-      recordGameResult(
+      // Record antes as a game result entry with no winner (just ante collection)
+      await recordGameResult(
         gameId,
         newHandNumber,
         null, // no winner - this is ante collection

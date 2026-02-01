@@ -15,43 +15,21 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
   const prevRevealedRef = useRef(revealed);
   const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const cardsKeyRef = useRef(0);
-  // Track the cards identity to detect true new hands vs prop fluctuations
-  const cardsIdentityRef = useRef<string>('');
-  // Max revealed count - only increases, never decreases (prevents flicker from prop fluctuations)
-  const maxRevealedRef = useRef(revealed);
   
-  // Compute cards identity to detect new hands
-  const currentCardsIdentity = cards.map(c => `${c.rank}${c.suit}`).join('|');
-  
-  // Reset when cards actually change (new hand) - detected by cards identity, not length
+  // Reset when cards change (new hand)
   useEffect(() => {
-    if (cardsIdentityRef.current !== '' && cardsIdentityRef.current !== currentCardsIdentity) {
-      // Cards actually changed - this is a new hand
-      console.log('[CHUCKY_HAND] Cards changed, resetting flip state', {
-        prev: cardsIdentityRef.current,
-        next: currentCardsIdentity,
-      });
-      flipTimeoutsRef.current.forEach(t => clearTimeout(t));
-      flipTimeoutsRef.current = [];
-      setFlippedCards(new Set());
-      prevRevealedRef.current = 0;
-      maxRevealedRef.current = 0;
-      cardsKeyRef.current += 1;
-    }
-    cardsIdentityRef.current = currentCardsIdentity;
-  }, [currentCardsIdentity]);
+    flipTimeoutsRef.current.forEach(t => clearTimeout(t));
+    flipTimeoutsRef.current = [];
+    setFlippedCards(new Set());
+    prevRevealedRef.current = 0;
+    cardsKeyRef.current += 1;
+  }, [cards.length]);
   
-  // Handle reveal progression - use max revealed to prevent flicker from prop fluctuations
+  // Handle reveal progression
   useEffect(() => {
-    // CRITICAL: Only allow revealed count to increase, never decrease
-    // This prevents flickering when the prop briefly fluctuates during state updates
-    const effectiveRevealed = Math.max(revealed, maxRevealedRef.current);
-    
-    if (effectiveRevealed > prevRevealedRef.current) {
-      maxRevealedRef.current = effectiveRevealed; // Update max
-      
+    if (revealed > prevRevealedRef.current) {
       const newlyRevealed: number[] = [];
-      for (let i = prevRevealedRef.current; i < effectiveRevealed; i++) {
+      for (let i = prevRevealedRef.current; i < revealed; i++) {
         newlyRevealed.push(i);
       }
       
@@ -66,10 +44,11 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
         flipTimeoutsRef.current.push(timeout);
       });
       
-      prevRevealedRef.current = effectiveRevealed;
+      prevRevealedRef.current = revealed;
+    } else if (revealed < prevRevealedRef.current) {
+      setFlippedCards(new Set());
+      prevRevealedRef.current = revealed;
     }
-    // REMOVED: The else branch that reset flipped cards when revealed < prevRevealedRef
-    // This was causing the flickering when props briefly fluctuated
   }, [revealed]);
   
   useEffect(() => {

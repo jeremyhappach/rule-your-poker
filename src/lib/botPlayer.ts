@@ -316,7 +316,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   // Get current round and game type, and check pause state
   const { data: gameData } = await supabase
     .from('games')
-    .select('game_type, current_round, is_paused, total_hands, current_game_uuid')
+    .select('game_type, current_round, is_paused')
     .eq('id', gameId)
     .single();
   
@@ -326,57 +326,22 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     return false;
   }
   
-  // CRITICAL: Skip for dice games - they have their own bot logic in horsesBotLogic.ts and sccBotLogic.ts
-  // This function is ONLY for poker-style games (Holm, 3-5-7) that use current_decision/decision_locked
-  const isDiceGame = gameData?.game_type === 'horses' || gameData?.game_type === 'ship-captain-crew';
-  if (isDiceGame) {
-    console.log('[BOT DECISIONS] Skipping - dice games have their own bot logic');
-    return false;
-  }
-  
   const isHolmGame = gameData?.game_type === 'holm-game' || gameData?.game_type === 'holm';
-  const dealerGameId = (gameData as any)?.current_game_uuid as string | null | undefined;
   const roundNumber = gameData?.current_round || 1;
-  const handNumber = gameData?.total_hands || 1;
   
-  // Get current round data - CRITICAL: use created_at DESC to get the newest round,
-  // not round_number DESC which would incorrectly return Hand 1 Round 3 over Hand 2 Round 1
-  // For 3-5-7, also filter by hand_number to ensure we get the correct round
-  // CRITICAL: ALL round queries MUST scope to dealer_game_id when available.
-  // Within a single session, multiple dealer games can exist (switching from 3-5-7 to Holm, etc.)
-  // and (game_id, hand_number, round_number) is NOT unique across different dealer games.
-  let roundQuery = supabase
+  // Get current round data
+  const { data: currentRound } = await supabase
     .from('rounds')
-    .select('id, current_turn_position, community_cards, hand_number, round_number')
-    .eq('game_id', gameId);
-  
-  // Scope to dealer_game_id for ALL game types
-  if (dealerGameId) {
-    roundQuery = roundQuery.eq('dealer_game_id', dealerGameId);
-  }
-  
-  if (!isHolmGame) {
-    // 3-5-7: filter by both hand_number and round_number for precise matching
-    roundQuery = roundQuery
-      .eq('hand_number', handNumber)
-      .eq('round_number', roundNumber);
-  } else {
-    // Holm: order by hand/round to get the latest
-    roundQuery = roundQuery
-      // CRITICAL: NULLS LAST so null hand_number/round_number rows don't win DESC ordering.
-      .order('hand_number', { ascending: false, nullsFirst: false })
-      .order('round_number', { ascending: false, nullsFirst: false })
-      .limit(1);
-  }
-  
-  const { data: currentRound } = await roundQuery.maybeSingle();
+    .select('id, current_turn_position, community_cards')
+    .eq('game_id', gameId)
+    .order('round_number', { ascending: false })
+    .limit(1)
+    .single();
   
   if (!currentRound) {
-    console.log('[BOT DECISIONS] No current round found for hand', handNumber, 'round', roundNumber);
+    console.log('[BOT DECISIONS] No current round found');
     return false;
   }
-  
-  console.log('[BOT DECISIONS] Found round:', { id: currentRound.id, hand: currentRound.hand_number, round: currentRound.round_number });
   
   // For Holm games, use passed turn position for accuracy (avoids stale DB reads)
   const effectiveTurnPosition = passedTurnPosition ?? currentRound.current_turn_position;
