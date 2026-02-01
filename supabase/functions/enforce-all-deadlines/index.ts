@@ -1200,37 +1200,36 @@ serve(async (req) => {
 
         // ============= STALE IN_PROGRESS CLEANUP =============
         if (game.status === 'in_progress') {
-          // CRITICAL: For 3-5-7, use composite key (hand_number + round_number) or created_at fallback
-          // round_number alone is ambiguous since Hand 1 Round 1 and Hand 2 Round 1 share the same number
+          // CRITICAL: ALL round lookups MUST be scoped by dealer_game_id to prevent cross-game contamination.
+          // round_number cycles (1,2,3) in 3-5-7 and round_number=1 repeats for each Holm hand.
           let currentRound: any = null;
-          if (game.game_type === '3-5-7' && game.total_hands && game.current_round) {
+          const dealerGameId = (game as any).current_game_uuid;
+          
+          if (game.game_type === '3-5-7' && game.total_hands && game.current_round && dealerGameId) {
+            // 3-5-7: Use triple-key scoping (dealer_game_id, hand_number, round_number)
             const { data } = await supabase
               .from('rounds')
               .select('*')
               .eq('game_id', game.id)
+              .eq('dealer_game_id', dealerGameId)
               .eq('hand_number', game.total_hands)
               .eq('round_number', game.current_round)
               .maybeSingle();
             currentRound = data;
-          } else {
-            // Non-3-5-7 games: scope to dealer_game_id and order by hand_number/round_number
-            const dealerGameId = (game as any).current_game_uuid;
-            const roundQuery = supabase
+          } else if (dealerGameId) {
+            // All other games: scope to dealer_game_id and order by hand_number/round_number
+            const { data } = await supabase
               .from('rounds')
               .select('*')
-              .eq('game_id', game.id);
-              
-            const scopedQuery = dealerGameId 
-              ? roundQuery.eq('dealer_game_id', dealerGameId)
-              : roundQuery;
-              
-            const { data } = await scopedQuery
+              .eq('game_id', game.id)
+              .eq('dealer_game_id', dealerGameId)
               .order('hand_number', { ascending: false })
               .order('round_number', { ascending: false })
               .limit(1)
               .maybeSingle();
             currentRound = data;
           }
+          // If no dealer_game_id, skip - cannot safely identify round
           
           const hasDecisionDeadline = !!currentRound?.decision_deadline;
           const deadlineTime = hasDecisionDeadline ? new Date(currentRound.decision_deadline).getTime() : 0;
@@ -1359,16 +1358,24 @@ serve(async (req) => {
                 const timerSeconds = (gameDefaults as any)?.decision_timer_seconds ?? 30;
                 const decisionDeadline = new Date(Date.now() + timerSeconds * 1000).toISOString();
                 
-                // Create new round
+                // Create new round - must scope to dealer_game_id
+                const dealerGameIdHolm = (game as any).current_game_uuid;
                 const newRoundNumber = (game.current_round || 0) + 1;
+                const newHandNumber = (game.total_hands || 0) + 1;
                 
-                // Delete any existing round with same number
-                const { data: existingRound } = await supabase
-                  .from('rounds')
-                  .select('id')
-                  .eq('game_id', game.id)
-                  .eq('round_number', newRoundNumber)
-                  .maybeSingle();
+                // CRITICAL: Scope existing round check to dealer_game_id to prevent cross-game contamination
+                let existingRound: any = null;
+                if (dealerGameIdHolm) {
+                  const { data } = await supabase
+                    .from('rounds')
+                    .select('id')
+                    .eq('game_id', game.id)
+                    .eq('dealer_game_id', dealerGameIdHolm)
+                    .eq('hand_number', newHandNumber)
+                    .eq('round_number', newRoundNumber)
+                    .maybeSingle();
+                  existingRound = data;
+                }
                 
                 if (existingRound?.id) {
                   await supabase.from('player_cards').delete().eq('round_id', existingRound.id);
@@ -1392,8 +1399,9 @@ serve(async (req) => {
                   .from('rounds')
                   .insert({
                     game_id: game.id,
+                    dealer_game_id: dealerGameIdHolm, // CRITICAL: Always set dealer_game_id
                     round_number: newRoundNumber,
-                    hand_number: (game.total_hands || 0) + 1,
+                    hand_number: newHandNumber,
                     cards_dealt: 4,
                     pot: game.pot || 0,
                     status: 'betting',
@@ -1835,12 +1843,22 @@ serve(async (req) => {
         // This prevents the cron from racing ahead of client animations
         if ((game.status === 'in_progress' || game.status === 'betting') && game.all_decisions_in === true && game.game_type === 'holm-game') {
           
-          const { data: currentRound } = await supabase
-            .from('rounds')
-            .select('*')
-            .eq('game_id', game.id)
-            .eq('round_number', game.current_round ?? 0)
-            .maybeSingle();
+          // CRITICAL: Scope to dealer_game_id and order by hand_number to get the active Holm round
+          const dealerGameIdShowdown = (game as any).current_game_uuid;
+          let currentRound: any = null;
+          
+          if (dealerGameIdShowdown) {
+            const { data } = await supabase
+              .from('rounds')
+              .select('*')
+              .eq('game_id', game.id)
+              .eq('dealer_game_id', dealerGameIdShowdown)
+              .order('hand_number', { ascending: false })
+              .order('round_number', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            currentRound = data;
+          }
           
           // GRACE PERIOD CHECK: Only process if either:
           // 1. No decision_deadline exists (already processed/cleared)
