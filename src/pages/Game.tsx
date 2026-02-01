@@ -6461,7 +6461,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })()}
 
       </div>
-
       {/* Player click dialog for host */}
       <PlayerClickDialog
         open={showPlayerOptions}
