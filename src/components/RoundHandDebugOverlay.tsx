@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ScreenRecorderButton } from "@/components/ScreenRecorderButton";
 
 type Snapshot = {
   ts: string;
@@ -234,31 +235,36 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
   // Inline mode: fixed floating button in top-left corner, expands upward
   if (inline) {
     return (
-      <div className="fixed bottom-28 left-2 z-[200]">
-        <button
-          onClick={() => {
-            setOpen((v) => !v);
-            if (!open) {
-              fetchSnapshot();
-              setAutoRefresh(true);
-            } else {
-              setAutoRefresh(false);
-            }
-          }}
-          className={cn(
-            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] transition-colors shadow-lg",
-            open 
-              ? "bg-primary text-primary-foreground" 
-              : "bg-background/95 backdrop-blur border border-border text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Bug className="h-3 w-3" />
-          <span>Debug</span>
-          {mismatch && !open && <span className="text-destructive font-bold">!</span>}
-        </button>
+      <div className="fixed bottom-28 left-2 z-[200] flex items-center gap-2">
+        {import.meta.env.DEV && (
+          <ScreenRecorderButton enabled className="h-7 px-2 text-[10px]" />
+        )}
 
-        {open && (
-          <div className="absolute bottom-full left-0 mb-1 w-56 bg-background/95 backdrop-blur border border-border rounded-lg p-2 text-[10px] space-y-2 shadow-xl">
+        <div className="relative">
+          <button
+            onClick={() => {
+              setOpen((v) => !v);
+              if (!open) {
+                fetchSnapshot();
+                setAutoRefresh(true);
+              } else {
+                setAutoRefresh(false);
+              }
+            }}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] transition-colors shadow-lg",
+              open
+                ? "bg-primary text-primary-foreground"
+                : "bg-background/95 backdrop-blur border border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Bug className="h-3 w-3" />
+            <span>Debug</span>
+            {mismatch && !open && <span className="text-destructive font-bold">!</span>}
+          </button>
+
+          {open && (
+            <div className="absolute bottom-full left-0 mb-1 w-56 bg-background/95 backdrop-blur border border-border rounded-lg p-2 text-[10px] space-y-2 shadow-xl">
             <div className="flex items-center justify-between gap-2 border-b border-border pb-1">
               <span className="text-muted-foreground">
                 {snapshot?.ts ? new Date(snapshot.ts).toLocaleTimeString() : "..."}
@@ -364,8 +370,9 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
             ) : (
               <div className="text-center text-muted-foreground py-2">Loading…</div>
             )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -374,21 +381,24 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
   return (
     <div className="fixed bottom-4 left-4 z-[210] max-w-sm">
       <div className="flex flex-col">
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full justify-between gap-2 bg-background/95 backdrop-blur border-muted-foreground/30"
-          onClick={() => {
-            setOpen((v) => !v);
-            if (!open) fetchSnapshot();
-          }}
-        >
-          <span className="flex items-center gap-2">
-            <Bug className="h-4 w-4" />
-            Round/Hand Debug
-          </span>
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          {import.meta.env.DEV && <ScreenRecorderButton enabled className="shrink-0" />}
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 justify-between gap-2 bg-background/95 backdrop-blur border-muted-foreground/30"
+            onClick={() => {
+              setOpen((v) => !v);
+              if (!open) fetchSnapshot();
+            }}
+          >
+            <span className="flex items-center gap-2">
+              <Bug className="h-4 w-4" />
+              Round/Hand Debug
+            </span>
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </div>
 
         {open && (
           <div className="mt-2 bg-background/95 backdrop-blur border border-border rounded-lg p-3 space-y-3 text-xs">
