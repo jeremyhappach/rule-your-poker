@@ -523,29 +523,12 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   const timerSeconds = gameDefaults?.decision_timer_seconds ?? 30;
   console.log('[HOLM] Using decision timer:', timerSeconds, 'seconds');
 
-  // For Holm, each dealer game starts at round_number=1
-  // Within a Holm game, round_number increments for each new hand (tie/rollover)
-  let nextRoundNumber: number;
+  // ARCHITECTURAL STANDARD: Holm ALWAYS uses round_number=1.
+  // Hand iteration is tracked via hand_number, NOT round_number.
+  // This differs from 3-5-7 where round_number cycles 1/2/3 within a single hand.
+  const nextRoundNumber = 1;
   
-  if (effectiveIsFirstHand) {
-    // First hand of this dealer game = round 1
-    nextRoundNumber = 1;
-    console.log('[HOLM] FIRST HAND - starting at round_number=1');
-  } else {
-    // Find max round_number within THIS dealer game only
-    const { data: maxRoundData } = await supabase
-      .from('rounds')
-      .select('round_number')
-      .eq('dealer_game_id', dealerGameId)
-      .order('round_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    nextRoundNumber = (maxRoundData?.round_number || 0) + 1;
-    console.log('[HOLM] Subsequent round - next round_number:', nextRoundNumber);
-  }
-  
-  console.log('[HOLM] Creating new round:', nextRoundNumber, 'for dealer_game:', dealerGameId);
+  console.log('[HOLM] Creating round with round_number=1 (always), hand_number:', handNumber, 'for dealer_game:', dealerGameId);
 
   // Deal fresh cards
   const deadline = new Date(Date.now() + timerSeconds * 1000);
