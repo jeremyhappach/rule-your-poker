@@ -1941,7 +1941,9 @@ serve(async (req) => {
               continue;
             }
           
-            if (currentRound.status === 'betting') {
+            // CRITICAL: Process both 'betting' AND 'processing' status rounds.
+            // 'processing' status means a client claimed the round but crashed before completing showdown.
+            if (currentRound.status === 'betting' || currentRound.status === 'processing') {
             const { data: players } = await supabase
               .from('players')
               .select('*')
