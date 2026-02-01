@@ -1015,6 +1015,7 @@ export type Database = {
           community_cards: Json | null
           community_cards_revealed: number | null
           created_at: string
+          cribbage_state: Json | null
           current_turn_position: number | null
           dealer_game_id: string | null
           decision_deadline: string | null
@@ -1035,6 +1036,7 @@ export type Database = {
           community_cards?: Json | null
           community_cards_revealed?: number | null
           created_at?: string
+          cribbage_state?: Json | null
           current_turn_position?: number | null
           dealer_game_id?: string | null
           decision_deadline?: string | null
@@ -1055,6 +1057,7 @@ export type Database = {
           community_cards?: Json | null
           community_cards_revealed?: number | null
           created_at?: string
+          cribbage_state?: Json | null
           current_turn_position?: number | null
           dealer_game_id?: string | null
           decision_deadline?: string | null

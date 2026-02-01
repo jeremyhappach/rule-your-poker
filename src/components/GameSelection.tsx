@@ -36,7 +36,6 @@ export const GameSelection = ({
       description: "Pegging to 121",
       enabled: true,
       maxPlayers: 4,
-      comingSoon: true,
     },
     {
       id: "sports-trivia",
@@ -80,10 +79,6 @@ export const GameSelection = ({
   };
 
   const handleGameSelect = (game: typeof cardGames[0]) => {
-    if (game.comingSoon) {
-      toast.info("Coming soon!");
-      return;
-    }
     if (!game.enabled) {
       return;
     }
@@ -155,7 +150,7 @@ export const GameSelection = ({
                     <button
                       key={game.id}
                       onClick={() => handleGameSelect(game)}
-                      disabled={disabled && !game.comingSoon}
+                      disabled={disabled}
                       className={`
                         relative p-4 rounded-lg border-2 transition-all text-left
                         ${disabled
@@ -167,13 +162,6 @@ export const GameSelection = ({
                       {!game.enabled && (
                         <div className="absolute top-2 right-2">
                           <Lock className="w-4 h-4 text-gray-400" />
-                        </div>
-                      )}
-                      {game.comingSoon && (
-                        <div className="absolute top-1 right-1">
-                          <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-medium">
-                            SOON
-                          </span>
                         </div>
                       )}
                       <div className="space-y-1">

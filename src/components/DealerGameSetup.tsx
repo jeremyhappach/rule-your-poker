@@ -1079,15 +1079,10 @@ export const DealerGameSetup = ({
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return isDiceGame(gameType) || gameType === 'sports-trivia';
+    return isDiceGame(gameType) || gameType === 'sports-trivia' || gameType === 'cribbage';
   };
 
-  const handleGameSelect = async (gameType: string, comingSoon?: boolean) => {
-    if (comingSoon) {
-      toast.info("Coming soon!");
-      return;
-    }
-    
+  const handleGameSelect = async (gameType: string) => {
     // Check player count restrictions
     const gameInfo = allGames.find(g => g.id === gameType);
     if (gameInfo?.maxPlayers && activePlayerCount > gameInfo.maxPlayers) {
@@ -1098,11 +1093,11 @@ export const DealerGameSetup = ({
     setSelectedGameType(gameType);
     setSelectionStep('config');
     
-    // For card games, load session config or defaults
+    // For card games with complex config, load session config or defaults
     if (gameType === 'holm-game' || gameType === '3-5-7') {
       handleGameTypeChange(gameType);
-    } else if (isDiceGame(gameType) || gameType === 'sports-trivia') {
-      // Fetch defaults for dice/trivia games
+    } else if (isSimpleAnteGame(gameType)) {
+      // Fetch defaults for simple ante games (dice, trivia, cribbage)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
         .select('ante_amount')
@@ -1111,16 +1106,9 @@ export const DealerGameSetup = ({
       
       if (gameDefaults) {
         setAnteAmount(String(gameDefaults.ante_amount));
-      } else if (gameType !== 'sports-trivia') {
-        // Fall back to horses defaults for other dice games
-        const { data: horsesDefaults } = await supabase
-          .from('game_defaults')
-          .select('ante_amount')
-          .eq('game_type', 'horses')
-          .single();
-        if (horsesDefaults) {
-          setAnteAmount(String(horsesDefaults.ante_amount));
-        }
+      } else {
+        // Fall back to default ante
+        setAnteAmount('5');
       }
     }
   };
@@ -1130,7 +1118,7 @@ export const DealerGameSetup = ({
     // Card Games
     { id: 'holm-game', name: 'Holm', description: '4 cards vs community + Chucky', category: 'cards', enabled: true },
     { id: '3-5-7', name: '3-5-7', description: 'Classic wild card poker', category: 'cards', enabled: true },
-    { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4, comingSoon: true },
+    { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4 },
     { id: 'sports-trivia', name: 'Trivia', description: 'Answer trivia, win the pot', category: 'cards', enabled: true },
     // Dice Games
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
@@ -1345,8 +1333,8 @@ export const DealerGameSetup = ({
                     return (
                       <button
                         key={game.id}
-                        onClick={() => handleGameSelect(game.id, game.comingSoon)}
-                        disabled={disabled && !game.comingSoon}
+                        onClick={() => handleGameSelect(game.id)}
+                        disabled={disabled}
                         className={`
                           relative p-4 rounded-lg border-2 transition-all text-left
                           ${disabled
@@ -1358,13 +1346,6 @@ export const DealerGameSetup = ({
                         {!game.enabled && (
                           <div className="absolute top-2 right-2">
                             <Lock className="w-4 h-4 text-gray-400" />
-                          </div>
-                        )}
-                        {game.comingSoon && (
-                          <div className="absolute top-1 right-1">
-                            <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded font-medium">
-                              SOON
-                            </span>
                           </div>
                         )}
                         <div className="space-y-1">
@@ -1444,13 +1425,16 @@ export const DealerGameSetup = ({
       const isSCC = selectedGameType === 'ship-captain-crew';
       const isHorses = selectedGameType === 'horses';
       const isTrivia = selectedGameType === 'sports-trivia';
+      const isCribbage = selectedGameType === 'cribbage';
       
-      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : 'Trivia';
+      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isTrivia ? 'Trivia' : 'Cribbage';
       const gameRulesText = isSCC 
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
-          : 'Answer trivia questions • Win the pot';
+          : isTrivia
+            ? 'Answer trivia questions • Win the pot'
+            : 'First to 121 • Skunk (2x) if loser < 91 • Double-skunk (3x) if < 61';
       
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
