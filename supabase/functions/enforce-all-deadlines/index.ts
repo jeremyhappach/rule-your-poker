@@ -290,6 +290,45 @@ serve(async (req) => {
           continue;
         }
 
+        // ============= ACTIVE HUMAN PLAYER GUARD =============
+        // CRITICAL: This guard prevents the cron from racing with active human players.
+        // When humans are connected and playing, ALL game-affecting operations are handled
+        // by the client. The cron should ONLY take over for truly abandoned/stale games.
+        //
+        // The guard applies to:
+        // - Showdown processing (Holm, 3-5-7, Dice games)
+        // - Round/hand transitions
+        // - Game over progression
+        // - Dealer rotation
+        // - Any operation that modifies game state during normal gameplay
+        //
+        // The guard does NOT block:
+        // - Truly stale cleanups (2h+ no activity)
+        // - Bot-only game detection (no humans at all)
+        // - Session ended transitions for abandoned games
+        //
+        const { data: activeHumanPlayers } = await supabase
+          .from('players')
+          .select('id')
+          .eq('game_id', game.id)
+          .eq('is_bot', false)
+          .eq('sitting_out', false)
+          .eq('status', 'active');
+        
+        const hasActiveHumans = (activeHumanPlayers?.length || 0) > 0;
+        
+        // For games with active humans, we ONLY allow stale cleanup operations (2h+ threshold).
+        // All other game-affecting operations are skipped to let the client handle them.
+        const STALE_CLEANUP_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
+        const isStaleEnoughForCleanup = msSinceUpdate > STALE_CLEANUP_THRESHOLD_MS;
+        
+        if (hasActiveHumans && !isStaleEnoughForCleanup) {
+          // Active human players are present and game is not stale - skip ALL cron operations
+          console.log('[CRON-ENFORCE] 🛡️ ACTIVE HUMAN GUARD: Skipping game', game.id, 'type:', game.game_type, 'status:', game.status, 'activeHumans:', activeHumanPlayers?.length);
+          results.push({ gameId: game.id, status: game.status, result: 'skipped_active_humans' });
+          continue;
+        }
+
         // ============= CONFIG DEADLINE ENFORCEMENT (game_selection/configuring/dealer_selection) =============
         // CRITICAL: Backup enforcement when no clients are connected during dealer setup phase.
         if ((game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
