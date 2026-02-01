@@ -607,18 +607,16 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   }
   
   // Single batch insert for all player cards
-  // TEMPORARY DIAGNOSTIC: Disabled to test if player_cards writes cause UI sticking
   if (playerCardInserts.length > 0) {
-    console.log('[HOLM] 🔴 DIAGNOSTIC: Skipping player_cards insert (', playerCardInserts.length, 'cards)');
-    // const { error: cardsError } = await supabase
-    //   .from('player_cards')
-    //   .insert(playerCardInserts);
-    // 
-    // if (cardsError) {
-    //   console.error('[HOLM] Error batch inserting cards:', cardsError);
-    //   throw new Error(`Failed to deal cards: ${cardsError.message}`);
-    // }
-    // console.log('[HOLM] Batch dealt cards to', playerCardInserts.length, 'players');
+    const { error: cardsError } = await supabase
+      .from('player_cards')
+      .insert(playerCardInserts);
+    
+    if (cardsError) {
+      console.error('[HOLM] Error batch inserting cards:', cardsError);
+      throw new Error(`Failed to deal cards: ${cardsError.message}`);
+    }
+    console.log('[HOLM] Batch dealt cards to', playerCardInserts.length, 'players');
   }
 
   // Update game status AND current_round for Holm games
