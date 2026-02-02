@@ -80,12 +80,10 @@ export const CribbageFeltContent = ({
             <span className="text-[10px] text-white/60">Count</span>
             <span className="text-2xl font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>
           </div>
-          {/* Played cards - larger size */}
-          <div className="flex gap-1 justify-center">
+          {/* Played cards - larger size, overlapping */}
+          <div className="flex -space-x-4 justify-center">
             {cribbageState.pegging.playedCards.slice(sequenceStartIndex).map((pc, i) => (
-              <div key={i} className="relative">
-                <CribbagePlayingCard card={pc.card} size="md" />
-              </div>
+              <CribbagePlayingCard key={i} card={pc.card} size="md" />
             ))}
             {cribbageState.pegging.playedCards.slice(sequenceStartIndex).length === 0 && (
               <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
