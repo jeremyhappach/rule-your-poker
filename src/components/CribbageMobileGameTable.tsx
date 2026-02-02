@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import confetti from 'canvas-confetti';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { 
   initializeCribbageGame, 
@@ -17,6 +18,9 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { CribbageHighCardSelection } from './CribbageHighCardSelection';
+import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
+import { CribbageWinnerAnnouncement } from './CribbageWinnerAnnouncement';
+import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
@@ -116,6 +120,21 @@ export const CribbageMobileGameTable = ({
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
   const [countingTargetLabel, setCountingTargetLabel] = useState<string | null>(null);
 
+  // Win sequence state
+  type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
+  const [winSequencePhase, setWinSequencePhase] = useState<WinSequencePhase>('idle');
+  const [winSequenceData, setWinSequenceData] = useState<{
+    winnerId: string;
+    winnerName: string;
+    multiplier: number;
+    amountPerLoser: number;
+    totalWinnings: number;
+    loserIds: string[];
+  } | null>(null);
+  const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const winSequenceFiredRef = useRef<string | null>(null);
+
   // Event logging context (fire-and-forget)
   const eventCtx = useCribbageEventContext(roundId);
 
@@ -202,6 +221,49 @@ export const CribbageMobileGameTable = ({
     setCribbageState(newState);
   }, [players, anteAmount, roundId]);
 
+  // Trigger win sequence when game completes
+  const triggerWinSequence = useCallback((state: CribbageState) => {
+    if (!state.winnerPlayerId || winSequenceFiredRef.current === roundId) return;
+    winSequenceFiredRef.current = roundId;
+
+    const winnerId = state.winnerPlayerId;
+    const winnerPlayer = players.find(p => p.id === winnerId);
+    const winnerName = winnerPlayer 
+      ? getDisplayName(players, winnerPlayer, winnerPlayer.profiles?.username || 'Player')
+      : 'Player';
+
+    const multiplier = state.payoutMultiplier || 1;
+    const loserIds = players.filter(p => p.id !== winnerId).map(p => p.id);
+    const amountPerLoser = anteAmount * multiplier;
+    const totalWinnings = amountPerLoser * loserIds.length;
+
+    setWinSequenceData({
+      winnerId,
+      winnerName,
+      multiplier,
+      amountPerLoser,
+      totalWinnings,
+      loserIds,
+    });
+
+    // Fire confetti only for the winner
+    if (currentPlayerId === winnerId) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'],
+      });
+    }
+
+    // Start sequence - skunk overlay if applicable, otherwise straight to announcement
+    if (multiplier >= 2) {
+      setWinSequencePhase('skunk');
+    } else {
+      setWinSequencePhase('announcement');
+    }
+  }, [players, anteAmount, currentPlayerId, roundId]);
+
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
@@ -219,8 +281,9 @@ export const CribbageMobileGameTable = ({
           if (newState.cribbage_state) {
             setCribbageState(newState.cribbage_state);
             
+            // Trigger win sequence instead of immediate game complete
             if (newState.cribbage_state.phase === 'complete' && newState.cribbage_state.winnerPlayerId) {
-              onGameComplete();
+              triggerWinSequence(newState.cribbage_state);
             }
           }
         }
@@ -230,7 +293,14 @@ export const CribbageMobileGameTable = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roundId, onGameComplete]);
+  }, [roundId, triggerWinSequence]);
+
+  // Also check for complete phase on initial load
+  useEffect(() => {
+    if (cribbageState?.phase === 'complete' && cribbageState.winnerPlayerId && winSequencePhase === 'idle') {
+      triggerWinSequence(cribbageState);
+    }
+  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, winSequencePhase, triggerWinSequence]);
 
   // Detect hand transitions to prevent stale card flash
   useEffect(() => {
@@ -483,6 +553,103 @@ export const CribbageMobileGameTable = ({
     return getDisplayName(players, player, player.profiles?.username || 'Unknown');
   };
 
+  // Win sequence phase handlers
+  const handleSkunkComplete = useCallback(() => {
+    setWinSequencePhase('announcement');
+  }, []);
+
+  const handleAnnouncementComplete = useCallback(() => {
+    // Compute chip animation positions
+    if (!winSequenceData || !tableContainerRef.current) {
+      setWinSequencePhase('complete');
+      onGameComplete();
+      return;
+    }
+
+    const container = tableContainerRef.current;
+    const rect = container.getBoundingClientRect();
+
+    // Winner position - find the winner player's chip stack position
+    const winnerPlayer = players.find(p => p.id === winSequenceData.winnerId);
+    const isWinnerCurrentPlayer = winnerPlayer?.user_id === currentUserId;
+
+    // Calculate positions based on player layout
+    // Winner at bottom center if current player, otherwise in opponent area
+    const winnerPos = isWinnerCurrentPlayer
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 }
+      : { x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 };
+
+    // Loser positions
+    const loserPositions = winSequenceData.loserIds.map((loserId, index) => {
+      const loserPlayer = players.find(p => p.id === loserId);
+      const isLoserCurrentPlayer = loserPlayer?.user_id === currentUserId;
+      
+      if (isLoserCurrentPlayer) {
+        return {
+          playerId: loserId,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height * 0.85,
+        };
+      }
+      
+      // Opponent positions - stack vertically on left side
+      return {
+        playerId: loserId,
+        x: rect.left + rect.width * 0.15,
+        y: rect.top + rect.height * (0.2 + index * 0.15),
+      };
+    });
+
+    setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
+    setWinSequencePhase('chips');
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId]);
+
+  const handleChipAnimationEnd = useCallback(() => {
+    setWinSequencePhase('complete');
+    // Small delay before transitioning to next game
+    setTimeout(() => {
+      onGameComplete();
+    }, 500);
+  }, [onGameComplete]);
+
+  // Compute chip animation positions for render
+  const chipAnimationPositions = useMemo(() => {
+    if (!winSequenceData || !tableContainerRef.current) {
+      return { winner: { x: 0, y: 0 }, losers: [] as { playerId: string; x: number; y: number }[] };
+    }
+
+    const container = tableContainerRef.current;
+    const rect = container.getBoundingClientRect();
+
+    const winnerPlayer = players.find(p => p.id === winSequenceData.winnerId);
+    const isWinnerCurrentPlayer = winnerPlayer?.user_id === currentUserId;
+
+    const winnerPos = isWinnerCurrentPlayer
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 }
+      : { x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 };
+
+    const loserPositions = winSequenceData.loserIds.map((loserId, index) => {
+      const loserPlayer = players.find(p => p.id === loserId);
+      const isLoserCurrentPlayer = loserPlayer?.user_id === currentUserId;
+      
+      if (isLoserCurrentPlayer) {
+        return {
+          playerId: loserId,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height * 0.85,
+        };
+      }
+      
+      return {
+        playerId: loserId,
+        x: rect.left + rect.width * 0.15,
+        y: rect.top + rect.height * (0.2 + index * 0.15),
+      };
+    });
+
+    return { winner: winnerPos, losers: loserPositions };
+  }, [winSequenceData, players, currentUserId]);
+
   // Show high card selection if needed
   if (showHighCardSelection) {
     return (
@@ -561,8 +728,36 @@ export const CribbageMobileGameTable = ({
   const isCribDealer = (playerId: string) => cribbageState.dealerPlayerId === playerId;
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
+      {/* Win Sequence Overlays - Portaled above everything */}
+      {winSequencePhase === 'skunk' && winSequenceData && (
+        <CribbageSkunkOverlay
+          multiplier={winSequenceData.multiplier}
+          onComplete={handleSkunkComplete}
+        />
+      )}
+
+      {winSequencePhase === 'announcement' && winSequenceData && (
+        <CribbageWinnerAnnouncement
+          winnerName={winSequenceData.winnerName}
+          multiplier={winSequenceData.multiplier}
+          totalWinnings={winSequenceData.totalWinnings}
+          onComplete={handleAnnouncementComplete}
+        />
+      )}
+
+      {winSequencePhase === 'chips' && winSequenceData && (
+        <CribbageChipTransferAnimation
+          triggerId={chipAnimationTriggerId}
+          amount={winSequenceData.amountPerLoser}
+          winnerPosition={chipAnimationPositions.winner}
+          loserPositions={chipAnimationPositions.losers}
+          onAnimationEnd={handleChipAnimationEnd}
+        />
+      )}
+
       {/* Felt Area - Upper Section with circular table */}
       <div 
+        ref={tableContainerRef}
         className="relative flex items-center justify-center"
         style={{ 
           height: '55vh',
