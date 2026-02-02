@@ -98,10 +98,9 @@ export const CribbageFeltContent = ({
           </div>
         )}
 
-        {/* Crib - Face down */}
+        {/* Crib - Face down, no label */}
         {cribbageState.crib.length > 0 && cribbageState.phase !== 'counting' && (
           <div className="flex flex-col items-center">
-            <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
             <div className="relative">
               {/* Stack effect */}
               <div className="absolute top-0.5 left-0.5 w-6 h-9 bg-slate-700 rounded border border-slate-600" />

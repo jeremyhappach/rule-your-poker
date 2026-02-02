@@ -350,8 +350,8 @@ export const CribbageMobileGameTable = ({
           />
         </div>
 
-        {/* Opponent positions around the top of the table */}
-        <div className="absolute top-[8%] left-0 right-0 flex justify-center gap-8 px-4 z-30">
+        {/* Opponent positions - upper left to avoid obscuring header */}
+        <div className="absolute top-4 left-4 flex flex-col gap-2 z-30">
           {opponents.map(opponent => {
             const oppState = cribbageState.playerStates[opponent.id];
             const isOppTurn = cribbageState.pegging.currentTurnPlayerId === opponent.id;
@@ -360,44 +360,35 @@ export const CribbageMobileGameTable = ({
             return (
               <div 
                 key={opponent.id}
-                className={cn(
-                  "flex flex-col items-center gap-1",
-                )}
+                className="flex items-center gap-2"
               >
-                {/* Opponent name and chip stack */}
-                <div className={cn(
-                  "flex flex-col items-center px-2 py-1 rounded-lg",
-                  isOppTurn && "ring-2 ring-poker-gold"
-                )}>
-                  <div className="relative">
-                    {/* Chip circle */}
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex flex-col items-center justify-center border-2",
-                      isOppTurn ? "border-poker-gold bg-white animate-pulse" : "border-slate-600/50 bg-white"
-                    )}>
-                      <span className="text-sm font-bold text-slate-800">
-                        ${formatChipValue(opponent.chips)}
-                      </span>
-                    </div>
-                    {/* Dealer button */}
-                    {isDealerPlayer && (
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center">
-                        <span className="text-white font-bold text-[10px]">D</span>
-                      </div>
-                    )}
+                {/* Chip circle - no outer box */}
+                <div className="relative">
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center border-2",
+                    isOppTurn ? "border-poker-gold bg-white animate-pulse" : "border-white/40 bg-white"
+                  )}>
+                    <span className="text-xs font-bold text-slate-800">
+                      ${formatChipValue(opponent.chips)}
+                    </span>
                   </div>
-                  <span className="text-xs text-white/80 mt-1 truncate max-w-[70px]">
-                    {opponent.profiles?.username || 'Player'}
-                  </span>
-                  <span className="text-xs text-poker-gold font-bold">
-                    {oppState?.pegScore || 0} pts
-                  </span>
+                  {/* Dealer button */}
+                  {isDealerPlayer && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
+                      <span className="text-white font-bold text-[8px]">D</span>
+                    </div>
+                  )}
                 </div>
+                
+                {/* Name only - score is on peg board */}
+                <span className="text-xs text-white/80 truncate max-w-[60px]">
+                  {opponent.profiles?.username || 'Player'}
+                </span>
 
                 {/* Opponent's cards (face down) */}
-                <div className="flex gap-0.5">
+                <div className="flex -space-x-2">
                   {oppState?.hand.map((_, i) => (
-                    <div key={i} className="transform scale-75 origin-center">
+                    <div key={i} className="transform scale-50 origin-center">
                       <CribbagePlayingCard card={{ rank: 'A', suit: 'spades', value: 1 }} size="xs" faceDown />
                     </div>
                   ))}
