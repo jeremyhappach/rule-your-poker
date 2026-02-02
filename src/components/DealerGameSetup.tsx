@@ -44,6 +44,7 @@ interface DealerGameSetupProps {
   gameSetupTimerSeconds: number; // Cached at session start
   anteDecisionTimerSeconds: number; // Cached at session start
   activePlayerCount?: number; // Number of active players for game restrictions
+  isSuperuser?: boolean; // Whether the dealer is a superuser (enables dev-only games)
   onConfigComplete: () => void;
   onSessionEnd: () => void;
 }
@@ -74,6 +75,7 @@ export const DealerGameSetup = ({
   gameSetupTimerSeconds,
   anteDecisionTimerSeconds,
   activePlayerCount = 0,
+  isSuperuser = false,
   onConfigComplete,
   onSessionEnd,
 }: DealerGameSetupProps) => {
@@ -1131,6 +1133,8 @@ export const DealerGameSetup = ({
   const isGameDisabled = (game: typeof allGames[0]) => {
     if (!game.enabled) return true;
     if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
+    // Disable cribbage and trivia for non-superusers
+    if ((game.id === 'cribbage' || game.id === 'sports-trivia') && !isSuperuser) return true;
     return false;
   };
 
