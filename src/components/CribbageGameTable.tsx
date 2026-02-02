@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,21 @@ interface CribbageGameTableProps {
   onGameComplete: () => void;
 }
 
+/**
+ * Generate a unique hand key from cribbage state to detect hand transitions.
+ */
+function getHandKey(state: CribbageState | null): string {
+  if (!state) return '';
+  const firstPlayerId = state.turnOrder[0];
+  const firstPlayerHand = state.playerStates[firstPlayerId]?.hand || [];
+  const discarded = state.playerStates[firstPlayerId]?.discardedToCrib || [];
+  const handSig = [...firstPlayerHand, ...discarded]
+    .map(c => `${c.rank}${c.suit}`)
+    .sort()
+    .join(',');
+  return `${state.dealerPlayerId}-${handSig}`;
+}
+
 export const CribbageGameTable = ({
   gameId,
   roundId,
@@ -56,6 +71,11 @@ export const CribbageGameTable = ({
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Track hand key to detect hand transitions and prevent stale card flash
+  const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
+  const lastHandKeyRef = useRef<string>('');
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Event logging context (fire-and-forget)
   const eventCtx = useCribbageEventContext(roundId);
@@ -132,6 +152,23 @@ export const CribbageGameTable = ({
       supabase.removeChannel(channel);
     };
   }, [roundId, onGameComplete]);
+
+  // Detect hand transitions to prevent stale card flash
+  useEffect(() => {
+    if (!currentHandKey) return;
+    
+    // If hand key changed, we're transitioning to a new hand
+    if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
+      setIsTransitioning(true);
+      // Brief delay to allow the new state to fully settle
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    
+    lastHandKeyRef.current = currentHandKey;
+  }, [currentHandKey]);
 
   // Track when pegging sequence resets to clear old cards from display
   useEffect(() => {
@@ -464,9 +501,9 @@ export const CribbageGameTable = ({
         )}
       </div>
 
-      {/* Player's Hand */}
-      {myPlayerState && (
-        <Card className="bg-poker-felt-dark border-poker-gold/30">
+      {/* Player's Hand - hide during transitions to prevent stale card flash */}
+      {myPlayerState && !isTransitioning && (
+        <Card key={currentHandKey} className="bg-poker-felt-dark border-poker-gold/30">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-amber-200">Your Hand</span>
@@ -478,7 +515,7 @@ export const CribbageGameTable = ({
             <div className="flex gap-1 justify-center flex-wrap">
               {myPlayerState.hand.map((card, index) => (
                 <button
-                  key={index}
+                  key={`${card.rank}-${card.suit}-${index}`}
                   onClick={() => handleCardClick(index)}
                   disabled={isProcessing}
                   className={`transition-transform ${
