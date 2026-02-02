@@ -7,12 +7,14 @@ import {
   discardToCrib, 
   playPeggingCard, 
   callGo,
+  startNewHand,
 } from '@/lib/cribbageGameLogic';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
@@ -307,6 +309,24 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, currentPlayerId]);
 
+  // Handle counting phase completion - start a new hand
+  const handleCountingComplete = useCallback(async () => {
+    if (!cribbageState) return;
+    
+    try {
+      const playerIds = players.map(p => p.id);
+      const newState = startNewHand(cribbageState, playerIds);
+      await updateState(newState);
+      
+      // Reset sequence tracking for new hand
+      setSequenceStartIndex(0);
+      lastCountRef.current = 0;
+    } catch (err) {
+      console.error('[CRIBBAGE] Error starting new hand:', err);
+      toast.error('Failed to start new hand');
+    }
+  }, [cribbageState, players]);
+
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
     if (!player) return 'Unknown';
@@ -379,7 +399,7 @@ export const CribbageMobileGameTable = ({
               </p>
             </div>
 
-            {/* Peg Board - Center area */}
+            {/* Standard Felt Content (hidden during counting) */}
             <CribbageFeltContent
               cribbageState={cribbageState}
               players={players}
@@ -388,6 +408,16 @@ export const CribbageMobileGameTable = ({
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
             />
+
+            {/* Counting Phase Overlay */}
+            {cribbageState.phase === 'counting' && (
+              <CribbageCountingPhase
+                cribbageState={cribbageState}
+                players={players}
+                onCountingComplete={handleCountingComplete}
+                cardBackColors={cardBackColors}
+              />
+            )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
             {currentPlayer && isDealer(currentPlayerId) && (
@@ -455,11 +485,10 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Dealer Announcements Area - same styling as MobileGameTable */}
-        {(cribbageState.lastEvent ||
+        {/* Dealer Announcements Area - hidden during counting phase (handled by CribbageCountingPhase) */}
+        {cribbageState.phase !== 'counting' && (cribbageState.lastEvent ||
           cribbageState.phase === 'discarding' ||
-          cribbageState.phase === 'cutting' ||
-          cribbageState.phase === 'counting') && (
+          cribbageState.phase === 'cutting') && (
           <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center truncate">
@@ -467,9 +496,7 @@ export const CribbageMobileGameTable = ({
                   ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
                   : cribbageState.phase === 'discarding'
                     ? 'Discard to Crib'
-                    : cribbageState.phase === 'cutting'
-                      ? 'Cut Card'
-                      : 'Counting hands…'}
+                    : 'Cut Card'}
               </p>
             </div>
           </div>

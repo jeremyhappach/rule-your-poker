@@ -28,7 +28,32 @@ export const CribbageFeltContent = ({
   cardBackColors,
 }: CribbageFeltContentProps) => {
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
-  const showCribOnFelt = cribbageState.crib.length > 0 && cribbageState.phase !== 'counting';
+  
+  // Hide standard felt content during counting phase (CribbageCountingPhase takes over)
+  const isCountingPhase = cribbageState.phase === 'counting';
+  
+  // Show crib on felt only during discarding/cutting/pegging
+  const showCribOnFelt = cribbageState.crib.length > 0 && 
+    !isCountingPhase && 
+    cribbageState.phase !== 'complete';
+
+  // During counting, only show skunk indicator - everything else handled by CribbageCountingPhase
+  if (isCountingPhase) {
+    return (
+      <>
+        {/* Skunk indicator when active */}
+        {cribbageState.payoutMultiplier > 1 && (
+          <div className="absolute top-2 right-2 z-30">
+            <div className="bg-destructive px-2 py-1 rounded">
+              <p className="text-xs font-bold text-destructive-foreground">
+                {cribbageState.payoutMultiplier === 2 ? 'SKUNK!' : 'DOUBLE!'}
+              </p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -37,8 +62,8 @@ export const CribbageFeltContent = ({
       {/* Skunk indicator when active */}
       {cribbageState.payoutMultiplier > 1 && (
         <div className="absolute top-2 right-2 z-30">
-          <div className="bg-red-600 px-2 py-1 rounded">
-            <p className="text-xs font-bold text-white">
+          <div className="bg-destructive px-2 py-1 rounded">
+            <p className="text-xs font-bold text-destructive-foreground">
               {cribbageState.payoutMultiplier === 2 ? 'SKUNK!' : 'DOUBLE!'}
             </p>
           </div>

@@ -685,3 +685,42 @@ export function getPhaseDisplayName(phase: CribbagePhase): string {
     default: return phase;
   }
 }
+
+/**
+ * Start a new hand after counting is complete.
+ * Rotates the dealer to the next player and deals fresh cards.
+ */
+export function startNewHand(
+  state: CribbageState,
+  playerIds: string[]
+): CribbageState {
+  if (state.phase !== 'counting') {
+    throw new Error('Can only start new hand after counting phase');
+  }
+  
+  // Rotate dealer to next player in turn order
+  const currentDealerIndex = playerIds.indexOf(state.dealerPlayerId);
+  const nextDealerIndex = (currentDealerIndex + 1) % playerIds.length;
+  const nextDealerId = playerIds[nextDealerIndex];
+  
+  // Preserve scores and create new game state
+  const currentScores: Record<string, number> = {};
+  for (const [playerId, ps] of Object.entries(state.playerStates)) {
+    currentScores[playerId] = ps.pegScore;
+  }
+  
+  // Create new state with fresh deal
+  const newState = initializeCribbageGame(playerIds, nextDealerId, state.anteAmount);
+  
+  // Restore peg scores
+  for (const [playerId, score] of Object.entries(currentScores)) {
+    if (newState.playerStates[playerId]) {
+      newState.playerStates[playerId].pegScore = score;
+    }
+  }
+  
+  // Reset pot to 0 for new hand (no additional ante mid-game in cribbage)
+  newState.pot = 0;
+  
+  return newState;
+}
