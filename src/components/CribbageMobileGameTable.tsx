@@ -54,6 +54,11 @@ interface CribbageMobileGameTableProps {
   pot: number;
   isHost: boolean;
   onGameComplete: () => void;
+  // Dealer selection props (optional - used during cribbage_dealer_selection phase)
+  dealerSelectionCards?: DealerSelectionCard[];
+  dealerSelectionAnnouncement?: string | null;
+  dealerSelectionWinnerPosition?: number | null;
+  isDealerSelection?: boolean;
 }
 
 // Custom Spade icon for tab
@@ -99,6 +104,11 @@ export const CribbageMobileGameTable = ({
   pot,
   isHost,
   onGameComplete,
+  // Dealer selection props (from parent during cribbage_dealer_selection phase)
+  dealerSelectionCards: externalDealerSelectionCards,
+  dealerSelectionAnnouncement: externalDealerSelectionAnnouncement,
+  dealerSelectionWinnerPosition: externalDealerSelectionWinnerPosition,
+  isDealerSelection = false,
 }: CribbageMobileGameTableProps) => {
   const { getTableColors, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -118,6 +128,12 @@ export const CribbageMobileGameTable = ({
   const [highCardSyncedState, setHighCardSyncedState] = useState<DealerSelectionState | null>(null);
   const [highCardCards, setHighCardCards] = useState<DealerSelectionCard[]>([]);
   const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
+
+  // When in external dealer selection mode (cribbage_dealer_selection status), use external props
+  const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
+  const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
+  const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
+  const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
@@ -831,12 +847,12 @@ export const CribbageMobileGameTable = ({
     return { winner: winnerPos, losers: loserPositions };
   }, [winSequenceData, players, currentUserId]);
 
-  // Show high card selection if needed
-  if (showHighCardSelection) {
-    const latestRoundNum = highCardCards.length > 0
-      ? Math.max(...highCardCards.map(c => c.roundNumber))
+  // Show high card selection if needed (internal or external dealer selection mode)
+  if (effectiveShowHighCardSelection) {
+    const latestRoundNum = effectiveHighCardCards.length > 0
+      ? Math.max(...effectiveHighCardCards.map(c => c.roundNumber))
       : 1;
-    const visibleCards = highCardCards
+    const visibleCards = effectiveHighCardCards
       .filter(c => c.roundNumber === latestRoundNum)
       .sort((a, b) => a.position - b.position);
 
@@ -879,24 +895,26 @@ export const CribbageMobileGameTable = ({
                 />
               )}
 
-              {/* DB-synced high-card selection logic (renders nothing) */}
-              <HighCardDealerSelection
-                gameId={gameId}
-                players={players as any}
-                onComplete={handleHighCardComplete}
-                isHost={isHost}
-                allowBotDealers={true}
-                syncedState={highCardSyncedState}
-                onCardsUpdate={setHighCardCards}
-                onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
-                onWinnerPositionUpdate={setHighCardWinnerPosition}
-              />
+              {/* DB-synced high-card selection logic (renders nothing) - only run if NOT external mode */}
+              {!isDealerSelection && (
+                <HighCardDealerSelection
+                  gameId={gameId}
+                  players={players as any}
+                  onComplete={handleHighCardComplete}
+                  isHost={isHost}
+                  allowBotDealers={true}
+                  syncedState={highCardSyncedState}
+                  onCardsUpdate={setHighCardCards}
+                  onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
+                  onWinnerPositionUpdate={setHighCardWinnerPosition}
+                />
+              )}
 
               {/* Centered render of the current selection round */}
               <div className="absolute inset-0 flex items-center justify-center z-40">
                 <div className="flex gap-4 items-end">
                   {visibleCards.map((dc) => {
-                    const isWinner = dc.isWinner || (highCardWinnerPosition !== null && dc.position === highCardWinnerPosition);
+                    const isWinner = dc.isWinner || (effectiveHighCardWinnerPosition !== null && dc.position === effectiveHighCardWinnerPosition);
                     const dim = dc.isDimmed;
                     return (
                       <div
@@ -923,9 +941,9 @@ export const CribbageMobileGameTable = ({
         </div>
 
         {/* Announcement banner */}
-        {highCardAnnouncement && (
+        {effectiveHighCardAnnouncement && (
           <div className="bg-poker-gold/95 px-4 py-3 text-center">
-            <p className="text-sm font-bold text-slate-900">{highCardAnnouncement}</p>
+            <p className="text-sm font-bold text-slate-900">{effectiveHighCardAnnouncement}</p>
           </div>
         )}
 
@@ -935,8 +953,8 @@ export const CribbageMobileGameTable = ({
     );
   }
 
-  // Show loading only AFTER initial load attempt completes and still no state
-  if (!initialLoadComplete || !cribbageState || !currentPlayerId) {
+  // Show loading only AFTER initial load attempt completes and still no state (not in external dealer selection mode)
+  if (!isDealerSelection && (!initialLoadComplete || !cribbageState || !currentPlayerId)) {
     return (
       <div className="flex items-center justify-center h-full bg-background">
         <div className="text-poker-gold">Loading Cribbage...</div>
