@@ -26,6 +26,7 @@ interface CribbageCountingPhaseProps {
   players: Player[];
   onCountingComplete: () => void;
   cardBackColors: { color: string; darkColor: string };
+  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null) => void;
 }
 
 const COMBO_DELAY_MS = 2000; // 2 seconds per combo
@@ -36,6 +37,7 @@ export const CribbageCountingPhase = ({
   players,
   onCountingComplete,
   cardBackColors,
+  onAnnouncementChange,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
@@ -197,6 +199,13 @@ export const CribbageCountingPhase = ({
     }
   }, [currentTargetIndex, countingTargets.length, onCountingComplete]);
 
+  // Propagate announcements to parent for dealer announcement area
+  useEffect(() => {
+    if (onAnnouncementChange) {
+      onAnnouncementChange(announcement, currentTarget?.label || null);
+    }
+  }, [announcement, currentTarget?.label, onAnnouncementChange]);
+
   // Check if a card should be highlighted
   const isCardHighlighted = (card: CribbageCard) => {
     return highlightedCards.some(
@@ -222,15 +231,6 @@ export const CribbageCountingPhase = ({
           )}
           winningScore={CRIBBAGE_WINNING_SCORE}
         />
-      </div>
-
-      {/* Pulsing label */}
-      <div className="absolute top-[45%] left-1/2 -translate-x-1/2 z-40">
-        <div className="bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
-          <p className="text-white font-bold text-sm animate-pulse">
-            Scoring {currentTarget.label}
-          </p>
-        </div>
       </div>
 
       {/* Cards being scored - horizontal layout with cut card */}
@@ -267,17 +267,6 @@ export const CribbageCountingPhase = ({
           )}
         </div>
       </div>
-
-      {/* Dealer announcement banner */}
-      {announcement && (
-        <div className="absolute top-[75%] left-1/2 -translate-x-1/2 z-50 w-[80%] max-w-[300px]">
-          <div className="bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-            <p className="text-slate-900 font-bold text-base text-center">
-              {announcement}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -82,6 +82,10 @@ export const CribbageMobileGameTable = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
 
+  // Counting phase announcement state (propagated from CribbageCountingPhase)
+  const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
+  const [countingTargetLabel, setCountingTargetLabel] = useState<string | null>(null);
+
   // Event logging context (fire-and-forget)
   const eventCtx = useCribbageEventContext(roundId);
 
@@ -90,6 +94,12 @@ export const CribbageMobileGameTable = ({
   
   const [sequenceStartIndex, setSequenceStartIndex] = useState(0);
   const lastCountRef = useRef<number>(0);
+
+  // Callback for counting phase announcements
+  const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null) => {
+    setCountingAnnouncement(announcement);
+    setCountingTargetLabel(targetLabel);
+  }, []);
 
   // Initialize game state
   useEffect(() => {
@@ -471,6 +481,7 @@ export const CribbageMobileGameTable = ({
                 players={players}
                 onCountingComplete={handleCountingComplete}
                 cardBackColors={cardBackColors}
+                onAnnouncementChange={handleCountingAnnouncementChange}
               />
             )}
 
@@ -540,18 +551,22 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Dealer Announcements Area - hidden during counting phase (handled by CribbageCountingPhase) */}
-        {cribbageState.phase !== 'counting' && (cribbageState.lastEvent ||
+        {/* Dealer Announcements Area */}
+        {(cribbageState.phase === 'counting' || cribbageState.lastEvent ||
           cribbageState.phase === 'discarding' ||
           cribbageState.phase === 'cutting') && (
           <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {cribbageState.lastEvent
-                  ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
-                  : cribbageState.phase === 'discarding'
-                    ? 'Discard to Crib'
-                    : 'Cut Card'}
+              <p className="text-slate-900 font-bold text-xs text-center truncate">
+                {cribbageState.phase === 'counting'
+                  ? countingAnnouncement 
+                    ? `${countingTargetLabel}: ${countingAnnouncement}`
+                    : `Scoring ${countingTargetLabel || 'hands'}...`
+                  : cribbageState.lastEvent
+                    ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
+                    : cribbageState.phase === 'discarding'
+                      ? 'Discard to Crib'
+                      : 'Cut Card'}
               </p>
             </div>
           </div>

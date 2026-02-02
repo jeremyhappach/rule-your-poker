@@ -1,7 +1,10 @@
 import type { CribbagePlayerState } from '@/lib/cribbageTypes';
+import { getDisplayName } from '@/lib/botAlias';
 
 interface Player {
   id: string;
+  user_id: string;
+  is_bot?: boolean;
   profiles?: { username: string };
 }
 
@@ -33,10 +36,13 @@ export const CribbagePegBoard = ({
         const score = state?.pegScore || 0;
         const percentage = Math.min(100, (score / winningScore) * 100);
         
+        // Use bot alias for display name
+        const displayName = getDisplayName(players, player, player.profiles?.username || 'Player');
+        
         return (
           <div key={player.id} className="flex items-center gap-2">
             <span className="text-[10px] text-white/80 w-14 truncate">
-              {player.profiles?.username || 'Player'}
+              {displayName}
             </span>
             
             {/* White background for unfilled area */}
