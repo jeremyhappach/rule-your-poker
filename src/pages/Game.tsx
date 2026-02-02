@@ -2516,6 +2516,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // DEBUG: Log when rounds are unexpectedly empty during active game
   // Also trigger a refetch as safeguard
   const roundsRefetchRef = useRef<NodeJS.Timeout | null>(null);
+  const cribbageRoundBootstrapRef = useRef<string | null>(null);
   
   // REMOVED: The aggressive recovery refetch was causing race conditions
   // The rounds data comes from realtime subscriptions - trust them instead of triggering refetches
@@ -2623,6 +2624,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  // CRIBBAGE BOOTSTRAP (host-only):
+  // If we ever end up with a Cribbage game marked in_progress but *no* round rows,
+  // the Cribbage table will sit on "Loading Cribbage..." forever because roundId is empty.
+  // This should normally be created by DealerGameSetup -> startCribbageRound, but this guard
+  // makes the flow resilient without introducing polling.
+  useEffect(() => {
+    if (!gameId) return;
+    if (!game) return;
+    // Host-only guard (compute locally; avoid referencing isCreator which is declared later in the file)
+    const currentHost = (game as any)?.current_host as string | null | undefined;
+    const hostPlayer = [...players]
+      .filter((p) => !p.is_bot)
+      .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0];
+    const isHost = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
+    if (!isHost) return;
+    if (game.status !== 'in_progress') return;
+    if (game.game_type !== 'cribbage') return;
+    if (!game.current_game_uuid) return;
+
+    const roundsCount = game.rounds?.length ?? 0;
+    if (roundsCount > 0) {
+      cribbageRoundBootstrapRef.current = null;
+      return;
+    }
+
+    // Avoid double-starting for the same dealer_game_id
+    if (cribbageRoundBootstrapRef.current === game.current_game_uuid) return;
+    cribbageRoundBootstrapRef.current = game.current_game_uuid;
+
+    console.warn('[CRIBBAGE][BOOTSTRAP] No rounds found for in_progress cribbage; creating round', {
+      gameId,
+      dealerGameId: game.current_game_uuid,
+      current_round: game.current_round,
+      total_hands: game.total_hands,
+    });
+
+    (async () => {
+      const isFirstHand = (game.total_hands ?? 0) <= 0;
+      const result = await startCribbageRound(gameId, isFirstHand);
+      if (!result.success) {
+        console.error('[CRIBBAGE][BOOTSTRAP] Failed to start cribbage round:', result.error);
+        return;
+      }
+    })();
+  }, [gameId, game?.status, game?.game_type, game?.current_game_uuid, game?.rounds?.length, game?.total_hands, players, user?.id]);
 
   // useBotDecisionEnforcer was removed entirely - it was a band-aid that caused race conditions
 
