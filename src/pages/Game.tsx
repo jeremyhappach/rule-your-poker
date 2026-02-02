@@ -2625,51 +2625,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
-  // CRIBBAGE BOOTSTRAP (host-only):
-  // If we ever end up with a Cribbage game marked in_progress but *no* round rows,
-  // the Cribbage table will sit on "Loading Cribbage..." forever because roundId is empty.
-  // This should normally be created by DealerGameSetup -> startCribbageRound, but this guard
-  // makes the flow resilient without introducing polling.
-  useEffect(() => {
-    if (!gameId) return;
-    if (!game) return;
-    // Host-only guard (compute locally; avoid referencing isCreator which is declared later in the file)
-    const currentHost = (game as any)?.current_host as string | null | undefined;
-    const hostPlayer = [...players]
-      .filter((p) => !p.is_bot)
-      .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0];
-    const isHost = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
-    if (!isHost) return;
-    if (game.status !== 'in_progress') return;
-    if (game.game_type !== 'cribbage') return;
-    if (!game.current_game_uuid) return;
-
-    const roundsCount = game.rounds?.length ?? 0;
-    if (roundsCount > 0) {
-      cribbageRoundBootstrapRef.current = null;
-      return;
-    }
-
-    // Avoid double-starting for the same dealer_game_id
-    if (cribbageRoundBootstrapRef.current === game.current_game_uuid) return;
-    cribbageRoundBootstrapRef.current = game.current_game_uuid;
-
-    console.warn('[CRIBBAGE][BOOTSTRAP] No rounds found for in_progress cribbage; creating round', {
-      gameId,
-      dealerGameId: game.current_game_uuid,
-      current_round: game.current_round,
-      total_hands: game.total_hands,
-    });
-
-    (async () => {
-      const isFirstHand = (game.total_hands ?? 0) <= 0;
-      const result = await startCribbageRound(gameId, isFirstHand);
-      if (!result.success) {
-        console.error('[CRIBBAGE][BOOTSTRAP] Failed to start cribbage round:', result.error);
-        return;
-      }
-    })();
-  }, [gameId, game?.status, game?.game_type, game?.current_game_uuid, game?.rounds?.length, game?.total_hands, players, user?.id]);
 
   // useBotDecisionEnforcer was removed entirely - it was a band-aid that caused race conditions
 
@@ -5250,6 +5205,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData]);
 
+  // CRIBBAGE DEALER SELECTION COMPLETE HANDLER
+  // When high-card dealer selection finishes, transition to in_progress and create round 1
+  const handleCribbageDealerSelectionComplete = useCallback(async (dealerPosition: number) => {
+    if (!gameId) return;
+    
+    console.log('[CRIBBAGE] Dealer selection complete, winner position:', dealerPosition);
+    
+    // Update dealer position and transition to in_progress
+    await supabase
+      .from('games')
+      .update({
+        dealer_position: dealerPosition,
+        status: 'in_progress',
+        dealer_selection_state: null, // Clear the selection state
+      })
+      .eq('id', gameId);
+    
+    // Create the first round (isFirstHand = true since this is after dealer selection)
+    const result = await startCribbageRound(gameId, true);
+    if (!result.success) {
+      console.error('[CRIBBAGE] Failed to start cribbage round after dealer selection:', result.error);
+      return;
+    }
+    
+    // Trigger refetch to update UI
+    fetchGameData();
+  }, [gameId, fetchGameData]);
+
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
       anteProcessingRef.current = false;
@@ -5467,8 +5450,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               await startHorsesRound(gameId, true);
             }
           } else if (isCribbageGame) {
-            // Cribbage has its own round start logic
-            await startCribbageRound(gameId!, true);
+            // Cribbage: transition to dealer selection phase (high-card animation)
+            // The round will be created after dealer selection completes
+            console.log('[ANTE][CRIBBAGE] Transitioning to cribbage_dealer_selection');
+            await supabase
+              .from('games')
+              .update({
+                status: 'cribbage_dealer_selection',
+                dealer_selection_state: null, // Will be populated by HighCardDealerSelection
+              })
+              .eq('id', gameId);
           } else {
             await supabase
               .from('games')
@@ -6285,6 +6276,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* CRIBBAGE DEALER SELECTION - High card animation to determine first dealer */}
+        {game.status === 'cribbage_dealer_selection' && game.game_type === 'cribbage' && (
+          <>
+            {/* High Card Dealer Selection Logic (headless - manages state only) */}
+            <HighCardDealerSelection
+              gameId={gameId!}
+              players={players}
+              onComplete={handleCribbageDealerSelectionComplete}
+              isHost={isCreator}
+              allowBotDealers={true}
+              syncedState={(game as any).dealer_selection_state as any}
+              onCardsUpdate={setDealerSelectionCards}
+              onAnnouncementUpdate={(msg, complete) => {
+                setDealerSelectionAnnouncement(msg);
+                setDealerSelectionComplete(complete);
+              }}
+              onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+            />
+            {/* Cribbage table with dealer selection overlay */}
+            <CribbageMobileGameTable
+              gameId={gameId!}
+              roundId=""
+              players={players}
+              currentUserId={user?.id || ''}
+              dealerPosition={game.dealer_position || 1}
+              anteAmount={game.ante_amount || 1}
+              pot={0}
+              isHost={isCreator}
+              onGameComplete={fetchGameData}
+              dealerSelectionCards={dealerSelectionCards}
+              dealerSelectionAnnouncement={dealerSelectionAnnouncement}
+              dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
+              isDealerSelection={true}
+            />
+          </>
         )}
 
         {(game.status === 'ante_decision' || game.status === 'in_progress') && (() => {
