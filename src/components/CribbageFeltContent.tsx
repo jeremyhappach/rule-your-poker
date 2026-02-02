@@ -54,7 +54,7 @@ export const CribbageFeltContent = ({
 
       {/* Crib - above the peg board */}
       {showCribOnFelt && (
-        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+        <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
           <div className="relative">
             {/* Stack effect */}
