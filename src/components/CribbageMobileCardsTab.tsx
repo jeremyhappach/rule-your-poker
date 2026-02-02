@@ -1,10 +1,21 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatChipValue } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Player {
+  id: string;
+  user_id: string;
+  position: number;
+  chips: number;
+  is_bot?: boolean;
+  profiles?: { username: string };
+}
 
 interface CribbageMobileCardsTabProps {
   cribbageState: CribbageState;
@@ -13,6 +24,9 @@ interface CribbageMobileCardsTabProps {
   isProcessing: boolean;
   onDiscard: (cardIndices: number[]) => void;
   onPlayCard: (cardIndex: number) => void;
+  currentPlayer: Player;
+  gameId: string;
+  isDealer: boolean;
 }
 
 export const CribbageMobileCardsTab = ({
@@ -22,8 +36,12 @@ export const CribbageMobileCardsTab = ({
   isProcessing,
   onDiscard,
   onPlayCard,
+  currentPlayer,
+  gameId,
+  isDealer,
 }: CribbageMobileCardsTabProps) => {
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
+  const [isEmoticonSending, setIsEmoticonSending] = useState(false);
   
   const myPlayerState = cribbageState.playerStates[currentPlayerId];
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
@@ -65,6 +83,24 @@ export const CribbageMobileCardsTab = ({
     setSelectedCards([]);
   };
 
+  const handleQuickEmoticon = async (emoticon: string) => {
+    if (isEmoticonSending || !currentPlayer) return;
+    setIsEmoticonSending(true);
+    try {
+      const expiresAt = new Date(Date.now() + 4000).toISOString();
+      await supabase.from('chip_stack_emoticons').insert({
+        game_id: gameId,
+        player_id: currentPlayer.id,
+        emoticon,
+        expires_at: expiresAt,
+      });
+    } catch (err) {
+      console.error('Failed to send emoticon:', err);
+    } finally {
+      setIsEmoticonSending(false);
+    }
+  };
+
   if (!myPlayerState) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -76,7 +112,7 @@ export const CribbageMobileCardsTab = ({
   return (
     <div className="px-2 flex flex-col flex-1">
       {/* Cards display - adaptive layout */}
-      <div className="flex items-center justify-center min-h-[140px] py-2">
+      <div className="flex items-center justify-center min-h-[120px] py-1">
         <div 
           className={cn(
             "flex justify-center origin-center",
@@ -112,8 +148,8 @@ export const CribbageMobileCardsTab = ({
         </div>
       </div>
 
-      {/* Action area */}
-      <div className="flex items-center justify-center min-h-[48px] mt-2">
+      {/* Action area - tighter to cards */}
+      <div className="flex items-center justify-center min-h-[40px]">
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
@@ -145,11 +181,31 @@ export const CribbageMobileCardsTab = ({
         )}
       </div>
 
+      {/* Player info row - same styling as MobileGameTable, below action buttons */}
+      <div className="flex items-center justify-center gap-2 py-2">
+        {/* Quick emoticon picker - left of player name */}
+        <QuickEmoticonPicker 
+          onSelect={handleQuickEmoticon} 
+          disabled={isEmoticonSending || !currentPlayer}
+        />
+        <p className="font-semibold text-sm text-foreground">
+          {currentPlayer.profiles?.username || 'You'}
+        </p>
+        <span className="font-bold text-lg text-poker-gold">
+          ${formatChipValue(currentPlayer.chips)}
+        </span>
+        {isDealer && (
+          <div className="w-5 h-5 rounded-full bg-red-600 border border-white flex items-center justify-center">
+            <span className="text-white font-bold text-[8px]">D</span>
+          </div>
+        )}
+      </div>
+
       {/* Crib Display (dealer only during counting) */}
       {cribbageState.phase === 'counting' && 
        currentPlayerId === cribbageState.cribOwnerPlayerId && 
        cribbageState.crib.length > 0 && (
-        <div className="mt-4 p-3 bg-amber-900/30 rounded-lg border border-amber-600/30">
+        <div className="mt-2 p-3 bg-amber-900/30 rounded-lg border border-amber-600/30">
           <p className="text-xs text-amber-400 mb-2 text-center">Your Crib</p>
           <div className="flex gap-1 justify-center transform scale-150 origin-center">
             {cribbageState.crib.map((card, i) => (
