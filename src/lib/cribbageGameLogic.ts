@@ -13,7 +13,9 @@ import {
   CARDS_PER_PLAYER,
   DISCARD_COUNT 
 } from './cribbageTypes';
-import { evaluateHand, checkHisHeels, getCardPointValue, hasPlayableCard } from './cribbageScoring';
+import { evaluateHand, evaluatePegging, checkHisHeels, getCardPointValue, hasPlayableCard } from './cribbageScoring';
+import type { PeggingPoints } from './cribbageTypes';
+import { generateUUID } from '@/lib/uuid';
 
 /**
  * Create a standard 52-card deck
@@ -103,9 +105,59 @@ export function initializeCribbageGame(
     },
     anteAmount,
     pot: anteAmount * playerIds.length,
+    lastEvent: null,
+    lastHandCount: null,
     winnerPlayerId: null,
     loserScore: null,
     payoutMultiplier: 1,
+  };
+}
+
+function describePeggingPoints(points: PeggingPoints): string {
+  const parts: string[] = [];
+  if (points.thirtyOne) parts.push('31');
+  if (points.fifteen) parts.push('15');
+  if (points.pair > 0) parts.push('Pair');
+  if (points.run > 0) parts.push(`Run ${points.run}`);
+  if (points.lastCard) parts.push('Last');
+  return parts.length ? parts.join(' + ') : 'Points';
+}
+
+function clearGoFlags(state: CribbageState): Record<string, CribbagePlayerState> {
+  const newPlayerStates = { ...state.playerStates };
+  for (const playerId of Object.keys(newPlayerStates)) {
+    newPlayerStates[playerId] = {
+      ...newPlayerStates[playerId],
+      hasCalledGo: false,
+    };
+  }
+  return newPlayerStates;
+}
+
+function findNextPlayerWithCards(state: CribbageState, preferredLeaderId: string | null): string | null {
+  const order = state.turnOrder;
+  if (!order.length) return null;
+  const startIndex = preferredLeaderId ? Math.max(0, order.indexOf(preferredLeaderId)) : 0;
+  for (let i = 0; i < order.length; i++) {
+    const idx = (startIndex + i) % order.length;
+    const id = order[idx];
+    if (state.playerStates[id]?.hand.length > 0) return id;
+  }
+  return null;
+}
+
+function beginNewPeggingRun(state: CribbageState, preferredLeaderId: string | null): CribbageState {
+  const leaderId = findNextPlayerWithCards(state, preferredLeaderId);
+  return {
+    ...state,
+    playerStates: clearGoFlags(state),
+    pegging: {
+      ...state.pegging,
+      currentCount: 0,
+      goCalledBy: [],
+      currentTurnPlayerId: leaderId,
+      lastToPlay: null,
+    },
   };
 }
 
@@ -197,6 +249,14 @@ function advanceToCutting(state: CribbageState): CribbageState {
           pegScore: newScore,
         },
       },
+      lastEvent: {
+        id: generateUUID(),
+        type: 'his_heels',
+        playerId: newState.dealerPlayerId,
+        points: 2,
+        label: 'His Heels',
+        createdAt: new Date().toISOString(),
+      },
     };
     
     // Check for win
@@ -257,64 +317,13 @@ export function playPeggingCard(
   // Add to played cards
   const newPlayedCards = [...state.pegging.playedCards, { playerId, card }];
   
-  // Calculate pegging points
-  const isLastCard = Object.values(state.playerStates).every(
+  // True last card of the entire pegging (end of hand)
+  const isLastCardOfHand = Object.values(state.playerStates).every(
     ps => ps.playerId === playerId ? newHand.length === 0 : ps.hand.length === 0
   );
-  
-  // Award points for 15, 31, pairs, runs
-  let pointsEarned = 0;
-  
-  // 15 = 2 points
-  if (newCount === 15) pointsEarned += 2;
-  
-  // 31 = 2 points
-  if (newCount === 31) pointsEarned += 2;
-  
-  // Check for pairs (consecutive same rank cards)
-  let pairCount = 1;
-  for (let i = state.pegging.playedCards.length - 1; i >= 0; i--) {
-    if (state.pegging.playedCards[i].card.rank === card.rank) {
-      pairCount++;
-    } else {
-      break;
-    }
-  }
-  if (pairCount >= 2) {
-    // 2 = 2pts, 3 = 6pts, 4 = 12pts
-    pointsEarned += (pairCount * (pairCount - 1) / 2) * 2;
-  }
-  
-  // Check for runs
-  if (newPlayedCards.length >= 3) {
-    for (let len = Math.min(7, newPlayedCards.length); len >= 3; len--) {
-      const recentCards = newPlayedCards.slice(-len).map(p => p.card);
-      const ranks = recentCards.map(c => {
-        if (c.rank === 'A') return 1;
-        if (c.rank === 'J') return 11;
-        if (c.rank === 'Q') return 12;
-        if (c.rank === 'K') return 13;
-        return parseInt(c.rank, 10);
-      }).sort((a, b) => a - b);
-      
-      let isRun = true;
-      for (let i = 1; i < ranks.length; i++) {
-        if (ranks[i] !== ranks[i - 1] + 1) {
-          isRun = false;
-          break;
-        }
-      }
-      if (isRun) {
-        pointsEarned += len;
-        break;
-      }
-    }
-  }
-  
-  // Last card = 1 point (unless hitting 31)
-  if (isLastCard && newCount !== 31) {
-    pointsEarned += 1;
-  }
+
+  const peggingPoints = evaluatePegging(state.pegging.playedCards, card, state.pegging.currentCount, isLastCardOfHand);
+  const pointsEarned = peggingPoints.total;
   
   // Update player score
   const newScore = playerState.pegScore + pointsEarned;
@@ -335,8 +344,17 @@ export function playPeggingCard(
       playedCards: newPlayedCards,
       currentCount: newCount,
       lastToPlay: playerId,
-      goCalledBy: newCount === 31 ? [] : state.pegging.goCalledBy, // Reset on 31
+      goCalledBy: newCount === 31 ? [] : state.pegging.goCalledBy, // reset on 31
     },
+    lastEvent: pointsEarned > 0 ? {
+      id: generateUUID(),
+      type: 'pegging_points',
+      playerId,
+      points: pointsEarned,
+      label: describePeggingPoints(peggingPoints),
+      createdAt: new Date().toISOString(),
+      count: newCount,
+    } : state.lastEvent ?? null,
   };
   
   // Check for win
@@ -344,11 +362,17 @@ export function playPeggingCard(
     return endGame(newState, playerId);
   }
   
-  // Determine next player
-  if (newCount === 31 || isLastCard) {
-    newState = resetPeggingCount(newState);
+  // If pegging is complete, immediately count hands
+  const allCardsPlayedAfter = Object.values(newState.playerStates).every(ps => ps.hand.length === 0);
+  if (allCardsPlayedAfter) {
+    return advanceToCounting(newState);
   }
-  
+
+  // 31 ends the run; the player who hit 31 leads the next run
+  if (newCount === 31) {
+    return beginNewPeggingRun(newState, playerId);
+  }
+
   return advanceToNextPeggingTurn(newState);
 }
 
@@ -412,9 +436,27 @@ export function callGo(state: CribbageState, playerId: string): CribbageState {
     if (newScore >= CRIBBAGE_WINNING_SCORE) {
       return endGame(newState, state.pegging.lastToPlay);
     }
-    
-    // Reset count and continue
-    newState = resetPeggingCount(newState);
+
+    // Reset count; the last player to play leads the next run
+    newState = {
+      ...newState,
+      lastEvent: {
+        id: generateUUID(),
+        type: 'go_point',
+        playerId: state.pegging.lastToPlay,
+        points: 1,
+        label: 'Go',
+        createdAt: new Date().toISOString(),
+        count: state.pegging.currentCount,
+      },
+    };
+
+    const allCardsPlayedAfter = Object.values(newState.playerStates).every(ps => ps.hand.length === 0);
+    if (allCardsPlayedAfter) {
+      return advanceToCounting(newState);
+    }
+
+    return beginNewPeggingRun(newState, state.pegging.lastToPlay);
   }
   
   return advanceToNextPeggingTurn(newState);
@@ -456,7 +498,8 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
   }
   
   // Find next player who can play or hasn't called go
-  const currentIndex = state.turnOrder.indexOf(state.pegging.currentTurnPlayerId || '');
+  const currentId = state.pegging.currentTurnPlayerId;
+  const currentIndex = currentId ? state.turnOrder.indexOf(currentId) : -1;
   
   for (let i = 1; i <= state.turnOrder.length; i++) {
     const nextIndex = (currentIndex + i) % state.turnOrder.length;
@@ -475,17 +518,9 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
   }
   
   // If everyone with cards has called go, reset and find someone with cards
-  const resetState = resetPeggingCount(state);
-  for (const playerId of state.turnOrder) {
-    if (resetState.playerStates[playerId].hand.length > 0) {
-      return {
-        ...resetState,
-        pegging: {
-          ...resetState.pegging,
-          currentTurnPlayerId: playerId,
-        },
-      };
-    }
+  const resetState = beginNewPeggingRun(state, state.pegging.lastToPlay);
+  if (resetState.pegging.currentTurnPlayerId) {
+    return resetState;
   }
   
   // All cards played - advance to counting
@@ -499,6 +534,8 @@ function advanceToCounting(state: CribbageState): CribbageState {
   // Score each player's hand, then the crib
   // Order: non-dealer first, then dealer, then crib
   let newState = { ...state, phase: 'counting' as CribbagePhase };
+
+  const playerHandScores: Record<string, ReturnType<typeof evaluateHand>> = {};
   
   // Get the hands that were discarded (4 cards each after discarding)
   for (const playerId of state.turnOrder) {
@@ -518,6 +555,7 @@ function advanceToCounting(state: CribbageState): CribbageState {
       .map(pc => pc.card);
     
     const handScore = evaluateHand(originalHand, state.cutCard, false);
+    playerHandScores[playerId] = handScore;
     const newScore = ps.pegScore + handScore.total;
     
     newState = {
@@ -542,6 +580,7 @@ function advanceToCounting(state: CribbageState): CribbageState {
     .map(pc => pc.card);
   
   const dealerHandScore = evaluateHand(dealerHand, state.cutCard, false);
+  playerHandScores[state.dealerPlayerId] = dealerHandScore;
   const dealerPs = newState.playerStates[state.dealerPlayerId];
   let dealerNewScore = dealerPs.pegScore + dealerHandScore.total;
   
@@ -579,12 +618,27 @@ function advanceToCounting(state: CribbageState): CribbageState {
     return endGame(newState, state.dealerPlayerId);
   }
   
-  // Game continues - would normally deal new hand
-  // For our implementation, this round is complete
-  return {
+  // Store counting summary for UI
+  newState = {
     ...newState,
-    phase: 'complete',
+    lastHandCount: {
+      countedAt: new Date().toISOString(),
+      playerHandScores,
+      dealerHandScore,
+      cribScore,
+    },
+    lastEvent: {
+      id: generateUUID(),
+      type: 'hand_count',
+      playerId: state.dealerPlayerId,
+      points: 0,
+      label: 'Hands counted',
+      createdAt: new Date().toISOString(),
+    },
   };
+
+  // Keep the table in counting so the UI can show scoring breakdown.
+  return newState;
 }
 
 /**
