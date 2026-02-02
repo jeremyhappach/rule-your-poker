@@ -16,6 +16,7 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
+import { CribbageHighCardSelection } from './CribbageHighCardSelection';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
@@ -100,6 +101,12 @@ export const CribbageMobileGameTable = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
 
+  // High card dealer selection state - only for first hand
+  const [showHighCardSelection, setShowHighCardSelection] = useState(false);
+  const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
+  const [selectedCribbageDealer, setSelectedCribbageDealer] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
+
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   const lastHandKeyRef = useRef<string>('');
@@ -124,12 +131,14 @@ export const CribbageMobileGameTable = ({
     setCountingTargetLabel(targetLabel);
   }, []);
 
-  // Initialize game state
+  // Initialize game state - check if we need high card selection first
   useEffect(() => {
     const loadOrInitializeState = async () => {
+      if (hasInitializedRef.current) return;
+      
       const { data: roundData, error } = await supabase
         .from('rounds')
-        .select('cribbage_state')
+        .select('cribbage_state, hand_number')
         .eq('id', roundId)
         .single();
 
@@ -138,24 +147,60 @@ export const CribbageMobileGameTable = ({
         return;
       }
 
+      // If state already exists, use it (game already in progress or resumed)
       if (roundData?.cribbage_state) {
+        hasInitializedRef.current = true;
         setCribbageState(roundData.cribbage_state as unknown as CribbageState);
-      } else {
-        const dealerPlayer = players.find(p => p.position === dealerPosition) || players[0];
-        const playerIds = players.map(p => p.id);
-        const newState = initializeCribbageGame(playerIds, dealerPlayer.id, anteAmount);
-        
-        await supabase
-          .from('rounds')
-          .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-          .eq('id', roundId);
-        
-        setCribbageState(newState);
+        return;
       }
+
+      // First hand of a new cribbage game - show high card selection
+      const isFirstHand = !roundData?.hand_number || roundData.hand_number <= 1;
+      
+      if (isFirstHand && !selectedCribbageDealer) {
+        // Need to run high card selection
+        setShowHighCardSelection(true);
+        return;
+      }
+
+      // Initialize with selected dealer (or default to session dealer)
+      hasInitializedRef.current = true;
+      const dealerId = selectedCribbageDealer || 
+        (players.find(p => p.position === dealerPosition)?.id) || 
+        players[0].id;
+      const playerIds = players.map(p => p.id);
+      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount);
+      
+      await supabase
+        .from('rounds')
+        .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
+        .eq('id', roundId);
+      
+      setCribbageState(newState);
     };
 
     loadOrInitializeState();
-  }, [roundId, players, anteAmount, dealerPosition]);
+  }, [roundId, players, anteAmount, dealerPosition, selectedCribbageDealer]);
+
+  // Handle high card selection complete
+  const handleHighCardComplete = useCallback(async (winnerPlayerId: string) => {
+    console.log('[CRIBBAGE] High card winner:', winnerPlayerId);
+    setSelectedCribbageDealer(winnerPlayerId);
+    setShowHighCardSelection(false);
+    setHighCardAnnouncement(null);
+    
+    // Initialize the game with the winner as dealer
+    hasInitializedRef.current = true;
+    const playerIds = players.map(p => p.id);
+    const newState = initializeCribbageGame(playerIds, winnerPlayerId, anteAmount);
+    
+    await supabase
+      .from('rounds')
+      .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
+      .eq('id', roundId);
+    
+    setCribbageState(newState);
+  }, [players, anteAmount, roundId]);
 
   // Realtime subscription
   useEffect(() => {
@@ -437,6 +482,70 @@ export const CribbageMobileGameTable = ({
     if (!player) return 'Unknown';
     return getDisplayName(players, player, player.profiles?.username || 'Unknown');
   };
+
+  // Show high card selection if needed
+  if (showHighCardSelection) {
+    return (
+      <div className="h-full flex flex-col overflow-hidden bg-background">
+        {/* Felt Area for high card selection */}
+        <div 
+          className="relative flex items-center justify-center"
+          style={{ 
+            height: '55vh',
+            minHeight: '300px'
+          }}
+        >
+          <div className="absolute inset-0 bg-slate-200 z-0" />
+          <div
+            className="relative z-10"
+            style={{
+              width: 'min(90vw, calc(55vh - 32px))',
+              height: 'min(90vw, calc(55vh - 32px))',
+            }}
+          >
+            <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
+              {tableColors.showBridge ? (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `url(${peoriaBridgeMobile})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    filter: 'brightness(0.5)',
+                  }}
+                />
+              ) : (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                    filter: 'brightness(0.7)',
+                  }}
+                />
+              )}
+
+              {/* High card selection component */}
+              <CribbageHighCardSelection
+                players={players}
+                onComplete={handleHighCardComplete}
+                onAnnouncementChange={setHighCardAnnouncement}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Announcement banner */}
+        {highCardAnnouncement && (
+          <div className="bg-poker-gold/95 px-4 py-3 text-center">
+            <p className="text-sm font-bold text-slate-900">{highCardAnnouncement}</p>
+          </div>
+        )}
+
+        {/* Tab section placeholder */}
+        <div className="flex-1 bg-background" />
+      </div>
+    );
+  }
 
   if (!cribbageState || !currentPlayerId) {
     return (
