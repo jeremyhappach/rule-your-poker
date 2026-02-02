@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +53,10 @@ export const CribbageGameTable = ({
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
+  
+  // Track the last pegging sequence start index for clearing old cards
+  const [sequenceStartIndex, setSequenceStartIndex] = useState(0);
+  const lastCountRef = useRef<number>(0);
 
   // Initialize game state from database or create new
   useEffect(() => {
@@ -119,6 +123,38 @@ export const CribbageGameTable = ({
       supabase.removeChannel(channel);
     };
   }, [roundId, onGameComplete]);
+
+  // Track when pegging sequence resets to clear old cards from display
+  useEffect(() => {
+    if (!cribbageState || cribbageState.phase !== 'pegging') return;
+    
+    const currentCount = cribbageState.pegging.currentCount;
+    // When count resets to 0, mark the start of a new sequence
+    if (currentCount === 0 && lastCountRef.current > 0) {
+      setSequenceStartIndex(cribbageState.pegging.playedCards.length);
+    }
+    lastCountRef.current = currentCount;
+  }, [cribbageState?.pegging.currentCount, cribbageState?.pegging.playedCards.length, cribbageState?.phase]);
+
+  // Auto-go: When it's our turn and we can't play, automatically call go
+  useEffect(() => {
+    if (!cribbageState || !currentPlayerId || isProcessing) return;
+    if (cribbageState.phase !== 'pegging') return;
+    if (cribbageState.pegging.currentTurnPlayerId !== currentPlayerId) return;
+    
+    const myState = cribbageState.playerStates[currentPlayerId];
+    if (!myState) return;
+    
+    // Check if we have no playable cards
+    const canPlay = hasPlayableCard(myState.hand, cribbageState.pegging.currentCount);
+    if (!canPlay && myState.hand.length > 0) {
+      // Auto-call go after a brief delay so the player sees what happened
+      const timeout = setTimeout(() => {
+        handleGo();
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
 
   // Bot decision ref to prevent duplicate actions
   const botActionInProgress = useRef(false);
@@ -372,8 +408,9 @@ export const CribbageGameTable = ({
                 {cribbageState.pegging.currentCount}
               </span>
             </div>
-            <div className="flex flex-wrap gap-0.5 justify-center">
-              {cribbageState.pegging.playedCards.slice(-8).map((pc, i) => (
+            <div className="flex flex-wrap gap-0.5 justify-center min-h-[48px]">
+              {/* Only show cards from current sequence (after last count reset) */}
+              {cribbageState.pegging.playedCards.slice(sequenceStartIndex).map((pc, i) => (
                 <div key={i} className="relative">
                   <CribbagePlayingCard card={pc.card} size="xs" />
                   <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[8px] text-amber-200 truncate max-w-[28px]">
@@ -440,14 +477,7 @@ export const CribbageGameTable = ({
               )}
 
               {cribbageState.phase === 'pegging' && isMyTurn && !canPlayAnyCard && (
-                <Button
-                  onClick={handleGo}
-                  disabled={isProcessing}
-                  variant="outline"
-                  className="border-poker-gold text-poker-gold"
-                >
-                  Go!
-                </Button>
+                <p className="text-amber-200 text-sm animate-pulse">Auto-calling Go...</p>
               )}
             </div>
           </CardContent>
