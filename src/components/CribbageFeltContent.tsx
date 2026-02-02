@@ -44,7 +44,7 @@ export const CribbageFeltContent = ({
       )}
 
       {/* Peg Board - Center area */}
-      <div className="absolute top-[41%] left-6 right-6 -translate-y-1/2 z-10">
+      <div className="absolute top-[36%] left-6 right-6 -translate-y-1/2 z-10">
         <CribbagePegBoard 
           players={players}
           playerStates={cribbageState.playerStates}
@@ -54,7 +54,7 @@ export const CribbageFeltContent = ({
 
       {/* Crib - centered above the pegging/play area */}
       {showCribOnFelt && (
-        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+        <div className="absolute top-[48%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
           <div className="relative">
             {/* Stack effect */}
@@ -67,7 +67,7 @@ export const CribbageFeltContent = ({
 
       {/* Pegging / Gameplay Area (moved to where the Crib used to be) */}
       {cribbageState.phase === 'pegging' && (
-        <div className="absolute top-[63%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
+        <div className="absolute top-[70%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-[9px] text-white/60">Count:</span>
             <span className="text-lg font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>
@@ -87,7 +87,7 @@ export const CribbageFeltContent = ({
 
       {/* Cut Card */}
       {cribbageState.cutCard && (
-        <div className="absolute top-[57%] left-1/2 -translate-x-1/2 translate-x-12 z-20 flex flex-col items-center">
+        <div className="absolute top-[61%] left-1/2 -translate-x-1/2 translate-x-12 z-20 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Cut</span>
           <CribbagePlayingCard card={cribbageState.cutCard} size="sm" />
         </div>
