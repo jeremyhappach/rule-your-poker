@@ -327,136 +327,133 @@ export const CribbageMobileGameTable = ({
     <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Felt Area - Upper Section with circular table */}
       <div 
-        className="relative overflow-hidden"
+        className="relative overflow-hidden flex items-center justify-center"
         style={{ 
           height: '55vh',
           minHeight: '300px'
         }}
       >
-        {/* Background - Bridge image or gradient based on user preference */}
-        {tableColors.showBridge ? (
-          <div 
-            className="absolute inset-0"
-            style={{ 
-              backgroundImage: `url(${peoriaBridgeMobile})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          />
-        ) : (
-          <div 
-            className="absolute inset-0"
-            style={{ 
-              background: `linear-gradient(135deg, ${tableColors.color}, ${tableColors.darkColor})`
-            }}
-          />
-        )}
+        {/* Dark background behind the circle */}
+        <div className="absolute inset-0 bg-slate-900" />
 
-        {/* Circular table overlay */}
-        <div className="absolute inset-4 rounded-full overflow-hidden border-4 border-amber-900/50">
+        {/* Circular table - properly contained with white outline */}
+        <div 
+          className="relative rounded-full overflow-hidden border-2 border-white/30"
+          style={{ 
+            width: 'min(90vw, calc(55vh - 32px))',
+            height: 'min(90vw, calc(55vh - 32px))',
+          }}
+        >
+          {/* Felt background inside circle */}
           {tableColors.showBridge ? (
             <div 
-              className="w-full h-full"
+              className="absolute inset-0"
               style={{ 
                 backgroundImage: `url(${peoriaBridgeMobile})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                filter: 'brightness(0.7)'
+                filter: 'brightness(0.6)'
               }}
             />
           ) : (
             <div 
-              className="w-full h-full"
+              className="absolute inset-0"
               style={{ 
-                background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`
+                background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                filter: 'brightness(0.8)'
               }}
             />
           )}
-        </div>
 
-        {/* Opponent positions - upper left to avoid obscuring header */}
-        <div className="absolute top-4 left-4 flex flex-col gap-2 z-30">
-          {opponents.map(opponent => {
-            const oppState = cribbageState.playerStates[opponent.id];
-            const isOppTurn = cribbageState.pegging.currentTurnPlayerId === opponent.id;
-            const isDealerPlayer = isDealer(opponent.id);
-            
-            return (
-              <div 
-                key={opponent.id}
-                className="flex items-center gap-2"
-              >
-                {/* Chip circle - no outer box */}
+          {/* Game Title - Top center of felt */}
+          <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
+            <h2 className="text-sm font-bold text-poker-gold drop-shadow-lg">
+              ${anteAmount} CRIBBAGE
+            </h2>
+            <p className="text-[9px] text-white/70">
+              Skunk &lt;{91} (2x) • Double &lt;{61} (3x)
+            </p>
+          </div>
+
+          {/* Opponent positions - upper left inside circle */}
+          <div className="absolute top-12 left-3 flex flex-col gap-1.5 z-30">
+            {opponents.map(opponent => {
+              const oppState = cribbageState.playerStates[opponent.id];
+              const isDealerPlayer = isDealer(opponent.id);
+              
+              return (
+                <div 
+                  key={opponent.id}
+                  className="flex flex-col items-start"
+                >
+                  {/* Chip circle and cards row */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="relative">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-poker-gold">
+                        <span className="text-[10px] font-bold text-slate-900">
+                          ${formatChipValue(opponent.chips)}
+                        </span>
+                      </div>
+                      {isDealerPlayer && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center">
+                          <span className="text-white font-bold text-[6px]">D</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Name */}
+                    <span className="text-[10px] text-white/90 truncate max-w-[60px] font-medium">
+                      {opponent.profiles?.username || 'Player'}
+                    </span>
+
+                    {/* Opponent's cards (face down) - inline */}
+                    <div className="flex -space-x-1.5">
+                      {oppState?.hand.map((_, i) => (
+                        <div key={i} className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-500" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Peg Board - Center area */}
+          <CribbageFeltContent
+            cribbageState={cribbageState}
+            players={players}
+            currentPlayerId={currentPlayerId}
+            sequenceStartIndex={sequenceStartIndex}
+            getPlayerUsername={getPlayerUsername}
+            anteAmount={anteAmount}
+          />
+
+          {/* Current player position at bottom of felt */}
+          {currentPlayer && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
+              <div className="flex flex-col items-center">
                 <div className="relative">
                   <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center border-2",
-                    isOppTurn ? "border-poker-gold bg-white animate-pulse" : "border-white/40 bg-white"
+                    "w-10 h-10 rounded-full flex items-center justify-center border-2 bg-poker-gold",
+                    cribbageState.pegging.currentTurnPlayerId === currentPlayerId 
+                      ? "ring-2 ring-white animate-pulse" 
+                      : "border-white/50"
                   )}>
-                    <span className="text-xs font-bold text-slate-800">
-                      ${formatChipValue(opponent.chips)}
+                    <span className="text-xs font-bold text-slate-900">
+                      ${formatChipValue(currentPlayer.chips)}
                     </span>
                   </div>
-                  {/* Dealer button */}
-                  {isDealerPlayer && (
+                  {isDealer(currentPlayerId) && (
                     <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
                       <span className="text-white font-bold text-[8px]">D</span>
                     </div>
                   )}
                 </div>
-                
-                {/* Name only - score is on peg board */}
-                <span className="text-xs text-white/80 truncate max-w-[60px]">
-                  {opponent.profiles?.username || 'Player'}
-                </span>
-
-                {/* Opponent's cards (face down) */}
-                <div className="flex -space-x-2">
-                  {oppState?.hand.map((_, i) => (
-                    <div key={i} className="transform scale-50 origin-center">
-                      <CribbagePlayingCard card={{ rank: 'A', suit: 'spades', value: 1 }} size="xs" faceDown />
-                    </div>
-                  ))}
-                </div>
+                <span className="text-[10px] text-white/80 mt-0.5">You</span>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Cribbage Felt Content - Peg board and pegging area */}
-        <CribbageFeltContent
-          cribbageState={cribbageState}
-          players={players}
-          currentPlayerId={currentPlayerId}
-          sequenceStartIndex={sequenceStartIndex}
-          getPlayerUsername={getPlayerUsername}
-          anteAmount={anteAmount}
-        />
-
-        {/* Current player position at bottom of felt */}
-        {currentPlayer && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-            <div className="flex flex-col items-center">
-              <div className="relative">
-                <div className={cn(
-                  "w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 bg-white",
-                  cribbageState.pegging.currentTurnPlayerId === currentPlayerId 
-                    ? "border-poker-gold ring-2 ring-poker-gold animate-pulse" 
-                    : "border-slate-600/50"
-                )}>
-                  <span className="text-sm font-bold text-slate-800">
-                    ${formatChipValue(currentPlayer.chips)}
-                  </span>
-                </div>
-                {isDealer(currentPlayerId) && (
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center">
-                    <span className="text-white font-bold text-[10px]">D</span>
-                  </div>
-                )}
-              </div>
-              <span className="text-xs text-white/80 mt-1">You</span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Bottom Section - Tabs and Content */}

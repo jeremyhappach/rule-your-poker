@@ -1,9 +1,8 @@
-import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
+import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
-import { cn } from '@/lib/utils';
 import { getPhaseDisplayName } from '@/lib/cribbageGameLogic';
-import { SKUNK_THRESHOLD, DOUBLE_SKUNK_THRESHOLD, CRIBBAGE_WINNING_SCORE } from '@/lib/cribbageTypes';
+import { CRIBBAGE_WINNING_SCORE } from '@/lib/cribbageTypes';
 
 interface Player {
   id: string;
@@ -33,18 +32,7 @@ export const CribbageFeltContent = ({
 
   return (
     <>
-      {/* Game Title and Info - Top of felt */}
-      <div className="absolute top-2 left-0 right-0 z-20 flex flex-col items-center">
-        <h2 className="text-sm font-bold text-poker-gold">
-          ${anteAmount} CRIBBAGE
-        </h2>
-        <p className="text-[10px] text-white/70">
-          {CRIBBAGE_WINNING_SCORE} to win
-        </p>
-        <p className="text-[9px] text-white/50">
-          Skunk &lt;{SKUNK_THRESHOLD} (2x) • Double &lt;{DOUBLE_SKUNK_THRESHOLD} (3x)
-        </p>
-      </div>
+      {/* Game title moved to CribbageMobileGameTable */}
 
       {/* Skunk indicator when active */}
       {cribbageState.payoutMultiplier > 1 && (
