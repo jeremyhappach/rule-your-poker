@@ -94,7 +94,7 @@ export const CribbageFeltContent = ({
 
       {/* Cut Card */}
       {cribbageState.cutCard && (
-        <div className="absolute top-[36%] left-1/2 -translate-x-1/2 translate-x-12 z-20 flex flex-col items-center">
+        <div className="absolute top-[24%] left-1/2 -translate-x-1/2 translate-x-12 z-20 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Cut</span>
           <CribbagePlayingCard card={cribbageState.cutCard} size="sm" />
         </div>
