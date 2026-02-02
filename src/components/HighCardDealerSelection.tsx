@@ -133,6 +133,24 @@ export const HighCardDealerSelection = ({
   
   // HOST: Run the selection sequence and sync to DB
   useEffect(() => {
+    // Recovery: if a completed syncedState already exists (e.g., page refresh mid-phase),
+    // don't replay the animation. Just finish the transition.
+    if (
+      isHost &&
+      syncedState?.isComplete &&
+      syncedState.winnerPosition !== null &&
+      !hasCompletedRef.current
+    ) {
+      hasCompletedRef.current = true;
+      onCardsUpdate(syncedState.cards || []);
+      onAnnouncementUpdate(syncedState.announcement ?? null, true);
+      onWinnerPositionUpdate?.(syncedState.winnerPosition);
+
+      // Let the UI paint the winner state, then complete.
+      const t = setTimeout(() => onComplete(syncedState.winnerPosition!), WINNER_ANNOUNCE_DELAY);
+      return () => clearTimeout(t);
+    }
+
     if (hasInitializedRef.current) return;
     hasInitializedRef.current = true;
     
@@ -171,7 +189,17 @@ export const HighCardDealerSelection = ({
     runSelectionRound(eligibleDealers, 1, []);
     
     return () => clearTimeouts();
-  }, []);
+  }, [
+    isHost,
+    syncedState,
+    eligibleDealers,
+    sortedPlayers,
+    onCardsUpdate,
+    onAnnouncementUpdate,
+    onWinnerPositionUpdate,
+    onComplete,
+    clearTimeouts,
+  ]);
   
   const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
