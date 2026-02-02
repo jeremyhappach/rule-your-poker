@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting } from "@/lib/playerStateEvaluation";
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
-import { startCribbageRound } from "@/lib/cribbageRoundLogic";
+// startCribbageRound is now called from Game.tsx after dealer selection completes
 import { toast } from "sonner";
 
 type SelectionStep = 'game' | 'config';
@@ -1204,7 +1204,8 @@ export const DealerGameSetup = ({
     
     const dealerGameId = dealerGame.id;
     
-    // CRIBBAGE: Skip ante phase entirely - go straight to in_progress and start round
+    // CRIBBAGE: Go to cribbage_dealer_selection phase for high-card animation
+    // The round will be created after dealer selection completes in Game.tsx
     if (isCribbage) {
       const { error } = await supabase
         .from('games')
@@ -1212,7 +1213,7 @@ export const DealerGameSetup = ({
           game_type: gameTypeToSubmit,
           ante_amount: parsedAnte,
           config_complete: true,
-          status: 'in_progress', // Skip ante_decision, go straight to in_progress
+          status: 'cribbage_dealer_selection', // High-card animation phase
           pot: 0, // No pot in cribbage - direct player transfers
           leg_value: 0,
           legs_to_win: 0,
@@ -1220,6 +1221,7 @@ export const DealerGameSetup = ({
           pussy_tax_enabled: false,
           current_game_uuid: dealerGameId,
           is_first_hand: true,
+          dealer_selection_state: null, // Will be populated by HighCardDealerSelection
         })
         .eq('id', gameId);
       
@@ -1230,18 +1232,7 @@ export const DealerGameSetup = ({
         return;
       }
       
-      // Start the cribbage round immediately
-      console.log('[DEALER SETUP] 🎴 Starting cribbage round directly (no ante phase)');
-      const result = await startCribbageRound(gameId, true);
-      
-      if (!result.success) {
-        console.error('[DEALER SETUP] Failed to start cribbage round:', result.error);
-        hasSubmittedRef.current = false;
-        setIsSubmitting(false);
-        return;
-      }
-      
-      console.log(`[DEALER SETUP] ✅ Cribbage started, dealer_game_id:`, dealerGameId, 'round_id:', result.roundId);
+      console.log(`[DEALER SETUP] ✅ Cribbage going to dealer selection, dealer_game_id:`, dealerGameId);
       onConfigComplete();
       return;
     }
