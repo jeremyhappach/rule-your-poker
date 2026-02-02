@@ -10,6 +10,7 @@ import { User } from "@supabase/supabase-js";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { HorsesGameTable, HorsesStateFromDB } from "@/components/HorsesGameTable";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
+import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
 import { TriviaGameTable } from "@/components/TriviaGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
@@ -6329,10 +6330,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // CRIBBAGE GAME
+          // CRIBBAGE GAME - Use mobile-optimized table
           if (isInProgress && game.game_type === 'cribbage') {
             return (
-              <CribbageGameTable
+              <CribbageMobileGameTable
                 gameId={gameId!}
                 roundId={currentRound?.id || ''}
                 players={players}
