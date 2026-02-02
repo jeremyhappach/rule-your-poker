@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { CribbageState } from '@/lib/cribbageTypes';
@@ -65,6 +65,23 @@ const SpadeIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+/**
+ * Generate a unique hand key from cribbage state to detect hand transitions.
+ * Uses dealerPlayerId + first player's hand signature to uniquely identify a hand.
+ */
+function getHandKey(state: CribbageState | null): string {
+  if (!state) return '';
+  const firstPlayerId = state.turnOrder[0];
+  const firstPlayerHand = state.playerStates[firstPlayerId]?.hand || [];
+  // Include discardedToCrib to differentiate pre/post discard
+  const discarded = state.playerStates[firstPlayerId]?.discardedToCrib || [];
+  const handSig = [...firstPlayerHand, ...discarded]
+    .map(c => `${c.rank}${c.suit}`)
+    .sort()
+    .join(',');
+  return `${state.dealerPlayerId}-${handSig}`;
+}
+
 export const CribbageMobileGameTable = ({
   gameId,
   roundId,
@@ -82,6 +99,11 @@ export const CribbageMobileGameTable = ({
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+
+  // Track hand key to detect hand transitions and prevent stale card flash
+  const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
+  const lastHandKeyRef = useRef<string>('');
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
@@ -164,6 +186,23 @@ export const CribbageMobileGameTable = ({
       supabase.removeChannel(channel);
     };
   }, [roundId, onGameComplete]);
+
+  // Detect hand transitions to prevent stale card flash
+  useEffect(() => {
+    if (!currentHandKey) return;
+    
+    // If hand key changed, we're transitioning to a new hand
+    if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
+      setIsTransitioning(true);
+      // Brief delay to allow the new state to fully settle
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    
+    lastHandKeyRef.current = currentHandKey;
+  }, [currentHandKey]);
 
   // Track pegging sequence resets
   useEffect(() => {
@@ -634,8 +673,9 @@ export const CribbageMobileGameTable = ({
 
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'cards' && currentPlayer && (
+          {activeTab === 'cards' && currentPlayer && !isTransitioning && (
             <CribbageMobileCardsTab
+              key={currentHandKey} // Force remount on hand change to prevent stale card flash
               cribbageState={cribbageState}
               currentPlayerId={currentPlayerId}
               playerCount={players.length}
