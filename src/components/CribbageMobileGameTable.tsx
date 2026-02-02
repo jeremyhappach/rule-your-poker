@@ -429,18 +429,25 @@ export const CribbageMobileGameTable = ({
                       )}
                     </div>
 
-                    {/* Opponent's cards (face down) - below name, using player's card back preference */}
-                    <div className="flex -space-x-1.5 mt-1 ml-1">
-                      {oppState?.hand.map((_, i) => (
-                        <div 
-                          key={i} 
-                          className="w-4 h-6 rounded-sm border border-white/20"
-                          style={{
-                            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                          }}
-                        />
-                      ))}
-                    </div>
+                    {/* Opponent's cards (face down) with count badge */}
+                    {oppState && oppState.hand.length > 0 && (
+                      <div className="flex items-center gap-1 mt-1 ml-1">
+                        <div className="flex -space-x-1.5">
+                          {oppState.hand.slice(0, 4).map((_, i) => (
+                            <div 
+                              key={i} 
+                              className="w-4 h-6 rounded-sm border border-white/20"
+                              style={{
+                                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[10px] font-bold text-white bg-slate-800/80 px-1.5 py-0.5 rounded">
+                          {oppState.hand.length}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

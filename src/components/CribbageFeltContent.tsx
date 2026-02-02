@@ -54,20 +54,29 @@ export const CribbageFeltContent = ({
         />
       </div>
 
-      {/* Crib - above the peg board */}
+      {/* Crib - above the peg board with card count badge */}
       {showCribOnFelt && (
         <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
-          <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
+          <div className="flex items-center gap-1 mb-0.5">
+            <span className="text-[9px] text-white/60">Crib</span>
+            <span className="text-[10px] font-bold text-white bg-slate-800/80 px-1.5 py-0.5 rounded">
+              {cribbageState.crib.length}
+            </span>
+          </div>
           <div className="relative">
-            {/* Stack effect using player's card back colors */}
-            <div 
-              className="absolute top-0.5 left-0.5 w-6 h-9 rounded border border-white/20"
-              style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
-            />
-            <div 
-              className="absolute top-1 left-1 w-6 h-9 rounded border border-white/20"
-              style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
-            />
+            {/* Show stacked cards based on actual crib count */}
+            {cribbageState.crib.length >= 3 && (
+              <div 
+                className="absolute top-0.5 left-0.5 w-6 h-9 rounded border border-white/20"
+                style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
+              />
+            )}
+            {cribbageState.crib.length >= 2 && (
+              <div 
+                className="absolute top-1 left-1 w-6 h-9 rounded border border-white/20"
+                style={{ background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)` }}
+              />
+            )}
             <CribbagePlayingCard card={{ rank: 'A', suit: 'spades', value: 1 }} size="xs" faceDown cardBackColors={cardBackColors} />
           </div>
         </div>
