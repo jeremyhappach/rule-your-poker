@@ -54,7 +54,7 @@ export const CribbageFeltContent = ({
 
       {/* Crib - centered above the pegging/play area */}
       {showCribOnFelt && (
-        <div className="absolute top-[49%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+        <div className="absolute top-[44%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
           <div className="relative">
             {/* Stack effect */}
@@ -67,7 +67,7 @@ export const CribbageFeltContent = ({
 
       {/* Pegging / Gameplay Area (moved to where the Crib used to be) */}
       {cribbageState.phase === 'pegging' && (
-        <div className="absolute top-[60%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
+        <div className="absolute top-[63%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-[9px] text-white/60">Count:</span>
             <span className="text-lg font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>

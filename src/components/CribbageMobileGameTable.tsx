@@ -327,7 +327,7 @@ export const CribbageMobileGameTable = ({
     <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Felt Area - Upper Section with circular table */}
       <div 
-        className="relative overflow-hidden flex items-center justify-center"
+        className="relative flex items-center justify-center"
         style={{ 
           height: '55vh',
           minHeight: '300px'
@@ -336,107 +336,109 @@ export const CribbageMobileGameTable = ({
         {/* Light background behind the circle - lower z-index */}
         <div className="absolute inset-0 bg-slate-200 z-0" />
 
-        {/* Circular table - properly contained with white outline */}
-        <div 
-          className="relative rounded-full overflow-hidden border-2 border-white/80 z-10"
-          style={{ 
+        {/* Circular table - wrapped so overlays can extend past the clipped circle */}
+        <div
+          className="relative z-10"
+          style={{
             width: 'min(90vw, calc(55vh - 32px))',
             height: 'min(90vw, calc(55vh - 32px))',
           }}
         >
-          {/* Felt background inside circle */}
-          {tableColors.showBridge ? (
-            <div 
-              className="absolute inset-0"
-              style={{ 
-                backgroundImage: `url(${peoriaBridgeMobile})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                filter: 'brightness(0.5)'
-              }}
-            />
-          ) : (
-            <div 
-              className="absolute inset-0"
-              style={{ 
-                background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                filter: 'brightness(0.7)'
-              }}
-            />
-          )}
+          {/* Inner circle is clipped; outer wrapper is not */}
+          <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
+            {/* Felt background inside circle */}
+            {tableColors.showBridge ? (
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url(${peoriaBridgeMobile})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  filter: 'brightness(0.5)',
+                }}
+              />
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                  filter: 'brightness(0.7)',
+                }}
+              />
+            )}
 
-          {/* Game Title - Top center of felt */}
-          <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
-            <h2 className="text-sm font-bold text-white drop-shadow-lg">
-              ${anteAmount} CRIBBAGE
-            </h2>
-            <p className="text-[9px] text-white/70">
-              121 to win • Skunk &lt;91 (2x) • Double &lt;61 (3x)
-            </p>
-          </div>
-
-          {/* Opponent positions - upper left inside circle */}
-          <div className="absolute top-14 left-6 flex flex-col gap-2 z-50">
-            {opponents.map(opponent => {
-              const oppState = cribbageState.playerStates[opponent.id];
-              const isDealerPlayer = isDealer(opponent.id);
-              
-              return (
-                <div 
-                  key={opponent.id}
-                  className="flex flex-col items-start"
-                >
-                  {/* Chip circle row */}
-                  <div className="flex items-center gap-1.5">
-                    <div className="relative">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-poker-gold">
-                        <span className="text-[10px] font-bold text-slate-900">
-                          ${formatChipValue(opponent.chips)}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Name */}
-                    <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
-                      {opponent.profiles?.username || 'Player'}
-                    </span>
-
-                    {/* Dealer button inline */}
-                    {isDealerPlayer && (
-                      <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                        <span className="text-white font-bold text-[7px]">D</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Opponent's cards (face down) - below name */}
-                  <div className="flex -space-x-1.5 mt-1 ml-1">
-                    {oppState?.hand.map((_, i) => (
-                      <div key={i} className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-500" />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Peg Board - Center area */}
-          <CribbageFeltContent
-            cribbageState={cribbageState}
-            players={players}
-            currentPlayerId={currentPlayerId}
-            sequenceStartIndex={sequenceStartIndex}
-            getPlayerUsername={getPlayerUsername}
-          />
-
-          {/* Dealer button at bottom - only if current player is dealer */}
-          {currentPlayer && isDealer(currentPlayerId) && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-              <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-[10px]">D</span>
-              </div>
+            {/* Game Title - Top center of felt */}
+            <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
+              <h2 className="text-sm font-bold text-white drop-shadow-lg">
+                ${anteAmount} CRIBBAGE
+              </h2>
+              <p className="text-[9px] text-white/70">
+                121 to win • Skunk &lt;91 (2x) • Double &lt;61 (3x)
+              </p>
             </div>
-          )}
+
+            {/* Peg Board - Center area */}
+            <CribbageFeltContent
+              cribbageState={cribbageState}
+              players={players}
+              currentPlayerId={currentPlayerId}
+              sequenceStartIndex={sequenceStartIndex}
+              getPlayerUsername={getPlayerUsername}
+            />
+
+            {/* Dealer button at bottom - only if current player is dealer */}
+            {currentPlayer && isDealer(currentPlayerId) && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+                <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-[10px]">D</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Opponent overlay (not clipped by the circle) */}
+          <div className="absolute inset-0 z-50 pointer-events-none">
+            <div className="absolute top-14 left-6 flex flex-col gap-2">
+              {opponents.map(opponent => {
+                const oppState = cribbageState.playerStates[opponent.id];
+                const isDealerPlayer = isDealer(opponent.id);
+
+                return (
+                  <div key={opponent.id} className="flex flex-col items-start">
+                    {/* Chip circle row */}
+                    <div className="flex items-center gap-1.5">
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-poker-gold">
+                          <span className="text-[10px] font-bold text-slate-900">
+                            ${formatChipValue(opponent.chips)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Name */}
+                      <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
+                        {opponent.profiles?.username || 'Player'}
+                      </span>
+
+                      {/* Dealer button inline */}
+                      {isDealerPlayer && (
+                        <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
+                          <span className="text-white font-bold text-[7px]">D</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Opponent's cards (face down) - below name */}
+                    <div className="flex -space-x-1.5 mt-1 ml-1">
+                      {oppState?.hand.map((_, i) => (
+                        <div key={i} className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-500" />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
