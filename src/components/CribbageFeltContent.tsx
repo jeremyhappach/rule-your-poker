@@ -54,22 +54,17 @@ export const CribbageFeltContent = ({
         />
       </div>
 
-      {/* Crib - shows actual card count as stacked card backs */}
+      {/* Crib - shows actual card count as horizontal row like opponent cards */}
       {showCribOnFelt && cribbageState.crib.length > 0 && (
         <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
-          <div className="relative">
-            {/* Stack cards with offset based on actual crib count */}
+          <div className="flex -space-x-1.5">
             {cribbageState.crib.map((_, i) => (
               <div
                 key={i}
-                className="w-6 h-9 rounded border border-white/20"
+                className="w-4 h-6 rounded-sm border border-white/20"
                 style={{
                   background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                  position: i === 0 ? 'relative' : 'absolute',
-                  top: i === 0 ? 0 : `${i * 2}px`,
-                  left: i === 0 ? 0 : `${i * 2}px`,
-                  zIndex: cribbageState.crib.length - i,
                 }}
               />
             ))}
