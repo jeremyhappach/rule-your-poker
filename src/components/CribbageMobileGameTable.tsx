@@ -154,8 +154,19 @@ export const CribbageMobileGameTable = ({
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
   useEffect(() => {
+    // Guard: need roundId to proceed
+    if (!roundId) {
+      console.log('[CRIBBAGE] No roundId yet, waiting...');
+      return;
+    }
+    
     const loadOrInitializeState = async () => {
-      if (hasInitializedRef.current || initialLoadComplete) return;
+      if (hasInitializedRef.current || initialLoadComplete) {
+        console.log('[CRIBBAGE] Already initialized, skipping');
+        return;
+      }
+      
+      console.log('[CRIBBAGE] Loading state for round:', roundId);
       
       const { data: roundData, error } = await supabase
         .from('rounds')
@@ -169,8 +180,14 @@ export const CribbageMobileGameTable = ({
         return;
       }
 
+      console.log('[CRIBBAGE] Round data loaded:', { 
+        hasState: !!roundData?.cribbage_state, 
+        handNumber: roundData?.hand_number 
+      });
+
       // If state already exists, use it (game already in progress or resumed)
       if (roundData?.cribbage_state) {
+        console.log('[CRIBBAGE] Using existing state from DB');
         hasInitializedRef.current = true;
         setInitialLoadComplete(true);
         setCribbageState(roundData.cribbage_state as unknown as CribbageState);
@@ -189,6 +206,7 @@ export const CribbageMobileGameTable = ({
       }
 
       // Not first hand but no state - initialize with session dealer
+      console.log('[CRIBBAGE] Not first hand, initializing with session dealer');
       hasInitializedRef.current = true;
       setInitialLoadComplete(true);
       const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
@@ -204,7 +222,7 @@ export const CribbageMobileGameTable = ({
     };
 
     loadOrInitializeState();
-  }, [roundId]); // Only run on roundId change, not on every prop change
+  }, [roundId, initialLoadComplete]); // Re-run if roundId changes, include initialLoadComplete in deps
 
   // Handle high card selection complete
   const handleHighCardComplete = useCallback(async (winnerPlayerId: string) => {
@@ -719,7 +737,8 @@ export const CribbageMobileGameTable = ({
     );
   }
 
-  if (!cribbageState || !currentPlayerId) {
+  // Show loading only AFTER initial load attempt completes and still no state
+  if (!initialLoadComplete || !cribbageState || !currentPlayerId) {
     return (
       <div className="flex items-center justify-center h-full bg-background">
         <div className="text-poker-gold">Loading Cribbage...</div>
