@@ -376,7 +376,7 @@ export const CribbageMobileGameTable = ({
           </div>
 
           {/* Opponent positions - upper left inside circle */}
-          <div className="absolute top-12 left-4 flex flex-col gap-2 z-40">
+          <div className="absolute top-14 left-6 flex flex-col gap-2 z-50">
             {opponents.map(opponent => {
               const oppState = cribbageState.playerStates[opponent.id];
               const isDealerPlayer = isDealer(opponent.id);
@@ -427,7 +427,6 @@ export const CribbageMobileGameTable = ({
             currentPlayerId={currentPlayerId}
             sequenceStartIndex={sequenceStartIndex}
             getPlayerUsername={getPlayerUsername}
-            anteAmount={anteAmount}
           />
 
           {/* Dealer button at bottom - only if current player is dealer */}
@@ -444,10 +443,19 @@ export const CribbageMobileGameTable = ({
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
         {/* Dealer Announcements Area */}
-        {cribbageState.lastEvent && (
+        {(cribbageState.lastEvent ||
+          cribbageState.phase === 'discarding' ||
+          cribbageState.phase === 'cutting' ||
+          cribbageState.phase === 'counting') && (
           <div className="bg-amber-600/20 border-b border-amber-600/30 px-4 py-2">
             <p className="text-center text-sm text-amber-200 font-medium">
-              {getPlayerUsername(cribbageState.lastEvent.playerId)}: {cribbageState.lastEvent.label} (+{cribbageState.lastEvent.points})
+              {cribbageState.lastEvent
+                ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
+                : cribbageState.phase === 'discarding'
+                  ? 'Discard to Crib'
+                  : cribbageState.phase === 'cutting'
+                    ? 'Cut Card'
+                    : 'Counting hands…'}
             </p>
           </div>
         )}
