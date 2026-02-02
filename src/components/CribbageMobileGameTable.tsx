@@ -1,22 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
+import type { CribbageState } from '@/lib/cribbageTypes';
 import { 
   initializeCribbageGame, 
   discardToCrib, 
   playPeggingCard, 
   callGo,
-  getPhaseDisplayName 
 } from '@/lib/cribbageGameLogic';
-import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
+import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
-import { CribbagePegBoard } from './CribbagePegBoard';
+import { CribbageFeltContent } from './CribbageFeltContent';
+import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
-import { cn } from '@/lib/utils';
+import { cn, formatChipValue } from '@/lib/utils';
+import { MessageSquare, User, Clock } from 'lucide-react';
 
 interface Player {
   id: string;
@@ -38,6 +37,22 @@ interface CribbageMobileGameTableProps {
   onGameComplete: () => void;
 }
 
+// Custom Spade icon for tab
+const SpadeIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    className={className}
+    fill="currentColor"
+    stroke="currentColor"
+    strokeWidth="0"
+  >
+    <path d="M12 2C12 2 4 9 4 13.5C4 16.5 6.5 18.5 9 18.5C10.2 18.5 11.2 18 12 17.2C12.8 18 13.8 18.5 15 18.5C17.5 18.5 20 16.5 20 13.5C20 9 12 2 12 2Z" />
+    <path d="M12 17.5L12 22" strokeWidth="2.5" strokeLinecap="round" />
+    <path d="M9 22L15 22" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 export const CribbageMobileGameTable = ({
   gameId,
   roundId,
@@ -48,21 +63,21 @@ export const CribbageMobileGameTable = ({
   pot,
   onGameComplete,
 }: CribbageMobileGameTableProps) => {
-  const { getTableColors } = useVisualPreferences();
+  const { getTableColors, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
+  const cardBackColors = getCardBackColors();
   
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
-  const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   
-  // Track the last pegging sequence start index for clearing old cards
   const [sequenceStartIndex, setSequenceStartIndex] = useState(0);
   const lastCountRef = useRef<number>(0);
 
-  // Initialize game state from database or create new
+  // Initialize game state
   useEffect(() => {
     const loadOrInitializeState = async () => {
       const { data: roundData, error } = await supabase
@@ -95,7 +110,7 @@ export const CribbageMobileGameTable = ({
     loadOrInitializeState();
   }, [roundId, players, anteAmount, dealerPosition]);
 
-  // Subscribe to realtime updates
+  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel(`cribbage-mobile-${roundId}`)
@@ -125,7 +140,7 @@ export const CribbageMobileGameTable = ({
     };
   }, [roundId, onGameComplete]);
 
-  // Track when pegging sequence resets to clear old cards from display
+  // Track pegging sequence resets
   useEffect(() => {
     if (!cribbageState || cribbageState.phase !== 'pegging') return;
     
@@ -136,7 +151,7 @@ export const CribbageMobileGameTable = ({
     lastCountRef.current = currentCount;
   }, [cribbageState?.pegging.currentCount, cribbageState?.pegging.playedCards.length, cribbageState?.phase]);
 
-  // Auto-go: When it's our turn and we can't play, automatically call go
+  // Auto-go
   useEffect(() => {
     if (!cribbageState || !currentPlayerId || isProcessing) return;
     if (cribbageState.phase !== 'pegging') return;
@@ -154,17 +169,15 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
 
-  // Bot decision ref to prevent duplicate actions
+  // Bot logic
   const botActionInProgress = useRef(false);
 
-  // Bot decision logic
   useEffect(() => {
     if (!cribbageState || isProcessing || botActionInProgress.current) return;
     if (cribbageState.phase === 'complete') return;
 
     const processBotActions = async () => {
       if (cribbageState.phase === 'discarding') {
-        const expectedDiscard = players.length === 2 ? 2 : 1;
         for (const player of players) {
           if (!player.is_bot) continue;
           
@@ -172,14 +185,9 @@ export const CribbageMobileGameTable = ({
           if (!botState || botState.discardedToCrib.length > 0) continue;
           
           botActionInProgress.current = true;
-          console.log('[CRIBBAGE BOT] Bot discarding:', player.id);
           
           const isDealer = player.id === cribbageState.dealerPlayerId;
-          const discardIndices = getBotDiscardIndices(
-            botState.hand,
-            players.length,
-            isDealer
-          );
+          const discardIndices = getBotDiscardIndices(botState.hand, players.length, isDealer);
           
           await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
           
@@ -209,7 +217,6 @@ export const CribbageMobileGameTable = ({
         if (!botState) return;
 
         botActionInProgress.current = true;
-        console.log('[CRIBBAGE BOT] Bot pegging turn:', currentTurnId);
 
         await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
 
@@ -265,50 +272,18 @@ export const CribbageMobileGameTable = ({
     }
   };
 
-  const handleCardClick = (index: number) => {
+  const handleDiscard = useCallback(async (cardIndices: number[]) => {
     if (!cribbageState || !currentPlayerId) return;
     
-    const playerState = cribbageState.playerStates[currentPlayerId];
-    if (!playerState) return;
-
-    if (cribbageState.phase === 'discarding') {
-      const expectedDiscard = players.length === 2 ? 2 : 1;
-      if (selectedCards.includes(index)) {
-        setSelectedCards(selectedCards.filter(i => i !== index));
-      } else if (selectedCards.length < expectedDiscard) {
-        setSelectedCards([...selectedCards, index]);
-      }
-    } else if (cribbageState.phase === 'pegging') {
-      if (cribbageState.pegging.currentTurnPlayerId === currentPlayerId) {
-        const card = playerState.hand[index];
-        if (card && getCardPointValue(card) + cribbageState.pegging.currentCount <= 31) {
-          handlePlayCard(index);
-        } else {
-          toast.error('Card would exceed 31');
-        }
-      }
-    }
-  };
-
-  const handleDiscard = async () => {
-    if (!cribbageState || !currentPlayerId || selectedCards.length === 0) return;
-    
-    const expectedDiscard = players.length === 2 ? 2 : 1;
-    if (selectedCards.length !== expectedDiscard) {
-      toast.error(`Select ${expectedDiscard} card(s) to discard`);
-      return;
-    }
-
     try {
-      const newState = discardToCrib(cribbageState, currentPlayerId, selectedCards);
+      const newState = discardToCrib(cribbageState, currentPlayerId, cardIndices);
       await updateState(newState);
-      setSelectedCards([]);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  };
+  }, [cribbageState, currentPlayerId]);
 
-  const handlePlayCard = async (cardIndex: number) => {
+  const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId) return;
 
     try {
@@ -317,9 +292,9 @@ export const CribbageMobileGameTable = ({
     } catch (err) {
       toast.error((err as Error).message);
     }
-  };
+  }, [cribbageState, currentPlayerId]);
 
-  const handleGo = async () => {
+  const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId) return;
 
     try {
@@ -328,84 +303,110 @@ export const CribbageMobileGameTable = ({
     } catch (err) {
       toast.error((err as Error).message);
     }
-  };
-
-  if (!cribbageState || !currentPlayerId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-poker-gold">Loading Cribbage...</div>
-      </div>
-    );
-  }
-
-  const myPlayerState = cribbageState.playerStates[currentPlayerId];
-  const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
-  const canPlayAnyCard = myPlayerState && hasPlayableCard(myPlayerState.hand, cribbageState.pegging.currentCount);
-  const haveDiscarded = myPlayerState?.discardedToCrib.length > 0;
+  }, [cribbageState, currentPlayerId]);
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
     return player?.profiles?.username || 'Unknown';
   };
 
-  // Get opponent player(s) for display at top
+  if (!cribbageState || !currentPlayerId) {
+    return (
+      <div className="flex items-center justify-center h-full bg-background">
+        <div className="text-poker-gold">Loading Cribbage...</div>
+      </div>
+    );
+  }
+
+  // Get opponents for display around the table
   const opponents = players.filter(p => p.user_id !== currentUserId);
+  const isDealer = (playerId: string) => dealerPosition === players.find(p => p.id === playerId)?.position;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Felt Area - Upper Section */}
+    <div className="h-full flex flex-col overflow-hidden bg-background">
+      {/* Felt Area - Upper Section with circular table */}
       <div 
-        className="flex-1 relative overflow-hidden"
+        className="relative overflow-hidden"
         style={{ 
-          background: `linear-gradient(135deg, ${tableColors.color}, ${tableColors.darkColor})`,
-          minHeight: '55vh',
-          maxHeight: '60vh'
+          height: '55vh',
+          minHeight: '300px'
         }}
       >
-        {/* Header - Phase & Pot */}
-        <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
-          <div className="bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg">
-            <p className="text-sm font-medium text-amber-200">
-              {getPhaseDisplayName(cribbageState.phase)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {cribbageState.payoutMultiplier > 1 && (
-              <Badge variant="destructive" className="text-xs">
-                {cribbageState.payoutMultiplier === 2 ? 'SKUNK!' : 'DOUBLE SKUNK!'}
-              </Badge>
-            )}
-            <Badge className="bg-poker-gold text-black font-bold">
-              Pot: ${pot}
-            </Badge>
+        {/* Background gradient */}
+        <div 
+          className="absolute inset-0"
+          style={{ 
+            background: `linear-gradient(135deg, ${tableColors.color}, ${tableColors.darkColor})`
+          }}
+        />
+
+        {/* Circular table overlay */}
+        <div className="absolute inset-4 rounded-full overflow-hidden border-4 border-amber-900/50">
+          <div 
+            className="w-full h-full"
+            style={{ 
+              background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`
+            }}
+          />
+        </div>
+
+        {/* Pot display */}
+        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 z-20">
+          <div className="bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-poker-gold/50">
+            <span className="text-lg font-bold text-poker-gold">${pot}</span>
           </div>
         </div>
 
-        {/* Opponent Area - Top of Felt */}
-        <div className="absolute top-12 left-0 right-0 flex justify-center gap-4 px-4">
+        {/* Opponent positions around the top of the table */}
+        <div className="absolute top-[8%] left-0 right-0 flex justify-center gap-8 px-4 z-30">
           {opponents.map(opponent => {
             const oppState = cribbageState.playerStates[opponent.id];
             const isOppTurn = cribbageState.pegging.currentTurnPlayerId === opponent.id;
+            const isDealerPlayer = isDealer(opponent.id);
             
             return (
               <div 
                 key={opponent.id}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 rounded-lg",
-                  "bg-black/30 backdrop-blur-sm border",
-                  isOppTurn ? "border-poker-gold ring-2 ring-poker-gold/50" : "border-white/10"
+                  "flex flex-col items-center gap-1",
                 )}
               >
-                <span className="text-xs text-white/80 truncate max-w-[80px]">
-                  {opponent.profiles?.username || 'Player'}
-                </span>
-                <span className="text-lg font-bold text-poker-gold">
-                  {oppState?.pegScore || 0}
-                </span>
-                {/* Opponent's cards (face down during pegging) */}
-                <div className="flex gap-0.5 mt-1">
+                {/* Opponent name and chip stack */}
+                <div className={cn(
+                  "flex flex-col items-center px-2 py-1 rounded-lg",
+                  isOppTurn && "ring-2 ring-poker-gold"
+                )}>
+                  <div className="relative">
+                    {/* Chip circle */}
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex flex-col items-center justify-center border-2",
+                      isOppTurn ? "border-poker-gold bg-white animate-pulse" : "border-slate-600/50 bg-white"
+                    )}>
+                      <span className="text-sm font-bold text-slate-800">
+                        ${formatChipValue(opponent.chips)}
+                      </span>
+                    </div>
+                    {/* Dealer button */}
+                    {isDealerPlayer && (
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center">
+                        <span className="text-white font-bold text-[10px]">D</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-white/80 mt-1 truncate max-w-[70px]">
+                    {opponent.profiles?.username || 'Player'}
+                  </span>
+                  <span className="text-xs text-poker-gold font-bold">
+                    {oppState?.pegScore || 0} pts
+                  </span>
+                </div>
+
+                {/* Opponent's cards (face down) */}
+                <div className="flex gap-0.5">
                   {oppState?.hand.map((_, i) => (
-                    <CribbagePlayingCard key={i} card={{ rank: 'A', suit: 'spades', value: 1 }} size="xs" faceDown />
+                    <div key={i} className="transform scale-75 origin-center">
+                      <CribbagePlayingCard card={{ rank: 'A', suit: 'spades', value: 1 }} size="xs" faceDown />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -413,134 +414,132 @@ export const CribbageMobileGameTable = ({
           })}
         </div>
 
-        {/* Peg Board - Center of Felt */}
-        <div className="absolute top-28 left-2 right-2">
-          <CribbagePegBoard 
-            players={players}
-            playerStates={cribbageState.playerStates}
-            winningScore={121}
-          />
-        </div>
+        {/* Cribbage Felt Content - Peg board and pegging area */}
+        <CribbageFeltContent
+          cribbageState={cribbageState}
+          players={players}
+          currentPlayerId={currentPlayerId}
+          sequenceStartIndex={sequenceStartIndex}
+          getPlayerUsername={getPlayerUsername}
+        />
 
-        {/* Center Play Area - Pegging Cards & Cut Card */}
-        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-3 px-4">
-          {/* Cut Card */}
-          {cribbageState.cutCard && (
+        {/* Current player position at bottom of felt */}
+        {currentPlayer && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
             <div className="flex flex-col items-center">
-              <span className="text-[10px] text-white/60 mb-0.5">Cut</span>
-              <CribbagePlayingCard card={cribbageState.cutCard} size="sm" />
-            </div>
-          )}
-
-          {/* Pegging Area */}
-          {cribbageState.phase === 'pegging' && (
-            <div className="bg-black/30 backdrop-blur-sm rounded-xl p-3 w-full max-w-sm border border-white/10">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-white/60">Count</span>
-                <span className="text-2xl font-bold text-poker-gold">
-                  {cribbageState.pegging.currentCount}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1 justify-center min-h-[52px]">
-                {cribbageState.pegging.playedCards.slice(sequenceStartIndex).map((pc, i) => (
-                  <div key={i} className="relative">
-                    <CribbagePlayingCard card={pc.card} size="sm" />
-                    <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-white/70 whitespace-nowrap">
-                      {getPlayerUsername(pc.playerId).slice(0, 5)}
-                    </span>
+              <div className="relative">
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 bg-white",
+                  cribbageState.pegging.currentTurnPlayerId === currentPlayerId 
+                    ? "border-poker-gold ring-2 ring-poker-gold animate-pulse" 
+                    : "border-slate-600/50"
+                )}>
+                  <span className="text-sm font-bold text-slate-800">
+                    ${formatChipValue(currentPlayer.chips)}
+                  </span>
+                </div>
+                {isDealer(currentPlayerId) && (
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center">
+                    <span className="text-white font-bold text-[10px]">D</span>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
-
-          {/* Turn Indicator */}
-          {cribbageState.phase === 'pegging' && cribbageState.pegging.currentTurnPlayerId && (
-            <p className="text-sm">
-              {isMyTurn ? (
-                <span className="text-poker-gold font-bold animate-pulse">Your turn - tap a card!</span>
-              ) : (
-                <span className="text-white/70">Waiting for {getPlayerUsername(cribbageState.pegging.currentTurnPlayerId)}</span>
-              )}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Player Cards Area - Bottom Section */}
-      <div className="bg-gray-900 border-t border-gray-700 p-4">
-        {/* Score Display */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-400">Your Score</span>
-          <span className="text-xl font-bold text-poker-gold">
-            {myPlayerState?.pegScore || 0}
-          </span>
-        </div>
-
-        {/* Player's Hand */}
-        {myPlayerState && (
-          <>
-            <div className="flex gap-2 justify-center flex-wrap">
-              {myPlayerState.hand.map((card, index) => {
-                const isSelected = selectedCards.includes(index);
-                const isPlayable = cribbageState.phase === 'pegging' && 
-                  isMyTurn && 
-                  getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
-                
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleCardClick(index)}
-                    disabled={isProcessing}
-                    className={cn(
-                      "transition-all duration-200",
-                      isSelected && "-translate-y-4 ring-2 ring-poker-gold rounded",
-                      isMyTurn && isPlayable && "hover:-translate-y-2 hover:ring-1 hover:ring-poker-gold/50",
-                      cribbageState.phase === 'discarding' && "hover:-translate-y-2"
-                    )}
-                  >
-                    <CribbagePlayingCard card={card} size="md" />
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Action Area */}
-            <div className="flex justify-center mt-4">
-              {cribbageState.phase === 'discarding' && !haveDiscarded && (
-                <Button
-                  onClick={handleDiscard}
-                  disabled={isProcessing || selectedCards.length === 0}
-                  className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-6"
-                >
-                  Discard to Crib ({selectedCards.length}/{players.length === 2 ? 2 : 1})
-                </Button>
-              )}
-              
-              {cribbageState.phase === 'discarding' && haveDiscarded && (
-                <p className="text-gray-400 text-sm">Waiting for other players to discard...</p>
-              )}
-
-              {cribbageState.phase === 'pegging' && isMyTurn && !canPlayAnyCard && (
-                <p className="text-amber-400 text-sm animate-pulse">Auto-calling Go...</p>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Crib Display (dealer only during counting) */}
-        {cribbageState.phase === 'counting' && 
-         currentPlayerId === cribbageState.cribOwnerPlayerId && 
-         cribbageState.crib.length > 0 && (
-          <div className="mt-4 p-3 bg-amber-900/30 rounded-lg border border-amber-600/30">
-            <p className="text-xs text-amber-400 mb-2">Your Crib</p>
-            <div className="flex gap-1 justify-center">
-              {cribbageState.crib.map((card, i) => (
-                <CribbagePlayingCard key={i} card={card} size="sm" />
-              ))}
+              <span className="text-xs text-white/80 mt-1">You</span>
             </div>
           </div>
         )}
+      </div>
+
+      {/* Bottom Section - Tabs and Content */}
+      <div className="flex-1 flex flex-col bg-background min-h-0">
+        {/* Tab navigation bar */}
+        <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
+          {/* Cards tab */}
+          <button 
+            onClick={() => setActiveTab('cards')}
+            style={{ flex: '0 0 35%' }}
+            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+              activeTab === 'cards' 
+                ? 'bg-primary/20 text-foreground' 
+                : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <SpadeIcon className="w-5 h-5" />
+          </button>
+          {/* Chat tab */}
+          <button 
+            onClick={() => setActiveTab('chat')}
+            style={{ flex: '0 0 35%' }}
+            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+              activeTab === 'chat' 
+                ? 'bg-primary/20 text-foreground' 
+                : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <MessageSquare className="w-5 h-5" />
+          </button>
+          {/* Lobby tab */}
+          <button 
+            onClick={() => setActiveTab('lobby')}
+            style={{ flex: '0 0 15%' }}
+            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+              activeTab === 'lobby' 
+                ? 'bg-primary/20 text-foreground' 
+                : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <User className="w-5 h-5" />
+          </button>
+          {/* History tab */}
+          <button 
+            onClick={() => setActiveTab('history')}
+            style={{ flex: '0 0 15%' }}
+            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+              activeTab === 'history' 
+                ? 'bg-primary/20 text-foreground' 
+                : 'text-muted-foreground/50 hover:text-muted-foreground'
+            }`}
+          >
+            <Clock className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === 'cards' && currentPlayer && (
+            <CribbageMobileCardsTab
+              cribbageState={cribbageState}
+              currentPlayerId={currentPlayerId}
+              playerCount={players.length}
+              isProcessing={isProcessing}
+              onDiscard={handleDiscard}
+              onPlayCard={handlePlayCard}
+            />
+          )}
+
+          {activeTab === 'chat' && (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-muted-foreground">Chat coming soon...</span>
+            </div>
+          )}
+
+          {activeTab === 'lobby' && (
+            <div className="p-4 space-y-2">
+              {players.map(player => (
+                <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <span className="text-sm">{player.profiles?.username || 'Player'}</span>
+                  <span className="text-sm text-poker-gold">${player.chips}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="flex items-center justify-center py-8">
+              <span className="text-muted-foreground">History coming soon...</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
