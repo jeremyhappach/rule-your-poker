@@ -2,7 +2,7 @@ import type { CribbageCard } from '@/lib/cribbageTypes';
 
 interface CribbagePlayingCardProps {
   card: CribbageCard;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   faceDown?: boolean;
 }
 
@@ -11,11 +11,15 @@ export const CribbagePlayingCard = ({
   size = 'md',
   faceDown = false 
 }: CribbagePlayingCardProps) => {
-  const sizeClasses = {
-    sm: 'w-8 h-12 text-xs',
-    md: 'w-12 h-18 text-sm',
-    lg: 'w-16 h-24 text-base',
+  // Narrower cards with 2:3 aspect ratio (width:height)
+  const sizeStyles: Record<string, { width: number; height: number; fontSize: string; suitSize: string }> = {
+    xs: { width: 24, height: 36, fontSize: 'text-[10px]', suitSize: 'text-xs' },
+    sm: { width: 32, height: 48, fontSize: 'text-xs', suitSize: 'text-sm' },
+    md: { width: 40, height: 60, fontSize: 'text-sm', suitSize: 'text-base' },
+    lg: { width: 48, height: 72, fontSize: 'text-base', suitSize: 'text-lg' },
   };
+
+  const { width, height, fontSize, suitSize } = sizeStyles[size];
 
   const getSuitSymbol = (suit: CribbageCard['suit']) => {
     switch (suit) {
@@ -33,7 +37,8 @@ export const CribbagePlayingCard = ({
   if (faceDown) {
     return (
       <div 
-        className={`${sizeClasses[size]} rounded-md bg-gradient-to-br from-blue-800 to-blue-950 border-2 border-blue-600 shadow-md flex items-center justify-center`}
+        style={{ width, height }}
+        className="rounded-sm bg-gradient-to-br from-blue-800 to-blue-950 border border-blue-600 shadow-sm flex items-center justify-center"
       >
         <div className="w-3/4 h-3/4 border border-blue-400/30 rounded-sm bg-blue-700/30" />
       </div>
@@ -42,12 +47,13 @@ export const CribbagePlayingCard = ({
 
   return (
     <div 
-      className={`${sizeClasses[size]} rounded-md bg-white border border-gray-300 shadow-md flex flex-col items-center justify-center p-0.5`}
+      style={{ width, height }}
+      className="rounded-sm bg-white border border-gray-300 shadow-sm flex flex-col items-center justify-center gap-0"
     >
-      <span className={`font-bold ${getSuitColor(card.suit)}`}>
+      <span className={`font-bold leading-none ${fontSize} ${getSuitColor(card.suit)}`}>
         {card.rank}
       </span>
-      <span className={`text-lg leading-none ${getSuitColor(card.suit)}`}>
+      <span className={`leading-none ${suitSize} ${getSuitColor(card.suit)}`}>
         {getSuitSymbol(card.suit)}
       </span>
     </div>
