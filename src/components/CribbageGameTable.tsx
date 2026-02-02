@@ -16,6 +16,12 @@ import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { 
+  useCribbageEventContext, 
+  logPeggingPlay, 
+  logGoPointEvent,
+  logHisHeelsEvent 
+} from '@/lib/useCribbageEventLogging';
 
 interface Player {
   id: string;
@@ -50,6 +56,9 @@ export const CribbageGameTable = ({
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Event logging context (fire-and-forget)
+  const eventCtx = useCribbageEventContext(roundId);
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
@@ -224,6 +233,8 @@ export const CribbageGameTable = ({
           if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
             // Must call go
             const newState = callGo(cribbageState, currentTurnId);
+            // Fire-and-forget event logging
+            logGoPointEvent(eventCtx, cribbageState, newState);
             await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -237,7 +248,14 @@ export const CribbageGameTable = ({
             );
 
             if (cardIndex !== null) {
+              const cardPlayed = botState.hand[cardIndex];
               const newState = playPeggingCard(cribbageState, currentTurnId, cardIndex);
+              // Fire-and-forget event logging
+              logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed);
+              // Check for his_heels on phase transition
+              if (newState.lastEvent?.type === 'his_heels') {
+                logHisHeelsEvent(eventCtx, newState);
+              }
               await supabase
                 .from('rounds')
                 .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -324,7 +342,17 @@ export const CribbageGameTable = ({
     if (!cribbageState || !currentPlayerId) return;
 
     try {
+      const playerState = cribbageState.playerStates[currentPlayerId];
+      const cardPlayed = playerState?.hand[cardIndex];
       const newState = playPeggingCard(cribbageState, currentPlayerId, cardIndex);
+      // Fire-and-forget event logging
+      if (cardPlayed) {
+        logPeggingPlay(eventCtx, cribbageState, newState, currentPlayerId, cardPlayed);
+      }
+      // Check for his_heels on phase transition
+      if (newState.lastEvent?.type === 'his_heels') {
+        logHisHeelsEvent(eventCtx, newState);
+      }
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -336,6 +364,8 @@ export const CribbageGameTable = ({
 
     try {
       const newState = callGo(cribbageState, currentPlayerId);
+      // Fire-and-forget event logging
+      logGoPointEvent(eventCtx, cribbageState, newState);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);

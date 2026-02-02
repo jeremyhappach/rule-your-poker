@@ -20,6 +20,13 @@ import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { MessageSquare, User, Clock } from 'lucide-react';
+import { 
+  useCribbageEventContext, 
+  logPeggingPlay, 
+  logGoPointEvent,
+  logHisHeelsEvent,
+  logCountingScoringEvents 
+} from '@/lib/useCribbageEventLogging';
 
 interface Player {
   id: string;
@@ -74,6 +81,9 @@ export const CribbageMobileGameTable = ({
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+
+  // Event logging context (fire-and-forget)
+  const eventCtx = useCribbageEventContext(roundId);
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
@@ -155,6 +165,30 @@ export const CribbageMobileGameTable = ({
     lastCountRef.current = currentCount;
   }, [cribbageState?.pegging.currentCount, cribbageState?.pegging.playedCards.length, cribbageState?.phase]);
 
+  // Log counting phase events (fire-and-forget) when transitioning to counting
+  const countingLoggedRef = useRef(false);
+  useEffect(() => {
+    if (!cribbageState || !eventCtx) return;
+    if (cribbageState.phase !== 'counting') {
+      countingLoggedRef.current = false;
+      return;
+    }
+    if (countingLoggedRef.current) return;
+    countingLoggedRef.current = true;
+
+    // Build initial scores (before counting was applied)
+    // We need to reconstruct pre-counting scores from the state
+    const runningScores: Record<string, number> = {};
+    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+      // Get pre-counting score by looking at the pegging scores only
+      // (the state already has post-counting scores, so we track as we log)
+      runningScores[playerId] = 0; // Start from 0 for logging deltas; actual score tracked in state
+    }
+
+    // Log all hand and crib scoring events
+    logCountingScoringEvents(eventCtx, cribbageState, players, runningScores);
+  }, [cribbageState?.phase, eventCtx, players]);
+
   // Auto-go
   useEffect(() => {
     if (!cribbageState || !currentPlayerId || isProcessing) return;
@@ -227,6 +261,8 @@ export const CribbageMobileGameTable = ({
         try {
           if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
             const newState = callGo(cribbageState, currentTurnId);
+            // Fire-and-forget event logging
+            logGoPointEvent(eventCtx, cribbageState, newState);
             await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -239,7 +275,14 @@ export const CribbageMobileGameTable = ({
             );
 
             if (cardIndex !== null) {
+              const cardPlayed = botState.hand[cardIndex];
               const newState = playPeggingCard(cribbageState, currentTurnId, cardIndex);
+              // Fire-and-forget event logging
+              logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed);
+              // Check for his_heels on phase transition
+              if (newState.lastEvent?.type === 'his_heels') {
+                logHisHeelsEvent(eventCtx, newState);
+              }
               await supabase
                 .from('rounds')
                 .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -291,23 +334,35 @@ export const CribbageMobileGameTable = ({
     if (!cribbageState || !currentPlayerId) return;
 
     try {
+      const playerState = cribbageState.playerStates[currentPlayerId];
+      const cardPlayed = playerState?.hand[cardIndex];
       const newState = playPeggingCard(cribbageState, currentPlayerId, cardIndex);
+      // Fire-and-forget event logging
+      if (cardPlayed) {
+        logPeggingPlay(eventCtx, cribbageState, newState, currentPlayerId, cardPlayed);
+      }
+      // Check for his_heels on phase transition
+      if (newState.lastEvent?.type === 'his_heels') {
+        logHisHeelsEvent(eventCtx, newState);
+      }
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId]);
+  }, [cribbageState, currentPlayerId, eventCtx]);
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId) return;
 
     try {
       const newState = callGo(cribbageState, currentPlayerId);
+      // Fire-and-forget event logging
+      logGoPointEvent(eventCtx, cribbageState, newState);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId]);
+  }, [cribbageState, currentPlayerId, eventCtx]);
 
   // Handle counting phase completion - start a new hand
   const handleCountingComplete = useCallback(async () => {

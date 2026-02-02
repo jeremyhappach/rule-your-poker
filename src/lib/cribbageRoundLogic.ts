@@ -201,6 +201,20 @@ export async function endCribbageGame(
       throw new Error('No winner specified');
     }
 
+    // Fetch round to get hand_number and dealer_game_id
+    const { data: round, error: roundError } = await supabase
+      .from('rounds')
+      .select('hand_number, dealer_game_id')
+      .eq('id', roundId)
+      .single();
+
+    if (roundError) {
+      console.error('[CRIBBAGE] Failed to fetch round:', roundError);
+    }
+
+    const handNumber = round?.hand_number ?? 1;
+    const dealerGameId = round?.dealer_game_id ?? null;
+
     // Calculate payout
     const basePot = cribbageState.pot;
     const multiplier = cribbageState.payoutMultiplier;
@@ -245,13 +259,13 @@ export async function endCribbageGame(
       })
       .eq('id', roundId);
 
-    // Record in game_results
+    // Record in game_results with actual hand_number
     await supabase
       .from('game_results')
       .insert({
         game_id: gameId,
-        dealer_game_id: (await supabase.from('games').select('current_game_uuid').eq('id', gameId).single()).data?.current_game_uuid,
-        hand_number: 1,
+        dealer_game_id: dealerGameId,
+        hand_number: handNumber,
         pot_won: totalPayout,
         winner_player_id: cribbageState.winnerPlayerId,
         winner_username: (winner?.profiles as any)?.username,
