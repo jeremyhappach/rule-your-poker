@@ -109,6 +109,7 @@ export const CribbageMobileGameTable = ({
   const [showHighCardSelection, setShowHighCardSelection] = useState(false);
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
   const [selectedCribbageDealer, setSelectedCribbageDealer] = useState<string | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
 
   // Track hand key to detect hand transitions and prevent stale card flash
@@ -151,9 +152,10 @@ export const CribbageMobileGameTable = ({
   }, []);
 
   // Initialize game state - check if we need high card selection first
+  // This runs ONCE on mount to determine if we need high-card selection or can load existing state
   useEffect(() => {
     const loadOrInitializeState = async () => {
-      if (hasInitializedRef.current) return;
+      if (hasInitializedRef.current || initialLoadComplete) return;
       
       const { data: roundData, error } = await supabase
         .from('rounds')
@@ -163,30 +165,33 @@ export const CribbageMobileGameTable = ({
 
       if (error) {
         console.error('[CRIBBAGE] Error loading state:', error);
+        setInitialLoadComplete(true);
         return;
       }
 
       // If state already exists, use it (game already in progress or resumed)
       if (roundData?.cribbage_state) {
         hasInitializedRef.current = true;
+        setInitialLoadComplete(true);
         setCribbageState(roundData.cribbage_state as unknown as CribbageState);
         return;
       }
 
       // First hand of a new cribbage game - show high card selection
+      // Mark load complete but show selection (don't set hasInitializedRef yet)
       const isFirstHand = !roundData?.hand_number || roundData.hand_number <= 1;
       
-      if (isFirstHand && !selectedCribbageDealer) {
-        // Need to run high card selection
+      if (isFirstHand) {
+        console.log('[CRIBBAGE] First hand - starting high card selection');
         setShowHighCardSelection(true);
+        setInitialLoadComplete(true);
         return;
       }
 
-      // Initialize with selected dealer (or default to session dealer)
+      // Not first hand but no state - initialize with session dealer
       hasInitializedRef.current = true;
-      const dealerId = selectedCribbageDealer || 
-        (players.find(p => p.position === dealerPosition)?.id) || 
-        players[0].id;
+      setInitialLoadComplete(true);
+      const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
       const playerIds = players.map(p => p.id);
       const newState = initializeCribbageGame(playerIds, dealerId, anteAmount);
       
@@ -199,7 +204,7 @@ export const CribbageMobileGameTable = ({
     };
 
     loadOrInitializeState();
-  }, [roundId, players, anteAmount, dealerPosition, selectedCribbageDealer]);
+  }, [roundId]); // Only run on roundId change, not on every prop change
 
   // Handle high card selection complete
   const handleHighCardComplete = useCallback(async (winnerPlayerId: string) => {
