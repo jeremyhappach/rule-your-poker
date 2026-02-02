@@ -4,12 +4,14 @@ interface CribbagePlayingCardProps {
   card: CribbageCard;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   faceDown?: boolean;
+  cardBackColors?: { color: string; darkColor: string };
 }
 
 export const CribbagePlayingCard = ({ 
   card, 
   size = 'md',
-  faceDown = false 
+  faceDown = false,
+  cardBackColors,
 }: CribbagePlayingCardProps) => {
   // Narrower cards with 2:3 aspect ratio - maximize text size for readability
   const sizeStyles: Record<string, { width: number; height: number; fontSize: string; suitSize: string }> = {
@@ -35,12 +37,23 @@ export const CribbagePlayingCard = ({
   };
 
   if (faceDown) {
+    // Use player's card back preference if provided, otherwise default blue
+    const bgColor = cardBackColors?.color || '#00308F';
+    const darkBgColor = cardBackColors?.darkColor || '#001a4a';
+    
     return (
       <div 
-        style={{ width, height }}
-        className="rounded-sm bg-gradient-to-br from-blue-800 to-blue-950 border border-blue-600 shadow-sm flex items-center justify-center"
+        style={{ 
+          width, 
+          height,
+          background: `linear-gradient(135deg, ${bgColor} 0%, ${darkBgColor} 100%)`,
+        }}
+        className="rounded-sm border border-white/20 shadow-sm flex items-center justify-center"
       >
-        <div className="w-3/4 h-3/4 border border-blue-400/30 rounded-sm bg-blue-700/30" />
+        <div 
+          className="w-3/4 h-3/4 border border-white/20 rounded-sm"
+          style={{ backgroundColor: `${bgColor}50` }}
+        />
       </div>
     );
   }

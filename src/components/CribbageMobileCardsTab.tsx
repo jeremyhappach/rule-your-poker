@@ -194,11 +194,6 @@ export const CribbageMobileCardsTab = ({
         <span className="font-bold text-lg text-poker-gold">
           ${formatChipValue(currentPlayer.chips)}
         </span>
-        {isDealer && (
-          <div className="w-5 h-5 rounded-full bg-red-600 border border-white flex items-center justify-center">
-            <span className="text-white font-bold text-[8px]">D</span>
-          </div>
-        )}
       </div>
 
       {/* Crib Display (dealer only during counting) */}
