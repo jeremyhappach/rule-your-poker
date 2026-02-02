@@ -72,21 +72,23 @@ export const CribbageFeltContent = ({
         </div>
       )}
 
-      {/* Pegging / Gameplay Area (moved to where the Crib used to be) */}
+      {/* Pegging / Gameplay Area - positioned below peg board but above dealer button */}
       {cribbageState.phase === 'pegging' && (
-        <div className="absolute top-[76%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[9px] text-white/60">Count:</span>
-            <span className="text-lg font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>
+        <div className="absolute top-[68%] left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
+          {/* Count on the left */}
+          <div className="flex flex-col items-center">
+            <span className="text-[10px] text-white/60">Count</span>
+            <span className="text-2xl font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>
           </div>
-          <div className="flex gap-0.5 justify-center min-w-[80px]">
+          {/* Played cards - larger size */}
+          <div className="flex gap-1 justify-center">
             {cribbageState.pegging.playedCards.slice(sequenceStartIndex).map((pc, i) => (
               <div key={i} className="relative">
-                <CribbagePlayingCard card={pc.card} size="xs" />
+                <CribbagePlayingCard card={pc.card} size="md" />
               </div>
             ))}
             {cribbageState.pegging.playedCards.slice(sequenceStartIndex).length === 0 && (
-              <div className="w-8 h-12 border border-dashed border-white/20 rounded" />
+              <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
             )}
           </div>
         </div>
@@ -97,21 +99,6 @@ export const CribbageFeltContent = ({
         <div className="absolute top-[24%] left-1/2 -translate-x-1/2 translate-x-12 z-20 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Cut</span>
           <CribbagePlayingCard card={cribbageState.cutCard} size="sm" />
-        </div>
-      )}
-
-      {/* Turn Indicator */}
-      {cribbageState.phase === 'pegging' && cribbageState.pegging.currentTurnPlayerId && (
-        <div className="absolute top-[82%] left-1/2 -translate-x-1/2 z-20">
-          <p className="text-xs">
-            {isMyTurn ? (
-              <span className="text-poker-gold font-bold animate-pulse">Your turn!</span>
-            ) : (
-              <span className="text-white/70">
-                {getPlayerUsername(cribbageState.pegging.currentTurnPlayerId)}'s turn
-              </span>
-            )}
-          </p>
         </div>
       )}
     </>
