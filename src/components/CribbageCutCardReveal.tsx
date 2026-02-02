@@ -19,8 +19,11 @@ export const CribbageCutCardReveal = ({
   const prevCardRef = useRef<CribbageCard | null>(null);
 
   useEffect(() => {
-    // Detect when cut card is newly revealed
-    if (card && !prevCardRef.current) {
+    // Detect when cut card is newly revealed (compare by card identity)
+    const cardKey = card ? `${card.rank}-${card.suit}` : null;
+    const prevKey = prevCardRef.current ? `${prevCardRef.current.rank}-${prevCardRef.current.suit}` : null;
+    
+    if (card && cardKey !== prevKey) {
       // New card revealed - trigger flip animation
       setIsFlipping(true);
       setShowFace(false);
@@ -41,13 +44,16 @@ export const CribbageCutCardReveal = ({
         clearTimeout(flipTimer);
         clearTimeout(endTimer);
       };
+    } else if (card && cardKey === prevKey && !showFace && !isFlipping) {
+      // Same card but state was reset - show immediately without animation
+      setShowFace(true);
     } else if (!card) {
       // Card removed - reset state
       prevCardRef.current = null;
       setShowFace(false);
       setIsFlipping(false);
     }
-  }, [card]);
+  }, [card, showFace, isFlipping]);
 
   if (!card) return null;
 
