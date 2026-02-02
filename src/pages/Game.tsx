@@ -5213,8 +5213,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Only the host should advance the game.
     // If a non-host flips status early, it can unmount the host's dealer-selection component
     // and cancel the host timeout that should start round 1.
-    const currentHostUserId = (game as any)?.current_host ?? players.find(p => p.position === 1)?.user_id;
-    const isHostUser = Boolean(currentHostUserId && user?.id && currentHostUserId === user.id);
+    // IMPORTANT: Host is NOT necessarily seat 1 (cribbage/bots can occupy seat 1).
+    // Use the same host rule as the rest of Game.tsx: current_host if present, else earliest HUMAN player.
+    const currentHost = (game as any)?.current_host as string | null | undefined;
+    const hostPlayer = [...players]
+      .filter((p) => !p.is_bot)
+      .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0];
+    const isHostUser = Boolean(user?.id && (currentHost ? currentHost === user.id : hostPlayer?.user_id === user.id));
     if (!isHostUser) {
       console.log('[CRIBBAGE] Non-host received dealer selection complete; ignoring');
       return;

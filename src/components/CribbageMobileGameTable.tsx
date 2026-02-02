@@ -399,6 +399,23 @@ export const CribbageMobileGameTable = ({
   }, [players]);
 
   const toCribbageCard = useCallback((card: { suit: string; rank: string }): CribbageCard => {
+    // High-card selection uses the shared cardUtils deck which encodes suits as symbols.
+    // Cribbage UI expects word suits. Convert symbols → words for rendering.
+    const suit = (() => {
+      switch (card.suit) {
+        case '♠':
+          return 'spades';
+        case '♥':
+          return 'hearts';
+        case '♦':
+          return 'diamonds';
+        case '♣':
+          return 'clubs';
+        default:
+          return card.suit;
+      }
+    })();
+
     const rank = card.rank;
     const value =
       rank === 'A'
@@ -412,7 +429,7 @@ export const CribbageMobileGameTable = ({
               : parseInt(rank, 10);
 
     return {
-      suit: card.suit as CribbageCard['suit'],
+      suit: suit as CribbageCard['suit'],
       rank: card.rank as CribbageCard['rank'],
       value: Number.isFinite(value) ? value : 0,
     };
