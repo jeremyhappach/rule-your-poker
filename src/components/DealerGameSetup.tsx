@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting } from "@/lib/playerStateEvaluation";
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
+import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { toast } from "sonner";
 
 type SelectionStep = 'game' | 'config';
@@ -1159,9 +1160,11 @@ export const DealerGameSetup = ({
     
     // Use override if provided (for run back), otherwise use state
     const gameTypeToSubmit = overrideGameType || selectedGameType;
+    const isCribbage = gameTypeToSubmit === 'cribbage';
     const gameTypeName = gameTypeToSubmit === 'ship-captain-crew' ? 'Ship' : 
                          gameTypeToSubmit === 'horses' ? 'Horses' : 
-                         gameTypeToSubmit === 'sports-trivia' ? 'Trivia' : gameTypeToSubmit;
+                         gameTypeToSubmit === 'sports-trivia' ? 'Trivia' : 
+                         isCribbage ? 'Cribbage' : gameTypeToSubmit;
     console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config, game_type:`, gameTypeToSubmit);
     
     const anteDeadline = new Date(Date.now() + anteDecisionTimerSeconds * 1000).toISOString();
@@ -1201,6 +1204,49 @@ export const DealerGameSetup = ({
     
     const dealerGameId = dealerGame.id;
     
+    // CRIBBAGE: Skip ante phase entirely - go straight to in_progress and start round
+    if (isCribbage) {
+      const { error } = await supabase
+        .from('games')
+        .update({
+          game_type: gameTypeToSubmit,
+          ante_amount: parsedAnte,
+          config_complete: true,
+          status: 'in_progress', // Skip ante_decision, go straight to in_progress
+          pot: 0, // No pot in cribbage - direct player transfers
+          leg_value: 0,
+          legs_to_win: 0,
+          pot_max_enabled: false,
+          pussy_tax_enabled: false,
+          current_game_uuid: dealerGameId,
+          is_first_hand: true,
+        })
+        .eq('id', gameId);
+      
+      if (error) {
+        console.error('[DEALER SETUP] Error:', error);
+        hasSubmittedRef.current = false;
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Start the cribbage round immediately
+      console.log('[DEALER SETUP] 🎴 Starting cribbage round directly (no ante phase)');
+      const result = await startCribbageRound(gameId, true);
+      
+      if (!result.success) {
+        console.error('[DEALER SETUP] Failed to start cribbage round:', result.error);
+        hasSubmittedRef.current = false;
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log(`[DEALER SETUP] ✅ Cribbage started, dealer_game_id:`, dealerGameId, 'round_id:', result.roundId);
+      onConfigComplete();
+      return;
+    }
+    
+    // NON-CRIBBAGE: Standard ante_decision flow
     const { error } = await supabase
       .from('games')
       .update({

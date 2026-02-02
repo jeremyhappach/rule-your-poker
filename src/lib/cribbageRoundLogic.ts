@@ -62,15 +62,18 @@ export async function startCribbageRound(
     const sortedPlayers = [...activePlayers].sort((a: any, b: any) => a.position - b.position);
     const playerIds = sortedPlayers.map((p: any) => p.id);
 
-    // Get ante amount
+    // Get ante amount (used only for payout calculation, not pot collection)
     const anteAmount = game.ante_amount || 1;
 
-    // Initialize cribbage game state
+    // Initialize cribbage game state (pot will be 0 since no collection)
     const cribbageState = initializeCribbageGame(
       playerIds,
       dealerPlayer.id,
       anteAmount
     );
+    
+    // Override pot to 0 - cribbage uses direct transfers, not pot
+    cribbageState.pot = 0;
 
     // Get current dealer_game_id
     const dealerGameId = game.current_game_uuid;
@@ -194,6 +197,7 @@ export async function endCribbageGame(
     roundId, 
     winner: cribbageState.winnerPlayerId,
     multiplier: cribbageState.payoutMultiplier,
+    anteAmount: cribbageState.anteAmount,
   });
 
   try {
@@ -215,22 +219,48 @@ export async function endCribbageGame(
     const handNumber = round?.hand_number ?? 1;
     const dealerGameId = round?.dealer_game_id ?? null;
 
-    // Calculate payout
-    const basePot = cribbageState.pot;
-    const multiplier = cribbageState.payoutMultiplier;
-    const totalPayout = basePot * multiplier;
+    // Get all player IDs (losers are everyone except winner)
+    const playerIds = Object.keys(cribbageState.playerStates);
+    const loserIds = playerIds.filter(id => id !== cribbageState.winnerPlayerId);
 
-    // Award pot to winner
-    const { error: winnerError } = await supabase.rpc('increment_player_chips', {
-      p_player_id: cribbageState.winnerPlayerId,
-      p_amount: totalPayout,
+    // Calculate payout based on ante and multiplier (skunk/double-skunk)
+    const baseAmount = cribbageState.anteAmount;
+    const multiplier = cribbageState.payoutMultiplier;
+    const amountPerLoser = baseAmount * multiplier;
+    const totalWinnerGain = amountPerLoser * loserIds.length;
+
+    console.log('[CRIBBAGE] Direct chip transfers:', {
+      baseAmount,
+      multiplier,
+      amountPerLoser,
+      loserCount: loserIds.length,
+      totalWinnerGain,
     });
 
-    if (winnerError) {
-      console.error('[CRIBBAGE] Failed to award pot:', winnerError);
+    // Build chip change tracking for game_results
+    const chipChanges: Record<string, number> = {};
+
+    // Deduct from each loser (fire-and-forget)
+    for (const loserId of loserIds) {
+      chipChanges[loserId] = -amountPerLoser;
+      supabase.rpc('increment_player_chips', {
+        p_player_id: loserId,
+        p_amount: -amountPerLoser,
+      }).then(({ error }) => {
+        if (error) console.error('[CRIBBAGE] Failed to deduct from loser:', loserId, error);
+      });
     }
 
-    // Record game result
+    // Award to winner (fire-and-forget)
+    chipChanges[cribbageState.winnerPlayerId] = totalWinnerGain;
+    supabase.rpc('increment_player_chips', {
+      p_player_id: cribbageState.winnerPlayerId,
+      p_amount: totalWinnerGain,
+    }).then(({ error }) => {
+      if (error) console.error('[CRIBBAGE] Failed to award winner:', error);
+    });
+
+    // Get winner username for display
     const { data: winner } = await supabase
       .from('players')
       .select('id, profiles(username)')
@@ -238,8 +268,9 @@ export async function endCribbageGame(
       .single();
 
     const skunkType = multiplier === 3 ? 'Double-Skunk!' : multiplier === 2 ? 'Skunk!' : '';
-    const resultDescription = `${(winner?.profiles as any)?.username || 'Player'} wins ${skunkType ? skunkType + ' ' : ''}$${totalPayout}`;
+    const resultDescription = `${(winner?.profiles as any)?.username || 'Player'} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
 
+    // Update game status
     await supabase
       .from('games')
       .update({
@@ -259,23 +290,26 @@ export async function endCribbageGame(
       })
       .eq('id', roundId);
 
-    // Record in game_results with actual hand_number
-    await supabase
+    // Record in game_results with actual hand_number and chip changes
+    supabase
       .from('game_results')
       .insert({
         game_id: gameId,
         dealer_game_id: dealerGameId,
         hand_number: handNumber,
-        pot_won: totalPayout,
+        pot_won: totalWinnerGain, // Total won (not from pot, but for consistency)
         winner_player_id: cribbageState.winnerPlayerId,
         winner_username: (winner?.profiles as any)?.username,
         winning_hand_description: resultDescription,
         is_chopped: false,
-        player_chip_changes: {},
+        player_chip_changes: chipChanges,
         game_type: 'cribbage',
+      })
+      .then(({ error }) => {
+        if (error) console.error('[CRIBBAGE] Failed to record game result:', error);
       });
 
-    console.log('[CRIBBAGE] Game ended successfully');
+    console.log('[CRIBBAGE] Game ended successfully - direct transfers complete');
     return true;
 
   } catch (error) {

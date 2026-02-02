@@ -104,7 +104,7 @@ export function initializeCribbageGame(
       goCalledBy: [],
     },
     anteAmount,
-    pot: anteAmount * playerIds.length,
+    pot: 0, // Cribbage doesn't use pot - payouts are direct transfers
     lastEvent: null,
     lastHandCount: null,
     winnerPlayerId: null,
