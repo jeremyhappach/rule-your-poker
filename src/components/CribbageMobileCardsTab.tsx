@@ -196,19 +196,7 @@ export const CribbageMobileCardsTab = ({
         </span>
       </div>
 
-      {/* Crib Display (dealer only during counting) */}
-      {cribbageState.phase === 'counting' && 
-       currentPlayerId === cribbageState.cribOwnerPlayerId && 
-       cribbageState.crib.length > 0 && (
-        <div className="mt-2 p-3 bg-amber-900/30 rounded-lg border border-amber-600/30">
-          <p className="text-xs text-amber-400 mb-2 text-center">Your Crib</p>
-          <div className="flex gap-1 justify-center transform scale-150 origin-center">
-            {cribbageState.crib.map((card, i) => (
-              <CribbagePlayingCard key={i} card={card} size="sm" />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Crib is shown on the felt during counting - no duplicate display here */}
     </div>
   );
 };
