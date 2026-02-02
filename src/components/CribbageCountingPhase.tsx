@@ -219,22 +219,8 @@ export const CribbageCountingPhase = ({
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center z-30">
-      {/* Peg Board - stays visible during counting */}
-      <div className="absolute top-[25%] left-6 right-6 z-10">
-        <CribbagePegBoard 
-          players={players}
-          playerStates={Object.fromEntries(
-            Object.entries(cribbageState.playerStates).map(([id, ps]) => [
-              id,
-              { ...ps, pegScore: animatedScores[id] ?? ps.pegScore }
-            ])
-          )}
-          winningScore={CRIBBAGE_WINNING_SCORE}
-        />
-      </div>
-
       {/* Cards being scored - horizontal layout with cut card */}
-      <div className="absolute top-[55%] left-1/2 -translate-x-1/2 z-40">
+      <div className="absolute top-[68%] left-1/2 -translate-x-1/2 z-40">
         <div className="flex items-end gap-1">
           {/* Player's 4 cards */}
           {currentTarget.hand.map((card, i) => (

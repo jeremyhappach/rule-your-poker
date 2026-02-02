@@ -37,7 +37,7 @@ export const CribbageFeltContent = ({
     !isCountingPhase && 
     cribbageState.phase !== 'complete';
 
-  // During counting, only show skunk indicator - everything else handled by CribbageCountingPhase
+  // During counting, show pegboard and skunk indicator - cards handled by CribbageCountingPhase
   if (isCountingPhase) {
     return (
       <>
@@ -51,6 +51,15 @@ export const CribbageFeltContent = ({
             </div>
           </div>
         )}
+
+        {/* Peg Board - stays in normal position during counting */}
+        <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
+          <CribbagePegBoard 
+            players={players}
+            playerStates={cribbageState.playerStates}
+            winningScore={CRIBBAGE_WINNING_SCORE}
+          />
+        </div>
       </>
     );
   }
