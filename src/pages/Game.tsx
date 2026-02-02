@@ -5209,21 +5209,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // When high-card dealer selection finishes, transition to in_progress and create round 1
   const handleCribbageDealerSelectionComplete = useCallback(async (dealerPosition: number) => {
     if (!gameId) return;
+
+    // CRITICAL: Only the host should advance the game.
+    // If a non-host flips status early, it can unmount the host's dealer-selection component
+    // and cancel the host timeout that should start round 1.
+    const currentHostUserId = (game as any)?.current_host ?? players.find(p => p.position === 1)?.user_id;
+    const isHostUser = Boolean(currentHostUserId && user?.id && currentHostUserId === user.id);
+    if (!isHostUser) {
+      console.log('[CRIBBAGE] Non-host received dealer selection complete; ignoring');
+      return;
+    }
     
     console.log('[CRIBBAGE] Dealer selection complete, winner position:', dealerPosition);
-    
-    // Update dealer position and transition to in_progress
+
+    // Persist the first dealer choice and clear synced dealer selection UI.
+    // NOTE: Do NOT set status to in_progress here; startCribbageRound will do that
+    // after it successfully creates round 1.
     await supabase
       .from('games')
       .update({
         dealer_position: dealerPosition,
-        status: 'in_progress',
-        dealer_selection_state: null, // Clear the selection state
+        dealer_selection_state: null,
       })
       .eq('id', gameId);
-    
-    // Create the first round (isFirstHand = true since this is after dealer selection)
-    const result = await startCribbageRound(gameId, true);
+
+    // Create round 1 AFTER dealer selection, with cribbage_state initialized.
+    // Passing isFirstHand=false avoids the deferred "client initializes" path.
+    const result = await startCribbageRound(gameId, false);
     if (!result.success) {
       console.error('[CRIBBAGE] Failed to start cribbage round after dealer selection:', result.error);
       return;
@@ -5231,7 +5243,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Trigger refetch to update UI
     fetchGameData();
-  }, [gameId, fetchGameData]);
+  }, [gameId, game, players, user?.id, fetchGameData]);
 
   const handleAllAnteDecisionsIn = async () => {
     if (!gameId) {
