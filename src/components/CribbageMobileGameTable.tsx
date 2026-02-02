@@ -127,6 +127,10 @@ export const CribbageMobileGameTable = ({
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
   const [countingTargetLabel, setCountingTargetLabel] = useState<string | null>(null);
+  
+  // Delay before showing counting phase to allow final pegging announcement to display
+  const [countingDelayActive, setCountingDelayActive] = useState(false);
+  const countingDelayFiredRef = useRef<string | null>(null);
 
   // Win sequence state
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
@@ -157,6 +161,30 @@ export const CribbageMobileGameTable = ({
     setCountingAnnouncement(announcement);
     setCountingTargetLabel(targetLabel);
   }, []);
+
+  // Delay showing counting phase by 2 seconds to allow final pegging announcement to display
+  useEffect(() => {
+    if (!cribbageState) return;
+    if (cribbageState.phase !== 'counting') {
+      // Reset when leaving counting phase
+      setCountingDelayActive(false);
+      countingDelayFiredRef.current = null;
+      return;
+    }
+    
+    // Create a unique key for this counting phase instance
+    const countingKey = `${roundId}-${cribbageState.dealerPlayerId}`;
+    if (countingDelayFiredRef.current === countingKey) return;
+    countingDelayFiredRef.current = countingKey;
+    
+    // Start delay - counting phase will be hidden until delay completes
+    setCountingDelayActive(true);
+    const timer = setTimeout(() => {
+      setCountingDelayActive(false);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [cribbageState?.phase, cribbageState?.dealerPlayerId, roundId]);
 
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
@@ -1019,8 +1047,8 @@ export const CribbageMobileGameTable = ({
               cardBackColors={cardBackColors}
             />
 
-            {/* Counting Phase Overlay */}
-            {cribbageState.phase === 'counting' && (
+            {/* Counting Phase Overlay - delayed 2s to allow final pegging announcement */}
+            {cribbageState.phase === 'counting' && !countingDelayActive && (
               <CribbageCountingPhase
                 cribbageState={cribbageState}
                 players={players}
