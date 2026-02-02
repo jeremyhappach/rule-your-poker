@@ -519,38 +519,17 @@ export const CribbageMobileGameTable = ({
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'cards' && currentPlayer && (
-            <>
-              {/* Player info footer - name and chips */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-poker-gold flex items-center justify-center">
-                    <span className="text-[9px] font-bold text-slate-900">
-                      ${formatChipValue(currentPlayer.chips)}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium text-foreground">
-                    {currentPlayer.profiles?.username || 'You'}
-                  </span>
-                  {isDealer(currentPlayerId) && (
-                    <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                      <span className="text-white font-bold text-[7px]">D</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Score: {cribbageState.playerStates[currentPlayerId]?.pegScore ?? 0}
-                </span>
-              </div>
-
-              <CribbageMobileCardsTab
-                cribbageState={cribbageState}
-                currentPlayerId={currentPlayerId}
-                playerCount={players.length}
-                isProcessing={isProcessing}
-                onDiscard={handleDiscard}
-                onPlayCard={handlePlayCard}
-              />
-            </>
+            <CribbageMobileCardsTab
+              cribbageState={cribbageState}
+              currentPlayerId={currentPlayerId}
+              playerCount={players.length}
+              isProcessing={isProcessing}
+              onDiscard={handleDiscard}
+              onPlayCard={handlePlayCard}
+              currentPlayer={currentPlayer}
+              gameId={gameId}
+              isDealer={isDealer(currentPlayerId)}
+            />
           )}
 
           {activeTab === 'chat' && (
