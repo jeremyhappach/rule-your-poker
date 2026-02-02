@@ -48,12 +48,12 @@ export const CribbagePlayingCard = ({
   return (
     <div 
       style={{ width, height }}
-      className="rounded-sm bg-white border border-gray-300 shadow-sm flex flex-col items-center justify-center overflow-hidden"
+      className="rounded-sm bg-white border border-gray-300 shadow-sm flex flex-col items-center justify-between py-0.5 overflow-hidden"
     >
-      <span className={`leading-[0.8] -mb-1 ${fontSize} ${getSuitColor(card.suit)}`}>
+      <span className={`leading-none ${fontSize} ${getSuitColor(card.suit)}`}>
         {card.rank}
       </span>
-      <span className={`leading-[0.7] ${suitSize} ${getSuitColor(card.suit)}`}>
+      <span className={`leading-none ${suitSize} ${getSuitColor(card.suit)}`}>
         {getSuitSymbol(card.suit)}
       </span>
     </div>
