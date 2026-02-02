@@ -676,7 +676,8 @@ function endGame(state: CribbageState, winnerPlayerId: string): CribbageState {
 export function getPhaseDisplayName(phase: CribbagePhase): string {
   switch (phase) {
     case 'dealing': return 'Dealing';
-    case 'discarding': return 'Discard to Crib';
+    // Avoid showing action copy on the felt; the Cards tab already guides the discard action.
+    case 'discarding': return 'Discarding';
     case 'cutting': return 'Cut Card';
     case 'pegging': return 'Pegging';
     case 'counting': return 'Counting Hands';
