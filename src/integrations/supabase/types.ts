@@ -98,6 +98,82 @@ export type Database = {
           },
         ]
       }
+      cribbage_events: {
+        Row: {
+          card_played: Json | null
+          cards_involved: Json
+          cards_on_table: Json | null
+          created_at: string
+          dealer_game_id: string | null
+          event_subtype: string | null
+          event_type: string
+          hand_number: number
+          id: string
+          player_id: string
+          points: number
+          round_id: string
+          running_count: number | null
+          scores_after: Json
+          sequence_number: number
+        }
+        Insert: {
+          card_played?: Json | null
+          cards_involved?: Json
+          cards_on_table?: Json | null
+          created_at?: string
+          dealer_game_id?: string | null
+          event_subtype?: string | null
+          event_type: string
+          hand_number?: number
+          id?: string
+          player_id: string
+          points?: number
+          round_id: string
+          running_count?: number | null
+          scores_after?: Json
+          sequence_number?: number
+        }
+        Update: {
+          card_played?: Json | null
+          cards_involved?: Json
+          cards_on_table?: Json | null
+          created_at?: string
+          dealer_game_id?: string | null
+          event_subtype?: string | null
+          event_type?: string
+          hand_number?: number
+          id?: string
+          player_id?: string
+          points?: number
+          round_id?: string
+          running_count?: number | null
+          scores_after?: Json
+          sequence_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cribbage_events_dealer_game_id_fkey"
+            columns: ["dealer_game_id"]
+            isOneToOne: false
+            referencedRelation: "dealer_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cribbage_events_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cribbage_events_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_game_names: {
         Row: {
           created_at: string
