@@ -350,13 +350,6 @@ export const CribbageMobileGameTable = ({
           />
         </div>
 
-        {/* Pot display */}
-        <div className="absolute top-[20%] left-1/2 -translate-x-1/2 z-20">
-          <div className="bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-poker-gold/50">
-            <span className="text-lg font-bold text-poker-gold">${pot}</span>
-          </div>
-        </div>
-
         {/* Opponent positions around the top of the table */}
         <div className="absolute top-[8%] left-0 right-0 flex justify-center gap-8 px-4 z-30">
           {opponents.map(opponent => {
@@ -421,6 +414,7 @@ export const CribbageMobileGameTable = ({
           currentPlayerId={currentPlayerId}
           sequenceStartIndex={sequenceStartIndex}
           getPlayerUsername={getPlayerUsername}
+          anteAmount={anteAmount}
         />
 
         {/* Current player position at bottom of felt */}

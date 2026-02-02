@@ -30,6 +30,10 @@ export const CribbageMobileCardsTab = ({
   const canPlayAnyCard = myPlayerState && hasPlayableCard(myPlayerState.hand, cribbageState.pegging.currentCount);
   const haveDiscarded = myPlayerState?.discardedToCrib.length > 0;
   const expectedDiscard = playerCount === 2 ? 2 : 1;
+  
+  // Pre-discard: show 6 cards compactly; post-discard: show 4 cards relaxed
+  const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
+  const cardCount = myPlayerState?.hand.length || 0;
 
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
@@ -77,9 +81,17 @@ export const CribbageMobileCardsTab = ({
         <span className="text-xl font-bold text-poker-gold">{myPlayerState.pegScore}</span>
       </div>
 
-      {/* Cards display */}
+      {/* Cards display - adaptive layout */}
       <div className="flex items-center justify-center min-h-[140px] py-2">
-        <div className="flex gap-2 flex-wrap justify-center transform scale-[2.0] origin-center">
+        <div 
+          className={cn(
+            "flex justify-center origin-center",
+            // Pre-discard: tighter spacing with overlap for 6 cards
+            isPreDiscard ? "-space-x-3" : "gap-1",
+            // Scale based on card count
+            cardCount <= 4 ? "scale-[2.0]" : cardCount <= 5 ? "scale-[1.7]" : "scale-[1.5]"
+          )}
+        >
           {myPlayerState.hand.map((card, index) => {
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' && 
@@ -92,11 +104,12 @@ export const CribbageMobileCardsTab = ({
                 onClick={() => handleCardClick(index)}
                 disabled={isProcessing}
                 className={cn(
-                  "transition-all duration-200 rounded",
-                  isSelected && "-translate-y-2 ring-2 ring-poker-gold",
+                  "transition-all duration-200 rounded relative",
+                  isSelected && "-translate-y-3 ring-2 ring-poker-gold z-10",
                   isMyTurn && isPlayable && "hover:-translate-y-1 hover:ring-1 hover:ring-poker-gold/50",
-                  cribbageState.phase === 'discarding' && !haveDiscarded && "hover:-translate-y-1"
+                  cribbageState.phase === 'discarding' && !haveDiscarded && "hover:-translate-y-2 hover:z-10"
                 )}
+                style={{ zIndex: isSelected ? 10 : index }}
               >
                 <CribbagePlayingCard card={card} size="md" />
               </button>
