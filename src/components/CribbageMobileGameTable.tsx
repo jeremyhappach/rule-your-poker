@@ -376,7 +376,7 @@ export const CribbageMobileGameTable = ({
           </div>
 
           {/* Opponent positions - upper left inside circle */}
-          <div className="absolute top-12 left-3 flex flex-col gap-2 z-30">
+          <div className="absolute top-12 left-4 flex flex-col gap-2 z-40">
             {opponents.map(opponent => {
               const oppState = cribbageState.playerStates[opponent.id];
               const isDealerPlayer = isDealer(opponent.id);

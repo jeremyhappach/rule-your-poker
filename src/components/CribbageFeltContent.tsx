@@ -55,40 +55,31 @@ export const CribbageFeltContent = ({
       </div>
 
       {/* Play Area - Below peg board */}
-      <div className="absolute top-[55%] left-1/2 -translate-x-1/2 flex items-start gap-4 z-20">
-        {/* Crib - Face down, positioned on left side */}
-        {cribbageState.crib.length > 0 && cribbageState.phase !== 'counting' && (
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
-            <div className="relative">
-              {/* Stack effect */}
-              <div className="absolute top-0.5 left-0.5 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
-              <div className="absolute top-1 left-1 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
-              <CribbagePlayingCard 
-                card={{ rank: 'A', suit: 'spades', value: 1 }} 
-                size="xs" 
-                faceDown 
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Cut Card */}
-        {cribbageState.cutCard && (
-          <div className="flex flex-col items-center">
-            <span className="text-[9px] text-white/60 mb-0.5">Cut</span>
-            <CribbagePlayingCard card={cribbageState.cutCard} size="sm" />
-          </div>
-        )}
-
-        {/* Pegging Cards Area */}
+      <div className="absolute top-[55%] left-1/2 -translate-x-1/2 flex items-start gap-5 z-20">
+        {/* Pegging / Gameplay Area (moved to where the Crib used to be) */}
         {cribbageState.phase === 'pegging' && (
           <div className="flex flex-col items-center">
+            {/* Crib centered above pegging */}
+            {cribbageState.crib.length > 0 && (
+              <div className="flex flex-col items-center mb-2">
+                <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
+                <div className="relative">
+                  {/* Stack effect */}
+                  <div className="absolute top-0.5 left-0.5 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
+                  <div className="absolute top-1 left-1 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
+                  <CribbagePlayingCard
+                    card={{ rank: 'A', suit: 'spades', value: 1 }}
+                    size="xs"
+                    faceDown
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Pegging Cards Area */}
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-[9px] text-white/60">Count:</span>
-              <span className="text-lg font-bold text-poker-gold">
-                {cribbageState.pegging.currentCount}
-              </span>
+              <span className="text-lg font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>
             </div>
             <div className="flex gap-0.5 justify-center min-w-[80px]">
               {cribbageState.pegging.playedCards.slice(sequenceStartIndex).map((pc, i) => (
@@ -103,6 +94,25 @@ export const CribbageFeltContent = ({
           </div>
         )}
 
+        {/* Cut Card */}
+        {cribbageState.cutCard && (
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] text-white/60 mb-0.5">Cut</span>
+            <CribbagePlayingCard card={cribbageState.cutCard} size="sm" />
+          </div>
+        )}
+
+        {/* During non-pegging phases, keep showing the Crib near the center (above where pegging will be) */}
+        {cribbageState.phase !== 'pegging' && cribbageState.crib.length > 0 && cribbageState.phase !== 'counting' && (
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
+            <div className="relative">
+              <div className="absolute top-0.5 left-0.5 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
+              <div className="absolute top-1 left-1 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
+              <CribbagePlayingCard card={{ rank: 'A', suit: 'spades', value: 1 }} size="xs" faceDown />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Turn Indicator */}
