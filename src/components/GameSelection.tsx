@@ -8,13 +8,15 @@ interface GameSelectionProps {
   lastGameType?: string | null;
   isFirstHand?: boolean;
   activePlayerCount?: number;
+  isSuperuser?: boolean;
 }
 
 export const GameSelection = ({ 
   onSelectGame, 
   lastGameType = null,
   isFirstHand = true,
-  activePlayerCount = 0
+  activePlayerCount = 0,
+  isSuperuser = false
 }: GameSelectionProps) => {
 
   const cardGames = [
@@ -93,6 +95,8 @@ export const GameSelection = ({
   const isGameDisabled = (game: typeof cardGames[0]) => {
     if (!game.enabled) return true;
     if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
+    // Disable cribbage and trivia for non-superusers
+    if ((game.id === 'cribbage' || game.id === 'sports-trivia') && !isSuperuser) return true;
     return false;
   };
 

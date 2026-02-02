@@ -259,6 +259,7 @@ const Game = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [user, setUser] = useState<User | null>(null);
+  const [isSuperuser, setIsSuperuser] = useState(false);
   const [game, setGame] = useState<GameData | null>(null);
 
   // POT STABILITY:
@@ -1112,6 +1113,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         navigate("/auth");
       } else {
         setUser(session.user);
+        // Fetch superuser status from profiles
+        supabase.from('profiles').select('is_superuser').eq('id', session.user.id).single().then(({ data }) => {
+          setIsSuperuser(data?.is_superuser ?? false);
+        });
       }
     });
 
@@ -1123,6 +1128,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         navigate("/auth");
       } else {
         setUser(session.user);
+        // Fetch superuser status from profiles
+        supabase.from('profiles').select('is_superuser').eq('id', session.user.id).single().then(({ data }) => {
+          setIsSuperuser(data?.is_superuser ?? false);
+        });
       }
     });
 
@@ -6094,6 +6103,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameSetupTimerSeconds={game.game_setup_timer_seconds || 30}
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
                     activePlayerCount={players.filter(p => !p.sitting_out).length}
+                    isSuperuser={isSuperuser}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => fetchGameData()}
                   />
