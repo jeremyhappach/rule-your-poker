@@ -15,6 +15,7 @@ import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
+import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
@@ -453,6 +454,13 @@ export const CribbageMobileGameTable = ({
                 }}
               />
             )}
+
+            {/* Turn Spotlight - z-5 to stay behind pegboard and count */}
+            <CribbageTurnSpotlight
+              currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
+              currentPlayerId={currentPlayerId}
+              isVisible={cribbageState.phase === 'pegging'}
+            />
 
             {/* Game Title - Top center of felt */}
             <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
