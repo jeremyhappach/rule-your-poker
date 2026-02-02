@@ -121,15 +121,15 @@ export const HighCardDealerSelection = ({
     onAnnouncementUpdate(syncedState.announcement, syncedState.isComplete);
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
     
-    // If selection is complete and we have a winner, trigger onComplete
+    // IMPORTANT:
+    // Non-host clients must NEVER call onComplete.
+    // If they do, they can flip the game status early which unmounts the host's
+    // HighCardDealerSelection and cancels the host timeout that actually starts round 1.
+    // Non-hosts should only render synced UI; the host alone transitions the game.
     if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
-      // Small delay to let UI render the winner state
-      setTimeout(() => {
-        onComplete(syncedState.winnerPosition!);
-      }, WINNER_ANNOUNCE_DELAY);
     }
-  }, [isHost, syncedState, onCardsUpdate, onAnnouncementUpdate, onWinnerPositionUpdate, onComplete]);
+  }, [isHost, syncedState, onCardsUpdate, onAnnouncementUpdate, onWinnerPositionUpdate]);
   
   // HOST: Run the selection sequence and sync to DB
   useEffect(() => {
