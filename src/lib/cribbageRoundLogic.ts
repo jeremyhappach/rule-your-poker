@@ -65,15 +65,19 @@ export async function startCribbageRound(
     // Get ante amount (used only for payout calculation, not pot collection)
     const anteAmount = game.ante_amount || 1;
 
-    // Initialize cribbage game state (pot will be 0 since no collection)
-    const cribbageState = initializeCribbageGame(
-      playerIds,
-      dealerPlayer.id,
-      anteAmount
-    );
-    
-    // Override pot to 0 - cribbage uses direct transfers, not pot
-    cribbageState.pot = 0;
+    // IMPORTANT: First hand should run the "choose first dealer" high-card animation
+    // on the client *before* we deal cards / initialize cribbage_state.
+    // So for isFirstHand, we intentionally leave cribbage_state null here.
+    const shouldDeferInitializationToClient = isFirstHand;
+
+    const cribbageState = shouldDeferInitializationToClient
+      ? null
+      : (() => {
+          const s = initializeCribbageGame(playerIds, dealerPlayer.id, anteAmount);
+          // Override pot to 0 - cribbage uses direct transfers, not pot
+          s.pot = 0;
+          return s;
+        })();
 
     // Get current dealer_game_id
     const dealerGameId = game.current_game_uuid;
@@ -93,7 +97,7 @@ export async function startCribbageRound(
       ? (existingRounds[0].hand_number || 0) + 1
       : 1;
 
-    // Create round record with cribbage_state
+    // Create round record (cribbage_state may be null for first hand)
     const { data: round, error: roundError } = await supabase
       .from('rounds')
       .insert({
@@ -101,8 +105,8 @@ export async function startCribbageRound(
         dealer_game_id: dealerGameId,
         round_number: 1, // Cribbage uses single round per hand
         hand_number: handNumber,
-        cards_dealt: 6, // Max cards dealt (varies by player count but we track max)
-        pot: cribbageState.pot,
+        cards_dealt: cribbageState ? 6 : 0,
+        pot: cribbageState ? cribbageState.pot : 0,
         status: 'betting', // Using 'betting' for active play
         cribbage_state: cribbageState as any,
       })
@@ -120,24 +124,29 @@ export async function startCribbageRound(
         status: 'in_progress',
         current_round: 1,
         total_hands: handNumber,
-        pot: cribbageState.pot,
+        pot: cribbageState ? cribbageState.pot : 0,
         is_first_hand: isFirstHand,
       })
       .eq('id', gameId);
 
-    // Store player cards in player_cards table for each player
-    for (const playerId of playerIds) {
-      const playerState = cribbageState.playerStates[playerId];
-      if (playerState) {
-        await supabase
-          .from('player_cards')
-          .upsert({
-            player_id: playerId,
-            round_id: round.id,
-            cards: playerState.hand as any,
-          }, {
-            onConflict: 'player_id,round_id',
-          });
+    // Store player cards in player_cards table for each player (only after we actually deal)
+    if (cribbageState) {
+      for (const playerId of playerIds) {
+        const playerState = cribbageState.playerStates[playerId];
+        if (playerState) {
+          await supabase
+            .from('player_cards')
+            .upsert(
+              {
+                player_id: playerId,
+                round_id: round.id,
+                cards: playerState.hand as any,
+              },
+              {
+                onConflict: 'player_id,round_id',
+              }
+            );
+        }
       }
     }
 
@@ -145,7 +154,7 @@ export async function startCribbageRound(
       roundId: round.id,
       handNumber,
       playerCount: playerIds.length,
-      phase: cribbageState.phase,
+      phase: cribbageState ? cribbageState.phase : 'dealer_selection',
     });
 
     return { success: true, roundId: round.id };

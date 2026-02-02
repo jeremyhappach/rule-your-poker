@@ -6341,6 +6341,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealerPosition={game.dealer_position || 1}
                 anteAmount={game.ante_amount || 1}
                 pot={potForDisplay}
+                isHost={isCreator}
                 onGameComplete={fetchGameData}
               />
             );

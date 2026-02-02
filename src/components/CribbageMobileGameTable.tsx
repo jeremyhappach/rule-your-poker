@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
-import type { CribbageState } from '@/lib/cribbageTypes';
+import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
 import { 
   initializeCribbageGame, 
   discardToCrib, 
@@ -17,7 +17,7 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
-import { CribbageHighCardSelection } from './CribbageHighCardSelection';
+import { HighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from './HighCardDealerSelection';
 import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
 import { CribbageWinnerAnnouncement } from './CribbageWinnerAnnouncement';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
@@ -40,6 +40,7 @@ interface Player {
   position: number;
   chips: number;
   is_bot?: boolean;
+  sitting_out?: boolean;
   profiles?: { username: string };
 }
 
@@ -51,6 +52,7 @@ interface CribbageMobileGameTableProps {
   dealerPosition: number;
   anteAmount: number;
   pot: number;
+  isHost: boolean;
   onGameComplete: () => void;
 }
 
@@ -95,6 +97,7 @@ export const CribbageMobileGameTable = ({
   dealerPosition,
   anteAmount,
   pot,
+  isHost,
   onGameComplete,
 }: CribbageMobileGameTableProps) => {
   const { getTableColors, getCardBackColors } = useVisualPreferences();
@@ -108,9 +111,13 @@ export const CribbageMobileGameTable = ({
   // High card dealer selection state - only for first hand
   const [showHighCardSelection, setShowHighCardSelection] = useState(false);
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
-  const [selectedCribbageDealer, setSelectedCribbageDealer] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
+
+  // DB-synced high-card selection state (so all clients see the same deal)
+  const [highCardSyncedState, setHighCardSyncedState] = useState<DealerSelectionState | null>(null);
+  const [highCardCards, setHighCardCards] = useState<DealerSelectionCard[]>([]);
+  const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
 
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
@@ -224,25 +231,148 @@ export const CribbageMobileGameTable = ({
     loadOrInitializeState();
   }, [roundId, initialLoadComplete]); // Re-run if roundId changes, include initialLoadComplete in deps
 
-  // Handle high card selection complete
-  const handleHighCardComplete = useCallback(async (winnerPlayerId: string) => {
-    console.log('[CRIBBAGE] High card winner:', winnerPlayerId);
-    setSelectedCribbageDealer(winnerPlayerId);
+  // Keep showHighCardSelection from "sticking" after the real cribbage_state arrives (non-host clients)
+  useEffect(() => {
+    if (!showHighCardSelection) return;
+    if (!cribbageState) return;
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
-    
+  }, [showHighCardSelection, cribbageState]);
+
+  // Subscribe to DB-synced dealer selection state so everyone sees the same animation
+  useEffect(() => {
+    if (!gameId) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('games')
+        .select('dealer_selection_state')
+        .eq('id', gameId)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        console.error('[CRIBBAGE] Failed to load dealer_selection_state:', error);
+        return;
+      }
+
+      setHighCardSyncedState((data?.dealer_selection_state as unknown as DealerSelectionState) ?? null);
+    };
+
+    load();
+
+    const channel = supabase
+      .channel(`cribbage-dealer-selection-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${gameId}`,
+        },
+        (payload) => {
+          const next = (payload.new as any)?.dealer_selection_state ?? null;
+          setHighCardSyncedState(next as DealerSelectionState | null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [gameId]);
+
+  // Handle high card selection complete
+  // NOTE: HighCardDealerSelection returns a winning *position* (seat), not a player id.
+  const handleHighCardComplete = useCallback(async (winnerPosition: number) => {
+    const winnerPlayer = players.find(p => p.position === winnerPosition);
+    if (!winnerPlayer) {
+      console.error('[CRIBBAGE] High card winner position not found:', winnerPosition);
+      return;
+    }
+
+    console.log('[CRIBBAGE] High card winner:', { position: winnerPosition, playerId: winnerPlayer.id });
+
+    // Non-host clients should NOT write state; they will receive cribbage_state via realtime.
+    if (!isHost) return;
+
+    setShowHighCardSelection(false);
+    setHighCardAnnouncement(null);
+    setInitialLoadComplete(true);
+
     // Initialize the game with the winner as dealer
     hasInitializedRef.current = true;
     const playerIds = players.map(p => p.id);
-    const newState = initializeCribbageGame(playerIds, winnerPlayerId, anteAmount);
-    
+    const newState = initializeCribbageGame(playerIds, winnerPlayer.id, anteAmount);
+
     await supabase
       .from('rounds')
-      .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
+      .update({
+        cribbage_state: JSON.parse(JSON.stringify(newState)),
+        pot: 0,
+        cards_dealt: 6,
+      })
       .eq('id', roundId);
-    
+
+    // Persist dealt hands for privacy + rejoin
+    await Promise.all(
+      playerIds.map(async (playerId) => {
+        const ps = newState.playerStates[playerId];
+        if (!ps) return;
+        const { error } = await supabase
+          .from('player_cards')
+          .upsert(
+            {
+              player_id: playerId,
+              round_id: roundId,
+              cards: ps.hand as any,
+            },
+            { onConflict: 'player_id,round_id' }
+          );
+        if (error) {
+          console.error('[CRIBBAGE] Failed to persist player_cards:', playerId, error);
+        }
+      })
+    );
+
+    // Clear dealer selection state now that we have a real dealer + dealt state
+    await supabase
+      .from('games')
+      .update({ dealer_selection_state: null })
+      .eq('id', gameId);
+
     setCribbageState(newState);
-  }, [players, anteAmount, roundId]);
+  }, [players, anteAmount, roundId, isHost, gameId]);
+
+  const getHighCardDisplayNameByPosition = useCallback((position: number) => {
+    const player = players.find(p => p.position === position);
+    if (!player) return `Seat ${position}`;
+    return getDisplayName(players, player, player.profiles?.username || `Seat ${position}`);
+  }, [players]);
+
+  const toCribbageCard = useCallback((card: { suit: string; rank: string }): CribbageCard => {
+    const rank = card.rank;
+    const value =
+      rank === 'A'
+        ? 14
+        : rank === 'K'
+          ? 13
+          : rank === 'Q'
+            ? 12
+            : rank === 'J'
+              ? 11
+              : parseInt(rank, 10);
+
+    return {
+      suit: card.suit as CribbageCard['suit'],
+      rank: card.rank as CribbageCard['rank'],
+      value: Number.isFinite(value) ? value : 0,
+    };
+  }, []);
 
   // Trigger win sequence when game completes
   const triggerWinSequence = useCallback((state: CribbageState) => {
@@ -675,6 +805,13 @@ export const CribbageMobileGameTable = ({
 
   // Show high card selection if needed
   if (showHighCardSelection) {
+    const latestRoundNum = highCardCards.length > 0
+      ? Math.max(...highCardCards.map(c => c.roundNumber))
+      : 1;
+    const visibleCards = highCardCards
+      .filter(c => c.roundNumber === latestRoundNum)
+      .sort((a, b) => a.position - b.position);
+
     return (
       <div className="h-full flex flex-col overflow-hidden bg-background">
         {/* Felt Area for high card selection */}
@@ -714,12 +851,45 @@ export const CribbageMobileGameTable = ({
                 />
               )}
 
-              {/* High card selection component */}
-              <CribbageHighCardSelection
-                players={players}
+              {/* DB-synced high-card selection logic (renders nothing) */}
+              <HighCardDealerSelection
+                gameId={gameId}
+                players={players as any}
                 onComplete={handleHighCardComplete}
-                onAnnouncementChange={setHighCardAnnouncement}
+                isHost={isHost}
+                allowBotDealers={true}
+                syncedState={highCardSyncedState}
+                onCardsUpdate={setHighCardCards}
+                onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
+                onWinnerPositionUpdate={setHighCardWinnerPosition}
               />
+
+              {/* Centered render of the current selection round */}
+              <div className="absolute inset-0 flex items-center justify-center z-40">
+                <div className="flex gap-4 items-end">
+                  {visibleCards.map((dc) => {
+                    const isWinner = dc.isWinner || (highCardWinnerPosition !== null && dc.position === highCardWinnerPosition);
+                    const dim = dc.isDimmed;
+                    return (
+                      <div
+                        key={`${dc.playerId}-${dc.roundNumber}`}
+                        className={cn(
+                          'flex flex-col items-center transition-all duration-300',
+                          isWinner ? 'transform -translate-y-2 scale-110' : '',
+                          dim ? 'opacity-50' : ''
+                        )}
+                      >
+                        <div className={cn(isWinner ? 'ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' : '')}>
+                          <CribbagePlayingCard card={toCribbageCard(dc.card as any)} size="md" />
+                        </div>
+                        <span className={cn('text-xs mt-1', isWinner ? 'text-poker-gold font-bold' : 'text-white/70')}>
+                          {getHighCardDisplayNameByPosition(dc.position)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
