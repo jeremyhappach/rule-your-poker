@@ -398,8 +398,8 @@ export const CribbageMobileGameTable = ({
 
   // Get opponents for display around the table
   const opponents = players.filter(p => p.user_id !== currentUserId);
-  const isDealer = (playerId: string) => dealerPosition === players.find(p => p.id === playerId)?.position;
-
+  // Use cribbage_state.dealerPlayerId for crib dealer (rotates each hand), not games.dealer_position
+  const isCribDealer = (playerId: string) => cribbageState.dealerPlayerId === playerId;
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Felt Area - Upper Section with circular table */}
@@ -475,7 +475,7 @@ export const CribbageMobileGameTable = ({
             )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
-            {currentPlayer && isDealer(currentPlayerId) && (
+            {currentPlayer && isCribDealer(currentPlayerId) && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
                 <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-[10px]">D</span>
@@ -489,7 +489,7 @@ export const CribbageMobileGameTable = ({
             <div className="absolute top-14 left-6 flex flex-col gap-2">
               {opponents.map(opponent => {
                 const oppState = cribbageState.playerStates[opponent.id];
-                const isDealerPlayer = isDealer(opponent.id);
+                const isDealerPlayer = isCribDealer(opponent.id);
 
                 return (
                   <div key={opponent.id} className="flex flex-col items-start">
@@ -621,7 +621,7 @@ export const CribbageMobileGameTable = ({
               onPlayCard={handlePlayCard}
               currentPlayer={currentPlayer}
               gameId={gameId}
-              isDealer={isDealer(currentPlayerId)}
+              isDealer={isCribDealer(currentPlayerId)}
             />
           )}
 
