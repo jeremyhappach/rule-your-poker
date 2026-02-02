@@ -39,7 +39,8 @@ export const CribbagePegBoard = ({
               {player.profiles?.username || 'Player'}
             </span>
             
-            <div className="flex-1 h-3 bg-black/40 rounded-full overflow-hidden relative">
+            {/* White background for unfilled area */}
+            <div className="flex-1 h-3 bg-white/80 rounded-full overflow-hidden relative">
               {/* Progress */}
               <div 
                 className={`h-full ${getPlayerColor(index)} transition-all duration-500 rounded-full`}

@@ -333,12 +333,12 @@ export const CribbageMobileGameTable = ({
           minHeight: '300px'
         }}
       >
-        {/* Dark background behind the circle */}
-        <div className="absolute inset-0 bg-slate-900" />
+        {/* Light background behind the circle - lower z-index */}
+        <div className="absolute inset-0 bg-slate-200 z-0" />
 
         {/* Circular table - properly contained with white outline */}
         <div 
-          className="relative rounded-full overflow-hidden border-2 border-white/30"
+          className="relative rounded-full overflow-hidden border-2 border-white/80 z-10"
           style={{ 
             width: 'min(90vw, calc(55vh - 32px))',
             height: 'min(90vw, calc(55vh - 32px))',
@@ -352,7 +352,7 @@ export const CribbageMobileGameTable = ({
                 backgroundImage: `url(${peoriaBridgeMobile})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                filter: 'brightness(0.6)'
+                filter: 'brightness(0.5)'
               }}
             />
           ) : (
@@ -360,23 +360,23 @@ export const CribbageMobileGameTable = ({
               className="absolute inset-0"
               style={{ 
                 background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                filter: 'brightness(0.8)'
+                filter: 'brightness(0.7)'
               }}
             />
           )}
 
           {/* Game Title - Top center of felt */}
           <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
-            <h2 className="text-sm font-bold text-poker-gold drop-shadow-lg">
+            <h2 className="text-sm font-bold text-white drop-shadow-lg">
               ${anteAmount} CRIBBAGE
             </h2>
             <p className="text-[9px] text-white/70">
-              Skunk &lt;{91} (2x) • Double &lt;{61} (3x)
+              121 to win • Skunk &lt;91 (2x) • Double &lt;61 (3x)
             </p>
           </div>
 
           {/* Opponent positions - upper left inside circle */}
-          <div className="absolute top-12 left-3 flex flex-col gap-1.5 z-30">
+          <div className="absolute top-12 left-3 flex flex-col gap-2 z-30">
             {opponents.map(opponent => {
               const oppState = cribbageState.playerStates[opponent.id];
               const isDealerPlayer = isDealer(opponent.id);
@@ -386,7 +386,7 @@ export const CribbageMobileGameTable = ({
                   key={opponent.id}
                   className="flex flex-col items-start"
                 >
-                  {/* Chip circle and cards row */}
+                  {/* Chip circle row */}
                   <div className="flex items-center gap-1.5">
                     <div className="relative">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-poker-gold">
@@ -394,24 +394,26 @@ export const CribbageMobileGameTable = ({
                           ${formatChipValue(opponent.chips)}
                         </span>
                       </div>
-                      {isDealerPlayer && (
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                          <span className="text-white font-bold text-[6px]">D</span>
-                        </div>
-                      )}
                     </div>
                     
                     {/* Name */}
-                    <span className="text-[10px] text-white/90 truncate max-w-[60px] font-medium">
+                    <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
                       {opponent.profiles?.username || 'Player'}
                     </span>
 
-                    {/* Opponent's cards (face down) - inline */}
-                    <div className="flex -space-x-1.5">
-                      {oppState?.hand.map((_, i) => (
-                        <div key={i} className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-500" />
-                      ))}
-                    </div>
+                    {/* Dealer button inline */}
+                    {isDealerPlayer && (
+                      <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
+                        <span className="text-white font-bold text-[7px]">D</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Opponent's cards (face down) - below name */}
+                  <div className="flex -space-x-1.5 mt-1 ml-1">
+                    {oppState?.hand.map((_, i) => (
+                      <div key={i} className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-500" />
+                    ))}
                   </div>
                 </div>
               );
@@ -428,28 +430,11 @@ export const CribbageMobileGameTable = ({
             anteAmount={anteAmount}
           />
 
-          {/* Current player position at bottom of felt */}
-          {currentPlayer && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
-              <div className="flex flex-col items-center">
-                <div className="relative">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center border-2 bg-poker-gold",
-                    cribbageState.pegging.currentTurnPlayerId === currentPlayerId 
-                      ? "ring-2 ring-white animate-pulse" 
-                      : "border-white/50"
-                  )}>
-                    <span className="text-xs font-bold text-slate-900">
-                      ${formatChipValue(currentPlayer.chips)}
-                    </span>
-                  </div>
-                  {isDealer(currentPlayerId) && (
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                      <span className="text-white font-bold text-[8px]">D</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-[10px] text-white/80 mt-0.5">You</span>
+          {/* Dealer button at bottom - only if current player is dealer */}
+          {currentPlayer && isDealer(currentPlayerId) && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+              <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-[10px]">D</span>
               </div>
             </div>
           )}

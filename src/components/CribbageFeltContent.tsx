@@ -55,7 +55,7 @@ export const CribbageFeltContent = ({
       </div>
 
       {/* Play Area - Below peg board */}
-      <div className="absolute top-[55%] left-1/2 -translate-x-1/2 flex items-start gap-6 z-20">
+      <div className="absolute top-[55%] left-1/2 -translate-x-1/2 flex items-start gap-4 z-20">
         {/* Crib - Face down, positioned on left side */}
         {cribbageState.crib.length > 0 && cribbageState.phase !== 'counting' && (
           <div className="flex flex-col items-center">
