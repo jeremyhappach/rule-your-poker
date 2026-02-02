@@ -11,12 +11,12 @@ export const CribbagePlayingCard = ({
   size = 'md',
   faceDown = false 
 }: CribbagePlayingCardProps) => {
-  // Narrower cards with 2:3 aspect ratio (width:height)
+  // Narrower cards with 2:3 aspect ratio (width:height) - larger text for readability
   const sizeStyles: Record<string, { width: number; height: number; fontSize: string; suitSize: string }> = {
-    xs: { width: 24, height: 36, fontSize: 'text-[10px]', suitSize: 'text-xs' },
-    sm: { width: 32, height: 48, fontSize: 'text-xs', suitSize: 'text-sm' },
-    md: { width: 40, height: 60, fontSize: 'text-sm', suitSize: 'text-base' },
-    lg: { width: 48, height: 72, fontSize: 'text-base', suitSize: 'text-lg' },
+    xs: { width: 24, height: 36, fontSize: 'text-sm font-bold', suitSize: 'text-base' },
+    sm: { width: 32, height: 48, fontSize: 'text-lg font-bold', suitSize: 'text-xl' },
+    md: { width: 40, height: 60, fontSize: 'text-xl font-bold', suitSize: 'text-2xl' },
+    lg: { width: 48, height: 72, fontSize: 'text-2xl font-bold', suitSize: 'text-3xl' },
   };
 
   const { width, height, fontSize, suitSize } = sizeStyles[size];
