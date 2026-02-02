@@ -68,6 +68,23 @@ export const CribbageFeltContent = ({
 
       {/* Play Area - Below peg board */}
       <div className="absolute top-[55%] left-1/2 -translate-x-1/2 flex items-start gap-6 z-20">
+        {/* Crib - Face down, positioned on left side */}
+        {cribbageState.crib.length > 0 && cribbageState.phase !== 'counting' && (
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
+            <div className="relative">
+              {/* Stack effect */}
+              <div className="absolute top-0.5 left-0.5 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
+              <div className="absolute top-1 left-1 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
+              <CribbagePlayingCard 
+                card={{ rank: 'A', suit: 'spades', value: 1 }} 
+                size="xs" 
+                faceDown 
+              />
+            </div>
+          </div>
+        )}
+
         {/* Cut Card */}
         {cribbageState.cutCard && (
           <div className="flex flex-col items-center">
@@ -98,21 +115,6 @@ export const CribbageFeltContent = ({
           </div>
         )}
 
-        {/* Crib - Face down, no label */}
-        {cribbageState.crib.length > 0 && cribbageState.phase !== 'counting' && (
-          <div className="flex flex-col items-center">
-            <div className="relative">
-              {/* Stack effect */}
-              <div className="absolute top-0.5 left-0.5 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
-              <div className="absolute top-1 left-1 w-6 h-9 bg-slate-700 rounded border border-slate-600" />
-              <CribbagePlayingCard 
-                card={{ rank: 'A', suit: 'spades', value: 1 }} 
-                size="xs" 
-                faceDown 
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Turn Indicator */}

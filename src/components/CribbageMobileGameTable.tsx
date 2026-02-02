@@ -15,6 +15,7 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { cn, formatChipValue } from '@/lib/utils';
+import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { MessageSquare, User, Clock } from 'lucide-react';
 
 interface Player {
@@ -332,22 +333,45 @@ export const CribbageMobileGameTable = ({
           minHeight: '300px'
         }}
       >
-        {/* Background gradient */}
-        <div 
-          className="absolute inset-0"
-          style={{ 
-            background: `linear-gradient(135deg, ${tableColors.color}, ${tableColors.darkColor})`
-          }}
-        />
+        {/* Background - Bridge image or gradient based on user preference */}
+        {tableColors.showBridge ? (
+          <div 
+            className="absolute inset-0"
+            style={{ 
+              backgroundImage: `url(${peoriaBridgeMobile})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          />
+        ) : (
+          <div 
+            className="absolute inset-0"
+            style={{ 
+              background: `linear-gradient(135deg, ${tableColors.color}, ${tableColors.darkColor})`
+            }}
+          />
+        )}
 
         {/* Circular table overlay */}
         <div className="absolute inset-4 rounded-full overflow-hidden border-4 border-amber-900/50">
-          <div 
-            className="w-full h-full"
-            style={{ 
-              background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`
-            }}
-          />
+          {tableColors.showBridge ? (
+            <div 
+              className="w-full h-full"
+              style={{ 
+                backgroundImage: `url(${peoriaBridgeMobile})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'brightness(0.7)'
+              }}
+            />
+          ) : (
+            <div 
+              className="w-full h-full"
+              style={{ 
+                background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`
+              }}
+            />
+          )}
         </div>
 
         {/* Opponent positions - upper left to avoid obscuring header */}
@@ -437,6 +461,15 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
+        {/* Dealer Announcements Area */}
+        {cribbageState.lastEvent && (
+          <div className="bg-amber-600/20 border-b border-amber-600/30 px-4 py-2">
+            <p className="text-center text-sm text-amber-200 font-medium">
+              {getPlayerUsername(cribbageState.lastEvent.playerId)}: {cribbageState.lastEvent.label} (+{cribbageState.lastEvent.points})
+            </p>
+          </div>
+        )}
+
         {/* Tab navigation bar */}
         <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
           {/* Cards tab */}
