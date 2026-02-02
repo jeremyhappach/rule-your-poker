@@ -384,6 +384,7 @@ export const CribbageMobileGameTable = ({
               currentPlayerId={currentPlayerId}
               sequenceStartIndex={sequenceStartIndex}
               getPlayerUsername={getPlayerUsername}
+              cardBackColors={cardBackColors}
             />
 
             {/* Dealer button at bottom - only if current player is dealer */}
@@ -428,10 +429,16 @@ export const CribbageMobileGameTable = ({
                       )}
                     </div>
 
-                    {/* Opponent's cards (face down) - below name */}
+                    {/* Opponent's cards (face down) - below name, using player's card back preference */}
                     <div className="flex -space-x-1.5 mt-1 ml-1">
                       {oppState?.hand.map((_, i) => (
-                        <div key={i} className="w-4 h-6 bg-slate-700 rounded-sm border border-slate-500" />
+                        <div 
+                          key={i} 
+                          className="w-4 h-6 rounded-sm border border-white/20"
+                          style={{
+                            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                          }}
+                        />
                       ))}
                     </div>
                   </div>
