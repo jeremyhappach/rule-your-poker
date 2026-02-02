@@ -22,6 +22,29 @@ export interface PeggingState {
   goCalledBy: string[]; // Players who have called "go" this count
 }
 
+export type CribbageEventType =
+  | 'pegging_points'
+  | 'go_point'
+  | 'his_heels'
+  | 'hand_count';
+
+export interface CribbageEvent {
+  id: string;
+  type: CribbageEventType;
+  playerId: string;
+  points: number;
+  label: string;
+  createdAt: string;
+  count?: number; // pegging count after the action (0-31)
+}
+
+export interface CribbageHandCountSummary {
+  countedAt: string;
+  playerHandScores: Record<string, HandScore>;
+  dealerHandScore: HandScore;
+  cribScore: HandScore;
+}
+
 export type CribbagePhase = 
   | 'dealing' 
   | 'discarding' // Players discard to crib
@@ -41,6 +64,9 @@ export interface CribbageState {
   pegging: PeggingState;
   anteAmount: number;
   pot: number;
+  // UX / debugging helpers
+  lastEvent?: CribbageEvent | null;
+  lastHandCount?: CribbageHandCountSummary | null;
   // Skunk tracking
   winnerPlayerId: string | null;
   loserScore: number | null; // For determining skunk/double-skunk
