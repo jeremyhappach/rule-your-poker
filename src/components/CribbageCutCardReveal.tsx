@@ -52,7 +52,7 @@ export const CribbageCutCardReveal = ({
   if (!card) return null;
 
   return (
-    <div className="absolute top-[24%] left-1/2 -translate-x-1/2 translate-x-12 z-20 flex flex-col items-center">
+    <div className="flex flex-col items-center">
       <span className="text-[9px] text-white/60 mb-0.5">Cut</span>
       <div
         className="transition-transform duration-600 ease-out"
@@ -75,7 +75,7 @@ export const CribbageCutCardReveal = ({
             <CribbagePlayingCard card={card} size="sm" />
           ) : (
             <div 
-              className="w-6 h-9 rounded-sm border border-white/20"
+              className="w-8 h-12 rounded-sm border border-white/20"
               style={{
                 background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
               }}

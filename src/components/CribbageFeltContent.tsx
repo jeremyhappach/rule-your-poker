@@ -89,21 +89,32 @@ export const CribbageFeltContent = ({
         />
       </div>
 
-      {/* Crib - shows actual card count as horizontal row like opponent cards */}
-      {showCribOnFelt && cribbageState.crib.length > 0 && (
-        <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
-          <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
-          <div className="flex -space-x-1.5">
-            {cribbageState.crib.map((_, i) => (
-              <div
-                key={i}
-                className="w-4 h-6 rounded-sm border border-white/20"
-                style={{
-                  background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                }}
-              />
-            ))}
-          </div>
+      {/* Crib and Cut Card row */}
+      {(showCribOnFelt || cribbageState.cutCard) && (
+        <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex items-start gap-4">
+          {/* Crib */}
+          {showCribOnFelt && cribbageState.crib.length > 0 && (
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
+              <div className="flex -space-x-1.5">
+                {cribbageState.crib.map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-4 h-6 rounded-sm border border-white/20"
+                    style={{
+                      background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cut Card with flip animation */}
+          <CribbageCutCardReveal 
+            card={cribbageState.cutCard} 
+            cardBackColors={cardBackColors} 
+          />
         </div>
       )}
 
@@ -126,12 +137,6 @@ export const CribbageFeltContent = ({
           </div>
         </div>
       )}
-
-      {/* Cut Card with flip animation */}
-      <CribbageCutCardReveal 
-        card={cribbageState.cutCard} 
-        cardBackColors={cardBackColors} 
-      />
     </>
   );
 };
