@@ -44,7 +44,7 @@ export const CribbageFeltContent = ({
       )}
 
       {/* Peg Board - Center area */}
-      <div className="absolute top-[38%] left-6 right-6 -translate-y-1/2 z-10">
+      <div className="absolute top-[41%] left-6 right-6 -translate-y-1/2 z-10">
         <CribbagePegBoard 
           players={players}
           playerStates={cribbageState.playerStates}
@@ -54,7 +54,7 @@ export const CribbageFeltContent = ({
 
       {/* Crib - centered above the pegging/play area */}
       {showCribOnFelt && (
-        <div className="absolute top-[44%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+        <div className="absolute top-[30%] left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
           <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
           <div className="relative">
             {/* Stack effect */}
