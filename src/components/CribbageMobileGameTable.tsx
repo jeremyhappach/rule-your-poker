@@ -444,21 +444,23 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Dealer Announcements Area */}
+        {/* Dealer Announcements Area - same styling as MobileGameTable */}
         {(cribbageState.lastEvent ||
           cribbageState.phase === 'discarding' ||
           cribbageState.phase === 'cutting' ||
           cribbageState.phase === 'counting') && (
-          <div className="bg-amber-600/20 border-b border-amber-600/30 px-4 py-2">
-            <p className="text-center text-sm text-amber-200 font-medium">
-              {cribbageState.lastEvent
-                ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
-                : cribbageState.phase === 'discarding'
-                  ? 'Discard to Crib'
-                  : cribbageState.phase === 'cutting'
-                    ? 'Cut Card'
-                    : 'Counting hands…'}
-            </p>
+          <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
+            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-sm text-center truncate">
+                {cribbageState.lastEvent
+                  ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
+                  : cribbageState.phase === 'discarding'
+                    ? 'Discard to Crib'
+                    : cribbageState.phase === 'cutting'
+                      ? 'Cut Card'
+                      : 'Counting hands…'}
+              </p>
+            </div>
           </div>
         )}
 
@@ -517,14 +519,38 @@ export const CribbageMobileGameTable = ({
         {/* Tab content */}
         <div className="flex-1 overflow-y-auto">
           {activeTab === 'cards' && currentPlayer && (
-            <CribbageMobileCardsTab
-              cribbageState={cribbageState}
-              currentPlayerId={currentPlayerId}
-              playerCount={players.length}
-              isProcessing={isProcessing}
-              onDiscard={handleDiscard}
-              onPlayCard={handlePlayCard}
-            />
+            <>
+              {/* Player info footer - name and chips */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-poker-gold flex items-center justify-center">
+                    <span className="text-[9px] font-bold text-slate-900">
+                      ${formatChipValue(currentPlayer.chips)}
+                    </span>
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {currentPlayer.profiles?.username || 'You'}
+                  </span>
+                  {isDealer(currentPlayerId) && (
+                    <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
+                      <span className="text-white font-bold text-[7px]">D</span>
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Score: {cribbageState.playerStates[currentPlayerId]?.pegScore ?? 0}
+                </span>
+              </div>
+
+              <CribbageMobileCardsTab
+                cribbageState={cribbageState}
+                currentPlayerId={currentPlayerId}
+                playerCount={players.length}
+                isProcessing={isProcessing}
+                onDiscard={handleDiscard}
+                onPlayCard={handlePlayCard}
+              />
+            </>
           )}
 
           {activeTab === 'chat' && (
