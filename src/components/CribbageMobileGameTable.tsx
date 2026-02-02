@@ -15,6 +15,7 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { cn, formatChipValue } from '@/lib/utils';
+import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -308,7 +309,8 @@ export const CribbageMobileGameTable = ({
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    return player?.profiles?.username || 'Unknown';
+    if (!player) return 'Unknown';
+    return getDisplayName(players, player, player.profiles?.username || 'Unknown');
   };
 
   if (!cribbageState || !currentPlayerId) {
@@ -418,7 +420,7 @@ export const CribbageMobileGameTable = ({
 
                       {/* Name */}
                       <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
-                        {opponent.profiles?.username || 'Player'}
+                        {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
                       </span>
 
                       {/* Dealer button inline */}
@@ -551,7 +553,7 @@ export const CribbageMobileGameTable = ({
             <div className="p-4 space-y-2">
               {players.map(player => (
                 <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
-                  <span className="text-sm">{player.profiles?.username || 'Player'}</span>
+                  <span className="text-sm">{getDisplayName(players, player, player.profiles?.username || 'Player')}</span>
                   <span className="text-sm text-poker-gold">${player.chips}</span>
                 </div>
               ))}

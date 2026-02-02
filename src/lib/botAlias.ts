@@ -3,7 +3,7 @@
  * based on the order bots were added to the game session.
  */
 export function getBotAlias(
-  players: Array<{ user_id: string; is_bot: boolean; created_at?: string }>,
+  players: Array<{ user_id: string; is_bot?: boolean; created_at?: string }>,
   botUserId: string
 ): string {
   // Filter to only bots and sort by creation time
@@ -25,8 +25,8 @@ export function getBotAlias(
  * Returns display name - alias for bots, actual name for humans
  */
 export function getDisplayName(
-  players: Array<{ user_id: string; is_bot: boolean; created_at?: string }>,
-  player: { user_id: string; is_bot: boolean },
+  players: Array<{ user_id: string; is_bot?: boolean; created_at?: string }>,
+  player: { user_id: string; is_bot?: boolean },
   actualUsername: string
 ): string {
   if (!player.is_bot) return actualUsername;
