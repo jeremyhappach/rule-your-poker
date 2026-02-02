@@ -120,7 +120,7 @@ export const CribbageMobileCardsTab = ({
             disabled={isProcessing || selectedCards.length !== expectedDiscard}
             className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-6"
           >
-            Discard to Crib ({selectedCards.length}/{expectedDiscard})
+            Send to Crib ({selectedCards.length}/{expectedDiscard})
           </Button>
         )}
         
