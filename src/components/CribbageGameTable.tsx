@@ -354,30 +354,30 @@ export const CribbageGameTable = ({
       />
 
       {/* Center Area - Cut Card & Pegging */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-4">
+      <div className="flex-1 flex flex-col items-center justify-center gap-3">
         {/* Cut Card */}
         {cribbageState.cutCard && (
           <div className="text-center">
-            <p className="text-xs text-amber-200 mb-1">Cut Card</p>
-            <CribbagePlayingCard card={cribbageState.cutCard} size="md" />
+            <p className="text-[10px] text-amber-200 mb-0.5">Cut Card</p>
+            <CribbagePlayingCard card={cribbageState.cutCard} size="sm" />
           </div>
         )}
 
         {/* Pegging Area */}
         {cribbageState.phase === 'pegging' && (
-          <div className="bg-black/20 rounded-lg p-4 min-w-[300px]">
+          <div className="bg-black/20 rounded-lg p-3 w-full max-w-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-amber-200 text-sm">Count:</span>
-              <span className="text-2xl font-bold text-poker-gold">
+              <span className="text-amber-200 text-xs">Count:</span>
+              <span className="text-xl font-bold text-poker-gold">
                 {cribbageState.pegging.currentCount}
               </span>
             </div>
-            <div className="flex flex-wrap gap-1 justify-center">
+            <div className="flex flex-wrap gap-0.5 justify-center">
               {cribbageState.pegging.playedCards.slice(-8).map((pc, i) => (
                 <div key={i} className="relative">
-                  <CribbagePlayingCard card={pc.card} size="sm" />
-                  <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-amber-200 truncate max-w-[40px]">
-                    {getPlayerUsername(pc.playerId).slice(0, 5)}
+                  <CribbagePlayingCard card={pc.card} size="xs" />
+                  <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[8px] text-amber-200 truncate max-w-[28px]">
+                    {getPlayerUsername(pc.playerId).slice(0, 4)}
                   </span>
                 </div>
               ))}
@@ -387,7 +387,7 @@ export const CribbageGameTable = ({
 
         {/* Current Turn Indicator */}
         {cribbageState.phase === 'pegging' && cribbageState.pegging.currentTurnPlayerId && (
-          <p className="text-amber-200">
+          <p className="text-amber-200 text-sm">
             {isMyTurn ? (
               <span className="text-poker-gold font-bold">Your turn!</span>
             ) : (
@@ -408,17 +408,17 @@ export const CribbageGameTable = ({
               </span>
             </div>
             
-            <div className="flex gap-2 justify-center flex-wrap">
+            <div className="flex gap-1 justify-center flex-wrap">
               {myPlayerState.hand.map((card, index) => (
                 <button
                   key={index}
                   onClick={() => handleCardClick(index)}
                   disabled={isProcessing}
                   className={`transition-transform ${
-                    selectedCards.includes(index) ? '-translate-y-4' : ''
+                    selectedCards.includes(index) ? '-translate-y-3' : ''
                   } ${isMyTurn && cribbageState.phase === 'pegging' ? 'hover:-translate-y-2' : ''}`}
                 >
-                  <CribbagePlayingCard card={card} size="md" />
+                  <CribbagePlayingCard card={card} size="sm" />
                 </button>
               ))}
             </div>
@@ -461,9 +461,9 @@ export const CribbageGameTable = ({
         <Card className="bg-poker-felt-dark border-amber-600/50">
           <CardContent className="p-3">
             <p className="text-xs text-amber-400 mb-2">Your Crib</p>
-            <div className="flex gap-1 justify-center">
+            <div className="flex gap-0.5 justify-center">
               {cribbageState.crib.map((card, i) => (
-                <CribbagePlayingCard key={i} card={card} size="sm" />
+                <CribbagePlayingCard key={i} card={card} size="xs" />
               ))}
             </div>
           </CardContent>
