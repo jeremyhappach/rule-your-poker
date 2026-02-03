@@ -183,6 +183,9 @@ export const CribbageMobileGameTable = ({
   // Store the cribbage state snapshot used for counting animation - this prevents the animation
   // from disappearing when DB phase transitions to 'complete' during counting
   const [countingStateSnapshot, setCountingStateSnapshot] = useState<CribbageState | null>(null);
+  
+  // Signal to counting phase to freeze when win is detected reactively via score subscription
+  const [countingWinFrozen, setCountingWinFrozen] = useState(false);
 
   // Win sequence state
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
@@ -271,6 +274,58 @@ export const CribbageMobileGameTable = ({
     // might still be running even after DB phase changes to 'complete'
     // It gets reset in handleCountingComplete instead
   }, [cribbageState?.phase, cribbageState?.dealerPlayerId, cribbageState?.winnerPlayerId, cribbageState?.cutCard, roundId]);
+
+  // ============================================================================
+  // REACTIVE WIN DETECTION via score subscription
+  // Watch countingScoreOverrides (the animated scores used by the peg board).
+  // When any player reaches pointsToWin, immediately trigger the win sequence.
+  // This works for both counting phase wins AND pegging phase wins.
+  // ============================================================================
+  useEffect(() => {
+    if (!countingScoreOverrides || !cribbageState) return;
+    // Don't re-trigger if win sequence already fired for this round
+    if (winSequenceFiredRef.current === roundId) return;
+    
+    const pointsToWin = cribbageState.pointsToWin;
+    
+    // Check if any player has reached the winning threshold
+    for (const [playerId, score] of Object.entries(countingScoreOverrides)) {
+      if (score >= pointsToWin) {
+        console.log('[CRIBBAGE] Win detected via score subscription:', { playerId, score, pointsToWin });
+        
+        // Freeze the counting animation - it should stop advancing and keep cards highlighted
+        setCountingWinFrozen(true);
+        
+        // Build state with winner for the win sequence
+        const stateWithWinner: CribbageState = {
+          ...cribbageState,
+          winnerPlayerId: playerId,
+          // Calculate payout multiplier
+          payoutMultiplier: (() => {
+            const loserScores = Object.entries(countingScoreOverrides)
+              .filter(([id]) => id !== playerId)
+              .map(([, s]) => s);
+            const minLoserScore = Math.min(...loserScores);
+            
+            if (cribbageState.doubleSkunkEnabled && minLoserScore < cribbageState.doubleSkunkThreshold) {
+              return 3;
+            }
+            if (cribbageState.skunkEnabled && minLoserScore < cribbageState.skunkThreshold) {
+              return 2;
+            }
+            return 1;
+          })(),
+        };
+        
+        // Short delay to let the winning combo highlight and peg advance visually settle
+        setTimeout(() => {
+          triggerWinSequence(stateWithWinner);
+        }, 2000);
+        
+        return; // Only one winner
+      }
+    }
+  }, [countingScoreOverrides, cribbageState, roundId]);
 
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
@@ -931,56 +986,31 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, currentPlayerId, eventCtx]);
 
-  // Handle counting phase completion - either start new hand or trigger win sequence
-  const handleCountingComplete = useCallback(async (winDetected: boolean) => {
+  // Handle counting phase completion - start new hand
+  // NOTE: Win sequences are now triggered reactively via score subscription,
+  // so this callback is only called when counting completes WITHOUT a win.
+  const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
     if (!cribbageState) return;
     
     // Mark counting animation as complete and clear snapshot
     countingAnimationActiveRef.current = false;
     setCountingStateSnapshot(null);
     countingDelayFiredRef.current = null;
+    setCountingWinFrozen(false);
     
     // Clear the animated score overrides so pegboard shows real scores again
     setCountingScoreOverrides(null);
     
-    // If win was detected during counting animation, trigger the win sequence now.
-    // The counting animation tracks scores and calls us with winDetected=true when
-    // a player reaches pointsToWin threshold.
-    // 
-    // We may need to determine the winner from animated scores if the DB state
-    // hasn't caught up yet - but typically the state already has winnerPlayerId set.
-    if (winDetected) {
-      // Use the current state's winnerPlayerId if available, otherwise find who won
-      // from the final scores in the current state
-      const winnerId = cribbageState.winnerPlayerId || (() => {
-        const pointsToWin = cribbageState.pointsToWin;
-        for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
-          if (ps.pegScore >= pointsToWin) return playerId;
-        }
-        return null;
-      })();
-      
-      if (winnerId) {
-        // Create a modified state with winnerPlayerId set for the win sequence
-        const stateWithWinner = {
-          ...cribbageState,
-          winnerPlayerId: winnerId,
-        };
-        triggerWinSequence(stateWithWinner);
-        return;
-      }
-    }
-    
+    // Start new hand (win case is handled by reactive score subscription)
     try {
       const playerIds = players.map(p => p.id);
       const newState = startNewHand(cribbageState, playerIds);
       await updateState(newState);
-      // sequenceStartIndex is now stored in state, no local reset needed
     } catch (err) {
       console.error('[CRIBBAGE] Error starting new hand:', err);
       toast.error('Failed to start new hand');
     }
-  }, [cribbageState, players, triggerWinSequence]);
+  }, [cribbageState, players]);
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
@@ -1298,6 +1328,7 @@ export const CribbageMobileGameTable = ({
                 cardBackColors={cardBackColors}
                 onAnnouncementChange={handleCountingAnnouncementChange}
                 onScoreUpdate={setCountingScoreOverrides}
+                winFrozen={countingWinFrozen}
               />
             )}
 
