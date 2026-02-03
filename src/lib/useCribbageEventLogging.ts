@@ -11,6 +11,7 @@ import {
   logHisHeels,
   logHandScoringCombo,
   logCribScoringCombo,
+  logCutCardReveal,
   buildScoresAfter,
   resetCribbageEventSequence,
 } from './cribbageEventLog';
@@ -128,10 +129,12 @@ export function logPeggingPlay(
   const cardsOnTable = newState.pegging.playedCards.map(pc => pc.card);
   const runningCount = newState.pegging.currentCount;
 
+  // Only use cards from the current sequence for subtype description
+  const currentSequenceCards = oldState.pegging.playedCards.slice(oldState.pegging.sequenceStartIndex);
   const subtype = describePeggingSubtype(
     points,
     runningCount,
-    oldState.pegging.playedCards,
+    currentSequenceCards,
     cardPlayed
   );
 
@@ -197,6 +200,25 @@ export function logHisHeelsEvent(
     newState.dealerPlayerId,
     newState.cutCard,
     buildScoresAfter(newState)
+  );
+}
+
+/**
+ * Log cut card reveal event when entering pegging phase.
+ * All clients can safely call this - atomic DB guard prevents duplicates.
+ */
+export function logCutCardEvent(
+  ctx: CribbageEventContext | null,
+  state: CribbageState
+): void {
+  if (!ctx || !state.cutCard) return;
+
+  logCutCardReveal(
+    ctx.roundId,
+    ctx.dealerGameId,
+    ctx.handNumber,
+    state.cutCard,
+    buildScoresAfter(state)
   );
 }
 

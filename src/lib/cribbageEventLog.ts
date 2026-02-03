@@ -13,7 +13,8 @@ export type CribbageEventType =
   | 'hand_scoring'
   | 'crib_scoring'
   | 'his_heels'
-  | 'go';
+  | 'go'
+  | 'cut_card';
 
 export interface LogCribbageEventParams {
   roundId: string;
@@ -177,6 +178,32 @@ export function logHisHeels(
     cardsOnTable: null,
     runningCount: null,
     points: 2,
+    scoresAfter,
+  });
+}
+
+/**
+ * Log cut card reveal event
+ */
+export function logCutCardReveal(
+  roundId: string,
+  dealerGameId: string | null,
+  handNumber: number,
+  cutCard: CribbageCard,
+  scoresAfter: Record<string, number>
+): void {
+  logCribbageEvent({
+    roundId,
+    dealerGameId,
+    handNumber,
+    playerId: '', // No specific player - it's a game event
+    eventType: 'cut_card',
+    eventSubtype: null,
+    cardPlayed: cutCard,
+    cardsInvolved: [cutCard],
+    cardsOnTable: null,
+    runningCount: null,
+    points: 0,
     scoresAfter,
   });
 }
