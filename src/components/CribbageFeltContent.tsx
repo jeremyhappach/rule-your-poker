@@ -2,7 +2,6 @@ import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
-import { CRIBBAGE_WINNING_SCORE } from '@/lib/cribbageTypes';
 
 interface Player {
   id: string;
@@ -60,7 +59,7 @@ export const CribbageFeltContent = ({
           <CribbagePegBoard 
             players={players}
             playerStates={cribbageState.playerStates}
-            winningScore={CRIBBAGE_WINNING_SCORE}
+            winningScore={cribbageState.pointsToWin}
             overrideScores={countingScoreOverrides}
           />
         </div>
@@ -88,7 +87,7 @@ export const CribbageFeltContent = ({
         <CribbagePegBoard 
           players={players}
           playerStates={cribbageState.playerStates}
-          winningScore={CRIBBAGE_WINNING_SCORE}
+          winningScore={cribbageState.pointsToWin}
         />
       </div>
 

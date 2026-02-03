@@ -73,7 +73,13 @@ export async function startCribbageRound(
     const cribbageState = shouldDeferInitializationToClient
       ? null
       : (() => {
-          const s = initializeCribbageGame(playerIds, dealerPlayer.id, anteAmount);
+          const s = initializeCribbageGame(playerIds, dealerPlayer.id, anteAmount, {
+            pointsToWin: game.points_to_win ?? 121,
+            skunkEnabled: game.skunk_enabled ?? true,
+            skunkThreshold: game.skunk_threshold ?? 91,
+            doubleSkunkEnabled: game.double_skunk_enabled ?? true,
+            doubleSkunkThreshold: game.double_skunk_threshold ?? 61,
+          });
           // Override pot to 0 - cribbage uses direct transfers, not pot
           s.pot = 0;
           return s;

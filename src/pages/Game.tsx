@@ -122,6 +122,12 @@ interface GameData {
   current_game_uuid?: string | null;
   game_setup_timer_seconds?: number;
   ante_decision_timer_seconds?: number;
+  // Cribbage-specific settings
+  points_to_win?: number | null;
+  skunk_enabled?: boolean | null;
+  skunk_threshold?: number | null;
+  double_skunk_enabled?: boolean | null;
+  double_skunk_threshold?: number | null;
   rounds?: Round[];
 }
 
@@ -6324,6 +6330,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pot={0}
               isHost={isCreator}
               onGameComplete={fetchGameData}
+              gameConfig={{
+                pointsToWin: game.points_to_win || 121,
+                skunkEnabled: game.skunk_enabled ?? true,
+                skunkThreshold: game.skunk_threshold || 91,
+                doubleSkunkEnabled: game.double_skunk_enabled ?? true,
+                doubleSkunkThreshold: game.double_skunk_threshold || 61,
+              }}
               dealerSelectionCards={dealerSelectionCards}
               dealerSelectionAnnouncement={dealerSelectionAnnouncement}
               dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
@@ -6435,6 +6448,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pot={potForDisplay}
                 isHost={isCreator}
                 onGameComplete={fetchGameData}
+                gameConfig={{
+                  pointsToWin: game.points_to_win || 121,
+                  skunkEnabled: game.skunk_enabled ?? true,
+                  skunkThreshold: game.skunk_threshold || 91,
+                  doubleSkunkEnabled: game.double_skunk_enabled ?? true,
+                  doubleSkunkThreshold: game.double_skunk_threshold || 61,
+                }}
               />
             );
           }

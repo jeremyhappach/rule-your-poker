@@ -512,7 +512,7 @@ export const CribbageGameTable = ({
       <CribbagePegBoard 
         players={players}
         playerStates={cribbageState.playerStates}
-        winningScore={121}
+        winningScore={cribbageState.pointsToWin}
       />
 
       {/* Center Area - Cut Card & Pegging */}
