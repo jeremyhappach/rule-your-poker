@@ -265,6 +265,28 @@ export const CribbageMobileGameTable = ({
     setCountingTargetLabel(targetLabel);
   }, []);
 
+  // Backend acknowledgement guard: only transition to next game after backend marks game_over.
+  const gameOverAckRef = useRef(false);
+  const ensureBackendGameOverAck = useCallback(async (): Promise<boolean> => {
+    if (gameOverAckRef.current) return true;
+    if (!gameId) return false;
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('status')
+        .eq('id', gameId)
+        .single();
+      if (error) return false;
+      if (data?.status === 'game_over') {
+        gameOverAckRef.current = true;
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [gameId]);
+
   // Helper function to calculate baseline scores (score before counting phase).
   // This subtracts hand+crib totals from the final pegScore in the DB.
   const calculateCountingBaselineScores = useCallback((state: CribbageState): Record<string, number> => {
@@ -1198,9 +1220,19 @@ export const CribbageMobileGameTable = ({
     setWinSequencePhase('complete');
     // Small delay before transitioning to next game
     setTimeout(() => {
-      onGameComplete();
+      // Wait briefly for backend to mark game_over (endCribbageGame is async + cross-client).
+      // If we transition too early, Game.tsx will refuse to advance because status !== game_over.
+      (async () => {
+        const deadline = Date.now() + 3000;
+        while (Date.now() < deadline) {
+          const ok = await ensureBackendGameOverAck();
+          if (ok) break;
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        onGameComplete();
+      })();
     }, 500);
-  }, [onGameComplete]);
+  }, [ensureBackendGameOverAck, onGameComplete]);
 
   // Auto-transition from 'announcement' to 'chips' (banner-only winner message; don't stall the flow)
   useEffect(() => {
@@ -1224,11 +1256,19 @@ export const CribbageMobileGameTable = ({
     const safetyTimer = setTimeout(() => {
       console.warn('[CRIBBAGE] Chip animation safety timeout triggered');
       setWinSequencePhase('complete');
-      onGameComplete();
+      (async () => {
+        const deadline = Date.now() + 3000;
+        while (Date.now() < deadline) {
+          const ok = await ensureBackendGameOverAck();
+          if (ok) break;
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        onGameComplete();
+      })();
     }, 5000);
     
     return () => clearTimeout(safetyTimer);
-  }, [winSequencePhase, onGameComplete]);
+  }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete]);
 
   // Show high card selection if needed (internal or external dealer selection mode)
   if (effectiveShowHighCardSelection) {
@@ -1548,7 +1588,7 @@ export const CribbageMobileGameTable = ({
                     ? countingAnnouncement 
                       ? `${countingTargetLabel}: ${countingAnnouncement}`
                       : `Scoring ${countingTargetLabel || 'hands'}...`
-                    : cribbageState.lastEvent
+                    : cribbageState.lastEvent && cribbageState.lastEvent.type !== 'hand_count'
                       ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
                       : cribbageState.phase === 'discarding'
                         ? 'Discard to Crib'

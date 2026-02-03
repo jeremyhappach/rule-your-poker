@@ -143,13 +143,6 @@ export const CribbageCountingPhase = ({
       if (winFrozenRef.current) return;
       setTransitionPhase('scoring');
     }, ENTER_ANIMATION_MS);
-
-    return () => {
-      if (enterToScoringTimerRef.current) {
-        clearTimeout(enterToScoringTimerRef.current);
-        enterToScoringTimerRef.current = null;
-      }
-    };
   }, [baselineInitialized, onScoreUpdate]);
 
   // Build counting order: left of dealer first, then clockwise, dealer's hand, then crib
