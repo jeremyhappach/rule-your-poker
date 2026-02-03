@@ -51,12 +51,24 @@ export function shuffleDeck(deck: CribbageCard[]): CribbageCard[] {
 }
 
 /**
+ * Configuration for a cribbage game
+ */
+export interface CribbageGameConfig {
+  pointsToWin?: number;
+  skunkEnabled?: boolean;
+  skunkThreshold?: number;
+  doubleSkunkEnabled?: boolean;
+  doubleSkunkThreshold?: number;
+}
+
+/**
  * Initialize a new cribbage game state
  */
 export function initializeCribbageGame(
   playerIds: string[],
   dealerPlayerId: string,
-  anteAmount: number
+  anteAmount: number,
+  config?: CribbageGameConfig
 ): CribbageState {
   const playerCount = playerIds.length;
   const cardsPerPlayer = CARDS_PER_PLAYER[playerCount] || 6;
@@ -106,6 +118,12 @@ export function initializeCribbageGame(
     },
     anteAmount,
     pot: 0, // Cribbage doesn't use pot - payouts are direct transfers
+    // Game configuration with defaults
+    pointsToWin: config?.pointsToWin ?? CRIBBAGE_WINNING_SCORE,
+    skunkEnabled: config?.skunkEnabled ?? true,
+    skunkThreshold: config?.skunkThreshold ?? SKUNK_THRESHOLD,
+    doubleSkunkEnabled: config?.doubleSkunkEnabled ?? true,
+    doubleSkunkThreshold: config?.doubleSkunkThreshold ?? DOUBLE_SKUNK_THRESHOLD,
     lastEvent: null,
     lastHandCount: null,
     winnerPlayerId: null,
@@ -277,7 +295,7 @@ function advanceToCutting(state: CribbageState): CribbageState {
     };
     
     // Check for win
-    if (newScore >= CRIBBAGE_WINNING_SCORE) {
+    if (newScore >= newState.pointsToWin) {
       return endGame(newState, newState.dealerPlayerId);
     }
   }
@@ -375,7 +393,7 @@ export function playPeggingCard(
   };
   
   // Check for win
-  if (newScore >= CRIBBAGE_WINNING_SCORE) {
+  if (newScore >= newState.pointsToWin) {
     return endGame(newState, playerId);
   }
   
@@ -450,7 +468,7 @@ export function callGo(state: CribbageState, playerId: string): CribbageState {
     };
     
     // Check for win
-    if (newScore >= CRIBBAGE_WINNING_SCORE) {
+    if (newScore >= newState.pointsToWin) {
       return endGame(newState, state.pegging.lastToPlay);
     }
 
@@ -586,7 +604,7 @@ function advanceToCounting(state: CribbageState): CribbageState {
       },
     };
     
-    if (newScore >= CRIBBAGE_WINNING_SCORE) {
+    if (newScore >= newState.pointsToWin) {
       return endGame(newState, playerId);
     }
   }
@@ -612,7 +630,7 @@ function advanceToCounting(state: CribbageState): CribbageState {
     },
   };
   
-  if (dealerNewScore >= CRIBBAGE_WINNING_SCORE) {
+  if (dealerNewScore >= newState.pointsToWin) {
     return endGame(newState, state.dealerPlayerId);
   }
   
@@ -631,7 +649,7 @@ function advanceToCounting(state: CribbageState): CribbageState {
     },
   };
   
-  if (dealerNewScore >= CRIBBAGE_WINNING_SCORE) {
+  if (dealerNewScore >= newState.pointsToWin) {
     return endGame(newState, state.dealerPlayerId);
   }
   
@@ -663,18 +681,18 @@ function advanceToCounting(state: CribbageState): CribbageState {
  */
 function endGame(state: CribbageState, winnerPlayerId: string): CribbageState {
   // Find loser with lowest score for skunk calculation
-  let lowestScore = CRIBBAGE_WINNING_SCORE;
+  let lowestScore = state.pointsToWin;
   for (const ps of Object.values(state.playerStates)) {
     if (ps.playerId !== winnerPlayerId && ps.pegScore < lowestScore) {
       lowestScore = ps.pegScore;
     }
   }
   
-  // Calculate payout multiplier
+  // Calculate payout multiplier based on game config
   let multiplier = 1;
-  if (lowestScore < DOUBLE_SKUNK_THRESHOLD) {
+  if (state.doubleSkunkEnabled && lowestScore < state.doubleSkunkThreshold) {
     multiplier = 3; // Double skunk
-  } else if (lowestScore < SKUNK_THRESHOLD) {
+  } else if (state.skunkEnabled && lowestScore < state.skunkThreshold) {
     multiplier = 2; // Skunk
   }
   
@@ -726,8 +744,14 @@ export function startNewHand(
     currentScores[playerId] = ps.pegScore;
   }
   
-  // Create new state with fresh deal
-  const newState = initializeCribbageGame(playerIds, nextDealerId, state.anteAmount);
+  // Create new state with fresh deal, preserving game configuration
+  const newState = initializeCribbageGame(playerIds, nextDealerId, state.anteAmount, {
+    pointsToWin: state.pointsToWin,
+    skunkEnabled: state.skunkEnabled,
+    skunkThreshold: state.skunkThreshold,
+    doubleSkunkEnabled: state.doubleSkunkEnabled,
+    doubleSkunkThreshold: state.doubleSkunkThreshold,
+  });
   
   // Restore peg scores
   for (const [playerId, score] of Object.entries(currentScores)) {

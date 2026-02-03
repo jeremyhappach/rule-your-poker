@@ -65,6 +65,12 @@ export interface CribbageState {
   pegging: PeggingState;
   anteAmount: number;
   pot: number;
+  // Game configuration (from dealer setup)
+  pointsToWin: number; // Configurable winning score (default 121)
+  skunkEnabled: boolean;
+  skunkThreshold: number; // Loser below this = skunk (2x)
+  doubleSkunkEnabled: boolean;
+  doubleSkunkThreshold: number; // Loser below this = double-skunk (3x)
   // UX / debugging helpers
   lastEvent?: CribbageEvent | null;
   lastHandCount?: CribbageHandCountSummary | null;

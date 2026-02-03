@@ -48,6 +48,14 @@ interface Player {
   profiles?: { username: string };
 }
 
+interface CribbageGameConfig {
+  pointsToWin: number;
+  skunkEnabled: boolean;
+  skunkThreshold: number;
+  doubleSkunkEnabled: boolean;
+  doubleSkunkThreshold: number;
+}
+
 interface CribbageMobileGameTableProps {
   gameId: string;
   roundId: string;
@@ -58,6 +66,8 @@ interface CribbageMobileGameTableProps {
   pot: number;
   isHost: boolean;
   onGameComplete: () => void;
+  // Game configuration
+  gameConfig?: CribbageGameConfig;
   // Dealer selection props (optional - used during cribbage_dealer_selection phase)
   dealerSelectionCards?: DealerSelectionCard[];
   dealerSelectionAnnouncement?: string | null;
@@ -108,6 +118,14 @@ export const CribbageMobileGameTable = ({
   pot,
   isHost,
   onGameComplete,
+  // Game configuration with defaults
+  gameConfig = {
+    pointsToWin: 121,
+    skunkEnabled: true,
+    skunkThreshold: 91,
+    doubleSkunkEnabled: true,
+    doubleSkunkThreshold: 61,
+  },
   // Dealer selection props (from parent during cribbage_dealer_selection phase)
   dealerSelectionCards: externalDealerSelectionCards,
   dealerSelectionAnnouncement: externalDealerSelectionAnnouncement,
@@ -284,7 +302,7 @@ export const CribbageMobileGameTable = ({
       setInitialLoadComplete(true);
       const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
       const playerIds = players.map(p => p.id);
-      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount);
+      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig);
       
       await supabase
         .from('rounds')
@@ -373,7 +391,7 @@ export const CribbageMobileGameTable = ({
     // Initialize the game with the winner as dealer
     hasInitializedRef.current = true;
     const playerIds = players.map(p => p.id);
-    const newState = initializeCribbageGame(playerIds, winnerPlayer.id, anteAmount);
+    const newState = initializeCribbageGame(playerIds, winnerPlayer.id, anteAmount, gameConfig);
 
     await supabase
       .from('rounds')
@@ -1187,7 +1205,9 @@ export const CribbageMobileGameTable = ({
                 ${anteAmount} CRIBBAGE
               </h2>
               <p className="text-[9px] text-white/70">
-                121 to win • Skunk &lt;91 (2x) • Double &lt;61 (3x)
+                {cribbageState.pointsToWin} to win
+                {cribbageState.skunkEnabled && ` • Skunk <${cribbageState.skunkThreshold} (2x)`}
+                {cribbageState.doubleSkunkEnabled && ` • Double <${cribbageState.doubleSkunkThreshold} (3x)`}
               </p>
             </div>
 
