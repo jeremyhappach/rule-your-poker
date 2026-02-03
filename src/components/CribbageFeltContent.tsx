@@ -18,6 +18,7 @@ interface CribbageFeltContentProps {
   sequenceStartIndex: number;
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
+  countingScoreOverrides?: Record<string, number>;
 }
 
 export const CribbageFeltContent = ({
@@ -27,6 +28,7 @@ export const CribbageFeltContent = ({
   sequenceStartIndex,
   getPlayerUsername,
   cardBackColors,
+  countingScoreOverrides,
 }: CribbageFeltContentProps) => {
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
   
@@ -53,12 +55,13 @@ export const CribbageFeltContent = ({
           </div>
         )}
 
-        {/* Peg Board - stays in normal position during counting */}
+        {/* Peg Board - stays in normal position during counting, uses animated scores */}
         <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
           <CribbagePegBoard 
             players={players}
             playerStates={cribbageState.playerStates}
             winningScore={CRIBBAGE_WINNING_SCORE}
+            overrideScores={countingScoreOverrides}
           />
         </div>
       </>

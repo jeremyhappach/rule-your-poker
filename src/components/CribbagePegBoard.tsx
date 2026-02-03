@@ -12,6 +12,7 @@ interface CribbagePegBoardProps {
   players: Player[];
   playerStates: Record<string, CribbagePlayerState>;
   winningScore: number;
+  overrideScores?: Record<string, number>;
 }
 
 const PLAYER_COLORS = [
@@ -25,6 +26,7 @@ export const CribbagePegBoard = ({
   players,
   playerStates,
   winningScore,
+  overrideScores,
 }: CribbagePegBoardProps) => {
   const getPlayerColor = (index: number) => PLAYER_COLORS[index % PLAYER_COLORS.length];
   
@@ -33,7 +35,8 @@ export const CribbagePegBoard = ({
       {/* Progress bars for each player */}
       {players.map((player, index) => {
         const state = playerStates[player.id];
-        const score = state?.pegScore || 0;
+        // Use override score during counting phase, otherwise use actual pegScore
+        const score = overrideScores?.[player.id] ?? state?.pegScore ?? 0;
         const percentage = Math.min(100, (score / winningScore) * 100);
         
         // Use bot alias for display name

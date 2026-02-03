@@ -28,6 +28,7 @@ interface CribbageCountingPhaseProps {
   onCountingComplete: () => void;
   cardBackColors: { color: string; darkColor: string };
   onAnnouncementChange?: (announcement: string | null, targetLabel: string | null) => void;
+  onScoreUpdate?: (scores: Record<string, number>) => void;
 }
 
 const COMBO_DELAY_MS = 2000; // 2 seconds per combo
@@ -40,6 +41,7 @@ export const CribbageCountingPhase = ({
   onCountingComplete,
   cardBackColors,
   onAnnouncementChange,
+  onScoreUpdate,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
@@ -71,6 +73,11 @@ export const CribbageCountingPhase = ({
       initialScores[playerId] = cribbageState.playerStates[playerId].pegScore - handTotal - cribTotal;
     }
     setAnimatedScores(initialScores);
+    
+    // Propagate initial baseline scores to parent for peg board sync
+    if (onScoreUpdate) {
+      onScoreUpdate(initialScores);
+    }
     
     // Start with entering animation
     setTimeout(() => {
@@ -153,10 +160,17 @@ export const CribbageCountingPhase = ({
         setHighlightedCards(combo.cards);
         setAnnouncement(`${combo.label}: +${combo.points}`);
         
-        setAnimatedScores(prev => ({
-          ...prev,
-          [currentTarget.playerId]: (prev[currentTarget.playerId] || 0) + combo.points,
-        }));
+        setAnimatedScores(prev => {
+          const newScores = {
+            ...prev,
+            [currentTarget.playerId]: (prev[currentTarget.playerId] || 0) + combo.points,
+          };
+          // Propagate animated scores to parent for peg board sync
+          if (onScoreUpdate) {
+            onScoreUpdate(newScores);
+          }
+          return newScores;
+        });
         
         setTimeout(() => {
           setCurrentComboIndex(prev => prev + 1);

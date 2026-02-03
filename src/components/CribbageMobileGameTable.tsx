@@ -144,6 +144,9 @@ export const CribbageMobileGameTable = ({
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
   const [countingTargetLabel, setCountingTargetLabel] = useState<string | null>(null);
   
+  // Counting phase animated scores - peg board reads these instead of final scores
+  const [countingScoreOverrides, setCountingScoreOverrides] = useState<Record<string, number> | null>(null);
+  
   // Delay before showing counting phase to allow final pegging announcement to display
   const [countingDelayActive, setCountingDelayActive] = useState(false);
   const countingDelayFiredRef = useRef<string | null>(null);
@@ -747,6 +750,9 @@ export const CribbageMobileGameTable = ({
   const handleCountingComplete = useCallback(async () => {
     if (!cribbageState) return;
     
+    // Clear the animated score overrides so pegboard shows real scores again
+    setCountingScoreOverrides(null);
+    
     try {
       const playerIds = players.map(p => p.id);
       const newState = startNewHand(cribbageState, playerIds);
@@ -1080,6 +1086,7 @@ export const CribbageMobileGameTable = ({
               sequenceStartIndex={sequenceStartIndex}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
+              countingScoreOverrides={countingScoreOverrides ?? undefined}
             />
 
             {/* Counting Phase Overlay - delayed 2s to allow final pegging announcement */}
@@ -1090,6 +1097,7 @@ export const CribbageMobileGameTable = ({
                 onCountingComplete={handleCountingComplete}
                 cardBackColors={cardBackColors}
                 onAnnouncementChange={handleCountingAnnouncementChange}
+                onScoreUpdate={setCountingScoreOverrides}
               />
             )}
 
