@@ -61,6 +61,12 @@ export const CribbageCountingPhase = ({
   const completedRef = useRef(false);
   // Capture the initial baseline once per mount so it can't fluctuate with state churn.
   const initialScoresRef = useRef<Record<string, number> | null>(null);
+  // Avoid stale closures inside timeouts when parent freezes the win.
+  const winFrozenRef = useRef(winFrozen);
+
+  useEffect(() => {
+    winFrozenRef.current = winFrozen;
+  }, [winFrozen]);
 
   // Calculate baseline scores (before counting) - this is what scores were after pegging
   const baselineScores = (() => {
@@ -171,51 +177,66 @@ export const CribbageCountingPhase = ({
     // If win is frozen by parent (reactive score subscription detected win), stop advancing
     if (winFrozen) return;
 
+    let innerTimer: ReturnType<typeof setTimeout> | null = null;
+
     const timer = setTimeout(() => {
       if (currentComboIndex === -1) {
         if (currentCombos.length === 0) {
+          setHighlightedCards([]);
           setAnnouncement('0 points');
-          setTimeout(() => {
-            if (!winFrozen) startExitTransition();
+
+          innerTimer = setTimeout(() => {
+            if (!winFrozenRef.current) startExitTransition();
           }, 1000);
         } else {
           setCurrentComboIndex(0);
         }
-      } else if (currentComboIndex < currentCombos.length) {
+        return;
+      }
+
+      if (currentComboIndex < currentCombos.length) {
         const combo = currentCombos[currentComboIndex];
         setHighlightedCards(combo.cards);
         setAnnouncement(`${combo.label}: +${combo.points}`);
-        
-        const newScores = {
-          ...animatedScores,
-          [currentTarget.playerId]: (animatedScores[currentTarget.playerId] || 0) + combo.points,
-        };
-        setAnimatedScores(newScores);
-        
-        // Propagate animated scores to parent for peg board sync AND reactive win detection
-        if (onScoreUpdate) {
-          onScoreUpdate(newScores);
-        }
-        
-        // Parent will detect win via score subscription and set winFrozen=true
-        // We just advance to the next combo after a delay
-        setTimeout(() => {
-          if (!winFrozen) setCurrentComboIndex(prev => prev + 1);
+
+        // IMPORTANT: functional update prevents re-processing the same combo due to rerenders.
+        setAnimatedScores((prev) => {
+          const next = {
+            ...prev,
+            [currentTarget.playerId]: (prev[currentTarget.playerId] || 0) + combo.points,
+          };
+
+          // Propagate animated scores to parent for peg board sync AND reactive win detection
+          if (onScoreUpdate) onScoreUpdate(next);
+          return next;
+        });
+
+        // Advance to the next combo after a delay
+        innerTimer = setTimeout(() => {
+          if (!winFrozenRef.current) setCurrentComboIndex((prev) => prev + 1);
         }, COMBO_DELAY_MS);
-      } else {
-        // All combos shown - show total and start exit
-        setHighlightedCards([]);
-        const total = getTotalFromCombos(currentCombos);
-        setAnnouncement(`Total: ${total} points`);
-        
-        setTimeout(() => {
-          if (!winFrozen) startExitTransition();
-        }, 1500);
+        return;
       }
+
+      // All combos shown - show total and start exit
+      setHighlightedCards([]);
+      const total = getTotalFromCombos(currentCombos);
+      setAnnouncement(`Total: ${total} points`);
+
+      innerTimer = setTimeout(() => {
+        if (!winFrozenRef.current) startExitTransition();
+      }, 1500);
     }, currentComboIndex === -1 ? 500 : 0);
 
-    return () => clearTimeout(timer);
-  }, [currentTargetIndex, currentComboIndex, isComplete, transitionPhase, animatedScores, winFrozen]);
+    return () => {
+      clearTimeout(timer);
+      if (innerTimer) clearTimeout(innerTimer);
+    };
+    // Intentionally OMIT animatedScores/currentTarget/currentCombos from deps:
+    // - animatedScores changes would re-run this effect and double-apply points.
+    // - currentTarget/currentCombos are derived and may churn identities each render.
+    // This effect is driven strictly by the combo indices + phase.
+  }, [currentTargetIndex, currentComboIndex, isComplete, transitionPhase, winFrozen]);
 
   const startExitTransition = useCallback(() => {
     if (!currentTarget) return;
