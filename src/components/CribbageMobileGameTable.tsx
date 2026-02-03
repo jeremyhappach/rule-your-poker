@@ -469,13 +469,26 @@ export const CribbageMobileGameTable = ({
       loserIds,
     });
 
-    // Host-only: call endCribbageGame to persist chip transfers and update game status
-    if (isHost && roundId && gameId) {
-      console.log('[CRIBBAGE] Host triggering endCribbageGame for database update');
+    // Persist end-of-game to backend.
+    // IMPORTANT: Do NOT rely on "host-only" here because in H2H the host can be the loser/offline.
+    // endCribbageGame is implemented to be idempotent (only one client will actually execute payouts).
+    const shouldPersistEnd = !!(roundId && gameId && (isHost || currentPlayerId === winnerId));
+    if (shouldPersistEnd) {
+      console.log('[CRIBBAGE] Persisting endCribbageGame', {
+        isHost,
+        isWinnerClient: currentPlayerId === winnerId,
+      });
       endCribbageGame(gameId, roundId, state).then((success) => {
         if (!success) {
           console.error('[CRIBBAGE] Failed to end game in database');
         }
+      });
+    } else {
+      console.log('[CRIBBAGE] Not persisting endCribbageGame from this client', {
+        hasRoundId: !!roundId,
+        hasGameId: !!gameId,
+        isHost,
+        isWinnerClient: currentPlayerId === winnerId,
       });
     }
 

@@ -214,19 +214,27 @@ export async function endCribbageGame(
       throw new Error('No winner specified');
     }
 
-    // Fetch round to get hand_number and dealer_game_id
-    const { data: round, error: roundError } = await supabase
+    // Idempotency guard:
+    // Only ONE client should execute payouts + result insert. We "claim" processing by atomically
+    // transitioning the round to completed (only if it wasn't already).
+    const { data: claimedRound, error: claimError } = await supabase
       .from('rounds')
-      .select('hand_number, dealer_game_id')
+      .update({
+        status: 'completed',
+        cribbage_state: cribbageState as any,
+      })
       .eq('id', roundId)
-      .single();
+      .neq('status', 'completed')
+      .select('hand_number, dealer_game_id')
+      .maybeSingle();
 
-    if (roundError) {
-      console.error('[CRIBBAGE] Failed to fetch round:', roundError);
+    if (claimError) {
+      console.error('[CRIBBAGE] Failed to claim end-of-game processing:', claimError);
+      return false;
     }
 
-    const handNumber = round?.hand_number ?? 1;
-    const dealerGameId = round?.dealer_game_id ?? null;
+    const handNumber = claimedRound?.hand_number ?? 1;
+    const dealerGameId = claimedRound?.dealer_game_id ?? null;
 
     // Get all player IDs (losers are everyone except winner)
     const playerIds = Object.keys(cribbageState.playerStates);
@@ -248,6 +256,33 @@ export async function endCribbageGame(
 
     // Build chip change tracking for game_results
     const chipChanges: Record<string, number> = {};
+
+    // If we didn't claim the round, someone else already processed the payouts/results.
+    // We still ensure the game row is marked over so the UI can advance.
+    if (!claimedRound) {
+      console.log('[CRIBBAGE] endCribbageGame already processed (round already completed). Ensuring game is game_over.');
+
+      const { data: winner } = await supabase
+        .from('players')
+        .select('id, profiles(username)')
+        .eq('id', cribbageState.winnerPlayerId)
+        .single();
+
+      const skunkType = multiplier === 3 ? 'Double-Skunk!' : multiplier === 2 ? 'Skunk!' : '';
+      const resultDescription = `${(winner?.profiles as any)?.username || 'Player'} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
+
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          pot: 0,
+          last_round_result: resultDescription,
+          game_over_at: new Date().toISOString(),
+        })
+        .eq('id', gameId);
+
+      return true;
+    }
 
     // Deduct from each loser (fire-and-forget)
     for (const loserId of loserIds) {
@@ -289,15 +324,6 @@ export async function endCribbageGame(
         game_over_at: new Date().toISOString(),
       })
       .eq('id', gameId);
-
-    // Mark round as completed
-    await supabase
-      .from('rounds')
-      .update({
-        status: 'completed',
-        cribbage_state: cribbageState as any,
-      })
-      .eq('id', roundId);
 
     // Record in game_results with actual hand_number and chip changes
     supabase
