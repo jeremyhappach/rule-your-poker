@@ -135,10 +135,18 @@ function clearGoFlags(state: CribbageState): Record<string, CribbagePlayerState>
   return newPlayerStates;
 }
 
-function findNextPlayerWithCards(state: CribbageState, preferredLeaderId: string | null): string | null {
+/**
+ * Find next player with cards in hand, starting from the position AFTER excludeId.
+ * This ensures after a go-go, the opponent of lastToPlay leads the next run.
+ */
+function findNextPlayerWithCards(state: CribbageState, afterPlayerId: string | null): string | null {
   const order = state.turnOrder;
   if (!order.length) return null;
-  const startIndex = preferredLeaderId ? Math.max(0, order.indexOf(preferredLeaderId)) : 0;
+  
+  // Start looking from the position AFTER the given player (not including them initially)
+  const afterIndex = afterPlayerId ? order.indexOf(afterPlayerId) : -1;
+  const startIndex = afterIndex >= 0 ? (afterIndex + 1) % order.length : 0;
+  
   for (let i = 0; i < order.length; i++) {
     const idx = (startIndex + i) % order.length;
     const id = order[idx];
@@ -147,8 +155,14 @@ function findNextPlayerWithCards(state: CribbageState, preferredLeaderId: string
   return null;
 }
 
-function beginNewPeggingRun(state: CribbageState, preferredLeaderId: string | null): CribbageState {
-  const leaderId = findNextPlayerWithCards(state, preferredLeaderId);
+/**
+ * Begin a new pegging run (count resets to 0).
+ * The next leader is the first player with cards AFTER lastToPlay.
+ * This follows cribbage rules: after go-go, the opponent leads.
+ */
+function beginNewPeggingRun(state: CribbageState, lastToPlayId: string | null): CribbageState {
+  // Find the next player with cards AFTER lastToPlay (not starting with them)
+  const leaderId = findNextPlayerWithCards(state, lastToPlayId);
   return {
     ...state,
     playerStates: clearGoFlags(state),

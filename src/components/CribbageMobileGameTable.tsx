@@ -21,7 +21,9 @@ import { HighCardDealerSelection, type DealerSelectionCard, type DealerSelection
 import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
 import { CribbageWinnerAnnouncement } from './CribbageWinnerAnnouncement';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
+import { MobileChatPanel } from './MobileChatPanel';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
+import { useGameChat } from '@/hooks/useGameChat';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
@@ -113,6 +115,9 @@ export const CribbageMobileGameTable = ({
   const { getTableColors, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
+  
+  // Chat hook - integrated like other mobile game tables
+  const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
   
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1326,8 +1331,12 @@ export const CribbageMobileGameTable = ({
           )}
 
           {activeTab === 'chat' && (
-            <div className="flex items-center justify-center py-8">
-              <span className="text-muted-foreground">Chat coming soon...</span>
+            <div className="h-full p-2">
+              <MobileChatPanel
+                messages={allMessages}
+                onSend={sendMessage}
+                isSending={isChatSending}
+              />
             </div>
           )}
 
