@@ -424,10 +424,13 @@ export type Database = {
           chucky_second_to_last_delay_seconds: number
           created_at: string
           decision_timer_seconds: number
+          double_skunk_enabled: boolean
+          double_skunk_threshold: number
           game_type: string
           id: string
           leg_value: number
           legs_to_win: number
+          points_to_win: number
           pot_max_enabled: boolean
           pot_max_value: number
           pussy_tax_enabled: boolean
@@ -435,6 +438,8 @@ export type Database = {
           rabbit_hunt: boolean
           real_money: boolean
           reveal_at_showdown: boolean
+          skunk_enabled: boolean
+          skunk_threshold: number
           updated_at: string
         }
         Insert: {
@@ -448,10 +453,13 @@ export type Database = {
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
           decision_timer_seconds?: number
+          double_skunk_enabled?: boolean
+          double_skunk_threshold?: number
           game_type: string
           id?: string
           leg_value?: number
           legs_to_win?: number
+          points_to_win?: number
           pot_max_enabled?: boolean
           pot_max_value?: number
           pussy_tax_enabled?: boolean
@@ -459,6 +467,8 @@ export type Database = {
           rabbit_hunt?: boolean
           real_money?: boolean
           reveal_at_showdown?: boolean
+          skunk_enabled?: boolean
+          skunk_threshold?: number
           updated_at?: string
         }
         Update: {
@@ -472,10 +482,13 @@ export type Database = {
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
           decision_timer_seconds?: number
+          double_skunk_enabled?: boolean
+          double_skunk_threshold?: number
           game_type?: string
           id?: string
           leg_value?: number
           legs_to_win?: number
+          points_to_win?: number
           pot_max_enabled?: boolean
           pot_max_value?: number
           pussy_tax_enabled?: boolean
@@ -483,6 +496,8 @@ export type Database = {
           rabbit_hunt?: boolean
           real_money?: boolean
           reveal_at_showdown?: boolean
+          skunk_enabled?: boolean
+          skunk_threshold?: number
           updated_at?: string
         }
         Relationships: []
