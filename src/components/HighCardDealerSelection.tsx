@@ -70,6 +70,9 @@ export const HighCardDealerSelection = ({
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
   const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
   
+  // Stable key for eligible dealers to avoid re-triggering effect on every render
+  const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
+  
   // Timing constants
   const ANNOUNCE_DURATION = 1500; // Show "High card wins deal" for 1.5s
   const ROUND_PAUSE = 1500; // 1.5s pause after dealing before checking winner/tiebreaker
@@ -152,10 +155,10 @@ export const HighCardDealerSelection = ({
     }
 
     if (hasInitializedRef.current) return;
-    hasInitializedRef.current = true;
     
     // Handle edge cases
     if (eligibleDealers.length === 0) {
+      hasInitializedRef.current = true;
       const activePlayers = sortedPlayers.filter(p => !p.sitting_out);
       if (activePlayers.length === 0) {
         onComplete(sortedPlayers[0]?.position || 1);
@@ -167,6 +170,7 @@ export const HighCardDealerSelection = ({
     
     // Single eligible dealer: bypass selection
     if (eligibleDealers.length === 1) {
+      hasInitializedRef.current = true;
       console.log('[HIGH CARD] Only one eligible dealer, bypassing selection');
       if (isHost) {
         onComplete(eligibleDealers[0].position);
@@ -177,8 +181,12 @@ export const HighCardDealerSelection = ({
     // Only host runs the actual selection logic
     if (!isHost) {
       // Non-hosts receive state via syncedState prop (realtime)
+      // Don't set hasInitializedRef - allow re-check if isHost changes
       return;
     }
+    
+    // NOW mark as initialized - only after we confirm we're the host with multiple dealers
+    hasInitializedRef.current = true;
     
     console.log('[HIGH CARD] Starting high card dealer selection with', eligibleDealers.length, 'eligible players');
     
@@ -189,17 +197,8 @@ export const HighCardDealerSelection = ({
     runSelectionRound(eligibleDealers, 1, []);
     
     return () => clearTimeouts();
-  }, [
-    isHost,
-    syncedState,
-    eligibleDealers,
-    sortedPlayers,
-    onCardsUpdate,
-    onAnnouncementUpdate,
-    onWinnerPositionUpdate,
-    onComplete,
-    clearTimeouts,
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, eligibleDealerKey]);
   
   const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
