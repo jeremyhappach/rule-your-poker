@@ -53,13 +53,14 @@ export const CribbageCountingPhase = ({
   const [isComplete, setIsComplete] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
   const [exitingCards, setExitingCards] = useState<CribbageCard[]>([]);
+  const [baselineInitialized, setBaselineInitialized] = useState(false);
   
   const completedRef = useRef(false);
 
-  // Initialize animated scores from current peg scores (before counting)
-  useEffect(() => {
-    const initialScores: Record<string, number> = {};
-    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+  // Calculate baseline scores (before counting) - this is what scores were after pegging
+  const baselineScores = (() => {
+    const scores: Record<string, number> = {};
+    for (const [playerId] of Object.entries(cribbageState.playerStates)) {
       const playerHandCards = cribbageState.pegging.playedCards
         .filter(pc => pc.playerId === playerId)
         .map(pc => pc.card);
@@ -72,20 +73,30 @@ export const CribbageCountingPhase = ({
         cribTotal = getTotalFromCombos(cribCombos);
       }
       
-      initialScores[playerId] = cribbageState.playerStates[playerId].pegScore - handTotal - cribTotal;
+      // Final pegScore minus all counting scores = baseline after pegging
+      scores[playerId] = cribbageState.playerStates[playerId].pegScore - handTotal - cribTotal;
     }
-    setAnimatedScores(initialScores);
+    return scores;
+  })();
+
+  // Initialize animated scores from baseline and propagate to parent IMMEDIATELY
+  useEffect(() => {
+    if (baselineInitialized) return;
     
-    // Propagate initial baseline scores to parent for peg board sync
+    setAnimatedScores(baselineScores);
+    
+    // Propagate initial baseline scores to parent for peg board sync BEFORE any animation
     if (onScoreUpdate) {
-      onScoreUpdate(initialScores);
+      onScoreUpdate(baselineScores);
     }
     
-    // Start with entering animation
+    setBaselineInitialized(true);
+    
+    // Start entering animation after baseline is set
     setTimeout(() => {
       setTransitionPhase('scoring');
     }, ENTER_ANIMATION_MS);
-  }, []);
+  }, [baselineInitialized, onScoreUpdate]);
 
   // Build counting order: left of dealer first, then clockwise, dealer's hand, then crib
   const countingTargets: CountingTarget[] = (() => {

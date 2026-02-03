@@ -58,16 +58,6 @@ export const CribbageWinnerAnnouncement = ({
         ${phase === 'enter' ? 'opacity-0' : phase === 'exit' ? 'opacity-0' : 'opacity-100'}
       `}
     >
-      {/* Trophy/celebration */}
-      <div
-        className={`
-          text-6xl mb-4 transition-all duration-500
-          ${phase === 'show' ? 'scale-100 translate-y-0' : 'scale-50 translate-y-8'}
-        `}
-      >
-        🏆
-      </div>
-
       {/* Winner name */}
       <h2
         className={`
