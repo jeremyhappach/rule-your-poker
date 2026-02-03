@@ -6171,7 +6171,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   />
                 )}
               </div>
-            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && game.game_type !== 'cribbage' && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     gameId={gameId}
@@ -6249,6 +6249,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               </div>
             ) : null}
           </>
+        )}
+
+        {/* CRIBBAGE GAME_OVER: Keep cribbage table visible during win sequence, auto-transition to next game */}
+        {game.status === 'game_over' && game.game_type === 'cribbage' && (
+          <CribbageMobileGameTable
+            gameId={gameId!}
+            roundId={currentRound?.id || ''}
+            players={players}
+            currentUserId={user?.id || ''}
+            dealerPosition={game.dealer_position || 1}
+            anteAmount={game.ante_amount || 1}
+            pot={0}
+            isHost={isCreator}
+            onGameComplete={handleGameOverComplete}
+            gameConfig={{
+              pointsToWin: game.points_to_win || 121,
+              skunkEnabled: game.skunk_enabled ?? true,
+              skunkThreshold: game.skunk_threshold || 91,
+              doubleSkunkEnabled: game.double_skunk_enabled ?? true,
+              doubleSkunkThreshold: game.double_skunk_threshold || 61,
+            }}
+          />
         )}
 
 
@@ -6436,6 +6458,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // CRIBBAGE GAME - Use mobile-optimized table
+          // CRITICAL: onGameComplete must call handleGameOverComplete to transition to next game
           if (isInProgress && game.game_type === 'cribbage') {
             return (
               <CribbageMobileGameTable
@@ -6447,7 +6470,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 anteAmount={game.ante_amount || 1}
                 pot={potForDisplay}
                 isHost={isCreator}
-                onGameComplete={fetchGameData}
+                onGameComplete={handleGameOverComplete}
                 gameConfig={{
                   pointsToWin: game.points_to_win || 121,
                   skunkEnabled: game.skunk_enabled ?? true,
