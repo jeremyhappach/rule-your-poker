@@ -141,8 +141,14 @@ export const CribbageMobileGameTable = ({
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
   
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
+  // Keep latest state in a ref so effects can avoid depending on object identity churn.
+  const cribbageStateRef = useRef<CribbageState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+
+  useEffect(() => {
+    cribbageStateRef.current = cribbageState;
+  }, [cribbageState]);
 
   // High card dealer selection state - only for first hand
   const [showHighCardSelection, setShowHighCardSelection] = useState(false);
@@ -285,52 +291,56 @@ export const CribbageMobileGameTable = ({
     return scores;
   }, []);
 
-  // Delay showing counting phase by 2 seconds to allow final pegging announcement to display
-  // Also snapshot the counting state and track counting animation active state
-  // IMPORTANT: This must trigger on EITHER 'counting' OR 'complete' phase if counting hasn't played yet.
-  // The game logic may pre-calculate the winner and jump directly to 'complete', but we still 
-  // need to show the counting animation with all the suspense before the win celebration.
-  useEffect(() => {
-    if (!cribbageState) return;
-    
-    // We need to show counting animation when:
-    // 1. Phase is 'counting' (normal flow), OR
-    // 2. Phase is 'complete' AND we haven't shown counting for this hand yet
-    // The key check is: do we have a winner AND have we NOT yet shown counting animation?
-    const needsCounting = 
-      cribbageState.phase === 'counting' || 
+  // Stable counting start key to avoid cancelling the delay timer due to object identity churn
+  // (e.g., cutCard object reference changing across realtime updates).
+  const countingStartKey = useMemo(() => {
+    if (!cribbageState) return null;
+
+    const needsCounting =
+      cribbageState.phase === 'counting' ||
       (cribbageState.phase === 'complete' && cribbageState.winnerPlayerId);
-    
-    if (!needsCounting) return;
-    
-    // Generate a unique key for this hand's counting phase
-    const countingKey = `${roundId}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard?.rank ?? ''}${cribbageState.cutCard?.suit ?? ''}`;
-    
+    if (!needsCounting) return null;
+
+    const cutKey = cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut';
+    return `${roundId}-${cribbageState.dealerPlayerId}-${cutKey}`;
+  }, [
+    roundId,
+    cribbageState?.phase,
+    cribbageState?.winnerPlayerId,
+    cribbageState?.dealerPlayerId,
+    cribbageState?.cutCard?.rank,
+    cribbageState?.cutCard?.suit,
+  ]);
+
+  // Delay showing counting phase by 2 seconds to allow final pegging announcement to display.
+  // IMPORTANT: depends ONLY on a stable key to avoid cleanup cancelling the timer mid-delay.
+  useEffect(() => {
+    const state = cribbageStateRef.current;
+    if (!state) return;
+    if (!countingStartKey) return;
+
     // Only snapshot once per counting phase instance
-    if (countingDelayFiredRef.current === countingKey) return;
-    
+    if (countingDelayFiredRef.current === countingStartKey) return;
+
     // Mark counting animation as active
     countingAnimationActiveRef.current = true;
-    countingDelayFiredRef.current = countingKey;
-    setCountingStateSnapshot(cribbageState);
-    
-    // CRITICAL: Initialize counting score overrides with the *true* pre-counting baseline IMMEDIATELY.
-    // Prefer the cached pegging-phase scores (authoritative baseline). Fallback to best-effort
-    // subtraction only when needed (e.g., rejoin mid-hand).
-    const baselineScores = lastPeggingScoresRef.current ?? calculateCountingBaselineScores(cribbageState);
+    countingDelayFiredRef.current = countingStartKey;
+    setCountingStateSnapshot(state);
+
+    // Initialize counting score overrides with the true pre-counting baseline IMMEDIATELY.
+    const baselineScores = lastPeggingScoresRef.current ?? calculateCountingBaselineScores(state);
     setCountingScoreOverrides(baselineScores);
-    
+
     // Start delay - counting phase will be hidden until delay completes
     setCountingDelayActive(true);
     const timer = setTimeout(() => {
       setCountingDelayActive(false);
     }, 2000);
-    
-    return () => clearTimeout(timer);
-    // Note: We DON'T reset countingAnimationActiveRef here because the animation
-    // might still be running even after DB phase changes to 'complete'
-    // It gets reset in handleCountingComplete instead
-  }, [cribbageState?.phase, cribbageState?.dealerPlayerId, cribbageState?.winnerPlayerId, cribbageState?.cutCard, roundId, calculateCountingBaselineScores]);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [countingStartKey, calculateCountingBaselineScores]);
 
   // ============================================================================
   // REACTIVE WIN DETECTION via score subscription
