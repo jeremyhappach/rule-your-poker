@@ -104,18 +104,19 @@ function describePeggingSubtype(
 
   return parts.length > 0 ? parts.join('+') : null;
 }
-
 /**
  * Log pegging card play event after state mutation
+ * Only the host should call this with isHost=true
  */
 export function logPeggingPlay(
   ctx: CribbageEventContext | null,
   oldState: CribbageState,
   newState: CribbageState,
   playerId: string,
-  cardPlayed: CribbageCard
+  cardPlayed: CribbageCard,
+  isHost: boolean = false
 ): void {
-  if (!ctx) return;
+  if (!ctx || !isHost) return;
 
   const oldScore = oldState.playerStates[playerId]?.pegScore ?? 0;
   const newScore = newState.playerStates[playerId]?.pegScore ?? 0;
@@ -147,13 +148,15 @@ export function logPeggingPlay(
 
 /**
  * Log "Go" point event after state mutation
+ * Only the host should call this with isHost=true
  */
 export function logGoPointEvent(
   ctx: CribbageEventContext | null,
   oldState: CribbageState,
-  newState: CribbageState
+  newState: CribbageState,
+  isHost: boolean = false
 ): void {
-  if (!ctx) return;
+  if (!ctx || !isHost) return;
 
   // Find who got the go point by comparing scores
   for (const [playerId, ps] of Object.entries(newState.playerStates)) {
@@ -174,12 +177,14 @@ export function logGoPointEvent(
 
 /**
  * Log "His Heels" event when cut card is a Jack
+ * Only the host should call this with isHost=true
  */
 export function logHisHeelsEvent(
   ctx: CribbageEventContext | null,
-  newState: CribbageState
+  newState: CribbageState,
+  isHost: boolean = false
 ): void {
-  if (!ctx || !newState.cutCard) return;
+  if (!ctx || !newState.cutCard || !isHost) return;
 
   // Only log if there was a his_heels event
   if (newState.lastEvent?.type !== 'his_heels') return;
@@ -197,14 +202,16 @@ export function logHisHeelsEvent(
 /**
  * Log all hand and crib scoring events during counting phase.
  * Call this when transitioning to counting phase.
+ * Only the host should call this with isHost=true
  */
 export function logCountingScoringEvents(
   ctx: CribbageEventContext | null,
   state: CribbageState,
   players: { id: string }[],
-  runningScores: Record<string, number>
+  runningScores: Record<string, number>,
+  isHost: boolean = false
 ): void {
-  if (!ctx || !state.cutCard) return;
+  if (!ctx || !state.cutCard || !isHost) return;
 
   // Process each player's hand
   for (const player of players) {

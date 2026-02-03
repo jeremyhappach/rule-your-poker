@@ -40,6 +40,7 @@ interface CribbageGameTableProps {
   dealerPosition: number;
   anteAmount: number;
   pot: number;
+  isHost: boolean;
   onGameComplete: () => void;
 }
 
@@ -66,6 +67,7 @@ export const CribbageGameTable = ({
   dealerPosition,
   anteAmount,
   pot,
+  isHost,
   onGameComplete,
 }: CribbageGameTableProps) => {
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
@@ -314,8 +316,8 @@ export const CribbageGameTable = ({
           if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
             // Must call go
             const newState = callGo(cribbageState, currentTurnId);
-            // Fire-and-forget event logging
-            logGoPointEvent(eventCtx, cribbageState, newState);
+            // Fire-and-forget event logging (host-only)
+            logGoPointEvent(eventCtx, cribbageState, newState, isHost);
             await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -331,11 +333,11 @@ export const CribbageGameTable = ({
             if (cardIndex !== null) {
               const cardPlayed = botState.hand[cardIndex];
               const newState = playPeggingCard(cribbageState, currentTurnId, cardIndex);
-              // Fire-and-forget event logging
-              logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed);
+              // Fire-and-forget event logging (host-only)
+              logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed, isHost);
               // Check for his_heels on phase transition
               if (newState.lastEvent?.type === 'his_heels') {
-                logHisHeelsEvent(eventCtx, newState);
+                logHisHeelsEvent(eventCtx, newState, isHost);
               }
               await supabase
                 .from('rounds')
@@ -426,13 +428,13 @@ export const CribbageGameTable = ({
       const playerState = cribbageState.playerStates[currentPlayerId];
       const cardPlayed = playerState?.hand[cardIndex];
       const newState = playPeggingCard(cribbageState, currentPlayerId, cardIndex);
-      // Fire-and-forget event logging
+      // Fire-and-forget event logging (host-only)
       if (cardPlayed) {
-        logPeggingPlay(eventCtx, cribbageState, newState, currentPlayerId, cardPlayed);
+        logPeggingPlay(eventCtx, cribbageState, newState, currentPlayerId, cardPlayed, isHost);
       }
       // Check for his_heels on phase transition
       if (newState.lastEvent?.type === 'his_heels') {
-        logHisHeelsEvent(eventCtx, newState);
+        logHisHeelsEvent(eventCtx, newState, isHost);
       }
       await updateState(newState);
     } catch (err) {
@@ -445,8 +447,8 @@ export const CribbageGameTable = ({
 
     try {
       const newState = callGo(cribbageState, currentPlayerId);
-      // Fire-and-forget event logging
-      logGoPointEvent(eventCtx, cribbageState, newState);
+      // Fire-and-forget event logging (host-only)
+      logGoPointEvent(eventCtx, cribbageState, newState, isHost);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
