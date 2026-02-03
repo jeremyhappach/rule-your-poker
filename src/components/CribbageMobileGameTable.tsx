@@ -233,33 +233,44 @@ export const CribbageMobileGameTable = ({
 
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display
   // Also snapshot the counting state and track counting animation active state
+  // IMPORTANT: This must trigger on EITHER 'counting' OR 'complete' phase if counting hasn't played yet.
+  // The game logic may pre-calculate the winner and jump directly to 'complete', but we still 
+  // need to show the counting animation with all the suspense before the win celebration.
   useEffect(() => {
     if (!cribbageState) return;
     
-    // When entering counting phase, snapshot the state for animation
-    if (cribbageState.phase === 'counting') {
-      // Mark counting animation as active
-      countingAnimationActiveRef.current = true;
-      
-      // Only snapshot once per counting phase instance
-      const countingKey = `${roundId}-${cribbageState.dealerPlayerId}`;
-      if (countingDelayFiredRef.current !== countingKey) {
-        countingDelayFiredRef.current = countingKey;
-        setCountingStateSnapshot(cribbageState);
-        
-        // Start delay - counting phase will be hidden until delay completes
-        setCountingDelayActive(true);
-        const timer = setTimeout(() => {
-          setCountingDelayActive(false);
-        }, 2000);
-        
-        return () => clearTimeout(timer);
-      }
-    }
+    // We need to show counting animation when:
+    // 1. Phase is 'counting' (normal flow), OR
+    // 2. Phase is 'complete' AND we haven't shown counting for this hand yet
+    // The key check is: do we have a winner AND have we NOT yet shown counting animation?
+    const needsCounting = 
+      cribbageState.phase === 'counting' || 
+      (cribbageState.phase === 'complete' && cribbageState.winnerPlayerId);
+    
+    if (!needsCounting) return;
+    
+    // Generate a unique key for this hand's counting phase
+    const countingKey = `${roundId}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard?.rank ?? ''}${cribbageState.cutCard?.suit ?? ''}`;
+    
+    // Only snapshot once per counting phase instance
+    if (countingDelayFiredRef.current === countingKey) return;
+    
+    // Mark counting animation as active
+    countingAnimationActiveRef.current = true;
+    countingDelayFiredRef.current = countingKey;
+    setCountingStateSnapshot(cribbageState);
+    
+    // Start delay - counting phase will be hidden until delay completes
+    setCountingDelayActive(true);
+    const timer = setTimeout(() => {
+      setCountingDelayActive(false);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
     // Note: We DON'T reset countingAnimationActiveRef here because the animation
     // might still be running even after DB phase changes to 'complete'
     // It gets reset in handleCountingComplete instead
-  }, [cribbageState?.phase, cribbageState?.dealerPlayerId, roundId]);
+  }, [cribbageState?.phase, cribbageState?.dealerPlayerId, cribbageState?.winnerPlayerId, cribbageState?.cutCard, roundId]);
 
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
@@ -584,16 +595,12 @@ export const CribbageMobileGameTable = ({
         pollInterval = 2000;
       }
       
-      // Trigger win sequence if game complete - BUT NOT if counting animation is in progress
-      // The counting animation will call handleCountingComplete when done, which triggers win sequence
-      // This prevents the win animation from interrupting the counting phase prematurely
-      if (newCribbageState.phase === 'complete' && newCribbageState.winnerPlayerId) {
-        // Only auto-trigger if we're NOT currently showing counting animation
-        // Use ref to avoid stale closure issues
-        if (!countingAnimationActiveRef.current) {
-          triggerWinSequence(newCribbageState);
-        }
-      }
+      // IMPORTANT: Win sequence is now ONLY triggered via handleCountingComplete callback.
+      // The counting animation must always play out fully, with the winning combo highlighted
+      // and scores incrementing on the peg board, BEFORE the win celebration begins.
+      // This preserves the suspense and allows players to see the exact combo that won.
+      // 
+      // The realtime handler should NOT trigger win sequence - that's the counting animation's job.
     };
 
     // Use a simple state signature since rounds doesn't have updated_at
@@ -677,12 +684,8 @@ export const CribbageMobileGameTable = ({
     };
   }, [roundId, triggerWinSequence]);
 
-  // Also check for complete phase on initial load
-  useEffect(() => {
-    if (cribbageState?.phase === 'complete' && cribbageState.winnerPlayerId && winSequencePhase === 'idle') {
-      triggerWinSequence(cribbageState);
-    }
-  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, winSequencePhase, triggerWinSequence]);
+  // REMOVED: Initial load win trigger - all win sequences now go through counting animation.
+  // If a game is rejoined in 'complete' state, the counting animation snapshot logic will handle it.
 
   // Detect hand transitions to prevent stale card flash
   useEffect(() => {
@@ -940,10 +943,32 @@ export const CribbageMobileGameTable = ({
     // Clear the animated score overrides so pegboard shows real scores again
     setCountingScoreOverrides(null);
     
-    // If win was detected during counting, trigger the win sequence now
-    if (winDetected && cribbageState.winnerPlayerId) {
-      triggerWinSequence(cribbageState);
-      return;
+    // If win was detected during counting animation, trigger the win sequence now.
+    // The counting animation tracks scores and calls us with winDetected=true when
+    // a player reaches pointsToWin threshold.
+    // 
+    // We may need to determine the winner from animated scores if the DB state
+    // hasn't caught up yet - but typically the state already has winnerPlayerId set.
+    if (winDetected) {
+      // Use the current state's winnerPlayerId if available, otherwise find who won
+      // from the final scores in the current state
+      const winnerId = cribbageState.winnerPlayerId || (() => {
+        const pointsToWin = cribbageState.pointsToWin;
+        for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+          if (ps.pegScore >= pointsToWin) return playerId;
+        }
+        return null;
+      })();
+      
+      if (winnerId) {
+        // Create a modified state with winnerPlayerId set for the win sequence
+        const stateWithWinner = {
+          ...cribbageState,
+          winnerPlayerId: winnerId,
+        };
+        triggerWinSequence(stateWithWinner);
+        return;
+      }
     }
     
     try {
