@@ -28,6 +28,8 @@ interface CribbageCountingPhaseProps {
   cardBackColors: { color: string; darkColor: string };
   onAnnouncementChange?: (announcement: string | null, targetLabel: string | null) => void;
   onScoreUpdate?: (scores: Record<string, number>) => void;
+  /** Optional baseline scores to start the counting animation from (typically pegging-phase scores). */
+  initialScores?: Record<string, number>;
   /** When true, the counting animation should freeze - parent detected a win via score subscription */
   winFrozen?: boolean;
 }
@@ -43,6 +45,7 @@ export const CribbageCountingPhase = ({
   cardBackColors,
   onAnnouncementChange,
   onScoreUpdate,
+  initialScores,
   winFrozen = false,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
@@ -56,6 +59,8 @@ export const CribbageCountingPhase = ({
   const [baselineInitialized, setBaselineInitialized] = useState(false);
   
   const completedRef = useRef(false);
+  // Capture the initial baseline once per mount so it can't fluctuate with state churn.
+  const initialScoresRef = useRef<Record<string, number> | null>(null);
 
   // Calculate baseline scores (before counting) - this is what scores were after pegging
   const baselineScores = (() => {
@@ -79,15 +84,20 @@ export const CribbageCountingPhase = ({
     return scores;
   })();
 
+  if (!initialScoresRef.current) {
+    initialScoresRef.current = initialScores ?? baselineScores;
+  }
+
   // Initialize animated scores from baseline and propagate to parent IMMEDIATELY
   useEffect(() => {
     if (baselineInitialized) return;
-    
-    setAnimatedScores(baselineScores);
-    
+
+    const scoresToInit = initialScoresRef.current ?? baselineScores;
+    setAnimatedScores(scoresToInit);
+
     // Propagate initial baseline scores to parent for peg board sync BEFORE any animation
     if (onScoreUpdate) {
-      onScoreUpdate(baselineScores);
+      onScoreUpdate(scoresToInit);
     }
     
     setBaselineInitialized(true);

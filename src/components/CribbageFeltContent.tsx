@@ -32,7 +32,9 @@ export const CribbageFeltContent = ({
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
   
   // Hide standard felt content during counting phase (CribbageCountingPhase takes over)
-  const isCountingPhase = cribbageState.phase === 'counting';
+  // Also treat "countingScoreOverrides present" as counting layout so the UI doesn't snap back
+  // to the normal cut-card row during win sequences where DB phase may already be 'complete'.
+  const isCountingPhase = cribbageState.phase === 'counting' || !!countingScoreOverrides;
   
   // Show crib on felt only during discarding/cutting/pegging
   const showCribOnFelt = cribbageState.crib.length > 0 && 
@@ -91,8 +93,8 @@ export const CribbageFeltContent = ({
         />
       </div>
 
-      {/* Crib and Cut Card row - hidden during counting phase (CribbageCountingPhase shows its own) */}
-      {(showCribOnFelt || cribbageState.cutCard) && cribbageState.phase !== 'counting' && (
+      {/* Crib and Cut Card row - hidden during counting layout (CribbageCountingPhase shows its own) */}
+      {(showCribOnFelt || cribbageState.cutCard) && !isCountingPhase && (
         <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex items-start gap-4">
           {/* Crib */}
           {showCribOnFelt && cribbageState.crib.length > 0 && (
