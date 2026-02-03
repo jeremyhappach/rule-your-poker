@@ -293,8 +293,8 @@ export const CribbageCountingPhase = ({
               </div>
             </div>
             
-            {/* Cut card with label - stays in place, never animates out */}
-            {cribbageState.cutCard && (
+            {/* Cut card with label - stays in place during scoring, hidden when complete */}
+            {cribbageState.cutCard && !isComplete && (
               <div className="flex flex-col items-center ml-2">
                 <span className="text-[8px] text-white/60 mb-0.5">Cut</span>
                 <div 
