@@ -114,9 +114,17 @@ export const DealerGameSetup = ({
   const [revealAtShowdown, setRevealAtShowdown] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   
+  // Cribbage-specific settings
+  const [pointsToWin, setPointsToWin] = useState("121");
+  const [skunkEnabled, setSkunkEnabled] = useState(true);
+  const [skunkThreshold, setSkunkThreshold] = useState("91");
+  const [doubleSkunkEnabled, setDoubleSkunkEnabled] = useState(true);
+  const [doubleSkunkThreshold, setDoubleSkunkThreshold] = useState("61");
+  
   // Cache defaults for both game types
   const [holmDefaults, setHolmDefaults] = useState<GameDefaults | null>(null);
   const [threeFiveSevenDefaults, setThreeFiveSevenDefaults] = useState<GameDefaults | null>(null);
+  const [cribbageDefaults, setCribbageDefaults] = useState<any | null>(null);
 
   // Fetch defaults for both game types on mount
   useEffect(() => {
@@ -1103,15 +1111,32 @@ export const DealerGameSetup = ({
       // Fetch defaults for simple ante games (dice, trivia, cribbage)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
-        .select('ante_amount')
+        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold')
         .eq('game_type', gameType)
         .single();
       
       if (gameDefaults) {
         setAnteAmount(String(gameDefaults.ante_amount));
+        
+        // Apply cribbage-specific defaults
+        if (gameType === 'cribbage') {
+          setCribbageDefaults(gameDefaults);
+          setPointsToWin(String(gameDefaults.points_to_win ?? 121));
+          setSkunkEnabled(gameDefaults.skunk_enabled ?? true);
+          setSkunkThreshold(String(gameDefaults.skunk_threshold ?? 91));
+          setDoubleSkunkEnabled(gameDefaults.double_skunk_enabled ?? true);
+          setDoubleSkunkThreshold(String(gameDefaults.double_skunk_threshold ?? 61));
+        }
       } else {
         // Fall back to default ante
         setAnteAmount('5');
+        if (gameType === 'cribbage') {
+          setPointsToWin('121');
+          setSkunkEnabled(true);
+          setSkunkThreshold('91');
+          setDoubleSkunkEnabled(true);
+          setDoubleSkunkThreshold('61');
+        }
       }
     }
   };
@@ -1179,9 +1204,18 @@ export const DealerGameSetup = ({
     const dealerUserId = dealerData?.user_id;
     
     // Build the config object for dealer_games (simple ante games)
-    const dealerGameConfig = {
+    const dealerGameConfig: any = {
       ante_amount: parsedAnte,
     };
+    
+    // Add cribbage-specific config
+    if (isCribbage) {
+      dealerGameConfig.points_to_win = parseInt(pointsToWin) || 121;
+      dealerGameConfig.skunk_enabled = skunkEnabled;
+      dealerGameConfig.skunk_threshold = parseInt(skunkThreshold) || 91;
+      dealerGameConfig.double_skunk_enabled = doubleSkunkEnabled;
+      dealerGameConfig.double_skunk_threshold = parseInt(doubleSkunkThreshold) || 61;
+    }
     
     // Insert into dealer_games table first
     const { data: dealerGame, error: dealerGameError } = await supabase
@@ -1207,6 +1241,10 @@ export const DealerGameSetup = ({
     // CRIBBAGE: Go to cribbage_dealer_selection phase for high-card animation
     // The round will be created after dealer selection completes in Game.tsx
     if (isCribbage) {
+      const parsedPointsToWin = parseInt(pointsToWin) || 121;
+      const parsedSkunkThreshold = parseInt(skunkThreshold) || 91;
+      const parsedDoubleSkunkThreshold = parseInt(doubleSkunkThreshold) || 61;
+      
       const { error } = await supabase
         .from('games')
         .update({
@@ -1222,6 +1260,12 @@ export const DealerGameSetup = ({
           current_game_uuid: dealerGameId,
           is_first_hand: true,
           dealer_selection_state: null, // Will be populated by HighCardDealerSelection
+          // Cribbage-specific settings
+          points_to_win: parsedPointsToWin,
+          skunk_enabled: skunkEnabled,
+          skunk_threshold: parsedSkunkThreshold,
+          double_skunk_enabled: doubleSkunkEnabled,
+          double_skunk_threshold: parsedDoubleSkunkThreshold,
         })
         .eq('id', gameId);
       
@@ -1512,9 +1556,74 @@ export const DealerGameSetup = ({
                   />
                 </div>
                 
-                <p className="text-sm text-amber-200/70 text-center">
-                  {gameRulesText}
-                </p>
+                {/* Cribbage-specific settings */}
+                {isCribbage && (
+                  <>
+                    <div className="space-y-1">
+                      <Label htmlFor="points-to-win" className="text-amber-100 text-sm">Points to Win</Label>
+                      <Input
+                        id="points-to-win"
+                        type="text"
+                        inputMode="numeric"
+                        value={pointsToWin}
+                        onChange={(e) => setPointsToWin(e.target.value)}
+                        className="bg-amber-900/30 border-poker-gold/50 text-white"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="skunk-toggle" className="text-amber-100 text-sm">Skunk (2x payout)</Label>
+                      <Switch
+                        id="skunk-toggle"
+                        checked={skunkEnabled}
+                        onCheckedChange={setSkunkEnabled}
+                      />
+                    </div>
+                    {skunkEnabled && (
+                      <div className="space-y-1 pl-4">
+                        <Label htmlFor="skunk-threshold" className="text-amber-100 text-sm">Skunk Threshold</Label>
+                        <Input
+                          id="skunk-threshold"
+                          type="text"
+                          inputMode="numeric"
+                          value={skunkThreshold}
+                          onChange={(e) => setSkunkThreshold(e.target.value)}
+                          className="bg-amber-900/30 border-poker-gold/50 text-white"
+                        />
+                        <p className="text-xs text-amber-200/50">Opponent below this = skunked</p>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="double-skunk-toggle" className="text-amber-100 text-sm">Double Skunk (3x payout)</Label>
+                      <Switch
+                        id="double-skunk-toggle"
+                        checked={doubleSkunkEnabled}
+                        onCheckedChange={setDoubleSkunkEnabled}
+                      />
+                    </div>
+                    {doubleSkunkEnabled && (
+                      <div className="space-y-1 pl-4">
+                        <Label htmlFor="double-skunk-threshold" className="text-amber-100 text-sm">Double Skunk Threshold</Label>
+                        <Input
+                          id="double-skunk-threshold"
+                          type="text"
+                          inputMode="numeric"
+                          value={doubleSkunkThreshold}
+                          onChange={(e) => setDoubleSkunkThreshold(e.target.value)}
+                          className="bg-amber-900/30 border-poker-gold/50 text-white"
+                        />
+                        <p className="text-xs text-amber-200/50">Opponent below this = double-skunked</p>
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {!isCribbage && (
+                  <p className="text-sm text-amber-200/70 text-center">
+                    {gameRulesText}
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2">
