@@ -219,39 +219,17 @@ export async function endCribbageGame(
       throw new Error('No winner specified');
     }
 
-    // Idempotency guard:
-    // Only ONE client should execute payouts + result insert. We "claim" processing by atomically
-    // transitioning the round to completed (only if it wasn't already).
-    const { data: claimedRound, error: claimError } = await supabase
-      .from('rounds')
-      .update({
-        status: 'completed',
-        cribbage_state: cribbageState as any,
-      })
-      .eq('id', roundId)
-      .neq('status', 'completed')
-      .select('hand_number, dealer_game_id')
-      .maybeSingle();
-
-    if (claimError) {
-      console.error('[CRIBBAGE] Failed to claim end-of-game processing:', claimError);
-      return false;
-    }
-
-    const handNumber = claimedRound?.hand_number ?? 1;
-    const dealerGameId = claimedRound?.dealer_game_id ?? null;
-
     // Get all player IDs (losers are everyone except winner)
     const playerIds = Object.keys(cribbageState.playerStates);
     const loserIds = playerIds.filter(id => id !== cribbageState.winnerPlayerId);
 
     // Calculate payout based on ante and multiplier (skunk/double-skunk)
     const baseAmount = cribbageState.anteAmount;
-    const multiplier = cribbageState.payoutMultiplier;
+    const multiplier = cribbageState.payoutMultiplier || 1;
     const amountPerLoser = baseAmount * multiplier;
     const totalWinnerGain = amountPerLoser * loserIds.length;
 
-    console.log('[CRIBBAGE] Direct chip transfers:', {
+    console.log('[CRIBBAGE] Payout calculation:', {
       baseAmount,
       multiplier,
       amountPerLoser,
@@ -259,13 +237,47 @@ export async function endCribbageGame(
       totalWinnerGain,
     });
 
-    // Build chip change tracking for game_results
-    const chipChanges: Record<string, number> = {};
+    // Idempotency guard:
+    // Only ONE client should execute payouts + result insert. We "claim" processing by atomically
+    // transitioning the round to completed (only if it wasn't already).
+    // NOTE: Using .select() after .update() only returns rows that were actually modified.
+    const { data: claimedRounds, error: claimError } = await supabase
+      .from('rounds')
+      .update({
+        status: 'completed',
+        cribbage_state: cribbageState as any,
+      })
+      .eq('id', roundId)
+      .neq('status', 'completed')
+      .select('hand_number, dealer_game_id');
 
-    // If we didn't claim the round, someone else already processed the payouts/results.
-    // We still ensure the game row is marked over so the UI can advance.
+    if (claimError) {
+      console.error('[CRIBBAGE] Failed to claim end-of-game processing:', claimError);
+      return false;
+    }
+
+    const claimedRound = claimedRounds && claimedRounds.length > 0 ? claimedRounds[0] : null;
+
+    console.log('[CRIBBAGE] Claim result:', {
+      claimedRound,
+      rowsAffected: claimedRounds?.length ?? 0,
+    });
+
+    // If we didn't claim the round, check if it was already completed or verify status
     if (!claimedRound) {
-      console.log('[CRIBBAGE] endCribbageGame already processed (round already completed). Ensuring game is game_over.');
+      // Double-check: maybe another client already completed it
+      const { data: existingRound } = await supabase
+        .from('rounds')
+        .select('status, hand_number, dealer_game_id')
+        .eq('id', roundId)
+        .single();
+
+      if (existingRound?.status === 'completed') {
+        console.log('[CRIBBAGE] endCribbageGame already processed by another client. Ensuring game is game_over.');
+      } else {
+        console.error('[CRIBBAGE] Failed to claim round - unexpected status:', existingRound?.status);
+        // Still try to ensure game_over status is set
+      }
 
       const { data: winner } = await supabase
         .from('players')
@@ -289,25 +301,44 @@ export async function endCribbageGame(
       return true;
     }
 
-    // Deduct from each loser (fire-and-forget)
+    const handNumber = claimedRound.hand_number ?? 1;
+    const dealerGameId = claimedRound.dealer_game_id ?? null;
+
+    // Build chip change tracking for game_results
+    const chipChanges: Record<string, number> = {};
+
+    console.log('[CRIBBAGE] Executing chip transfers:', {
+      winner: cribbageState.winnerPlayerId,
+      totalWinnerGain,
+      losers: loserIds,
+      amountPerLoser,
+    });
+
+    // Deduct from each loser (awaited for critical financial data)
     for (const loserId of loserIds) {
       chipChanges[loserId] = -amountPerLoser;
-      supabase.rpc('increment_player_chips', {
+      const { error: deductError } = await supabase.rpc('increment_player_chips', {
         p_player_id: loserId,
         p_amount: -amountPerLoser,
-      }).then(({ error }) => {
-        if (error) console.error('[CRIBBAGE] Failed to deduct from loser:', loserId, error);
       });
+      if (deductError) {
+        console.error('[CRIBBAGE] Failed to deduct from loser:', loserId, deductError);
+      } else {
+        console.log('[CRIBBAGE] Deducted from loser:', loserId, amountPerLoser);
+      }
     }
 
-    // Award to winner (fire-and-forget)
+    // Award to winner (awaited for critical financial data)
     chipChanges[cribbageState.winnerPlayerId] = totalWinnerGain;
-    supabase.rpc('increment_player_chips', {
+    const { error: awardError } = await supabase.rpc('increment_player_chips', {
       p_player_id: cribbageState.winnerPlayerId,
       p_amount: totalWinnerGain,
-    }).then(({ error }) => {
-      if (error) console.error('[CRIBBAGE] Failed to award winner:', error);
     });
+    if (awardError) {
+      console.error('[CRIBBAGE] Failed to award winner:', awardError);
+    } else {
+      console.log('[CRIBBAGE] Awarded winner:', cribbageState.winnerPlayerId, totalWinnerGain);
+    }
 
     // Get winner username for display
     const { data: winner } = await supabase
@@ -331,25 +362,56 @@ export async function endCribbageGame(
       .eq('id', gameId);
 
     // Record in game_results with actual hand_number and chip changes
-    supabase
+    const { error: resultError } = await supabase
       .from('game_results')
       .insert({
         game_id: gameId,
         dealer_game_id: dealerGameId,
         hand_number: handNumber,
-        pot_won: totalWinnerGain, // Total won (not from pot, but for consistency)
+        pot_won: totalWinnerGain,
         winner_player_id: cribbageState.winnerPlayerId,
         winner_username: (winner?.profiles as any)?.username,
         winning_hand_description: resultDescription,
         is_chopped: false,
         player_chip_changes: chipChanges,
         game_type: 'cribbage',
-      })
-      .then(({ error }) => {
-        if (error) console.error('[CRIBBAGE] Failed to record game result:', error);
       });
+    
+    if (resultError) {
+      console.error('[CRIBBAGE] Failed to record game result:', resultError);
+    } else {
+      console.log('[CRIBBAGE] Game result recorded successfully');
+    }
 
-    console.log('[CRIBBAGE] Game ended successfully - direct transfers complete');
+    // Record session_player_snapshots for each player with their final chip totals
+    // This is critical for SessionResults to show correct balances
+    const { data: allPlayers } = await supabase
+      .from('players')
+      .select('id, user_id, chips, is_bot, profiles(username)')
+      .eq('game_id', gameId);
+
+    if (allPlayers) {
+      for (const player of allPlayers) {
+        const chipChange = chipChanges[player.id] || 0;
+        supabase
+          .from('session_player_snapshots')
+          .insert({
+            game_id: gameId,
+            player_id: player.id,
+            user_id: player.user_id,
+            username: (player.profiles as any)?.username || 'Player',
+            chips: chipChange, // Use the chip change, not absolute chips
+            hand_number: handNumber,
+            is_bot: player.is_bot,
+          })
+          .then(({ error }) => {
+            if (error) console.error('[CRIBBAGE] Failed to record snapshot for player:', player.id, error);
+          });
+      }
+      console.log('[CRIBBAGE] Session snapshots recorded for', allPlayers.length, 'players');
+    }
+
+    console.log('[CRIBBAGE] Game ended successfully - chip transfers and records complete');
     return true;
 
   } catch (error) {
