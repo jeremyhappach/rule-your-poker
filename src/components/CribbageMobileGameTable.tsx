@@ -34,7 +34,8 @@ import {
   logPeggingPlay, 
   logGoPointEvent,
   logHisHeelsEvent,
-  logCountingScoringEvents 
+  logCountingScoringEvents,
+  logCutCardEvent
 } from '@/lib/useCribbageEventLogging';
 
 interface Player {
@@ -174,12 +175,24 @@ export const CribbageMobileGameTable = ({
 
   // Event logging context (fire-and-forget)
   const eventCtx = useCribbageEventContext(roundId);
+  
+  // Track if we've logged the cut card for this hand
+  const cutCardLoggedRef = useRef<string | null>(null);
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   
   // Derive sequenceStartIndex from state - this is authoritative and survives missed realtime updates
   const sequenceStartIndex = cribbageState?.pegging?.sequenceStartIndex ?? 0;
+
+  // Log cut card event when first revealed (atomic guard prevents duplicates)
+  useEffect(() => {
+    if (!cribbageState?.cutCard || !eventCtx) return;
+    const cutCardKey = `${cribbageState.cutCard.rank}-${cribbageState.cutCard.suit}`;
+    if (cutCardLoggedRef.current === cutCardKey) return;
+    cutCardLoggedRef.current = cutCardKey;
+    logCutCardEvent(eventCtx, cribbageState);
+  }, [cribbageState?.cutCard, eventCtx]);
 
   // Callback for counting phase announcements
   const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null) => {
