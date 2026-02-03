@@ -16,6 +16,14 @@ import {
   resetCribbageEventSequence,
 } from './cribbageEventLog';
 import { getHandScoringCombos } from './cribbageScoringDetails';
+import {
+  seqCribScoring,
+  seqCutCard,
+  seqGoAfterPlay,
+  seqHandScoring,
+  seqHisHeels,
+  seqPeggingPlay,
+} from './cribbageEventSequence';
 
 interface CribbageEventContext {
   roundId: string;
@@ -28,11 +36,24 @@ interface CribbageEventContext {
  */
 export function useCribbageEventContext(roundId: string): CribbageEventContext | null {
   const [context, setContext] = useState<CribbageEventContext | null>(null);
-  const fetchedRef = useRef(false);
+  const lastRoundIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
+    if (!roundId) {
+      setContext(null);
+      lastRoundIdRef.current = null;
+      return;
+    }
+
+    // IMPORTANT: this hook is reused across hands/rounds without a full page reload.
+    // We must refetch whenever roundId changes.
+    if (lastRoundIdRef.current !== roundId) {
+      lastRoundIdRef.current = roundId;
+      setContext(null);
+      resetCribbageEventSequence(roundId);
+    }
+
+    let cancelled = false;
 
     const fetchContext = async () => {
       const { data, error } = await supabase
@@ -52,12 +73,14 @@ export function useCribbageEventContext(roundId: string): CribbageEventContext |
         handNumber: data?.hand_number ?? 1,
       };
 
+      if (cancelled) return;
       setContext(ctx);
-      // Reset sequence counter for this round
-      resetCribbageEventSequence(roundId);
     };
 
     fetchContext();
+    return () => {
+      cancelled = true;
+    };
   }, [roundId]);
 
   return context;
@@ -138,6 +161,10 @@ export function logPeggingPlay(
     cardPlayed
   );
 
+  // Deterministic per-play sequence number so multiple clients dedupe correctly.
+  const playIndex = newState.pegging.playedCards.length; // 1-based after play
+  const sequenceNumber = seqPeggingPlay(playIndex);
+
   logPeggingCardPlayed(
     ctx.roundId,
     ctx.dealerGameId,
@@ -148,7 +175,8 @@ export function logPeggingPlay(
     runningCount,
     points,
     subtype,
-    buildScoresAfter(newState)
+    buildScoresAfter(newState),
+    sequenceNumber
   );
 }
 
@@ -163,6 +191,9 @@ export function logGoPointEvent(
 ): void {
   if (!ctx) return;
 
+  const playIndex = newState.pegging.playedCards.length;
+  const sequenceNumber = seqGoAfterPlay(playIndex);
+
   // Find who got the go point by comparing scores
   for (const [playerId, ps] of Object.entries(newState.playerStates)) {
     const oldScore = oldState.playerStates[playerId]?.pegScore ?? 0;
@@ -173,7 +204,8 @@ export function logGoPointEvent(
         ctx.handNumber,
         playerId,
         oldState.pegging.currentCount,
-        buildScoresAfter(newState)
+        buildScoresAfter(newState),
+        sequenceNumber
       );
       break;
     }
@@ -199,7 +231,8 @@ export function logHisHeelsEvent(
     ctx.handNumber,
     newState.dealerPlayerId,
     newState.cutCard,
-    buildScoresAfter(newState)
+    buildScoresAfter(newState),
+    seqHisHeels()
   );
 }
 
@@ -217,8 +250,11 @@ export function logCutCardEvent(
     ctx.roundId,
     ctx.dealerGameId,
     ctx.handNumber,
+    // DB requires a valid player_id; attribute the reveal to the dealer.
+    state.dealerPlayerId,
     state.cutCard,
-    buildScoresAfter(state)
+    buildScoresAfter(state),
+    seqCutCard()
   );
 }
 
@@ -235,58 +271,47 @@ export function logCountingScoringEvents(
 ): void {
   if (!ctx || !state.cutCard) return;
 
+  // Deterministic scoring order:
+  // - Everyone except dealer
+  // - Dealer
+  const scoringOrder = state.turnOrder
+    .filter((id) => id !== state.dealerPlayerId)
+    .concat(state.dealerPlayerId);
+
   // Process each player's hand
-  for (const player of players) {
-    if (player.id === state.dealerPlayerId) continue; // Dealer goes last
+  for (let playerOrderIndex = 0; playerOrderIndex < scoringOrder.length; playerOrderIndex++) {
+    const playerId = scoringOrder[playerOrderIndex];
+    if (!playerId) continue;
 
     const hand = state.pegging.playedCards
-      .filter(pc => pc.playerId === player.id)
+      .filter(pc => pc.playerId === playerId)
       .map(pc => pc.card);
 
     const combos = getHandScoringCombos(hand, state.cutCard, false);
 
-    for (const combo of combos) {
-      runningScores[player.id] = (runningScores[player.id] ?? 0) + combo.points;
+    for (let comboIndex = 0; comboIndex < combos.length; comboIndex++) {
+      const combo = combos[comboIndex];
+      runningScores[playerId] = (runningScores[playerId] ?? 0) + combo.points;
 
       logHandScoringCombo(
         ctx.roundId,
         ctx.dealerGameId,
         ctx.handNumber,
-        player.id,
+        playerId,
         combo.type,
         combo.cards,
         combo.points,
-        { ...runningScores }
+        { ...runningScores },
+        seqHandScoring(playerOrderIndex, comboIndex)
       );
     }
-  }
-
-  // Dealer's hand
-  const dealerHand = state.pegging.playedCards
-    .filter(pc => pc.playerId === state.dealerPlayerId)
-    .map(pc => pc.card);
-
-  const dealerCombos = getHandScoringCombos(dealerHand, state.cutCard, false);
-
-  for (const combo of dealerCombos) {
-    runningScores[state.dealerPlayerId] = (runningScores[state.dealerPlayerId] ?? 0) + combo.points;
-
-    logHandScoringCombo(
-      ctx.roundId,
-      ctx.dealerGameId,
-      ctx.handNumber,
-      state.dealerPlayerId,
-      combo.type,
-      combo.cards,
-      combo.points,
-      { ...runningScores }
-    );
   }
 
   // Crib scoring (dealer only)
   const cribCombos = getHandScoringCombos(state.crib, state.cutCard, true);
 
-  for (const combo of cribCombos) {
+  for (let comboIndex = 0; comboIndex < cribCombos.length; comboIndex++) {
+    const combo = cribCombos[comboIndex];
     runningScores[state.dealerPlayerId] = (runningScores[state.dealerPlayerId] ?? 0) + combo.points;
 
     logCribScoringCombo(
@@ -297,7 +322,8 @@ export function logCountingScoringEvents(
       combo.type,
       combo.cards,
       combo.points,
-      { ...runningScores }
+      { ...runningScores },
+      seqCribScoring(comboIndex)
     );
   }
 }

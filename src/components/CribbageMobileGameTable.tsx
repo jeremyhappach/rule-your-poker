@@ -12,6 +12,7 @@ import {
 } from '@/lib/cribbageGameLogic';
 import { endCribbageGame } from '@/lib/cribbageRoundLogic';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
+import { getHandScoringCombos } from '@/lib/cribbageScoringDetails';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
@@ -684,24 +685,49 @@ export const CribbageMobileGameTable = ({
   // sequenceStartIndex is now derived directly from cribbageState.pegging.sequenceStartIndex
   // No local tracking needed - the state is authoritative
 
-  // Log counting phase events (fire-and-forget) when transitioning to counting
-  const countingLoggedRef = useRef(false);
+  // Log counting phase events (fire-and-forget).
+  // IMPORTANT: on some clients the state may transition counting -> complete very fast,
+  // so we allow logging from either phase.
+  const countingLoggedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!cribbageState || !eventCtx) return;
-    if (cribbageState.phase !== 'counting') {
-      countingLoggedRef.current = false;
+    const phase = cribbageState.phase;
+    if (phase !== 'counting' && phase !== 'complete') {
+      countingLoggedKeyRef.current = null;
       return;
     }
-    if (countingLoggedRef.current) return;
-    countingLoggedRef.current = true;
+    if (!cribbageState.cutCard) return;
 
-    // Build initial scores (before counting was applied)
-    // We need to reconstruct pre-counting scores from the state
-    const runningScores: Record<string, number> = {};
+    const key = `${roundId}:${cribbageState.dealerPlayerId}:${cribbageState.pegging.playedCards.length}:${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}`;
+    if (countingLoggedKeyRef.current === key) return;
+    countingLoggedKeyRef.current = key;
+
+    // Build a best-effort baseline score (pre-counting) by subtracting the computed
+    // hand/crib totals from the final peg scores. This allows scores_after to be
+    // human-meaningful even if we only start logging after the hand completes.
+    const finalScores: Record<string, number> = {};
     for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
-      // Get pre-counting score by looking at the pegging scores only
-      // (the state already has post-counting scores, so we track as we log)
-      runningScores[playerId] = 0; // Start from 0 for logging deltas; actual score tracked in state
+      finalScores[playerId] = ps.pegScore ?? 0;
+    }
+
+    const dealerId = cribbageState.dealerPlayerId;
+    const perPlayerHandTotals: Record<string, number> = {};
+    for (const playerId of Object.keys(cribbageState.playerStates)) {
+      const hand = cribbageState.pegging.playedCards
+        .filter((pc) => pc.playerId === playerId)
+        .map((pc) => pc.card);
+      const combos = getHandScoringCombos(hand, cribbageState.cutCard, false);
+      perPlayerHandTotals[playerId] = combos.reduce((sum, c) => sum + c.points, 0);
+    }
+
+    const cribCombos = getHandScoringCombos(cribbageState.crib, cribbageState.cutCard, true);
+    const cribTotal = cribCombos.reduce((sum, c) => sum + c.points, 0);
+
+    const runningScores: Record<string, number> = {};
+    for (const playerId of Object.keys(cribbageState.playerStates)) {
+      const handTotal = perPlayerHandTotals[playerId] ?? 0;
+      const cribPts = playerId === dealerId ? cribTotal : 0;
+      runningScores[playerId] = (finalScores[playerId] ?? 0) - handTotal - cribPts;
     }
 
     // Log all hand and crib scoring events (atomic DB guard prevents duplicates)
