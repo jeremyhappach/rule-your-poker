@@ -10,6 +10,7 @@ import {
   callGo,
   startNewHand,
 } from '@/lib/cribbageGameLogic';
+import { endCribbageGame } from '@/lib/cribbageRoundLogic';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
@@ -468,6 +469,16 @@ export const CribbageMobileGameTable = ({
       loserIds,
     });
 
+    // Host-only: call endCribbageGame to persist chip transfers and update game status
+    if (isHost && roundId && gameId) {
+      console.log('[CRIBBAGE] Host triggering endCribbageGame for database update');
+      endCribbageGame(gameId, roundId, state).then((success) => {
+        if (!success) {
+          console.error('[CRIBBAGE] Failed to end game in database');
+        }
+      });
+    }
+
     // Fire confetti only for the winner
     if (currentPlayerId === winnerId) {
       confetti({
@@ -484,7 +495,7 @@ export const CribbageMobileGameTable = ({
     } else {
       setWinSequencePhase('announcement');
     }
-  }, [players, anteAmount, currentPlayerId, roundId]);
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId]);
 
   // Realtime subscription with polling fallback
   // This ensures updates are received even if WebSocket connection degrades
