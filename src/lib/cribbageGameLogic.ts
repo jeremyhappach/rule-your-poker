@@ -566,96 +566,33 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
  * Advance to counting phase
  */
 function advanceToCounting(state: CribbageState): CribbageState {
-  // Score each player's hand, then the crib
-  // Order: non-dealer first, then dealer, then crib
-  let newState = { ...state, phase: 'counting' as CribbagePhase };
-
+  // IMPORTANT: Do NOT apply hand/crib totals to pegScore here.
+  // We only enter the counting *animation* phase and persist the scoring breakdown.
+  // The UI will animate scores locally, then apply the final totals to the backend AFTER
+  // the animation completes (or at the exact win moment) to prevent score "jump" spoilers.
   const playerHandScores: Record<string, ReturnType<typeof evaluateHand>> = {};
-  
-  // Get the hands that were discarded (4 cards each after discarding)
+
   for (const playerId of state.turnOrder) {
-    if (playerId === state.dealerPlayerId) continue; // Dealer scores last
-    
-    const ps = state.playerStates[playerId];
-    // The hand for scoring is the 4 cards remaining after discarding
-    const scoringHand = ps.hand.length === 0 
-      ? state.pegging.playedCards
-          .filter(pc => pc.playerId === playerId)
-          .map(pc => pc.card)
-      : ps.hand;
-    
-    // Get original hand from played cards (during counting, hands are empty)
+    // Reconstruct the 4-card post-discard hand from played pegging cards
     const originalHand = state.pegging.playedCards
       .filter(pc => pc.playerId === playerId)
       .map(pc => pc.card);
-    
-    const handScore = evaluateHand(originalHand, state.cutCard, false);
-    playerHandScores[playerId] = handScore;
-    const newScore = ps.pegScore + handScore.total;
-    
-    newState = {
-      ...newState,
-      playerStates: {
-        ...newState.playerStates,
-        [playerId]: {
-          ...newState.playerStates[playerId],
-          pegScore: newScore,
-        },
-      },
-    };
-    
-    if (newScore >= newState.pointsToWin) {
-      return endGame(newState, playerId);
-    }
+    playerHandScores[playerId] = evaluateHand(originalHand, state.cutCard, false);
   }
-  
-  // Score dealer's hand
+
   const dealerHand = state.pegging.playedCards
     .filter(pc => pc.playerId === state.dealerPlayerId)
     .map(pc => pc.card);
-  
   const dealerHandScore = evaluateHand(dealerHand, state.cutCard, false);
-  playerHandScores[state.dealerPlayerId] = dealerHandScore;
-  const dealerPs = newState.playerStates[state.dealerPlayerId];
-  let dealerNewScore = dealerPs.pegScore + dealerHandScore.total;
-  
-  newState = {
-    ...newState,
-    playerStates: {
-      ...newState.playerStates,
-      [state.dealerPlayerId]: {
-        ...dealerPs,
-        pegScore: dealerNewScore,
-      },
-    },
-  };
-  
-  if (dealerNewScore >= newState.pointsToWin) {
-    return endGame(newState, state.dealerPlayerId);
-  }
-  
-  // Score crib
   const cribScore = evaluateHand(state.crib, state.cutCard, true);
-  dealerNewScore = newState.playerStates[state.dealerPlayerId].pegScore + cribScore.total;
-  
-  newState = {
-    ...newState,
-    playerStates: {
-      ...newState.playerStates,
-      [state.dealerPlayerId]: {
-        ...newState.playerStates[state.dealerPlayerId],
-        pegScore: dealerNewScore,
-      },
-    },
-  };
-  
-  if (dealerNewScore >= newState.pointsToWin) {
-    return endGame(newState, state.dealerPlayerId);
-  }
-  
-  // Store counting summary for UI
-  newState = {
-    ...newState,
+
+  return {
+    ...state,
+    phase: 'counting',
+    // Clear any stale winner fields; counting determines the winner via UI progression.
+    winnerPlayerId: null,
+    loserScore: null,
+    payoutMultiplier: 1,
     lastHandCount: {
       countedAt: new Date().toISOString(),
       playerHandScores,
@@ -671,9 +608,34 @@ function advanceToCounting(state: CribbageState): CribbageState {
       createdAt: new Date().toISOString(),
     },
   };
+}
 
-  // Keep the table in counting so the UI can show scoring breakdown.
-  return newState;
+/**
+ * Apply the stored hand+crib counting totals onto pegScore.
+ * Used AFTER the counting animation completes (no-win case).
+ */
+export function applyHandCountScores(state: CribbageState): CribbageState {
+  if (!state.lastHandCount) return state;
+
+  const dealerId = state.dealerPlayerId;
+  const { playerHandScores, dealerHandScore, cribScore } = state.lastHandCount;
+
+  const nextPlayerStates: CribbageState['playerStates'] = { ...state.playerStates };
+
+  for (const [playerId, ps] of Object.entries(state.playerStates)) {
+    const isDealer = playerId === dealerId;
+    const handTotal = (playerHandScores[playerId]?.total ?? (isDealer ? dealerHandScore.total : 0)) || 0;
+    const cribTotal = isDealer ? (cribScore?.total ?? 0) : 0;
+    nextPlayerStates[playerId] = {
+      ...ps,
+      pegScore: (ps.pegScore ?? 0) + handTotal + cribTotal,
+    };
+  }
+
+  return {
+    ...state,
+    playerStates: nextPlayerStates,
+  };
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   playPeggingCard, 
   callGo,
   startNewHand,
+  applyHandCountScores,
 } from '@/lib/cribbageGameLogic';
 import { endCribbageGame } from '@/lib/cribbageRoundLogic';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
@@ -215,6 +216,8 @@ export const CribbageMobileGameTable = ({
   } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const winSequenceFiredRef = useRef<string | null>(null);
+  // Prevent double scheduling of the win sequence before the 2s delay fires.
+  const winSequenceScheduledRef = useRef<string | null>(null);
 
   // Event logging context (fire-and-forget)
   const eventCtx = useCribbageEventContext(roundId);
@@ -327,8 +330,16 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = countingStartKey;
     setCountingStateSnapshot(state);
 
-    // Initialize counting score overrides with the true pre-counting baseline IMMEDIATELY.
-    const baselineScores = lastPeggingScoresRef.current ?? calculateCountingBaselineScores(state);
+    // Initialize counting score overrides with the *pegging* baseline IMMEDIATELY.
+    // With the new flow, the backend does NOT apply counting points to pegScore until AFTER
+    // the animation completes, so pegScore here is safe and spoiler-free.
+    const baselineScores = lastPeggingScoresRef.current ?? (() => {
+      const scores: Record<string, number> = {};
+      for (const [playerId, ps] of Object.entries(state.playerStates)) {
+        scores[playerId] = ps.pegScore ?? 0;
+      }
+      return scores;
+    })();
     setCountingScoreOverrides(baselineScores);
 
     // Start delay - counting phase will be hidden until delay completes
@@ -351,7 +362,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!countingScoreOverrides || !cribbageState) return;
     // Don't re-trigger if win sequence already fired for this round
-    if (winSequenceFiredRef.current === roundId) return;
+    if (winSequenceFiredRef.current === roundId || winSequenceScheduledRef.current === roundId) return;
     
     const pointsToWin = cribbageState.pointsToWin;
     
@@ -359,29 +370,41 @@ export const CribbageMobileGameTable = ({
     for (const [playerId, score] of Object.entries(countingScoreOverrides)) {
       if (score >= pointsToWin) {
         console.log('[CRIBBAGE] Win detected via score subscription:', { playerId, score, pointsToWin });
+
+        // Guard immediately so we can't schedule multiple timers before the first one fires.
+        winSequenceScheduledRef.current = roundId;
         
         // Freeze the counting animation - it should stop advancing and keep cards highlighted
         setCountingWinFrozen(true);
         
+        const loserScores = Object.entries(countingScoreOverrides)
+          .filter(([id]) => id !== playerId)
+          .map(([, s]) => s);
+        const minLoserScore = loserScores.length > 0 ? Math.min(...loserScores) : 0;
+
+        const multiplier = (() => {
+          if (cribbageState.doubleSkunkEnabled && minLoserScore < cribbageState.doubleSkunkThreshold) return 3;
+          if (cribbageState.skunkEnabled && minLoserScore < cribbageState.skunkThreshold) return 2;
+          return 1;
+        })();
+
+        // Persist *final* scores at the moment of win (so backend results match what players saw).
+        const nextPlayerStates: CribbageState['playerStates'] = { ...cribbageState.playerStates };
+        for (const [pid, ps] of Object.entries(cribbageState.playerStates)) {
+          nextPlayerStates[pid] = {
+            ...ps,
+            pegScore: countingScoreOverrides[pid] ?? ps.pegScore,
+          };
+        }
+
         // Build state with winner for the win sequence
         const stateWithWinner: CribbageState = {
           ...cribbageState,
+          phase: 'complete',
+          playerStates: nextPlayerStates,
           winnerPlayerId: playerId,
-          // Calculate payout multiplier
-          payoutMultiplier: (() => {
-            const loserScores = Object.entries(countingScoreOverrides)
-              .filter(([id]) => id !== playerId)
-              .map(([, s]) => s);
-            const minLoserScore = Math.min(...loserScores);
-            
-            if (cribbageState.doubleSkunkEnabled && minLoserScore < cribbageState.doubleSkunkThreshold) {
-              return 3;
-            }
-            if (cribbageState.skunkEnabled && minLoserScore < cribbageState.skunkThreshold) {
-              return 2;
-            }
-            return 1;
-          })(),
+          loserScore: minLoserScore,
+          payoutMultiplier: multiplier,
         };
         
         // Short delay to let the winning combo highlight and peg advance visually settle
@@ -695,6 +718,18 @@ export const CribbageMobileGameTable = ({
       setWinSequencePhase('announcement');
     }
   }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId]);
+
+  // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
+  useEffect(() => {
+    if (!cribbageState?.winnerPlayerId) return;
+    if (cribbageState.phase !== 'complete') return;
+    if (countingAnimationActiveRef.current) return;
+    if (winSequenceFiredRef.current === roundId || winSequenceScheduledRef.current === roundId) return;
+
+    // Guard immediately to avoid multi-fire on rapid state churn.
+    winSequenceScheduledRef.current = roundId;
+    triggerWinSequence(cribbageState);
+  }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
   // Realtime subscription with polling fallback
   // This ensures updates are received even if WebSocket connection degrades
@@ -1071,7 +1106,10 @@ export const CribbageMobileGameTable = ({
     // Start new hand (win case is handled by reactive score subscription)
     try {
       const playerIds = players.map(p => p.id);
-      const newState = startNewHand(cribbageState, playerIds);
+      // Apply hand+crib totals AFTER the animation so the backend never "spoils" the result
+      // by jumping pegScore at the start of counting.
+      const countedState = applyHandCountScores(cribbageState);
+      const newState = startNewHand(countedState, playerIds);
       await updateState(newState);
     } catch (err) {
       console.error('[CRIBBAGE] Error starting new hand:', err);
