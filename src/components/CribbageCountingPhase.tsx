@@ -19,7 +19,7 @@ type CountingTarget = {
   label: string;
 };
 
-type TransitionPhase = 'scoring' | 'exiting' | 'entering' | 'win_pause';
+type TransitionPhase = 'scoring' | 'exiting' | 'entering';
 
 interface CribbageCountingPhaseProps {
   cribbageState: CribbageState;
@@ -28,12 +28,13 @@ interface CribbageCountingPhaseProps {
   cardBackColors: { color: string; darkColor: string };
   onAnnouncementChange?: (announcement: string | null, targetLabel: string | null) => void;
   onScoreUpdate?: (scores: Record<string, number>) => void;
+  /** When true, the counting animation should freeze - parent detected a win via score subscription */
+  winFrozen?: boolean;
 }
 
 const COMBO_DELAY_MS = 2000; // 2 seconds per combo
 const EXIT_ANIMATION_MS = 1500; // 1.5 seconds for cards to exit
 const ENTER_ANIMATION_MS = 800; // 0.8 seconds for cards to enter
-const WIN_PAUSE_MS = 3000; // 3 seconds to hold on winning combo
 
 export const CribbageCountingPhase = ({
   cribbageState,
@@ -42,6 +43,7 @@ export const CribbageCountingPhase = ({
   cardBackColors,
   onAnnouncementChange,
   onScoreUpdate,
+  winFrozen = false,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
@@ -51,12 +53,8 @@ export const CribbageCountingPhase = ({
   const [isComplete, setIsComplete] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
   const [exitingCards, setExitingCards] = useState<CribbageCard[]>([]);
-  const [winDetected, setWinDetected] = useState(false);
   
   const completedRef = useRef(false);
-
-  // Get the winning threshold from config
-  const pointsToWin = cribbageState.pointsToWin;
 
   // Initialize animated scores from current peg scores (before counting)
   useEffect(() => {
@@ -146,15 +144,18 @@ export const CribbageCountingPhase = ({
     : [];
 
   // Animation loop - only runs during 'scoring' phase
+  // When winFrozen is true, we stop advancing but keep current cards highlighted
   useEffect(() => {
     if (isComplete || !currentTarget || transitionPhase !== 'scoring') return;
+    // If win is frozen by parent (reactive score subscription detected win), stop advancing
+    if (winFrozen) return;
 
     const timer = setTimeout(() => {
       if (currentComboIndex === -1) {
         if (currentCombos.length === 0) {
           setAnnouncement('0 points');
           setTimeout(() => {
-            startExitTransition();
+            if (!winFrozen) startExitTransition();
           }, 1000);
         } else {
           setCurrentComboIndex(0);
@@ -170,35 +171,15 @@ export const CribbageCountingPhase = ({
         };
         setAnimatedScores(newScores);
         
-        // Propagate animated scores to parent for peg board sync
+        // Propagate animated scores to parent for peg board sync AND reactive win detection
         if (onScoreUpdate) {
           onScoreUpdate(newScores);
         }
         
-        // Check if this combo triggers a win
-        const playerScore = newScores[currentTarget.playerId] || 0;
-        if (playerScore >= pointsToWin) {
-          // WIN DETECTED! Pause on this combo with cards highlighted
-          setWinDetected(true);
-          setTransitionPhase('win_pause');
-          
-          // After pause, complete with win flag
-          setTimeout(() => {
-            if (!completedRef.current) {
-              completedRef.current = true;
-              setIsComplete(true);
-              setAnnouncement(`🏆 ${playerScore} points - WINNER!`);
-              
-              setTimeout(() => {
-                onCountingComplete(true);
-              }, 1500);
-            }
-          }, WIN_PAUSE_MS);
-          return;
-        }
-        
+        // Parent will detect win via score subscription and set winFrozen=true
+        // We just advance to the next combo after a delay
         setTimeout(() => {
-          setCurrentComboIndex(prev => prev + 1);
+          if (!winFrozen) setCurrentComboIndex(prev => prev + 1);
         }, COMBO_DELAY_MS);
       } else {
         // All combos shown - show total and start exit
@@ -207,16 +188,18 @@ export const CribbageCountingPhase = ({
         setAnnouncement(`Total: ${total} points`);
         
         setTimeout(() => {
-          startExitTransition();
+          if (!winFrozen) startExitTransition();
         }, 1500);
       }
     }, currentComboIndex === -1 ? 500 : 0);
 
     return () => clearTimeout(timer);
-  }, [currentTargetIndex, currentComboIndex, isComplete, transitionPhase, animatedScores, pointsToWin]);
+  }, [currentTargetIndex, currentComboIndex, isComplete, transitionPhase, animatedScores, winFrozen]);
 
   const startExitTransition = useCallback(() => {
     if (!currentTarget) return;
+    // Don't exit if win is frozen
+    if (winFrozen) return;
     
     // Save current cards for exit animation
     setExitingCards([...currentTarget.hand]);
@@ -236,7 +219,7 @@ export const CribbageCountingPhase = ({
           setTransitionPhase('scoring');
         }, ENTER_ANIMATION_MS);
       } else {
-        // All targets counted
+        // All targets counted - no win was detected (parent would have frozen us)
         if (!completedRef.current) {
           completedRef.current = true;
           setIsComplete(true);
@@ -244,12 +227,12 @@ export const CribbageCountingPhase = ({
           setExitingCards([]);
           
           setTimeout(() => {
-            onCountingComplete(winDetected);
+            onCountingComplete(false); // No win detected during counting
           }, 2000);
         }
       }
     }, EXIT_ANIMATION_MS);
-  }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete]);
+  }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete, winFrozen]);
 
   // Propagate announcements to parent for dealer announcement area
   useEffect(() => {
