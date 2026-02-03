@@ -262,7 +262,7 @@ export const CribbageCountingPhase = ({
         }, ENTER_ANIMATION_MS);
       } else {
         // All targets counted - no win was detected (parent would have frozen us)
-        if (!completedRef.current) {
+        if (!completedRef.current && !winFrozenRef.current) {
           completedRef.current = true;
           setIsComplete(true);
           setAnnouncement('Counting complete!');
