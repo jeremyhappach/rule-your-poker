@@ -269,28 +269,32 @@ export const CribbageCountingPhase = ({
       `}</style>
       
       <div className="absolute inset-0 flex flex-col items-center justify-center z-30">
-        {/* Cards being scored - horizontal layout with cut card */}
-        <div 
-          className={`absolute top-[58%] left-1/2 -translate-x-1/2 z-40 ${getCardContainerClasses()}`}
-          style={{ transformOrigin: 'center center' }}
-        >
+        {/* Cards being scored - horizontal layout */}
+        <div className="absolute top-[58%] left-1/2 -translate-x-1/2 z-40">
           <div className="flex items-end gap-1">
-            {/* Player's 4 cards */}
-            {cardsToShow.map((card, i) => (
-              <div 
-                key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
-                className={`transition-all duration-300 ${
-                  isCardHighlighted(card) && transitionPhase === 'scoring'
-                    ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
-                    : ''
-                }`}
-              >
-                <CribbagePlayingCard card={card} size="md" />
+            {/* Player's 4 cards - these animate in/out */}
+            <div 
+              className={getCardContainerClasses()}
+              style={{ transformOrigin: 'center center' }}
+            >
+              <div className="flex items-end gap-1">
+                {cardsToShow.map((card, i) => (
+                  <div 
+                    key={`${card.rank}-${card.suit}-${i}-${currentTargetIndex}`}
+                    className={`transition-all duration-300 ${
+                      isCardHighlighted(card) && transitionPhase === 'scoring'
+                        ? 'transform -translate-y-2 ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' 
+                        : ''
+                    }`}
+                  >
+                    <CribbagePlayingCard card={card} size="md" />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
             
-            {/* Cut card with label - only show during scoring/entering, not exiting */}
-            {cribbageState.cutCard && transitionPhase !== 'exiting' && (
+            {/* Cut card with label - stays in place, never animates out */}
+            {cribbageState.cutCard && (
               <div className="flex flex-col items-center ml-2">
                 <span className="text-[8px] text-white/60 mb-0.5">Cut</span>
                 <div 
