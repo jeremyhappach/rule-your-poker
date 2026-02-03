@@ -12,6 +12,7 @@ interface CribbageSkunkOverlayProps {
 export const CribbageSkunkOverlay = ({ multiplier, onComplete }: CribbageSkunkOverlayProps) => {
   const [phase, setPhase] = useState<'enter' | 'show' | 'exit'>('enter');
   const onCompleteRef = useRef(onComplete);
+  const completedRef = useRef(false);
   
   // Keep ref in sync without triggering effect re-runs
   useEffect(() => {
@@ -27,6 +28,8 @@ export const CribbageSkunkOverlay = ({ multiplier, onComplete }: CribbageSkunkOv
     
     // Complete after exit animation
     const completeTimer = setTimeout(() => {
+      if (completedRef.current) return;
+      completedRef.current = true;
       onCompleteRef.current();
     }, 4100);
 

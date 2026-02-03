@@ -221,6 +221,9 @@ export const CribbageMobileGameTable = ({
   // Source-level guard for skunk overlay to prevent double-firing per animation-trigger pattern.
   const skunkOverlayFiredRef = useRef<string | null>(null);
 
+  // Stable guard key so transient roundId churn can't cause duplicate win sequences.
+  const winKeyFor = (winnerId: string) => `${gameId}:${winnerId}`;
+
   // Event logging context (fire-and-forget)
   const eventCtx = useCribbageEventContext(roundId);
   
@@ -363,8 +366,7 @@ export const CribbageMobileGameTable = ({
   // ============================================================================
   useEffect(() => {
     if (!countingScoreOverrides || !cribbageState) return;
-    // Don't re-trigger if win sequence already fired for this round
-    if (winSequenceFiredRef.current === roundId || winSequenceScheduledRef.current === roundId) return;
+    // Don't re-trigger if win sequence already fired/scheduled for this winner
     
     const pointsToWin = cribbageState.pointsToWin;
     
@@ -373,8 +375,11 @@ export const CribbageMobileGameTable = ({
       if (score >= pointsToWin) {
         console.log('[CRIBBAGE] Win detected via score subscription:', { playerId, score, pointsToWin });
 
+        const winKey = winKeyFor(playerId);
+        if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) return;
+
         // Guard immediately so we can't schedule multiple timers before the first one fires.
-        winSequenceScheduledRef.current = roundId;
+        winSequenceScheduledRef.current = winKey;
         
         // Freeze the counting animation - it should stop advancing and keep cards highlighted
         setCountingWinFrozen(true);
@@ -654,8 +659,12 @@ export const CribbageMobileGameTable = ({
 
   // Trigger win sequence when game completes
   const triggerWinSequence = useCallback((state: CribbageState) => {
-    if (!state.winnerPlayerId || winSequenceFiredRef.current === roundId) return;
-    winSequenceFiredRef.current = roundId;
+    if (!state.winnerPlayerId) return;
+    const winKey = winKeyFor(state.winnerPlayerId);
+    if (winSequenceFiredRef.current === winKey) return;
+    winSequenceFiredRef.current = winKey;
+    // Also set scheduled so other code paths can't race-trigger while this is running.
+    winSequenceScheduledRef.current = winKey;
 
     const winnerId = state.winnerPlayerId;
     const winnerPlayer = players.find(p => p.id === winnerId);
@@ -715,7 +724,7 @@ export const CribbageMobileGameTable = ({
 
     // Start sequence - skunk overlay if applicable, otherwise straight to announcement
     // Use source-level guard to prevent double-firing of skunk overlay
-    const skunkKey = `${roundId}-skunk-${multiplier}`;
+    const skunkKey = `${winKey}-skunk-${multiplier}`;
     if (multiplier >= 2 && skunkOverlayFiredRef.current !== skunkKey) {
       skunkOverlayFiredRef.current = skunkKey;
       setWinSequencePhase('skunk');
@@ -732,10 +741,11 @@ export const CribbageMobileGameTable = ({
     if (!cribbageState?.winnerPlayerId) return;
     if (cribbageState.phase !== 'complete') return;
     if (countingAnimationActiveRef.current) return;
-    if (winSequenceFiredRef.current === roundId || winSequenceScheduledRef.current === roundId) return;
+    const winKey = winKeyFor(cribbageState.winnerPlayerId);
+    if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) return;
 
     // Guard immediately to avoid multi-fire on rapid state churn.
-    winSequenceScheduledRef.current = roundId;
+    winSequenceScheduledRef.current = winKey;
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
@@ -1192,16 +1202,20 @@ export const CribbageMobileGameTable = ({
     }, 500);
   }, [onGameComplete]);
 
-  // Auto-transition from 'announcement' to 'chips' after 2s (announcement is in dealer banner, no overlay)
+  // Auto-transition from 'announcement' to 'chips' (banner-only winner message; don't stall the flow)
   useEffect(() => {
     if (winSequencePhase !== 'announcement') return;
-    
+
+    // If we somehow don't have data yet, wait for it rather than calling handleAnnouncementComplete
+    // which would force-complete and potentially leave the UI in a confusing state.
+    if (!winSequenceData) return;
+
     const timer = setTimeout(() => {
       handleAnnouncementComplete();
-    }, 2000);
+    }, 50);
     
     return () => clearTimeout(timer);
-  }, [winSequencePhase, handleAnnouncementComplete]);
+  }, [winSequencePhase, winSequenceData, handleAnnouncementComplete]);
 
   // Safety timeout: If chip animation phase doesn't complete within 5 seconds, force transition
   useEffect(() => {
