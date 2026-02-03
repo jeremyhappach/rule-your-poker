@@ -2,9 +2,16 @@ import { cn } from "@/lib/utils";
 import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
 import type { CribbageEventRecord, CardData } from "./types";
 
+interface PlayerHandData {
+  playerId: string;
+  username: string;
+  cards: CardData[];
+}
+
 interface CribbageEventDisplayProps {
   events: CribbageEventRecord[];
   playerNames: Map<string, string>;
+  playerHands?: PlayerHandData[];
 }
 
 // Format event type to human-readable label
@@ -145,7 +152,99 @@ function groupEventsByHand(events: CribbageEventRecord[]): Map<number, CribbageE
   return groups;
 }
 
-export function CribbageEventDisplay({ events, playerNames }: CribbageEventDisplayProps) {
+// Separate pegging events from scoring events
+function separateEventsByPhase(events: CribbageEventRecord[]): {
+  peggingEvents: CribbageEventRecord[];
+  scoringEvents: CribbageEventRecord[];
+  cutCard: CardData | null;
+} {
+  const peggingEvents: CribbageEventRecord[] = [];
+  const scoringEvents: CribbageEventRecord[] = [];
+  let cutCard: CardData | null = null;
+
+  for (const event of events) {
+    if (event.event_type === "cut_card") {
+      cutCard = event.card_played as CardData;
+    } else if (event.event_type === "pegging" || event.event_type === "go") {
+      peggingEvents.push(event);
+    } else if (event.event_type === "hand_scoring" || event.event_type === "crib_scoring" || event.event_type === "his_heels") {
+      scoringEvents.push(event);
+    }
+  }
+
+  return { peggingEvents, scoringEvents, cutCard };
+}
+
+// Group scoring events by player for display with their hand
+function groupScoringByPlayer(
+  events: CribbageEventRecord[],
+  playerHands: PlayerHandData[],
+  cutCard: CardData | null
+): Array<{
+  playerId: string;
+  username: string;
+  hand: CardData[];
+  cutCard: CardData | null;
+  events: CribbageEventRecord[];
+  isCrib: boolean;
+}> {
+  const result: Array<{
+    playerId: string;
+    username: string;
+    hand: CardData[];
+    cutCard: CardData | null;
+    events: CribbageEventRecord[];
+    isCrib: boolean;
+  }> = [];
+
+  // First, get all hand_scoring events grouped by player
+  const handScoringByPlayer = new Map<string, CribbageEventRecord[]>();
+  const cribScoringEvents: CribbageEventRecord[] = [];
+
+  for (const event of events) {
+    if (event.event_type === "hand_scoring" || event.event_type === "his_heels") {
+      if (!handScoringByPlayer.has(event.player_id)) {
+        handScoringByPlayer.set(event.player_id, []);
+      }
+      handScoringByPlayer.get(event.player_id)!.push(event);
+    } else if (event.event_type === "crib_scoring") {
+      cribScoringEvents.push(event);
+    }
+  }
+
+  // Add player hands with their scoring events
+  for (const playerHand of playerHands) {
+    const playerEvents = handScoringByPlayer.get(playerHand.playerId) || [];
+    if (playerEvents.length > 0 || playerHand.cards.length > 0) {
+      result.push({
+        playerId: playerHand.playerId,
+        username: playerHand.username,
+        hand: playerHand.cards,
+        cutCard,
+        events: playerEvents,
+        isCrib: false,
+      });
+    }
+  }
+
+  // Add crib scoring (dealer's crib)
+  if (cribScoringEvents.length > 0) {
+    const dealerId = cribScoringEvents[0].player_id;
+    const dealerHand = playerHands.find(ph => ph.playerId === dealerId);
+    result.push({
+      playerId: dealerId,
+      username: dealerHand?.username || "Dealer",
+      hand: [], // Crib cards aren't stored in player_cards
+      cutCard,
+      events: cribScoringEvents,
+      isCrib: true,
+    });
+  }
+
+  return result;
+}
+
+export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: CribbageEventDisplayProps) {
   if (events.length === 0) return null;
   
   const groupedByHand = groupEventsByHand(events);
@@ -153,9 +252,13 @@ export function CribbageEventDisplay({ events, playerNames }: CribbageEventDispl
   const hasMultipleHands = handNumbers.length > 1;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {handNumbers.map((handNum) => {
         const handEvents = groupedByHand.get(handNum)!;
+        const { peggingEvents, scoringEvents, cutCard } = separateEventsByPhase(handEvents);
+        
+        // Group scoring by player with their hands
+        const scoringGroups = groupScoringByPlayer(scoringEvents, playerHands, cutCard);
         
         return (
           <div key={handNum}>
@@ -167,15 +270,58 @@ export function CribbageEventDisplay({ events, playerNames }: CribbageEventDispl
               </div>
             )}
             
-            <div className="space-y-1">
-              {handEvents.map((event) => (
-                <CribbageEventRow 
-                  key={event.id} 
-                  event={event} 
-                  playerNames={playerNames} 
-                />
-              ))}
-            </div>
+            {/* Pegging events */}
+            {peggingEvents.length > 0 && (
+              <div className="space-y-1 mb-2">
+                <div className="text-[10px] text-muted-foreground font-medium">Pegging</div>
+                {peggingEvents.map((event) => (
+                  <CribbageEventRow 
+                    key={event.id} 
+                    event={event} 
+                    playerNames={playerNames} 
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Hand Scoring - show each player's hand + cut card, then their scoring */}
+            {scoringGroups.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[10px] text-muted-foreground font-medium">Counting</div>
+                {scoringGroups.map((group, idx) => (
+                  <div key={`${group.playerId}-${group.isCrib ? 'crib' : 'hand'}`} className="space-y-1">
+                    {/* Player's hand + cut card */}
+                    <div className="flex items-center gap-2 px-2 py-1 rounded bg-muted/30">
+                      <span className="text-xs font-medium text-foreground">
+                        {group.isCrib ? `${group.username}'s Crib` : group.username}:
+                      </span>
+                      {!group.isCrib && group.hand.length > 0 && (
+                        <div className="flex gap-0.5">
+                          {group.hand.map((card, i) => (
+                            <MiniPlayingCard key={i} card={card} />
+                          ))}
+                        </div>
+                      )}
+                      {group.cutCard && (
+                        <>
+                          <span className="text-muted-foreground">+</span>
+                          <MiniPlayingCard card={group.cutCard} className="border-2 border-primary/50" />
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Scoring events for this player */}
+                    {group.events.map((event) => (
+                      <CribbageEventRow 
+                        key={event.id} 
+                        event={event} 
+                        playerNames={playerNames} 
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}

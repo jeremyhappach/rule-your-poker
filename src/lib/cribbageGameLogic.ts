@@ -339,9 +339,7 @@ export function playPeggingCard(
     ps => ps.playerId === playerId ? newHand.length === 0 : ps.hand.length === 0
   );
 
-  // Only evaluate against cards in the current pegging sequence (after last count reset)
-  const currentSequenceCards = state.pegging.playedCards.slice(state.pegging.sequenceStartIndex);
-  const peggingPoints = evaluatePegging(currentSequenceCards, card, state.pegging.currentCount, isLastCardOfHand);
+  const peggingPoints = evaluatePegging(state.pegging.playedCards, card, state.pegging.currentCount, isLastCardOfHand);
   const pointsEarned = peggingPoints.total;
   
   // Update player score
