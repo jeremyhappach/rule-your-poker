@@ -1021,10 +1021,10 @@ export const CribbageMobileGameTable = ({
       {/* Felt Area - Upper Section with circular table */}
       <div 
         ref={tableContainerRef}
-        className="relative flex items-center justify-center"
+        className="relative flex items-start justify-center pt-1"
         style={{ 
-          height: '45vh',
-          minHeight: '260px'
+          height: '55vh',
+          minHeight: '300px'
         }}
       >
         {/* Light background behind the circle - lower z-index */}
@@ -1034,8 +1034,8 @@ export const CribbageMobileGameTable = ({
         <div
           className="relative z-10"
           style={{
-            width: 'min(90vw, calc(45vh - 32px))',
-            height: 'min(90vw, calc(45vh - 32px))',
+            width: 'min(90vw, calc(55vh - 32px))',
+            height: 'min(90vw, calc(55vh - 32px))',
           }}
         >
           {/* Inner circle is clipped; outer wrapper is not */}
