@@ -20,6 +20,7 @@ export interface PeggingState {
   currentTurnPlayerId: string | null;
   lastToPlay: string | null; // For awarding "go" and "last card" points
   goCalledBy: string[]; // Players who have called "go" this count
+  sequenceStartIndex: number; // Index into playedCards where current sequence starts (for UI clearing)
 }
 
 export type CribbageEventType =

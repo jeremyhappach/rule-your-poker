@@ -102,6 +102,7 @@ export function initializeCribbageGame(
       currentTurnPlayerId: turnOrder[0],
       lastToPlay: null,
       goCalledBy: [],
+      sequenceStartIndex: 0,
     },
     anteAmount,
     pot: 0, // Cribbage doesn't use pot - payouts are direct transfers
@@ -157,6 +158,8 @@ function beginNewPeggingRun(state: CribbageState, preferredLeaderId: string | nu
       goCalledBy: [],
       currentTurnPlayerId: leaderId,
       lastToPlay: null,
+      // Mark where the new sequence starts - UI will only show cards from this index forward
+      sequenceStartIndex: state.pegging.playedCards.length,
     },
   };
 }
