@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
-import { 
+import {
   initializeCribbageGame, 
   discardToCrib, 
   playPeggingCard, 
@@ -172,6 +172,9 @@ export const CribbageMobileGameTable = ({
   
   // Counting phase animated scores - peg board reads these instead of final scores
   const [countingScoreOverrides, setCountingScoreOverrides] = useState<Record<string, number> | null>(null);
+  // Cache the latest pegging-phase scores so counting can always start from the true pre-count baseline
+  // even if the DB state already contains post-count totals or has incomplete playedCards data.
+  const lastPeggingScoresRef = useRef<Record<string, number> | null>(null);
   
   // Delay before showing counting phase to allow final pegging announcement to display
   const [countingDelayActive, setCountingDelayActive] = useState(false);
@@ -228,6 +231,20 @@ export const CribbageMobileGameTable = ({
     logCutCardEvent(eventCtx, cribbageState);
   }, [cribbageState?.cutCard, eventCtx]);
 
+  // Continuously capture the latest pegging-phase scores.
+  // This gives us a reliable baseline for the counting animation/pegboard, independent of any
+  // server-side pre-calculations or state compaction.
+  useEffect(() => {
+    if (!cribbageState) return;
+    if (cribbageState.phase !== 'pegging') return;
+
+    const scores: Record<string, number> = {};
+    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+      scores[playerId] = ps.pegScore ?? 0;
+    }
+    lastPeggingScoresRef.current = scores;
+  }, [cribbageState?.phase, cribbageState?.pegging?.playedCards?.length, cribbageState?.playerStates]);
+
   // Callback for counting phase announcements
   const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null) => {
     setCountingAnnouncement(announcement);
@@ -237,6 +254,16 @@ export const CribbageMobileGameTable = ({
   // Helper function to calculate baseline scores (score before counting phase).
   // This subtracts hand+crib totals from the final pegScore in the DB.
   const calculateCountingBaselineScores = useCallback((state: CribbageState): Record<string, number> => {
+    // Best-effort safety: if we don't have enough data to reconstruct hands, fall back to the
+    // current scores (avoids bogus baselines like jumping straight to pointsToWin).
+    if (!state.cutCard || !state.pegging?.playedCards || state.pegging.playedCards.length === 0) {
+      const scores: Record<string, number> = {};
+      for (const [playerId, ps] of Object.entries(state.playerStates)) {
+        scores[playerId] = ps.pegScore ?? 0;
+      }
+      return scores;
+    }
+
     const scores: Record<string, number> = {};
     for (const [playerId] of Object.entries(state.playerStates)) {
       // Reconstruct player's hand from played pegging cards
@@ -287,9 +314,10 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = countingKey;
     setCountingStateSnapshot(cribbageState);
     
-    // CRITICAL: Initialize counting score overrides with baseline IMMEDIATELY
-    // This ensures the pegboard never shows the final DB scores before the animation starts
-    const baselineScores = calculateCountingBaselineScores(cribbageState);
+    // CRITICAL: Initialize counting score overrides with the *true* pre-counting baseline IMMEDIATELY.
+    // Prefer the cached pegging-phase scores (authoritative baseline). Fallback to best-effort
+    // subtraction only when needed (e.g., rejoin mid-hand).
+    const baselineScores = lastPeggingScoresRef.current ?? calculateCountingBaselineScores(cribbageState);
     setCountingScoreOverrides(baselineScores);
     
     // Start delay - counting phase will be hidden until delay completes
@@ -1357,6 +1385,7 @@ export const CribbageMobileGameTable = ({
                 cardBackColors={cardBackColors}
                 onAnnouncementChange={handleCountingAnnouncementChange}
                 onScoreUpdate={setCountingScoreOverrides}
+                initialScores={countingScoreOverrides ?? undefined}
                 winFrozen={countingWinFrozen}
               />
             )}
