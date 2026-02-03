@@ -9,6 +9,7 @@ import type {
   HandGroup,
   RoundGroup,
   PlayerDiceResult,
+  CribbageEventRecord,
 } from "./types";
 
 interface UseHandHistoryDataProps {
@@ -39,6 +40,11 @@ export function useHandHistoryData({
   >(new Map());
   const [roundCardData, setRoundCardData] = useState<
     Map<string, { communityCards: CardData[]; chuckyCards: CardData[] }>
+  >(new Map());
+  
+  // Cribbage events by round
+  const [cribbageEventsByRound, setCribbageEventsByRound] = useState<
+    Map<string, CribbageEventRecord[]>
   >(new Map());
 
   useEffect(() => {
@@ -145,6 +151,10 @@ export function useHandHistoryData({
           roundCardMap.set(r.id, { communityCards, chuckyCards });
         });
         setRoundCardData(roundCardMap);
+        
+        // Fetch cribbage events for cribbage rounds
+        const roundIds = roundsData.map((r: any) => r.id);
+        await fetchCribbageEvents(roundIds);
       }
 
       // Fetch player names from snapshots and current players
@@ -152,6 +162,53 @@ export function useHandHistoryData({
     } finally {
       if (showLoading) setLoading(false);
     }
+  };
+  
+  const fetchCribbageEvents = async (roundIds: string[]) => {
+    if (roundIds.length === 0) {
+      setCribbageEventsByRound(new Map());
+      return;
+    }
+    
+    const { data: eventsData, error } = await supabase
+      .from("cribbage_events")
+      .select("*")
+      .in("round_id", roundIds)
+      .order("sequence_number", { ascending: true });
+    
+    if (error) {
+      console.error("[HAND_HISTORY] Error fetching cribbage events:", error);
+      setCribbageEventsByRound(new Map());
+      return;
+    }
+    
+    const eventsMap = new Map<string, CribbageEventRecord[]>();
+    
+    eventsData?.forEach((event: any) => {
+      const roundId = event.round_id;
+      if (!eventsMap.has(roundId)) {
+        eventsMap.set(roundId, []);
+      }
+      eventsMap.get(roundId)!.push({
+        id: event.id,
+        round_id: event.round_id,
+        dealer_game_id: event.dealer_game_id,
+        hand_number: event.hand_number,
+        player_id: event.player_id,
+        event_type: event.event_type,
+        event_subtype: event.event_subtype,
+        card_played: event.card_played,
+        cards_involved: event.cards_involved || [],
+        cards_on_table: event.cards_on_table,
+        running_count: event.running_count,
+        points: event.points,
+        scores_after: event.scores_after || {},
+        sequence_number: event.sequence_number,
+        created_at: event.created_at,
+      });
+    });
+    
+    setCribbageEventsByRound(eventsMap);
   };
 
   const fetchPlayerNames = async (roundsData: RoundRecord[]) => {
@@ -445,6 +502,9 @@ export function useHandHistoryData({
               .sort((a, b) => (b.isWinner ? 1 : 0) - (a.isWinner ? 1 : 0));
           }
 
+          // Cribbage events for this round
+          const cribbageEvents = cribbageEventsByRound.get(round.id);
+
           roundGroups.push({
             roundNumber: roundNum,
             roundId: round.id,
@@ -454,6 +514,7 @@ export function useHandHistoryData({
             chuckyCards: roundCardDataForRound?.chuckyCards || [],
             events: events.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
             diceResults,
+            cribbageEvents,
           });
         });
 
@@ -521,6 +582,7 @@ export function useHandHistoryData({
     currentUserId,
     playerCardsByRound,
     roundCardData,
+    cribbageEventsByRound,
   ]);
 
   return {
