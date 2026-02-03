@@ -95,8 +95,8 @@ export const GameSelection = ({
   const isGameDisabled = (game: typeof cardGames[0]) => {
     if (!game.enabled) return true;
     if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
-    // Disable cribbage and trivia for non-superusers
-    if ((game.id === 'cribbage' || game.id === 'sports-trivia') && !isSuperuser) return true;
+    // Disable trivia for non-superusers
+    if (game.id === 'sports-trivia' && !isSuperuser) return true;
     return false;
   };
 
