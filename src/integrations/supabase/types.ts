@@ -650,6 +650,8 @@ export type Database = {
           current_round: number | null
           dealer_position: number | null
           dealer_selection_state: Json | null
+          double_skunk_enabled: boolean | null
+          double_skunk_threshold: number | null
           game_over_at: string | null
           game_setup_timer_seconds: number
           game_type: string | null
@@ -663,6 +665,7 @@ export type Database = {
           next_round_number: number | null
           paused_time_remaining: number | null
           pending_session_end: boolean | null
+          points_to_win: number | null
           pot: number | null
           pot_max_enabled: boolean
           pot_max_value: number
@@ -673,6 +676,8 @@ export type Database = {
           real_money: boolean
           reveal_at_showdown: boolean
           session_ended_at: string | null
+          skunk_enabled: boolean | null
+          skunk_threshold: number | null
           status: string
           total_hands: number | null
           updated_at: string
@@ -694,6 +699,8 @@ export type Database = {
           current_round?: number | null
           dealer_position?: number | null
           dealer_selection_state?: Json | null
+          double_skunk_enabled?: boolean | null
+          double_skunk_threshold?: number | null
           game_over_at?: string | null
           game_setup_timer_seconds?: number
           game_type?: string | null
@@ -707,6 +714,7 @@ export type Database = {
           next_round_number?: number | null
           paused_time_remaining?: number | null
           pending_session_end?: boolean | null
+          points_to_win?: number | null
           pot?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number
@@ -717,6 +725,8 @@ export type Database = {
           real_money?: boolean
           reveal_at_showdown?: boolean
           session_ended_at?: string | null
+          skunk_enabled?: boolean | null
+          skunk_threshold?: number | null
           status?: string
           total_hands?: number | null
           updated_at?: string
@@ -738,6 +748,8 @@ export type Database = {
           current_round?: number | null
           dealer_position?: number | null
           dealer_selection_state?: Json | null
+          double_skunk_enabled?: boolean | null
+          double_skunk_threshold?: number | null
           game_over_at?: string | null
           game_setup_timer_seconds?: number
           game_type?: string | null
@@ -751,6 +763,7 @@ export type Database = {
           next_round_number?: number | null
           paused_time_remaining?: number | null
           pending_session_end?: boolean | null
+          points_to_win?: number | null
           pot?: number | null
           pot_max_enabled?: boolean
           pot_max_value?: number
@@ -761,6 +774,8 @@ export type Database = {
           real_money?: boolean
           reveal_at_showdown?: boolean
           session_ended_at?: string | null
+          skunk_enabled?: boolean | null
+          skunk_threshold?: number | null
           status?: string
           total_hands?: number | null
           updated_at?: string
