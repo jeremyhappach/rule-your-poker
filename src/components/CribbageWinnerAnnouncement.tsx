@@ -58,7 +58,7 @@ export const CribbageWinnerAnnouncement = ({
         ${phase === 'enter' ? 'opacity-0' : phase === 'exit' ? 'opacity-0' : 'opacity-100'}
       `}
     >
-      {/* Winner name */}
+      {/* Winner name - no floating badge, announcement only */}
       <h2
         className={`
           text-2xl font-black text-white text-center px-4
@@ -71,19 +71,6 @@ export const CribbageWinnerAnnouncement = ({
       >
         {winnerName} Wins{getWinTypeLabel()}
       </h2>
-
-      {/* Winnings amount */}
-      <div
-        className={`
-          mt-4 px-6 py-2 rounded-full bg-poker-gold/90 border-2 border-amber-600
-          transition-all duration-500 delay-150
-          ${phase === 'show' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}
-        `}
-      >
-        <span className="text-xl font-bold text-slate-900">
-          +${totalWinnings}
-        </span>
-      </div>
     </div>
   );
 };

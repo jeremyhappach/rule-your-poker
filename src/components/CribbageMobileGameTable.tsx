@@ -218,6 +218,8 @@ export const CribbageMobileGameTable = ({
   const winSequenceFiredRef = useRef<string | null>(null);
   // Prevent double scheduling of the win sequence before the 2s delay fires.
   const winSequenceScheduledRef = useRef<string | null>(null);
+  // Source-level guard for skunk overlay to prevent double-firing per animation-trigger pattern.
+  const skunkOverlayFiredRef = useRef<string | null>(null);
 
   // Event logging context (fire-and-forget)
   const eventCtx = useCribbageEventContext(roundId);
@@ -712,8 +714,14 @@ export const CribbageMobileGameTable = ({
     }
 
     // Start sequence - skunk overlay if applicable, otherwise straight to announcement
-    if (multiplier >= 2) {
+    // Use source-level guard to prevent double-firing of skunk overlay
+    const skunkKey = `${roundId}-skunk-${multiplier}`;
+    if (multiplier >= 2 && skunkOverlayFiredRef.current !== skunkKey) {
+      skunkOverlayFiredRef.current = skunkKey;
       setWinSequencePhase('skunk');
+    } else if (multiplier >= 2) {
+      // Already showed skunk, skip to announcement
+      setWinSequencePhase('announcement');
     } else {
       setWinSequencePhase('announcement');
     }
@@ -1504,8 +1512,8 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Dealer Announcements Area */}
-        {(cribbageState.phase === 'counting' || cribbageState.lastEvent ||
+        {/* Dealer Announcements Area - hidden during win sequence overlays */}
+        {winSequencePhase === 'idle' && (cribbageState.phase === 'counting' || cribbageState.lastEvent ||
           cribbageState.phase === 'discarding' ||
           cribbageState.phase === 'cutting') && (
           <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
