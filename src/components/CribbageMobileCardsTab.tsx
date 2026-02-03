@@ -118,8 +118,8 @@ export const CribbageMobileCardsTab = ({
             "flex justify-center origin-center",
             // Pre-discard: tighter spacing with overlap for 6 cards
             isPreDiscard ? "-space-x-3" : "gap-1",
-            // Scale based on card count
-            cardCount <= 4 ? "scale-[2.0]" : cardCount <= 5 ? "scale-[1.7]" : "scale-[1.5]"
+            // Scale based on card count - slightly smaller to free up vertical space
+            cardCount <= 4 ? "scale-[1.7]" : cardCount <= 5 ? "scale-[1.5]" : "scale-[1.3]"
           )}
         >
           {myPlayerState.hand.map((card, index) => {
