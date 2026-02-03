@@ -59,6 +59,10 @@ export const CribbageCountingPhase = ({
   const [baselineInitialized, setBaselineInitialized] = useState(false);
   
   const completedRef = useRef(false);
+  const enterToScoringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const enterTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Capture the initial baseline once per mount so it can't fluctuate with state churn.
   const initialScoresRef = useRef<Record<string, number> | null>(null);
   // Avoid stale closures inside timeouts when parent freezes the win.
@@ -67,6 +71,32 @@ export const CribbageCountingPhase = ({
   useEffect(() => {
     winFrozenRef.current = winFrozen;
   }, [winFrozen]);
+
+  // If the parent freezes due to a win, immediately clear any pending transitions and
+  // stop emitting counting announcements (the dealer banner should switch to the win message).
+  useEffect(() => {
+    if (!winFrozen) return;
+
+    if (enterToScoringTimerRef.current) {
+      clearTimeout(enterToScoringTimerRef.current);
+      enterToScoringTimerRef.current = null;
+    }
+    if (exitTransitionTimerRef.current) {
+      clearTimeout(exitTransitionTimerRef.current);
+      exitTransitionTimerRef.current = null;
+    }
+    if (enterTransitionTimerRef.current) {
+      clearTimeout(enterTransitionTimerRef.current);
+      enterTransitionTimerRef.current = null;
+    }
+    if (completeTimerRef.current) {
+      clearTimeout(completeTimerRef.current);
+      completeTimerRef.current = null;
+    }
+
+    setAnnouncement(null);
+    onAnnouncementChange?.(null, null);
+  }, [winFrozen, onAnnouncementChange]);
 
   // Calculate baseline scores (before counting) - this is what scores were after pegging
   const baselineScores = (() => {
@@ -109,9 +139,17 @@ export const CribbageCountingPhase = ({
     setBaselineInitialized(true);
     
     // Start entering animation after baseline is set
-    setTimeout(() => {
+    enterToScoringTimerRef.current = setTimeout(() => {
+      if (winFrozenRef.current) return;
       setTransitionPhase('scoring');
     }, ENTER_ANIMATION_MS);
+
+    return () => {
+      if (enterToScoringTimerRef.current) {
+        clearTimeout(enterToScoringTimerRef.current);
+        enterToScoringTimerRef.current = null;
+      }
+    };
   }, [baselineInitialized, onScoreUpdate]);
 
   // Build counting order: left of dealer first, then clockwise, dealer's hand, then crib
@@ -248,7 +286,10 @@ export const CribbageCountingPhase = ({
     setTransitionPhase('exiting');
     
     // After exit animation, move to next target
-    setTimeout(() => {
+    if (exitTransitionTimerRef.current) clearTimeout(exitTransitionTimerRef.current);
+    exitTransitionTimerRef.current = setTimeout(() => {
+      if (winFrozenRef.current) return;
+
       if (currentTargetIndex < countingTargets.length - 1) {
         setCurrentTargetIndex(prev => prev + 1);
         setCurrentComboIndex(-1);
@@ -257,7 +298,9 @@ export const CribbageCountingPhase = ({
         setTransitionPhase('entering');
         
         // After enter animation, start scoring
-        setTimeout(() => {
+        if (enterTransitionTimerRef.current) clearTimeout(enterTransitionTimerRef.current);
+        enterTransitionTimerRef.current = setTimeout(() => {
+          if (winFrozenRef.current) return;
           setTransitionPhase('scoring');
         }, ENTER_ANIMATION_MS);
       } else {
@@ -268,7 +311,9 @@ export const CribbageCountingPhase = ({
           setAnnouncement('Counting complete!');
           setExitingCards([]);
           
-          setTimeout(() => {
+          if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
+          completeTimerRef.current = setTimeout(() => {
+            if (winFrozenRef.current) return;
             onCountingComplete(false); // No win detected during counting
           }, 2000);
         }
@@ -278,10 +323,21 @@ export const CribbageCountingPhase = ({
 
   // Propagate announcements to parent for dealer announcement area
   useEffect(() => {
+    if (winFrozen) return;
     if (onAnnouncementChange) {
       onAnnouncementChange(announcement, currentTarget?.label || null);
     }
-  }, [announcement, currentTarget?.label, onAnnouncementChange]);
+  }, [announcement, currentTarget?.label, onAnnouncementChange, winFrozen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (enterToScoringTimerRef.current) clearTimeout(enterToScoringTimerRef.current);
+      if (exitTransitionTimerRef.current) clearTimeout(exitTransitionTimerRef.current);
+      if (enterTransitionTimerRef.current) clearTimeout(enterTransitionTimerRef.current);
+      if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
+    };
+  }, []);
 
   const isCardHighlighted = (card: CribbageCard) => {
     return highlightedCards.some(
