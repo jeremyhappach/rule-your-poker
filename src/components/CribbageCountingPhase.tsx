@@ -248,21 +248,21 @@ export const CribbageCountingPhase = ({
       <style>{`
         @keyframes slideUpFade {
           0% {
-            transform: translateY(0) translateX(-50%);
+            transform: translateY(0);
             opacity: 1;
           }
           100% {
-            transform: translateY(-80px) translateX(-50%);
+            transform: translateY(-80px);
             opacity: 0;
           }
         }
         @keyframes slideInFromSource {
           0% {
-            transform: translateY(-60px) translateX(-50%) scale(0.6);
+            transform: translateY(-60px) scale(0.6);
             opacity: 0;
           }
           100% {
-            transform: translateY(0) translateX(-50%) scale(1);
+            transform: translateY(0) scale(1);
             opacity: 1;
           }
         }
