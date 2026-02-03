@@ -105,18 +105,17 @@ function describePeggingSubtype(
   return parts.length > 0 ? parts.join('+') : null;
 }
 /**
- * Log pegging card play event after state mutation
- * Only the host should call this with isHost=true
+ * Log pegging card play event after state mutation.
+ * All clients can safely call this - atomic DB guard prevents duplicates.
  */
 export function logPeggingPlay(
   ctx: CribbageEventContext | null,
   oldState: CribbageState,
   newState: CribbageState,
   playerId: string,
-  cardPlayed: CribbageCard,
-  isHost: boolean = false
+  cardPlayed: CribbageCard
 ): void {
-  if (!ctx || !isHost) return;
+  if (!ctx) return;
 
   const oldScore = oldState.playerStates[playerId]?.pegScore ?? 0;
   const newScore = newState.playerStates[playerId]?.pegScore ?? 0;
@@ -147,16 +146,15 @@ export function logPeggingPlay(
 }
 
 /**
- * Log "Go" point event after state mutation
- * Only the host should call this with isHost=true
+ * Log "Go" point event after state mutation.
+ * All clients can safely call this - atomic DB guard prevents duplicates.
  */
 export function logGoPointEvent(
   ctx: CribbageEventContext | null,
   oldState: CribbageState,
-  newState: CribbageState,
-  isHost: boolean = false
+  newState: CribbageState
 ): void {
-  if (!ctx || !isHost) return;
+  if (!ctx) return;
 
   // Find who got the go point by comparing scores
   for (const [playerId, ps] of Object.entries(newState.playerStates)) {
@@ -176,15 +174,14 @@ export function logGoPointEvent(
 }
 
 /**
- * Log "His Heels" event when cut card is a Jack
- * Only the host should call this with isHost=true
+ * Log "His Heels" event when cut card is a Jack.
+ * All clients can safely call this - atomic DB guard prevents duplicates.
  */
 export function logHisHeelsEvent(
   ctx: CribbageEventContext | null,
-  newState: CribbageState,
-  isHost: boolean = false
+  newState: CribbageState
 ): void {
-  if (!ctx || !newState.cutCard || !isHost) return;
+  if (!ctx || !newState.cutCard) return;
 
   // Only log if there was a his_heels event
   if (newState.lastEvent?.type !== 'his_heels') return;
@@ -202,16 +199,15 @@ export function logHisHeelsEvent(
 /**
  * Log all hand and crib scoring events during counting phase.
  * Call this when transitioning to counting phase.
- * Only the host should call this with isHost=true
+ * All clients can safely call this - atomic DB guard prevents duplicates.
  */
 export function logCountingScoringEvents(
   ctx: CribbageEventContext | null,
   state: CribbageState,
   players: { id: string }[],
-  runningScores: Record<string, number>,
-  isHost: boolean = false
+  runningScores: Record<string, number>
 ): void {
-  if (!ctx || !state.cutCard || !isHost) return;
+  if (!ctx || !state.cutCard) return;
 
   // Process each player's hand
   for (const player of players) {

@@ -49,15 +49,17 @@ export function resetCribbageEventSequence(roundId: string): void {
 
 /**
  * Fire-and-forget insert of a cribbage event.
+ * Uses upsert with ON CONFLICT DO NOTHING for atomic deduplication.
+ * All clients can safely call this - only the first insert wins.
  * Does NOT await - returns immediately.
  */
 export function logCribbageEvent(params: LogCribbageEventParams): void {
   const sequenceNumber = getNextSequence(params.roundId);
 
-  // Fire and forget - don't await
+  // Fire and forget with upsert - duplicate inserts are silently ignored
   supabase
     .from('cribbage_events')
-    .insert({
+    .upsert({
       round_id: params.roundId,
       dealer_game_id: params.dealerGameId,
       hand_number: params.handNumber,
@@ -71,9 +73,13 @@ export function logCribbageEvent(params: LogCribbageEventParams): void {
       points: params.points,
       scores_after: params.scoresAfter as any,
       sequence_number: sequenceNumber,
+    }, {
+      onConflict: 'round_id,hand_number,event_type,player_id,sequence_number',
+      ignoreDuplicates: true,
     })
     .then(({ error }) => {
-      if (error) {
+      // Ignore duplicate key errors (expected with atomic guard)
+      if (error && !error.message.includes('duplicate key')) {
         console.error('[CRIBBAGE_EVENT] Failed to log event:', error.message, params.eventType);
       }
     });
