@@ -1134,8 +1134,8 @@ export const DealerGameSetup = ({
   const isGameDisabled = (game: typeof allGames[0]) => {
     if (!game.enabled) return true;
     if (game.maxPlayers && activePlayerCount > game.maxPlayers) return true;
-    // Disable cribbage and trivia for non-superusers
-    if ((game.id === 'cribbage' || game.id === 'sports-trivia') && !isSuperuser) return true;
+    // Disable trivia for non-superusers (cribbage is now available to all)
+    if (game.id === 'sports-trivia' && !isSuperuser) return true;
     return false;
   };
 
