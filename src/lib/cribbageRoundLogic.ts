@@ -210,6 +210,11 @@ export async function endCribbageGame(
   });
 
   try {
+    if (!roundId || !gameId) {
+      console.error('[CRIBBAGE] endCribbageGame called with missing roundId or gameId', { roundId, gameId });
+      return false;
+    }
+    
     if (!cribbageState.winnerPlayerId) {
       throw new Error('No winner specified');
     }
