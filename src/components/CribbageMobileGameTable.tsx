@@ -12,7 +12,7 @@ import {
 } from '@/lib/cribbageGameLogic';
 import { endCribbageGame } from '@/lib/cribbageRoundLogic';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
-import { getHandScoringCombos } from '@/lib/cribbageScoringDetails';
+import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
@@ -234,6 +234,30 @@ export const CribbageMobileGameTable = ({
     setCountingTargetLabel(targetLabel);
   }, []);
 
+  // Helper function to calculate baseline scores (score before counting phase).
+  // This subtracts hand+crib totals from the final pegScore in the DB.
+  const calculateCountingBaselineScores = useCallback((state: CribbageState): Record<string, number> => {
+    const scores: Record<string, number> = {};
+    for (const [playerId] of Object.entries(state.playerStates)) {
+      // Reconstruct player's hand from played pegging cards
+      const playerHandCards = state.pegging.playedCards
+        .filter(pc => pc.playerId === playerId)
+        .map(pc => pc.card);
+      const handCombos = getHandScoringCombos(playerHandCards, state.cutCard, false);
+      const handTotal = getTotalFromCombos(handCombos);
+      
+      let cribTotal = 0;
+      if (playerId === state.dealerPlayerId) {
+        const cribCombos = getHandScoringCombos(state.crib, state.cutCard, true);
+        cribTotal = getTotalFromCombos(cribCombos);
+      }
+      
+      // Final pegScore minus counting scores = baseline after pegging
+      scores[playerId] = state.playerStates[playerId].pegScore - handTotal - cribTotal;
+    }
+    return scores;
+  }, []);
+
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display
   // Also snapshot the counting state and track counting animation active state
   // IMPORTANT: This must trigger on EITHER 'counting' OR 'complete' phase if counting hasn't played yet.
@@ -263,6 +287,11 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = countingKey;
     setCountingStateSnapshot(cribbageState);
     
+    // CRITICAL: Initialize counting score overrides with baseline IMMEDIATELY
+    // This ensures the pegboard never shows the final DB scores before the animation starts
+    const baselineScores = calculateCountingBaselineScores(cribbageState);
+    setCountingScoreOverrides(baselineScores);
+    
     // Start delay - counting phase will be hidden until delay completes
     setCountingDelayActive(true);
     const timer = setTimeout(() => {
@@ -273,7 +302,7 @@ export const CribbageMobileGameTable = ({
     // Note: We DON'T reset countingAnimationActiveRef here because the animation
     // might still be running even after DB phase changes to 'complete'
     // It gets reset in handleCountingComplete instead
-  }, [cribbageState?.phase, cribbageState?.dealerPlayerId, cribbageState?.winnerPlayerId, cribbageState?.cutCard, roundId]);
+  }, [cribbageState?.phase, cribbageState?.dealerPlayerId, cribbageState?.winnerPlayerId, cribbageState?.cutCard, roundId, calculateCountingBaselineScores]);
 
   // ============================================================================
   // REACTIVE WIN DETECTION via score subscription
