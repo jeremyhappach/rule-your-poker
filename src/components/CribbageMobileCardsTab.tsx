@@ -110,16 +110,16 @@ export const CribbageMobileCardsTab = ({
   }
 
   return (
-      <div className="px-2 flex flex-col flex-1">
+    <div className="h-full px-2 flex flex-col">
       {/* Cards display - adaptive layout */}
-      <div className="flex items-center justify-center min-h-[108px] py-0.5">
+      <div className="flex items-center justify-center min-h-[92px] py-0">
         <div 
           className={cn(
             "flex justify-center origin-center",
             // Pre-discard: tighter spacing with overlap for 6 cards
             isPreDiscard ? "-space-x-3" : "gap-1",
             // Scale based on card count - slightly smaller to free up vertical space
-            cardCount <= 4 ? "scale-[1.7]" : cardCount <= 5 ? "scale-[1.5]" : "scale-[1.3]"
+            cardCount <= 4 ? "scale-[1.55]" : cardCount <= 5 ? "scale-[1.35]" : "scale-[1.18]"
           )}
         >
           {myPlayerState.hand.map((card, index) => {
@@ -149,7 +149,7 @@ export const CribbageMobileCardsTab = ({
       </div>
 
       {/* Action area - tighter to cards */}
-      <div className="flex items-center justify-center min-h-[32px]">
+      <div className="flex items-center justify-center min-h-[28px]">
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
@@ -182,7 +182,7 @@ export const CribbageMobileCardsTab = ({
       </div>
 
       {/* Player info row - same styling as MobileGameTable, below action buttons */}
-      <div className="flex items-center justify-center gap-2 py-1">
+      <div className="flex items-center justify-center gap-2 py-0.5">
         {/* Quick emoticon picker - left of player name */}
         <QuickEmoticonPicker 
           onSelect={handleQuickEmoticon} 
