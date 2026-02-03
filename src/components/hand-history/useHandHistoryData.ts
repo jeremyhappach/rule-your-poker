@@ -170,11 +170,12 @@ export function useHandHistoryData({
       return;
     }
     
+    // Order by created_at for reliable ordering across clients
     const { data: eventsData, error } = await supabase
       .from("cribbage_events")
       .select("*")
       .in("round_id", roundIds)
-      .order("sequence_number", { ascending: true });
+      .order("created_at", { ascending: true });
     
     if (error) {
       console.error("[HAND_HISTORY] Error fetching cribbage events:", error);

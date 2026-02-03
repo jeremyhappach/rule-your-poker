@@ -1,6 +1,7 @@
 import { cn, formatChipValue } from "@/lib/utils";
 import { HandHistoryEventRow } from "./HandHistoryEventRow";
 import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
+import { CribbageEventDisplay } from "./CribbageEventDisplay";
 import { compactHandDescription, compactLegDescription } from "@/lib/handDescriptionUtils";
 import type { DealerGameGroup, RoundGroup, GameResultRecord, CribbageEventRecord, CardData } from "./types";
 
@@ -61,40 +62,6 @@ function getCardCountLabel(roundNumber: number): string {
       return "";
   }
 }
-
-// Format cribbage event for display
-function formatCribbageEvent(
-  event: CribbageEventRecord,
-  playerNames: Map<string, string>
-): { label: string; description: string; points: number } {
-  const username = playerNames.get(event.player_id) || "Unknown";
-  
-  switch (event.event_type) {
-    case "pegging":
-      const peggingDesc = event.event_subtype 
-        ? `${username} plays for ${event.event_subtype.replace(/\+/g, ", ")}`
-        : `${username} plays`;
-      return { label: "Play", description: peggingDesc, points: event.points };
-      
-    case "go":
-      return { label: "Go", description: `${username} gets a Go`, points: event.points };
-      
-    case "his_heels":
-      return { label: "Heels", description: `${username} - His Heels (Jack cut)`, points: event.points };
-      
-    case "hand_scoring":
-      const handDesc = event.event_subtype || "hand";
-      return { label: "Hand", description: `${username}: ${handDesc}`, points: event.points };
-      
-    case "crib_scoring":
-      const cribDesc = event.event_subtype || "crib";
-      return { label: "Crib", description: `${username}: ${cribDesc}`, points: event.points };
-      
-    default:
-      return { label: event.event_type, description: username, points: event.points };
-  }
-}
-
 function RoundDisplay({
   round,
   roundIndex,
@@ -201,30 +168,12 @@ function RoundDisplay({
         </div>
       )}
 
-      {/* Cribbage events */}
+      {/* Cribbage events - use dedicated display component */}
       {hasCribbageEvents && playerNames && (
-        <div className="space-y-1">
-          {round.cribbageEvents!.map((event) => {
-            const { label, description, points } = formatCribbageEvent(event, playerNames);
-            return (
-              <div
-                key={event.id}
-                className="flex items-center justify-between text-xs py-0.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground font-medium w-10">{label}</span>
-                  <span className="text-foreground">{description}</span>
-                  {event.card_played && (
-                    <MiniPlayingCard card={event.card_played as CardData} className="ml-1" />
-                  )}
-                </div>
-                {points > 0 && (
-                  <span className="text-primary font-medium">+{points}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <CribbageEventDisplay 
+          events={round.cribbageEvents!} 
+          playerNames={playerNames} 
+        />
       )}
 
       {/* Events */}
