@@ -1023,8 +1023,10 @@ export const CribbageMobileGameTable = ({
         ref={tableContainerRef}
         className="relative flex items-start justify-center pt-1"
         style={{ 
-          height: '55vh',
-          minHeight: '300px'
+          // Match the container height to the circle when width (90vw) is the limiting factor.
+          // This removes the large blank gap under the circle on tall/narrow phones.
+          height: 'min(55vh, calc(90vw + 32px))',
+          minHeight: '300px',
         }}
       >
         {/* Light background behind the circle - lower z-index */}
