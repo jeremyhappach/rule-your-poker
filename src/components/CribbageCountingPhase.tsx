@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/lib/cribbageScoringDetails';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
-import { CRIBBAGE_WINNING_SCORE } from '@/lib/cribbageTypes';
 import { getDisplayName } from '@/lib/botAlias';
 
 interface Player {
@@ -20,12 +19,12 @@ type CountingTarget = {
   label: string;
 };
 
-type TransitionPhase = 'scoring' | 'exiting' | 'entering';
+type TransitionPhase = 'scoring' | 'exiting' | 'entering' | 'win_pause';
 
 interface CribbageCountingPhaseProps {
   cribbageState: CribbageState;
   players: Player[];
-  onCountingComplete: () => void;
+  onCountingComplete: (winDetected: boolean) => void;
   cardBackColors: { color: string; darkColor: string };
   onAnnouncementChange?: (announcement: string | null, targetLabel: string | null) => void;
   onScoreUpdate?: (scores: Record<string, number>) => void;
@@ -34,6 +33,7 @@ interface CribbageCountingPhaseProps {
 const COMBO_DELAY_MS = 2000; // 2 seconds per combo
 const EXIT_ANIMATION_MS = 1500; // 1.5 seconds for cards to exit
 const ENTER_ANIMATION_MS = 800; // 0.8 seconds for cards to enter
+const WIN_PAUSE_MS = 3000; // 3 seconds to hold on winning combo
 
 export const CribbageCountingPhase = ({
   cribbageState,
@@ -51,8 +51,12 @@ export const CribbageCountingPhase = ({
   const [isComplete, setIsComplete] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
   const [exitingCards, setExitingCards] = useState<CribbageCard[]>([]);
+  const [winDetected, setWinDetected] = useState(false);
   
   const completedRef = useRef(false);
+
+  // Get the winning threshold from config
+  const pointsToWin = cribbageState.pointsToWin;
 
   // Initialize animated scores from current peg scores (before counting)
   useEffect(() => {
@@ -160,17 +164,38 @@ export const CribbageCountingPhase = ({
         setHighlightedCards(combo.cards);
         setAnnouncement(`${combo.label}: +${combo.points}`);
         
-        setAnimatedScores(prev => {
-          const newScores = {
-            ...prev,
-            [currentTarget.playerId]: (prev[currentTarget.playerId] || 0) + combo.points,
-          };
-          // Propagate animated scores to parent for peg board sync
-          if (onScoreUpdate) {
-            onScoreUpdate(newScores);
-          }
-          return newScores;
-        });
+        const newScores = {
+          ...animatedScores,
+          [currentTarget.playerId]: (animatedScores[currentTarget.playerId] || 0) + combo.points,
+        };
+        setAnimatedScores(newScores);
+        
+        // Propagate animated scores to parent for peg board sync
+        if (onScoreUpdate) {
+          onScoreUpdate(newScores);
+        }
+        
+        // Check if this combo triggers a win
+        const playerScore = newScores[currentTarget.playerId] || 0;
+        if (playerScore >= pointsToWin) {
+          // WIN DETECTED! Pause on this combo with cards highlighted
+          setWinDetected(true);
+          setTransitionPhase('win_pause');
+          
+          // After pause, complete with win flag
+          setTimeout(() => {
+            if (!completedRef.current) {
+              completedRef.current = true;
+              setIsComplete(true);
+              setAnnouncement(`🏆 ${playerScore} points - WINNER!`);
+              
+              setTimeout(() => {
+                onCountingComplete(true);
+              }, 1500);
+            }
+          }, WIN_PAUSE_MS);
+          return;
+        }
         
         setTimeout(() => {
           setCurrentComboIndex(prev => prev + 1);
@@ -188,7 +213,7 @@ export const CribbageCountingPhase = ({
     }, currentComboIndex === -1 ? 500 : 0);
 
     return () => clearTimeout(timer);
-  }, [currentTargetIndex, currentComboIndex, isComplete, transitionPhase]);
+  }, [currentTargetIndex, currentComboIndex, isComplete, transitionPhase, animatedScores, pointsToWin]);
 
   const startExitTransition = useCallback(() => {
     if (!currentTarget) return;
@@ -219,7 +244,7 @@ export const CribbageCountingPhase = ({
           setExitingCards([]);
           
           setTimeout(() => {
-            onCountingComplete();
+            onCountingComplete(winDetected);
           }, 2000);
         }
       }

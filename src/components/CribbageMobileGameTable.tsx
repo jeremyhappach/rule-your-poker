@@ -176,6 +176,13 @@ export const CribbageMobileGameTable = ({
   // Delay before showing counting phase to allow final pegging announcement to display
   const [countingDelayActive, setCountingDelayActive] = useState(false);
   const countingDelayFiredRef = useRef<string | null>(null);
+  
+  // Ref to track if counting animation is active - used by realtime handler to avoid stale closure
+  const countingAnimationActiveRef = useRef(false);
+  
+  // Store the cribbage state snapshot used for counting animation - this prevents the animation
+  // from disappearing when DB phase transitions to 'complete' during counting
+  const [countingStateSnapshot, setCountingStateSnapshot] = useState<CribbageState | null>(null);
 
   // Win sequence state
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
@@ -225,27 +232,33 @@ export const CribbageMobileGameTable = ({
   }, []);
 
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display
+  // Also snapshot the counting state and track counting animation active state
   useEffect(() => {
     if (!cribbageState) return;
-    if (cribbageState.phase !== 'counting') {
-      // Reset when leaving counting phase
-      setCountingDelayActive(false);
-      countingDelayFiredRef.current = null;
-      return;
+    
+    // When entering counting phase, snapshot the state for animation
+    if (cribbageState.phase === 'counting') {
+      // Mark counting animation as active
+      countingAnimationActiveRef.current = true;
+      
+      // Only snapshot once per counting phase instance
+      const countingKey = `${roundId}-${cribbageState.dealerPlayerId}`;
+      if (countingDelayFiredRef.current !== countingKey) {
+        countingDelayFiredRef.current = countingKey;
+        setCountingStateSnapshot(cribbageState);
+        
+        // Start delay - counting phase will be hidden until delay completes
+        setCountingDelayActive(true);
+        const timer = setTimeout(() => {
+          setCountingDelayActive(false);
+        }, 2000);
+        
+        return () => clearTimeout(timer);
+      }
     }
-    
-    // Create a unique key for this counting phase instance
-    const countingKey = `${roundId}-${cribbageState.dealerPlayerId}`;
-    if (countingDelayFiredRef.current === countingKey) return;
-    countingDelayFiredRef.current = countingKey;
-    
-    // Start delay - counting phase will be hidden until delay completes
-    setCountingDelayActive(true);
-    const timer = setTimeout(() => {
-      setCountingDelayActive(false);
-    }, 2000);
-    
-    return () => clearTimeout(timer);
+    // Note: We DON'T reset countingAnimationActiveRef here because the animation
+    // might still be running even after DB phase changes to 'complete'
+    // It gets reset in handleCountingComplete instead
   }, [cribbageState?.phase, cribbageState?.dealerPlayerId, roundId]);
 
   // Initialize game state - check if we need high card selection first
@@ -571,9 +584,15 @@ export const CribbageMobileGameTable = ({
         pollInterval = 2000;
       }
       
-      // Trigger win sequence if game complete
+      // Trigger win sequence if game complete - BUT NOT if counting animation is in progress
+      // The counting animation will call handleCountingComplete when done, which triggers win sequence
+      // This prevents the win animation from interrupting the counting phase prematurely
       if (newCribbageState.phase === 'complete' && newCribbageState.winnerPlayerId) {
-        triggerWinSequence(newCribbageState);
+        // Only auto-trigger if we're NOT currently showing counting animation
+        // Use ref to avoid stale closure issues
+        if (!countingAnimationActiveRef.current) {
+          triggerWinSequence(newCribbageState);
+        }
       }
     };
 
@@ -909,12 +928,23 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, currentPlayerId, eventCtx]);
 
-  // Handle counting phase completion - start a new hand
-  const handleCountingComplete = useCallback(async () => {
+  // Handle counting phase completion - either start new hand or trigger win sequence
+  const handleCountingComplete = useCallback(async (winDetected: boolean) => {
     if (!cribbageState) return;
+    
+    // Mark counting animation as complete and clear snapshot
+    countingAnimationActiveRef.current = false;
+    setCountingStateSnapshot(null);
+    countingDelayFiredRef.current = null;
     
     // Clear the animated score overrides so pegboard shows real scores again
     setCountingScoreOverrides(null);
+    
+    // If win was detected during counting, trigger the win sequence now
+    if (winDetected && cribbageState.winnerPlayerId) {
+      triggerWinSequence(cribbageState);
+      return;
+    }
     
     try {
       const playerIds = players.map(p => p.id);
@@ -925,7 +955,7 @@ export const CribbageMobileGameTable = ({
       console.error('[CRIBBAGE] Error starting new hand:', err);
       toast.error('Failed to start new hand');
     }
-  }, [cribbageState, players]);
+  }, [cribbageState, players, triggerWinSequence]);
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
@@ -1230,10 +1260,14 @@ export const CribbageMobileGameTable = ({
               countingScoreOverrides={countingScoreOverrides ?? undefined}
             />
 
-            {/* Counting Phase Overlay - delayed 2s to allow final pegging announcement */}
-            {cribbageState.phase === 'counting' && !countingDelayActive && (
+            {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
+            {/* Show counting when either: 
+                1. DB phase is 'counting' and delay is over
+                2. We have a snapshot (animation in progress) even if DB phase changed to 'complete'
+            */}
+            {countingStateSnapshot && !countingDelayActive && (
               <CribbageCountingPhase
-                cribbageState={cribbageState}
+                cribbageState={countingStateSnapshot}
                 players={players}
                 onCountingComplete={handleCountingComplete}
                 cardBackColors={cardBackColors}
