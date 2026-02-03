@@ -92,14 +92,18 @@ function describePeggingSubtype(
   else if (pairCount === 3) parts.push('three_of_a_kind');
   else if (pairCount === 4) parts.push('four_of_a_kind');
 
-  // Check for runs (simplified - just note if there's a run)
+  // Check for runs - need to detect actual run length, not points
   if (oldPlayedCards.length >= 2) {
-    // This is a simplified check - the actual scoring happens in evaluatePegging
-    // We just note that it's a run
+    // Calculate remaining points after 15/31 and pairs
     const totalPoints = points - (newCount === 15 ? 2 : 0) - (newCount === 31 ? 2 : 0);
     const pairPts = pairCount >= 2 ? (pairCount * (pairCount - 1) / 2) * 2 : 0;
     const runPts = totalPoints - pairPts;
-    if (runPts >= 3) parts.push(`run_${runPts}`);
+    
+    // In cribbage, runs score 1 point per card, so run points = run length
+    // A run of 3 = 3 points, run of 4 = 4 points, etc.
+    if (runPts >= 3) {
+      parts.push(`run of ${runPts}`);
+    }
   }
 
   return parts.length > 0 ? parts.join('+') : null;
