@@ -1023,9 +1023,9 @@ export const CribbageMobileGameTable = ({
         ref={tableContainerRef}
         className="relative flex items-start justify-center pt-1"
         style={{ 
-          // Match the container height to the circle when width (90vw) is the limiting factor.
-          // This removes the large blank gap under the circle on tall/narrow phones.
-          height: 'min(55vh, calc(90vw + 32px))',
+          // Hug the actual circle size so there is no dead space between felt and banner.
+          // Circle size is: min(90vw, (55vh - 32px)). Add a tiny buffer for borders/overlays.
+          height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
           minHeight: '300px',
         }}
       >
@@ -1173,9 +1173,9 @@ export const CribbageMobileGameTable = ({
         {(cribbageState.phase === 'counting' || cribbageState.lastEvent ||
           cribbageState.phase === 'discarding' ||
           cribbageState.phase === 'cutting') && (
-          <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-xs text-center truncate">
+          <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
+            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-[11px] text-center truncate">
                 {cribbageState.phase === 'counting'
                   ? countingAnnouncement 
                     ? `${countingTargetLabel}: ${countingAnnouncement}`
@@ -1191,12 +1191,12 @@ export const CribbageMobileGameTable = ({
         )}
 
         {/* Tab navigation bar */}
-        <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
+        <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">
           {/* Cards tab */}
           <button 
             onClick={() => setActiveTab('cards')}
             style={{ flex: '0 0 35%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
               activeTab === 'cards' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
@@ -1208,7 +1208,7 @@ export const CribbageMobileGameTable = ({
           <button 
             onClick={() => setActiveTab('chat')}
             style={{ flex: '0 0 35%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
               activeTab === 'chat' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
@@ -1220,7 +1220,7 @@ export const CribbageMobileGameTable = ({
           <button 
             onClick={() => setActiveTab('lobby')}
             style={{ flex: '0 0 15%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
               activeTab === 'lobby' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
@@ -1232,7 +1232,7 @@ export const CribbageMobileGameTable = ({
           <button 
             onClick={() => setActiveTab('history')}
             style={{ flex: '0 0 15%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
+            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
               activeTab === 'history' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
@@ -1243,7 +1243,7 @@ export const CribbageMobileGameTable = ({
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden">
           {activeTab === 'cards' && currentPlayer && !isTransitioning && (
             <CribbageMobileCardsTab
               key={currentHandKey} // Force remount on hand change to prevent stale card flash
