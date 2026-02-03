@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface CribbageSkunkOverlayProps {
   multiplier: number; // 2 = skunk, 3 = double skunk
@@ -11,23 +11,31 @@ interface CribbageSkunkOverlayProps {
  */
 export const CribbageSkunkOverlay = ({ multiplier, onComplete }: CribbageSkunkOverlayProps) => {
   const [phase, setPhase] = useState<'enter' | 'show' | 'exit'>('enter');
+  const onCompleteRef = useRef(onComplete);
+  
+  // Keep ref in sync without triggering effect re-runs
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     // Enter animation
     const enterTimer = setTimeout(() => setPhase('show'), 100);
     
-    // Show for 2 seconds
-    const showTimer = setTimeout(() => setPhase('exit'), 2100);
+    // Show for 3.5 seconds (longer for dramatic effect)
+    const showTimer = setTimeout(() => setPhase('exit'), 3600);
     
     // Complete after exit animation
-    const completeTimer = setTimeout(() => onComplete(), 2600);
+    const completeTimer = setTimeout(() => {
+      onCompleteRef.current();
+    }, 4100);
 
     return () => {
       clearTimeout(enterTimer);
       clearTimeout(showTimer);
       clearTimeout(completeTimer);
     };
-  }, [onComplete]);
+  }, []); // Run once on mount only
 
   const isDoubleSkunk = multiplier >= 3;
   const title = isDoubleSkunk ? 'DOUBLE SKUNK!' : 'SKUNK!';

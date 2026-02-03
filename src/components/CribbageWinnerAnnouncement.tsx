@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface CribbageWinnerAnnouncementProps {
   winnerName: string;
@@ -18,23 +18,31 @@ export const CribbageWinnerAnnouncement = ({
   onComplete,
 }: CribbageWinnerAnnouncementProps) => {
   const [phase, setPhase] = useState<'enter' | 'show' | 'exit'>('enter');
+  const onCompleteRef = useRef(onComplete);
+  
+  // Keep ref in sync without triggering effect re-runs
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     // Enter animation
     const enterTimer = setTimeout(() => setPhase('show'), 100);
     
-    // Show for 3 seconds
-    const showTimer = setTimeout(() => setPhase('exit'), 3100);
+    // Show for 3.5 seconds
+    const showTimer = setTimeout(() => setPhase('exit'), 3600);
     
     // Complete after exit animation
-    const completeTimer = setTimeout(() => onComplete(), 3600);
+    const completeTimer = setTimeout(() => {
+      onCompleteRef.current();
+    }, 4100);
 
     return () => {
       clearTimeout(enterTimer);
       clearTimeout(showTimer);
       clearTimeout(completeTimer);
     };
-  }, [onComplete]);
+  }, []); // Run once on mount only
 
   const getWinTypeLabel = () => {
     if (multiplier >= 3) return ' with Double Skunk!';

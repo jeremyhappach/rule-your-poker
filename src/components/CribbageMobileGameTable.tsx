@@ -188,6 +188,11 @@ export const CribbageMobileGameTable = ({
     loserIds: string[];
   } | null>(null);
   const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
+  // Stored positions for chip animation - computed when transitioning to 'chips' phase
+  const [storedChipPositions, setStoredChipPositions] = useState<{
+    winner: { x: number; y: number };
+    losers: { playerId: string; x: number; y: number }[];
+  } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const winSequenceFiredRef = useRef<string | null>(null);
 
@@ -949,6 +954,8 @@ export const CribbageMobileGameTable = ({
       };
     });
 
+    // Store positions in state so chip animation has them on first render
+    setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
     setWinSequencePhase('chips');
   }, [winSequenceData, players, currentUserId, onGameComplete, roundId]);
@@ -961,43 +968,18 @@ export const CribbageMobileGameTable = ({
     }, 500);
   }, [onGameComplete]);
 
-  // Compute chip animation positions for render
-  const chipAnimationPositions = useMemo(() => {
-    if (!winSequenceData || !tableContainerRef.current) {
-      return { winner: { x: 0, y: 0 }, losers: [] as { playerId: string; x: number; y: number }[] };
-    }
-
-    const container = tableContainerRef.current;
-    const rect = container.getBoundingClientRect();
-
-    const winnerPlayer = players.find(p => p.id === winSequenceData.winnerId);
-    const isWinnerCurrentPlayer = winnerPlayer?.user_id === currentUserId;
-
-    const winnerPos = isWinnerCurrentPlayer
-      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 }
-      : { x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 };
-
-    const loserPositions = winSequenceData.loserIds.map((loserId, index) => {
-      const loserPlayer = players.find(p => p.id === loserId);
-      const isLoserCurrentPlayer = loserPlayer?.user_id === currentUserId;
-      
-      if (isLoserCurrentPlayer) {
-        return {
-          playerId: loserId,
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height * 0.85,
-        };
-      }
-      
-      return {
-        playerId: loserId,
-        x: rect.left + rect.width * 0.15,
-        y: rect.top + rect.height * (0.2 + index * 0.15),
-      };
-    });
-
-    return { winner: winnerPos, losers: loserPositions };
-  }, [winSequenceData, players, currentUserId]);
+  // Safety timeout: If chip animation phase doesn't complete within 5 seconds, force transition
+  useEffect(() => {
+    if (winSequencePhase !== 'chips') return;
+    
+    const safetyTimer = setTimeout(() => {
+      console.warn('[CRIBBAGE] Chip animation safety timeout triggered');
+      setWinSequencePhase('complete');
+      onGameComplete();
+    }, 5000);
+    
+    return () => clearTimeout(safetyTimer);
+  }, [winSequencePhase, onGameComplete]);
 
   // Show high card selection if needed (internal or external dealer selection mode)
   if (effectiveShowHighCardSelection) {
@@ -1137,12 +1119,12 @@ export const CribbageMobileGameTable = ({
         />
       )}
 
-      {winSequencePhase === 'chips' && winSequenceData && (
+      {winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
         <CribbageChipTransferAnimation
           triggerId={chipAnimationTriggerId}
           amount={winSequenceData.amountPerLoser}
-          winnerPosition={chipAnimationPositions.winner}
-          loserPositions={chipAnimationPositions.losers}
+          winnerPosition={storedChipPositions.winner}
+          loserPositions={storedChipPositions.losers}
           onAnimationEnd={handleChipAnimationEnd}
         />
       )}
