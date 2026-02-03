@@ -172,8 +172,8 @@ export const CribbageMobileGameTable = ({
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   
-  const [sequenceStartIndex, setSequenceStartIndex] = useState(0);
-  const lastCountRef = useRef<number>(0);
+  // Derive sequenceStartIndex from state - this is authoritative and survives missed realtime updates
+  const sequenceStartIndex = cribbageState?.pegging?.sequenceStartIndex ?? 0;
 
   // Callback for counting phase announcements
   const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null) => {
@@ -481,8 +481,39 @@ export const CribbageMobileGameTable = ({
     }
   }, [players, anteAmount, currentPlayerId, roundId]);
 
-  // Realtime subscription
+  // Realtime subscription with polling fallback
+  // This ensures updates are received even if WebSocket connection degrades
   useEffect(() => {
+    if (!roundId) return;
+
+    let pollInterval = 2000; // Start at 2 seconds
+    let pollTimeoutId: ReturnType<typeof setTimeout>;
+    let lastSyncTimestamp: string | null = null;
+    let isActive = true;
+
+    // Handler for state updates (from realtime or polling)
+    const handleStateUpdate = (newCribbageState: CribbageState, fromRealtime: boolean) => {
+      if (!isActive) return;
+      
+      setCribbageState(newCribbageState);
+      
+      // Reset poll interval when realtime works
+      if (fromRealtime) {
+        pollInterval = 2000;
+      }
+      
+      // Trigger win sequence if game complete
+      if (newCribbageState.phase === 'complete' && newCribbageState.winnerPlayerId) {
+        triggerWinSequence(newCribbageState);
+      }
+    };
+
+    // Use a simple state signature since rounds doesn't have updated_at
+    const getStateSignature = (state: CribbageState): string => {
+      return `${state.phase}-${state.pegging.playedCards.length}-${state.pegging.currentCount}-${state.pegging.currentTurnPlayerId}`;
+    };
+
+    // Primary: Realtime subscription
     const channel = supabase
       .channel(`cribbage-mobile-${roundId}`)
       .on(
@@ -496,18 +527,64 @@ export const CribbageMobileGameTable = ({
         (payload) => {
           const newState = payload.new as { cribbage_state?: CribbageState };
           if (newState.cribbage_state) {
-            setCribbageState(newState.cribbage_state);
-            
-            // Trigger win sequence instead of immediate game complete
-            if (newState.cribbage_state.phase === 'complete' && newState.cribbage_state.winnerPlayerId) {
-              triggerWinSequence(newState.cribbage_state);
-            }
+            lastSyncTimestamp = getStateSignature(newState.cribbage_state);
+            handleStateUpdate(newState.cribbage_state, true);
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[CRIBBAGE_REALTIME] Channel error, relying on polling fallback:', err);
+          // Polling will continue as fallback
+        }
+      });
+
+    // Fallback: Polling with exponential backoff
+
+    const poll = async () => {
+      if (!isActive) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('rounds')
+          .select('cribbage_state')
+          .eq('id', roundId)
+          .single();
+
+        if (error || !data?.cribbage_state) {
+          // Backoff on errors
+          pollInterval = Math.min(pollInterval * 1.5, 15000);
+        } else {
+          // Check if data has changed using state signature
+          const newState = data.cribbage_state as unknown as CribbageState;
+          const newSignature = getStateSignature(newState);
+          const hasNewData = !lastSyncTimestamp || newSignature !== lastSyncTimestamp;
+          
+          if (hasNewData) {
+            lastSyncTimestamp = newSignature;
+            handleStateUpdate(newState, false);
+            pollInterval = 2000; // Reset on new data
+          } else {
+            // Backoff when no changes (max 10 seconds to stay responsive)
+            pollInterval = Math.min(pollInterval * 1.3, 10000);
+          }
+        }
+      } catch (err) {
+        console.error('[CRIBBAGE_POLL] Poll error:', err);
+        pollInterval = Math.min(pollInterval * 1.5, 15000);
+      }
+
+      if (isActive) {
+        pollTimeoutId = setTimeout(poll, pollInterval);
+      }
+    };
+
+    // Start polling after initial delay (let realtime work first)
+    pollTimeoutId = setTimeout(poll, pollInterval);
 
     return () => {
+      isActive = false;
+      clearTimeout(pollTimeoutId);
       supabase.removeChannel(channel);
     };
   }, [roundId, triggerWinSequence]);
@@ -536,16 +613,8 @@ export const CribbageMobileGameTable = ({
     lastHandKeyRef.current = currentHandKey;
   }, [currentHandKey]);
 
-  // Track pegging sequence resets
-  useEffect(() => {
-    if (!cribbageState || cribbageState.phase !== 'pegging') return;
-    
-    const currentCount = cribbageState.pegging.currentCount;
-    if (currentCount === 0 && lastCountRef.current > 0) {
-      setSequenceStartIndex(cribbageState.pegging.playedCards.length);
-    }
-    lastCountRef.current = currentCount;
-  }, [cribbageState?.pegging.currentCount, cribbageState?.pegging.playedCards.length, cribbageState?.phase]);
+  // sequenceStartIndex is now derived directly from cribbageState.pegging.sequenceStartIndex
+  // No local tracking needed - the state is authoritative
 
   // Log counting phase events (fire-and-forget) when transitioning to counting
   const countingLoggedRef = useRef(false);
@@ -757,10 +826,7 @@ export const CribbageMobileGameTable = ({
       const playerIds = players.map(p => p.id);
       const newState = startNewHand(cribbageState, playerIds);
       await updateState(newState);
-      
-      // Reset sequence tracking for new hand
-      setSequenceStartIndex(0);
-      lastCountRef.current = 0;
+      // sequenceStartIndex is now stored in state, no local reset needed
     } catch (err) {
       console.error('[CRIBBAGE] Error starting new hand:', err);
       toast.error('Failed to start new hand');

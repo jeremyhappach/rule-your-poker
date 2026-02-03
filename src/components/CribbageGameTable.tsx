@@ -83,9 +83,8 @@ export const CribbageGameTable = ({
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   
-  // Track the last pegging sequence start index for clearing old cards
-  const [sequenceStartIndex, setSequenceStartIndex] = useState(0);
-  const lastCountRef = useRef<number>(0);
+  // Derive sequenceStartIndex from state - this is authoritative and survives missed realtime updates
+  const sequenceStartIndex = cribbageState?.pegging?.sequenceStartIndex ?? 0;
 
   // Initialize game state from database or create new
   useEffect(() => {
@@ -122,8 +121,29 @@ export const CribbageGameTable = ({
     loadOrInitializeState();
   }, [roundId, players, anteAmount, dealerPosition]);
 
-  // Subscribe to realtime updates
+  // Realtime subscription with polling fallback
   useEffect(() => {
+    if (!roundId) return;
+
+    let pollInterval = 2000;
+    let pollTimeoutId: ReturnType<typeof setTimeout>;
+    let lastSyncTimestamp: string | null = null;
+    let isActive = true;
+
+    const handleStateUpdate = (newCribbageState: CribbageState, fromRealtime: boolean) => {
+      if (!isActive) return;
+      setCribbageState(newCribbageState);
+      if (fromRealtime) pollInterval = 2000;
+      if (newCribbageState.phase === 'complete' && newCribbageState.winnerPlayerId) {
+        onGameComplete();
+      }
+    };
+
+    // Use a simple state signature since rounds doesn't have updated_at
+    const getStateSignature = (state: CribbageState): string => {
+      return `${state.phase}-${state.pegging.playedCards.length}-${state.pegging.currentCount}-${state.pegging.currentTurnPlayerId}`;
+    };
+
     const channel = supabase
       .channel(`cribbage-${roundId}`)
       .on(
@@ -137,18 +157,51 @@ export const CribbageGameTable = ({
         (payload) => {
           const newState = payload.new as { cribbage_state?: CribbageState };
           if (newState.cribbage_state) {
-            setCribbageState(newState.cribbage_state);
-            
-            // Check for game completion
-            if (newState.cribbage_state.phase === 'complete' && newState.cribbage_state.winnerPlayerId) {
-              onGameComplete();
-            }
+            lastSyncTimestamp = getStateSignature(newState.cribbage_state);
+            handleStateUpdate(newState.cribbage_state, true);
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[CRIBBAGE_REALTIME] Channel error:', err);
+        }
+      });
+
+    const poll = async () => {
+      if (!isActive) return;
+      try {
+        const { data, error } = await supabase
+          .from('rounds')
+          .select('cribbage_state')
+          .eq('id', roundId)
+          .single();
+
+        if (!error && data?.cribbage_state) {
+          const newState = data.cribbage_state as unknown as CribbageState;
+          const newSignature = getStateSignature(newState);
+          const hasNewData = !lastSyncTimestamp || newSignature !== lastSyncTimestamp;
+          if (hasNewData) {
+            lastSyncTimestamp = newSignature;
+            handleStateUpdate(newState, false);
+            pollInterval = 2000;
+          } else {
+            pollInterval = Math.min(pollInterval * 1.3, 10000);
+          }
+        } else {
+          pollInterval = Math.min(pollInterval * 1.5, 15000);
+        }
+      } catch (err) {
+        pollInterval = Math.min(pollInterval * 1.5, 15000);
+      }
+      if (isActive) pollTimeoutId = setTimeout(poll, pollInterval);
+    };
+
+    pollTimeoutId = setTimeout(poll, pollInterval);
 
     return () => {
+      isActive = false;
+      clearTimeout(pollTimeoutId);
       supabase.removeChannel(channel);
     };
   }, [roundId, onGameComplete]);
@@ -170,17 +223,8 @@ export const CribbageGameTable = ({
     lastHandKeyRef.current = currentHandKey;
   }, [currentHandKey]);
 
-  // Track when pegging sequence resets to clear old cards from display
-  useEffect(() => {
-    if (!cribbageState || cribbageState.phase !== 'pegging') return;
-    
-    const currentCount = cribbageState.pegging.currentCount;
-    // When count resets to 0, mark the start of a new sequence
-    if (currentCount === 0 && lastCountRef.current > 0) {
-      setSequenceStartIndex(cribbageState.pegging.playedCards.length);
-    }
-    lastCountRef.current = currentCount;
-  }, [cribbageState?.pegging.currentCount, cribbageState?.pegging.playedCards.length, cribbageState?.phase]);
+  // sequenceStartIndex is now derived directly from cribbageState.pegging.sequenceStartIndex
+  // No local tracking needed - the state is authoritative
 
   // Auto-go: When it's our turn and we can't play, automatically call go
   useEffect(() => {
