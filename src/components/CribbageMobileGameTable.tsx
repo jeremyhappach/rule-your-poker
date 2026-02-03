@@ -470,25 +470,28 @@ export const CribbageMobileGameTable = ({
     });
 
     // Persist end-of-game to backend.
-    // IMPORTANT: Do NOT rely on "host-only" here because in H2H the host can be the loser/offline.
-    // endCribbageGame is implemented to be idempotent (only one client will actually execute payouts).
-    const shouldPersistEnd = !!(roundId && gameId && (isHost || currentPlayerId === winnerId));
-    if (shouldPersistEnd) {
+    // IMPORTANT: All clients should attempt this call because:
+    // 1. In H2H the host can be the loser/offline
+    // 2. endCribbageGame is idempotent (only one client will actually execute payouts via atomic DB guard)
+    // 3. If we don't call it, the game gets stuck
+    if (roundId && gameId) {
       console.log('[CRIBBAGE] Persisting endCribbageGame', {
         isHost,
         isWinnerClient: currentPlayerId === winnerId,
+        roundId,
+        gameId,
       });
       endCribbageGame(gameId, roundId, state).then((success) => {
         if (!success) {
           console.error('[CRIBBAGE] Failed to end game in database');
+        } else {
+          console.log('[CRIBBAGE] endCribbageGame completed successfully');
         }
       });
     } else {
-      console.log('[CRIBBAGE] Not persisting endCribbageGame from this client', {
+      console.warn('[CRIBBAGE] Cannot persist endCribbageGame - missing roundId or gameId', {
         hasRoundId: !!roundId,
         hasGameId: !!gameId,
-        isHost,
-        isWinnerClient: currentPlayerId === winnerId,
       });
     }
 
