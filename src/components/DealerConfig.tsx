@@ -50,15 +50,24 @@ export const DealerConfig = ({
   const [chuckyCards, setChuckyCards] = useState(currentChuckyCards || 4);
   const [rabbitHunt, setRabbitHunt] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
+  
+  // Cribbage-specific settings
+  const [pointsToWin, setPointsToWin] = useState(121);
+  const [skunkEnabled, setSkunkEnabled] = useState(true);
+  const [skunkThreshold, setSkunkThreshold] = useState(91);
+  const [doubleSkunkEnabled, setDoubleSkunkEnabled] = useState(true);
+  const [doubleSkunkThreshold, setDoubleSkunkThreshold] = useState(61);
+  
   const { anteDecisionTimerSeconds } = useGlobalTimerSettings();
   
   const isHolmGame = gameType === 'holm-game';
+  const isCribbageGame = gameType === 'cribbage';
 
   // Fetch defaults from game_defaults table
   useEffect(() => {
     const fetchDefaults = async () => {
       // Map frontend game type to database game type
-      const dbGameType = isHolmGame ? 'holm' : '3-5-7';
+      const dbGameType = isHolmGame ? 'holm' : isCribbageGame ? 'cribbage' : '3-5-7';
       
       const { data, error } = await supabase
         .from('game_defaults')
@@ -77,6 +86,12 @@ export const DealerConfig = ({
         if (isHolmGame) {
           setChuckyCards(data.chucky_cards);
           setRabbitHunt(data.rabbit_hunt ?? false);
+        } else if (isCribbageGame) {
+          setPointsToWin(data.points_to_win);
+          setSkunkEnabled(data.skunk_enabled);
+          setSkunkThreshold(data.skunk_threshold);
+          setDoubleSkunkEnabled(data.double_skunk_enabled);
+          setDoubleSkunkThreshold(data.double_skunk_threshold);
         } else {
           setLegValue(data.leg_value);
           setLegsToWin(data.legs_to_win);
@@ -88,7 +103,7 @@ export const DealerConfig = ({
     };
 
     fetchDefaults();
-  }, [isHolmGame]);
+  }, [isHolmGame, isCribbageGame]);
 
   // Auto-submit for bots - wait for defaults to load first
   useEffect(() => {
@@ -116,6 +131,12 @@ export const DealerConfig = ({
           // If a bot dealer configures the game but we don't set this flag, the game can get stuck in ante_decision.
           updateData.current_round = 1;
           updateData.is_first_hand = true;
+        } else if (isCribbageGame) {
+          updateData.points_to_win = pointsToWin;
+          updateData.skunk_enabled = skunkEnabled;
+          updateData.skunk_threshold = skunkThreshold;
+          updateData.double_skunk_enabled = doubleSkunkEnabled;
+          updateData.double_skunk_threshold = doubleSkunkThreshold;
         }
 
         const { error } = await supabase
@@ -146,7 +167,7 @@ export const DealerConfig = ({
       
       autoSubmit();
     }
-  }, [isBot, loadingDefaults, gameId, dealerPlayerId, anteAmount, legValue, pussyTaxEnabled, pussyTaxValue, legsToWin, potMaxEnabled, potMaxValue, chuckyCards, isHolmGame, onConfigComplete]);
+  }, [isBot, loadingDefaults, gameId, dealerPlayerId, anteAmount, legValue, pussyTaxEnabled, pussyTaxValue, legsToWin, potMaxEnabled, potMaxValue, chuckyCards, isHolmGame, isCribbageGame, pointsToWin, skunkEnabled, skunkThreshold, doubleSkunkEnabled, doubleSkunkThreshold, onConfigComplete, anteDecisionTimerSeconds, rabbitHunt]);
 
   const handleSubmit = async () => {
     console.log('[DEALER CONFIG] handleSubmit called');
@@ -192,6 +213,12 @@ export const DealerConfig = ({
       updateData.current_round = 1;
       updateData.is_first_hand = true;
       // Buck position will be calculated by startHolmRound
+    } else if (isCribbageGame) {
+      updateData.points_to_win = pointsToWin;
+      updateData.skunk_enabled = skunkEnabled;
+      updateData.skunk_threshold = skunkThreshold;
+      updateData.double_skunk_enabled = doubleSkunkEnabled;
+      updateData.double_skunk_threshold = doubleSkunkThreshold;
     }
 
     console.log('[DEALER CONFIG] Updating game with:', updateData);
@@ -406,10 +433,85 @@ export const DealerConfig = ({
           </>
         )}
 
+        {isCribbageGame && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="pointsToWin">Points to Win</Label>
+              <Input
+                id="pointsToWin"
+                type="number"
+                min="61"
+                max="121"
+                value={pointsToWin}
+                onChange={(e) => setPointsToWin(parseInt(e.target.value) || 121)}
+              />
+              <p className="text-xs text-muted-foreground">Standard game is 121 points</p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="skunk">Skunk (2x payout)</Label>
+                  <p className="text-xs text-muted-foreground">Winner gets double if opponent below threshold</p>
+                </div>
+                <Switch
+                  id="skunk"
+                  checked={skunkEnabled}
+                  onCheckedChange={setSkunkEnabled}
+                />
+              </div>
+              {skunkEnabled && (
+                <div className="space-y-2 pl-4">
+                  <Label htmlFor="skunkThreshold">Skunk Threshold</Label>
+                  <Input
+                    id="skunkThreshold"
+                    type="number"
+                    min="1"
+                    max={pointsToWin - 1}
+                    value={skunkThreshold}
+                    onChange={(e) => setSkunkThreshold(parseInt(e.target.value) || 91)}
+                  />
+                  <p className="text-xs text-muted-foreground">Opponent must be below this to get skunked</p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="doubleSkunk">Double Skunk (3x payout)</Label>
+                  <p className="text-xs text-muted-foreground">Winner gets triple if opponent below threshold</p>
+                </div>
+                <Switch
+                  id="doubleSkunk"
+                  checked={doubleSkunkEnabled}
+                  onCheckedChange={setDoubleSkunkEnabled}
+                />
+              </div>
+              {doubleSkunkEnabled && (
+                <div className="space-y-2 pl-4">
+                  <Label htmlFor="doubleSkunkThreshold">Double Skunk Threshold</Label>
+                  <Input
+                    id="doubleSkunkThreshold"
+                    type="number"
+                    min="1"
+                    max={skunkThreshold - 1}
+                    value={doubleSkunkThreshold}
+                    onChange={(e) => setDoubleSkunkThreshold(parseInt(e.target.value) || 61)}
+                  />
+                  <p className="text-xs text-muted-foreground">Opponent must be below this to get double-skunked</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         <div className="border-t border-muted pt-4">
           <p className="text-xs text-muted-foreground text-center mb-2">
             {isHolmGame 
               ? "Game ends when a player beats Chucky in a showdown" 
+              : isCribbageGame
+              ? `First player to ${pointsToWin} points wins the game`
               : "First player to reach the target legs wins the game"}
           </p>
         </div>
