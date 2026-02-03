@@ -29,6 +29,11 @@ export interface LogCribbageEventParams {
   runningCount?: number | null;
   points: number;
   scoresAfter: Record<string, number>;
+  /**
+   * Deterministic per-event ordering number.
+   * IMPORTANT: This is part of the DB dedupe key.
+   */
+  sequenceNumber?: number;
 }
 
 // Track sequence number per round for ordering events
@@ -55,7 +60,7 @@ export function resetCribbageEventSequence(roundId: string): void {
  * Does NOT await - returns immediately.
  */
 export function logCribbageEvent(params: LogCribbageEventParams): void {
-  const sequenceNumber = getNextSequence(params.roundId);
+  const sequenceNumber = params.sequenceNumber ?? getNextSequence(params.roundId);
 
   // Fire and forget with upsert - duplicate inserts are silently ignored
   supabase
@@ -110,7 +115,8 @@ export function logPeggingCardPlayed(
   runningCount: number,
   points: number,
   eventSubtype: string | null,
-  scoresAfter: Record<string, number>
+  scoresAfter: Record<string, number>,
+  sequenceNumber?: number
 ): void {
   logCribbageEvent({
     roundId,
@@ -125,6 +131,7 @@ export function logPeggingCardPlayed(
     runningCount,
     points,
     scoresAfter,
+    sequenceNumber,
   });
 }
 
@@ -137,7 +144,8 @@ export function logGoPoint(
   handNumber: number,
   playerId: string,
   runningCount: number,
-  scoresAfter: Record<string, number>
+  scoresAfter: Record<string, number>,
+  sequenceNumber?: number
 ): void {
   logCribbageEvent({
     roundId,
@@ -152,6 +160,7 @@ export function logGoPoint(
     runningCount,
     points: 1,
     scoresAfter,
+    sequenceNumber,
   });
 }
 
@@ -164,7 +173,8 @@ export function logHisHeels(
   handNumber: number,
   playerId: string,
   cutCard: CribbageCard,
-  scoresAfter: Record<string, number>
+  scoresAfter: Record<string, number>,
+  sequenceNumber?: number
 ): void {
   logCribbageEvent({
     roundId,
@@ -179,6 +189,7 @@ export function logHisHeels(
     runningCount: null,
     points: 2,
     scoresAfter,
+    sequenceNumber,
   });
 }
 
@@ -189,14 +200,16 @@ export function logCutCardReveal(
   roundId: string,
   dealerGameId: string | null,
   handNumber: number,
+  playerId: string,
   cutCard: CribbageCard,
-  scoresAfter: Record<string, number>
+  scoresAfter: Record<string, number>,
+  sequenceNumber?: number
 ): void {
   logCribbageEvent({
     roundId,
     dealerGameId,
     handNumber,
-    playerId: '', // No specific player - it's a game event
+    playerId,
     eventType: 'cut_card',
     eventSubtype: null,
     cardPlayed: cutCard,
@@ -205,6 +218,7 @@ export function logCutCardReveal(
     runningCount: null,
     points: 0,
     scoresAfter,
+    sequenceNumber,
   });
 }
 
@@ -219,7 +233,8 @@ export function logHandScoringCombo(
   comboType: string, // e.g., '15', 'pair', 'run_4', 'flush', 'nobs'
   cardsInvolved: CribbageCard[],
   points: number,
-  scoresAfter: Record<string, number>
+  scoresAfter: Record<string, number>,
+  sequenceNumber?: number
 ): void {
   logCribbageEvent({
     roundId,
@@ -234,6 +249,7 @@ export function logHandScoringCombo(
     runningCount: null,
     points,
     scoresAfter,
+    sequenceNumber,
   });
 }
 
@@ -248,7 +264,8 @@ export function logCribScoringCombo(
   comboType: string,
   cardsInvolved: CribbageCard[],
   points: number,
-  scoresAfter: Record<string, number>
+  scoresAfter: Record<string, number>,
+  sequenceNumber?: number
 ): void {
   logCribbageEvent({
     roundId,
@@ -263,5 +280,6 @@ export function logCribScoringCombo(
     runningCount: null,
     points,
     scoresAfter,
+    sequenceNumber,
   });
 }
