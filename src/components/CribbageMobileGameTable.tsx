@@ -668,9 +668,9 @@ export const CribbageMobileGameTable = ({
       runningScores[playerId] = 0; // Start from 0 for logging deltas; actual score tracked in state
     }
 
-    // Log all hand and crib scoring events (host-only)
-    logCountingScoringEvents(eventCtx, cribbageState, players, runningScores, isHost);
-  }, [cribbageState?.phase, eventCtx, players, isHost]);
+    // Log all hand and crib scoring events (atomic DB guard prevents duplicates)
+    logCountingScoringEvents(eventCtx, cribbageState, players, runningScores);
+  }, [cribbageState?.phase, eventCtx, players]);
 
   // Auto-go
   useEffect(() => {
@@ -744,8 +744,8 @@ export const CribbageMobileGameTable = ({
         try {
           if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
             const newState = callGo(cribbageState, currentTurnId);
-            // Fire-and-forget event logging (host-only)
-            logGoPointEvent(eventCtx, cribbageState, newState, isHost);
+            // Fire-and-forget event logging (atomic DB guard prevents duplicates)
+            logGoPointEvent(eventCtx, cribbageState, newState);
             await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -760,11 +760,11 @@ export const CribbageMobileGameTable = ({
             if (cardIndex !== null) {
               const cardPlayed = botState.hand[cardIndex];
               const newState = playPeggingCard(cribbageState, currentTurnId, cardIndex);
-              // Fire-and-forget event logging (host-only)
-              logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed, isHost);
+              // Fire-and-forget event logging (atomic DB guard prevents duplicates)
+              logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed);
               // Check for his_heels on phase transition
               if (newState.lastEvent?.type === 'his_heels') {
-                logHisHeelsEvent(eventCtx, newState, isHost);
+                logHisHeelsEvent(eventCtx, newState);
               }
               await supabase
                 .from('rounds')
@@ -820,13 +820,13 @@ export const CribbageMobileGameTable = ({
       const playerState = cribbageState.playerStates[currentPlayerId];
       const cardPlayed = playerState?.hand[cardIndex];
       const newState = playPeggingCard(cribbageState, currentPlayerId, cardIndex);
-      // Fire-and-forget event logging (host-only)
+      // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
-        logPeggingPlay(eventCtx, cribbageState, newState, currentPlayerId, cardPlayed, isHost);
+        logPeggingPlay(eventCtx, cribbageState, newState, currentPlayerId, cardPlayed);
       }
       // Check for his_heels on phase transition
       if (newState.lastEvent?.type === 'his_heels') {
-        logHisHeelsEvent(eventCtx, newState, isHost);
+        logHisHeelsEvent(eventCtx, newState);
       }
       await updateState(newState);
     } catch (err) {
@@ -839,8 +839,8 @@ export const CribbageMobileGameTable = ({
 
     try {
       const newState = callGo(cribbageState, currentPlayerId);
-      // Fire-and-forget event logging (host-only)
-      logGoPointEvent(eventCtx, cribbageState, newState, isHost);
+      // Fire-and-forget event logging (atomic DB guard prevents duplicates)
+      logGoPointEvent(eventCtx, cribbageState, newState);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
