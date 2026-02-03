@@ -168,11 +168,16 @@ function RoundDisplay({
         </div>
       )}
 
-      {/* Cribbage events - use dedicated display component */}
+      {/* Cribbage events - use dedicated display component with player hands */}
       {hasCribbageEvents && playerNames && (
         <CribbageEventDisplay 
           events={round.cribbageEvents!} 
-          playerNames={playerNames} 
+          playerNames={playerNames}
+          playerHands={round.visiblePlayerCards.map(pc => ({
+            playerId: pc.playerId,
+            username: pc.username,
+            cards: pc.cards,
+          }))}
         />
       )}
 
