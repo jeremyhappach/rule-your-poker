@@ -110,9 +110,9 @@ export const CribbageMobileCardsTab = ({
   }
 
   return (
-    <div className="px-2 flex flex-col flex-1">
+      <div className="px-2 flex flex-col flex-1">
       {/* Cards display - adaptive layout */}
-      <div className="flex items-center justify-center min-h-[120px] py-1">
+      <div className="flex items-center justify-center min-h-[108px] py-0.5">
         <div 
           className={cn(
             "flex justify-center origin-center",
@@ -149,7 +149,7 @@ export const CribbageMobileCardsTab = ({
       </div>
 
       {/* Action area - tighter to cards */}
-      <div className="flex items-center justify-center min-h-[40px]">
+      <div className="flex items-center justify-center min-h-[32px]">
         {cribbageState.phase === 'discarding' && !haveDiscarded && (
           <Button
             onClick={handleDiscard}
@@ -182,7 +182,7 @@ export const CribbageMobileCardsTab = ({
       </div>
 
       {/* Player info row - same styling as MobileGameTable, below action buttons */}
-      <div className="flex items-center justify-center gap-2 py-2">
+      <div className="flex items-center justify-center gap-2 py-1">
         {/* Quick emoticon picker - left of player name */}
         <QuickEmoticonPicker 
           onSelect={handleQuickEmoticon} 
