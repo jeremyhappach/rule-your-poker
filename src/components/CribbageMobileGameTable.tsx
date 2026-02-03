@@ -22,7 +22,7 @@ import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { HighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from './HighCardDealerSelection';
 import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
-import { CribbageWinnerAnnouncement } from './CribbageWinnerAnnouncement';
+// CribbageWinnerAnnouncement removed - win message now in dealer banner area
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
@@ -1192,6 +1192,17 @@ export const CribbageMobileGameTable = ({
     }, 500);
   }, [onGameComplete]);
 
+  // Auto-transition from 'announcement' to 'chips' after 2s (announcement is in dealer banner, no overlay)
+  useEffect(() => {
+    if (winSequencePhase !== 'announcement') return;
+    
+    const timer = setTimeout(() => {
+      handleAnnouncementComplete();
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [winSequencePhase, handleAnnouncementComplete]);
+
   // Safety timeout: If chip animation phase doesn't complete within 5 seconds, force transition
   useEffect(() => {
     if (winSequencePhase !== 'chips') return;
@@ -1334,14 +1345,8 @@ export const CribbageMobileGameTable = ({
         />
       )}
 
-      {winSequencePhase === 'announcement' && winSequenceData && (
-        <CribbageWinnerAnnouncement
-          winnerName={winSequenceData.winnerName}
-          multiplier={winSequenceData.multiplier}
-          totalWinnings={winSequenceData.totalWinnings}
-          onComplete={handleAnnouncementComplete}
-        />
-      )}
+      {/* Winner announcement is now in the dealer banner area - no overlay */}
+      {/* Auto-transition from announcement to chips phase after 2s */}
 
       {winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
         <CribbageChipTransferAnimation
@@ -1468,7 +1473,8 @@ export const CribbageMobileGameTable = ({
                     {/* Chip circle row */}
                     <div className="flex items-center gap-1.5">
                       <div className="relative">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-poker-gold">
+                        {/* White chip during active play - gold (bg-poker-gold) indicates waiting status */}
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
                           <span className="text-[10px] font-bold text-slate-900">
                             ${formatChipValue(opponent.chips)}
                           </span>
@@ -1512,26 +1518,31 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Dealer Announcements Area - hidden during win sequence overlays */}
-        {winSequencePhase === 'idle' && (cribbageState.phase === 'counting' || cribbageState.lastEvent ||
-          cribbageState.phase === 'discarding' ||
-          cribbageState.phase === 'cutting') && (
+        {/* Dealer Announcements Area - shows during gameplay AND win sequence (for winner message) */}
+        {(winSequencePhase === 'idle' || winSequencePhase === 'chips' || winSequencePhase === 'announcement') && (
+          (cribbageState.phase === 'counting' || cribbageState.lastEvent ||
+            cribbageState.phase === 'discarding' ||
+            cribbageState.phase === 'cutting' ||
+            winSequencePhase === 'chips' || winSequencePhase === 'announcement') && (
           <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                {cribbageState.phase === 'counting'
-                  ? countingAnnouncement 
-                    ? `${countingTargetLabel}: ${countingAnnouncement}`
-                    : `Scoring ${countingTargetLabel || 'hands'}...`
-                  : cribbageState.lastEvent
-                    ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
-                    : cribbageState.phase === 'discarding'
-                      ? 'Discard to Crib'
-                      : 'Cut Card'}
+                {/* Winner announcement during chips/announcement phases */}
+                {(winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData
+                  ? `${winSequenceData.winnerName} Wins${winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +$${winSequenceData.totalWinnings}`
+                  : cribbageState.phase === 'counting'
+                    ? countingAnnouncement 
+                      ? `${countingTargetLabel}: ${countingAnnouncement}`
+                      : `Scoring ${countingTargetLabel || 'hands'}...`
+                    : cribbageState.lastEvent
+                      ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
+                      : cribbageState.phase === 'discarding'
+                        ? 'Discard to Crib'
+                        : 'Cut Card'}
               </p>
             </div>
           </div>
-        )}
+        ))}
 
         {/* Tab navigation bar */}
         <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">
