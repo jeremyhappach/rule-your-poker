@@ -24,7 +24,7 @@ export const HandHistory = ({
 }: HandHistoryProps) => {
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
 
-  const { dealerGameGroups, loading } = useHandHistoryData({
+  const { dealerGameGroups, loading, playerNames } = useHandHistoryData({
     gameId,
     currentUserId,
     currentPlayerId,
@@ -67,6 +67,7 @@ export const HandHistory = ({
               group={group}
               currentPlayerId={currentPlayerId}
               currentUserId={currentUserId}
+              playerNames={playerNames}
             />
           ))}
         </Accordion>

@@ -1,13 +1,14 @@
 import { cn, formatChipValue } from "@/lib/utils";
 import { HandHistoryEventRow } from "./HandHistoryEventRow";
-import { MiniCardRow } from "./MiniPlayingCard";
+import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
 import { compactHandDescription, compactLegDescription } from "@/lib/handDescriptionUtils";
-import type { DealerGameGroup, RoundGroup, GameResultRecord } from "./types";
+import type { DealerGameGroup, RoundGroup, GameResultRecord, CribbageEventRecord, CardData } from "./types";
 
 interface HandAccordionContentProps {
   group: DealerGameGroup;
   currentPlayerId?: string;
   currentUserId?: string;
+  playerNames?: Map<string, string>;
 }
 
 // Format event for display
@@ -61,23 +62,59 @@ function getCardCountLabel(roundNumber: number): string {
   }
 }
 
+// Format cribbage event for display
+function formatCribbageEvent(
+  event: CribbageEventRecord,
+  playerNames: Map<string, string>
+): { label: string; description: string; points: number } {
+  const username = playerNames.get(event.player_id) || "Unknown";
+  
+  switch (event.event_type) {
+    case "pegging":
+      const peggingDesc = event.event_subtype 
+        ? `${username} plays for ${event.event_subtype.replace(/\+/g, ", ")}`
+        : `${username} plays`;
+      return { label: "Play", description: peggingDesc, points: event.points };
+      
+    case "go":
+      return { label: "Go", description: `${username} gets a Go`, points: event.points };
+      
+    case "his_heels":
+      return { label: "Heels", description: `${username} - His Heels (Jack cut)`, points: event.points };
+      
+    case "hand_scoring":
+      const handDesc = event.event_subtype || "hand";
+      return { label: "Hand", description: `${username}: ${handDesc}`, points: event.points };
+      
+    case "crib_scoring":
+      const cribDesc = event.event_subtype || "crib";
+      return { label: "Crib", description: `${username}: ${cribDesc}`, points: event.points };
+      
+    default:
+      return { label: event.event_type, description: username, points: event.points };
+  }
+}
+
 function RoundDisplay({
   round,
   roundIndex,
   totalRounds,
   is357,
   currentPlayerId,
+  playerNames,
 }: {
   round: RoundGroup;
   roundIndex: number;
   totalRounds: number;
   is357: boolean;
   currentPlayerId?: string;
+  playerNames?: Map<string, string>;
 }) {
   const hasCards = round.visiblePlayerCards.length > 0;
   const hasCommunityCards = round.communityCards.length > 0;
   const hasChuckyCards = round.chuckyCards.length > 0;
   const hasEvents = round.events.length > 0;
+  const hasCribbageEvents = round.cribbageEvents && round.cribbageEvents.length > 0;
 
   // For 3-5-7, show round header
   const showRoundHeader = is357 && totalRounds > 1;
@@ -164,6 +201,32 @@ function RoundDisplay({
         </div>
       )}
 
+      {/* Cribbage events */}
+      {hasCribbageEvents && playerNames && (
+        <div className="space-y-1">
+          {round.cribbageEvents!.map((event) => {
+            const { label, description, points } = formatCribbageEvent(event, playerNames);
+            return (
+              <div
+                key={event.id}
+                className="flex items-center justify-between text-xs py-0.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-medium w-10">{label}</span>
+                  <span className="text-foreground">{description}</span>
+                  {event.card_played && (
+                    <MiniPlayingCard card={event.card_played as CardData} className="ml-1" />
+                  )}
+                </div>
+                {points > 0 && (
+                  <span className="text-primary font-medium">+{points}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Events */}
       {hasEvents && (
         <div className="space-y-1">
@@ -188,6 +251,7 @@ export function HandAccordionContent({
   group,
   currentPlayerId,
   currentUserId,
+  playerNames,
 }: HandAccordionContentProps) {
   const is357 = group.gameType === "357" || group.gameType === "3-5-7";
   const isHolm = group.gameType === "holm-game";
@@ -241,6 +305,7 @@ export function HandAccordionContent({
                 totalRounds={hand.rounds.length}
                 is357={is357}
                 currentPlayerId={currentPlayerId}
+                playerNames={playerNames}
               />
             </div>
           ))}

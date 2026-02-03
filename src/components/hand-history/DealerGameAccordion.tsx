@@ -8,6 +8,7 @@ interface DealerGameAccordionProps {
   group: DealerGameGroup;
   currentPlayerId?: string;
   currentUserId?: string;
+  playerNames?: Map<string, string>;
 }
 
 // Format game type for display
@@ -23,6 +24,8 @@ const formatGameType = (type: string | null | undefined): string => {
       return "Horses";
     case "shipcaptaincrew":
       return "SCC";
+    case "cribbage":
+      return "Cribbage";
     default:
       return type;
   }
@@ -32,6 +35,7 @@ export function DealerGameAccordion({
   group,
   currentPlayerId,
   currentUserId,
+  playerNames,
 }: DealerGameAccordionProps) {
   const displayNumber = group.displayNumber;
   const gameTypeDisplay = formatGameType(group.gameType);
@@ -87,6 +91,7 @@ export function DealerGameAccordion({
           group={group}
           currentPlayerId={currentPlayerId}
           currentUserId={currentUserId}
+          playerNames={playerNames}
         />
       </AccordionContent>
     </AccordionItem>

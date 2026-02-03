@@ -65,6 +65,7 @@ export interface RoundGroup {
   chuckyCards: CardData[];
   events: GameResultRecord[];
   diceResults?: PlayerDiceResult[];
+  cribbageEvents?: CribbageEventRecord[];
 }
 
 export interface HandGroup {
@@ -96,4 +97,23 @@ export interface PlayerDiceResult {
   isWinner: boolean;
   handDescription?: string;
   rollCount?: number;
+}
+
+// Cribbage event types
+export interface CribbageEventRecord {
+  id: string;
+  round_id: string;
+  dealer_game_id: string | null;
+  hand_number: number;
+  player_id: string;
+  event_type: string;
+  event_subtype: string | null;
+  card_played: CardData | null;
+  cards_involved: CardData[];
+  cards_on_table: CardData[] | null;
+  running_count: number | null;
+  points: number;
+  scores_after: Record<string, number>;
+  sequence_number: number;
+  created_at: string;
 }
