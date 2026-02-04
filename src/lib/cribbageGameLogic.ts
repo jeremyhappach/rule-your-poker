@@ -599,14 +599,20 @@ function advanceToCounting(state: CribbageState): CribbageState {
       dealerHandScore,
       cribScore,
     },
-    lastEvent: {
-      id: generateUUID(),
-      type: 'hand_count',
-      playerId: state.dealerPlayerId,
-      points: 0,
-      label: 'Hands counted',
-      createdAt: new Date().toISOString(),
-    },
+    // IMPORTANT: Preserve lastEvent if it's a pegging_points or go_point event so the UI
+    // chat injection effect can announce it (e.g., "Last +1") before counting animation starts.
+    // Previously this was overwritten with a hand_count marker which swallowed the announcement.
+    // The hand_count type is only used for internal tracking and not announced in chat.
+    lastEvent: (state.lastEvent?.type === 'pegging_points' || state.lastEvent?.type === 'go_point')
+      ? state.lastEvent
+      : {
+          id: generateUUID(),
+          type: 'hand_count',
+          playerId: state.dealerPlayerId,
+          points: 0,
+          label: 'Hands counted',
+          createdAt: new Date().toISOString(),
+        },
   };
 }
 
