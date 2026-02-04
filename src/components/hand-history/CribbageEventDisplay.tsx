@@ -33,10 +33,10 @@ function formatSubtype(subtype: string | null): string {
   if (!subtype) return "";
   
   return subtype
-    .replace(/three_of_a_kind/g, "3 of a kind")
-    .replace(/four_of_a_kind/g, "4 of a kind")
-    .replace(/run_(\d+)/g, "run of $1")
-    .replace(/run of (\d+)/g, "run of $1")
+    .replace(/three_of_a_kind/g, "trips")
+    .replace(/four_of_a_kind/g, "quads")
+    .replace(/run_(\d+)/g, "run $1")
+    .replace(/run of (\d+)/g, "run $1")
     .replace(/\+/g, " + ")
     .replace(/_/g, " ");
 }

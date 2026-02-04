@@ -594,13 +594,24 @@ export function useHandHistoryData({
       const displayNumber = dgId === "orphan" ? 0 : (dealerGameNumberById.get(dgId) ?? 0);
 
       // Cribbage summary for header (final score line + skunk indicators)
+      // Compute trustworthy final scores by summing all event points (avoids stored negative/inconsistent values)
       let cribbageFinalScores: Record<string, number> | null = null;
       let cribbageSkunkLevel: 0 | 1 | 2 | null = null;
       if (isCribbage && allCribbageEventsForDealerGame.length > 0) {
-        const lastWithScores = [...allCribbageEventsForDealerGame]
-          .reverse()
-          .find((e) => e.scores_after && Object.keys(e.scores_after).length > 0);
-        cribbageFinalScores = (lastWithScores?.scores_after as Record<string, number> | undefined) ?? null;
+        const sortedEvents = [...allCribbageEventsForDealerGame].sort((a, b) => {
+          if (a.hand_number !== b.hand_number) return a.hand_number - b.hand_number;
+          return a.sequence_number - b.sequence_number;
+        });
+
+        const computedScores: Record<string, number> = {};
+        for (const ev of sortedEvents) {
+          if (ev.points > 0) {
+            computedScores[ev.player_id] = (computedScores[ev.player_id] ?? 0) + ev.points;
+          }
+        }
+        if (Object.keys(computedScores).length > 0) {
+          cribbageFinalScores = computedScores;
+        }
 
         if (cribbageFinalScores && dealerGame?.config) {
           const cfg = dealerGame.config as Record<string, any>;
