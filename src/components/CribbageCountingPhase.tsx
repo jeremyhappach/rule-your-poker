@@ -301,14 +301,15 @@ export const CribbageCountingPhase = ({
         if (!completedRef.current && !winFrozenRef.current) {
           completedRef.current = true;
           setIsComplete(true);
-          setAnnouncement('Counting complete!');
+          // Clear announcement - no "Counting complete!" message needed
+          setAnnouncement(null);
           setExitingCards([]);
           
           if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
           completeTimerRef.current = setTimeout(() => {
             if (winFrozenRef.current) return;
             onCountingComplete(false); // No win detected during counting
-          }, 2000);
+          }, 1000); // Shorter delay since no announcement to read
         }
       }
     }, EXIT_ANIMATION_MS);

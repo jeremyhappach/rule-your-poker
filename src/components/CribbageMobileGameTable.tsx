@@ -318,7 +318,11 @@ export const CribbageMobileGameTable = ({
     setCountingTargetLabel(targetLabel);
     
     // Inject scoring announcements into chat as dealer messages
-    if (announcement && targetLabel) {
+    // Skip "Total:" and "0 points" announcements - individual combos are the meaningful events
+    // The total is just for the dealer banner display, not chat
+    if (announcement && targetLabel && 
+        !announcement.startsWith('Total:') && 
+        announcement !== '0 points') {
       injectDealerMessage(`${targetLabel}: ${announcement}`);
     }
   }, [injectDealerMessage]);
