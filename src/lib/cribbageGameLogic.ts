@@ -613,6 +613,11 @@ function advanceToCounting(state: CribbageState): CribbageState {
 /**
  * Apply the stored hand+crib counting totals onto pegScore.
  * Used AFTER the counting animation completes (no-win case).
+ * 
+ * IMPORTANT: This function now checks if anyone reaches pointsToWin after
+ * applying the scores, and if so, transitions to the 'complete' phase with
+ * the winner set. This prevents the bug where a player exceeds the winning
+ * threshold but a new hand is started instead of ending the game.
  */
 export function applyHandCountScores(state: CribbageState): CribbageState {
   if (!state.lastHandCount) return state;
@@ -632,10 +637,42 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
     };
   }
 
-  return {
+  const updatedState: CribbageState = {
     ...state,
     playerStates: nextPlayerStates,
   };
+
+  // Check if anyone has reached the winning score after applying counting points.
+  // This is critical to catch wins that occurred during the counting animation.
+  for (const [playerId, ps] of Object.entries(nextPlayerStates)) {
+    if (ps.pegScore >= state.pointsToWin) {
+      // Find loser with lowest score for skunk calculation
+      let lowestScore = state.pointsToWin;
+      for (const [otherId, otherPs] of Object.entries(nextPlayerStates)) {
+        if (otherId !== playerId && otherPs.pegScore < lowestScore) {
+          lowestScore = otherPs.pegScore;
+        }
+      }
+
+      // Calculate payout multiplier based on game config
+      let multiplier = 1;
+      if (state.doubleSkunkEnabled && lowestScore < state.doubleSkunkThreshold) {
+        multiplier = 3; // Double skunk
+      } else if (state.skunkEnabled && lowestScore < state.skunkThreshold) {
+        multiplier = 2; // Skunk
+      }
+
+      return {
+        ...updatedState,
+        phase: 'complete',
+        winnerPlayerId: playerId,
+        loserScore: lowestScore,
+        payoutMultiplier: multiplier,
+      };
+    }
+  }
+
+  return updatedState;
 }
 
 /**
@@ -691,6 +728,39 @@ export function startNewHand(
   state: CribbageState,
   playerIds: string[]
 ): CribbageState {
+  // SAFETY CHECK: If someone has already won, don't start a new hand.
+  // This catches edge cases where the win wasn't properly detected earlier.
+  for (const ps of Object.values(state.playerStates)) {
+    if (ps.pegScore >= state.pointsToWin) {
+      console.warn('[CRIBBAGE] startNewHand called but player has already won:', {
+        playerId: ps.playerId,
+        score: ps.pegScore,
+        pointsToWin: state.pointsToWin,
+      });
+      // Return the state with winner set - caller should handle this
+      const winnerId = ps.playerId;
+      let lowestScore = state.pointsToWin;
+      for (const otherPs of Object.values(state.playerStates)) {
+        if (otherPs.playerId !== winnerId && otherPs.pegScore < lowestScore) {
+          lowestScore = otherPs.pegScore;
+        }
+      }
+      let multiplier = 1;
+      if (state.doubleSkunkEnabled && lowestScore < state.doubleSkunkThreshold) {
+        multiplier = 3;
+      } else if (state.skunkEnabled && lowestScore < state.skunkThreshold) {
+        multiplier = 2;
+      }
+      return {
+        ...state,
+        phase: 'complete',
+        winnerPlayerId: winnerId,
+        loserScore: lowestScore,
+        payoutMultiplier: multiplier,
+      };
+    }
+  }
+
   if (state.phase !== 'counting') {
     throw new Error('Can only start new hand after counting phase');
   }

@@ -1135,6 +1135,8 @@ export const CribbageMobileGameTable = ({
   // Handle counting phase completion - start new hand
   // NOTE: Win sequences are now triggered reactively via score subscription,
   // so this callback is only called when counting completes WITHOUT a win.
+  // HOWEVER: As a safety catch, applyHandCountScores now returns a 'complete' state
+  // if someone exceeds pointsToWin, which we must handle here.
   const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
     if (!cribbageState) return;
     
@@ -1153,13 +1155,40 @@ export const CribbageMobileGameTable = ({
       // Apply hand+crib totals AFTER the animation so the backend never "spoils" the result
       // by jumping pegScore at the start of counting.
       const countedState = applyHandCountScores(cribbageState);
+      
+      // CRITICAL FIX: Check if applyHandCountScores detected a winner.
+      // This catches edge cases where the reactive win detection didn't fire
+      // (e.g., due to animation timing or ref guards).
+      if (countedState.phase === 'complete' && countedState.winnerPlayerId) {
+        console.log('[CRIBBAGE] handleCountingComplete: Winner detected by applyHandCountScores', {
+          winnerId: countedState.winnerPlayerId,
+          phase: countedState.phase,
+        });
+        // Persist the completed state and trigger win sequence
+        await updateState(countedState);
+        triggerWinSequence(countedState);
+        return;
+      }
+      
       const newState = startNewHand(countedState, playerIds);
+      
+      // CRITICAL FIX: Also check if startNewHand detected a winner (safety guard).
+      if (newState.phase === 'complete' && newState.winnerPlayerId) {
+        console.log('[CRIBBAGE] handleCountingComplete: Winner detected by startNewHand safety check', {
+          winnerId: newState.winnerPlayerId,
+          phase: newState.phase,
+        });
+        await updateState(newState);
+        triggerWinSequence(newState);
+        return;
+      }
+      
       await updateState(newState);
     } catch (err) {
       console.error('[CRIBBAGE] Error starting new hand:', err);
       toast.error('Failed to start new hand');
     }
-  }, [cribbageState, players]);
+  }, [cribbageState, players, triggerWinSequence]);
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
