@@ -325,6 +325,8 @@ export function useHandHistoryData({
 
   // Build the grouped data structure
   const dealerGameGroups = useMemo((): DealerGameGroup[] => {
+    // For cribbage, we may have events but no game_results yet
+    // Allow display if we have rounds (which includes cribbage rounds with events)
     if (gameResults.length === 0 && rounds.length === 0) return [];
 
     // Group results by dealer_game_id
@@ -362,6 +364,20 @@ export function useHandHistoryData({
 
       const gameType = dealerGame?.game_type || dgResults[0]?.game_type || null;
       const isDiceGame = gameType === "horses" || gameType === "ship-captain-crew";
+      const isCribbage = gameType === "cribbage";
+
+      // For cribbage games, collect all cribbage events for all rounds in this dealer game
+      let allCribbageEventsForDealerGame: CribbageEventRecord[] = [];
+      if (isCribbage) {
+        dgRounds.forEach((round) => {
+          const roundEvents = cribbageEventsByRound.get(round.id);
+          if (roundEvents) {
+            allCribbageEventsForDealerGame = allCribbageEventsForDealerGame.concat(roundEvents);
+          }
+        });
+        // Sort by sequence_number for proper ordering
+        allCribbageEventsForDealerGame.sort((a, b) => a.sequence_number - b.sequence_number);
+      }
 
       // Group by hand_number → round_number
       const handMap = new Map<number, Map<number, { round: RoundRecord; events: GameResultRecord[] }>>();
@@ -379,6 +395,15 @@ export function useHandHistoryData({
           roundMap.set(roundNum, { round, events: [] });
         }
       });
+
+      // For cribbage with no game_results but with events, ensure we have at least one hand entry
+      if (isCribbage && dgResults.length === 0 && allCribbageEventsForDealerGame.length > 0 && handMap.size === 0) {
+        // Create a synthetic hand entry from the first round
+        const firstRound = dgRounds[0];
+        if (firstRound) {
+          handMap.set(1, new Map([[1, { round: firstRound, events: [] }]]));
+        }
+      }
 
       // Then, assign events to their rounds
       dgResults.forEach((result) => {
@@ -505,8 +530,15 @@ export function useHandHistoryData({
               .sort((a, b) => (b.isWinner ? 1 : 0) - (a.isWinner ? 1 : 0));
           }
 
-          // Cribbage events for this round
-          const cribbageEvents = cribbageEventsByRound.get(round.id);
+          // Cribbage events - for cribbage games, attach ALL events for the dealer game
+          // to the first round/hand since cribbage uses one DB round for multiple cribbage hands
+          let cribbageEvents: CribbageEventRecord[] | undefined;
+          if (isCribbage && handNum === sortedHandNumbers[0] && roundNum === sortedRoundNumbers[0]) {
+            // First round of cribbage game gets all events
+            cribbageEvents = allCribbageEventsForDealerGame.length > 0 ? allCribbageEventsForDealerGame : undefined;
+          } else if (!isCribbage) {
+            cribbageEvents = cribbageEventsByRound.get(round.id);
+          }
 
           roundGroups.push({
             roundNumber: roundNum,
