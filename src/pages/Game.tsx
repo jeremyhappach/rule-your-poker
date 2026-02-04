@@ -327,6 +327,13 @@ const Game = () => {
     chucky_cards: number;
     rabbit_hunt: boolean;
     reveal_at_showdown: boolean;
+    // Cribbage-specific fields
+    points_to_win?: number;
+    skunk_enabled?: boolean;
+    skunk_threshold?: number;
+    double_skunk_enabled?: boolean;
+    double_skunk_threshold?: number;
+    cribbage_game_mode?: string; // 'full' | 'half' | 'super_quick' | 'sprint'
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   // Track which gameId the previousGameConfig was captured from
@@ -363,7 +370,21 @@ const Game = () => {
       chucky_cards: game.chucky_cards ?? 4,
       rabbit_hunt: game.rabbit_hunt ?? false,
       reveal_at_showdown: game.reveal_at_showdown ?? false,
+      // Cribbage-specific fields
+      points_to_win: game.points_to_win ?? undefined,
+      skunk_enabled: game.skunk_enabled ?? undefined,
+      skunk_threshold: game.skunk_threshold ?? undefined,
+      double_skunk_enabled: game.double_skunk_enabled ?? undefined,
+      double_skunk_threshold: game.double_skunk_threshold ?? undefined,
     };
+
+    // For cribbage, derive game_mode from points_to_win
+    if (gameType === 'cribbage' && game.points_to_win) {
+      if (game.points_to_win === 121) cfg.cribbage_game_mode = 'full';
+      else if (game.points_to_win === 61) cfg.cribbage_game_mode = 'half';
+      else if (game.points_to_win === 45) cfg.cribbage_game_mode = 'super_quick';
+      else if (game.points_to_win === 31) cfg.cribbage_game_mode = 'sprint';
+    }
 
     const key = `${game.id}:${gameType}:${JSON.stringify(cfg)}`;
     if (lastCapturedConfigKeyRef.current === key) return;
@@ -386,6 +407,11 @@ const Game = () => {
     game?.chucky_cards,
     game?.rabbit_hunt,
     game?.reveal_at_showdown,
+    game?.points_to_win,
+    game?.skunk_enabled,
+    game?.skunk_threshold,
+    game?.double_skunk_enabled,
+    game?.double_skunk_threshold,
   ]);
 
   // "Run it back" should appear starting with the 2nd game in the same session.
