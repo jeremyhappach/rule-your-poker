@@ -1,7 +1,7 @@
 // Cribbage round orchestration - database integration layer
 
 import { supabase } from '@/integrations/supabase/client';
-import { initializeCribbageGame } from './cribbageGameLogic';
+import { initializeCribbageGame, startNewHand } from './cribbageGameLogic';
 import { getBotAlias } from './botAlias';
 import type { CribbageState } from './cribbageTypes';
 
@@ -16,7 +16,7 @@ import type { CribbageState } from './cribbageTypes';
 export async function startCribbageRound(
   gameId: string,
   isFirstHand: boolean = true
-): Promise<{ success: boolean; roundId?: string; error?: string }> {
+): Promise<{ success: boolean; roundId?: string; handNumber?: number; error?: string }> {
   console.log('[CRIBBAGE] Starting cribbage round', { gameId, isFirstHand });
 
   try {
@@ -164,10 +164,121 @@ export async function startCribbageRound(
       phase: cribbageState ? cribbageState.phase : 'dealer_selection',
     });
 
-    return { success: true, roundId: round.id };
+    return { success: true, roundId: round.id, handNumber };
 
   } catch (error: any) {
     console.error('[CRIBBAGE] Error starting round:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Start a new cribbage hand after counting phase completes.
+ * 
+ * CRITICAL: This creates a NEW round record with incremented hand_number.
+ * This ensures event logging is properly scoped to (dealer_game_id, hand_number).
+ */
+export async function startNextCribbageHand(
+  gameId: string,
+  dealerGameId: string,
+  previousState: CribbageState,
+  playerIds: string[]
+): Promise<{ success: boolean; roundId?: string; handNumber?: number; newState?: CribbageState; error?: string }> {
+  console.log('[CRIBBAGE] Starting next hand', { gameId, dealerGameId });
+
+  try {
+    // Calculate the new state with rotated dealer and preserved scores
+    const newState = startNewHand(previousState, playerIds);
+    
+    // Check if the new state indicates a winner (safety check from startNewHand)
+    if (newState.phase === 'complete' && newState.winnerPlayerId) {
+      console.log('[CRIBBAGE] startNextCribbageHand detected winner from startNewHand', {
+        winnerId: newState.winnerPlayerId,
+      });
+      return { 
+        success: true, 
+        newState, 
+        error: 'Winner detected - no new hand needed' 
+      };
+    }
+
+    // Get the next hand number
+    const { data: existingRounds } = await supabase
+      .from('rounds')
+      .select('hand_number')
+      .eq('dealer_game_id', dealerGameId)
+      .order('hand_number', { ascending: false })
+      .limit(1);
+
+    const handNumber = existingRounds && existingRounds.length > 0
+      ? (existingRounds[0].hand_number || 0) + 1
+      : 1;
+
+    console.log('[CRIBBAGE] Creating new round for hand', { handNumber, dealerGameId });
+
+    // Create a NEW round record for this hand
+    const { data: round, error: roundError } = await supabase
+      .from('rounds')
+      .insert({
+        game_id: gameId,
+        dealer_game_id: dealerGameId,
+        round_number: 1, // Cribbage uses single round per hand
+        hand_number: handNumber,
+        cards_dealt: 6,
+        pot: 0,
+        status: 'betting',
+        cribbage_state: newState as any,
+      })
+      .select()
+      .single();
+
+    if (roundError || !round) {
+      throw new Error(`Failed to create round: ${roundError?.message}`);
+    }
+
+    // Update game with new hand number
+    await supabase
+      .from('games')
+      .update({
+        total_hands: handNumber,
+        is_first_hand: false,
+      })
+      .eq('id', gameId);
+
+    // Store player cards for the new hand
+    for (const playerId of playerIds) {
+      const playerState = newState.playerStates[playerId];
+      if (playerState) {
+        await supabase
+          .from('player_cards')
+          .upsert(
+            {
+              player_id: playerId,
+              round_id: round.id,
+              cards: playerState.hand as any,
+            },
+            {
+              onConflict: 'player_id,round_id',
+            }
+          );
+      }
+    }
+
+    console.log('[CRIBBAGE] Next hand started successfully', {
+      roundId: round.id,
+      handNumber,
+      newDealerId: newState.dealerPlayerId,
+    });
+
+    return { 
+      success: true, 
+      roundId: round.id, 
+      handNumber, 
+      newState 
+    };
+
+  } catch (error: any) {
+    console.error('[CRIBBAGE] Error starting next hand:', error);
     return { success: false, error: error.message };
   }
 }
