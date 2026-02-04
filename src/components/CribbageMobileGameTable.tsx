@@ -486,16 +486,38 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = countingStartKey;
     setCountingStateSnapshot(state);
 
-    // Initialize counting score overrides with the *pegging* baseline IMMEDIATELY.
-    // With the new flow, the backend does NOT apply counting points to pegScore until AFTER
-    // the animation completes, so pegScore here is safe and spoiler-free.
-    const baselineScores = lastPeggingScoresRef.current ?? (() => {
-      const scores: Record<string, number> = {};
-      for (const [playerId, ps] of Object.entries(state.playerStates)) {
-        scores[playerId] = ps.pegScore ?? 0;
-      }
-      return scores;
+    // Initialize counting score overrides with the pegging baseline IMMEDIATELY.
+    // IMPORTANT: The final pegging +1 ("Last" / "Go") is often applied on the SAME
+    // transition that flips phase to 'counting'. That means our "phase === pegging" cache
+    // can be 1 point behind.
+    //
+    // Heuristic:
+    // - Prefer the live state scores if they only differ by a small non-negative delta (<=2)
+    //   from the cached pegging scores.
+    // - Otherwise, fall back to cached pegging scores (protects against any unexpected
+    //   pre-applied counting totals in the backend).
+    const stateScores: Record<string, number> = {};
+    for (const [playerId, ps] of Object.entries(state.playerStates)) {
+      stateScores[playerId] = ps.pegScore ?? 0;
+    }
+
+    const cachedScores = lastPeggingScoresRef.current;
+    const baselineScores = (() => {
+      if (!cachedScores) return stateScores;
+
+      const deltas = Object.keys(stateScores).map((pid) => (stateScores[pid] ?? 0) - (cachedScores[pid] ?? 0));
+      const maxDelta = deltas.length ? Math.max(...deltas) : 0;
+      const minDelta = deltas.length ? Math.min(...deltas) : 0;
+
+      // Accept small forward-only drift (e.g., the missing "Last" point) and use the live state.
+      if (minDelta >= 0 && maxDelta <= 2) return stateScores;
+
+      // Otherwise, trust the cached pegging scores.
+      return cachedScores;
     })();
+
+    // Keep cache aligned with what we're using as the baseline for this hand.
+    lastPeggingScoresRef.current = baselineScores;
     setCountingScoreOverrides(baselineScores);
 
     // Start delay - counting phase will be hidden until delay completes
@@ -507,7 +529,7 @@ export const CribbageMobileGameTable = ({
     return () => {
       clearTimeout(timer);
     };
-  }, [countingStartKey, calculateCountingBaselineScores]);
+  }, [countingStartKey]);
 
   // Clear counting overrides when starting a fresh hand (discarding phase).
   // This prevents stale override values from affecting the pegboard in non-counting phases.
