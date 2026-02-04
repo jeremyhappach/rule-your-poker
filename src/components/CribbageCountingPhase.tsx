@@ -51,8 +51,8 @@ export const CribbageCountingPhase = ({
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
   const [highlightedCards, setHighlightedCards] = useState<CribbageCard[]>([]);
-  const [announcement, setAnnouncement] = useState<string | null>(null);
-  const [announcementKey, setAnnouncementKey] = useState(0); // Increments to force re-trigger for identical combos
+  // Store announcement WITH its target label to prevent label mismatch during transitions
+  const [announcementData, setAnnouncementData] = useState<{ text: string; targetLabel: string; key: number } | null>(null);
   const [animatedScores, setAnimatedScores] = useState<Record<string, number>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
@@ -95,7 +95,7 @@ export const CribbageCountingPhase = ({
       completeTimerRef.current = null;
     }
 
-    setAnnouncement(null);
+    setAnnouncementData(null);
     onAnnouncementChange?.(null, null);
   }, [winFrozen, onAnnouncementChange]);
 
@@ -215,7 +215,11 @@ export const CribbageCountingPhase = ({
       if (currentComboIndex === -1) {
         if (currentCombos.length === 0) {
           setHighlightedCards([]);
-          setAnnouncement('0 points');
+          setAnnouncementData(prev => ({
+            text: '0 points',
+            targetLabel: currentTarget.label,
+            key: (prev?.key ?? 0) + 1,
+          }));
 
           innerTimer = setTimeout(() => {
             if (!winFrozenRef.current) startExitTransition();
@@ -229,8 +233,11 @@ export const CribbageCountingPhase = ({
       if (currentComboIndex < currentCombos.length) {
         const combo = currentCombos[currentComboIndex];
         setHighlightedCards(combo.cards);
-        setAnnouncement(`${combo.label}: +${combo.points}`);
-        setAnnouncementKey(prev => prev + 1); // Increment to trigger re-injection for identical combos
+        setAnnouncementData(prev => ({
+          text: `${combo.label}: +${combo.points}`,
+          targetLabel: currentTarget.label,
+          key: (prev?.key ?? 0) + 1,
+        }));
 
         // IMPORTANT: functional update prevents re-processing the same combo due to rerenders.
         setAnimatedScores((prev) => {
@@ -251,11 +258,13 @@ export const CribbageCountingPhase = ({
         return;
       }
 
-      // All combos shown - show total and start exit
       setHighlightedCards([]);
       const total = getTotalFromCombos(currentCombos);
-      setAnnouncement(`Total: ${total} points`);
-      setAnnouncementKey(prev => prev + 1); // Increment for the total announcement
+      setAnnouncementData(prev => ({
+        text: `Total: ${total} points`,
+        targetLabel: currentTarget.label,
+        key: (prev?.key ?? 0) + 1,
+      }));
 
       innerTimer = setTimeout(() => {
         if (!winFrozenRef.current) startExitTransition();
@@ -305,7 +314,7 @@ export const CribbageCountingPhase = ({
           completedRef.current = true;
           setIsComplete(true);
           // Clear announcement - no "Counting complete!" message needed
-          setAnnouncement(null);
+          setAnnouncementData(null);
           setExitingCards([]);
           
           if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
@@ -319,12 +328,17 @@ export const CribbageCountingPhase = ({
   }, [currentTarget, currentTargetIndex, countingTargets.length, onCountingComplete, winFrozen]);
 
   // Propagate announcements to parent for dealer announcement area
+  // Uses announcementData which atomically stores text + targetLabel to prevent mismatch during transitions
   useEffect(() => {
     if (winFrozen) return;
     if (onAnnouncementChange) {
-      onAnnouncementChange(announcement, currentTarget?.label || null, announcementKey);
+      onAnnouncementChange(
+        announcementData?.text ?? null, 
+        announcementData?.targetLabel ?? null, 
+        announcementData?.key
+      );
     }
-  }, [announcement, currentTarget?.label, onAnnouncementChange, winFrozen, announcementKey]);
+  }, [announcementData, onAnnouncementChange, winFrozen]);
 
   // Cleanup on unmount
   useEffect(() => {
