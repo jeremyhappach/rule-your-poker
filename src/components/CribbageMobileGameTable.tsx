@@ -330,10 +330,28 @@ export const CribbageMobileGameTable = ({
   const countingStartKey = useMemo(() => {
     if (!cribbageState) return null;
 
-    const needsCounting =
-      cribbageState.phase === 'counting' ||
-      (cribbageState.phase === 'complete' && cribbageState.winnerPlayerId);
-    if (!needsCounting) return null;
+    // CRITICAL FIX: Only enter counting phase if we're genuinely in 'counting' phase,
+    // NOT if we won during pegging. A pegging win goes directly to 'complete' phase
+    // and should skip the counting animation entirely (hands aren't fully played out).
+    // 
+    // Detect pegging win: phase === 'complete' AND players still have cards in hand
+    // (meaning all 4 cards weren't played before the win occurred).
+    if (cribbageState.phase === 'complete') {
+      // Check if any player still has cards in hand - this indicates a pegging win
+      const anyCardsRemaining = Object.values(cribbageState.playerStates).some(
+        ps => ps.hand.length > 0
+      );
+      if (anyCardsRemaining) {
+        // Pegging win - skip counting animation
+        return null;
+      }
+      // All cards played, this is a counting-phase win that needs animation
+      if (!cribbageState.winnerPlayerId) {
+        return null;
+      }
+    } else if (cribbageState.phase !== 'counting') {
+      return null;
+    }
 
     const cutKey = cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut';
     return `${roundId}-${cribbageState.dealerPlayerId}-${cutKey}`;
@@ -344,6 +362,11 @@ export const CribbageMobileGameTable = ({
     cribbageState?.dealerPlayerId,
     cribbageState?.cutCard?.rank,
     cribbageState?.cutCard?.suit,
+    // Include player states in deps to detect hand changes
+    // Use a stable serialization to avoid excessive rerenders
+    JSON.stringify(
+      Object.values(cribbageState?.playerStates ?? {}).map(ps => ps.hand.length)
+    ),
   ]);
 
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display.
