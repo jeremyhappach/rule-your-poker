@@ -295,13 +295,15 @@ export function useHandHistoryData({
     const systemWinners = ["Ante", "Leg Purchase", "Pussy Tax", "Pot Refund", "CHOP Ante Correction", "Ante Correction"];
     if (systemWinners.includes(winnerUsername)) return winnerUsername;
 
+    // ALWAYS prefer playerNames lookup (which has proper bot aliases) over stored username
+    // This fixes legacy data where bot usernames were stored incorrectly (e.g., "Bot 44d6eb")
+    if (winnerPlayerId && playerNames.has(winnerPlayerId)) {
+      return playerNames.get(winnerPlayerId) || winnerUsername;
+    }
+
     if (isUUID(winnerUsername)) {
       if (userIdToName.has(winnerUsername)) return userIdToName.get(winnerUsername) || winnerUsername;
       if (playerNames.has(winnerUsername)) return playerNames.get(winnerUsername) || winnerUsername;
-    }
-
-    if (winnerPlayerId && playerNames.has(winnerPlayerId)) {
-      return playerNames.get(winnerPlayerId) || winnerUsername;
     }
 
     return winnerUsername;
