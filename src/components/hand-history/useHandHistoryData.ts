@@ -373,10 +373,15 @@ export function useHandHistoryData({
           const roundEvents = cribbageEventsByRound.get(round.id);
           if (roundEvents) {
             allCribbageEventsForDealerGame = allCribbageEventsForDealerGame.concat(roundEvents);
-          }
+        }
         });
-        // Sort by sequence_number for proper ordering
-        allCribbageEventsForDealerGame.sort((a, b) => a.sequence_number - b.sequence_number);
+        // Sort by hand_number first, then by sequence_number for proper chronological ordering
+        allCribbageEventsForDealerGame.sort((a, b) => {
+          if (a.hand_number !== b.hand_number) {
+            return a.hand_number - b.hand_number;
+          }
+          return a.sequence_number - b.sequence_number;
+        });
       }
 
       // Group by hand_number → round_number
