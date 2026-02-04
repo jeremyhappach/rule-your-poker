@@ -27,11 +27,13 @@ function getEventLabel(eventType: string): string {
   }
 }
 
-// Format subtype for better display (e.g., "run_3" -> "run of 3", "15+pair" -> "15, pair")
+// Format subtype for better display (e.g., "three_of_a_kind+31" -> "3 of a kind, 31")
 function formatSubtype(subtype: string | null): string {
   if (!subtype) return "";
   
   return subtype
+    .replace(/three_of_a_kind/g, "3 of a kind")
+    .replace(/four_of_a_kind/g, "4 of a kind")
     .replace(/run_(\d+)/g, "run of $1")
     .replace(/run of (\d+)/g, "run of $1")
     .replace(/\+/g, ", ")
@@ -53,12 +55,91 @@ function formatScores(scoresAfter: Record<string, number>, playerNames: Map<stri
     .join(" | ");
 }
 
+/**
+ * Detect where the current sequence starts based on count resets.
+ * When running_count drops (e.g., 31 -> reset), we know a new sequence started.
+ */
+function getSequenceStartIndex(events: CribbageEventRecord[], currentIndex: number): number {
+  // Look backward to find where the sequence started
+  // A sequence reset happens when running_count is low after being high
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    const prevEvent = events[i];
+    const currentEvent = events[currentIndex];
+    
+    // Only check pegging events
+    if (prevEvent.event_type !== "pegging" || currentEvent.event_type !== "pegging") continue;
+    
+    const prevCount = prevEvent.running_count ?? 0;
+    const currCount = currentEvent.running_count ?? 0;
+    
+    // If current count is less than previous + reasonable card value, a reset happened
+    // A reset means this is the start of a new sequence
+    if (currCount < prevCount && currCount <= 10) {
+      return currentIndex; // This is the first card of the new sequence
+    }
+  }
+  
+  // Find the first pegging event in this group
+  for (let i = 0; i <= currentIndex; i++) {
+    if (events[i].event_type === "pegging") {
+      return i;
+    }
+  }
+  
+  return 0;
+}
+
+/**
+ * Get only the cards in the current sequence (since last reset)
+ */
+function getSequenceCards(
+  allEvents: CribbageEventRecord[],
+  currentEventIndex: number
+): CardData[] {
+  const currentEvent = allEvents[currentEventIndex];
+  if (currentEvent.event_type !== "pegging") return [];
+  
+  const cards: CardData[] = [];
+  const currentCount = currentEvent.running_count ?? 0;
+  
+  // Walk backward to find where this sequence started
+  let sequenceStart = currentEventIndex;
+  let prevCount = currentCount;
+  
+  for (let i = currentEventIndex - 1; i >= 0; i--) {
+    const ev = allEvents[i];
+    if (ev.event_type !== "pegging") continue;
+    
+    const evCount = ev.running_count ?? 0;
+    
+    // If count at previous event is higher than current start, we're before a reset
+    if (evCount > prevCount || (evCount === 0 && prevCount > 0)) {
+      break; // Found the reset point
+    }
+    
+    sequenceStart = i;
+    prevCount = evCount;
+  }
+  
+  // Collect all cards from sequenceStart to currentEventIndex (inclusive)
+  for (let i = sequenceStart; i <= currentEventIndex; i++) {
+    const ev = allEvents[i];
+    if (ev.event_type === "pegging" && ev.card_played) {
+      cards.push(ev.card_played);
+    }
+  }
+  
+  return cards;
+}
+
 interface EventRowProps {
   event: CribbageEventRecord;
   playerNames: Map<string, string>;
+  allEvents: CribbageEventRecord[];
+  eventIndex: number;
 }
 
-function CribbageEventRow({ event, playerNames }: EventRowProps) {
+function CribbageEventRow({ event, playerNames, allEvents, eventIndex }: EventRowProps) {
   const username = playerNames.get(event.player_id) || "Unknown";
   const label = getEventLabel(event.event_type);
   const subtype = formatSubtype(event.event_subtype);
@@ -87,8 +168,9 @@ function CribbageEventRow({ event, playerNames }: EventRowProps) {
       description = username;
   }
 
-  // For pegging events, show the cards on table
-  const showCardsOnTable = event.event_type === "pegging" && event.cards_on_table && event.cards_on_table.length > 0;
+  // For pegging events, show only cards in current sequence (after reset)
+  const showCardsOnTable = event.event_type === "pegging";
+  const sequenceCards = showCardsOnTable ? getSequenceCards(allEvents, eventIndex) : [];
 
   return (
     <div className="rounded bg-muted/20 px-2 py-1.5 space-y-1">
@@ -112,12 +194,12 @@ function CribbageEventRow({ event, playerNames }: EventRowProps) {
         )}
       </div>
       
-      {/* Cards on table (board) after the play */}
-      {showCardsOnTable && (
+      {/* Cards on table (board) - only show current sequence, not all cards */}
+      {showCardsOnTable && sequenceCards.length > 0 && (
         <div className="pl-12 flex items-center gap-1">
           <span className="text-[10px] text-muted-foreground">Board:</span>
           <div className="flex gap-0.5">
-            {(event.cards_on_table as CardData[]).map((card, i) => (
+            {sequenceCards.map((card, i) => (
               <MiniPlayingCard key={i} card={card} className="w-4 h-5" />
             ))}
           </div>
@@ -180,11 +262,28 @@ function separateEventsByPhase(events: CribbageEventRecord[]): {
   return { peggingEvents, scoringEvents, cutCard };
 }
 
-// Group scoring events by player for display with their hand
+// Extract player hands from pegging events (cards played during pegging = their 4-card hand)
+function extractPlayerHands(peggingEvents: CribbageEventRecord[]): Map<string, CardData[]> {
+  const handsByPlayer = new Map<string, CardData[]>();
+  
+  for (const event of peggingEvents) {
+    if (event.event_type === "pegging" && event.card_played) {
+      if (!handsByPlayer.has(event.player_id)) {
+        handsByPlayer.set(event.player_id, []);
+      }
+      handsByPlayer.get(event.player_id)!.push(event.card_played);
+    }
+  }
+  
+  return handsByPlayer;
+}
+
+// Group scoring events by player and type (hand vs crib)
 function groupScoringByPlayer(
   events: CribbageEventRecord[],
-  playerHands: PlayerHandData[],
-  cutCard: CardData | null
+  extractedHands: Map<string, CardData[]>,
+  cutCard: CardData | null,
+  playerNames: Map<string, string>
 ): Array<{
   playerId: string;
   username: string;
@@ -218,28 +317,32 @@ function groupScoringByPlayer(
   }
 
   // Add player hands with their scoring events
-  for (const playerHand of playerHands) {
-    const playerEvents = handScoringByPlayer.get(playerHand.playerId) || [];
-    if (playerEvents.length > 0 || playerHand.cards.length > 0) {
-      result.push({
-        playerId: playerHand.playerId,
-        username: playerHand.username,
-        hand: playerHand.cards,
-        cutCard,
-        events: playerEvents,
-        isCrib: false,
-      });
-    }
+  for (const [playerId, playerEvents] of handScoringByPlayer) {
+    const hand = extractedHands.get(playerId) || [];
+    const username = playerNames.get(playerId) || "Unknown";
+    
+    result.push({
+      playerId,
+      username,
+      hand,
+      cutCard,
+      events: playerEvents,
+      isCrib: false,
+    });
   }
 
   // Add crib scoring (dealer's crib)
   if (cribScoringEvents.length > 0) {
     const dealerId = cribScoringEvents[0].player_id;
-    const dealerHand = playerHands.find(ph => ph.playerId === dealerId);
+    const dealerName = playerNames.get(dealerId) || "Dealer";
+    
+    // Crib cards are in cards_involved for crib_scoring events
+    const cribCards = cribScoringEvents[0].cards_involved || [];
+    
     result.push({
       playerId: dealerId,
-      username: dealerHand?.username || "Dealer",
-      hand: [], // Crib cards aren't stored in player_cards
+      username: dealerName,
+      hand: cribCards, // Show crib cards
       cutCard,
       events: cribScoringEvents,
       isCrib: true,
@@ -262,8 +365,11 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
         const handEvents = groupedByHand.get(handNum)!;
         const { peggingEvents, scoringEvents, cutCard } = separateEventsByPhase(handEvents);
         
+        // Extract hands from pegging events
+        const extractedHands = extractPlayerHands(peggingEvents);
+        
         // Group scoring by player with their hands
-        const scoringGroups = groupScoringByPlayer(scoringEvents, playerHands, cutCard);
+        const scoringGroups = groupScoringByPlayer(scoringEvents, extractedHands, cutCard, playerNames);
         
         return (
           <div key={handNum}>
@@ -279,11 +385,13 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
             {peggingEvents.length > 0 && (
               <div className="space-y-1 mb-2">
                 <div className="text-[10px] text-muted-foreground font-medium">Pegging</div>
-                {peggingEvents.map((event) => (
+                {peggingEvents.map((event, idx) => (
                   <CribbageEventRow 
                     key={event.id} 
                     event={event} 
-                    playerNames={playerNames} 
+                    playerNames={playerNames}
+                    allEvents={handEvents}
+                    eventIndex={handEvents.indexOf(event)}
                   />
                 ))}
               </div>
@@ -300,7 +408,7 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
                       <span className="text-xs font-medium text-foreground">
                         {group.isCrib ? `${group.username}'s Crib` : group.username}:
                       </span>
-                      {!group.isCrib && group.hand.length > 0 && (
+                      {group.hand.length > 0 && (
                         <div className="flex gap-0.5">
                           {group.hand.map((card, i) => (
                             <MiniPlayingCard key={i} card={card} />
@@ -320,7 +428,9 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
                       <CribbageEventRow 
                         key={event.id} 
                         event={event} 
-                        playerNames={playerNames} 
+                        playerNames={playerNames}
+                        allEvents={handEvents}
+                        eventIndex={handEvents.indexOf(event)}
                       />
                     ))}
                   </div>
