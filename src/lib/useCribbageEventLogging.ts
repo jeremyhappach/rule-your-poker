@@ -16,6 +16,7 @@ import {
   resetCribbageEventSequence,
 } from './cribbageEventLog';
 import { getHandScoringCombos } from './cribbageScoringDetails';
+import { getCardPointValue } from './cribbageScoring';
 import {
   seqCribScoring,
   seqCutCard,
@@ -84,17 +85,14 @@ function describePeggingSubtype(
   points: number,
   newCount: number,
   oldPlayedCards: { playerId: string; card: CribbageCard }[],
-  newCard: CribbageCard
+  newCard: CribbageCard,
+  isLastCardOfHand: boolean
 ): string | null {
   if (points === 0) return null;
 
   const parts: string[] = [];
 
-  // Check for 15 or 31
-  if (newCount === 15) parts.push('15');
-  if (newCount === 31) parts.push('31');
-
-  // Check for pairs
+  // Check for pairs first (before 15/31 so order is logical: "3 of a kind + 31")
   let pairCount = 1;
   for (let i = oldPlayedCards.length - 1; i >= 0; i--) {
     if (oldPlayedCards[i].card.rank === newCard.rank) {
@@ -106,6 +104,10 @@ function describePeggingSubtype(
   if (pairCount === 2) parts.push('pair');
   else if (pairCount === 3) parts.push('three_of_a_kind');
   else if (pairCount === 4) parts.push('four_of_a_kind');
+
+  // Check for 15 or 31
+  if (newCount === 15) parts.push('15');
+  if (newCount === 31) parts.push('31');
 
   // Check for runs - need to detect actual run length, not points
   if (oldPlayedCards.length >= 2) {
@@ -119,6 +121,11 @@ function describePeggingSubtype(
     if (runPts >= 3) {
       parts.push(`run of ${runPts}`);
     }
+  }
+
+  // Check for "last" - player gets 1 point for playing the last card (not already at 31)
+  if (isLastCardOfHand && newCount !== 31) {
+    parts.push('last');
   }
 
   return parts.length > 0 ? parts.join('+') : null;
@@ -145,15 +152,27 @@ export function logPeggingPlay(
   const points = newScore - oldScore;
 
   const cardsOnTable = newState.pegging.playedCards.map(pc => pc.card);
-  const runningCount = newState.pegging.currentCount;
+  
+  // Calculate the actual running count at the moment of play (before any reset)
+  // This is critical because hitting 31 triggers beginNewPeggingRun which resets count to 0
+  const cardValue = getCardPointValue(cardPlayed);
+  const actualRunningCount = oldState.pegging.currentCount + cardValue;
 
   // Only use cards from the current sequence for subtype description
   const currentSequenceCards = oldState.pegging.playedCards.slice(oldState.pegging.sequenceStartIndex);
+  
+  // Check if this is the last card of the entire hand (all players out of cards after this play)
+  const playerHand = newState.playerStates[playerId]?.hand ?? [];
+  const isLastCardOfHand = Object.values(newState.playerStates).every(
+    ps => ps.hand.length === 0
+  );
+  
   const subtype = describePeggingSubtype(
     points,
-    runningCount,
+    actualRunningCount,
     currentSequenceCards,
-    cardPlayed
+    cardPlayed,
+    isLastCardOfHand
   );
 
   // Deterministic per-play sequence number so multiple clients dedupe correctly.
@@ -167,7 +186,7 @@ export function logPeggingPlay(
     playerId,
     cardPlayed,
     cardsOnTable,
-    runningCount,
+    actualRunningCount, // Use actual count, not post-reset count
     points,
     subtype,
     buildScoresAfter(newState),
