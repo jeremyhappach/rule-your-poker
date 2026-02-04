@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
 import type { CribbageEventRecord, CardData } from "./types";
+import { truncateCribbageEventsAtWin } from "./cribbageHistoryUtils";
 
 interface PlayerHandData {
   playerId: string;
@@ -32,14 +33,22 @@ function getEventLabel(eventType: string): string {
 // Format subtype for better display (e.g., "three_of_a_kind+31" -> "3 of a kind + 31")
 function formatSubtype(subtype: string | null): string {
   if (!subtype) return "";
-  
-  return subtype
-    .replace(/three_of_a_kind/g, "trips")
-    .replace(/four_of_a_kind/g, "quads")
-    .replace(/run_(\d+)/g, "run $1")
-    .replace(/run of (\d+)/g, "run $1")
+
+  // Normalize separators first so we can match variants consistently.
+  const normalized = subtype
     .replace(/\+/g, " + ")
-    .replace(/_/g, " ");
+    .replace(/[_-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+  return normalized
+    .replace(/\bthree of a kind\b/g, "trips")
+    .replace(/\b3 of a kind\b/g, "trips")
+    .replace(/\bfour of a kind\b/g, "quads")
+    .replace(/\b4 of a kind\b/g, "quads")
+    .replace(/\brun (\d+)\b/g, "run $1")
+    .replace(/\brun of (\d+)\b/g, "run $1");
 }
 
 // Format scores for display
@@ -446,28 +455,7 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [], po
   // Filter events to only include those up to and including the winning event.
   // Once a player reaches pointsToWin, no further events should be shown.
   const filteredEvents = useMemo(() => {
-    const sorted = [...events].sort((a, b) => {
-      if (a.hand_number !== b.hand_number) return a.hand_number - b.hand_number;
-      return a.sequence_number - b.sequence_number;
-    });
-
-    const running: Record<string, number> = {};
-    const result: CribbageEventRecord[] = [];
-    
-    for (const ev of sorted) {
-      // Add points before checking win (so the winning event is included)
-      if (ev.points > 0) {
-        running[ev.player_id] = (running[ev.player_id] ?? 0) + ev.points;
-      }
-      result.push(ev);
-      
-      // Check if this event caused a win
-      if (running[ev.player_id] >= pointsToWin) {
-        break; // Stop adding events after the win
-      }
-    }
-    
-    return result;
+    return truncateCribbageEventsAtWin(events, pointsToWin);
   }, [events, pointsToWin]);
 
   // Compute a trustworthy running scoreline from the filtered event stream.
