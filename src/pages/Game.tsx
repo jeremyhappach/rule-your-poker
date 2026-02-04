@@ -333,7 +333,8 @@ const Game = () => {
     skunk_threshold?: number;
     double_skunk_enabled?: boolean;
     double_skunk_threshold?: number;
-    cribbage_game_mode?: string; // 'full' | 'half' | 'super_quick' | 'sprint'
+    cribbage_game_mode?: string; // 'full' | 'half' | 'super_quick' | 'sprint' | 'custom'
+    custom_points_to_win?: number; // For custom mode
   }
   const [previousGameConfig, setPreviousGameConfig] = useState<PreviousGameConfig | null>(null);
   // Track which gameId the previousGameConfig was captured from
@@ -384,6 +385,11 @@ const Game = () => {
       else if (game.points_to_win === 61) cfg.cribbage_game_mode = 'half';
       else if (game.points_to_win === 45) cfg.cribbage_game_mode = 'super_quick';
       else if (game.points_to_win === 31) cfg.cribbage_game_mode = 'sprint';
+      else {
+        // Non-standard points = custom mode
+        cfg.cribbage_game_mode = 'custom';
+        cfg.custom_points_to_win = game.points_to_win;
+      }
     }
 
     const key = `${game.id}:${gameType}:${JSON.stringify(cfg)}`;

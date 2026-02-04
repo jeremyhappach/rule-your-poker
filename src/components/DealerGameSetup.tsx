@@ -34,7 +34,8 @@ interface PreviousGameConfig {
   skunk_threshold?: number;
   double_skunk_enabled?: boolean;
   double_skunk_threshold?: number;
-  cribbage_game_mode?: string; // 'full' | 'half' | 'super_quick' | 'sprint'
+  cribbage_game_mode?: string; // 'full' | 'half' | 'super_quick' | 'sprint' | 'custom'
+  custom_points_to_win?: number; // For custom mode
 }
 
 type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
@@ -124,6 +125,7 @@ export const DealerGameSetup = ({
   // Cribbage-specific settings - now uses preset game modes
   const [cribbageGameMode, setCribbageGameMode] = useState<import('@/lib/cribbageTypes').CribbageGameMode>('full');
   const [skunksEnabled, setSkunksEnabled] = useState(true);
+  const [customPointsToWin, setCustomPointsToWin] = useState('61'); // Default for custom mode
   
   // Cache defaults for both game types
   const [holmDefaults, setHolmDefaults] = useState<GameDefaults | null>(null);
@@ -165,6 +167,9 @@ export const DealerGameSetup = ({
         }
         if (previousGameConfig.skunk_enabled !== undefined) {
           setSkunksEnabled(previousGameConfig.skunk_enabled);
+        }
+        if (previousGameConfig.custom_points_to_win !== undefined) {
+          setCustomPointsToWin(String(previousGameConfig.custom_points_to_win));
         }
         
         setLoadingDefaults(false);
@@ -233,6 +238,9 @@ export const DealerGameSetup = ({
           }
           if (sessionConfig.skunk_enabled !== undefined) {
             setSkunksEnabled(sessionConfig.skunk_enabled);
+          }
+          if (sessionConfig.custom_points_to_win !== undefined) {
+            setCustomPointsToWin(String(sessionConfig.custom_points_to_win));
           }
         }
         return;
@@ -1229,10 +1237,15 @@ export const DealerGameSetup = ({
       const { CRIBBAGE_GAME_MODES } = await import('@/lib/cribbageTypes');
       const selectedMode = CRIBBAGE_GAME_MODES.find(m => m.id === cribbageGameMode) || CRIBBAGE_GAME_MODES[0];
       
-      // Sprint mode forces skunks off
-      const effectiveSkunksEnabled = selectedMode.id === 'sprint' ? false : skunksEnabled;
+      // Custom and Sprint modes force skunks off
+      const effectiveSkunksEnabled = (selectedMode.id === 'sprint' || selectedMode.id === 'custom') ? false : skunksEnabled;
       
-      dealerGameConfig.points_to_win = selectedMode.pointsToWin;
+      // For custom mode, use the user-entered value; otherwise use preset
+      const pointsToWin = selectedMode.id === 'custom' 
+        ? Math.max(1, parseInt(customPointsToWin, 10) || 61)
+        : selectedMode.pointsToWin;
+      
+      dealerGameConfig.points_to_win = pointsToWin;
       dealerGameConfig.skunk_enabled = effectiveSkunksEnabled;
       dealerGameConfig.skunk_threshold = effectiveSkunksEnabled ? selectedMode.skunkThreshold : 0;
       dealerGameConfig.double_skunk_enabled = effectiveSkunksEnabled && selectedMode.doubleSkunkThreshold !== null;
@@ -1240,6 +1253,9 @@ export const DealerGameSetup = ({
         ? selectedMode.doubleSkunkThreshold 
         : 0;
       dealerGameConfig.game_mode = cribbageGameMode;
+      if (selectedMode.id === 'custom') {
+        dealerGameConfig.custom_points_to_win = pointsToWin;
+      }
     }
     
     // Insert into dealer_games table first
@@ -1269,10 +1285,13 @@ export const DealerGameSetup = ({
       const { CRIBBAGE_GAME_MODES } = await import('@/lib/cribbageTypes');
       const selectedMode = CRIBBAGE_GAME_MODES.find(m => m.id === cribbageGameMode) || CRIBBAGE_GAME_MODES[0];
       
-      // Sprint mode forces skunks off
-      const effectiveSkunksEnabled = selectedMode.id === 'sprint' ? false : skunksEnabled;
+      // Custom and Sprint modes force skunks off
+      const effectiveSkunksEnabled = (selectedMode.id === 'sprint' || selectedMode.id === 'custom') ? false : skunksEnabled;
       
-      const parsedPointsToWin = selectedMode.pointsToWin;
+      // For custom mode, use the user-entered value; otherwise use preset
+      const parsedPointsToWin = selectedMode.id === 'custom' 
+        ? Math.max(1, parseInt(customPointsToWin, 10) || 61)
+        : selectedMode.pointsToWin;
       const parsedSkunkThreshold = effectiveSkunksEnabled ? selectedMode.skunkThreshold : 0;
       const parsedDoubleSkunkThreshold = effectiveSkunksEnabled && selectedMode.doubleSkunkThreshold !== null 
         ? selectedMode.doubleSkunkThreshold 
@@ -1601,6 +1620,7 @@ export const DealerGameSetup = ({
                           { id: 'half', label: 'Half Game', desc: '61 pts' },
                           { id: 'super_quick', label: 'Super Quick', desc: '45 pts' },
                           { id: 'sprint', label: 'Sprint', desc: '31 pts' },
+                          { id: 'custom', label: 'Custom', desc: 'Enter target' },
                         ].map((mode) => (
                           <button
                             key={mode.id}
@@ -1619,8 +1639,24 @@ export const DealerGameSetup = ({
                       </div>
                     </div>
                     
-                    {/* Skunks Toggle - only show if mode supports skunks */}
-                    {cribbageGameMode !== 'sprint' && (
+                    {/* Custom points input - only show when custom mode selected */}
+                    {cribbageGameMode === 'custom' && (
+                      <div className="space-y-2">
+                        <Label className="text-amber-100 text-sm">Points to Win</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={customPointsToWin}
+                          onChange={(e) => setCustomPointsToWin(e.target.value)}
+                          className="bg-amber-900/30 border-amber-700/50 text-white"
+                          placeholder="Enter target points"
+                        />
+                        <p className="text-xs text-amber-200/50">Skunks disabled for custom games</p>
+                      </div>
+                    )}
+                    
+                    {/* Skunks Toggle - only show if mode supports skunks (not sprint or custom) */}
+                    {cribbageGameMode !== 'sprint' && cribbageGameMode !== 'custom' && (
                       <div className="flex items-center justify-between pt-2">
                         <div>
                           <Label htmlFor="skunks-toggle" className="text-amber-100 text-sm">Skunks</Label>
@@ -1643,6 +1679,7 @@ export const DealerGameSetup = ({
                       {cribbageGameMode === 'super_quick' && skunksEnabled && 'Skunk <30 (2x) • No double skunk'}
                       {cribbageGameMode === 'super_quick' && !skunksEnabled && 'No skunk multipliers'}
                       {cribbageGameMode === 'sprint' && 'Quick game, no skunk penalties'}
+                      {cribbageGameMode === 'custom' && `First to ${customPointsToWin || '?'} points, no skunks`}
                     </div>
                   </>
                 )}

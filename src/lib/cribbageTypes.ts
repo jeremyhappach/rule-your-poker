@@ -86,13 +86,13 @@ export const SKUNK_THRESHOLD = 91; // Loser < 91 = skunk (2x)
 export const DOUBLE_SKUNK_THRESHOLD = 61; // Loser < 61 = double-skunk (3x)
 
 // Preset game modes for dealer setup
-export type CribbageGameMode = 'full' | 'half' | 'super_quick' | 'sprint';
+export type CribbageGameMode = 'full' | 'half' | 'super_quick' | 'sprint' | 'custom';
 
 export interface CribbageGameModeConfig {
   id: CribbageGameMode;
   label: string;
   description: string;
-  pointsToWin: number;
+  pointsToWin: number | null; // null for custom mode (user enters value)
   skunkThreshold: number;      // Only applies if skunks enabled
   doubleSkunkThreshold: number | null; // null = no double skunk for this mode
 }
@@ -128,6 +128,14 @@ export const CRIBBAGE_GAME_MODES: CribbageGameModeConfig[] = [
     description: '31 points, no skunks',
     pointsToWin: 31,
     skunkThreshold: 0, // No skunks (forces skunks off)
+    doubleSkunkThreshold: null,
+  },
+  {
+    id: 'custom',
+    label: 'Custom',
+    description: 'Enter your target',
+    pointsToWin: null, // User enters value
+    skunkThreshold: 0, // Skunks disabled for custom
     doubleSkunkThreshold: null,
   },
 ];
