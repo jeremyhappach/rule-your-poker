@@ -6309,31 +6309,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </>
         )}
 
-        {/* CRIBBAGE GAME_OVER: Keep cribbage table visible during win sequence, auto-transition to next game */}
-        {game.status === 'game_over' && game.game_type === 'cribbage' && (
-          <CribbageMobileGameTable
-            gameId={gameId!}
-            roundId={currentRound?.id || ''}
-            dealerGameId={currentRound?.dealer_game_id || null}
-            handNumber={currentRound?.hand_number ?? 1}
-            players={players}
-            currentUserId={user?.id || ''}
-            dealerPosition={game.dealer_position || 1}
-            anteAmount={game.ante_amount || 1}
-            pot={0}
-            isHost={isCreator}
-            onGameComplete={handleGameOverComplete}
-            dealerChatMessages={cribbageDealerChatMessages}
-            onInjectDealerChatMessage={injectCribbageDealerChatMessage}
-            gameConfig={{
-              pointsToWin: game.points_to_win || 121,
-              skunkEnabled: game.skunk_enabled ?? true,
-              skunkThreshold: game.skunk_threshold || 91,
-              doubleSkunkEnabled: game.double_skunk_enabled ?? true,
-              doubleSkunkThreshold: game.double_skunk_threshold || 61,
-            }}
-          />
-        )}
+        {/* NOTE: Cribbage win sequence must NOT remount on in_progress -> game_over.
+            We render the same CribbageMobileGameTable instance for both statuses below. */}
 
 
         {game.status === 'completed' && (
@@ -6433,8 +6410,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </>
         )}
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress') && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'cribbage')) && (() => {
           const isInProgress = game.status === 'in_progress';
+          const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
 
           // DICE GAMES (Horses and Ship Captain Crew)
@@ -6525,7 +6503,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // CRIBBAGE GAME - Use mobile-optimized table
           // CRITICAL: onGameComplete must call handleGameOverComplete to transition to next game
-          if (isInProgress && game.game_type === 'cribbage') {
+          // CRIBBAGE GAME - Keep table mounted through win sequence (in_progress -> game_over)
+          if ((isInProgress || isCribbageGameOver) && game.game_type === 'cribbage') {
             return (
               <CribbageMobileGameTable
                 gameId={gameId!}
@@ -6536,7 +6515,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 currentUserId={user?.id || ''}
                 dealerPosition={game.dealer_position || 1}
                 anteAmount={game.ante_amount || 1}
-                pot={potForDisplay}
+                pot={isCribbageGameOver ? 0 : potForDisplay}
                 isHost={isCreator}
                 onGameComplete={handleGameOverComplete}
                 dealerChatMessages={cribbageDealerChatMessages}
