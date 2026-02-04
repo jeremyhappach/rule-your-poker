@@ -509,7 +509,21 @@ export const CribbageMobileGameTable = ({
     };
   }, [countingStartKey, calculateCountingBaselineScores]);
 
-  // Detect new player messages and trigger flash (exclude dealer messages)
+  // Clear counting overrides when starting a fresh hand (discarding phase).
+  // This prevents stale override values from affecting the pegboard in non-counting phases.
+  // We intentionally do NOT clear during counting→complete because the peg needs to show final scores.
+  useEffect(() => {
+    if (!cribbageState) return;
+    // Clear overrides when we're in discarding or cutting (new hand started)
+    if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting') {
+      // Only clear if we actually have stale overrides AND the snapshot is cleared
+      // (meaning counting animation is truly complete)
+      if (countingScoreOverrides && !countingStateSnapshot) {
+        setCountingScoreOverrides(null);
+      }
+    }
+  }, [cribbageState?.phase, countingScoreOverrides, countingStateSnapshot]);
+
   useEffect(() => {
     const playerMessageCount = allMessages.length;
     const totalWithDealer = playerMessageCount + dealerMessages.length;
@@ -1322,8 +1336,12 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = null;
     setCountingWinFrozen(false);
     
-    // Clear the animated score overrides so pegboard shows real scores again
-    setCountingScoreOverrides(null);
+    // IMPORTANT: Do NOT clear countingScoreOverrides here.
+    // The override should persist with the final counting scores until either:
+    // 1. A new counting phase starts (which will set new baseline scores)
+    // 2. The pegboard naturally shows new scores from DB once new hand begins
+    // Clearing it here causes a race condition where pegboard briefly shows stale DB scores.
+    // The next counting phase will overwrite this with fresh baseline anyway.
     
     // Start new hand (win case is handled by reactive score subscription)
     try {
