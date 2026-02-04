@@ -64,6 +64,8 @@ export function useCribbageEventContext(
 
   // Return null if we don't have minimum required data
   if (!roundId || handNumber === undefined) {
+    // Only log once per unique combination to avoid spam
+    console.warn('[CRIBBAGE_EVENT_CTX] Context unavailable:', { roundId: roundId || '(empty)', dealerGameId, handNumber });
     return null;
   }
 
@@ -132,6 +134,10 @@ export function logPeggingPlay(
   playerId: string,
   cardPlayed: CribbageCard
 ): void {
+  if (!ctx) {
+    console.warn('[CRIBBAGE_EVENT] logPeggingPlay called with null context - event will not be logged');
+    return;
+  }
   if (!ctx) return;
 
   const oldScore = oldState.playerStates[playerId]?.pegScore ?? 0;
@@ -178,7 +184,10 @@ export function logGoPointEvent(
   oldState: CribbageState,
   newState: CribbageState
 ): void {
-  if (!ctx) return;
+  if (!ctx) {
+    console.warn('[CRIBBAGE_EVENT] logGoPointEvent called with null context - event will not be logged');
+    return;
+  }
 
   const playIndex = newState.pegging.playedCards.length;
   const sequenceNumber = seqGoAfterPlay(playIndex);
@@ -209,7 +218,11 @@ export function logHisHeelsEvent(
   ctx: CribbageEventContext | null,
   newState: CribbageState
 ): void {
-  if (!ctx || !newState.cutCard) return;
+  if (!ctx) {
+    console.warn('[CRIBBAGE_EVENT] logHisHeelsEvent called with null context - event will not be logged');
+    return;
+  }
+  if (!newState.cutCard) return;
 
   // Only log if there was a his_heels event
   if (newState.lastEvent?.type !== 'his_heels') return;
@@ -233,6 +246,10 @@ export function logCutCardEvent(
   ctx: CribbageEventContext | null,
   state: CribbageState
 ): void {
+  if (!ctx) {
+    console.warn('[CRIBBAGE_EVENT] logCutCardEvent called with null context - event will not be logged');
+    return;
+  }
   if (!ctx || !state.cutCard) return;
 
   logCutCardReveal(
@@ -258,6 +275,10 @@ export function logCountingScoringEvents(
   players: { id: string }[],
   runningScores: Record<string, number>
 ): void {
+  if (!ctx) {
+    console.warn('[CRIBBAGE_EVENT] logCountingScoringEvents called with null context - event will not be logged');
+    return;
+  }
   if (!ctx || !state.cutCard) return;
 
   // Deterministic scoring order:
