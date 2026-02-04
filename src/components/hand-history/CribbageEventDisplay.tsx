@@ -91,21 +91,25 @@ function getSequenceStartIndex(events: CribbageEventRecord[], currentIndex: numb
 }
 
 /**
- * Get only the cards in the current sequence (since last reset)
+ * Get only the cards in the current sequence (since last reset).
+ * Also returns the actual running count for display (handles 31 stored as 0).
  */
 function getSequenceCards(
   allEvents: CribbageEventRecord[],
   currentEventIndex: number
-): CardData[] {
+): { cards: CardData[]; displayCount: number } {
   const currentEvent = allEvents[currentEventIndex];
-  if (currentEvent.event_type !== "pegging") return [];
+  if (currentEvent.event_type !== "pegging") return { cards: [], displayCount: 0 };
   
   const cards: CardData[] = [];
-  const currentCount = currentEvent.running_count ?? 0;
+  let storedCount = currentEvent.running_count ?? 0;
+  
+  // Check if this event scored a 31 - if so, the stored count might be 0 (post-reset)
+  // but we want to display 31 and show the full sequence
+  const scored31 = currentEvent.event_subtype?.includes("31") ?? false;
   
   // Walk backward to find where this sequence started
   let sequenceStart = currentEventIndex;
-  let prevCount = currentCount;
   
   for (let i = currentEventIndex - 1; i >= 0; i--) {
     const ev = allEvents[i];
@@ -113,13 +117,30 @@ function getSequenceCards(
     
     const evCount = ev.running_count ?? 0;
     
-    // If count at previous event is higher than current start, we're before a reset
-    if (evCount > prevCount || (evCount === 0 && prevCount > 0)) {
+    // If the current event scored 31, we need all cards in this sequence
+    // The previous event's count tells us we're still in the same sequence
+    if (scored31) {
+      // Keep going back until we find a 31 or go event (previous sequence end)
+      const prevScored31OrGo = ev.event_subtype?.includes("31") || 
+        allEvents.find((e, idx) => idx > i && idx < currentEventIndex && e.event_type === "go");
+      if (prevScored31OrGo) {
+        break;
+      }
+      sequenceStart = i;
+      continue;
+    }
+    
+    // Normal case: if current count is lower than previous, we crossed a reset
+    if (storedCount < evCount) {
       break; // Found the reset point
     }
     
+    // If previous count is 0 but current is also low, check if prev was a 31
+    if (evCount === 0 && ev.event_subtype?.includes("31")) {
+      break; // Previous was end of sequence
+    }
+    
     sequenceStart = i;
-    prevCount = evCount;
   }
   
   // Collect all cards from sequenceStart to currentEventIndex (inclusive)
@@ -130,7 +151,14 @@ function getSequenceCards(
     }
   }
   
-  return cards;
+  // Calculate actual display count
+  let displayCount = storedCount;
+  if (scored31 && storedCount === 0) {
+    // If we scored 31 but count is stored as 0, display 31
+    displayCount = 31;
+  }
+  
+  return { cards, displayCount };
 }
 
 interface EventRowProps {
@@ -174,7 +202,7 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex, scoresAft
 
   // For pegging events, show only cards in current sequence (after reset)
   const showCardsOnTable = event.event_type === "pegging";
-  const sequenceCards = showCardsOnTable ? getSequenceCards(allEvents, eventIndex) : [];
+  const sequenceData = showCardsOnTable ? getSequenceCards(allEvents, eventIndex) : { cards: [], displayCount: 0 };
 
   return (
     <div className="rounded bg-muted/20 px-2 py-1.5 space-y-1">
@@ -204,16 +232,16 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex, scoresAft
       </div>
       
       {/* Cards on table (board) - only show current sequence, not all cards */}
-      {showCardsOnTable && sequenceCards.length > 0 && (
+      {showCardsOnTable && sequenceData.cards.length > 0 && (
         <div className="pl-12 flex items-center gap-1">
           <span className="text-[10px] text-muted-foreground">Board:</span>
           <div className="flex gap-0.5">
-            {sequenceCards.map((card, i) => (
+            {sequenceData.cards.map((card, i) => (
               <MiniPlayingCard key={i} card={card} className="w-4 h-5" />
             ))}
           </div>
-          {event.running_count !== null && (
-            <span className="text-[10px] text-muted-foreground ml-1">({event.running_count})</span>
+          {sequenceData.displayCount > 0 && (
+            <span className="text-[10px] text-muted-foreground ml-1">({sequenceData.displayCount})</span>
           )}
         </div>
       )}
