@@ -85,6 +85,53 @@ export const CRIBBAGE_WINNING_SCORE = 121;
 export const SKUNK_THRESHOLD = 91; // Loser < 91 = skunk (2x)
 export const DOUBLE_SKUNK_THRESHOLD = 61; // Loser < 61 = double-skunk (3x)
 
+// Preset game modes for dealer setup
+export type CribbageGameMode = 'full' | 'half' | 'super_quick' | 'sprint';
+
+export interface CribbageGameModeConfig {
+  id: CribbageGameMode;
+  label: string;
+  description: string;
+  pointsToWin: number;
+  skunkThreshold: number;      // Only applies if skunks enabled
+  doubleSkunkThreshold: number | null; // null = no double skunk for this mode
+}
+
+export const CRIBBAGE_GAME_MODES: CribbageGameModeConfig[] = [
+  {
+    id: 'full',
+    label: 'Full Game',
+    description: '121 points',
+    pointsToWin: 121,
+    skunkThreshold: 91,
+    doubleSkunkThreshold: 61,
+  },
+  {
+    id: 'half',
+    label: 'Half Game',
+    description: '61 points',
+    pointsToWin: 61,
+    skunkThreshold: 31,
+    doubleSkunkThreshold: 15,
+  },
+  {
+    id: 'super_quick',
+    label: 'Super Quick',
+    description: '45 points',
+    pointsToWin: 45,
+    skunkThreshold: 30,
+    doubleSkunkThreshold: null, // No double skunk
+  },
+  {
+    id: 'sprint',
+    label: 'Sprint',
+    description: '31 points, no skunks',
+    pointsToWin: 31,
+    skunkThreshold: 0, // No skunks (forces skunks off)
+    doubleSkunkThreshold: null,
+  },
+];
+
 // Card dealing rules by player count
 export const CARDS_PER_PLAYER: Record<number, number> = {
   2: 6, // Each gets 6, discards 2 to crib
