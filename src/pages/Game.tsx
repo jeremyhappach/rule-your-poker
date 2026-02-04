@@ -6256,6 +6256,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           <CribbageMobileGameTable
             gameId={gameId!}
             roundId={currentRound?.id || ''}
+            dealerGameId={currentRound?.dealer_game_id || null}
+            handNumber={currentRound?.hand_number ?? 1}
             players={players}
             currentUserId={user?.id || ''}
             dealerPosition={game.dealer_position || 1}
@@ -6345,6 +6347,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <CribbageMobileGameTable
               gameId={gameId!}
               roundId=""
+              dealerGameId={null}
+              handNumber={1}
               players={players}
               currentUserId={user?.id || ''}
               dealerPosition={game.dealer_position || 1}
@@ -6464,6 +6468,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <CribbageMobileGameTable
                 gameId={gameId!}
                 roundId={currentRound?.id || ''}
+                dealerGameId={currentRound?.dealer_game_id || null}
+                handNumber={currentRound?.hand_number ?? 1}
                 players={players}
                 currentUserId={user?.id || ''}
                 dealerPosition={game.dealer_position || 1}

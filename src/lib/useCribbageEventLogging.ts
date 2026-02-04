@@ -25,65 +25,54 @@ import {
   seqPeggingPlay,
 } from './cribbageEventSequence';
 
-interface CribbageEventContext {
+export interface CribbageEventContext {
   roundId: string;
   dealerGameId: string | null;
   handNumber: number;
 }
 
 /**
- * Hook to fetch and provide cribbage event logging context
+ * Synchronously derive cribbage event context from props.
+ * 
+ * CRITICAL FIX: The previous async implementation caused a race condition where
+ * events fired before the DB fetch completed were permanently lost. This version
+ * derives context synchronously from props that are already available.
+ * 
+ * @param roundId - The current round ID
+ * @param dealerGameId - The dealer game ID (passed as prop from Game.tsx)
+ * @param handNumber - The hand number from cribbage state
  */
-export function useCribbageEventContext(roundId: string): CribbageEventContext | null {
-  const [context, setContext] = useState<CribbageEventContext | null>(null);
+export function useCribbageEventContext(
+  roundId: string,
+  dealerGameId: string | null,
+  handNumber: number | undefined
+): CribbageEventContext | null {
   const lastRoundIdRef = useRef<string | null>(null);
 
+  // Reset sequence counter when round changes
   useEffect(() => {
     if (!roundId) {
-      setContext(null);
       lastRoundIdRef.current = null;
       return;
     }
 
-    // IMPORTANT: this hook is reused across hands/rounds without a full page reload.
-    // We must refetch whenever roundId changes.
     if (lastRoundIdRef.current !== roundId) {
       lastRoundIdRef.current = roundId;
-      setContext(null);
       resetCribbageEventSequence(roundId);
     }
-
-    let cancelled = false;
-
-    const fetchContext = async () => {
-      const { data, error } = await supabase
-        .from('rounds')
-        .select('dealer_game_id, hand_number')
-        .eq('id', roundId)
-        .single();
-
-      if (error) {
-        console.error('[CRIBBAGE_EVENT] Failed to fetch context:', error);
-        return;
-      }
-
-      const ctx: CribbageEventContext = {
-        roundId,
-        dealerGameId: data?.dealer_game_id ?? null,
-        handNumber: data?.hand_number ?? 1,
-      };
-
-      if (cancelled) return;
-      setContext(ctx);
-    };
-
-    fetchContext();
-    return () => {
-      cancelled = true;
-    };
   }, [roundId]);
 
-  return context;
+  // Return null if we don't have minimum required data
+  if (!roundId || handNumber === undefined) {
+    return null;
+  }
+
+  // Synchronously return context - no async fetch needed!
+  return {
+    roundId,
+    dealerGameId,
+    handNumber,
+  };
 }
 
 /**

@@ -36,6 +36,8 @@ interface Player {
 interface CribbageGameTableProps {
   gameId: string;
   roundId: string;
+  dealerGameId: string | null; // Required for event logging
+  handNumber: number; // Required for event logging (from round data)
   players: Player[];
   currentUserId: string;
   dealerPosition: number;
@@ -63,6 +65,8 @@ function getHandKey(state: CribbageState | null): string {
 export const CribbageGameTable = ({
   gameId,
   roundId,
+  dealerGameId,
+  handNumber,
   players,
   currentUserId,
   dealerPosition,
@@ -80,8 +84,8 @@ export const CribbageGameTable = ({
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Event logging context (fire-and-forget)
-  const eventCtx = useCribbageEventContext(roundId);
+  // Event logging context - synchronously derived from props (no async fetch!)
+  const eventCtx = useCribbageEventContext(roundId, dealerGameId, handNumber);
   
   // Track if we've logged the cut card for this hand
   const cutCardLoggedRef = useRef<string | null>(null);
