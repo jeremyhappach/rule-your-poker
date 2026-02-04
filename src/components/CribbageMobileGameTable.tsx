@@ -258,7 +258,8 @@ export const CribbageMobileGameTable = ({
   const chipAnimationFiredRef = useRef<string | null>(null);
 
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
-  const winKeyFor = (winnerId: string) => `${gameId}:${winnerId}`;
+  // IMPORTANT: include dealerGameId so a player can win multiple dealer games in the same session.
+  const winKeyFor = (winnerId: string) => `${gameId}:${dealerGameId ?? 'unknown-dealer'}:${winnerId}`;
 
   // Event logging context - uses local tracking for proper hand transitions
   const eventCtx = useCribbageEventContext(currentRoundId, dealerGameId, currentHandNumber);
@@ -361,6 +362,10 @@ export const CribbageMobileGameTable = ({
     // Skip "0 points" announcements - those are just placeholders
     // Include individual combos AND totals
     if (announcement && targetLabel && announcement !== '0 points') {
+      // Once a win sequence has started (scheduled or fired), suppress any further counting announcements.
+      // This prevents duplicate/reordered "winning combo" lines during in_progress -> game_over transitions.
+      if (winSequenceScheduledRef.current || winSequenceFiredRef.current) return;
+
       // Check if this is a new announcement (different text, target, or key)
       const isNew = !lastAnnouncementRef.current || 
         lastAnnouncementRef.current.text !== announcement ||
