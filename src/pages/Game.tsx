@@ -557,6 +557,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Children use this to avoid writing stale local state back into the external cache.
   const [communityCacheEpoch, setCommunityCacheEpoch] = useState(0);
 
+  // LIFTED cribbage dealer-chat announcements - persist across multiple dealer games in the same session
+  type DealerChatMessage = {
+    id: string;
+    message: string;
+    created_at: string;
+    isDealer: true;
+  };
+  const [cribbageDealerChatMessages, setCribbageDealerChatMessages] = useState<DealerChatMessage[]>([]);
+  const cribbageDealerChatIdRef = useRef(0);
+  const injectCribbageDealerChatMessage = useCallback((message: string) => {
+    cribbageDealerChatIdRef.current += 1;
+    const newMsg: DealerChatMessage = {
+      id: `dealer-${cribbageDealerChatIdRef.current}-${Date.now()}`,
+      message,
+      created_at: new Date().toISOString(),
+      isDealer: true as const,
+    };
+    setCribbageDealerChatMessages((prev) => [...prev, newMsg]);
+  }, []);
+
+  // Prevent dealer-chat leakage across different sessions/routes.
+  useEffect(() => {
+    setCribbageDealerChatMessages([]);
+    cribbageDealerChatIdRef.current = 0;
+  }, [gameId]);
+
   const { chatBubbles, allMessages, sendMessage: sendChatMessage, isSending: isChatSending, getPositionForUserId } = useGameChat(gameId, players, user?.id);
   
   // Server-side deadline enforcement - any active client triggers this for ALL players
@@ -6297,6 +6323,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             pot={0}
             isHost={isCreator}
             onGameComplete={handleGameOverComplete}
+            dealerChatMessages={cribbageDealerChatMessages}
+            onInjectDealerChatMessage={injectCribbageDealerChatMessage}
             gameConfig={{
               pointsToWin: game.points_to_win || 121,
               skunkEnabled: game.skunk_enabled ?? true,
@@ -6379,7 +6407,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <CribbageMobileGameTable
               gameId={gameId!}
               roundId=""
-              dealerGameId={null}
+              dealerGameId={game.current_game_uuid || null}
               handNumber={1}
               players={players}
               currentUserId={user?.id || ''}
@@ -6388,6 +6416,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pot={0}
               isHost={isCreator}
               onGameComplete={fetchGameData}
+              dealerChatMessages={cribbageDealerChatMessages}
+              onInjectDealerChatMessage={injectCribbageDealerChatMessage}
               gameConfig={{
                 pointsToWin: game.points_to_win || 121,
                 skunkEnabled: game.skunk_enabled ?? true,
@@ -6509,6 +6539,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pot={potForDisplay}
                 isHost={isCreator}
                 onGameComplete={handleGameOverComplete}
+                dealerChatMessages={cribbageDealerChatMessages}
+                onInjectDealerChatMessage={injectCribbageDealerChatMessage}
                 gameConfig={{
                   pointsToWin: game.points_to_win || 121,
                   skunkEnabled: game.skunk_enabled ?? true,
