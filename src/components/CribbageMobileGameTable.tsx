@@ -77,6 +77,15 @@ interface CribbageMobileGameTableProps {
   dealerSelectionAnnouncement?: string | null;
   dealerSelectionWinnerPosition?: number | null;
   isDealerSelection?: boolean;
+
+  // Dealer chat announcements (session-persistent, optional)
+  dealerChatMessages?: Array<{
+    id: string;
+    message: string;
+    created_at: string;
+    isDealer: true;
+  }>;
+  onInjectDealerChatMessage?: (message: string) => void;
 }
 
 // Custom Spade icon for tab
@@ -137,6 +146,9 @@ export const CribbageMobileGameTable = ({
   dealerSelectionAnnouncement: externalDealerSelectionAnnouncement,
   dealerSelectionWinnerPosition: externalDealerSelectionWinnerPosition,
   isDealerSelection = false,
+
+  dealerChatMessages: externalDealerChatMessages,
+  onInjectDealerChatMessage,
 }: CribbageMobileGameTableProps) => {
   const { getTableColors, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
@@ -291,26 +303,51 @@ export const CribbageMobileGameTable = ({
   }, [players]);
 
   // Local dealer messages to inject into chat (scoring events)
-  const [dealerMessages, setDealerMessages] = useState<Array<{
+  type DealerChatMessage = {
     id: string;
     message: string;
     created_at: string;
     isDealer: true;
-  }>>([]);
-  const dealerMessageIdRef = useRef(0);
+  };
+
+  const [internalDealerMessages, setInternalDealerMessages] = useState<DealerChatMessage[]>([]);
+  const dealerMessages: DealerChatMessage[] = externalDealerChatMessages ?? internalDealerMessages;
+
+  const internalDealerMessageIdRef = useRef(0);
 
   // Inject a dealer announcement into chat
   const injectDealerMessage = useCallback((message: string) => {
-    dealerMessageIdRef.current += 1;
-    const newMsg = {
-      id: `dealer-${dealerMessageIdRef.current}-${Date.now()}`,
+    // If the parent provided a session-persistent injector, use that.
+    if (onInjectDealerChatMessage) {
+      onInjectDealerChatMessage(message);
+      dealerMessageCountRef.current += 1;
+      return;
+    }
+
+    internalDealerMessageIdRef.current += 1;
+    const newMsg: DealerChatMessage = {
+      id: `dealer-${internalDealerMessageIdRef.current}-${Date.now()}`,
       message,
       created_at: new Date().toISOString(),
       isDealer: true as const,
     };
-    setDealerMessages(prev => [...prev, newMsg]);
+    setInternalDealerMessages((prev) => [...prev, newMsg]);
     dealerMessageCountRef.current += 1;
-  }, []);
+  }, [onInjectDealerChatMessage]);
+
+  // Inject "New game starting" exactly once per dealer_game_id, even during dealer selection
+  const newGameAnnouncementKeyRef = useRef<string | null>(null);
+  const announceNewGameStarting = useCallback(() => {
+    if (!dealerGameId) return;
+    if (newGameAnnouncementKeyRef.current === dealerGameId) return;
+    newGameAnnouncementKeyRef.current = dealerGameId;
+    injectDealerMessage('New game starting');
+  }, [dealerGameId, injectDealerMessage]);
+
+  useEffect(() => {
+    if (!isDealerSelection) return;
+    announceNewGameStarting();
+  }, [isDealerSelection, announceNewGameStarting]);
 
   // Callback for counting phase announcements - also injects into chat
   // Track announcement sequence to detect duplicate combo announcements (e.g., multiple 15s)
@@ -625,8 +662,8 @@ export const CribbageMobileGameTable = ({
       
       if (isFirstHand) {
         console.log('[CRIBBAGE] First hand - starting high card selection');
-        // Inject "new game starting" message into chat
-        injectDealerMessage('New game starting');
+        // Inject "new game starting" message into chat (idempotent per dealer_game_id)
+        announceNewGameStarting();
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
         return;
@@ -649,7 +686,7 @@ export const CribbageMobileGameTable = ({
     };
 
     loadOrInitializeState();
-  }, [roundId, initialLoadComplete, injectDealerMessage]); // Re-run if roundId changes, include initialLoadComplete in deps
+  }, [roundId, initialLoadComplete, injectDealerMessage, announceNewGameStarting]); // Re-run if roundId changes, include initialLoadComplete in deps
 
   // Keep showHighCardSelection from "sticking" after the real cribbage_state arrives (non-host clients)
   useEffect(() => {
