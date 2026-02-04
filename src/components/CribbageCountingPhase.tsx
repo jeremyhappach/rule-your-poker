@@ -26,7 +26,7 @@ interface CribbageCountingPhaseProps {
   players: Player[];
   onCountingComplete: (winDetected: boolean) => void;
   cardBackColors: { color: string; darkColor: string };
-  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null) => void;
+  onAnnouncementChange?: (announcement: string | null, targetLabel: string | null, announcementKey?: number) => void;
   onScoreUpdate?: (scores: Record<string, number>) => void;
   /** Optional baseline scores to start the counting animation from (typically pegging-phase scores). */
   initialScores?: Record<string, number>;
@@ -52,6 +52,7 @@ export const CribbageCountingPhase = ({
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
   const [highlightedCards, setHighlightedCards] = useState<CribbageCard[]>([]);
   const [announcement, setAnnouncement] = useState<string | null>(null);
+  const [announcementKey, setAnnouncementKey] = useState(0); // Increments to force re-trigger for identical combos
   const [animatedScores, setAnimatedScores] = useState<Record<string, number>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
@@ -229,6 +230,7 @@ export const CribbageCountingPhase = ({
         const combo = currentCombos[currentComboIndex];
         setHighlightedCards(combo.cards);
         setAnnouncement(`${combo.label}: +${combo.points}`);
+        setAnnouncementKey(prev => prev + 1); // Increment to trigger re-injection for identical combos
 
         // IMPORTANT: functional update prevents re-processing the same combo due to rerenders.
         setAnimatedScores((prev) => {
@@ -253,6 +255,7 @@ export const CribbageCountingPhase = ({
       setHighlightedCards([]);
       const total = getTotalFromCombos(currentCombos);
       setAnnouncement(`Total: ${total} points`);
+      setAnnouncementKey(prev => prev + 1); // Increment for the total announcement
 
       innerTimer = setTimeout(() => {
         if (!winFrozenRef.current) startExitTransition();
@@ -319,9 +322,9 @@ export const CribbageCountingPhase = ({
   useEffect(() => {
     if (winFrozen) return;
     if (onAnnouncementChange) {
-      onAnnouncementChange(announcement, currentTarget?.label || null);
+      onAnnouncementChange(announcement, currentTarget?.label || null, announcementKey);
     }
-  }, [announcement, currentTarget?.label, onAnnouncementChange, winFrozen]);
+  }, [announcement, currentTarget?.label, onAnnouncementChange, winFrozen, announcementKey]);
 
   // Cleanup on unmount
   useEffect(() => {

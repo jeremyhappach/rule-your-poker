@@ -313,17 +313,27 @@ export const CribbageMobileGameTable = ({
   }, []);
 
   // Callback for counting phase announcements - also injects into chat
-  const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null) => {
+  // Track announcement sequence to detect duplicate combo announcements (e.g., multiple 15s)
+  const lastAnnouncementRef = useRef<{ text: string; target: string; key: number } | null>(null);
+  
+  const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null, announcementKey?: number) => {
     setCountingAnnouncement(announcement);
     setCountingTargetLabel(targetLabel);
     
     // Inject scoring announcements into chat as dealer messages
-    // Skip "Total:" and "0 points" announcements - individual combos are the meaningful events
-    // The total is just for the dealer banner display, not chat
-    if (announcement && targetLabel && 
-        !announcement.startsWith('Total:') && 
-        announcement !== '0 points') {
-      injectDealerMessage(`${targetLabel}: ${announcement}`);
+    // Skip "0 points" announcements - those are just placeholders
+    // Include individual combos AND totals
+    if (announcement && targetLabel && announcement !== '0 points') {
+      // Check if this is a new announcement (different text, target, or key)
+      const isNew = !lastAnnouncementRef.current || 
+        lastAnnouncementRef.current.text !== announcement ||
+        lastAnnouncementRef.current.target !== targetLabel ||
+        lastAnnouncementRef.current.key !== (announcementKey ?? 0);
+      
+      if (isNew) {
+        lastAnnouncementRef.current = { text: announcement, target: targetLabel, key: announcementKey ?? 0 };
+        injectDealerMessage(`${targetLabel}: ${announcement}`);
+      }
     }
   }, [injectDealerMessage]);
 
