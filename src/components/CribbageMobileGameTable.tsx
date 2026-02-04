@@ -1579,7 +1579,10 @@ export const CribbageMobileGameTable = ({
           const effectivePhase = isCountingAnimActive ? countingStateSnapshot.phase : cribbageState.phase;
           const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : cribbageState.lastEvent;
           
-          const shouldShowBanner = (winSequencePhase === 'idle' || winSequencePhase === 'chips' || winSequencePhase === 'announcement') && (
+          // Hide banner during skunk overlay phase - only show during gameplay or chips/announcement win phases
+          if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
+          
+          const shouldShowBanner = (
             effectivePhase === 'counting' || effectiveLastEvent ||
             effectivePhase === 'discarding' ||
             effectivePhase === 'cutting' ||
