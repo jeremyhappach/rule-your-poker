@@ -56,6 +56,50 @@ function formatScores(scoresAfter: Record<string, number>, playerNames: Map<stri
     .join(" | ");
 }
 
+function peggingCardValue(card: CardData | null | undefined): number {
+  if (!card) return 0;
+  const r = String(card.rank ?? "").toUpperCase();
+  if (r === "A") return 1;
+  if (r === "K" || r === "Q" || r === "J") return 10;
+  const n = Number.parseInt(r, 10);
+  if (Number.isFinite(n)) return Math.min(Math.max(n, 0), 10);
+  return 0;
+}
+
+/**
+ * Some historical logs store the 31-play as running_count=0 (post-reset)
+ * and omit "+31" from event_subtype (e.g. subtype="three_of_a_kind", points=8).
+ * Infer whether the play hit exactly 31 from the previous pegging count + card value.
+ */
+function inferHit31(allEvents: CribbageEventRecord[], currentEventIndex: number): boolean {
+  const ev = allEvents[currentEventIndex];
+  if (!ev || ev.event_type !== "pegging") return false;
+
+  if (ev.event_subtype?.includes("31")) return true;
+  const storedCount = ev.running_count ?? 0;
+  if (storedCount === 31) return true;
+
+  const cardVal = peggingCardValue(ev.card_played ?? undefined);
+  if (cardVal <= 0) return false;
+
+  // If count reset to 0, check the nearest previous pegging count.
+  if (storedCount === 0) {
+    let prevPeg: CribbageEventRecord | null = null;
+    for (let i = currentEventIndex - 1; i >= 0; i--) {
+      if (allEvents[i].event_type === "pegging") {
+        prevPeg = allEvents[i];
+        break;
+      }
+    }
+    if (!prevPeg) return false;
+
+    const prevCount = prevPeg.running_count ?? 0;
+    return prevCount > 0 && prevCount + cardVal === 31;
+  }
+
+  return false;
+}
+
 /**
  * Detect where the current sequence starts based on count resets.
  * When running_count drops (e.g., 31 -> reset), we know a new sequence started.
@@ -106,7 +150,7 @@ function getSequenceCards(
   
   // Check if this event scored a 31 - if so, the stored count might be 0 (post-reset)
   // but we want to display 31 and show the full sequence
-  const scored31 = currentEvent.event_subtype?.includes("31") ?? false;
+  const scored31 = inferHit31(allEvents, currentEventIndex);
   
   // Walk backward to find where this sequence started
   // A sequence starts after a 31 or Go from the previous sequence
@@ -178,7 +222,11 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex, scoresAft
   const label = getEventLabel(event.event_type);
   const subtype = formatSubtype(event.event_subtype);
   const scoresText = formatScores(scoresAfterForRow ?? event.scores_after, playerNames);
-  const peggingPointsCause = event.event_type === "pegging" && event.points > 0 ? subtype : "";
+  const hit31 = event.event_type === "pegging" ? inferHit31(allEvents, eventIndex) : false;
+  let peggingPointsCause = event.event_type === "pegging" && event.points > 0 ? subtype : "";
+  if (event.event_type === "pegging" && event.points > 0 && hit31 && !peggingPointsCause.includes("31")) {
+    peggingPointsCause = peggingPointsCause ? `${peggingPointsCause} + 31` : "31";
+  }
   
   // Build description based on event type
   let description = "";
