@@ -61,6 +61,8 @@ interface CribbageGameConfig {
 interface CribbageMobileGameTableProps {
   gameId: string;
   roundId: string;
+  dealerGameId: string | null; // Required for event logging
+  handNumber: number; // Required for event logging (from round data)
   players: Player[];
   currentUserId: string;
   dealerPosition: number;
@@ -113,6 +115,8 @@ function getHandKey(state: CribbageState | null): string {
 export const CribbageMobileGameTable = ({
   gameId,
   roundId,
+  dealerGameId,
+  handNumber,
   players,
   currentUserId,
   dealerPosition,
@@ -224,8 +228,8 @@ export const CribbageMobileGameTable = ({
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   const winKeyFor = (winnerId: string) => `${gameId}:${winnerId}`;
 
-  // Event logging context (fire-and-forget)
-  const eventCtx = useCribbageEventContext(roundId);
+  // Event logging context - synchronously derived from props (no async fetch!)
+  const eventCtx = useCribbageEventContext(roundId, dealerGameId, handNumber);
   
   // Track if we've logged the cut card for this hand
   const cutCardLoggedRef = useRef<string | null>(null);
