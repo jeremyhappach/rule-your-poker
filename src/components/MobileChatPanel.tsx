@@ -17,6 +17,14 @@ interface ChatMessage {
   message: string;
   image_url?: string | null;
   username?: string;
+  created_at?: string;
+}
+
+interface DealerMessage {
+  id: string;
+  message: string;
+  created_at: string;
+  isDealer: true;
 }
 
 interface MobileChatPanelProps {
@@ -26,6 +34,8 @@ interface MobileChatPanelProps {
   // Lifted chat input state (persists across remounts)
   chatInputValue?: string;
   onChatInputChange?: (value: string) => void;
+  // Dealer messages (scoring announcements) - styled differently
+  dealerMessages?: DealerMessage[];
 }
 
 export const MobileChatPanel = ({ 
@@ -34,6 +44,7 @@ export const MobileChatPanel = ({
   isSending,
   chatInputValue,
   onChatInputChange,
+  dealerMessages = [],
 }: MobileChatPanelProps) => {
   // Use external state if provided, otherwise internal
   const [internalInputMessage, setInternalInputMessage] = useState('');
@@ -203,26 +214,61 @@ export const MobileChatPanel = ({
 
       {/* Chat history */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 pb-2 space-y-1">
-        {messages.length === 0 ? (
-          <p className="text-white/40 text-xs text-center">No messages yet</p>
-        ) : (
-          [...messages].reverse().map((msg) => (
-            <div key={msg.id} className="text-xs leading-tight">
-              <div>
-                <span className="text-amber-400 font-medium">{msg.username || 'Unknown'}:</span>{' '}
-                {msg.message && <span className="text-white">{msg.message}</span>}
+        {(() => {
+          // Combine player messages and dealer messages, sorted by timestamp (newest first)
+          type CombinedMessage = 
+            | (ChatMessage & { isDealer?: false })
+            | DealerMessage;
+          
+          const combined: CombinedMessage[] = [
+            ...messages.map(m => ({ ...m, isDealer: false as const })),
+            ...dealerMessages,
+          ];
+          
+          // Sort by created_at descending (newest first)
+          combined.sort((a, b) => {
+            const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return timeB - timeA;
+          });
+          
+          if (combined.length === 0) {
+            return <p className="text-white/40 text-xs text-center">No messages yet</p>;
+          }
+          
+          return combined.map((msg) => {
+            if (msg.isDealer) {
+              // Dealer message - different styling (green/teal color, no image support)
+              return (
+                <div key={msg.id} className="text-xs leading-tight">
+                  <div>
+                    <span className="text-emerald-400 font-medium">Dealer:</span>{' '}
+                    <span className="text-emerald-200/90">{msg.message}</span>
+                  </div>
+                </div>
+              );
+            }
+            
+            // Player message
+            const playerMsg = msg as ChatMessage;
+            return (
+              <div key={playerMsg.id} className="text-xs leading-tight">
+                <div>
+                  <span className="text-amber-400 font-medium">{playerMsg.username || 'Unknown'}:</span>{' '}
+                  {playerMsg.message && <span className="text-white">{playerMsg.message}</span>}
+                </div>
+                {playerMsg.image_url && (
+                  <img
+                    src={playerMsg.image_url}
+                    alt="Chat attachment"
+                    className="mt-1 w-28 h-20 object-cover rounded border border-white/10"
+                    loading="lazy"
+                  />
+                )}
               </div>
-              {msg.image_url && (
-                <img
-                  src={msg.image_url}
-                  alt="Chat attachment"
-                  className="mt-1 w-28 h-20 object-cover rounded border border-white/10"
-                  loading="lazy"
-                />
-              )}
-            </div>
-          ))
-        )}
+            );
+          });
+        })()}
       </div>
     </div>
   );
