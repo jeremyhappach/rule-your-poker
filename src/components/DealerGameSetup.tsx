@@ -28,6 +28,13 @@ interface PreviousGameConfig {
   chucky_cards: number;
   rabbit_hunt: boolean;
   reveal_at_showdown: boolean;
+  // Cribbage-specific fields
+  points_to_win?: number;
+  skunk_enabled?: boolean;
+  skunk_threshold?: number;
+  double_skunk_enabled?: boolean;
+  double_skunk_threshold?: number;
+  cribbage_game_mode?: string; // 'full' | 'half' | 'super_quick' | 'sprint'
 }
 
 type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
@@ -151,6 +158,15 @@ export const DealerGameSetup = ({
         setChuckyCards(String(previousGameConfig.chucky_cards));
         setRabbitHunt(previousGameConfig.rabbit_hunt ?? false);
         setRevealAtShowdown(previousGameConfig.reveal_at_showdown ?? false);
+        
+        // Apply cribbage-specific settings if present
+        if (previousGameConfig.cribbage_game_mode) {
+          setCribbageGameMode(previousGameConfig.cribbage_game_mode as import('@/lib/cribbageTypes').CribbageGameMode);
+        }
+        if (previousGameConfig.skunk_enabled !== undefined) {
+          setSkunksEnabled(previousGameConfig.skunk_enabled);
+        }
+        
         setLoadingDefaults(false);
         return;
       }
@@ -188,15 +204,13 @@ export const DealerGameSetup = ({
   };
 
   // Update config when tab changes - PRIORITY: session config > global defaults
-  // Only applies to card games (holm-game, 3-5-7) - dice games don't have persistent configs
+  // Applies to card games (holm-game, 3-5-7, cribbage) - dice games don't have persistent configs
   const handleGameTypeChange = (gameType: string) => {
     setSelectedGameType(gameType);
     
-    // Only card games have session configs
-    if (gameType === 'holm-game' || gameType === '3-5-7') {
-      // Normalize game type key for session configs lookup
-      const sessionKey = gameType === 'holm-game' ? 'holm-game' : '3-5-7';
-      const sessionConfig = sessionGameConfigs?.[sessionKey];
+    // Card games with session config persistence
+    if (gameType === 'holm-game' || gameType === '3-5-7' || gameType === 'cribbage') {
+      const sessionConfig = sessionGameConfigs?.[gameType];
       
       // PRIORITY 1: Use session-specific config if available (remembers settings from earlier in session)
       if (sessionConfig && sessionConfig.game_type === gameType) {
@@ -211,11 +225,22 @@ export const DealerGameSetup = ({
         setChuckyCards(String(sessionConfig.chucky_cards));
         setRabbitHunt(sessionConfig.rabbit_hunt ?? false);
         setRevealAtShowdown(sessionConfig.reveal_at_showdown ?? false);
+        
+        // Apply cribbage-specific settings if present
+        if (gameType === 'cribbage') {
+          if (sessionConfig.cribbage_game_mode) {
+            setCribbageGameMode(sessionConfig.cribbage_game_mode as import('@/lib/cribbageTypes').CribbageGameMode);
+          }
+          if (sessionConfig.skunk_enabled !== undefined) {
+            setSkunksEnabled(sessionConfig.skunk_enabled);
+          }
+        }
         return;
       }
       
       // PRIORITY 2: Fall back to global defaults
-      const defaults = gameType === 'holm-game' ? holmDefaults : threeFiveSevenDefaults;
+      const defaults = gameType === 'holm-game' ? holmDefaults : 
+                       gameType === '3-5-7' ? threeFiveSevenDefaults : null;
       if (defaults) {
         console.log('[DEALER SETUP] Using global defaults for', gameType);
         applyDefaults(defaults);
