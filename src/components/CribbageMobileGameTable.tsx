@@ -8,10 +8,9 @@ import {
   discardToCrib, 
   playPeggingCard, 
   callGo,
-  startNewHand,
   applyHandCountScores,
 } from '@/lib/cribbageGameLogic';
-import { endCribbageGame } from '@/lib/cribbageRoundLogic';
+import { endCribbageGame, startNextCribbageHand } from '@/lib/cribbageRoundLogic';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
@@ -150,6 +149,17 @@ export const CribbageMobileGameTable = ({
   const cribbageStateRef = useRef<CribbageState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+  
+  // Local tracking of current round for proper hand transitions
+  // These start from props but can be updated when starting a new hand
+  const [currentRoundId, setCurrentRoundId] = useState(roundId);
+  const [currentHandNumber, setCurrentHandNumber] = useState(handNumber);
+
+  // Sync local round tracking when props change (e.g., when parent reloads game state)
+  useEffect(() => {
+    setCurrentRoundId(roundId);
+    setCurrentHandNumber(handNumber);
+  }, [roundId, handNumber]);
 
   useEffect(() => {
     cribbageStateRef.current = cribbageState;
@@ -230,8 +240,8 @@ export const CribbageMobileGameTable = ({
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   const winKeyFor = (winnerId: string) => `${gameId}:${winnerId}`;
 
-  // Event logging context - synchronously derived from props (no async fetch!)
-  const eventCtx = useCribbageEventContext(roundId, dealerGameId, handNumber);
+  // Event logging context - uses local tracking for proper hand transitions
+  const eventCtx = useCribbageEventContext(currentRoundId, dealerGameId, currentHandNumber);
   
   // Track if we've logged the cut card for this hand
   const cutCardLoggedRef = useRef<string | null>(null);
@@ -795,7 +805,7 @@ export const CribbageMobileGameTable = ({
   // Realtime subscription with polling fallback
   // This ensures updates are received even if WebSocket connection degrades
   useEffect(() => {
-    if (!roundId) return;
+    if (!currentRoundId) return;
 
     let pollInterval = 2000; // Start at 2 seconds
     let pollTimeoutId: ReturnType<typeof setTimeout>;
@@ -828,14 +838,14 @@ export const CribbageMobileGameTable = ({
 
     // Primary: Realtime subscription
     const channel = supabase
-      .channel(`cribbage-mobile-${roundId}`)
+      .channel(`cribbage-mobile-${currentRoundId}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'rounds',
-          filter: `id=eq.${roundId}`,
+          filter: `id=eq.${currentRoundId}`,
         },
         (payload) => {
           const newState = payload.new as { cribbage_state?: CribbageState };
@@ -861,7 +871,7 @@ export const CribbageMobileGameTable = ({
         const { data, error } = await supabase
           .from('rounds')
           .select('cribbage_state')
-          .eq('id', roundId)
+          .eq('id', currentRoundId)
           .single();
 
         if (error || !data?.cribbage_state) {
@@ -900,7 +910,7 @@ export const CribbageMobileGameTable = ({
       clearTimeout(pollTimeoutId);
       supabase.removeChannel(channel);
     };
-  }, [roundId, triggerWinSequence]);
+  }, [currentRoundId, triggerWinSequence]);
 
   // REMOVED: Initial load win trigger - all win sequences now go through counting animation.
   // If a game is rejoined in 'complete' state, the counting animation snapshot logic will handle it.
@@ -1155,7 +1165,7 @@ export const CribbageMobileGameTable = ({
   // HOWEVER: As a safety catch, applyHandCountScores now returns a 'complete' state
   // if someone exceeds pointsToWin, which we must handle here.
   const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
-    if (!cribbageState) return;
+    if (!cribbageState || !dealerGameId) return;
     
     // Mark counting animation as complete and clear snapshot
     countingAnimationActiveRef.current = false;
@@ -1187,25 +1197,47 @@ export const CribbageMobileGameTable = ({
         return;
       }
       
-      const newState = startNewHand(countedState, playerIds);
+      // CRITICAL: Create a NEW round record for the next hand.
+      // This ensures event logging is properly scoped to (dealer_game_id, hand_number).
+      const result = await startNextCribbageHand(gameId, dealerGameId, countedState, playerIds);
       
-      // CRITICAL FIX: Also check if startNewHand detected a winner (safety guard).
-      if (newState.phase === 'complete' && newState.winnerPlayerId) {
-        console.log('[CRIBBAGE] handleCountingComplete: Winner detected by startNewHand safety check', {
-          winnerId: newState.winnerPlayerId,
-          phase: newState.phase,
-        });
-        await updateState(newState);
-        triggerWinSequence(newState);
-        return;
+      if (!result.success) {
+        // Check if it's a winner detection case
+        if (result.newState?.phase === 'complete' && result.newState?.winnerPlayerId) {
+          console.log('[CRIBBAGE] handleCountingComplete: Winner detected by startNextCribbageHand', {
+            winnerId: result.newState.winnerPlayerId,
+            phase: result.newState.phase,
+          });
+          await updateState(result.newState);
+          triggerWinSequence(result.newState);
+          return;
+        }
+        throw new Error(result.error || 'Failed to start next hand');
       }
       
-      await updateState(newState);
+      // Update local tracking with new round info
+      if (result.roundId && result.handNumber !== undefined) {
+        console.log('[CRIBBAGE] Transitioning to new round', {
+          oldRoundId: currentRoundId,
+          newRoundId: result.roundId,
+          oldHandNumber: currentHandNumber,
+          newHandNumber: result.handNumber,
+        });
+        setCurrentRoundId(result.roundId);
+        setCurrentHandNumber(result.handNumber);
+        // Reset cut card logged ref for new hand
+        cutCardLoggedRef.current = null;
+      }
+      
+      // Update local state with the new cribbage state
+      if (result.newState) {
+        setCribbageState(result.newState);
+      }
     } catch (err) {
       console.error('[CRIBBAGE] Error starting new hand:', err);
       toast.error('Failed to start new hand');
     }
-  }, [cribbageState, players, triggerWinSequence]);
+  }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber]);
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
