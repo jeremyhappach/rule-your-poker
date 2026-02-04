@@ -1573,30 +1573,42 @@ export const CribbageMobileGameTable = ({
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
         {/* Dealer Announcements Area - shows during gameplay AND win sequence (for winner message) */}
-        {(winSequencePhase === 'idle' || winSequencePhase === 'chips' || winSequencePhase === 'announcement') && (
-          (cribbageState.phase === 'counting' || cribbageState.lastEvent ||
-            cribbageState.phase === 'discarding' ||
-            cribbageState.phase === 'cutting' ||
-            winSequencePhase === 'chips' || winSequencePhase === 'announcement') && (
-          <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                {/* Winner announcement during chips/announcement phases */}
-                {(winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData
-                  ? `${winSequenceData.winnerName} Wins${winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +$${winSequenceData.totalWinnings}`
-                  : cribbageState.phase === 'counting'
-                    ? countingAnnouncement 
-                      ? `${countingTargetLabel}: ${countingAnnouncement}`
-                      : `Scoring ${countingTargetLabel || 'hands'}...`
-                    : cribbageState.lastEvent && cribbageState.lastEvent.type !== 'hand_count'
-                      ? `${getPlayerUsername(cribbageState.lastEvent.playerId)}: ${cribbageState.lastEvent.label} (+${cribbageState.lastEvent.points})`
-                      : cribbageState.phase === 'discarding'
-                        ? 'Discard to Crib'
-                        : 'Cut Card'}
-              </p>
+        {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
+        {(() => {
+          const isCountingAnimActive = !!countingStateSnapshot;
+          const effectivePhase = isCountingAnimActive ? countingStateSnapshot.phase : cribbageState.phase;
+          const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : cribbageState.lastEvent;
+          
+          const shouldShowBanner = (winSequencePhase === 'idle' || winSequencePhase === 'chips' || winSequencePhase === 'announcement') && (
+            effectivePhase === 'counting' || effectiveLastEvent ||
+            effectivePhase === 'discarding' ||
+            effectivePhase === 'cutting' ||
+            winSequencePhase === 'chips' || winSequencePhase === 'announcement'
+          );
+          
+          if (!shouldShowBanner) return null;
+          
+          return (
+            <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
+              <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                  {/* Winner announcement during chips/announcement phases */}
+                  {(winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData
+                    ? `${winSequenceData.winnerName} Wins${winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +$${winSequenceData.totalWinnings}`
+                    : effectivePhase === 'counting'
+                      ? countingAnnouncement 
+                        ? `${countingTargetLabel}: ${countingAnnouncement}`
+                        : `Scoring ${countingTargetLabel || 'hands'}...`
+                      : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count'
+                        ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
+                        : effectivePhase === 'discarding'
+                          ? 'Discard to Crib'
+                          : 'Cut Card'}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })()}
 
         {/* Tab navigation bar */}
         <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">
@@ -1652,7 +1664,8 @@ export const CribbageMobileGameTable = ({
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
-          {activeTab === 'cards' && currentPlayer && !isTransitioning && (
+          {/* Hide cards tab while counting animation is active to prevent new hand cards from showing */}
+          {activeTab === 'cards' && currentPlayer && !isTransitioning && !countingStateSnapshot && (
             <CribbageMobileCardsTab
               key={currentHandKey} // Force remount on hand change to prevent stale card flash
               cribbageState={cribbageState}
@@ -1665,6 +1678,13 @@ export const CribbageMobileGameTable = ({
               gameId={gameId}
               isDealer={isCribDealer(currentPlayerId)}
             />
+          )}
+          
+          {/* Show placeholder during counting animation */}
+          {activeTab === 'cards' && countingStateSnapshot && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground text-sm">Scoring hands...</p>
+            </div>
           )}
 
           {activeTab === 'chat' && (
