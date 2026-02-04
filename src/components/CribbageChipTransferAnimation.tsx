@@ -37,6 +37,8 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
   const lockedAmountRef = useRef<number>(amount);
   const lastTriggerIdRef = useRef<string | null>(null);
   const animIdRef = useRef(0);
+  // Guard against starting a new animation while one is already in progress
+  const animationInProgressRef = useRef(false);
 
   // Stable refs for callbacks
   const onStartRef = useRef(onAnimationStart);
@@ -51,7 +53,14 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
   }, [onAnimationEnd]);
 
   useEffect(() => {
+    // Double-fire prevention: both triggerId guard AND in-progress guard
     if (!triggerId || triggerId === lastTriggerIdRef.current) {
+      return;
+    }
+    
+    // Prevent starting a new animation if one is already running
+    if (animationInProgressRef.current) {
+      console.log('[CRIBBAGE_CHIP_ANIM] Animation already in progress, ignoring trigger:', triggerId);
       return;
     }
 
@@ -61,11 +70,12 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
 
     lastTriggerIdRef.current = triggerId;
     lockedAmountRef.current = amount;
+    animationInProgressRef.current = true;
 
     // Notify start
     onStartRef.current?.();
 
-    // Create staggered animations
+    // Create staggered animations (slower stagger for drama)
     const newAnims: ChipAnimation[] = loserPositions.map((loser, index) => ({
       id: `crib-transfer-${animIdRef.current++}`,
       fromX: loser.x,
@@ -73,16 +83,17 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
       toX: winnerPosition.x,
       toY: winnerPosition.y,
       loserId: loser.playerId,
-      delay: index * 200, // Stagger by 200ms
+      delay: index * 300, // Stagger by 300ms for more dramatic effect
     }));
 
     setAnimations(newAnims);
 
-    // Total animation time: stagger + flight + bounce
-    const totalDuration = (loserPositions.length - 1) * 200 + 2000;
+    // Total animation time: stagger + flight + bounce (slower, more dramatic = 4s base)
+    const totalDuration = (loserPositions.length - 1) * 300 + 4000;
 
     // Notify end after all animations complete
     setTimeout(() => {
+      animationInProgressRef.current = false;
       onEndRef.current?.();
     }, totalDuration - 200);
 
@@ -113,40 +124,55 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
         }}
       >
         <div
-          className="w-8 h-8 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center"
+          className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-3 border-white shadow-xl flex items-center justify-center"
           style={{
-            animation: `${keyframeName} 2s ease-out ${anim.delay}ms forwards`,
+            animation: `${keyframeName} 3.5s ease-in-out ${anim.delay}ms forwards`,
+            boxShadow: '0 0 20px rgba(245, 158, 11, 0.6), 0 4px 15px rgba(0,0,0,0.4)',
           }}
         >
-          <span className="text-black text-[10px] font-bold">${formatChipValue(lockedAmountRef.current)}</span>
+          <span className="text-amber-950 text-[11px] font-black">${formatChipValue(lockedAmountRef.current)}</span>
         </div>
         <style>{`
           @keyframes ${keyframeName} {
             0% {
-              transform: translate(0, 0) scale(1);
+              transform: translate(0, 0) scale(1) rotate(0deg);
               opacity: 1;
+              filter: brightness(1);
             }
-            10% {
-              transform: translate(0, -15px) scale(1.15);
+            5% {
+              transform: translate(0, -25px) scale(1.3) rotate(-5deg);
               opacity: 1;
+              filter: brightness(1.2);
             }
-            60% {
-              transform: translate(${dx}px, ${dy}px) scale(1);
+            15% {
+              transform: translate(${dx * 0.15}px, ${dy * 0.1 - 40}px) scale(1.2) rotate(5deg);
               opacity: 1;
+              filter: brightness(1.3);
+            }
+            50% {
+              transform: translate(${dx * 0.7}px, ${dy * 0.5 - 30}px) scale(1.1) rotate(-3deg);
+              opacity: 1;
+              filter: brightness(1.1);
             }
             70% {
-              transform: translate(${dx}px, ${dy - 20}px) scale(1.1);
+              transform: translate(${dx}px, ${dy}px) scale(1.05) rotate(2deg);
+              opacity: 1;
+              filter: brightness(1);
+            }
+            78% {
+              transform: translate(${dx}px, ${dy - 25}px) scale(1.15) rotate(-2deg);
+              opacity: 1;
+              filter: brightness(1.2);
+            }
+            86% {
+              transform: translate(${dx}px, ${dy}px) scale(1) rotate(0deg);
               opacity: 1;
             }
-            80% {
-              transform: translate(${dx}px, ${dy}px) scale(1);
+            91% {
+              transform: translate(${dx}px, ${dy - 10}px) scale(1.05);
               opacity: 1;
             }
-            88% {
-              transform: translate(${dx}px, ${dy - 8}px) scale(1.05);
-              opacity: 1;
-            }
-            95% {
+            96% {
               transform: translate(${dx}px, ${dy}px) scale(1);
               opacity: 1;
             }
