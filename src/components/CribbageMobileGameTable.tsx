@@ -332,17 +332,18 @@ export const CribbageMobileGameTable = ({
 
     // CRITICAL FIX: Only enter counting phase if we're genuinely in 'counting' phase,
     // NOT if we won during pegging. A pegging win goes directly to 'complete' phase
-    // and should skip the counting animation entirely (hands aren't fully played out).
+    // and should skip the counting animation entirely.
     // 
-    // Detect pegging win: phase === 'complete' AND players still have cards in hand
-    // (meaning all 4 cards weren't played before the win occurred).
+    // Detect pegging win by checking if all cards were played:
+    // - Each player plays 4 cards during pegging
+    // - If playedCards.length < numPlayers * 4, pegging wasn't complete when win occurred
     if (cribbageState.phase === 'complete') {
-      // Check if any player still has cards in hand - this indicates a pegging win
-      const anyCardsRemaining = Object.values(cribbageState.playerStates).some(
-        ps => ps.hand.length > 0
-      );
-      if (anyCardsRemaining) {
-        // Pegging win - skip counting animation
+      const numPlayers = Object.keys(cribbageState.playerStates).length;
+      const expectedPlayedCards = numPlayers * 4;
+      const actualPlayedCards = cribbageState.pegging.playedCards.length;
+      
+      if (actualPlayedCards < expectedPlayedCards) {
+        // Pegging win - not all cards were played, skip counting animation
         return null;
       }
       // All cards played, this is a counting-phase win that needs animation
@@ -362,11 +363,10 @@ export const CribbageMobileGameTable = ({
     cribbageState?.dealerPlayerId,
     cribbageState?.cutCard?.rank,
     cribbageState?.cutCard?.suit,
-    // Include player states in deps to detect hand changes
-    // Use a stable serialization to avoid excessive rerenders
-    JSON.stringify(
-      Object.values(cribbageState?.playerStates ?? {}).map(ps => ps.hand.length)
-    ),
+    // Include pegging state to detect when all cards are played
+    cribbageState?.pegging?.playedCards?.length,
+    // Include player count for the calculation
+    cribbageState?.playerStates ? Object.keys(cribbageState.playerStates).length : 0,
   ]);
 
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display.
