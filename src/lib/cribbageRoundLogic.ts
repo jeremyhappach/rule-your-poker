@@ -236,11 +236,15 @@ export async function startNextCribbageHand(
       throw new Error(`Failed to create round: ${roundError?.message}`);
     }
 
-    // Update game with new hand number
+    // DB-First pattern: Use the RETURNED hand_number from insert, not the calculated value
+    // This ensures games.total_hands is always in sync with actual round records
+    const insertedHandNumber = round.hand_number ?? handNumber;
+    
+    // Update game with authoritative hand number from the insert response
     await supabase
       .from('games')
       .update({
-        total_hands: handNumber,
+        total_hands: insertedHandNumber,
         is_first_hand: false,
       })
       .eq('id', gameId);
@@ -266,14 +270,14 @@ export async function startNextCribbageHand(
 
     console.log('[CRIBBAGE] Next hand started successfully', {
       roundId: round.id,
-      handNumber,
+      handNumber: insertedHandNumber,
       newDealerId: newState.dealerPlayerId,
     });
 
     return { 
       success: true, 
       roundId: round.id, 
-      handNumber, 
+      handNumber: insertedHandNumber, 
       newState 
     };
 
