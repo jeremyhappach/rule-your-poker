@@ -24,6 +24,7 @@ import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
 // CribbageWinnerAnnouncement removed - win message now in dealer banner area
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
+import { RoundHandDebugOverlay } from './RoundHandDebugOverlay';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChat } from '@/hooks/useGameChat';
 import { cn, formatChipValue } from '@/lib/utils';
@@ -143,6 +144,13 @@ export const CribbageMobileGameTable = ({
   
   // Chat hook - integrated like other mobile game tables
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
+  
+  // Unread messages tracking for chat tab indicator
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [chatTabFlashing, setChatTabFlashing] = useState(false);
+  const prevMessageCountRef = useRef(0);
+  // Track dealer messages to exclude them from unread count
+  const dealerMessageCountRef = useRef(0);
   
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   // Keep latest state in a ref so effects can avoid depending on object identity churn.
@@ -275,11 +283,45 @@ export const CribbageMobileGameTable = ({
     lastPeggingScoresRef.current = scores;
   }, [cribbageState?.phase, cribbageState?.pegging?.playedCards?.length, cribbageState?.playerStates]);
 
-  // Callback for counting phase announcements
+  // Helper to get player username - defined early so it can be used in effects
+  const getPlayerUsername = useCallback((playerId: string) => {
+    const player = players.find(p => p.id === playerId);
+    if (!player) return 'Unknown';
+    return getDisplayName(players, player, player.profiles?.username || 'Unknown');
+  }, [players]);
+
+  // Local dealer messages to inject into chat (scoring events)
+  const [dealerMessages, setDealerMessages] = useState<Array<{
+    id: string;
+    message: string;
+    created_at: string;
+    isDealer: true;
+  }>>([]);
+  const dealerMessageIdRef = useRef(0);
+
+  // Inject a dealer announcement into chat
+  const injectDealerMessage = useCallback((message: string) => {
+    dealerMessageIdRef.current += 1;
+    const newMsg = {
+      id: `dealer-${dealerMessageIdRef.current}-${Date.now()}`,
+      message,
+      created_at: new Date().toISOString(),
+      isDealer: true as const,
+    };
+    setDealerMessages(prev => [...prev, newMsg]);
+    dealerMessageCountRef.current += 1;
+  }, []);
+
+  // Callback for counting phase announcements - also injects into chat
   const handleCountingAnnouncementChange = useCallback((announcement: string | null, targetLabel: string | null) => {
     setCountingAnnouncement(announcement);
     setCountingTargetLabel(targetLabel);
-  }, []);
+    
+    // Inject scoring announcements into chat as dealer messages
+    if (announcement && targetLabel) {
+      injectDealerMessage(`${targetLabel}: ${announcement}`);
+    }
+  }, [injectDealerMessage]);
 
   // Backend acknowledgement guard: only transition to next game after backend marks game_over.
   const gameOverAckRef = useRef(false);
@@ -410,6 +452,49 @@ export const CribbageMobileGameTable = ({
       clearTimeout(timer);
     };
   }, [countingStartKey, calculateCountingBaselineScores]);
+
+  // Detect new player messages and trigger flash (exclude dealer messages)
+  useEffect(() => {
+    const playerMessageCount = allMessages.length;
+    const totalWithDealer = playerMessageCount + dealerMessages.length;
+    
+    // Only flash for player messages, not dealer messages
+    if (playerMessageCount > prevMessageCountRef.current && activeTab !== 'chat') {
+      setChatTabFlashing(true);
+      setHasUnreadMessages(true);
+      const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
+      prevMessageCountRef.current = playerMessageCount;
+      return () => clearTimeout(timeout);
+    }
+    
+    prevMessageCountRef.current = playerMessageCount;
+  }, [allMessages.length, dealerMessages.length, activeTab]);
+
+  // Clear unread messages when switching to chat tab
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      setHasUnreadMessages(false);
+    }
+  }, [activeTab]);
+
+  // Inject pegging events (lastEvent) into chat as dealer messages
+  const lastEventKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cribbageState?.lastEvent) return;
+    const event = cribbageState.lastEvent;
+    if (event.type === 'hand_count') return; // Hand count events are already handled by counting phase
+    
+    // Generate a unique key for this event to prevent duplicates
+    const eventKey = `${event.playerId}-${event.label}-${event.points}-${Date.now()}`;
+    
+    // Use a simpler check: only log if label+points is different from last
+    const simpleKey = `${event.label}-${event.points}`;
+    if (lastEventKeyRef.current === simpleKey) return;
+    lastEventKeyRef.current = simpleKey;
+    
+    const playerName = getPlayerUsername(event.playerId);
+    injectDealerMessage(`${playerName}: ${event.label} (+${event.points})`);
+  }, [cribbageState?.lastEvent, injectDealerMessage, getPlayerUsername]);
 
   // ============================================================================
   // REACTIVE WIN DETECTION via score subscription
@@ -1239,12 +1324,6 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber]);
 
-  const getPlayerUsername = (playerId: string) => {
-    const player = players.find(p => p.id === playerId);
-    if (!player) return 'Unknown';
-    return getDisplayName(players, player, player.profiles?.username || 'Unknown');
-  };
-
   // Win sequence phase handlers
   const handleSkunkComplete = useCallback(() => {
     setWinSequencePhase('announcement');
@@ -1741,9 +1820,9 @@ export const CribbageMobileGameTable = ({
               activeTab === 'chat' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
+            } ${chatTabFlashing ? 'animate-pulse' : ''}`}
           >
-            <MessageSquare className="w-5 h-5" />
+            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500 fill-red-500' : ''}`} />
           </button>
           {/* Lobby tab */}
           <button 
@@ -1802,6 +1881,7 @@ export const CribbageMobileGameTable = ({
                 messages={allMessages}
                 onSend={sendMessage}
                 isSending={isChatSending}
+                dealerMessages={dealerMessages}
               />
             </div>
           )}
@@ -1824,6 +1904,9 @@ export const CribbageMobileGameTable = ({
           )}
         </div>
       </div>
+
+      {/* Hand/Round Debug Overlay */}
+      <RoundHandDebugOverlay gameId={gameId} inline />
     </div>
   );
 };
