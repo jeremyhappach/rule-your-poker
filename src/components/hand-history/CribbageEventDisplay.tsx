@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
 import type { CribbageEventRecord, CardData } from "./types";
 import { truncateCribbageEventsAtWin } from "./cribbageHistoryUtils";
-
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 interface PlayerHandData {
   playerId: string;
   username: string;
@@ -524,18 +525,20 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [], po
               </div>
             )}
 
-            {/* Hand Scoring - show each player's hand + cut card, then their scoring */}
+            {/* Hand Scoring - show each player's hand + cut card, then their scoring (collapsible) */}
             {scoringGroups.length > 0 && (
               <div className="space-y-2">
                 <div className="text-[10px] text-muted-foreground font-medium">Counting</div>
-                {scoringGroups.map((group, idx) => (
-                  <div key={`${group.playerId}-${group.isCrib ? 'crib' : 'hand'}`} className="space-y-1">
-                    {/* Player's hand + cut card */}
-                    {(() => {
-                      const totalPoints = group.events.reduce((sum, e) => sum + (e.points ?? 0), 0);
-                      return (
-                        <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+                {scoringGroups.map((group) => {
+                  const totalPoints = group.events.reduce((sum, e) => sum + (e.points ?? 0), 0);
+                  const groupKey = `${group.playerId}-${group.isCrib ? 'crib' : 'hand'}`;
+                  
+                  return (
+                    <Collapsible key={groupKey}>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer">
                           <div className="flex items-center gap-2 min-w-0">
+                            <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-90" />
                             <span className="text-xs font-medium text-foreground">
                               {group.isCrib ? `${group.username}'s Crib` : group.username}:
                             </span>
@@ -560,22 +563,25 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [], po
                             </span>
                           )}
                         </div>
-                      );
-                    })()}
-                    
-                    {/* Scoring events for this player */}
-                    {group.events.map((event) => (
-                      <CribbageEventRow 
-                        key={event.id} 
-                        event={event} 
-                        playerNames={playerNames}
-                        allEvents={handEvents}
-                        eventIndex={handEvents.indexOf(event)}
-                        scoresAfterForRow={computedScoresAfterById.get(event.id)}
-                      />
-                    ))}
-                  </div>
-                ))}
+                      </CollapsibleTrigger>
+                      
+                      <CollapsibleContent>
+                        <div className="space-y-1 mt-1 ml-5">
+                          {group.events.map((event) => (
+                            <CribbageEventRow 
+                              key={event.id} 
+                              event={event} 
+                              playerNames={playerNames}
+                              allEvents={handEvents}
+                              eventIndex={handEvents.indexOf(event)}
+                              scoresAfterForRow={computedScoresAfterById.get(event.id)}
+                            />
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
               </div>
             )}
           </div>
