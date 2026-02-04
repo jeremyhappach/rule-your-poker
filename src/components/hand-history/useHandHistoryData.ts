@@ -11,6 +11,7 @@ import type {
   PlayerDiceResult,
   CribbageEventRecord,
 } from "./types";
+import { truncateCribbageEventsAtWin } from "./cribbageHistoryUtils";
 
 interface UseHandHistoryDataProps {
   gameId: string;
@@ -604,24 +605,22 @@ export function useHandHistoryData({
       let cribbageFinalScores: Record<string, number> | null = null;
       let cribbageSkunkLevel: 0 | 1 | 2 | null = null;
       if (isCribbage && allCribbageEventsForDealerGame.length > 0) {
-        const sortedEvents = [...allCribbageEventsForDealerGame].sort((a, b) => {
-          if (a.hand_number !== b.hand_number) return a.hand_number - b.hand_number;
-          return a.sequence_number - b.sequence_number;
-        });
+        const cfg = (dealerGame?.config ?? {}) as Record<string, any>;
+        const pointsToWin = Number(cfg.points_to_win ?? cfg.pointsToWin ?? 121);
+
+        // IMPORTANT: Use the same "stop at win" truncation as the event detail UI.
+        // This prevents the header scoreline from reflecting any post-win counting artifacts.
+        const truncated = truncateCribbageEventsAtWin(allCribbageEventsForDealerGame, pointsToWin);
 
         const computedScores: Record<string, number> = {};
-        for (const ev of sortedEvents) {
+        for (const ev of truncated) {
           if (ev.points > 0) {
             computedScores[ev.player_id] = (computedScores[ev.player_id] ?? 0) + ev.points;
           }
         }
-        if (Object.keys(computedScores).length > 0) {
-          cribbageFinalScores = computedScores;
-        }
+        if (Object.keys(computedScores).length > 0) cribbageFinalScores = computedScores;
 
-        if (cribbageFinalScores && dealerGame?.config) {
-          const cfg = dealerGame.config as Record<string, any>;
-          const pointsToWin = Number(cfg.points_to_win ?? cfg.pointsToWin ?? 121);
+        if (cribbageFinalScores) {
           const skunkEnabled = Boolean(cfg.skunk_enabled ?? cfg.skunkEnabled ?? true);
           const doubleSkunkEnabled = Boolean(cfg.double_skunk_enabled ?? cfg.doubleSkunkEnabled ?? true);
           const skunkThreshold = Number(cfg.skunk_threshold ?? cfg.skunkThreshold ?? 91);
