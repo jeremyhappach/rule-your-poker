@@ -105,7 +105,7 @@ export type Database = {
           cards_on_table: Json | null
           created_at: string
           dealer_game_id: string | null
-          event_subtype: string | null
+          event_subtype: string
           event_type: string
           hand_number: number
           id: string
@@ -122,7 +122,7 @@ export type Database = {
           cards_on_table?: Json | null
           created_at?: string
           dealer_game_id?: string | null
-          event_subtype?: string | null
+          event_subtype?: string
           event_type: string
           hand_number?: number
           id?: string
@@ -139,7 +139,7 @@ export type Database = {
           cards_on_table?: Json | null
           created_at?: string
           dealer_game_id?: string | null
-          event_subtype?: string | null
+          event_subtype?: string
           event_type?: string
           hand_number?: number
           id?: string

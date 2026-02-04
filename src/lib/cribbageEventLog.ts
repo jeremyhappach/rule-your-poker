@@ -61,6 +61,9 @@ export function resetCribbageEventSequence(roundId: string): void {
  */
 export function logCribbageEvent(params: LogCribbageEventParams): void {
   const sequenceNumber = params.sequenceNumber ?? getNextSequence(params.roundId);
+  // IMPORTANT: event_subtype is NOT NULL in the database (default ''), so normalize here.
+  // This also ensures our ON CONFLICT target matches the real unique key.
+  const normalizedSubtype = params.eventSubtype ?? '';
 
   // Fire and forget with upsert - duplicate inserts are silently ignored
   supabase
@@ -71,7 +74,7 @@ export function logCribbageEvent(params: LogCribbageEventParams): void {
       hand_number: params.handNumber,
       player_id: params.playerId,
       event_type: params.eventType,
-      event_subtype: params.eventSubtype ?? null,
+      event_subtype: normalizedSubtype,
       card_played: params.cardPlayed as any,
       cards_involved: params.cardsInvolved as any,
       cards_on_table: params.cardsOnTable as any ?? null,
@@ -80,7 +83,8 @@ export function logCribbageEvent(params: LogCribbageEventParams): void {
       scores_after: params.scoresAfter as any,
       sequence_number: sequenceNumber,
     }, {
-      onConflict: 'round_id,hand_number,event_type,player_id,sequence_number',
+      // Must match the DB unique index: (round_id, hand_number, event_type, event_subtype, player_id, sequence_number)
+      onConflict: 'round_id,hand_number,event_type,event_subtype,player_id,sequence_number',
       ignoreDuplicates: true,
     })
     .then(({ error }) => {
