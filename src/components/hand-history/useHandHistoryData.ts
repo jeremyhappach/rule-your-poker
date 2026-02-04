@@ -545,6 +545,11 @@ export function useHandHistoryData({
             cribbageEvents = cribbageEventsByRound.get(round.id);
           }
 
+          // Get pointsToWin from dealer game config for cribbage
+          const cribbagePointsToWin = isCribbage && dealerGame?.config
+            ? Number((dealerGame.config as Record<string, any>).points_to_win ?? (dealerGame.config as Record<string, any>).pointsToWin ?? 121)
+            : undefined;
+
           roundGroups.push({
             roundNumber: roundNum,
             roundId: round.id,
@@ -555,6 +560,7 @@ export function useHandHistoryData({
             events: events.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
             diceResults,
             cribbageEvents,
+            cribbagePointsToWin,
           });
         });
 

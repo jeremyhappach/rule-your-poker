@@ -181,6 +181,7 @@ function RoundDisplay({
             username: pc.username,
             cards: pc.cards,
           }))}
+          pointsToWin={round.cribbagePointsToWin}
         />
       )}
 

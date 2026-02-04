@@ -66,6 +66,7 @@ export interface RoundGroup {
   events: GameResultRecord[];
   diceResults?: PlayerDiceResult[];
   cribbageEvents?: CribbageEventRecord[];
+  cribbagePointsToWin?: number;
 }
 
 export interface HandGroup {
