@@ -3,6 +3,8 @@ import { Send, Smile, Paperclip, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/integrations/supabase/client';
 
 const EMOTICONS = [
   '😀', '😂', '😍', '🤔', '😎', '😢', '😡', '🤯',
@@ -36,6 +38,8 @@ interface MobileChatPanelProps {
   onChatInputChange?: (value: string) => void;
   // Dealer messages (scoring announcements) - styled differently
   dealerMessages?: DealerMessage[];
+  // Current user ID for preference management
+  currentUserId?: string;
 }
 
 export const MobileChatPanel = ({ 
@@ -45,6 +49,7 @@ export const MobileChatPanel = ({
   chatInputValue,
   onChatInputChange,
   dealerMessages = [],
+  currentUserId,
 }: MobileChatPanelProps) => {
   // Use external state if provided, otherwise internal
   const [internalInputMessage, setInternalInputMessage] = useState('');
@@ -54,10 +59,56 @@ export const MobileChatPanel = ({
   const [showEmoticons, setShowEmoticons] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [muteDealerChat, setMuteDealerChat] = useState(false);
+  const [isLoadingPreference, setIsLoadingPreference] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Load user preference from database
+  useEffect(() => {
+    if (!currentUserId) {
+      setIsLoadingPreference(false);
+      return;
+    }
+    
+    const loadPreference = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('mute_dealer_chat')
+          .eq('id', currentUserId)
+          .single();
+        
+        if (!error && data) {
+          setMuteDealerChat(data.mute_dealer_chat ?? false);
+        }
+      } catch (err) {
+        console.error('[MobileChatPanel] Error loading mute preference:', err);
+      } finally {
+        setIsLoadingPreference(false);
+      }
+    };
+    
+    loadPreference();
+  }, [currentUserId]);
+  
+  // Handle mute dealer chat toggle
+  const handleMuteToggle = async (checked: boolean) => {
+    setMuteDealerChat(checked);
+    
+    if (!currentUserId) return;
+    
+    try {
+      await supabase
+        .from('profiles')
+        .update({ mute_dealer_chat: checked })
+        .eq('id', currentUserId);
+    } catch (err) {
+      console.error('[MobileChatPanel] Error saving mute preference:', err);
+    }
+  };
 
   // Auto-scroll to top when new messages arrive (newest first)
   useEffect(() => {
@@ -210,6 +261,23 @@ export const MobileChatPanel = ({
             <Send className="h-4 w-4" />
           </Button>
         </div>
+        
+        {/* Mute dealer chat option */}
+        <div className="flex items-center gap-2 mt-2 px-1">
+          <Checkbox
+            id="mute-dealer"
+            checked={muteDealerChat}
+            onCheckedChange={handleMuteToggle}
+            disabled={isLoadingPreference}
+            className="h-3.5 w-3.5 border-white/40 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+          />
+          <label 
+            htmlFor="mute-dealer" 
+            className="text-xs text-white/60 cursor-pointer select-none"
+          >
+            mute dealer
+          </label>
+        </div>
       </div>
 
       {/* Chat history */}
@@ -220,9 +288,12 @@ export const MobileChatPanel = ({
             | (ChatMessage & { isDealer?: false })
             | DealerMessage;
           
+          // Filter dealer messages based on mute preference
+          const visibleDealerMessages = muteDealerChat ? [] : dealerMessages;
+          
           const combined: CombinedMessage[] = [
             ...messages.map(m => ({ ...m, isDealer: false as const })),
-            ...dealerMessages,
+            ...visibleDealerMessages,
           ];
           
           // Sort by created_at descending (newest first)

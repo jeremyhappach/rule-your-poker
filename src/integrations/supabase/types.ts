@@ -1074,6 +1074,7 @@ export type Database = {
           is_active: boolean
           is_superuser: boolean
           last_seen_at: string | null
+          mute_dealer_chat: boolean
           play_sounds: boolean
           table_layout: string
           use_haptic: boolean
@@ -1089,6 +1090,7 @@ export type Database = {
           is_active?: boolean
           is_superuser?: boolean
           last_seen_at?: string | null
+          mute_dealer_chat?: boolean
           play_sounds?: boolean
           table_layout?: string
           use_haptic?: boolean
@@ -1104,6 +1106,7 @@ export type Database = {
           is_active?: boolean
           is_superuser?: boolean
           last_seen_at?: string | null
+          mute_dealer_chat?: boolean
           play_sounds?: boolean
           table_layout?: string
           use_haptic?: boolean

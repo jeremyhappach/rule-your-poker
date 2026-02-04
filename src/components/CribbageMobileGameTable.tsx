@@ -625,6 +625,8 @@ export const CribbageMobileGameTable = ({
       
       if (isFirstHand) {
         console.log('[CRIBBAGE] First hand - starting high card selection');
+        // Inject "new game starting" message into chat
+        injectDealerMessage('New game starting');
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
         return;
@@ -647,7 +649,7 @@ export const CribbageMobileGameTable = ({
     };
 
     loadOrInitializeState();
-  }, [roundId, initialLoadComplete]); // Re-run if roundId changes, include initialLoadComplete in deps
+  }, [roundId, initialLoadComplete, injectDealerMessage]); // Re-run if roundId changes, include initialLoadComplete in deps
 
   // Keep showHighCardSelection from "sticking" after the real cribbage_state arrives (non-host clients)
   useEffect(() => {
@@ -829,6 +831,12 @@ export const CribbageMobileGameTable = ({
     const amountPerLoser = anteAmount * multiplier;
     const totalWinnings = amountPerLoser * loserIds.length;
 
+    // Inject win announcement into chat with final scores
+    const winnerScore = state.playerStates[winnerId]?.pegScore ?? 0;
+    const loserScores = loserIds.map(id => state.playerStates[id]?.pegScore ?? 0);
+    const loserScoreStr = loserScores.join('-');
+    injectDealerMessage(`${winnerName} won the game ${winnerScore}-${loserScoreStr}!`);
+
     setWinSequenceData({
       winnerId,
       winnerName,
@@ -886,7 +894,7 @@ export const CribbageMobileGameTable = ({
     } else {
       setWinSequencePhase('announcement');
     }
-  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId]);
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, injectDealerMessage]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
   useEffect(() => {
@@ -1896,6 +1904,7 @@ export const CribbageMobileGameTable = ({
                 onSend={sendMessage}
                 isSending={isChatSending}
                 dealerMessages={dealerMessages}
+                currentUserId={currentUserId}
               />
             </div>
           )}
