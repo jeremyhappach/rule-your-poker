@@ -224,6 +224,8 @@ export const CribbageMobileGameTable = ({
   const winSequenceScheduledRef = useRef<string | null>(null);
   // Source-level guard for skunk overlay to prevent double-firing per animation-trigger pattern.
   const skunkOverlayFiredRef = useRef<string | null>(null);
+  // Source-level guard for chip animation trigger to prevent double-firing
+  const chipAnimationFiredRef = useRef<string | null>(null);
 
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   const winKeyFor = (winnerId: string) => `${gameId}:${winnerId}`;
@@ -1223,6 +1225,14 @@ export const CribbageMobileGameTable = ({
       onGameComplete();
       return;
     }
+    
+    // Source-level guard to prevent double-firing chip animation
+    const chipAnimKey = `${gameId}:${winSequenceData.winnerId}`;
+    if (chipAnimationFiredRef.current === chipAnimKey) {
+      console.log('[CRIBBAGE] Chip animation already fired for this win, skipping');
+      return;
+    }
+    chipAnimationFiredRef.current = chipAnimKey;
 
     const container = tableContainerRef.current;
     const rect = container.getBoundingClientRect();
@@ -1262,7 +1272,7 @@ export const CribbageMobileGameTable = ({
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
     setWinSequencePhase('chips');
-  }, [winSequenceData, players, currentUserId, onGameComplete, roundId]);
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId]);
 
   const handleChipAnimationEnd = useCallback(() => {
     setWinSequencePhase('complete');
@@ -1297,7 +1307,8 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(timer);
   }, [winSequencePhase, winSequenceData, handleAnnouncementComplete]);
 
-  // Safety timeout: If chip animation phase doesn't complete within 5 seconds, force transition
+  // Safety timeout: If chip animation phase doesn't complete within 8 seconds, force transition
+  // (animation is now ~4s + stagger, so 8s is safe)
   useEffect(() => {
     if (winSequencePhase !== 'chips') return;
     
@@ -1313,7 +1324,7 @@ export const CribbageMobileGameTable = ({
         }
         onGameComplete();
       })();
-    }, 5000);
+    }, 8000);
     
     return () => clearTimeout(safetyTimer);
   }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete]);
@@ -1627,14 +1638,32 @@ export const CribbageMobileGameTable = ({
           const effectivePhase = isCountingAnimActive ? countingStateSnapshot.phase : cribbageState.phase;
           const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : cribbageState.lastEvent;
           
-          // Hide banner during skunk overlay phase - only show during gameplay or chips/announcement win phases
+          // Hide banner during skunk overlay phase or complete phase
           if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
           
+          // PRIORITY 1: During chips/announcement win phases, ALWAYS show winner message (never fall through)
+          if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
+            return (
+              <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
+                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                    {winSequenceData.winnerName} Wins{winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +${winSequenceData.totalWinnings}
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          
+          // If we're in win sequence but data not ready yet, hide banner to prevent flicker
+          if (winSequencePhase === 'chips' || winSequencePhase === 'announcement') {
+            return null;
+          }
+          
+          // PRIORITY 2: Normal gameplay banners
           const shouldShowBanner = (
             effectivePhase === 'counting' || effectiveLastEvent ||
             effectivePhase === 'discarding' ||
-            effectivePhase === 'cutting' ||
-            winSequencePhase === 'chips' || winSequencePhase === 'announcement'
+            effectivePhase === 'cutting'
           );
           
           if (!shouldShowBanner) return null;
@@ -1643,18 +1672,15 @@ export const CribbageMobileGameTable = ({
             <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
               <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                 <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                  {/* Winner announcement during chips/announcement phases */}
-                  {(winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData
-                    ? `${winSequenceData.winnerName} Wins${winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +$${winSequenceData.totalWinnings}`
-                    : effectivePhase === 'counting'
-                      ? countingAnnouncement 
-                        ? `${countingTargetLabel}: ${countingAnnouncement}`
-                        : `Scoring ${countingTargetLabel || 'hands'}...`
-                      : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count'
-                        ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
-                        : effectivePhase === 'discarding'
-                          ? 'Discard to Crib'
-                          : 'Cut Card'}
+                  {effectivePhase === 'counting'
+                    ? countingAnnouncement 
+                      ? `${countingTargetLabel}: ${countingAnnouncement}`
+                      : `Scoring ${countingTargetLabel || 'hands'}...`
+                    : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count'
+                      ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
+                      : effectivePhase === 'discarding'
+                        ? 'Discard to Crib'
+                        : 'Cut Card'}
                 </p>
               </div>
             </div>
