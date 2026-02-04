@@ -137,7 +137,7 @@ function CribbageEventRow({ event, playerNames }: EventRowProps) {
   );
 }
 
-// Group events by hand_number for proper display
+// Group events by hand_number for proper display, ensuring each group is sorted by sequence_number
 function groupEventsByHand(events: CribbageEventRecord[]): Map<number, CribbageEventRecord[]> {
   const groups = new Map<number, CribbageEventRecord[]>();
   
@@ -147,6 +147,11 @@ function groupEventsByHand(events: CribbageEventRecord[]): Map<number, CribbageE
       groups.set(handNum, []);
     }
     groups.get(handNum)!.push(event);
+  }
+  
+  // Sort each group by sequence_number to ensure proper chronological order
+  for (const [handNum, handEvents] of groups) {
+    handEvents.sort((a, b) => a.sequence_number - b.sequence_number);
   }
   
   return groups;
