@@ -28,7 +28,7 @@ function getEventLabel(eventType: string): string {
   }
 }
 
-// Format subtype for better display (e.g., "three_of_a_kind+31" -> "3 of a kind, 31")
+// Format subtype for better display (e.g., "three_of_a_kind+31" -> "3 of a kind + 31")
 function formatSubtype(subtype: string | null): string {
   if (!subtype) return "";
   
@@ -37,7 +37,7 @@ function formatSubtype(subtype: string | null): string {
     .replace(/four_of_a_kind/g, "4 of a kind")
     .replace(/run_(\d+)/g, "run of $1")
     .replace(/run of (\d+)/g, "run of $1")
-    .replace(/\+/g, ", ")
+    .replace(/\+/g, " + ")
     .replace(/_/g, " ");
 }
 
@@ -102,42 +102,46 @@ function getSequenceCards(
   if (currentEvent.event_type !== "pegging") return { cards: [], displayCount: 0 };
   
   const cards: CardData[] = [];
-  let storedCount = currentEvent.running_count ?? 0;
+  const storedCount = currentEvent.running_count ?? 0;
   
   // Check if this event scored a 31 - if so, the stored count might be 0 (post-reset)
   // but we want to display 31 and show the full sequence
   const scored31 = currentEvent.event_subtype?.includes("31") ?? false;
   
   // Walk backward to find where this sequence started
+  // A sequence starts after a 31 or Go from the previous sequence
   let sequenceStart = currentEventIndex;
   
   for (let i = currentEventIndex - 1; i >= 0; i--) {
     const ev = allEvents[i];
     if (ev.event_type !== "pegging") continue;
     
-    const evCount = ev.running_count ?? 0;
+    // If this previous event scored a 31, it ended the previous sequence
+    // So our sequence starts AFTER this event
+    if (ev.event_subtype?.includes("31")) {
+      break;
+    }
     
-    // If the current event scored 31, we need all cards in this sequence
-    // The previous event's count tells us we're still in the same sequence
-    if (scored31) {
-      // Keep going back until we find a 31 or go event (previous sequence end)
-      const prevScored31OrGo = ev.event_subtype?.includes("31") || 
-        allEvents.find((e, idx) => idx > i && idx < currentEventIndex && e.event_type === "go");
-      if (prevScored31OrGo) {
+    // Check if there's a Go between this event and our current event
+    // that would indicate a sequence break
+    let foundGoInBetween = false;
+    for (let j = i + 1; j < currentEventIndex; j++) {
+      if (allEvents[j].event_type === "go") {
+        foundGoInBetween = true;
         break;
       }
-      sequenceStart = i;
-      continue;
+    }
+    if (foundGoInBetween) {
+      break;
     }
     
-    // Normal case: if current count is lower than previous, we crossed a reset
-    if (storedCount < evCount) {
-      break; // Found the reset point
-    }
-    
-    // If previous count is 0 but current is also low, check if prev was a 31
-    if (evCount === 0 && ev.event_subtype?.includes("31")) {
-      break; // Previous was end of sequence
+    // For normal (non-31) events, check count progression
+    if (!scored31) {
+      const evCount = ev.running_count ?? 0;
+      // If current stored count is less than previous, we crossed a reset
+      if (storedCount < evCount) {
+        break;
+      }
     }
     
     sequenceStart = i;
