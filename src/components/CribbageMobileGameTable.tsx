@@ -330,26 +330,21 @@ export const CribbageMobileGameTable = ({
   const countingStartKey = useMemo(() => {
     if (!cribbageState) return null;
 
-    // CRITICAL FIX: Only enter counting phase if we're genuinely in 'counting' phase,
-    // NOT if we won during pegging. A pegging win goes directly to 'complete' phase
-    // and should skip the counting animation entirely.
+    // CRITICAL FIX: Distinguish between pegging wins and counting wins.
     // 
-    // Detect pegging win by checking if all cards were played:
-    // - Each player plays 4 cards during pegging
-    // - If playedCards.length < numPlayers * 4, pegging wasn't complete when win occurred
+    // - Pegging win: phase goes 'pegging' -> 'complete' directly, lastHandCount is null
+    //   (endGame called during pegging, advanceToCounting never called)
+    // 
+    // - Counting win: phase goes 'pegging' -> 'counting' -> 'complete', lastHandCount exists
+    //   (advanceToCounting sets lastHandCount, then applyHandCountScores triggers win)
+    //
+    // If it's a pegging win, skip counting animation entirely and show win sequence.
     if (cribbageState.phase === 'complete') {
-      const numPlayers = Object.keys(cribbageState.playerStates).length;
-      const expectedPlayedCards = numPlayers * 4;
-      const actualPlayedCards = cribbageState.pegging.playedCards.length;
-      
-      if (actualPlayedCards < expectedPlayedCards) {
-        // Pegging win - not all cards were played, skip counting animation
+      if (!cribbageState.lastHandCount) {
+        // Pegging win - no counting data means we never entered counting phase
         return null;
       }
-      // All cards played, this is a counting-phase win that needs animation
-      if (!cribbageState.winnerPlayerId) {
-        return null;
-      }
+      // lastHandCount exists - this was a counting-phase win that needs animation
     } else if (cribbageState.phase !== 'counting') {
       return null;
     }
@@ -359,14 +354,11 @@ export const CribbageMobileGameTable = ({
   }, [
     roundId,
     cribbageState?.phase,
-    cribbageState?.winnerPlayerId,
     cribbageState?.dealerPlayerId,
     cribbageState?.cutCard?.rank,
     cribbageState?.cutCard?.suit,
-    // Include pegging state to detect when all cards are played
-    cribbageState?.pegging?.playedCards?.length,
-    // Include player count for the calculation
-    cribbageState?.playerStates ? Object.keys(cribbageState.playerStates).length : 0,
+    // Include lastHandCount to detect pegging vs counting wins
+    cribbageState?.lastHandCount ? 'has-count' : 'no-count',
   ]);
 
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display.
