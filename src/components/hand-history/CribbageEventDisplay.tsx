@@ -13,6 +13,7 @@ interface CribbageEventDisplayProps {
   events: CribbageEventRecord[];
   playerNames: Map<string, string>;
   playerHands?: PlayerHandData[];
+  pointsToWin?: number;
 }
 
 // Format event type to human-readable label
@@ -441,11 +442,37 @@ function groupScoringByPlayer(
   return result;
 }
 
-export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: CribbageEventDisplayProps) {
-  // Compute a trustworthy running scoreline from the event stream itself.
-  // This avoids displaying any negative / inconsistent scores_after values from older logs.
-  const computedScoresAfterById = useMemo(() => {
+export function CribbageEventDisplay({ events, playerNames, playerHands = [], pointsToWin = 121 }: CribbageEventDisplayProps) {
+  // Filter events to only include those up to and including the winning event.
+  // Once a player reaches pointsToWin, no further events should be shown.
+  const filteredEvents = useMemo(() => {
     const sorted = [...events].sort((a, b) => {
+      if (a.hand_number !== b.hand_number) return a.hand_number - b.hand_number;
+      return a.sequence_number - b.sequence_number;
+    });
+
+    const running: Record<string, number> = {};
+    const result: CribbageEventRecord[] = [];
+    
+    for (const ev of sorted) {
+      // Add points before checking win (so the winning event is included)
+      if (ev.points > 0) {
+        running[ev.player_id] = (running[ev.player_id] ?? 0) + ev.points;
+      }
+      result.push(ev);
+      
+      // Check if this event caused a win
+      if (running[ev.player_id] >= pointsToWin) {
+        break; // Stop adding events after the win
+      }
+    }
+    
+    return result;
+  }, [events, pointsToWin]);
+
+  // Compute a trustworthy running scoreline from the filtered event stream.
+  const computedScoresAfterById = useMemo(() => {
+    const sorted = [...filteredEvents].sort((a, b) => {
       if (a.hand_number !== b.hand_number) return a.hand_number - b.hand_number;
       return a.sequence_number - b.sequence_number;
     });
@@ -462,11 +489,11 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
       map.set(ev.id, { ...running });
     }
     return map;
-  }, [events]);
+  }, [filteredEvents]);
 
-  if (events.length === 0) return null;
+  if (filteredEvents.length === 0) return null;
   
-  const groupedByHand = groupEventsByHand(events);
+  const groupedByHand = groupEventsByHand(filteredEvents);
   const handNumbers = Array.from(groupedByHand.keys()).sort((a, b) => a - b);
   const hasMultipleHands = handNumbers.length > 1;
 
