@@ -593,6 +593,39 @@ export function useHandHistoryData({
 
       const displayNumber = dgId === "orphan" ? 0 : (dealerGameNumberById.get(dgId) ?? 0);
 
+      // Cribbage summary for header (final score line + skunk indicators)
+      let cribbageFinalScores: Record<string, number> | null = null;
+      let cribbageSkunkLevel: 0 | 1 | 2 | null = null;
+      if (isCribbage && allCribbageEventsForDealerGame.length > 0) {
+        const lastWithScores = [...allCribbageEventsForDealerGame]
+          .reverse()
+          .find((e) => e.scores_after && Object.keys(e.scores_after).length > 0);
+        cribbageFinalScores = (lastWithScores?.scores_after as Record<string, number> | undefined) ?? null;
+
+        if (cribbageFinalScores && dealerGame?.config) {
+          const cfg = dealerGame.config as Record<string, any>;
+          const pointsToWin = Number(cfg.points_to_win ?? cfg.pointsToWin ?? 121);
+          const skunkEnabled = Boolean(cfg.skunk_enabled ?? cfg.skunkEnabled ?? true);
+          const doubleSkunkEnabled = Boolean(cfg.double_skunk_enabled ?? cfg.doubleSkunkEnabled ?? true);
+          const skunkThreshold = Number(cfg.skunk_threshold ?? cfg.skunkThreshold ?? 91);
+          const doubleSkunkThreshold = Number(cfg.double_skunk_threshold ?? cfg.doubleSkunkThreshold ?? 61);
+
+          const scores = Object.values(cribbageFinalScores).filter((v) => typeof v === 'number' && !Number.isNaN(v));
+          if (scores.length > 0) {
+            const winnerScore = Math.max(...scores);
+            const loserScore = Math.min(...scores);
+
+            if (winnerScore >= pointsToWin && skunkEnabled) {
+              if (doubleSkunkEnabled && loserScore < doubleSkunkThreshold) cribbageSkunkLevel = 2;
+              else if (loserScore < skunkThreshold) cribbageSkunkLevel = 1;
+              else cribbageSkunkLevel = 0;
+            } else {
+              cribbageSkunkLevel = 0;
+            }
+          }
+        }
+      }
+
       groups.push({
         dealerGameId: dgId,
         displayNumber,
@@ -606,6 +639,9 @@ export function useHandHistoryData({
         totalPot,
         latestTimestamp: allEvents[allEvents.length - 1]?.created_at || dealerGame?.started_at || "",
         isDiceGame,
+
+        cribbageFinalScores,
+        cribbageSkunkLevel,
       });
     });
 

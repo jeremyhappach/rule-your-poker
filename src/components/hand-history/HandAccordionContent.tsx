@@ -221,10 +221,12 @@ export function HandAccordionContent({
   return (
     <div className="space-y-2 pt-2">
       {/* Metadata */}
-      <div className="text-xs text-muted-foreground mb-2">
-        {group.totalPot > 0 && `Pot: $${formatChipValue(group.totalPot)} • `}
-        {new Date(group.latestTimestamp).toLocaleTimeString()}
-      </div>
+      {group.gameType !== "cribbage" && (
+        <div className="text-xs text-muted-foreground mb-2">
+          {group.totalPot > 0 && `Pot: $${formatChipValue(group.totalPot)} • `}
+          {new Date(group.latestTimestamp).toLocaleTimeString()}
+        </div>
+      )}
 
       {/* Hands */}
       {group.hands.map((hand, handIdx) => (

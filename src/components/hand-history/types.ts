@@ -88,6 +88,10 @@ export interface DealerGameGroup {
   latestTimestamp: string;
   // For dice games
   isDiceGame: boolean;
+
+  // Cribbage summary (optional)
+  cribbageFinalScores?: Record<string, number> | null;
+  cribbageSkunkLevel?: 0 | 1 | 2 | null;
 }
 
 export interface PlayerDiceResult {

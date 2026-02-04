@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
 import type { CribbageEventRecord, CardData } from "./types";
@@ -137,19 +138,22 @@ interface EventRowProps {
   playerNames: Map<string, string>;
   allEvents: CribbageEventRecord[];
   eventIndex: number;
+  scoresAfterForRow?: Record<string, number>;
 }
 
-function CribbageEventRow({ event, playerNames, allEvents, eventIndex }: EventRowProps) {
+function CribbageEventRow({ event, playerNames, allEvents, eventIndex, scoresAfterForRow }: EventRowProps) {
   const username = playerNames.get(event.player_id) || "Unknown";
   const label = getEventLabel(event.event_type);
   const subtype = formatSubtype(event.event_subtype);
-  const scoresText = formatScores(event.scores_after, playerNames);
+  const scoresText = formatScores(scoresAfterForRow ?? event.scores_after, playerNames);
+  const peggingPointsCause = event.event_type === "pegging" && event.points > 0 ? subtype : "";
   
   // Build description based on event type
   let description = "";
   switch (event.event_type) {
     case "pegging":
-      description = subtype ? `${username}: ${subtype}` : `${username} plays`;
+      // Always show: PlayerName: [Card]
+      description = `${username}:`;
       break;
     case "go":
       description = `${username} gets a Go`;
@@ -188,8 +192,13 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex }: EventRo
           )}
         </div>
         {event.points > 0 && (
-          <span className="text-xs text-primary font-medium flex-shrink-0 ml-2">
+          <span className="text-xs text-primary font-medium flex-shrink-0 ml-2 inline-flex items-center gap-1">
             +{event.points}
+            {peggingPointsCause && (
+              <span className="text-[10px] text-muted-foreground">
+                ({peggingPointsCause})
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -210,7 +219,7 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex }: EventRo
       )}
       
       {/* Scores after this event */}
-      {scoresText && (
+      {scoresText && event.points > 0 && (
         <div className="pl-12 text-[10px] text-muted-foreground">
           {scoresText}
         </div>
@@ -353,6 +362,28 @@ function groupScoringByPlayer(
 }
 
 export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: CribbageEventDisplayProps) {
+  // Compute a trustworthy running scoreline from the event stream itself.
+  // This avoids displaying any negative / inconsistent scores_after values from older logs.
+  const computedScoresAfterById = useMemo(() => {
+    const sorted = [...events].sort((a, b) => {
+      if (a.hand_number !== b.hand_number) return a.hand_number - b.hand_number;
+      return a.sequence_number - b.sequence_number;
+    });
+
+    const playerIds = Array.from(new Set(sorted.map((e) => e.player_id)));
+    const running: Record<string, number> = {};
+    for (const id of playerIds) running[id] = 0;
+
+    const map = new Map<string, Record<string, number>>();
+    for (const ev of sorted) {
+      if (ev.points > 0) {
+        running[ev.player_id] = (running[ev.player_id] ?? 0) + ev.points;
+      }
+      map.set(ev.id, { ...running });
+    }
+    return map;
+  }, [events]);
+
   if (events.length === 0) return null;
   
   const groupedByHand = groupEventsByHand(events);
@@ -392,6 +423,7 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
                     playerNames={playerNames}
                     allEvents={handEvents}
                     eventIndex={handEvents.indexOf(event)}
+                    scoresAfterForRow={computedScoresAfterById.get(event.id)}
                   />
                 ))}
               </div>
@@ -404,24 +436,37 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
                 {scoringGroups.map((group, idx) => (
                   <div key={`${group.playerId}-${group.isCrib ? 'crib' : 'hand'}`} className="space-y-1">
                     {/* Player's hand + cut card */}
-                    <div className="flex items-center gap-2 px-2 py-1 rounded bg-muted/30">
-                      <span className="text-xs font-medium text-foreground">
-                        {group.isCrib ? `${group.username}'s Crib` : group.username}:
-                      </span>
-                      {group.hand.length > 0 && (
-                        <div className="flex gap-0.5">
-                          {group.hand.map((card, i) => (
-                            <MiniPlayingCard key={i} card={card} />
-                          ))}
+                    {(() => {
+                      const totalPoints = group.events.reduce((sum, e) => sum + (e.points ?? 0), 0);
+                      return (
+                        <div className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-medium text-foreground">
+                              {group.isCrib ? `${group.username}'s Crib` : group.username}:
+                            </span>
+                            {group.hand.length > 0 && (
+                              <div className="flex gap-0.5">
+                                {group.hand.map((card, i) => (
+                                  <MiniPlayingCard key={i} card={card} />
+                                ))}
+                              </div>
+                            )}
+                            {group.cutCard && (
+                              <>
+                                <span className="text-muted-foreground">+</span>
+                                <MiniPlayingCard card={group.cutCard} className="border-2 border-primary/50" />
+                              </>
+                            )}
+                          </div>
+
+                          {totalPoints > 0 && (
+                            <span className="text-xs text-primary font-medium tabular-nums flex-shrink-0">
+                              +{totalPoints}
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {group.cutCard && (
-                        <>
-                          <span className="text-muted-foreground">+</span>
-                          <MiniPlayingCard card={group.cutCard} className="border-2 border-primary/50" />
-                        </>
-                      )}
-                    </div>
+                      );
+                    })()}
                     
                     {/* Scoring events for this player */}
                     {group.events.map((event) => (
@@ -431,6 +476,7 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [] }: 
                         playerNames={playerNames}
                         allEvents={handEvents}
                         eventIndex={handEvents.indexOf(event)}
+                        scoresAfterForRow={computedScoresAfterById.get(event.id)}
                       />
                     ))}
                   </div>
