@@ -99,37 +99,29 @@ export const CribbageCountingPhase = ({
     onAnnouncementChange?.(null, null);
   }, [winFrozen, onAnnouncementChange]);
 
-  // Calculate baseline scores (before counting) - this is what scores were after pegging
-  const baselineScores = (() => {
-    const scores: Record<string, number> = {};
-    for (const [playerId] of Object.entries(cribbageState.playerStates)) {
-      const playerHandCards = cribbageState.pegging.playedCards
-        .filter(pc => pc.playerId === playerId)
-        .map(pc => pc.card);
-      const handScore = getHandScoringCombos(playerHandCards, cribbageState.cutCard, false);
-      const handTotal = getTotalFromCombos(handScore);
-      
-      let cribTotal = 0;
-      if (playerId === cribbageState.dealerPlayerId) {
-        const cribCombos = getHandScoringCombos(cribbageState.crib, cribbageState.cutCard, true);
-        cribTotal = getTotalFromCombos(cribCombos);
-      }
-      
-      // Final pegScore minus all counting scores = baseline after pegging
-      scores[playerId] = cribbageState.playerStates[playerId].pegScore - handTotal - cribTotal;
-    }
-    return scores;
-  })();
-
+  // CRITICAL: Always use initialScores prop as the authoritative baseline.
+  // The parent (CribbageMobileGameTable) captures the correct pegging-phase scores BEFORE
+  // phase transition and passes them here. Recalculating from cribbageState is unreliable
+  // because the DB pegScore may already reflect post-counting values due to race conditions.
   if (!initialScoresRef.current) {
-    initialScoresRef.current = initialScores ?? baselineScores;
+    if (initialScores) {
+      initialScoresRef.current = initialScores;
+    } else {
+      // Fallback: use current pegScore (should rarely happen if parent passes initialScores)
+      const scores: Record<string, number> = {};
+      for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+        scores[playerId] = ps.pegScore ?? 0;
+      }
+      initialScoresRef.current = scores;
+    }
   }
 
   // Initialize animated scores from baseline and propagate to parent IMMEDIATELY
   useEffect(() => {
     if (baselineInitialized) return;
+    if (!initialScoresRef.current) return; // Wait until baseline is set
 
-    const scoresToInit = initialScoresRef.current ?? baselineScores;
+    const scoresToInit = initialScoresRef.current;
     setAnimatedScores(scoresToInit);
 
     // Propagate initial baseline scores to parent for peg board sync BEFORE any animation

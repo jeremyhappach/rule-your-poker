@@ -36,10 +36,14 @@ export const CribbageFeltContent = ({
   const isPeggingWin = cribbageState.phase === 'complete' && !cribbageState.lastHandCount;
   
   // Hide standard felt content during counting phase (CribbageCountingPhase takes over)
-  // Also treat "countingScoreOverrides present" as counting layout so the UI doesn't snap back
-  // to the normal cut-card row during win sequences where DB phase may already be 'complete'.
+  // Use the actual phase from state, not the presence of countingScoreOverrides.
+  // During win sequences where DB phase may already be 'complete', we check lastHandCount
+  // to distinguish counting wins from pegging wins.
   // Exception: pegging wins should NOT enter counting layout - cards stay visible on felt.
-  const isCountingPhase = (cribbageState.phase === 'counting' || !!countingScoreOverrides) && !isPeggingWin;
+  const isCountingPhase = (
+    cribbageState.phase === 'counting' || 
+    (cribbageState.phase === 'complete' && !!cribbageState.lastHandCount)
+  ) && !isPeggingWin;
   
   // Show crib on felt only during discarding/cutting/pegging (or pegging win)
   const showCribOnFelt = cribbageState.crib.length > 0 && 
