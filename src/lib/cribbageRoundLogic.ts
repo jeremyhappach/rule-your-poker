@@ -2,6 +2,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { initializeCribbageGame } from './cribbageGameLogic';
+import { getBotAlias } from './botAlias';
 import type { CribbageState } from './cribbageTypes';
 
 /**
@@ -287,12 +288,22 @@ export async function endCribbageGame(
 
       const { data: winner } = await supabase
         .from('players')
-        .select('id, profiles(username)')
+        .select('id, user_id, is_bot, created_at, profiles(username)')
         .eq('id', cribbageState.winnerPlayerId)
         .single();
 
+      // Get all players to determine bot alias
+      const { data: playersForAlias } = await supabase
+        .from('players')
+        .select('id, user_id, is_bot, created_at')
+        .eq('game_id', gameId);
+
+      const winnerDisplayName = winner?.is_bot && playersForAlias
+        ? getBotAlias(playersForAlias, winner.user_id)
+        : ((winner?.profiles as any)?.username || 'Player');
+
       const skunkType = multiplier === 3 ? 'Double-Skunk!' : multiplier === 2 ? 'Skunk!' : '';
-      const resultDescription = `${(winner?.profiles as any)?.username || 'Player'} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
+      const resultDescription = `${winnerDisplayName} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
 
       await supabase
         .from('games')
@@ -346,15 +357,25 @@ export async function endCribbageGame(
       console.log('[CRIBBAGE] Awarded winner:', cribbageState.winnerPlayerId, totalWinnerGain);
     }
 
-    // Get winner username for display
+    // Get winner info for display - use bot alias if applicable
     const { data: winner } = await supabase
       .from('players')
-      .select('id, profiles(username)')
+      .select('id, user_id, is_bot, created_at, profiles(username)')
       .eq('id', cribbageState.winnerPlayerId)
       .single();
 
+    // Get all players to determine bot alias
+    const { data: allPlayersForAlias } = await supabase
+      .from('players')
+      .select('id, user_id, is_bot, created_at')
+      .eq('game_id', gameId);
+
+    const winnerUsername = winner?.is_bot && allPlayersForAlias
+      ? getBotAlias(allPlayersForAlias, winner.user_id)
+      : ((winner?.profiles as any)?.username || 'Player');
+
     const skunkType = multiplier === 3 ? 'Double-Skunk!' : multiplier === 2 ? 'Skunk!' : '';
-    const resultDescription = `${(winner?.profiles as any)?.username || 'Player'} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
+    const resultDescription = `${winnerUsername} wins${skunkType ? ' ' + skunkType : ''} +$${totalWinnerGain}`;
 
     // Update game status
     await supabase
@@ -376,7 +397,7 @@ export async function endCribbageGame(
         hand_number: handNumber,
         pot_won: totalWinnerGain,
         winner_player_id: cribbageState.winnerPlayerId,
-        winner_username: (winner?.profiles as any)?.username,
+        winner_username: winnerUsername,
         winning_hand_description: resultDescription,
         is_chopped: false,
         player_chip_changes: chipChanges,
@@ -399,13 +420,18 @@ export async function endCribbageGame(
     if (allPlayers) {
       for (const player of allPlayers) {
         const chipChange = chipChanges[player.id] || 0;
+        // Use bot alias for bots
+        const displayName = player.is_bot
+          ? getBotAlias(allPlayers, player.user_id)
+          : ((player.profiles as any)?.username || 'Player');
+        
         supabase
           .from('session_player_snapshots')
           .insert({
             game_id: gameId,
             player_id: player.id,
             user_id: player.user_id,
-            username: (player.profiles as any)?.username || 'Player',
+            username: displayName,
             chips: chipChange, // Use the chip change, not absolute chips
             hand_number: handNumber,
             is_bot: player.is_bot,

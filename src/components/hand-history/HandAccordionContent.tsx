@@ -15,7 +15,8 @@ interface HandAccordionContentProps {
 // Format event for display
 function formatEventDescription(
   event: GameResultRecord,
-  currentPlayerId?: string
+  currentPlayerId?: string,
+  playerNames?: Map<string, string>
 ): { label: string; description: string; chipChange: number | null } {
   const chipChange = currentPlayerId ? (event.player_chip_changes[currentPlayerId] ?? null) : null;
 
@@ -41,12 +42,14 @@ function formatEventDescription(
     return { label: "Adjust", description: "Ante correction", chipChange };
   }
 
-  // Showdown/Win event
+  // Showdown/Win event - use resolved player name (with bot alias) if available
   const desc = compactHandDescription(event.winning_hand_description);
-  const winner = event.winner_username || "Unknown";
-  const finalDesc = desc ? `${winner}: ${desc}` : winner;
+  const resolvedWinner = event.winner_player_id && playerNames?.has(event.winner_player_id)
+    ? playerNames.get(event.winner_player_id)
+    : (event.winner_username || "Unknown");
+  const finalDesc = desc ? `${resolvedWinner}: ${desc}` : resolvedWinner;
 
-  return { label: "Win", description: finalDesc, chipChange };
+  return { label: "Win", description: finalDesc || "Unknown", chipChange };
 }
 
 // Get card count label for 3-5-7 rounds
@@ -185,7 +188,7 @@ function RoundDisplay({
       {hasEvents && (
         <div className="space-y-1">
           {round.events.map((event) => {
-            const { label, description, chipChange } = formatEventDescription(event, currentPlayerId);
+            const { label, description, chipChange } = formatEventDescription(event, currentPlayerId, playerNames);
             return (
               <HandHistoryEventRow
                 key={event.id}
