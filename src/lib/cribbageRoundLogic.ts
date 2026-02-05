@@ -183,7 +183,7 @@ export async function startNextCribbageHand(
   dealerGameId: string,
   previousState: CribbageState,
   playerIds: string[]
-): Promise<{ success: boolean; roundId?: string; handNumber?: number; newState?: CribbageState; error?: string }> {
+): Promise<{ success: boolean; roundId?: string; handNumber?: number; newState?: CribbageState; error?: string; alreadyStarted?: boolean }> {
   console.log('[CRIBBAGE] Starting next hand', { gameId, dealerGameId });
 
   try {
@@ -216,7 +216,9 @@ export async function startNextCribbageHand(
 
     console.log('[CRIBBAGE] Creating new round for hand', { handNumber, dealerGameId });
 
-    // Create a NEW round record for this hand
+    // Create a NEW round record for this hand.
+    // ATOMIC GUARD: The unique index (dealer_game_id, hand_number, round_number) ensures
+    // only one client successfully inserts. Other clients will get a conflict error.
     const { data: round, error: roundError } = await supabase
       .from('rounds')
       .insert({
@@ -232,8 +234,18 @@ export async function startNextCribbageHand(
       .select()
       .single();
 
-    if (roundError || !round) {
+    // Check for unique constraint violation (duplicate key) - another client already created the round
+    if (roundError) {
+      if (roundError.code === '23505' || roundError.message?.includes('duplicate key')) {
+        console.log('[CRIBBAGE] Round already exists for this hand (atomic guard), another client won the race');
+        // Return success but indicate another client handled it
+        return { success: true, alreadyStarted: true };
+      }
       throw new Error(`Failed to create round: ${roundError?.message}`);
+    }
+
+    if (!round) {
+      throw new Error('Failed to create round: no data returned');
     }
 
     // DB-First pattern: Use the RETURNED hand_number from insert, not the calculated value
