@@ -24,6 +24,7 @@ import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
 // CribbageWinnerAnnouncement removed - win message now in dealer banner area
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
+import { HandHistory } from './HandHistory';
 import { RoundHandDebugOverlay } from './RoundHandDebugOverlay';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChat } from '@/hooks/useGameChat';
@@ -2011,9 +2012,12 @@ export const CribbageMobileGameTable = ({
           )}
 
           {activeTab === 'history' && (
-            <div className="flex items-center justify-center py-8">
-              <span className="text-muted-foreground">History coming soon...</span>
-            </div>
+            <HandHistory
+              gameId={gameId}
+              currentUserId={currentUserId}
+              currentPlayerId={currentPlayerId}
+              gameType="cribbage"
+            />
           )}
         </div>
       </div>
