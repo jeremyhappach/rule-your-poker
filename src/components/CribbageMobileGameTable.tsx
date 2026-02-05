@@ -177,10 +177,27 @@ export const CribbageMobileGameTable = ({
   const [currentHandNumber, setCurrentHandNumber] = useState(handNumber);
 
   // Sync local round tracking when props change (e.g., when parent reloads game state)
+  // CRITICAL: With multiple clients, props can temporarily lag behind a locally-started next hand.
+  // Never allow a stale prop update (older handNumber) to overwrite our forward-only local tracking,
+  // otherwise the realtime subscription can snap back to the previous round and replay counting.
   useEffect(() => {
-    setCurrentRoundId(roundId);
-    setCurrentHandNumber(handNumber);
-  }, [roundId, handNumber]);
+    if (!roundId) return;
+
+    // Forward-only sync for hand number
+    setCurrentHandNumber((prev) => {
+      if (handNumber > prev) return handNumber;
+      return prev;
+    });
+
+    // Only accept prop roundId when it is not stale relative to our local hand.
+    setCurrentRoundId((prev) => {
+      if (!prev) return roundId;
+      if (handNumber > currentHandNumber) return roundId;
+      if (handNumber === currentHandNumber) return roundId;
+      // props are behind; keep our locally-advanced roundId
+      return prev;
+    });
+  }, [roundId, handNumber, currentHandNumber]);
 
   useEffect(() => {
     cribbageStateRef.current = cribbageState;
@@ -214,6 +231,14 @@ export const CribbageMobileGameTable = ({
   
   // Counting phase animated scores - peg board reads these instead of final scores
   const [countingScoreOverrides, setCountingScoreOverrides] = useState<Record<string, number> | null>(null);
+
+  // IMPORTANT: Keep a stable baseline for the counting animation.
+  // If the counting overlay ever remounts/re-inits, it must start from the pegging baseline
+  // (not from the already-animated overrides), otherwise scores can double.
+  const countingBaselineScoresRef = useRef<Record<string, number> | null>(null);
+  // Stable id for the currently-animated counting instance (latched when counting begins)
+  const countingHandKeyRef = useRef<string | null>(null);
+
   // Cache the latest pegging-phase scores so counting can always start from the true pre-count baseline
   // even if the DB state already contains post-count totals or has incomplete playedCards data.
   const lastPeggingScoresRef = useRef<Record<string, number> | null>(null);
@@ -273,6 +298,8 @@ export const CribbageMobileGameTable = ({
 
     countingAnimationActiveRef.current = false;
     countingDelayFiredRef.current = null;
+    countingBaselineScoresRef.current = null;
+    countingHandKeyRef.current = null;
   }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
   // Win sequence state
@@ -539,6 +566,7 @@ export const CribbageMobileGameTable = ({
     // Mark counting animation as active
     countingAnimationActiveRef.current = true;
     countingDelayFiredRef.current = countingStartKey;
+    countingHandKeyRef.current = countingStartKey;
     setCountingStateSnapshot(state);
 
     // Initialize counting score overrides with the pegging baseline IMMEDIATELY.
@@ -570,6 +598,9 @@ export const CribbageMobileGameTable = ({
       // Otherwise, trust the cached pegging scores.
       return cachedScores;
     })();
+
+    // Stable baseline for the counting overlay (do NOT derive from animated overrides)
+    countingBaselineScoresRef.current = baselineScores;
 
     // Keep cache aligned with what we're using as the baseline for this hand.
     lastPeggingScoresRef.current = baselineScores;
@@ -1416,8 +1447,10 @@ export const CribbageMobileGameTable = ({
   const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
     if (!cribbageState || !dealerGameId) return;
 
-    // Atomic guard: Prevent double-firing on the same client for the same hand
-    const handKey = `${dealerGameId}:${currentHandNumber}`;
+    // Atomic guard: Prevent double-firing on the same client for the same counting instance
+    // (IMPORTANT: use the key latched when counting started; currentHandNumber can drift if
+    // props advance while our local counting animation is still finishing).
+    const handKey = countingHandKeyRef.current ?? `${dealerGameId}:${currentHandNumber}`;
     if (startNextHandFiredRef.current === handKey) {
       console.log('[CRIBBAGE] handleCountingComplete already fired for this hand, skipping', { handKey });
       return;
@@ -1857,7 +1890,8 @@ export const CribbageMobileGameTable = ({
                 cardBackColors={cardBackColors}
                 onAnnouncementChange={handleCountingAnnouncementChange}
                 onScoreUpdate={setCountingScoreOverrides}
-                initialScores={countingScoreOverrides ?? undefined}
+                // IMPORTANT: Always start from the pegging baseline, never from the animated overrides.
+                initialScores={countingBaselineScoresRef.current ?? undefined}
                 winFrozen={countingWinFrozen}
               />
             )}
