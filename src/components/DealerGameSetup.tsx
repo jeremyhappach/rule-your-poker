@@ -1462,7 +1462,7 @@ export const DealerGameSetup = ({
 
               {/* Card Games Tab */}
               <TabsContent value="cards" className="mt-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="flex flex-col gap-2">
                   {cardGames.map((game) => {
                     const disabled = isGameDisabled(game);
                     const restriction = getPlayerRestrictionLabel(game);
@@ -1473,35 +1473,33 @@ export const DealerGameSetup = ({
                         onClick={() => handleGameSelect(game.id)}
                         disabled={disabled}
                         className={`
-                          relative p-4 rounded-lg border-2 transition-all text-left
+                          relative w-full py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-between
                           ${disabled
                             ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
-                            : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer'
+                            : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer'
                           }
                         `}
                       >
-                        {!game.enabled && (
-                          <div className="absolute top-2 right-2">
-                            <Lock className="w-4 h-4 text-gray-400" />
-                          </div>
-                        )}
-                        <div className="space-y-1">
-                          <h4 className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
-                            {game.name}
-                          </h4>
-                          <p className={`text-xs ${disabled ? 'text-gray-500' : 'text-amber-200'}`}>
-                            {game.description}
-                          </p>
-                          {restriction && (
-                            <p className={`text-xs font-medium ${
-                              activePlayerCount > (game.maxPlayers || 99) 
-                                ? 'text-red-400' 
-                                : 'text-amber-400'
-                            }`}>
-                              {restriction}
-                            </p>
+                        <div className="flex items-center gap-3">
+                          {!game.enabled && (
+                            <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
                           )}
+                          <span className={`text-base font-bold ${disabled ? 'text-gray-400' : 'text-poker-gold'}`}>
+                            {game.name}
+                          </span>
+                          <span className={`text-sm ${disabled ? 'text-gray-500' : 'text-amber-200/80'}`}>
+                            — {game.description}
+                          </span>
                         </div>
+                        {restriction && (
+                          <span className={`text-xs font-medium flex-shrink-0 ${
+                            activePlayerCount > (game.maxPlayers || 99) 
+                              ? 'text-red-400' 
+                              : 'text-amber-400'
+                          }`}>
+                            {restriction}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -1510,21 +1508,19 @@ export const DealerGameSetup = ({
 
               {/* Dice Games Tab */}
               <TabsContent value="dice" className="mt-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-2">
                   {diceGames.map((game) => (
                     <button
                       key={game.id}
                       onClick={() => handleGameSelect(game.id)}
-                      className="relative p-4 rounded-lg border-2 transition-all text-left border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 hover:scale-105 cursor-pointer"
+                      className="relative w-full py-3 px-4 rounded-lg border-2 transition-all flex items-center border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
                     >
-                      <div className="space-y-1">
-                        <h4 className="text-base font-bold text-poker-gold">
-                          {game.name}
-                        </h4>
-                        <p className="text-xs text-amber-200">
-                          {game.description}
-                        </p>
-                      </div>
+                      <span className="text-base font-bold text-poker-gold">
+                        {game.name}
+                      </span>
+                      <span className="text-sm text-amber-200/80 ml-3">
+                        — {game.description}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -1536,7 +1532,8 @@ export const DealerGameSetup = ({
               <div className="pt-3 border-t border-poker-gold/30">
                 <button
                   onClick={handleRunBack}
-                  className="w-full p-3 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 hover:scale-[1.02] cursor-pointer flex items-center justify-center gap-2"
+                  disabled={isSubmitting}
+                  className="w-full py-3 px-4 rounded-lg border-2 transition-all border-amber-600 bg-amber-800/30 hover:bg-amber-800/50 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RotateCcw className="w-5 h-5 text-amber-400" />
                   <span className="text-base font-bold text-amber-400">
@@ -1614,11 +1611,11 @@ export const DealerGameSetup = ({
                     {/* Game Mode Selection */}
                     <div className="space-y-2">
                       <Label className="text-amber-100 text-sm">Game Mode</Label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-2">
                         {[
                           { id: 'full', label: 'Full Game', desc: '121 pts' },
                           { id: 'half', label: 'Half Game', desc: '61 pts' },
-                          { id: 'super_quick', label: 'Super Quick', desc: '45 pts' },
+                          { id: 'super_quick', label: 'Quick', desc: '45 pts' },
                           { id: 'sprint', label: 'Sprint', desc: '31 pts' },
                           { id: 'custom', label: 'Custom', desc: 'Enter target' },
                         ].map((mode) => (
@@ -1626,14 +1623,14 @@ export const DealerGameSetup = ({
                             key={mode.id}
                             type="button"
                             onClick={() => setCribbageGameMode(mode.id as import('@/lib/cribbageTypes').CribbageGameMode)}
-                            className={`p-2 rounded-lg border text-left transition-all ${
+                            className={`w-full py-2.5 px-4 rounded-lg border transition-all flex items-center justify-between ${
                               cribbageGameMode === mode.id
                                 ? 'border-poker-gold bg-poker-gold/20 text-white'
                                 : 'border-amber-700/50 bg-amber-900/20 text-amber-200 hover:bg-amber-900/40'
                             }`}
                           >
-                            <div className="font-medium text-sm">{mode.label}</div>
-                            <div className="text-xs opacity-70">{mode.desc}</div>
+                            <span className="font-medium">{mode.label}</span>
+                            <span className="text-sm opacity-70">{mode.desc}</span>
                           </button>
                         ))}
                       </div>
@@ -1676,8 +1673,8 @@ export const DealerGameSetup = ({
                       {cribbageGameMode === 'full' && !skunksEnabled && 'No skunk multipliers'}
                       {cribbageGameMode === 'half' && skunksEnabled && 'Skunk <31 (2x) • Double Skunk <15 (3x)'}
                       {cribbageGameMode === 'half' && !skunksEnabled && 'No skunk multipliers'}
-                      {cribbageGameMode === 'super_quick' && skunksEnabled && 'Skunk <30 (2x) • No double skunk'}
-                      {cribbageGameMode === 'super_quick' && !skunksEnabled && 'No skunk multipliers'}
+                      {cribbageGameMode === 'super_quick' && skunksEnabled && 'Quick: Skunk <30 (2x) • No double skunk'}
+                      {cribbageGameMode === 'super_quick' && !skunksEnabled && 'Quick: No skunk multipliers'}
                       {cribbageGameMode === 'sprint' && 'Quick game, no skunk penalties'}
                       {cribbageGameMode === 'custom' && `First to ${customPointsToWin || '?'} points, no skunks`}
                     </div>
