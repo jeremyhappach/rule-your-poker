@@ -135,9 +135,13 @@ export const CribbageMobileCardsTab = ({
                 disabled={isProcessing}
                 className={cn(
                   "transition-all duration-200 rounded relative",
-                  isSelected && "-translate-y-3 ring-2 ring-poker-gold z-10",
-                  isMyTurn && isPlayable && "hover:-translate-y-1 hover:ring-1 hover:ring-poker-gold/50",
-                  cribbageState.phase === 'discarding' && !haveDiscarded && "hover:-translate-y-2 hover:z-10"
+                  // Explicit transform for selected vs not-selected states
+                  // This ensures deselecting a card returns it to translateY(0)
+                  isSelected 
+                    ? "-translate-y-3 ring-2 ring-poker-gold z-10" 
+                    : "translate-y-0",
+                  isMyTurn && isPlayable && !isSelected && "hover:-translate-y-1 hover:ring-1 hover:ring-poker-gold/50",
+                  cribbageState.phase === 'discarding' && !haveDiscarded && !isSelected && "hover:-translate-y-2 hover:z-10"
                 )}
                 style={{ zIndex: isSelected ? 10 : index }}
               >
