@@ -258,6 +258,9 @@ export const CribbageMobileGameTable = ({
   // Source-level guard for chip animation trigger to prevent double-firing
   const chipAnimationFiredRef = useRef<string | null>(null);
 
+  // Source-level guard for starting next hand to prevent double-firing on same client
+  const startNextHandFiredRef = useRef<string | null>(null);
+
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   // IMPORTANT: include dealerGameId so a player can win multiple dealer games in the same session.
   const winKeyFor = (winnerId: string) => `${gameId}:${dealerGameId ?? 'unknown-dealer'}:${winnerId}`;
@@ -1360,6 +1363,14 @@ export const CribbageMobileGameTable = ({
   // if someone exceeds pointsToWin, which we must handle here.
   const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
     if (!cribbageState || !dealerGameId) return;
+
+    // Atomic guard: Prevent double-firing on the same client for the same hand
+    const handKey = `${dealerGameId}:${currentHandNumber}`;
+    if (startNextHandFiredRef.current === handKey) {
+      console.log('[CRIBBAGE] handleCountingComplete already fired for this hand, skipping', { handKey });
+      return;
+    }
+    startNextHandFiredRef.current = handKey;
     
     // Mark counting animation as complete and clear snapshot
     countingAnimationActiveRef.current = false;
@@ -1412,6 +1423,13 @@ export const CribbageMobileGameTable = ({
         }
         throw new Error(result.error || 'Failed to start next hand');
       }
+
+      // If another client already started this hand, skip the local state update
+      // The realtime subscription will pick up the new round data
+      if (result.alreadyStarted) {
+        console.log('[CRIBBAGE] Another client started the next hand, waiting for realtime update');
+        return;
+      }
       
       // Update local tracking with new round info
       if (result.roundId && result.handNumber !== undefined) {
@@ -1425,6 +1443,8 @@ export const CribbageMobileGameTable = ({
         setCurrentHandNumber(result.handNumber);
         // Reset cut card logged ref for new hand
         cutCardLoggedRef.current = null;
+        // Reset startNextHand guard for the new hand - the key will be different now
+        // (This guard key includes the NEW handNumber, so future calls for this hand are blocked)
       }
       
       // Update local state with the new cribbage state
