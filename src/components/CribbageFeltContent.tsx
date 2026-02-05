@@ -18,6 +18,8 @@ interface CribbageFeltContentProps {
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
   countingScoreOverrides?: Record<string, number>;
+  /** When true, treat the brief counting-delay window as pegging so the last pegged cards remain visible. */
+  countingOutroActive?: boolean;
 }
 
 export const CribbageFeltContent = ({
@@ -28,27 +30,32 @@ export const CribbageFeltContent = ({
   getPlayerUsername,
   cardBackColors,
   countingScoreOverrides,
+  countingOutroActive = false,
 }: CribbageFeltContentProps) => {
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
-  
+
+  // During the 2s outro, keep the pegging layout visible even though DB phase is already 'counting'.
+  const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
+
   // Detect pegging win: phase is 'complete' but lastHandCount is null
   // (meaning we never entered counting phase - win occurred during pegging)
-  const isPeggingWin = cribbageState.phase === 'complete' && !cribbageState.lastHandCount;
-  
+  const isPeggingWin = phaseForLayout === 'complete' && !cribbageState.lastHandCount;
+
   // Hide standard felt content during counting phase (CribbageCountingPhase takes over)
   // Use the actual phase from state, not the presence of countingScoreOverrides.
   // During win sequences where DB phase may already be 'complete', we check lastHandCount
   // to distinguish counting wins from pegging wins.
   // Exception: pegging wins should NOT enter counting layout - cards stay visible on felt.
   const isCountingPhase = (
-    cribbageState.phase === 'counting' || 
-    (cribbageState.phase === 'complete' && !!cribbageState.lastHandCount)
+    phaseForLayout === 'counting' ||
+    (phaseForLayout === 'complete' && !!cribbageState.lastHandCount)
   ) && !isPeggingWin;
-  
+
   // Show crib on felt only during discarding/cutting/pegging (or pegging win)
-  const showCribOnFelt = cribbageState.crib.length > 0 && 
-    !isCountingPhase && 
-    (cribbageState.phase !== 'complete' || isPeggingWin);
+  const showCribOnFelt =
+    cribbageState.crib.length > 0 &&
+    !isCountingPhase &&
+    (phaseForLayout !== 'complete' || isPeggingWin);
 
   // During counting, show pegboard and skunk indicator - cards handled by CribbageCountingPhase
   if (isCountingPhase) {
@@ -67,7 +74,7 @@ export const CribbageFeltContent = ({
 
         {/* Peg Board - stays in normal position during counting, uses animated scores */}
         <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
-          <CribbagePegBoard 
+          <CribbagePegBoard
             players={players}
             playerStates={cribbageState.playerStates}
             winningScore={cribbageState.pointsToWin}
@@ -133,10 +140,10 @@ export const CribbageFeltContent = ({
 
       {/* Pegging / Gameplay Area - positioned below peg board but above dealer button */}
       {/* Show during pegging OR during pegging win (to keep cards visible during win animation) */}
-      {(cribbageState.phase === 'pegging' || isPeggingWin) && (
+      {(phaseForLayout === 'pegging' || isPeggingWin) && (
         <div className="absolute top-[68%] left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
           {/* Count on the left - hide during pegging win (game is over) */}
-          {cribbageState.phase === 'pegging' && (
+          {phaseForLayout === 'pegging' && (
             <div className="flex flex-col items-center">
               <span className="text-[10px] text-white/60">Count</span>
               <span className="text-2xl font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>
@@ -145,8 +152,8 @@ export const CribbageFeltContent = ({
           {/* Played cards - larger size, overlapping */}
           {/* For pegging wins, show ALL played cards (not just current sequence) */}
           <div className="flex -space-x-4 justify-center">
-            {(isPeggingWin 
-              ? cribbageState.pegging.playedCards 
+            {(isPeggingWin
+              ? cribbageState.pegging.playedCards
               : cribbageState.pegging.playedCards.slice(sequenceStartIndex)
             ).map((pc, i) => (
               <CribbagePlayingCard key={i} card={pc.card} size="md" />
