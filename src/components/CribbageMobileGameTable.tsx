@@ -249,12 +249,31 @@ export const CribbageMobileGameTable = ({
       next: { roundId, handNumber },
     });
 
-    countingAnimationActiveRef.current = false;
-    countingDelayFiredRef.current = null;
+    // IMPORTANT: Keep the counting "init" latch ON.
+    // If we set this to false here, the counting init effect can re-run with a NEW
+    // (roundId/handNumber)-driven key while still holding the OLD counting state in refs,
+    // causing the entire scoring sequence to restart a second time.
+    countingAnimationActiveRef.current = true;
     setCountingDelayActive(false);
     setCountingWinFrozen(false);
     setCountingStateSnapshot(null);
   }, [roundId, handNumber, countingStateSnapshot]);
+
+  // Reset counting latches ONLY after we've truly left the counting context.
+  // This prevents a multi-client prop update during counting from allowing the init effect
+  // to re-snapshot stale counting state and replay the scoring sequence.
+  useEffect(() => {
+    if (!cribbageState) return;
+
+    const isCountingContext =
+      cribbageState.phase === 'counting' ||
+      (cribbageState.phase === 'complete' && Boolean(cribbageState.lastHandCount));
+
+    if (isCountingContext) return;
+
+    countingAnimationActiveRef.current = false;
+    countingDelayFiredRef.current = null;
+  }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
   // Win sequence state
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
@@ -1405,10 +1424,12 @@ export const CribbageMobileGameTable = ({
     }
     startNextHandFiredRef.current = handKey;
     
-    // Mark counting animation as complete and clear snapshot
-    countingAnimationActiveRef.current = false;
+    // Mark counting animation as complete and clear snapshot.
+    // IMPORTANT: Do NOT set countingAnimationActiveRef.current = false here.
+    // With multiple clients, the parent can advance (roundId/handNumber props change) before
+    // this client fully receives/render-syncs the new round state. If we drop the latch early,
+    // the counting init effect can re-run and replay the scoring sequence.
     setCountingStateSnapshot(null);
-    countingDelayFiredRef.current = null;
     setCountingWinFrozen(false);
     
     // IMPORTANT: Do NOT clear countingScoreOverrides here.
