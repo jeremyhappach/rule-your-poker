@@ -132,16 +132,24 @@ export const CribbageMobileCardsTab = ({
               <button
                 key={index}
                 onClick={() => handleCardClick(index)}
+                onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing}
                 className={cn(
                   "transition-all duration-200 rounded relative",
                   // Explicit transform for selected vs not-selected states
                   // This ensures deselecting a card returns it to translateY(0)
-                  isSelected 
-                    ? "-translate-y-3 ring-2 ring-poker-gold z-10" 
+                  isSelected
+                    ? "-translate-y-3 ring-2 ring-poker-gold z-10"
                     : "translate-y-0",
-                  isMyTurn && isPlayable && !isSelected && "hover:-translate-y-1 hover:ring-1 hover:ring-poker-gold/50",
-                  cribbageState.phase === 'discarding' && !haveDiscarded && !isSelected && "hover:-translate-y-2 hover:z-10"
+                  // iOS can "stick" :hover after a tap; only apply hover transforms on fine-pointer hover devices.
+                  isMyTurn &&
+                    isPlayable &&
+                    !isSelected &&
+                    "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
+                  cribbageState.phase === 'discarding' &&
+                    !haveDiscarded &&
+                    !isSelected &&
+                    "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-2 [@media(hover:hover)_and_(pointer:fine)]:hover:z-10"
                 )}
                 style={{ zIndex: isSelected ? 10 : index }}
               >

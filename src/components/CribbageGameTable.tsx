@@ -336,17 +336,6 @@ export const CribbageGameTable = ({
             // Fire-and-forget event logging (atomic DB guard prevents duplicates)
             logGoPointEvent(eventCtx, cribbageState, newState);
             
-            // ISSUE #1 FIX: If this Go call causes transition to counting phase,
-            // delay the DB update by 2 seconds so players can see the Go announcement.
-            const isTransitionToCounting = 
-              cribbageState.phase === 'pegging' && 
-              newState.phase === 'counting';
-            
-            if (isTransitionToCounting) {
-              setCribbageState(newState);
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-            
             await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -367,17 +356,6 @@ export const CribbageGameTable = ({
               // Check for his_heels on phase transition
               if (newState.lastEvent?.type === 'his_heels') {
                 logHisHeelsEvent(eventCtx, newState);
-              }
-              
-              // ISSUE #1 FIX: If this card causes transition to counting phase,
-              // delay the DB update by 2 seconds so players can see the last card.
-              const isTransitionToCounting = 
-                cribbageState.phase === 'pegging' && 
-                newState.phase === 'counting';
-              
-              if (isTransitionToCounting) {
-                setCribbageState(newState);
-                await new Promise(resolve => setTimeout(resolve, 2000));
               }
               
               await supabase
@@ -478,17 +456,6 @@ export const CribbageGameTable = ({
         logHisHeelsEvent(eventCtx, newState);
       }
       
-      // ISSUE #1 FIX: If this card causes transition to counting phase,
-      // delay the DB update by 2 seconds so players can see the last card.
-      const isTransitionToCounting = 
-        cribbageState.phase === 'pegging' && 
-        newState.phase === 'counting';
-      
-      if (isTransitionToCounting) {
-        setCribbageState(newState);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -502,17 +469,6 @@ export const CribbageGameTable = ({
       const newState = callGo(cribbageState, currentPlayerId);
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       logGoPointEvent(eventCtx, cribbageState, newState);
-      
-      // ISSUE #1 FIX: If this Go call causes transition to counting phase,
-      // delay the DB update by 2 seconds so players can see the Go announcement.
-      const isTransitionToCounting = 
-        cribbageState.phase === 'pegging' && 
-        newState.phase === 'counting';
-      
-      if (isTransitionToCounting) {
-        setCribbageState(newState);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
       
       await updateState(newState);
     } catch (err) {

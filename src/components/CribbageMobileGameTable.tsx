@@ -1338,19 +1338,6 @@ export const CribbageMobileGameTable = ({
             // Fire-and-forget event logging (atomic DB guard prevents duplicates)
             logGoPointEvent(eventCtx, cribbageState, newState);
             
-            // ISSUE #1 FIX: If this Go call causes transition to counting phase,
-            // delay the DB update by 2 seconds so players can see the Go announcement.
-            const isTransitionToCounting = 
-              cribbageState.phase === 'pegging' && 
-              newState.phase === 'counting';
-            
-            if (isTransitionToCounting) {
-              // Update local state immediately so the announcement appears
-              setCribbageState(newState);
-              // Wait 2 seconds before persisting to DB
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-            
             await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -1370,19 +1357,6 @@ export const CribbageMobileGameTable = ({
               // Check for his_heels on phase transition
               if (newState.lastEvent?.type === 'his_heels') {
                 logHisHeelsEvent(eventCtx, newState);
-              }
-              
-              // ISSUE #1 FIX: If this card causes transition to counting phase (last card of pegging),
-              // delay the DB update by 2 seconds so players can see the last card and its announcement.
-              const isTransitionToCounting = 
-                cribbageState.phase === 'pegging' && 
-                newState.phase === 'counting';
-              
-              if (isTransitionToCounting) {
-                // Update local state immediately so the card appears on table
-                setCribbageState(newState);
-                // Wait 2 seconds before persisting to DB
-                await new Promise(resolve => setTimeout(resolve, 2000));
               }
               
               await supabase
@@ -1449,20 +1423,6 @@ export const CribbageMobileGameTable = ({
         logHisHeelsEvent(eventCtx, newState);
       }
       
-      // ISSUE #1 FIX: If this card causes transition to counting phase (last card of pegging),
-      // delay the DB update by 2 seconds so players can see the last card and its announcement.
-      // Skip delay if the card caused a win (phase === 'complete').
-      const isTransitionToCounting = 
-        cribbageState.phase === 'pegging' && 
-        newState.phase === 'counting';
-      
-      if (isTransitionToCounting) {
-        // Update local state immediately so the card appears on table
-        setCribbageState(newState);
-        // Wait 2 seconds before persisting to DB (triggers counting animation)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -1476,19 +1436,6 @@ export const CribbageMobileGameTable = ({
       const newState = callGo(cribbageState, currentPlayerId);
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       logGoPointEvent(eventCtx, cribbageState, newState);
-      
-      // ISSUE #1 FIX: If this Go call causes transition to counting phase (last cards played),
-      // delay the DB update by 2 seconds so players can see the Go announcement.
-      const isTransitionToCounting = 
-        cribbageState.phase === 'pegging' && 
-        newState.phase === 'counting';
-      
-      if (isTransitionToCounting) {
-        // Update local state immediately so the announcement appears
-        setCribbageState(newState);
-        // Wait 2 seconds before persisting to DB (triggers counting animation)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
       
       await updateState(newState);
     } catch (err) {
@@ -1908,7 +1855,7 @@ export const CribbageMobileGameTable = ({
             <CribbageTurnSpotlight
               currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
               currentPlayerId={currentPlayerId}
-              isVisible={cribbageState.phase === 'pegging'}
+              isVisible={cribbageState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
             />
 
             {/* Game Title - Top center of felt */}
@@ -1932,6 +1879,7 @@ export const CribbageMobileGameTable = ({
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
               countingScoreOverrides={countingScoreOverrides ?? undefined}
+              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
             />
 
             {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
@@ -2020,12 +1968,15 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Dealer Announcements Area - shows during gameplay AND win sequence (for winner message) */}
-        {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
-        {(() => {
-          const isCountingAnimActive = !!countingStateSnapshot;
-          const effectivePhase = isCountingAnimActive ? countingStateSnapshot.phase : cribbageState.phase;
-          const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : cribbageState.lastEvent;
+          {/* Dealer Announcements Area - shows during gameplay AND win sequence (for winner message) */}
+          {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
+          {(() => {
+            const isCountingAnimActive = !!countingStateSnapshot;
+            const countingOutroActive = isCountingAnimActive && countingDelayActive;
+            const effectivePhase = isCountingAnimActive
+              ? (countingOutroActive ? 'pegging' : countingStateSnapshot.phase)
+              : cribbageState.phase;
+            const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : cribbageState.lastEvent;
           
           // Hide banner during skunk overlay phase or complete phase
           if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
