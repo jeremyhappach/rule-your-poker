@@ -1337,6 +1337,20 @@ export const CribbageMobileGameTable = ({
             const newState = callGo(cribbageState, currentTurnId);
             // Fire-and-forget event logging (atomic DB guard prevents duplicates)
             logGoPointEvent(eventCtx, cribbageState, newState);
+            
+            // ISSUE #1 FIX: If this Go call causes transition to counting phase,
+            // delay the DB update by 2 seconds so players can see the Go announcement.
+            const isTransitionToCounting = 
+              cribbageState.phase === 'pegging' && 
+              newState.phase === 'counting';
+            
+            if (isTransitionToCounting) {
+              // Update local state immediately so the announcement appears
+              setCribbageState(newState);
+              // Wait 2 seconds before persisting to DB
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
             await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -1357,6 +1371,20 @@ export const CribbageMobileGameTable = ({
               if (newState.lastEvent?.type === 'his_heels') {
                 logHisHeelsEvent(eventCtx, newState);
               }
+              
+              // ISSUE #1 FIX: If this card causes transition to counting phase (last card of pegging),
+              // delay the DB update by 2 seconds so players can see the last card and its announcement.
+              const isTransitionToCounting = 
+                cribbageState.phase === 'pegging' && 
+                newState.phase === 'counting';
+              
+              if (isTransitionToCounting) {
+                // Update local state immediately so the card appears on table
+                setCribbageState(newState);
+                // Wait 2 seconds before persisting to DB
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+              
               await supabase
                 .from('rounds')
                 .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
@@ -1420,6 +1448,21 @@ export const CribbageMobileGameTable = ({
       if (newState.lastEvent?.type === 'his_heels') {
         logHisHeelsEvent(eventCtx, newState);
       }
+      
+      // ISSUE #1 FIX: If this card causes transition to counting phase (last card of pegging),
+      // delay the DB update by 2 seconds so players can see the last card and its announcement.
+      // Skip delay if the card caused a win (phase === 'complete').
+      const isTransitionToCounting = 
+        cribbageState.phase === 'pegging' && 
+        newState.phase === 'counting';
+      
+      if (isTransitionToCounting) {
+        // Update local state immediately so the card appears on table
+        setCribbageState(newState);
+        // Wait 2 seconds before persisting to DB (triggers counting animation)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -1433,6 +1476,20 @@ export const CribbageMobileGameTable = ({
       const newState = callGo(cribbageState, currentPlayerId);
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       logGoPointEvent(eventCtx, cribbageState, newState);
+      
+      // ISSUE #1 FIX: If this Go call causes transition to counting phase (last cards played),
+      // delay the DB update by 2 seconds so players can see the Go announcement.
+      const isTransitionToCounting = 
+        cribbageState.phase === 'pegging' && 
+        newState.phase === 'counting';
+      
+      if (isTransitionToCounting) {
+        // Update local state immediately so the announcement appears
+        setCribbageState(newState);
+        // Wait 2 seconds before persisting to DB (triggers counting animation)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);

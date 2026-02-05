@@ -136,7 +136,11 @@ function describePeggingPoints(points: PeggingPoints): string {
   const parts: string[] = [];
   if (points.thirtyOne) parts.push('31');
   if (points.fifteen) parts.push('15');
-  if (points.pair > 0) parts.push('Pair');
+  // Pair points: 2 = pair (2pts), 3 of kind (6pts), 4 of kind (12pts)
+  // pair value is the raw points: 2, 6, or 12
+  if (points.pair === 2) parts.push('Pair');
+  else if (points.pair === 6) parts.push('Trips');
+  else if (points.pair === 12) parts.push('Quads');
   if (points.run > 0) parts.push(`Run ${points.run}`);
   if (points.lastCard) parts.push('Last');
   return parts.length ? parts.join(' + ') : 'Points';
