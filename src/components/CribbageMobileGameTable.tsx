@@ -232,6 +232,30 @@ export const CribbageMobileGameTable = ({
   // Signal to counting phase to freeze when win is detected reactively via score subscription
   const [countingWinFrozen, setCountingWinFrozen] = useState(false);
 
+  // If another client advances the hand while we are still animating counting, immediately
+  // cancel the local counting overlay so it can't complete and write stale state into the NEW round.
+  const lastRoundPropsRef = useRef<{ roundId: string; handNumber: number } | null>(null);
+  useEffect(() => {
+    const prev = lastRoundPropsRef.current;
+    lastRoundPropsRef.current = { roundId, handNumber };
+
+    if (!prev) return;
+    const changed = prev.roundId !== roundId || prev.handNumber !== handNumber;
+    if (!changed) return;
+    if (!countingStateSnapshot) return;
+
+    console.log('[CRIBBAGE] Round props changed during counting; cancelling counting snapshot', {
+      prev,
+      next: { roundId, handNumber },
+    });
+
+    countingAnimationActiveRef.current = false;
+    countingDelayFiredRef.current = null;
+    setCountingDelayActive(false);
+    setCountingWinFrozen(false);
+    setCountingStateSnapshot(null);
+  }, [roundId, handNumber, countingStateSnapshot]);
+
   // Win sequence state
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
   const [winSequencePhase, setWinSequencePhase] = useState<WinSequencePhase>('idle');
@@ -464,9 +488,13 @@ export const CribbageMobileGameTable = ({
     }
 
     const cutKey = cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut';
-    return `${roundId}-${cribbageState.dealerPlayerId}-${cutKey}`;
+    // IMPORTANT: Do NOT key this off the roundId prop.
+    // With multiple clients, the parent can switch to the next roundId while this client is
+    // still animating counting, which would re-trigger the counting init and replay the sequence.
+    return `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cutKey}`;
   }, [
-    roundId,
+    dealerGameId,
+    currentHandNumber,
     cribbageState?.phase,
     cribbageState?.dealerPlayerId,
     cribbageState?.cutCard?.rank,
@@ -481,6 +509,10 @@ export const CribbageMobileGameTable = ({
     const state = cribbageStateRef.current;
     if (!state) return;
     if (!countingStartKey) return;
+
+    // If we've already started a counting animation, never re-initialize it.
+    // This is critical when multiple clients are open and the parent props churn.
+    if (countingAnimationActiveRef.current) return;
 
     // Only snapshot once per counting phase instance
     if (countingDelayFiredRef.current === countingStartKey) return;
@@ -1294,12 +1326,13 @@ export const CribbageMobileGameTable = ({
   }, [cribbageState, isProcessing, players, roundId]);
 
   const updateState = async (newState: CribbageState) => {
+    if (!currentRoundId) return;
     setIsProcessing(true);
     try {
       const { error } = await supabase
         .from('rounds')
         .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-        .eq('id', roundId);
+        .eq('id', currentRoundId);
 
       if (error) throw error;
       setCribbageState(newState);

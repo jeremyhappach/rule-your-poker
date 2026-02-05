@@ -643,7 +643,10 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
     };
   }
 
-  const updatedState: CribbageState = {
+  // IMPORTANT: We intentionally keep lastHandCount on the intermediate state so that
+  // a counting-phase win (phase -> complete) can still be distinguished from a pegging win
+  // (phase -> complete with lastHandCount null) elsewhere in the UI.
+  const baseUpdatedState: CribbageState = {
     ...state,
     playerStates: nextPlayerStates,
   };
@@ -668,8 +671,8 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
         multiplier = 2; // Skunk
       }
 
-      return {
-        ...updatedState,
+       return {
+         ...baseUpdatedState,
         phase: 'complete',
         winnerPlayerId: playerId,
         loserScore: lowestScore,
@@ -678,7 +681,12 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
     }
   }
 
-  return updatedState;
+  // Idempotency: Once we've applied the hand+crib totals, clear lastHandCount so that
+  // another client (or a re-entrant callback) cannot apply the same totals again.
+  return {
+    ...baseUpdatedState,
+    lastHandCount: null,
+  };
 }
 
 /**
