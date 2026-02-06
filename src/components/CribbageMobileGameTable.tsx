@@ -2126,15 +2126,19 @@ export const CribbageMobileGameTable = ({
           return (
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                {effectivePhase === 'counting'
-                  ? countingAnnouncement 
-                    ? `${countingTargetLabel}: ${countingAnnouncement}`
-                    : 'Dealing Next Hand...'
-                  : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
-                    ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
-                    : effectivePhase === 'discarding'
-                      ? 'Discard to Crib'
-                      : 'Cut Card'}
+                {isCountingComplete
+                  ? 'Dealing Next Hand...'
+                  : effectivePhase === 'counting'
+                    ? countingAnnouncement 
+                      ? `${countingTargetLabel}: ${countingAnnouncement}`
+                      : countingTargetLabel
+                        ? `Scoring ${countingTargetLabel}...`
+                        : 'Scoring hands...'
+                    : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
+                      ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
+                      : effectivePhase === 'discarding'
+                        ? 'Discard to Crib'
+                        : 'Cut Card'}
               </p>
             </div>
           );
@@ -2211,10 +2215,12 @@ export const CribbageMobileGameTable = ({
             />
           )}
           
-          {/* Show placeholder during counting animation */}
+          {/* Show placeholder during counting animation - shows whose hand is being scored */}
           {activeTab === 'cards' && countingStateSnapshot && (
             <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground text-sm">Dealing Next Hand...</p>
+              <p className="text-muted-foreground text-sm">
+                {countingTargetLabel ? `Scoring ${countingTargetLabel}...` : 'Scoring hands...'}
+              </p>
             </div>
           )}
 
