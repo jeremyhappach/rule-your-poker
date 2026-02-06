@@ -20,6 +20,8 @@ interface CribbageFeltContentProps {
   countingScoreOverrides?: Record<string, number>;
   /** When true, treat the brief counting-delay window as pegging so the last pegged cards remain visible. */
   countingOutroActive?: boolean;
+  /** When true, we're in the 31 delay - show count as 31 and keep cards visible */
+  thirtyOneDelayActive?: boolean;
 }
 
 export const CribbageFeltContent = ({
@@ -31,12 +33,15 @@ export const CribbageFeltContent = ({
   cardBackColors,
   countingScoreOverrides,
   countingOutroActive = false,
+  thirtyOneDelayActive = false,
 }: CribbageFeltContentProps) => {
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
 
-  // During the 2s outro, keep the pegging layout visible even though DB phase is already 'counting'.
+  // During the 2s outro OR 31 delay, keep the pegging layout visible even though DB phase/count may be updated.
   const phaseForLayout = countingOutroActive ? 'pegging' : cribbageState.phase;
-
+  
+  // During 31 delay, show 31 as the count instead of the reset 0
+  const displayCount = thirtyOneDelayActive ? 31 : cribbageState.pegging.currentCount;
   // Detect pegging win: phase is 'complete' but lastHandCount is null
   // (meaning we never entered counting phase - win occurred during pegging)
   const isPeggingWin = phaseForLayout === 'complete' && !cribbageState.lastHandCount;
@@ -146,7 +151,7 @@ export const CribbageFeltContent = ({
           {phaseForLayout === 'pegging' && (
             <div className="flex flex-col items-center">
               <span className="text-[10px] text-white/60">Count</span>
-              <span className="text-2xl font-bold text-poker-gold">{cribbageState.pegging.currentCount}</span>
+              <span className="text-2xl font-bold text-poker-gold">{displayCount}</span>
             </div>
           )}
           {/* Played cards - larger size, overlapping */}

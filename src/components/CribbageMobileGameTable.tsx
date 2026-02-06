@@ -345,7 +345,58 @@ export const CribbageMobileGameTable = ({
   const currentPlayerId = currentPlayer?.id;
   
   // Derive sequenceStartIndex from state - this is authoritative and survives missed realtime updates
-  const sequenceStartIndex = cribbageState?.pegging?.sequenceStartIndex ?? 0;
+  const dbSequenceStartIndex = cribbageState?.pegging?.sequenceStartIndex ?? 0;
+  
+  // 31 delay: When a player hits 31, we want to hold the cards visible for 2 seconds
+  // before they disappear. This is similar to how "last" works with counting delay.
+  const [thirtyOneDelayActive, setThirtyOneDelayActive] = useState(false);
+  const thirtyOneDelayRef = useRef<string | null>(null);
+  // Track the sequence start index BEFORE a 31 reset happens
+  const prevSequenceStartIndexRef = useRef<number>(0);
+  
+  // Keep tracking the sequence start index - update ONLY when not in delay mode
+  // This way we capture the "old" index before the 31 reset, and hold it during the delay
+  useEffect(() => {
+    if (!thirtyOneDelayActive && dbSequenceStartIndex !== prevSequenceStartIndexRef.current) {
+      // Only update if delay is not active - this captures the index BEFORE a reset
+      prevSequenceStartIndexRef.current = dbSequenceStartIndex;
+    }
+  }, [dbSequenceStartIndex, thirtyOneDelayActive]);
+  
+  // Detect 31 and trigger delay
+  useEffect(() => {
+    if (!cribbageState) return;
+    const lastEvent = cribbageState.lastEvent;
+    if (!lastEvent || lastEvent.type !== 'pegging_points') return;
+    
+    // Check if this is a 31 event by checking the count field
+    const is31 = lastEvent.count === 31;
+    if (!is31) return;
+    
+    // Create a unique key for this specific 31 event
+    const eventKey = lastEvent.id;
+    if (thirtyOneDelayRef.current === eventKey) return;
+    thirtyOneDelayRef.current = eventKey;
+    
+    // The sequence that just completed (0 to dbSequenceStartIndex-1) is what we want to show.
+    // The prevSequenceStartIndexRef should still hold the OLD value if we haven't updated it yet.
+    // Force keep the old index during delay by not updating prevSequenceStartIndexRef
+    
+    setThirtyOneDelayActive(true);
+    
+    const timer = setTimeout(() => {
+      setThirtyOneDelayActive(false);
+      // After delay, update the ref to match current DB state
+      prevSequenceStartIndexRef.current = dbSequenceStartIndex;
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.count]);
+  
+  // Use the previous (pre-reset) index during 31 delay, otherwise use the DB index
+  const sequenceStartIndex = thirtyOneDelayActive 
+    ? prevSequenceStartIndexRef.current 
+    : dbSequenceStartIndex;
 
   // Log cut card event when first revealed (atomic guard prevents duplicates)
   useEffect(() => {
@@ -1880,6 +1931,7 @@ export const CribbageMobileGameTable = ({
               cardBackColors={cardBackColors}
               countingScoreOverrides={countingScoreOverrides ?? undefined}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+              thirtyOneDelayActive={thirtyOneDelayActive}
             />
 
             {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
