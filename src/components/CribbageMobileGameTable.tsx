@@ -2152,7 +2152,7 @@ export const CribbageMobileGameTable = ({
           {/* Show placeholder during counting animation */}
           {activeTab === 'cards' && countingStateSnapshot && (
             <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground text-sm">Scoring hands...</p>
+              <p className="text-muted-foreground text-sm">Dealing Next Hand...</p>
             </div>
           )}
 
