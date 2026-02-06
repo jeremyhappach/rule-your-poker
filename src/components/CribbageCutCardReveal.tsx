@@ -9,6 +9,9 @@ interface CribbageCutCardRevealProps {
 
 /**
  * A cut card display with flip animation when revealed
+ * 
+ * IMPORTANT: Only animates once per card reveal. Uses a stable "revealed cards" set
+ * to prevent re-flipping during phase transitions or component re-renders.
  */
 export const CribbageCutCardReveal = ({
   card,
@@ -16,42 +19,58 @@ export const CribbageCutCardReveal = ({
 }: CribbageCutCardRevealProps) => {
   const [isFlipping, setIsFlipping] = useState(false);
   const [showFace, setShowFace] = useState(false);
-  const prevCardRef = useRef<CribbageCard | null>(null);
+  
+  // Track which cards we've already revealed (by rank-suit key) to prevent re-animation
+  // This persists across re-renders and phase transitions
+  const revealedCardsRef = useRef<Set<string>>(new Set());
+  const currentCardKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Detect when cut card is newly revealed (compare by card identity)
+    // Generate stable key for current card
     const cardKey = card ? `${card.rank}-${card.suit}` : null;
-    const prevKey = prevCardRef.current ? `${prevCardRef.current.rank}-${prevCardRef.current.suit}` : null;
-
-    if (card && cardKey !== prevKey) {
-      // New card revealed - trigger flip animation
-      setIsFlipping(true);
-      setShowFace(false);
-
-      // Flip to face at midpoint
-      const flipTimer = setTimeout(() => {
-        setShowFace(true);
-      }, 300);
-
-      // End animation
-      const endTimer = setTimeout(() => {
-        setIsFlipping(false);
-      }, 600);
-
-      prevCardRef.current = card;
-
-      return () => {
-        clearTimeout(flipTimer);
-        clearTimeout(endTimer);
-      };
-    }
-
-    if (!card) {
-      // Card removed - reset state
-      prevCardRef.current = null;
+    
+    // Card removed - reset show face but keep revealed set
+    if (!cardKey) {
+      currentCardKeyRef.current = null;
       setShowFace(false);
       setIsFlipping(false);
+      return;
     }
+    
+    // Same card - no action needed
+    if (cardKey === currentCardKeyRef.current) {
+      return;
+    }
+    
+    currentCardKeyRef.current = cardKey;
+    
+    // Check if we've already animated this card (e.g., during counting delay)
+    if (revealedCardsRef.current.has(cardKey)) {
+      // Already revealed this card before - show face immediately, no animation
+      setShowFace(true);
+      setIsFlipping(false);
+      return;
+    }
+    
+    // New card we haven't seen - trigger flip animation
+    revealedCardsRef.current.add(cardKey);
+    setIsFlipping(true);
+    setShowFace(false);
+
+    // Flip to face at midpoint
+    const flipTimer = setTimeout(() => {
+      setShowFace(true);
+    }, 300);
+
+    // End animation
+    const endTimer = setTimeout(() => {
+      setIsFlipping(false);
+    }, 600);
+
+    return () => {
+      clearTimeout(flipTimer);
+      clearTimeout(endTimer);
+    };
   }, [card?.rank, card?.suit]);
 
   if (!card) return null;
