@@ -40,6 +40,12 @@ interface HighCardDealerSelectionProps {
   onComplete: (dealerPosition: number) => void;
   isHost: boolean;
   allowBotDealers?: boolean;
+  /**
+   * Optional behavior tweaks for specific games.
+   * - default: current behavior (tie announcement + longer delays)
+   * - cribbage: no tie announcement, fast redraw cadence
+   */
+  selectionVariant?: 'default' | 'cribbage';
   // DB-synced state from parent (received via realtime)
   syncedState: DealerSelectionState | null;
   // Callback to provide cards for rendering in the game table
@@ -56,6 +62,7 @@ export const HighCardDealerSelection = ({
   onComplete, 
   isHost,
   allowBotDealers = false,
+  selectionVariant = 'default',
   syncedState,
   onCardsUpdate,
   onAnnouncementUpdate,
@@ -65,6 +72,9 @@ export const HighCardDealerSelection = ({
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
+  const lastAnnouncementRef = useRef<string | null>(null);
+
+  const isCribbageVariant = selectionVariant === 'cribbage';
   
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
@@ -74,9 +84,10 @@ export const HighCardDealerSelection = ({
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
   
   // Timing constants
-  const ANNOUNCE_DURATION = 1500; // Show "High card wins deal" for 1.5s
-  const ROUND_PAUSE = 1500; // 1.5s pause after dealing before checking winner/tiebreaker
+  const ANNOUNCE_DURATION = 1500; // Show announcement before first deal
+  const ROUND_PAUSE = 1500; // Pause after dealing before checking winner/tiebreaker
   const WINNER_ANNOUNCE_DELAY = 2000; // Show winner for 2s before completing
+  const CRIBBAGE_TIE_REDEAL_DELAY = 500; // Fast redraw cadence for cribbage ties
   
   const clearTimeouts = useCallback(() => {
     timeoutsRef.current.forEach(t => clearTimeout(t));
@@ -118,6 +129,9 @@ export const HighCardDealerSelection = ({
   useEffect(() => {
     if (isHost) return; // Host drives state, doesn't react to it
     if (!syncedState) return;
+
+    // Keep last announcement for consistency (even if caller doesn't render it)
+    lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
     
     // Update local UI via callbacks
     onCardsUpdate(syncedState.cards);
@@ -145,6 +159,7 @@ export const HighCardDealerSelection = ({
       !hasCompletedRef.current
     ) {
       hasCompletedRef.current = true;
+      lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
       onCardsUpdate(syncedState.cards || []);
       onAnnouncementUpdate(syncedState.announcement ?? null, true);
       onWinnerPositionUpdate?.(syncedState.winnerPosition);
@@ -205,19 +220,37 @@ export const HighCardDealerSelection = ({
     
     // Clear winner position when starting a new round (including tiebreakers)
     onWinnerPositionUpdate?.(null);
-    
-    const announcement = roundNum === 1 ? 'High card wins deal' : 'Tie! Drawing again...';
-    onAnnouncementUpdate(announcement, false);
-    
+
+    const roundAnnouncement =
+      roundNum === 1
+        ? 'High card wins deal'
+        : isCribbageVariant
+          ? null
+          : 'Tie! Drawing again...';
+
+    if (roundAnnouncement !== null) {
+      onAnnouncementUpdate(roundAnnouncement, false);
+      lastAnnouncementRef.current = roundAnnouncement;
+    }
+
+    const announcementToSync = roundAnnouncement ?? lastAnnouncementRef.current ?? null;
+
     // Sync announcement state to DB
     syncToDatabase({
       cards: existingCards,
-      announcement,
+      announcement: announcementToSync,
       isComplete: false,
       winnerPosition: null
     });
+
+    const dealDelayMs =
+      roundNum === 1
+        ? ANNOUNCE_DURATION
+        : isCribbageVariant
+          ? 0
+          : ANNOUNCE_DURATION;
     
-    // Deal all cards face-up after brief announcement
+    // Deal all cards face-up after brief announcement (or immediately for cribbage tie redraws)
     addTimeout(() => {
       // Deal one card to each player - all at once, all face-up
       const newCards: DealerSelectionCard[] = playersInRound.map((player) => {
@@ -242,18 +275,25 @@ export const HighCardDealerSelection = ({
       // Sync to DB for other players
       syncToDatabase({
         cards: allCards,
-        announcement,
+        announcement: announcementToSync,
         isComplete: false,
         winnerPosition: null
       });
+
+      const pauseAfterDealMs =
+        roundNum === 1
+          ? ROUND_PAUSE
+          : isCribbageVariant
+            ? 0
+            : ROUND_PAUSE;
       
-      // After 1.5s pause, check for winner or tiebreaker
+      // After a pause, check for winner or tiebreaker
       addTimeout(() => {
         determineWinner(newCards, allCards, playersInRound, roundNum);
-      }, ROUND_PAUSE);
+      }, pauseAfterDealMs);
       
-    }, ANNOUNCE_DURATION);
-  }, [addTimeout, onAnnouncementUpdate, onCardsUpdate, syncToDatabase, onWinnerPositionUpdate]);
+    }, dealDelayMs);
+  }, [addTimeout, onAnnouncementUpdate, onCardsUpdate, syncToDatabase, onWinnerPositionUpdate, isCribbageVariant]);
   
   const determineWinner = useCallback((roundCards: DealerSelectionCard[], allCards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => {
     // Find highest card(s)
@@ -291,6 +331,8 @@ export const HighCardDealerSelection = ({
       if (winnerPlayer) {
         const name = getPlayerName(winnerPlayer);
         const winAnnouncement = `${name} wins the deal!`;
+
+        lastAnnouncementRef.current = winAnnouncement;
         
         onAnnouncementUpdate(winAnnouncement, true);
         onWinnerPositionUpdate?.(winnerPlayer.position);
@@ -311,23 +353,30 @@ export const HighCardDealerSelection = ({
         }, WINNER_ANNOUNCE_DELAY);
       }
     } else {
+      // Tiebreaker needed
+      const announcementToSync = isCribbageVariant
+        ? (lastAnnouncementRef.current ?? null)
+        : 'Tie! Drawing again...';
+
       // Sync current state before tiebreaker
       syncToDatabase({
         cards: updatedCards,
-        announcement: 'Tie! Drawing again...',
+        announcement: announcementToSync,
         isComplete: false,
         winnerPosition: null
       });
       
-      // Tiebreaker needed - run next round after brief pause
       const tiedPlayerIds = winners.map(w => w.playerId);
       const tiedPlayers = playersInRound.filter(p => tiedPlayerIds.includes(p.id));
+
+      // Cribbage: no tie announcement, fast redraw cadence
+      const nextRoundDelayMs = isCribbageVariant ? CRIBBAGE_TIE_REDEAL_DELAY : ROUND_PAUSE;
       
       addTimeout(() => {
         runSelectionRound(tiedPlayers, roundNum + 1, updatedCards);
-      }, ROUND_PAUSE);
+      }, nextRoundDelayMs);
     }
-  }, [addTimeout, getPlayerName, onComplete, onAnnouncementUpdate, onCardsUpdate, onWinnerPositionUpdate, syncToDatabase, runSelectionRound]);
+  }, [addTimeout, getPlayerName, onComplete, onAnnouncementUpdate, onCardsUpdate, onWinnerPositionUpdate, syncToDatabase, runSelectionRound, isCribbageVariant]);
   
   // This component doesn't render anything - it just manages state
   // The actual rendering happens in MobileGameTable/GameTable via props

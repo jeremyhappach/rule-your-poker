@@ -1766,12 +1766,19 @@ export const CribbageMobileGameTable = ({
 
   // Show high card selection if needed (internal or external dealer selection mode)
   if (effectiveShowHighCardSelection) {
-    const latestRoundNum = effectiveHighCardCards.length > 0
-      ? Math.max(...effectiveHighCardCards.map(c => c.roundNumber))
-      : 1;
-    const visibleCards = effectiveHighCardCards
-      .filter(c => c.roundNumber === latestRoundNum)
-      .sort((a, b) => a.position - b.position);
+    // Group cards by position so tie-breaker rounds stack instead of replacing.
+    const cardsByPosition = new Map<number, DealerSelectionCard[]>();
+    for (const c of effectiveHighCardCards) {
+      const arr = cardsByPosition.get(c.position) ?? [];
+      arr.push(c);
+      cardsByPosition.set(c.position, arr);
+    }
+
+    const positions = Array.from(cardsByPosition.keys()).sort((a, b) => a - b);
+    positions.forEach((pos) => {
+      const arr = cardsByPosition.get(pos);
+      if (arr) arr.sort((a, b) => a.roundNumber - b.roundNumber);
+    });
 
     return (
       <div className="h-full flex flex-col overflow-hidden bg-background">
@@ -1820,6 +1827,7 @@ export const CribbageMobileGameTable = ({
                   onComplete={handleHighCardComplete}
                   isHost={isHost}
                   allowBotDealers={true}
+                  selectionVariant="cribbage"
                   syncedState={highCardSyncedState}
                   onCardsUpdate={setHighCardCards}
                   onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
@@ -1827,26 +1835,53 @@ export const CribbageMobileGameTable = ({
                 />
               )}
 
-              {/* Centered render of the current selection round */}
+              {/* Centered render: stack cards per player for tie-break rounds */}
               <div className="absolute inset-0 flex items-center justify-center z-40">
-                <div className="flex gap-4 items-end">
-                  {visibleCards.map((dc) => {
-                    const isWinner = dc.isWinner || (effectiveHighCardWinnerPosition !== null && dc.position === effectiveHighCardWinnerPosition);
-                    const dim = dc.isDimmed;
+                <div className="flex gap-4 items-start">
+                  {positions.map((position) => {
+                    const stack = cardsByPosition.get(position) ?? [];
+                    const last = stack[stack.length - 1];
+                    if (!last) return null;
+
+                    const isFinalWinner = effectiveHighCardWinnerPosition !== null && position === effectiveHighCardWinnerPosition;
+                    const dim = last.isDimmed;
+
                     return (
                       <div
-                        key={`${dc.playerId}-${dc.roundNumber}`}
+                        key={position}
                         className={cn(
                           'flex flex-col items-center transition-all duration-300',
-                          isWinner ? 'transform -translate-y-2 scale-110' : '',
+                          isFinalWinner ? 'transform -translate-y-2 scale-110' : '',
                           dim ? 'opacity-50' : ''
                         )}
                       >
-                        <div className={cn(isWinner ? 'ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50' : '')}>
-                          <CribbagePlayingCard card={toCribbageCard(dc.card as any)} size="md" />
+                        {/* Stacked cards container */}
+                        <div className="relative">
+                          {stack.map((c, idx) => (
+                            <div
+                              key={`${c.playerId}-${c.roundNumber}`}
+                              className={cn(
+                                idx > 0 ? 'absolute' : '',
+                                isFinalWinner && idx === stack.length - 1
+                                  ? 'ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                                  : ''
+                              )}
+                              style={idx > 0 ? {
+                                top: `${idx * 50}%`,
+                                left: 0,
+                                zIndex: idx,
+                              } : undefined}
+                            >
+                              <CribbagePlayingCard card={toCribbageCard(c.card as any)} size="md" />
+                            </div>
+                          ))}
                         </div>
-                        <span className={cn('text-xs mt-1', isWinner ? 'text-poker-gold font-bold' : 'text-white/70')}>
-                          {getHighCardDisplayNameByPosition(dc.position)}
+
+                        <span
+                          className={cn('text-xs mt-1', isFinalWinner ? 'text-poker-gold font-bold' : 'text-white/70')}
+                          style={{ marginTop: stack.length > 1 ? `${(stack.length - 1) * 50 + 4}%` : undefined }}
+                        >
+                          {getHighCardDisplayNameByPosition(position)}
                         </span>
                       </div>
                     );
