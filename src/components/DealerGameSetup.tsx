@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw } from "lucide-react";
+import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting } from "@/lib/playerStateEvaluation";
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
@@ -53,9 +53,11 @@ interface DealerGameSetupProps {
   gameSetupTimerSeconds: number; // Cached at session start
   anteDecisionTimerSeconds: number; // Cached at session start
   activePlayerCount?: number; // Number of active players for game restrictions
+  activeHumanCount?: number; // Number of active human (non-bot) players
   isSuperuser?: boolean; // Whether the dealer is a superuser (enables dev-only games)
   onConfigComplete: () => void;
   onSessionEnd: () => void;
+  onSitOut?: () => void; // Callback when dealer chooses to sit out
 }
 
 interface GameDefaults {
@@ -84,9 +86,11 @@ export const DealerGameSetup = ({
   gameSetupTimerSeconds,
   anteDecisionTimerSeconds,
   activePlayerCount = 0,
+  activeHumanCount = 0,
   isSuperuser = false,
   onConfigComplete,
   onSessionEnd,
+  onSitOut,
 }: DealerGameSetupProps) => {
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
@@ -1542,6 +1546,35 @@ export const DealerGameSetup = ({
                 </button>
               </div>
             )}
+
+            {/* Sit Out and End Session options */}
+            <div className="pt-3 border-t border-poker-gold/30 flex flex-col gap-2">
+              {/* Sit Out - always show when handler is provided */}
+              {onSitOut && (
+                <button
+                  onClick={onSitOut}
+                  className="w-full py-3 px-4 rounded-lg border-2 transition-all border-gray-500 bg-gray-700/30 hover:bg-gray-700/50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <UserMinus className="w-5 h-5 text-gray-300" />
+                  <span className="text-base font-bold text-gray-300">
+                    Sit Out
+                  </span>
+                </button>
+              )}
+              
+              {/* End Session - only show if sole active human */}
+              {activeHumanCount === 1 && (
+                <button
+                  onClick={onSessionEnd}
+                  className="w-full py-3 px-4 rounded-lg border-2 transition-all border-red-600/70 bg-red-900/30 hover:bg-red-900/50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-5 h-5 text-red-400" />
+                  <span className="text-base font-bold text-red-400">
+                    End Session
+                  </span>
+                </button>
+              )}
+            </div>
 
             <p className="text-xs text-amber-200/60 text-center">
               If timer expires without action, you'll be marked as sitting out
