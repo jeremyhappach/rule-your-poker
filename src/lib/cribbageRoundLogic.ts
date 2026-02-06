@@ -141,18 +141,26 @@ export async function startCribbageRound(
       for (const playerId of playerIds) {
         const playerState = cribbageState.playerStates[playerId];
         if (playerState) {
-          await supabase
-            .from('player_cards')
-            .upsert(
-              {
-                player_id: playerId,
-                round_id: round.id,
-                cards: playerState.hand as any,
-              },
-              {
-                onConflict: 'player_id,round_id',
-              }
-            );
+          try {
+            // Use upsert with the unique constraint on (player_id, round_id)
+            const { error } = await supabase
+              .from('player_cards')
+              .upsert(
+                {
+                  player_id: playerId,
+                  round_id: round.id,
+                  cards: playerState.hand as any,
+                },
+                {
+                  onConflict: 'player_id,round_id',
+                }
+              );
+            if (error) {
+              console.warn('[CRIBBAGE] Failed to store player cards:', playerId, error.message);
+            }
+          } catch (err) {
+            console.warn('[CRIBBAGE] Error storing player cards:', playerId, err);
+          }
         }
       }
     }
@@ -265,18 +273,25 @@ export async function startNextCribbageHand(
     for (const playerId of playerIds) {
       const playerState = newState.playerStates[playerId];
       if (playerState) {
-        await supabase
-          .from('player_cards')
-          .upsert(
-            {
-              player_id: playerId,
-              round_id: round.id,
-              cards: playerState.hand as any,
-            },
-            {
-              onConflict: 'player_id,round_id',
-            }
-          );
+        try {
+          const { error } = await supabase
+            .from('player_cards')
+            .upsert(
+              {
+                player_id: playerId,
+                round_id: round.id,
+                cards: playerState.hand as any,
+              },
+              {
+                onConflict: 'player_id,round_id',
+              }
+            );
+          if (error) {
+            console.warn('[CRIBBAGE] Failed to store player cards (next hand):', playerId, error.message);
+          }
+        } catch (err) {
+          console.warn('[CRIBBAGE] Error storing player cards (next hand):', playerId, err);
+        }
       }
     }
 
