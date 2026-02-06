@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Lock, Spade, Dice5, RotateCcw } from "lucide-react";
+import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 interface GameSelectionProps {
@@ -8,7 +8,10 @@ interface GameSelectionProps {
   lastGameType?: string | null;
   isFirstHand?: boolean;
   activePlayerCount?: number;
+  activeHumanCount?: number;
   isSuperuser?: boolean;
+  onSitOut?: () => void;
+  onEndSession?: () => void;
 }
 
 export const GameSelection = ({ 
@@ -16,7 +19,10 @@ export const GameSelection = ({
   lastGameType = null,
   isFirstHand = true,
   activePlayerCount = 0,
-  isSuperuser = false
+  activeHumanCount = 0,
+  isSuperuser = false,
+  onSitOut,
+  onEndSession
 }: GameSelectionProps) => {
 
   const cardGames = [
@@ -224,6 +230,35 @@ export const GameSelection = ({
               </button>
             </div>
           )}
+
+          {/* Sit Out and End Session options */}
+          <div className="pt-3 border-t border-poker-gold/30 flex flex-col gap-2">
+            {/* Sit Out - always show */}
+            {onSitOut && (
+              <button
+                onClick={onSitOut}
+                className="w-full p-3 rounded-lg border-2 transition-all border-gray-500 bg-gray-700/30 hover:bg-gray-700/50 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <UserMinus className="w-5 h-5 text-gray-300" />
+                <span className="text-base font-bold text-gray-300">
+                  Sit Out
+                </span>
+              </button>
+            )}
+            
+            {/* End Session - only show if sole active human */}
+            {onEndSession && activeHumanCount === 1 && (
+              <button
+                onClick={onEndSession}
+                className="w-full p-3 rounded-lg border-2 transition-all border-red-600/70 bg-red-900/30 hover:bg-red-900/50 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <LogOut className="w-5 h-5 text-red-400" />
+                <span className="text-base font-bold text-red-400">
+                  End Session
+                </span>
+              </button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

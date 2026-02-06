@@ -2204,8 +2204,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // A "runback" means the current dealer_game has the same game_type and config as the previous one
       // We use the current_game_uuid field to identify the current dealer_game
       const checkRunBackAndAutoAnte = async () => {
-        const currentPlayer = players.find(p => p.user_id === user.id);
-        const isDealer = currentPlayer?.position === game.dealer_position;
+        // CRITICAL FIX: Fetch fresh player data from database instead of using potentially stale React state
+        // This prevents race conditions where the dialog check runs before realtime updates propagate
+        const { data: freshPlayers, error: freshPlayersError } = await supabase
+          .from('players')
+          .select('id, user_id, position, ante_decision, auto_ante, auto_ante_runback, sitting_out, is_bot')
+          .eq('game_id', gameId);
+        
+        if (freshPlayersError || !freshPlayers) {
+          console.error('[ANTE DIALOG] Error fetching fresh players:', freshPlayersError);
+          return;
+        }
+        
+        const freshCurrentPlayer = freshPlayers.find(p => p.user_id === user.id);
+        const isDealer = freshCurrentPlayer?.position === game.dealer_position;
+        
+        console.log('[ANTE DIALOG] Fresh player data:', {
+          freshCurrentPlayer: freshCurrentPlayer ? {
+            id: freshCurrentPlayer.id,
+            ante_decision: freshCurrentPlayer.ante_decision,
+            auto_ante: freshCurrentPlayer.auto_ante,
+            auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
+            sitting_out: freshCurrentPlayer.sitting_out,
+            position: freshCurrentPlayer.position
+          } : null,
+          isDealer
+        });
         
         // Determine if this is a runback FIRST before evaluating auto-ante
         let isRunBack = false;
@@ -2263,30 +2287,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Update state for UI display
         setIsRunningItBack(isRunBack);
         
-        console.log('[ANTE DIALOG] Checking ante dialog:', {
+        console.log('[ANTE DIALOG] Checking ante dialog with FRESH data:', {
           gameStatus: game?.status,
           hasUser: !!user,
-          hasCurrentPlayer: !!currentPlayer,
-          currentPlayerId: currentPlayer?.id,
-          currentPlayerUserId: currentPlayer?.user_id,
-          anteDecision: currentPlayer?.ante_decision,
+          hasCurrentPlayer: !!freshCurrentPlayer,
+          currentPlayerId: freshCurrentPlayer?.id,
+          currentPlayerUserId: freshCurrentPlayer?.user_id,
+          anteDecision: freshCurrentPlayer?.ante_decision,
           isDealer,
           dealerPosition: game.dealer_position,
-          playerPosition: currentPlayer?.position,
-          autoAnte: currentPlayer?.auto_ante,
-          autoAnteRunback: currentPlayer?.auto_ante_runback,
+          playerPosition: freshCurrentPlayer?.position,
+          autoAnte: freshCurrentPlayer?.auto_ante,
+          autoAnteRunback: freshCurrentPlayer?.auto_ante_runback,
           isRunBack
         });
         
         // AUTO-ANTE: If player has auto_ante enabled, automatically accept ante (no dialog)
         // OR if player has auto_ante_runback enabled AND this is a run-it-back scenario
         // CRITICAL: We now check isRunBack (local variable) which is guaranteed to be resolved
-        const shouldAutoAnte = currentPlayer?.auto_ante || (currentPlayer?.auto_ante_runback && isRunBack);
+        const shouldAutoAnte = freshCurrentPlayer?.auto_ante || (freshCurrentPlayer?.auto_ante_runback && isRunBack);
         
-        if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
-          console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', currentPlayer.id, {
-            auto_ante: currentPlayer.auto_ante,
-            auto_ante_runback: currentPlayer.auto_ante_runback,
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
+          console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', freshCurrentPlayer.id, {
+            auto_ante: freshCurrentPlayer.auto_ante,
+            auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
             isRunBack
           });
           
@@ -2297,7 +2321,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ante_decision: 'ante_up',
               sitting_out: false,
             })
-            .eq('id', currentPlayer.id);
+            .eq('id', freshCurrentPlayer.id);
           
           console.log('[ANTE DIALOG] Auto-ante complete');
           setShowAnteDialog(false);
@@ -2307,10 +2331,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Don't show ante dialog for dealer (they auto ante up)
         // Don't show ante dialog for players who are sitting_out (they stay sitting out)
         // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
-        if (currentPlayer && currentPlayer.ante_decision === null && !isDealer && !currentPlayer.sitting_out) {
-          console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', currentPlayer.id, {
-            auto_ante: currentPlayer.auto_ante,
-            auto_ante_runback: currentPlayer.auto_ante_runback,
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out) {
+          console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', freshCurrentPlayer.id, {
+            auto_ante: freshCurrentPlayer.auto_ante,
+            auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
             isRunBack
           });
           setShowAnteDialog(true);
@@ -2325,11 +2349,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         } else {
           console.log('[ANTE DIALOG] ❌ NOT showing ante dialog - reasons:', {
-            noCurrentPlayer: !currentPlayer,
-            anteDecisionNotNull: currentPlayer?.ante_decision !== null,
-            anteDecisionValue: currentPlayer?.ante_decision,
+            noCurrentPlayer: !freshCurrentPlayer,
+            anteDecisionNotNull: freshCurrentPlayer?.ante_decision !== null,
+            anteDecisionValue: freshCurrentPlayer?.ante_decision,
             isDealer,
-            sittingOut: currentPlayer?.sitting_out
+            sittingOut: freshCurrentPlayer?.sitting_out
           });
           setShowAnteDialog(false);
         }
@@ -6223,9 +6247,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameSetupTimerSeconds={game.game_setup_timer_seconds || 30}
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
                     activePlayerCount={players.filter(p => !p.sitting_out).length}
+                    activeHumanCount={players.filter(p => !p.sitting_out && !p.is_bot).length}
                     isSuperuser={isSuperuser}
                     onConfigComplete={handleConfigComplete}
-                    onSessionEnd={() => fetchGameData()}
+                    onSessionEnd={() => setShowEndSessionDialog(true)}
+                    onSitOut={async () => {
+                      // Handle dealer sitting out - mark as sitting out and rotate dealer
+                      if (!dealerPlayer?.id) return;
+                      
+                      await supabase
+                        .from('players')
+                        .update({
+                          sitting_out: true,
+                          sit_out_next_hand: false,
+                          waiting: false
+                        })
+                        .eq('id', dealerPlayer.id);
+                      
+                      // Rotate dealer to next eligible player
+                      const newDealerPosition = await rotateDealerPosition(gameId!, game.dealer_position || 1);
+                      
+                      // Set new dealer position and reset to game selection
+                      const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
+                      const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
+                      
+                      await supabase
+                        .from('games')
+                        .update({
+                          dealer_position: newDealerPosition,
+                          config_deadline: configDeadline,
+                          config_complete: false,
+                          game_type: null
+                        })
+                        .eq('id', gameId);
+                      
+                      await fetchGameData();
+                    }}
                   />
                 )}
               </div>
