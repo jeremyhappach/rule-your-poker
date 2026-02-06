@@ -2069,8 +2069,9 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-          {/* Dealer Announcements Area - shows during gameplay AND win sequence (for winner message) */}
+          {/* Dealer Announcements Area - FIXED HEIGHT to prevent layout shift */}
           {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
+          <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
             const isCountingAnimActive = !!countingStateSnapshot;
             const countingOutroActive = isCountingAnimActive && countingDelayActive;
@@ -2085,12 +2086,10 @@ export const CribbageMobileGameTable = ({
           // PRIORITY 1: During chips/announcement win phases, ALWAYS show winner message (never fall through)
           if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
             return (
-              <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {winSequenceData.winnerName} Wins{winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +${winSequenceData.totalWinnings}
-                  </p>
-                </div>
+              <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                  {winSequenceData.winnerName} Wins{winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +${winSequenceData.totalWinnings}
+                </p>
               </div>
             );
           }
@@ -2125,23 +2124,22 @@ export const CribbageMobileGameTable = ({
           if (!shouldShowBanner) return null;
           
           return (
-            <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
-              <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                  {effectivePhase === 'counting'
-                    ? countingAnnouncement 
-                      ? `${countingTargetLabel}: ${countingAnnouncement}`
-                      : 'Dealing Next Hand...'
-                    : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
-                      ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
-                      : effectivePhase === 'discarding'
-                        ? 'Discard to Crib'
-                        : 'Cut Card'}
-                </p>
-              </div>
+            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+              <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                {effectivePhase === 'counting'
+                  ? countingAnnouncement 
+                    ? `${countingTargetLabel}: ${countingAnnouncement}`
+                    : 'Dealing Next Hand...'
+                  : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
+                    ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
+                    : effectivePhase === 'discarding'
+                      ? 'Discard to Crib'
+                      : 'Cut Card'}
+              </p>
             </div>
           );
         })()}
+          </div>
 
         {/* Tab navigation bar */}
         <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">
