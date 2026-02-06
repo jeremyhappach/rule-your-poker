@@ -354,6 +354,12 @@ export const CribbageMobileGameTable = ({
   // Track the sequence start index BEFORE a 31 reset happens
   const prevSequenceStartIndexRef = useRef<number>(0);
   
+  // Pegging announcement auto-clear: hide scoring announcements after 3 seconds
+  // (only for pegging phase, not discarding/cutting/counting announcements)
+  const [peggingAnnouncementHidden, setPeggingAnnouncementHidden] = useState(false);
+  const peggingAnnouncementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPeggingEventIdRef = useRef<string | null>(null);
+  
   // Keep tracking the sequence start index - update ONLY when not in delay mode
   // This way we capture the "old" index before the 31 reset, and hold it during the delay
   useEffect(() => {
@@ -397,6 +403,49 @@ export const CribbageMobileGameTable = ({
   const sequenceStartIndex = thirtyOneDelayActive 
     ? prevSequenceStartIndexRef.current 
     : dbSequenceStartIndex;
+
+  // Auto-clear pegging announcements after 3 seconds OR when a new announcement arrives
+  // Only applies to pegging phase scoring events, not discarding/cutting/counting
+  useEffect(() => {
+    if (!cribbageState?.lastEvent) return;
+    const event = cribbageState.lastEvent;
+    
+    // Only apply timeout to pegging scoring events (not hand_count, discard, cut, etc.)
+    const isPeggingEvent = event.type === 'pegging_points' || event.type === 'go_point' || event.type === 'his_heels';
+    if (!isPeggingEvent) {
+      // Non-pegging events - clear any pending timer and show them
+      if (peggingAnnouncementTimerRef.current) {
+        clearTimeout(peggingAnnouncementTimerRef.current);
+        peggingAnnouncementTimerRef.current = null;
+      }
+      setPeggingAnnouncementHidden(false);
+      lastPeggingEventIdRef.current = null;
+      return;
+    }
+    
+    // New pegging event - clear previous timer, unhide, and start new 3-second timer
+    const eventId = event.id;
+    if (lastPeggingEventIdRef.current !== eventId) {
+      lastPeggingEventIdRef.current = eventId;
+      setPeggingAnnouncementHidden(false);
+      
+      if (peggingAnnouncementTimerRef.current) {
+        clearTimeout(peggingAnnouncementTimerRef.current);
+      }
+      
+      peggingAnnouncementTimerRef.current = setTimeout(() => {
+        setPeggingAnnouncementHidden(true);
+        peggingAnnouncementTimerRef.current = null;
+      }, 3000);
+    }
+    
+    return () => {
+      if (peggingAnnouncementTimerRef.current) {
+        clearTimeout(peggingAnnouncementTimerRef.current);
+        peggingAnnouncementTimerRef.current = null;
+      }
+    };
+  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type]);
 
   // Log cut card event when first revealed (atomic guard prevents duplicates)
   useEffect(() => {
@@ -2052,10 +2101,25 @@ export const CribbageMobileGameTable = ({
           }
           
           // PRIORITY 2: Normal gameplay banners
+          
+          // Check if pegging announcement should be hidden (3-second timeout)
+          const isPeggingEvent = effectiveLastEvent && (
+            effectiveLastEvent.type === 'pegging_points' || 
+            effectiveLastEvent.type === 'go_point' || 
+            effectiveLastEvent.type === 'his_heels'
+          );
+          const hideEventAnnouncement = isPeggingEvent && peggingAnnouncementHidden;
+          
+          // Determine if counting is complete (snapshot exists but no more announcements)
+          // This happens when the counting animation finishes but we're waiting for next hand
+          const isCountingComplete = effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel;
+          
           const shouldShowBanner = (
-            effectivePhase === 'counting' || effectiveLastEvent ||
+            (effectivePhase === 'counting' && !isCountingComplete) || 
+            (effectiveLastEvent && !hideEventAnnouncement) ||
             effectivePhase === 'discarding' ||
-            effectivePhase === 'cutting'
+            effectivePhase === 'cutting' ||
+            isCountingComplete
           );
           
           if (!shouldShowBanner) return null;
@@ -2067,8 +2131,8 @@ export const CribbageMobileGameTable = ({
                   {effectivePhase === 'counting'
                     ? countingAnnouncement 
                       ? `${countingTargetLabel}: ${countingAnnouncement}`
-                      : `Scoring ${countingTargetLabel || 'hands'}...`
-                    : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count'
+                      : 'Dealing Next Hand...'
+                    : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
                       ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
                       : effectivePhase === 'discarding'
                         ? 'Discard to Crib'
