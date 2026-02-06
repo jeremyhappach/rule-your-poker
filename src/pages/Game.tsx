@@ -6429,6 +6429,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onComplete={handleCribbageDealerSelectionComplete}
               isHost={isCreator}
               allowBotDealers={true}
+              selectionVariant="cribbage"
               syncedState={(game as any).dealer_selection_state as any}
               onCardsUpdate={setDealerSelectionCards}
               onAnnouncementUpdate={(msg, complete) => {
