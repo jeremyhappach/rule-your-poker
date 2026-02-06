@@ -50,21 +50,44 @@ function findFifteens(cards: CribbageCard[]): ScoringCombo[] {
 }
 
 /**
- * Find all pairs (including three/four of a kind as multiple pairs)
+ * Find pairs, trips, and quads - consolidating multi-card matches into single combos
  */
-function findPairs(cards: CribbageCard[]): ScoringCombo[] {
+function findPairsTripsQuads(cards: CribbageCard[]): ScoringCombo[] {
   const combos: ScoringCombo[] = [];
   
-  for (let i = 0; i < cards.length; i++) {
-    for (let j = i + 1; j < cards.length; j++) {
-      if (cards[i].rank === cards[j].rank) {
-        combos.push({
-          type: 'pair',
-          cards: [cards[i], cards[j]],
-          points: 2,
-          label: `Pair of ${cards[i].rank}s`,
-        });
-      }
+  // Group cards by rank
+  const rankGroups: Record<string, CribbageCard[]> = {};
+  for (const card of cards) {
+    if (!rankGroups[card.rank]) rankGroups[card.rank] = [];
+    rankGroups[card.rank].push(card);
+  }
+  
+  // For each rank group, create appropriate combo
+  for (const [rank, group] of Object.entries(rankGroups)) {
+    if (group.length === 4) {
+      // Quads: 6 pairs = 12 points
+      combos.push({
+        type: 'pair',
+        cards: group,
+        points: 12,
+        label: `Quads (${rank}s)`,
+      });
+    } else if (group.length === 3) {
+      // Trips: 3 pairs = 6 points
+      combos.push({
+        type: 'pair',
+        cards: group,
+        points: 6,
+        label: `Trips (${rank}s)`,
+      });
+    } else if (group.length === 2) {
+      // Simple pair: 2 points
+      combos.push({
+        type: 'pair',
+        cards: group,
+        points: 2,
+        label: `Pair of ${rank}s`,
+      });
     }
   }
   
@@ -235,7 +258,7 @@ export function getHandScoringCombos(
   
   const combos: ScoringCombo[] = [
     ...findFifteens(allCards),
-    ...findPairs(allCards),
+    ...findPairsTripsQuads(allCards),
     ...findRuns(allCards),
     ...findFlush(hand, cutCard, isCrib),
     ...findNobs(hand, cutCard),
