@@ -1244,8 +1244,20 @@ export function HorsesGameTable({
     // Prevent duplicate processing
     if (processedWinRoundRef.current === currentRoundId) return;
 
-    // Only the first player in turn order processes the win
-    const shouldProcess = turnOrder[0] && players.find(p => p.id === turnOrder[0])?.user_id === currentUserId;
+    // Determine who should process this win:
+    // 1. If I'm the winner (human win)
+    // 2. If winner is a bot AND I'm the bot controller
+    // 3. If it's a tie, bot controller handles
+    const myPlayerId = myPlayer?.id;
+    const winnerId = winningPlayerIds.length === 1 ? winningPlayerIds[0] : null;
+    const isWinner = winnerId && myPlayerId === winnerId;
+    const winnerPlayer = winnerId ? players.find((p) => p.id === winnerId) : null;
+    const winnerIsBot = winnerPlayer?.is_bot;
+    const iAmBotController = candidateBotControllerUserId === currentUserId;
+    const isTie = winningPlayerIds.length > 1;
+    
+    // Human winner processes their own win; bot wins or ties are handled by bot controller
+    const shouldProcess = isWinner || ((winnerIsBot || isTie) && iAmBotController);
     if (!shouldProcess) return;
 
     const processWin = async () => {
