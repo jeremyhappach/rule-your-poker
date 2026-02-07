@@ -121,7 +121,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     return publicUrl;
   };
 
-  // Send a chat message
+  // Send a chat message with optimistic update
   const sendMessage = useCallback(
     async (message: string, imageFile?: File) => {
       if (!gameId || (!message.trim() && !imageFile) || isSending) return;
@@ -142,15 +142,42 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           imageUrl = await uploadImage(imageFile, userId);
         }
 
-        const { error } = await supabase.from('chat_messages').insert({
+        // Optimistic update: immediately show the message in the UI
+        const optimisticId = `optimistic-${Date.now()}`;
+        const username = getUsernameForUserId(userId);
+        const optimisticMessage: ChatMessage = {
+          id: optimisticId,
           game_id: gameId,
           user_id: userId,
           message: message.trim(),
           image_url: imageUrl,
-        });
+          created_at: new Date().toISOString(),
+          username,
+        };
+        
+        setAllMessages(prev => [...prev, optimisticMessage]);
+
+        const { data, error } = await supabase.from('chat_messages').insert({
+          game_id: gameId,
+          user_id: userId,
+          message: message.trim(),
+          image_url: imageUrl,
+        }).select().single();
 
         if (error) {
           console.error('Error sending chat message:', error);
+          // Remove optimistic message on error
+          setAllMessages(prev => prev.filter(m => m.id !== optimisticId));
+        } else if (data) {
+          // Replace optimistic message with real one (realtime will also fire, dedupe handles it)
+          setAllMessages(prev => {
+            const withoutOptimistic = prev.filter(m => m.id !== optimisticId);
+            // Check if real message already exists (from realtime)
+            if (withoutOptimistic.some(m => m.id === data.id)) {
+              return withoutOptimistic;
+            }
+            return [...withoutOptimistic, { ...data, username }];
+          });
         }
       } catch (error) {
         console.error('Error sending chat message:', error);
@@ -158,7 +185,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         setIsSending(false);
       }
     },
-    [gameId, isSending, currentUserId]
+    [gameId, isSending, currentUserId, getUsernameForUserId]
   );
 
   // Add a new bubble with expiration
@@ -291,7 +318,13 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
           addBubble(newMessage);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[useGameChat] Channel error:', err);
+        } else if (status === 'TIMED_OUT') {
+          console.error('[useGameChat] Channel subscription timed out');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

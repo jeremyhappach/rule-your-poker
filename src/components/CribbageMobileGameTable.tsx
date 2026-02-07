@@ -2293,8 +2293,7 @@ export const CribbageMobileGameTable = ({
         </div>
       </div>
 
-      {/* Hand/Round Debug Overlay */}
-      <RoundHandDebugOverlay gameId={gameId} inline />
+      {/* Debug overlay removed - use url param ?debug=1 to enable if needed */}
     </div>
   );
 };
