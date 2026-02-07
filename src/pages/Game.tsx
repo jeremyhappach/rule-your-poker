@@ -2683,6 +2683,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
     
     // Cache round data during game_over/showdown/completed to preserve visibility
+    // CRITICAL: Only cache rounds that belong to the CURRENT dealer_game_id to prevent
+    // cross-game contamination (e.g., Holm 4-card community cards leaking into 3-5-7)
     if (liveRound && (
       game?.status === 'game_over' || 
       game?.all_decisions_in || 
@@ -2690,15 +2692,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       liveRound.status === 'completed' ||
       liveRound.status === 'showdown'
     )) {
-      // Only update cache if revealed count is >= current cached count (never decrease)
-      const currentCachedRevealed = cachedRoundData?.community_cards_revealed ?? 0;
-      const liveRevealed = liveRound.community_cards_revealed ?? 0;
-      if (liveRevealed >= currentCachedRevealed) {
-        setCachedRoundData(liveRound);
-        cachedRoundRef.current = liveRound;
+      // Verify round belongs to current dealer game
+      const roundDealerGameId = liveRound.dealer_game_id;
+      const currentDealerGameId = game?.current_game_uuid;
+      const isSameDealerGame = !currentDealerGameId || !roundDealerGameId || 
+                               roundDealerGameId === currentDealerGameId;
+      
+      if (isSameDealerGame) {
+        // Only update cache if revealed count is >= current cached count (never decrease)
+        const currentCachedRevealed = cachedRoundData?.community_cards_revealed ?? 0;
+        const liveRevealed = liveRound.community_cards_revealed ?? 0;
+        if (liveRevealed >= currentCachedRevealed) {
+          setCachedRoundData(liveRound);
+          cachedRoundRef.current = liveRound;
+        }
+      } else {
+        console.warn('[CACHE] Ignoring round from different dealer_game:', {
+          roundDealerGameId,
+          currentDealerGameId,
+          roundId: liveRound.id
+        });
       }
     }
-  }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type]);
+  }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type, game?.current_game_uuid]);
   
   // Use cached round ONLY when we intentionally need to preserve visuals across transitions
   // (e.g., showdown/game_over animations). For fresh play/setup, never fall back to old cached rounds.
@@ -5141,9 +5157,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     cachedLegPositionsRef.current = legPositions;
     console.log('[357 WIN] Final cached leg positions:', legPositions);
     
-    // Get winner's cards
+    // Get winner's cards - but VERIFY they belong to current game by checking card count
+    // 3-5-7 card counts: Round 1 = 3, Round 2 = 5, Round 3 = 7
+    const expectedCardCount = game?.current_round === 1 ? 3 : game?.current_round === 2 ? 5 : 7;
     const winnerCardsData = playerCards.find(pc => pc.player_id === winnerPlayer.id);
-    const winnerCards = winnerCardsData?.cards || [];
+    const rawWinnerCards = winnerCardsData?.cards || [];
+    
+    // CRITICAL: Validate card count matches current round to prevent cross-game contamination
+    // If cards don't match expected count (e.g., 4 cards from Holm), they're stale - don't show them
+    const winnerCards = rawWinnerCards.length === expectedCardCount ? rawWinnerCards : [];
+    if (rawWinnerCards.length > 0 && rawWinnerCards.length !== expectedCardCount) {
+      console.warn('[357 WIN] ⚠️ Winner cards count mismatch - likely stale from different game type:', {
+        expected: expectedCardCount,
+        actual: rawWinnerCards.length,
+        currentRound: game?.current_round,
+        dealerGameId: game?.current_game_uuid
+      });
+    }
     
     // Extract pot from message if available (format: "$X pot")
     // Or use cached/live values as fallback
