@@ -2051,7 +2051,7 @@ export const CribbageMobileGameTable = ({
           {/* Position opponents based on count: 
               - 2 player: 1 opponent at upper-left
               - 3 player: 2 opponents at upper-left and upper-right
-              - 4 player: 3 opponents at left, top, right 
+              - 4 player: 3 opponents at upper-left, upper-right, lower-right
           */}
           <div className="absolute inset-0 z-50 pointer-events-none">
             {opponents.map((opponent, index) => {
@@ -2062,7 +2062,7 @@ export const CribbageMobileGameTable = ({
               // Calculate position based on number of opponents and index
               // For 1 opponent (2p): upper-left
               // For 2 opponents (3p): index 0 = upper-left, index 1 = upper-right
-              // For 3 opponents (4p): index 0 = left, index 1 = top center, index 2 = right
+              // For 3 opponents (4p): index 0 = upper-left, index 1 = upper-right, index 2 = lower-right
               let positionClasses: string;
               let alignmentClasses: string;
               
@@ -2080,15 +2080,15 @@ export const CribbageMobileGameTable = ({
                   alignmentClasses = 'items-end';
                 }
               } else {
-                // 4 player: left, top center, right
+                // 4 player: upper-left, upper-right, lower-right
                 if (index === 0) {
-                  positionClasses = 'top-20 left-4';
+                  positionClasses = 'top-14 left-6';
                   alignmentClasses = 'items-start';
                 } else if (index === 1) {
-                  positionClasses = 'top-10 left-1/2 -translate-x-1/2';
-                  alignmentClasses = 'items-center';
+                  positionClasses = 'top-14 right-6';
+                  alignmentClasses = 'items-end';
                 } else {
-                  positionClasses = 'top-20 right-4';
+                  positionClasses = 'bottom-44 right-6';
                   alignmentClasses = 'items-end';
                 }
               }
