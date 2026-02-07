@@ -35,6 +35,10 @@ export type GameStateEventType =
   | 'ROUND_START_BLOCKED'
   | 'LEG_AWARDED'
   | 'GAME_COMPLETE'
+  | 'ROUND_COMPLETE'
+  | 'SOLO_STAY_DETECTED'
+  | 'EVERYONE_FOLDED'
+  | 'SHOWDOWN_EVALUATED'
   // General events
   | 'DEALER_ANNOUNCEMENT'
   | 'STATE_MISMATCH'
