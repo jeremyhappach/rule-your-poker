@@ -7,16 +7,25 @@ interface CribbageTurnSpotlightProps {
   currentPlayerId: string;
   /** Whether spotlight should be visible */
   isVisible: boolean;
+  /** Total number of players in the game */
+  totalPlayers: number;
+  /** Ordered list of opponent player IDs (in turn order, excluding current player) */
+  opponentIds: string[];
 }
 
 /**
- * A simple spotlight for cribbage - points up for opponent's turn,
- * down for current player's turn. Lower z-index to stay behind pegboard and count.
+ * A spotlight for cribbage that points toward the active player.
+ * Dynamically calculates angle based on player count and position.
+ * - 2 player: opponent at upper-left (-45°), self at bottom (180°)
+ * - 3 player: opponents at upper-left (-45°) and upper-right (45°), self at bottom (180°)
+ * - 4 player: opponents at upper-left (-45°), upper-right (45°), lower-right (135°), self at bottom (180°)
  */
 export const CribbageTurnSpotlight = ({
   currentTurnPlayerId,
   currentPlayerId,
   isVisible,
+  totalPlayers,
+  opponentIds,
 }: CribbageTurnSpotlightProps) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
@@ -29,10 +38,36 @@ export const CribbageTurnSpotlight = ({
 
     const isMyTurn = currentTurnPlayerId === currentPlayerId;
     
-    // Point down (180deg) for my turn, up (-90deg top-left area) for opponent
-    setRotation(isMyTurn ? 180 : -45);
+    let angle: number;
+    
+    if (isMyTurn) {
+      // Current player is always at bottom
+      angle = 180;
+    } else {
+      // Find which opponent index this is
+      const opponentIndex = opponentIds.indexOf(currentTurnPlayerId);
+      
+      if (totalPlayers === 2) {
+        // 2 player: single opponent at upper-left
+        angle = -45;
+      } else if (totalPlayers === 3) {
+        // 3 player: opponents at upper-left (index 0) and upper-right (index 1)
+        angle = opponentIndex === 0 ? -45 : 45;
+      } else {
+        // 4 player: opponents at upper-left (0), upper-right (1), lower-right (2)
+        if (opponentIndex === 0) {
+          angle = -45;  // upper-left
+        } else if (opponentIndex === 1) {
+          angle = 45;   // upper-right
+        } else {
+          angle = 135;  // lower-right
+        }
+      }
+    }
+    
+    setRotation(angle);
     setOpacity(1);
-  }, [isVisible, currentTurnPlayerId, currentPlayerId]);
+  }, [isVisible, currentTurnPlayerId, currentPlayerId, totalPlayers, opponentIds]);
 
   if (!isVisible || !currentTurnPlayerId) {
     return null;
