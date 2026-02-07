@@ -89,23 +89,39 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     }
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
-      // Use snapshots - get the latest snapshot per participant.
+      // Use snapshots - SUM all chips changes per participant (not just latest!)
+      // Each snapshot represents a single game's chip change, not cumulative total.
       // Humans: group by user_id (in case they re-joined and got a new player_id)
       // Bots: group by player_id (bots may share user_id)
-      const latestByKey = new Map<string, typeof snapshots[0]>();
+      const aggregatedByKey = new Map<string, { 
+        player_id: string; 
+        username: string; 
+        is_bot: boolean; 
+        totalChips: number;
+      }>();
+      
       snapshots.forEach((snap) => {
         const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
-        if (!latestByKey.has(key)) {
-          latestByKey.set(key, snap);
+        const existing = aggregatedByKey.get(key);
+        if (existing) {
+          // Sum the chip changes
+          existing.totalChips += snap.chips;
+        } else {
+          aggregatedByKey.set(key, {
+            player_id: snap.player_id,
+            username: snap.username,
+            is_bot: snap.is_bot ?? false,
+            totalChips: snap.chips,
+          });
         }
       });
 
-      const results: PlayerResult[] = Array.from(latestByKey.values()).map((snap) => ({
-        id: snap.player_id,
-        username: snap.username,
-        chips: snap.chips,
+      const results: PlayerResult[] = Array.from(aggregatedByKey.values()).map((agg) => ({
+        id: agg.player_id,
+        username: agg.username,
+        chips: agg.totalChips,
         legs: 0,
-        is_bot: snap.is_bot ?? false,
+        is_bot: agg.is_bot,
       }));
 
       if (results.length > 0) {
