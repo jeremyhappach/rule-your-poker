@@ -6337,9 +6337,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
                     onSitOut={async () => {
-                      // Handle dealer sitting out - mark as sitting out and rotate dealer
-                      if (!dealerPlayer?.id) return;
+                      // Handle dealer sitting out - mark as sitting out then evaluate player counts
+                      if (!dealerPlayer?.id || !gameId) return;
                       
+                      console.log('[SIT OUT] Dealer sitting out from game selection');
+                      
+                      // Step 1: Mark dealer as sitting out
                       await supabase
                         .from('players')
                         .update({
@@ -6349,8 +6352,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                         })
                         .eq('id', dealerPlayer.id);
                       
-                      // Rotate dealer to next eligible player
-                      const newDealerPosition = await rotateDealerPosition(gameId!, game.dealer_position || 1);
+                      // Step 2: Evaluate all player states AFTER marking sitting out
+                      const { activePlayerCount, activeHumanCount, eligibleDealerCount } = 
+                        await evaluatePlayerStatesEndOfGame(gameId);
+                      
+                      console.log('[SIT OUT] After evaluation - active:', activePlayerCount, 
+                        'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount);
+                      
+                      // Step 3: Check if we have enough players to continue
+                      // Priority 1: If no active human players, end session
+                      if (activeHumanCount < 1) {
+                        console.log('[SIT OUT] No active human players - ending session');
+                        await supabase
+                          .from('games')
+                          .update({
+                            status: 'session_ended',
+                            session_ended_at: new Date().toISOString(),
+                            pending_session_end: false,
+                            game_over_at: new Date().toISOString()
+                          })
+                          .eq('id', gameId);
+                        return;
+                      }
+                      
+                      // Priority 2: Need 1+ eligible dealer AND 2+ active players, otherwise revert to waiting
+                      if (eligibleDealerCount < 1 || activePlayerCount < 2) {
+                        console.log('[SIT OUT] Not enough players to continue - reverting to waiting');
+                        
+                        // Remove sitting out players - they need to re-select seats
+                        await removeSittingOutPlayersOnWaiting(gameId);
+                        
+                        // Revert to waiting status
+                        await supabase
+                          .from('games')
+                          .update({
+                            status: 'waiting',
+                            awaiting_next_round: false,
+                            last_round_result: null,
+                            config_deadline: null,
+                            game_type: null
+                          })
+                          .eq('id', gameId);
+                        
+                        await fetchGameData();
+                        return;
+                      }
+                      
+                      // Step 4: We have enough players - rotate dealer to next eligible player
+                      const newDealerPosition = await rotateDealerPosition(gameId, game.dealer_position || 1);
+                      console.log('[SIT OUT] Rotating dealer to position:', newDealerPosition);
                       
                       // Set new dealer position and reset to game selection
                       const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
