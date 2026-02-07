@@ -441,15 +441,47 @@ export const CribbageGameTable = ({
   };
 
   const handlePlayCard = async (cardIndex: number) => {
-    if (!cribbageState || !currentPlayerId) return;
+    if (!cribbageState || !currentPlayerId || !roundId) return;
 
     try {
-      const playerState = cribbageState.playerStates[currentPlayerId];
-      const cardPlayed = playerState?.hand[cardIndex];
-      const newState = playPeggingCard(cribbageState, currentPlayerId, cardIndex);
+      // CRITICAL: Fetch the latest state from DB to prevent stale state issues
+      // This guards against race conditions where bot's move hasn't propagated yet
+      const { data: freshRound, error: fetchError } = await supabase
+        .from('rounds')
+        .select('cribbage_state')
+        .eq('id', roundId)
+        .single();
+      
+      if (fetchError || !freshRound?.cribbage_state) {
+        console.error('[CRIBBAGE] Failed to fetch fresh state before play:', fetchError);
+        toast.error('Failed to sync game state. Try again.');
+        return;
+      }
+      
+      const freshState = freshRound.cribbage_state as unknown as CribbageState;
+      
+      // Verify it's still our turn with fresh state
+      if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
+        console.warn('[CRIBBAGE] Stale state detected - not our turn in fresh state');
+        setCribbageState(freshState);
+        toast.error('Wait for your turn');
+        return;
+      }
+      
+      // Verify the card is still playable with fresh state
+      const freshPlayerState = freshState.playerStates[currentPlayerId];
+      if (!freshPlayerState || cardIndex >= freshPlayerState.hand.length) {
+        console.warn('[CRIBBAGE] Card index invalid in fresh state');
+        setCribbageState(freshState);
+        toast.error('Card no longer available');
+        return;
+      }
+      
+      const cardPlayed = freshPlayerState.hand[cardIndex];
+      const newState = playPeggingCard(freshState, currentPlayerId, cardIndex);
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
-        logPeggingPlay(eventCtx, cribbageState, newState, currentPlayerId, cardPlayed);
+        logPeggingPlay(eventCtx, freshState, newState, currentPlayerId, cardPlayed);
       }
       // Check for his_heels on phase transition
       if (newState.lastEvent?.type === 'his_heels') {
