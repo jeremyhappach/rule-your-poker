@@ -164,18 +164,24 @@ function pickActive357Round(
 
   const { currentRoundNumber, currentHandNumber, dealerGameId } = params;
 
+  // CRITICAL: Always require dealer_game_id to prevent cross-game contamination
+  if (!dealerGameId) {
+    console.warn('[pickActive357Round] ⚠️ Missing dealer_game_id - cannot safely select round');
+    return null;
+  }
+
   if (typeof currentRoundNumber === 'number' && typeof currentHandNumber === 'number') {
     const exact = rounds.find((r) =>
       r.round_number === currentRoundNumber &&
       r.hand_number === currentHandNumber &&
-      (dealerGameId ? r.dealer_game_id === dealerGameId : true)
+      r.dealer_game_id === dealerGameId
     );
     if (exact) return exact;
   }
 
-  // Fallback: most recent betting round (prefer within this dealer game if provided).
+  // Fallback: most recent betting round within this dealer game.
   // IMPORTANT: Never use created_at ordering for round selection.
-  const candidates = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+  const candidates = rounds.filter((r) => r.dealer_game_id === dealerGameId);
   const sorted = [...candidates].sort((a, b) => {
     const aHand = typeof a.hand_number === 'number' ? a.hand_number : 0;
     const bHand = typeof b.hand_number === 'number' ? b.hand_number : 0;
@@ -188,7 +194,14 @@ function pickActive357Round(
 
 function pickLatestRoundByKey(rounds: Round[] | undefined, dealerGameId?: string | null): Round | null {
   if (!rounds || rounds.length === 0) return null;
-  const candidates = dealerGameId ? rounds.filter((r) => r.dealer_game_id === dealerGameId) : rounds;
+  
+  // CRITICAL: Always require dealer_game_id to prevent cross-game contamination
+  if (!dealerGameId) {
+    console.warn('[pickLatestRoundByKey] ⚠️ Missing dealer_game_id - cannot safely select round');
+    return null;
+  }
+  
+  const candidates = rounds.filter((r) => r.dealer_game_id === dealerGameId);
   if (candidates.length === 0) return null;
 
   return (
@@ -2538,9 +2551,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game.game_type === "horses" || game.game_type === "ship-captain-crew") {
       // Dice games: current_round is authoritative; never show the previous round during the creation gap.
       if (typeof game.current_round === "number") {
-        const dealerRounds = game.current_game_uuid
-          ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
-          : game.rounds;
+        // CRITICAL: ALWAYS filter by dealer_game_id when available - NO fallback to unscoped rounds
+        if (!game.current_game_uuid) {
+          console.warn('[LIVE_ROUND] ⚠️ Missing dealer_game_id for dice game - cannot safely select round');
+          return null;
+        }
+        const dealerRounds = game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid);
         // CRITICAL: Must use hand_number scoping to prevent cross-hand contamination
         const matchingRounds = dealerRounds.filter((r) => r.round_number === game.current_round);
         if (matchingRounds.length === 1) return matchingRounds[0];
@@ -2554,10 +2570,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     if (game.game_type === '3-5-7') {
+      // CRITICAL: ALWAYS require dealer_game_id for 3-5-7 - NO fallback to unscoped rounds
+      if (!game.current_game_uuid) {
+        console.warn('[LIVE_ROUND] ⚠️ Missing dealer_game_id for 3-5-7 - cannot safely select round');
+        return null;
+      }
       // Derive max hand_number from rounds for this dealer_game - don't trust game.total_hands which can be stale
-      const dealerRounds = game.current_game_uuid
-        ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
-        : game.rounds;
+      const dealerRounds = game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid);
       const maxHandNumber = dealerRounds.reduce(
         (max, r) => (typeof r.hand_number === 'number' && r.hand_number > max ? r.hand_number : max),
         0
@@ -2571,11 +2590,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
 
-    // Default behavior for other games.
+    // Default behavior for other games (Holm, Cribbage, etc.)
     if (typeof game.current_round === "number") {
-      const dealerRounds = game.current_game_uuid
-        ? game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid)
-        : game.rounds;
+      // CRITICAL: ALWAYS require dealer_game_id - NO fallback to unscoped rounds
+      if (!game.current_game_uuid) {
+        console.warn('[LIVE_ROUND] ⚠️ Missing dealer_game_id for game type', game.game_type, '- cannot safely select round');
+        return null;
+      }
+      const dealerRounds = game.rounds.filter((r) => r.dealer_game_id === game.current_game_uuid);
       // CRITICAL: Must scope by hand_number to prevent cross-hand contamination
       const matchingRounds = dealerRounds.filter((r) => r.round_number === game.current_round);
       if (matchingRounds.length === 1) return matchingRounds[0];
@@ -3788,25 +3810,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             .maybeSingle();
           roundData = data;
         } else if (gameData.current_round) {
-          // Legacy fallback without dealer_game_id - also order by hand_number to reduce chance of cross-game collision.
-          // This path should be extremely rare and only for old sessions without current_game_uuid.
-          console.warn('[FETCH] Using legacy round lookup without dealer_game_id - this may be unsafe');
-          const { data } = await supabase
+          // Fallback with current_round but missing some data - STILL scope by dealer_game_id when available
+          // CRITICAL: Always scope by dealer_game_id to prevent cross-game contamination
+          let fallbackQuery = supabase
             .from('rounds')
-            .select('id, round_number, cards_dealt')
+            .select('id, round_number, cards_dealt, dealer_game_id')
             .eq('game_id', gameId)
-            .eq('round_number', gameData.current_round)
+            .eq('round_number', gameData.current_round);
+          
+          // Add dealer_game_id filter when available (should almost always be present)
+          if (gameData.current_game_uuid) {
+            fallbackQuery = fallbackQuery.eq('dealer_game_id', gameData.current_game_uuid);
+          } else {
+            console.warn('[FETCH] ⚠️ Missing dealer_game_id - this may cause cross-game contamination');
+          }
+          
+          const { data } = await fallbackQuery
             .order('hand_number', { ascending: false })
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
           roundData = data;
         } else {
-          // Fallback: get the most recent round by hand_number, round_number
-          const { data } = await supabase
+          // Ultimate fallback: get the most recent round - STILL scope by dealer_game_id when available
+          // CRITICAL: Always scope by dealer_game_id to prevent cross-game contamination
+          let ultimateFallbackQuery = supabase
             .from('rounds')
-            .select('id, round_number, cards_dealt')
-            .eq('game_id', gameId)
+            .select('id, round_number, cards_dealt, dealer_game_id')
+            .eq('game_id', gameId);
+          
+          // Add dealer_game_id filter when available
+          if (gameData.current_game_uuid) {
+            ultimateFallbackQuery = ultimateFallbackQuery.eq('dealer_game_id', gameData.current_game_uuid);
+          } else {
+            console.warn('[FETCH] ⚠️ Missing dealer_game_id in ultimate fallback - this may cause cross-game contamination');
+          }
+          
+          const { data } = await ultimateFallbackQuery
             .order('hand_number', { ascending: false })
             .order('round_number', { ascending: false })
             .limit(1)
