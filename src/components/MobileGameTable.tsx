@@ -1840,6 +1840,46 @@ export const MobileGameTable = ({
     handContextId: null,
   });
   
+  // HAND TRANSITION GUARD: When handContextId changes, briefly hide cards to prevent stale card flash.
+  // This is similar to the Cribbage pattern - a short transition period ensures old cards disappear
+  // before new cards are shown, avoiding the "switch" visual.
+  const [isHandTransitioning, setIsHandTransitioning] = useState(false);
+  const handTransitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const prevHandContextForTransitionRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    // Only trigger transition guard for Holm games (they have the card flash issue)
+    if (gameType !== 'holm-game') return;
+    
+    const prevContext = prevHandContextForTransitionRef.current;
+    const newContext = handContextId ?? null;
+    
+    // If handContextId changed and we had a previous value (not initial mount)
+    if (prevContext !== null && newContext !== null && prevContext !== newContext) {
+      // Start transition period - hide cards briefly
+      setIsHandTransitioning(true);
+      
+      // Clear any existing timeout
+      if (handTransitionTimeoutRef.current) {
+        clearTimeout(handTransitionTimeoutRef.current);
+      }
+      
+      // After short delay, allow new cards to show
+      handTransitionTimeoutRef.current = setTimeout(() => {
+        setIsHandTransitioning(false);
+        handTransitionTimeoutRef.current = null;
+      }, 150); // 150ms is enough to ensure old cards are gone before new appear
+    }
+    
+    prevHandContextForTransitionRef.current = newContext;
+    
+    return () => {
+      if (handTransitionTimeoutRef.current) {
+        clearTimeout(handTransitionTimeoutRef.current);
+      }
+    };
+  }, [handContextId, gameType]);
+  
   const rawCurrentPlayerCards = currentPlayer 
     ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
     : [];
@@ -1849,6 +1889,11 @@ export const MobileGameTable = ({
   // 2. handContextId is the same AND we have new cards - update with fresh cards
   // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
   const currentPlayerCards = useMemo(() => {
+    // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
+    if (isHandTransitioning) {
+      return [];
+    }
+    
     const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
     const cachedCards = currentPlayerCardsRef.current.cards;
     
@@ -1878,7 +1923,7 @@ export const MobileGameTable = ({
     
     // No new cards but we have cached - keep cached (prevents flicker during brief DB gaps)
     return cachedCards;
-  }, [rawCurrentPlayerCards, handContextId]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning]);
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
