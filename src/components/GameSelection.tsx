@@ -29,7 +29,7 @@ export const GameSelection = ({
     {
       id: "holm-game",
       name: "Holm",
-      description: "4 cards vs community + Chucky",
+      description: "4 cards to best Chucky",
       enabled: true,
     },
     {
