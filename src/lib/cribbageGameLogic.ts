@@ -403,13 +403,19 @@ export function playPeggingCard(
   
   // If pegging is complete, immediately count hands
   const allCardsPlayedAfter = Object.values(newState.playerStates).every(ps => ps.hand.length === 0);
-  if (allCardsPlayedAfter) {
-    return advanceToCounting(newState);
+  // 31 ends the run FIRST - we need to reset count before checking if pegging is done
+  // The opponent (next player after the one who hit 31) leads the new run
+  if (newCount === 31) {
+    // Check if all cards are played AFTER applying the 31 reset
+    if (allCardsPlayedAfter) {
+      return advanceToCounting(newState);
+    }
+    return beginNewPeggingRun(newState, playerId);
   }
 
-  // 31 ends the run; the player who hit 31 leads the next run
-  if (newCount === 31) {
-    return beginNewPeggingRun(newState, playerId);
+  // If pegging is complete (and not 31), advance to counting
+  if (allCardsPlayedAfter) {
+    return advanceToCounting(newState);
   }
 
   return advanceToNextPeggingTurn(newState);
