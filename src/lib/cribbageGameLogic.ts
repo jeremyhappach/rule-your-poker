@@ -357,9 +357,27 @@ export function playPeggingCard(
   const newPlayedCards = [...state.pegging.playedCards, { playerId, card }];
   
   // True last card of the entire pegging (end of hand)
-  const isLastCardOfHand = Object.values(state.playerStates).every(
-    ps => ps.playerId === playerId ? newHand.length === 0 : ps.hand.length === 0
-  );
+  // CRITICAL: Check ALL players' hands - the current player uses newHand (after playing),
+  // other players use their current hand from state
+  const isLastCardOfHand = Object.values(state.playerStates).every(ps => {
+    if (ps.playerId === playerId) {
+      // Current player: check if they'll have 0 cards after this play
+      return newHand.length === 0;
+    } else {
+      // Other players: check their current hand
+      return ps.hand.length === 0;
+    }
+  });
+  
+  // Debug logging to catch incorrect "Last" awards
+  if (isLastCardOfHand) {
+    const otherPlayersWithCards = Object.values(state.playerStates)
+      .filter(ps => ps.playerId !== playerId && ps.hand.length > 0);
+    if (otherPlayersWithCards.length > 0) {
+      console.error('[CRIBBAGE BUG] isLastCardOfHand is true but other players have cards:', 
+        otherPlayersWithCards.map(ps => ({ id: ps.playerId, handSize: ps.hand.length })));
+    }
+  }
 
   const peggingPoints = evaluatePegging(state.pegging.playedCards, card, state.pegging.currentCount, isLastCardOfHand);
   const pointsEarned = peggingPoints.total;
