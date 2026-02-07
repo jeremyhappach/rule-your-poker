@@ -1865,8 +1865,10 @@ export function useHorsesMobileController({
       const chipChanges: Record<string, number> = {};
       chipChanges[winnerId] = actualPot; // Winner receives the full pot
 
-      // Fire-and-forget: Record game result (audit trail only)
-      supabase.from("game_results").insert({
+      // CRITICAL FIX: AWAIT the game_results insert to ensure the winner is recorded
+      // BEFORE transitioning game state. This prevents dealer selection from failing
+      // to find the winner when determining who deals next.
+      const { error: resultError } = await supabase.from("game_results").insert({
         game_id: gameId,
         hand_number: handNumber,
         winner_player_id: winnerId,
@@ -1878,6 +1880,13 @@ export function useHorsesMobileController({
         game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
         dealer_game_id: currentGameUuid,
       });
+
+      if (resultError) {
+        console.error("[HORSES] CRITICAL: Failed to record game result:", resultError);
+        // Still continue - chips were already awarded, but log the error
+      } else {
+        console.log("[HORSES] Successfully recorded game result for winner:", winnerName);
+      }
 
       // Note: No toast here - dealer announcement already shows the win message
       
