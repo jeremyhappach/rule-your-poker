@@ -1991,6 +1991,8 @@ export const CribbageMobileGameTable = ({
               currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
               currentPlayerId={currentPlayerId}
               isVisible={cribbageState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+              totalPlayers={players.length}
+              opponentIds={opponents.map(o => o.id)}
             />
 
             {/* Game Title - Top center of felt */}
