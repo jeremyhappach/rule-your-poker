@@ -9,7 +9,10 @@ interface MusicToggleButtonProps {
 }
 
 export function MusicToggleButton({ className, variant = "default" }: MusicToggleButtonProps) {
-  const { isPlaying, isLoading, togglePlay } = useBackgroundMusic();
+  const { isPlaying, isLoading, togglePlay, hasMusic } = useBackgroundMusic();
+
+  // Don't render if no music files are configured
+  if (!hasMusic) return null;
 
   if (variant === "compact") {
     return (
