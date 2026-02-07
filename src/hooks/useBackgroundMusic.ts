@@ -1,13 +1,37 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
+// Static music tracks stored in public/music/
+// Add your pre-generated tracks here after uploading them
+const MUSIC_TRACKS = [
+  "/music/bluegrass-1.mp3",
+  "/music/bluegrass-2.mp3",
+  "/music/bluegrass-3.mp3",
+  "/music/bluegrass-4.mp3",
+  "/music/bluegrass-5.mp3",
+];
+
+// Shuffle array using Fisher-Yates algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export function useBackgroundMusic() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasGenerated, setHasGenerated] = useState(false);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
-  const isUnlockedRef = useRef(false);
+  const playlistRef = useRef<string[]>([]);
+
+  // Initialize shuffled playlist on mount
+  useEffect(() => {
+    playlistRef.current = shuffleArray(MUSIC_TRACKS);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -16,150 +40,83 @@ export function useBackgroundMusic() {
         audioRef.current.pause();
         audioRef.current = null;
       }
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
-      }
     };
   }, []);
 
-  // Create a looping silent audio to keep iOS audio context alive during generation
-  // This 1-second silent WAV will loop continuously until real audio is ready
-  const SILENT_LOOP = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQgXj9markup69AAACAAgAZGF0YQIA";
-  
-  // Unlock and KEEP playing silent audio on iOS during the async generation
-  const unlockAudio = useCallback(() => {
-    if (isUnlockedRef.current) return;
+  // Handle track end - play next track in shuffled playlist
+  const handleTrackEnd = useCallback(() => {
+    const nextIndex = (currentTrackIndex + 1) % playlistRef.current.length;
     
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-      audioRef.current.loop = true;
-      audioRef.current.volume = 0.3;
+    // Re-shuffle when we've played through all tracks
+    if (nextIndex === 0) {
+      playlistRef.current = shuffleArray(MUSIC_TRACKS);
     }
     
-    // Play a silent looping audio to keep the audio context alive
-    // This must continue playing during the entire generation wait
-    audioRef.current.src = SILENT_LOOP;
-    audioRef.current.play().then(() => {
-      isUnlockedRef.current = true;
-      console.log("Audio context unlocked and kept alive for iOS");
-    }).catch((e) => {
-      console.log("Audio unlock failed (expected on some browsers):", e.message);
-    });
-  }, []);
-
-  const generateAndPlay = useCallback(async () => {
-    // Immediately unlock audio on the user gesture
-    unlockAudio();
+    setCurrentTrackIndex(nextIndex);
     
+    if (audioRef.current) {
+      audioRef.current.src = playlistRef.current[nextIndex];
+      audioRef.current.play().catch(console.error);
+    }
+  }, [currentTrackIndex]);
+
+  const startPlayback = useCallback(async () => {
     setIsLoading(true);
     
     try {
-      // Use AbortController for timeout - music generation can take a while
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-music`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ duration: 30 }), // 30 seconds generates faster
-          signal: controller.signal,
-        }
-      );
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Request failed: ${response.status}`);
-      }
-
-      const audioBlob = await response.blob();
-      
-      // Validate we got actual audio data
-      if (audioBlob.size < 1000) {
-        console.error("Received blob too small:", audioBlob.size, "type:", audioBlob.type);
-        throw new Error("Invalid audio response - try again");
-      }
-      
-      console.log("Received audio blob:", audioBlob.size, "bytes, type:", audioBlob.type);
-      
-      // Revoke old URL if exists
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-      }
-      
-      audioUrlRef.current = URL.createObjectURL(audioBlob);
-      
       if (!audioRef.current) {
         audioRef.current = new Audio();
-        audioRef.current.loop = true;
         audioRef.current.volume = 0.3;
+        audioRef.current.addEventListener("ended", handleTrackEnd);
       }
       
-      // Swap from silent loop to real audio - no new play() call needed since already playing
-      audioRef.current.src = audioUrlRef.current;
+      // Start with first track in shuffled playlist
+      const track = playlistRef.current[currentTrackIndex] || MUSIC_TRACKS[0];
+      audioRef.current.src = track;
       
-      // Add error handler for audio element
-      audioRef.current.onerror = (e) => {
-        console.error("Audio element error:", e, audioRef.current?.error);
-        toast.error("Audio playback failed - try again");
+      // Add error handler
+      audioRef.current.onerror = () => {
+        console.error("Failed to load track:", track);
+        toast.error("Music file not found. Please add tracks to public/music/");
         setIsPlaying(false);
         setIsLoading(false);
       };
       
-      // The audio element is already playing (silent loop), just loading new src continues playback
-      // But we still call play() to ensure it starts if the browser paused during src change
       await audioRef.current.play();
-      
       setIsPlaying(true);
-      setHasGenerated(true);
       toast.success("🎵 Music started");
     } catch (error) {
-      console.error("Failed to generate music:", error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        toast.error("Music generation timed out. Please try again.");
+      console.error("Failed to play music:", error);
+      const message = error instanceof Error ? error.message : "Failed to play music";
+      if (message.includes("not allowed") || message.includes("denied permission")) {
+        toast.error("Tap again to enable audio playback");
       } else {
-        const message = error instanceof Error ? error.message : "Failed to generate music";
-        // Handle iOS-specific permission error
-        if (message.includes("not allowed") || message.includes("denied permission")) {
-          toast.error("Tap again to enable audio playback");
-        } else {
-          toast.error(message === "Load failed" ? "Audio failed to load - try again" : message);
-        }
+        toast.error("Add music files to public/music/ folder");
       }
     } finally {
       setIsLoading(false);
     }
-  }, [unlockAudio]);
+  }, [currentTrackIndex, handleTrackEnd]);
 
   const togglePlay = useCallback(async () => {
-    if (!hasGenerated) {
-      await generateAndPlay();
+    if (!audioRef.current?.src || audioRef.current.src === window.location.href) {
+      await startPlayback();
       return;
     }
 
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        try {
-          await audioRef.current.play();
-          setIsPlaying(true);
-        } catch (e) {
-          console.error("Resume play failed:", e);
-          toast.error("Tap again to resume audio");
-        }
+    if (isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+    } else {
+      try {
+        await audioRef.current?.play();
+        setIsPlaying(true);
+      } catch (e) {
+        console.error("Resume play failed:", e);
+        toast.error("Tap again to resume audio");
       }
     }
-  }, [hasGenerated, isPlaying, generateAndPlay]);
+  }, [isPlaying, startPlayback]);
 
   const stop = useCallback(() => {
     if (audioRef.current) {
@@ -169,11 +126,14 @@ export function useBackgroundMusic() {
     }
   }, []);
 
+  // Check if any tracks are configured
+  const hasMusic = MUSIC_TRACKS.length > 0;
+
   return {
     isPlaying,
     isLoading,
     togglePlay,
     stop,
-    hasGenerated,
+    hasMusic,
   };
 }
