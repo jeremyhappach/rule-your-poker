@@ -2048,56 +2048,97 @@ export const CribbageMobileGameTable = ({
           </div>
 
           {/* Opponent overlay (not clipped by the circle) */}
+          {/* Position opponents based on count: 
+              - 2 player: 1 opponent at upper-left
+              - 3 player: 2 opponents at upper-left and upper-right
+              - 4 player: 3 opponents at left, top, right 
+          */}
           <div className="absolute inset-0 z-50 pointer-events-none">
-            <div className="absolute top-14 left-6 flex flex-col gap-2">
-              {opponents.map(opponent => {
-                const oppState = cribbageState.playerStates[opponent.id];
-                const isDealerPlayer = isCribDealer(opponent.id);
+            {opponents.map((opponent, index) => {
+              const oppState = cribbageState.playerStates[opponent.id];
+              const isDealerPlayer = isCribDealer(opponent.id);
+              const totalOpponents = opponents.length;
+              
+              // Calculate position based on number of opponents and index
+              // For 1 opponent (2p): upper-left
+              // For 2 opponents (3p): index 0 = upper-left, index 1 = upper-right
+              // For 3 opponents (4p): index 0 = left, index 1 = top center, index 2 = right
+              let positionClasses: string;
+              let alignmentClasses: string;
+              
+              if (totalOpponents === 1) {
+                // 2 player: single opponent upper-left
+                positionClasses = 'top-14 left-6';
+                alignmentClasses = 'items-start';
+              } else if (totalOpponents === 2) {
+                // 3 player: upper-left and upper-right
+                if (index === 0) {
+                  positionClasses = 'top-14 left-6';
+                  alignmentClasses = 'items-start';
+                } else {
+                  positionClasses = 'top-14 right-6';
+                  alignmentClasses = 'items-end';
+                }
+              } else {
+                // 4 player: left, top center, right
+                if (index === 0) {
+                  positionClasses = 'top-20 left-4';
+                  alignmentClasses = 'items-start';
+                } else if (index === 1) {
+                  positionClasses = 'top-10 left-1/2 -translate-x-1/2';
+                  alignmentClasses = 'items-center';
+                } else {
+                  positionClasses = 'top-20 right-4';
+                  alignmentClasses = 'items-end';
+                }
+              }
 
-                return (
-                  <div key={opponent.id} className="flex flex-col items-start">
-                    {/* Chip circle row */}
-                    <div className="flex items-center gap-1.5">
-                      <div className="relative">
-                        {/* White chip during active play - gold (bg-poker-gold) indicates waiting status */}
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
-                          <span className="text-[10px] font-bold text-slate-900">
-                            ${formatChipValue(opponent.chips)}
-                          </span>
-                        </div>
+              return (
+                <div 
+                  key={opponent.id} 
+                  className={`absolute flex flex-col ${positionClasses} ${alignmentClasses}`}
+                >
+                  {/* Chip circle row */}
+                  <div className={`flex items-center gap-1.5 ${index > 0 && totalOpponents >= 2 && index === totalOpponents - 1 ? 'flex-row-reverse' : ''}`}>
+                    <div className="relative">
+                      {/* White chip during active play - gold (bg-poker-gold) indicates waiting status */}
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
+                        <span className="text-[10px] font-bold text-slate-900">
+                          ${formatChipValue(opponent.chips)}
+                        </span>
                       </div>
-
-                      {/* Name */}
-                      <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
-                        {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
-                      </span>
-
-                      {/* Dealer button inline */}
-                      {isDealerPlayer && (
-                        <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                          <span className="text-white font-bold text-[7px]">D</span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Opponent's cards (face down) - shows actual card count */}
-                    {oppState && oppState.hand.length > 0 && (
-                      <div className="flex -space-x-1.5 mt-1 ml-1">
-                        {oppState.hand.map((_, i) => (
-                          <div 
-                            key={i} 
-                            className="w-4 h-6 rounded-sm border border-white/20"
-                            style={{
-                              background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                            }}
-                          />
-                        ))}
+                    {/* Name */}
+                    <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
+                      {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
+                    </span>
+
+                    {/* Dealer button inline */}
+                    {isDealerPlayer && (
+                      <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
+                        <span className="text-white font-bold text-[7px]">D</span>
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Opponent's cards (face down) - shows actual card count */}
+                  {oppState && oppState.hand.length > 0 && (
+                    <div className={`flex -space-x-1.5 mt-1 ${alignmentClasses === 'items-end' ? 'justify-end mr-1' : alignmentClasses === 'items-center' ? 'justify-center' : 'ml-1'}`}>
+                      {oppState.hand.map((_, i) => (
+                        <div 
+                          key={i} 
+                          className="w-4 h-6 rounded-sm border border-white/20"
+                          style={{
+                            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
