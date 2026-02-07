@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
 import { getBotAlias } from "./botAlias";
-import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent } from "./gameStateDebugLog";
+import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 
 /**
  * Snapshot all players' chip counts after a hand completes.
@@ -664,21 +664,37 @@ export async function startRound(gameId: string, roundNumber: number) {
 }
 
 export async function makeDecision(gameId: string, playerId: string, decision: 'stay' | 'fold') {
-  console.log('[MAKE DECISION] Starting:', { gameId, playerId, decision });
+  const decisionTimestamp = new Date().toISOString();
+  const shortGameId = gameId.slice(0, 8);
+  const shortPlayerId = playerId.slice(0, 8);
+  
+  console.log(`[MAKE_DECISION] ===== START ===== game=${shortGameId} player=${shortPlayerId} decision=${decision} at ${decisionTimestamp}`);
   
   // Get current game
-  const { data: game } = await supabase
+  const { data: game, error: gameError } = await supabase
     .from('games')
     .select('*')
     .eq('id', gameId)
     .single();
 
-  if (!game) {
-    console.log('[MAKE DECISION] Game not found');
+  if (!game || gameError) {
+    console.error(`[MAKE_DECISION] CRITICAL: Game not found`, { gameId, error: gameError?.message });
+    // Log to game_state_debug_log for persistent tracking
+    await logGameState({
+      gameId,
+      playerId,
+      eventType: 'PLAYER_DECISION_MADE',
+      sourceLocation: 'gameLogic:makeDecision:gameNotFound',
+      details: {
+        decision,
+        error: gameError?.message || 'Game not found',
+        timestamp: decisionTimestamp,
+      },
+    });
     throw new Error('Game not found');
   }
 
-  console.log('[MAKE DECISION] Game status:', game.status, 'Type:', game.game_type);
+  console.log(`[MAKE_DECISION] Game status=${game.status} type=${game.game_type} current_round=${game.current_round} all_decisions_in=${game.all_decisions_in}`);
 
   // CRITICAL GUARD: Dice games (horses, ship-captain-crew) do NOT use makeDecision.
   // They have their own turn-based dice rolling logic. If makeDecision is called for a dice game,
@@ -776,26 +792,51 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   }
   
   if (!currentRound) {
-    console.log('[MAKE DECISION] Round not found');
+    console.error(`[MAKE_DECISION] CRITICAL: Round not found for game=${shortGameId}`);
+    await logGameState({
+      gameId,
+      playerId,
+      eventType: 'PLAYER_DECISION_MADE',
+      sourceLocation: 'gameLogic:makeDecision:roundNotFound',
+      details: { decision, timestamp: new Date().toISOString() },
+    });
     throw new Error('Round not found');
   }
 
-  const { data: player } = await supabase
+  console.log(`[MAKE_DECISION] Round found: id=${currentRound.id.slice(0,8)} round_number=${currentRound.round_number} hand_number=${currentRound.hand_number} status=${currentRound.status}`);
+
+  const { data: player, error: playerError } = await supabase
     .from('players')
     .select('*')
     .eq('id', playerId)
     .maybeSingle();
 
-  if (!player) {
-    console.log('[MAKE DECISION] Player not found');
+  if (!player || playerError) {
+    console.error(`[MAKE_DECISION] CRITICAL: Player not found player=${shortPlayerId}`, { error: playerError?.message });
+    await logGameState({
+      gameId,
+      playerId,
+      eventType: 'PLAYER_DECISION_MADE',
+      sourceLocation: 'gameLogic:makeDecision:playerNotFound',
+      details: { decision, error: playerError?.message, timestamp: new Date().toISOString() },
+    });
     throw new Error('Player not found');
   }
 
-  console.log('[MAKE DECISION] Player found:', { position: player.position, currentDecision: player.current_decision, decisionLocked: player.decision_locked });
+  console.log(`[MAKE_DECISION] Player BEFORE update: position=${player.position} decision_locked=${player.decision_locked} current_decision=${player.current_decision} status=${player.status}`);
 
   // Prevent double-clicking - if player has already locked in a decision, don't allow changes
   if (player.decision_locked) {
-    console.log('[MAKE DECISION] Player has already locked in a decision, ignoring new decision');
+    console.log(`[MAKE_DECISION] Player already locked, ignoring. player=${shortPlayerId} existing_decision=${player.current_decision}`);
+    await logGameState({
+      gameId,
+      playerId,
+      eventType: 'PLAYER_DECISION_MADE',
+      sourceLocation: 'gameLogic:makeDecision:alreadyLocked',
+      playerDecision: player.current_decision,
+      decisionLocked: true,
+      details: { attempted_decision: decision, existing_decision: player.current_decision, timestamp: new Date().toISOString() },
+    });
     return;
   }
 
@@ -806,6 +847,8 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   // The .eq('decision_locked', false) ensures only ONE writer wins if the user clicks
   // Stay/Fold at the same moment the timer expires and calls the edge function.
   if (decision === 'stay') {
+    console.log(`[MAKE_DECISION] Attempting DB UPDATE: SET current_decision='stay', decision_locked=true WHERE id=${shortPlayerId} AND decision_locked=false`);
+    
     const { data: stayResult, error: stayError } = await supabase
       .from('players')
       .update({ 
@@ -816,52 +859,136 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       .eq('decision_locked', false) // ATOMIC GUARD: only update if not already locked
       .select();
     
+    console.log(`[MAKE_DECISION] STAY DB result: affected_rows=${stayResult?.length ?? 0} error=${stayError?.message ?? 'none'}`);
+    
+    if (stayError) {
+      console.error(`[MAKE_DECISION] CRITICAL: STAY update failed with error`, { error: stayError.message, code: stayError.code });
+      await logGameState({
+        gameId,
+        playerId,
+        roundId: currentRound.id,
+        eventType: 'PLAYER_DECISION_MADE',
+        playerDecision: 'stay',
+        decisionLocked: false,
+        sourceLocation: 'gameLogic:makeDecision:stayDbError',
+        details: { 
+          error: stayError.message, 
+          error_code: stayError.code,
+          position: player.position,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      throw new Error(`Stay update failed: ${stayError.message}`);
+    }
+    
     if (!stayResult || stayResult.length === 0) {
-      console.log('[MAKE DECISION] Stay update skipped - player already locked (race condition avoided)');
+      console.log(`[MAKE_DECISION] STAY atomic guard: 0 rows affected - player was already locked by another process`);
+      await logGameState({
+        gameId,
+        playerId,
+        roundId: currentRound.id,
+        eventType: 'RACE_CONDITION_GUARD',
+        playerDecision: 'stay',
+        decisionLocked: false,
+        sourceLocation: 'gameLogic:makeDecision:stayRaceLost',
+        details: { 
+          guard_type: 'decision_locked_atomic_guard',
+          attempted_decision: 'stay',
+          position: player.position,
+          timestamp: new Date().toISOString(),
+        },
+      });
       return; // Another process already locked this player
     }
     
-    console.log('[MAKE DECISION] Stay decision locked in database');
+    console.log(`[MAKE_DECISION] ✅ STAY SUCCESS: player=${shortPlayerId} position=${player.position} decision_locked=true`);
     
     // DEBUG LOG: Player stay decision (fire-and-forget)
-    logPlayerDecision(gameId, playerId, 'stay', true, 'gameLogic:makeDecision', {
+    logPlayerDecision(gameId, playerId, 'stay', true, 'gameLogic:makeDecision:staySuccess', {
       round_id: currentRound.id,
       round_number: currentRound.round_number,
+      hand_number: currentRound.hand_number,
       position: player.position,
       game_type: game.game_type,
+      affected_rows: stayResult.length,
+      timestamp: new Date().toISOString(),
     });
   } else {
     // In Holm game, folding only affects current hand - keep status 'active'
     // In 3-5-7 game, folding eliminates player from entire session - set status 'folded'
+    const updatePayload = { 
+      current_decision: 'fold',
+      decision_locked: true,
+      ...(isHolmGame ? {} : { status: 'folded' })
+    };
+    
+    console.log(`[MAKE_DECISION] Attempting DB UPDATE: SET ${JSON.stringify(updatePayload)} WHERE id=${shortPlayerId} AND decision_locked=false`);
+    
     const { data: foldResult, error: foldError } = await supabase
       .from('players')
-      .update({ 
-        current_decision: 'fold',
-        decision_locked: true,
-        ...(isHolmGame ? {} : { status: 'folded' })
-      })
+      .update(updatePayload)
       .eq('id', playerId)
       .eq('decision_locked', false) // ATOMIC GUARD: only update if not already locked
       .select();
     
+    console.log(`[MAKE_DECISION] FOLD DB result: affected_rows=${foldResult?.length ?? 0} error=${foldError?.message ?? 'none'}`);
+    
+    if (foldError) {
+      console.error(`[MAKE_DECISION] CRITICAL: FOLD update failed with error`, { error: foldError.message, code: foldError.code });
+      await logGameState({
+        gameId,
+        playerId,
+        roundId: currentRound.id,
+        eventType: 'PLAYER_DECISION_MADE',
+        playerDecision: 'fold',
+        decisionLocked: false,
+        sourceLocation: 'gameLogic:makeDecision:foldDbError',
+        details: { 
+          error: foldError.message, 
+          error_code: foldError.code,
+          position: player.position,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      throw new Error(`Fold update failed: ${foldError.message}`);
+    }
+    
     if (!foldResult || foldResult.length === 0) {
-      console.log('[MAKE DECISION] Fold update skipped - player already locked (race condition avoided)');
+      console.log(`[MAKE_DECISION] FOLD atomic guard: 0 rows affected - player was already locked by another process`);
+      await logGameState({
+        gameId,
+        playerId,
+        roundId: currentRound.id,
+        eventType: 'RACE_CONDITION_GUARD',
+        playerDecision: 'fold',
+        decisionLocked: false,
+        sourceLocation: 'gameLogic:makeDecision:foldRaceLost',
+        details: { 
+          guard_type: 'decision_locked_atomic_guard',
+          attempted_decision: 'fold',
+          position: player.position,
+          timestamp: new Date().toISOString(),
+        },
+      });
       return; // Another process already locked this player
     }
     
-    console.log('[MAKE DECISION] Fold decision locked in database');
+    console.log(`[MAKE_DECISION] ✅ FOLD SUCCESS: player=${shortPlayerId} position=${player.position} decision_locked=true status=${isHolmGame ? 'active' : 'folded'}`);
     
     // DEBUG LOG: Player fold decision (fire-and-forget)
-    logPlayerDecision(gameId, playerId, 'fold', true, 'gameLogic:makeDecision', {
+    logPlayerDecision(gameId, playerId, 'fold', true, 'gameLogic:makeDecision:foldSuccess', {
       round_id: currentRound.id,
       round_number: currentRound.round_number,
+      hand_number: currentRound.hand_number,
       position: player.position,
       game_type: game.game_type,
       status_change: isHolmGame ? 'none' : 'folded',
+      affected_rows: foldResult.length,
+      timestamp: new Date().toISOString(),
     });
   }
 
-  console.log('[MAKE DECISION] Is Holm game?', isHolmGame);
+  console.log(`[MAKE_DECISION] Is Holm game? ${isHolmGame} - proceeding to check round completion`);
   
   if (isHolmGame) {
     // For Holm games, check if round is complete and advance turn
@@ -869,42 +996,69 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     // CRITICAL: Pass player.position so checkHolmRoundComplete knows exactly who decided
     // This eliminates the race condition where current_turn_position might have already changed
     const { checkHolmRoundComplete } = await import('./holmGameLogic');
-    console.log('[MAKE DECISION] Holm game - calling checkHolmRoundComplete with position', player.position);
+    console.log(`[MAKE_DECISION] Holm game - calling checkHolmRoundComplete with position ${player.position}`);
     await checkHolmRoundComplete(gameId, player.position);
   } else {
     // Check if all players have decided (only for non-Holm games)
+    console.log(`[MAKE_DECISION] 3-5-7 game - calling checkAllDecisionsIn for game=${shortGameId}`);
     await checkAllDecisionsIn(gameId);
   }
   
-  console.log('[MAKE DECISION] Complete');
+  console.log(`[MAKE_DECISION] ===== COMPLETE ===== game=${shortGameId} player=${shortPlayerId} decision=${decision}`);
 }
 
 async function checkAllDecisionsIn(gameId: string) {
+  const shortGameId = gameId.slice(0, 8);
+  const checkTimestamp = new Date().toISOString();
+  
+  console.log(`[CHECK_ALL_DECISIONS] ===== START ===== game=${shortGameId} at ${checkTimestamp}`);
+  
   // First check if decisions are already marked as in
-  const { data: game } = await supabase
+  const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('all_decisions_in')
+    .select('all_decisions_in, current_round, total_hands, status, current_game_uuid')
     .eq('id', gameId)
     .single();
   
+  console.log(`[CHECK_ALL_DECISIONS] Game state: all_decisions_in=${game?.all_decisions_in} current_round=${game?.current_round} status=${game?.status}`);
+  
   if (game?.all_decisions_in) {
-    // Already processing, don't check again
+    console.log(`[CHECK_ALL_DECISIONS] Already set, skipping. game=${shortGameId}`);
     return;
   }
 
-  const { data: players } = await supabase
+  const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('*')
+    .select('id, position, current_decision, decision_locked, status, sitting_out, is_bot, user_id')
     .eq('game_id', gameId)
     .eq('status', 'active')
-    .eq('sitting_out', false);
+    .eq('sitting_out', false)
+    .order('position');
 
-  if (!players) return;
+  if (!players || playersError) {
+    console.error(`[CHECK_ALL_DECISIONS] ERROR fetching players: ${playersError?.message}`);
+    return;
+  }
+
+  // Log EVERY player's state for debugging
+  console.log(`[CHECK_ALL_DECISIONS] Player states (${players.length} active players):`);
+  players.forEach(p => {
+    console.log(`  Position ${p.position}: decision_locked=${p.decision_locked} current_decision=${p.current_decision} is_bot=${p.is_bot}`);
+  });
 
   const allDecided = players.every(p => p.decision_locked);
+  const decidedCount = players.filter(p => p.decision_locked).length;
+  const undecidedPlayers = players.filter(p => !p.decision_locked);
+
+  console.log(`[CHECK_ALL_DECISIONS] Decision tally: ${decidedCount}/${players.length} decided. allDecided=${allDecided}`);
+  
+  if (undecidedPlayers.length > 0) {
+    console.log(`[CHECK_ALL_DECISIONS] WAITING for ${undecidedPlayers.length} players:`, undecidedPlayers.map(p => ({ pos: p.position, is_bot: p.is_bot })));
+  }
 
   if (allDecided) {
-    console.log('All players decided, attempting to set all_decisions_in flag');
+    console.log(`[CHECK_ALL_DECISIONS] ✅ ALL DECIDED - attempting to set all_decisions_in flag`);
+    
     // Try to atomically set all_decisions_in flag
     const { data: updateResult, error } = await supabase
       .from('games')
@@ -913,22 +1067,34 @@ async function checkAllDecisionsIn(gameId: string) {
       .eq('all_decisions_in', false) // Only update if not already set
       .select();
 
-    console.log('all_decisions_in update result:', { updateResult, error, resultLength: updateResult?.length });
+    console.log(`[CHECK_ALL_DECISIONS] all_decisions_in UPDATE result: affected_rows=${updateResult?.length ?? 0} error=${error?.message ?? 'none'}`);
+
+    // Log to persistent debug table
+    await logAllDecisionsIn(gameId, null, true, 'gameLogic:checkAllDecisionsIn', {
+      player_decisions: players.map(p => ({ position: p.position, decision: p.current_decision, locked: p.decision_locked, is_bot: p.is_bot })),
+      update_affected_rows: updateResult?.length ?? 0,
+      update_error: error?.message,
+      timestamp: checkTimestamp,
+    });
 
     // Only the first call that successfully sets the flag should proceed
     if (!error && updateResult && updateResult.length > 0) {
-      console.log('Successfully set all_decisions_in, calling endRound');
+      console.log(`[CHECK_ALL_DECISIONS] ✅ WON RACE - calling endRound for game=${shortGameId}`);
       // End round immediately without delay
       try {
         await endRound(gameId);
-        console.log('[CHECK_DECISIONS] endRound completed successfully');
+        console.log(`[CHECK_ALL_DECISIONS] ✅ endRound completed successfully`);
       } catch (endRoundError) {
-        console.error('[CHECK_DECISIONS] Error in endRound:', endRoundError);
+        console.error(`[CHECK_ALL_DECISIONS] ❌ ERROR in endRound:`, endRoundError);
       }
     } else {
-      console.log('all_decisions_in already set by another call, skipping endRound');
+      console.log(`[CHECK_ALL_DECISIONS] Lost race - another process already set all_decisions_in`);
     }
+  } else {
+    console.log(`[CHECK_ALL_DECISIONS] Not all decided yet, waiting for more decisions`);
   }
+  
+  console.log(`[CHECK_ALL_DECISIONS] ===== COMPLETE ===== game=${shortGameId}`);
 }
 
 export async function autoFoldUndecided(gameId: string) {
@@ -1156,7 +1322,10 @@ async function handleGameOver(
 }
 
 export async function endRound(gameId: string) {
-  console.log('[endRound] Starting endRound for game:', gameId);
+  const shortGameId = gameId.slice(0, 8);
+  const endRoundTimestamp = new Date().toISOString();
+  
+  console.log(`[END_ROUND] ===== START ===== game=${shortGameId} at ${endRoundTimestamp}`);
   
   const { data: game, error: gameError } = await supabase
     .from('games')
@@ -1164,15 +1333,16 @@ export async function endRound(gameId: string) {
     .eq('id', gameId)
     .single();
 
-  console.log('[endRound] Game data:', { 
-    hasGame: !!game, 
-    currentRound: game?.current_round,
-    status: game?.status,
-    error: gameError 
-  });
+  console.log(`[END_ROUND] Game: status=${game?.status} current_round=${game?.current_round} total_hands=${game?.total_hands} pot=${game?.pot}`);
 
   if (!game || !game.current_round) {
-    console.log('[endRound] Early return: no game or no current_round');
+    console.error(`[END_ROUND] CRITICAL: No game or no current_round. game=${shortGameId} error=${gameError?.message}`);
+    await logGameState({
+      gameId,
+      eventType: 'ROUND_TRANSITION',
+      sourceLocation: 'gameLogic:endRound:noGameOrRound',
+      details: { error: gameError?.message || 'No current_round', timestamp: endRoundTimestamp },
+    });
     return;
   }
 
@@ -1199,6 +1369,9 @@ export async function endRound(gameId: string) {
   // Get all player hands for this round
   const is357Game = game.game_type === '3-5-7' || game.game_type === '3-5-7-game' || game.game_type === '357';
   const handNumber = typeof game.total_hands === 'number' ? game.total_hands : 1;
+  
+  console.log(`[END_ROUND] Config: is357Game=${is357Game} handNumber=${handNumber} currentRound=${currentRound} dealerGameId=${currentGameUuid?.slice(0,8)}`);
+  
   // CRITICAL: Round selection must never rely on (game_id, round_number) alone.
   // When a new dealer game starts inside the same session, round_number can restart at 1.
   // If we select by round_number we can target a historical round from a prior dealer game and stall progression.
@@ -1229,16 +1402,27 @@ export async function endRound(gameId: string) {
     round = data;
   }
 
-  if (!round) return;
+  if (!round) {
+    console.error(`[END_ROUND] CRITICAL: Round not found. game=${shortGameId} handNumber=${handNumber} currentRound=${currentRound}`);
+    await logGameState({
+      gameId,
+      eventType: 'ROUND_TRANSITION',
+      sourceLocation: 'gameLogic:endRound:roundNotFound',
+      details: { handNumber, currentRound, dealerGameId: currentGameUuid, timestamp: endRoundTimestamp },
+    });
+    return;
+  }
+  
+  console.log(`[END_ROUND] Round found: id=${round.id.slice(0,8)} status=${round.status} round_number=${round.round_number} hand_number=${round.hand_number}`);
   
   // Prevent duplicate calls - if round is already completed, don't process again
   if (round.status === 'completed') {
-    console.log('[endRound] Round already completed, skipping endRound');
+    console.log(`[END_ROUND] Round already completed, skipping. round=${round.id.slice(0,8)}`);
     return;
   }
 
   // Immediately mark round as completed to prevent race conditions
-  console.log('[endRound] Attempting to lock round:', round.id, 'current status:', round.status);
+  console.log(`[END_ROUND] Attempting atomic lock: SET status='completed' WHERE id=${round.id.slice(0,8)} AND status='betting'`);
   const { data: lockResult, error: lockError } = await supabase
     .from('rounds')
     .update({ status: 'completed' })
@@ -1246,15 +1430,20 @@ export async function endRound(gameId: string) {
     .eq('status', 'betting') // Only update if still in betting status
     .select();
 
-  console.log('[endRound] Lock result:', { lockError, resultLength: lockResult?.length });
+  console.log(`[END_ROUND] Lock result: affected_rows=${lockResult?.length ?? 0} error=${lockError?.message ?? 'none'}`);
 
   // If no rows were updated, another call is already processing
   if (lockError || !lockResult || lockResult.length === 0) {
-    console.log('[endRound] Round already being processed or completed, skipping endRound');
+    console.log(`[END_ROUND] Lock failed - round already being processed. round=${round.id.slice(0,8)}`);
+    await logRaceConditionGuard(gameId, 'gameLogic:endRound:lockFailed', 'ROUND_LOCK_RACE_LOST', {
+      round_id: round.id,
+      round_status: round.status,
+      timestamp: endRoundTimestamp,
+    });
     return;
   }
 
-  console.log('[endRound] Successfully locked round for processing');
+  console.log(`[END_ROUND] ✅ WON LOCK - proceeding with round completion`);
 
   // Get all players and their decisions
   const { data: allPlayers, error: playersError } = await supabase
@@ -1262,29 +1451,33 @@ export async function endRound(gameId: string) {
     .select('*, profiles(username)')
     .eq('game_id', gameId);
 
-  console.log('[endRound] Players fetched:', { 
-    count: allPlayers?.length, 
-    error: playersError,
-    players: allPlayers?.map(p => ({
-      position: p.position,
-      status: p.status,
-      decision: p.current_decision,
-      locked: p.decision_locked
-    }))
-  });
+  console.log(`[END_ROUND] Players fetched: count=${allPlayers?.length ?? 0} error=${playersError?.message ?? 'none'}`);
+  
+  // Log EVERY player's decision for debugging
+  if (allPlayers) {
+    console.log(`[END_ROUND] All player decisions:`);
+    allPlayers.forEach(p => {
+      const username = p.is_bot ? `Bot(${p.position})` : (p.profiles?.username || `Player ${p.position}`);
+      console.log(`  ${username} (pos=${p.position}): decision=${p.current_decision} locked=${p.decision_locked} status=${p.status}`);
+    });
+  }
 
   if (!allPlayers) {
-    console.log('[endRound] ERROR: No players found, exiting');
+    console.error(`[END_ROUND] CRITICAL: No players found. game=${shortGameId}`);
     return;
   }
 
   // Find players who stayed (didn't fold)
   const playersWhoStayed = allPlayers.filter(p => p.current_decision === 'stay');
+  const playersWhoFolded = allPlayers.filter(p => p.current_decision === 'fold');
+  const playersNoDecision = allPlayers.filter(p => p.current_decision === null || p.current_decision === undefined);
   
-  console.log('[endRound] Players who stayed:', {
-    count: playersWhoStayed.length,
-    positions: playersWhoStayed.map(p => p.position)
-  });
+  console.log(`[END_ROUND] Decision summary:`);
+  console.log(`  STAYED: ${playersWhoStayed.length} players - positions: [${playersWhoStayed.map(p => p.position).join(', ')}]`);
+  console.log(`  FOLDED: ${playersWhoFolded.length} players - positions: [${playersWhoFolded.map(p => p.position).join(', ')}]`);
+  if (playersNoDecision.length > 0) {
+    console.error(`[END_ROUND] ⚠️ WARNING: ${playersNoDecision.length} players have NO DECISION! positions: [${playersNoDecision.map(p => p.position).join(', ')}]`);
+  }
   
   let resultMessage = '';
 
@@ -1371,33 +1564,59 @@ export async function endRound(gameId: string) {
 
   // Award leg only if exactly one player stayed
   if (playersWhoStayed.length === 1) {
-    console.log('[endRound] SOLO STAY detected - awarding leg');
     const soloStayer = playersWhoStayed[0];
     const username = soloStayer.is_bot 
       ? getBotAlias(allPlayers, soloStayer.user_id) 
       : (soloStayer.profiles?.username || `Player ${soloStayer.position}`);
     
+    console.log(`[END_ROUND] 🏆 SOLO STAY DETECTED - Awarding leg to ${username}`);
+    console.log(`[END_ROUND]   Player: id=${soloStayer.id.slice(0,8)} position=${soloStayer.position} currentLegs=${soloStayer.legs} legsToWin=${legsToWin}`);
+    
+    // Log to persistent debug table
+    await logGameState({
+      gameId,
+      dealerGameId: currentGameUuid,
+      roundId: round.id,
+      playerId: soloStayer.id,
+      eventType: 'LEG_AWARDED',
+      currentRound: currentRound,
+      totalHands: handNumber,
+      sourceLocation: 'gameLogic:endRound:soloStay',
+      details: {
+        username,
+        current_legs: soloStayer.legs,
+        new_legs: soloStayer.legs + 1,
+        legs_to_win: legsToWin,
+        leg_value: betAmount,
+        players_who_stayed: playersWhoStayed.map(p => ({ id: p.id.slice(0,8), position: p.position })),
+        all_players_decisions: allPlayers.map(p => ({ 
+          position: p.position, 
+          decision: p.current_decision, 
+          locked: p.decision_locked,
+          status: p.status,
+        })),
+        timestamp: new Date().toISOString(),
+      },
+    });
+    
     // Check if player already has enough legs (game should have ended)
     if (soloStayer.legs >= legsToWin) {
-      console.log(`[endRound] Player already has ${legsToWin}+ legs, game should have ended`);
+      console.log(`[END_ROUND] Player already has ${legsToWin}+ legs, game should have ended`);
       return;
     }
     
-    console.log('[endRound] Awarding leg to solo stayer:', {
-      playerId: soloStayer.id,
-      currentLegs: soloStayer.legs,
-      currentChips: soloStayer.chips,
-      betAmount
-    });
-    
     // Winning a leg costs the leg value (can go negative)
     const newLegCount = soloStayer.legs + 1;
+    
+    console.log(`[END_ROUND] Deducting leg cost: $${betAmount} from ${username}`);
     
     // Deduct leg cost using atomic decrement to prevent race conditions
     await supabase.rpc('decrement_player_chips', {
       player_ids: [soloStayer.id],
       amount: betAmount,
     });
+    
+    console.log(`[END_ROUND] Updating legs: ${soloStayer.legs} -> ${newLegCount}`);
     
     // Update legs separately (no race condition risk)
     // NOTE: Leg costs are NOT added to pot - they're held separately
@@ -1426,16 +1645,11 @@ export async function endRound(gameId: string) {
       '357', // game_type
       currentGameUuid // dealer_game_id
     );
-    console.log('[endRound] Recorded leg purchase chip changes:', legChipChanges);
+    console.log(`[END_ROUND] ✅ LEG AWARDED: ${username} now has ${newLegCount} legs`);
       
     resultMessage = `${username} won a leg`;
     
-    console.log('[endRound] Leg awarded:', {
-      newLegCount,
-      betAmount,
-      legsToWin,
-      isFinalLeg: newLegCount >= legsToWin
-    });
+    console.log(`[END_ROUND] Leg award summary: newLegCount=${newLegCount} betAmount=${betAmount} legsToWin=${legsToWin} isFinalLeg=${newLegCount >= legsToWin}`);
     
     // If this is their final leg, they win the game immediately
     if (newLegCount >= legsToWin) {
@@ -1824,33 +2038,52 @@ export async function endRound(gameId: string) {
     .eq('id', gameId)
     .single();
   
-  console.log('[endRound] Final check before setting awaiting_next_round:', {
-    finalGameStatus: finalGameState?.status,
-    resultMessage,
-    currentRound,
-    willSetAwaiting: finalGameState?.status !== 'game_over'
-  });
+  console.log(`[END_ROUND] Final game status: ${finalGameState?.status}`);
   
   if (finalGameState?.status !== 'game_over') {
     const nextRound = currentRound < 3 ? currentRound + 1 : 1;
     
-    console.log('[endRound] Setting awaiting_next_round:', { nextRound, resultMessage });
+    console.log(`[END_ROUND] Setting awaiting_next_round=true, next_round=${nextRound}, result="${resultMessage}"`);
     
-    await supabase
+    const { data: awaitResult, error: awaitError } = await supabase
       .from('games')
       .update({ 
         last_round_result: resultMessage,
         awaiting_next_round: true,
         next_round_number: nextRound
       })
-      .eq('id', gameId);
-      
-    console.log('[endRound] awaiting_next_round set successfully');
+      .eq('id', gameId)
+      .select();
+    
+    if (awaitError) {
+      console.error(`[END_ROUND] ERROR setting awaiting_next_round:`, awaitError);
+    } else {
+      console.log(`[END_ROUND] ✅ awaiting_next_round set. affected_rows=${awaitResult?.length ?? 0}`);
+    }
+    
+    // Log successful round completion
+    await logGameState({
+      gameId,
+      dealerGameId: currentGameUuid,
+      roundId: round.id,
+      eventType: 'ROUND_COMPLETE',
+      currentRound: currentRound,
+      totalHands: handNumber,
+      sourceLocation: 'gameLogic:endRound:complete',
+      details: {
+        result: resultMessage,
+        next_round: nextRound,
+        players_stayed: playersWhoStayed.length,
+        players_folded: playersWhoFolded.length,
+        final_status: finalGameState?.status,
+        timestamp: new Date().toISOString(),
+      },
+    });
   } else {
-    console.log('[endRound] Game is over, not setting awaiting_next_round');
+    console.log(`[END_ROUND] Game is over, not setting awaiting_next_round`);
   }
   
-  console.log('[endRound] ========== endRound COMPLETE ==========');
+  console.log(`[END_ROUND] ===== COMPLETE ===== game=${shortGameId}`);
 }
 
 export async function proceedToNextRound(gameId: string) {
