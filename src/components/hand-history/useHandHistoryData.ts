@@ -518,7 +518,27 @@ export function useHandHistoryData({
           let diceResults: PlayerDiceResult[] | undefined;
           if (isDiceGame && round.horses_state?.playerStates) {
             const playerStates = round.horses_state.playerStates as Record<string, any>;
-            const winnerPlayerId = events.find((e) => !isSystemEvent(e))?.winner_player_id;
+            
+            // Try to find winner from game_results first
+            let winnerPlayerId = events.find((e) => !isSystemEvent(e))?.winner_player_id;
+            
+            // If no recorded winner, derive from horses_state using hand rankings
+            // This handles cases where win processing was interrupted (e.g., game paused)
+            if (!winnerPlayerId && round.horses_state.gamePhase === "complete") {
+              const completedPlayers = Object.entries(playerStates)
+                .filter(([, state]) => state.isComplete && state.result?.rank !== undefined)
+                .map(([pid, state]) => ({ playerId: pid, rank: state.result.rank as number }));
+              
+              if (completedPlayers.length > 0) {
+                // Find highest rank(s)
+                const maxRank = Math.max(...completedPlayers.map(p => p.rank));
+                const winners = completedPlayers.filter(p => p.rank === maxRank);
+                // Only set winner if not a tie
+                if (winners.length === 1) {
+                  winnerPlayerId = winners[0].playerId;
+                }
+              }
+            }
 
             diceResults = Object.entries(playerStates)
               .filter(([, state]) => state.isComplete && state.dice)
@@ -596,7 +616,45 @@ export function useHandHistoryData({
       // Find winner
       const outcomeEvents = allEvents.filter((e) => !isSystemEvent(e));
       const lastOutcome = outcomeEvents[outcomeEvents.length - 1];
-      const resolvedWinner = resolveWinnerName(lastOutcome?.winner_username || null, lastOutcome?.winner_player_id || null);
+      let resolvedWinner = resolveWinnerName(lastOutcome?.winner_username || null, lastOutcome?.winner_player_id || null);
+      let winnerDescription = lastOutcome?.winning_hand_description || null;
+      let winnerPlayerId = lastOutcome?.winner_player_id || null;
+      
+      // For dice games without a recorded showdown, derive winner from horses_state
+      if (isDiceGame && !resolvedWinner) {
+        // Find a round with complete horses_state
+        const completeRound = dgRounds.find(r => 
+          r.horses_state?.gamePhase === "complete" && r.horses_state?.playerStates
+        );
+        
+        if (completeRound?.horses_state?.playerStates) {
+          const playerStates = completeRound.horses_state.playerStates as Record<string, any>;
+          const completedPlayers = Object.entries(playerStates)
+            .filter(([, state]) => state.isComplete && state.result?.rank !== undefined)
+            .map(([pid, state]) => ({ 
+              playerId: pid, 
+              rank: state.result.rank as number,
+              description: state.result.description as string 
+            }));
+          
+          if (completedPlayers.length > 0) {
+            const maxRank = Math.max(...completedPlayers.map(p => p.rank));
+            const winners = completedPlayers.filter(p => p.rank === maxRank);
+            
+            if (winners.length === 1) {
+              // Single winner
+              winnerPlayerId = winners[0].playerId;
+              resolvedWinner = playerNames.get(winnerPlayerId) || "Unknown";
+              winnerDescription = winners[0].description;
+            } else {
+              // Tie
+              const tieNames = winners.map(w => playerNames.get(w.playerId) || "Unknown").join(" & ");
+              resolvedWinner = `${tieNames} (Tie)`;
+              winnerDescription = `TIE: ${winners[0].description}`;
+            }
+          }
+        }
+      }
 
       const displayNumber = dgId === "orphan" ? 0 : (dealerGameNumberById.get(dgId) ?? 0);
 
@@ -650,8 +708,8 @@ export function useHandHistoryData({
         hands,
         totalChipChange,
         winner: resolvedWinner,
-        winnerDescription: lastOutcome?.winning_hand_description || null,
-        isWinner: lastOutcome?.winner_player_id === currentPlayerId,
+        winnerDescription: winnerDescription,
+        isWinner: winnerPlayerId === currentPlayerId,
         totalPot,
         latestTimestamp: allEvents[allEvents.length - 1]?.created_at || dealerGame?.started_at || "",
         isDiceGame,
