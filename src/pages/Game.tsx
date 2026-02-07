@@ -1876,6 +1876,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.is_paused, game?.paused_time_remaining]);
 
   // Server-driven timer countdown - uses ref for pause state to avoid dependency issues
+  // CARD GAMES ONLY: Players with auto_fold=true should NOT see a timer - they fold instantly
   useEffect(() => {
     // Don't start timer if no deadline or game conditions prevent it
     if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
@@ -1886,6 +1887,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         allDecisionsIn: game?.all_decisions_in 
       });
       return;
+    }
+
+    // For card games (Holm, 3-5-7): Players with auto_fold=true should NOT see a countdown.
+    // They fold instantly via the instant auto-fold effect, so no timer needed.
+    // This prevents the "timer running while auto-folding" issue.
+    const isCardGame = game?.game_type === 'holm-game' || game?.game_type === '3-5-7' || 
+                       game?.game_type === '3-5-7-game' || game?.game_type === '357';
+    if (isCardGame) {
+      const currentPlayer = players.find(p => p.user_id === user?.id);
+      if (currentPlayer?.auto_fold && !currentPlayer.is_bot && !currentPlayer.sitting_out) {
+        console.log('[TIMER COUNTDOWN] Suppressing timer - player has auto_fold enabled (card game)');
+        setTimeLeft(null);
+        return;
+      }
     }
 
     // Calculate time from server deadline
@@ -1922,7 +1937,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         timerIntervalRef.current = null;
       }
     };
-  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in]);
+  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.game_type, players, user?.id]);
 
   // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
