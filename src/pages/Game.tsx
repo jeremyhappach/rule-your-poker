@@ -2970,6 +2970,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // For 3-5-7, auto-fold immediately when round starts if player has auto_fold=true
   const instantAutoFoldKeyRef = useRef<string | null>(null);
   const instant357AutoFoldKeyRef = useRef<string | null>(null);
+  const instant357OtherPlayersAutoFoldRef = useRef<Set<string>>(new Set());
   const recover357EndRoundKeyRef = useRef<string | null>(null);
 
   // 3-5-7 RECOVERY: If the atomic all_decisions_in flag is already true but the round is still
@@ -3058,7 +3059,62 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     user?.id,
   ]);
   
+  // 3-5-7 GLOBAL AUTO-FOLD: If ANY human player is already in auto_fold when a betting round starts,
+  // fold for them immediately so the game doesn't wait out the full timer.
+  // This is intentionally redundant across clients; makeDecision has atomic guards.
+  useEffect(() => {
+    const is357Game = game?.game_type === "3-5-7" || game?.game_type === "3-5-7-game" || game?.game_type === "357";
+    if (!is357Game) return;
+    if (game?.status !== "in_progress") return;
+    if (!gameId) return;
+    if (!currentRound || currentRound.status !== "betting") return;
+    if (game?.is_paused) return;
+    if (game?.all_decisions_in) return;
+
+    const myUserId = user?.id;
+
+    const candidates = players.filter((p) => {
+      if (p.is_bot) return false;
+      if (p.sitting_out) return false;
+      if (!p.auto_fold) return false;
+      // If they already have a decision (or are locked), do nothing.
+      if (p.current_decision || p.decision_locked) return false;
+      // Let the local player handle their own instant fold (existing effect), avoid duplicate local UI work.
+      if (myUserId && p.user_id === myUserId) return false;
+      return true;
+    });
+
+    if (candidates.length === 0) return;
+
+    for (const p of candidates) {
+      const key = `${currentRound.id}:${p.id}`;
+      if (instant357OtherPlayersAutoFoldRef.current.has(key)) continue;
+      instant357OtherPlayersAutoFoldRef.current.add(key);
+
+      console.warn("[AUTO_FOLD 3-5-7] Folding for auto_fold player (remote)", {
+        roundId: currentRound.id,
+        playerId: p.id,
+        position: p.position,
+      });
+
+      void makeDecision(gameId, p.id, "fold").catch((err) => {
+        console.error("[AUTO_FOLD 3-5-7] Remote auto-fold makeDecision failed:", err);
+      });
+    }
+  }, [
+    game?.game_type,
+    game?.status,
+    game?.is_paused,
+    game?.all_decisions_in,
+    currentRound?.id,
+    currentRound?.status,
+    players,
+    gameId,
+    user?.id,
+  ]);
+
   // Holm instant auto-fold/pre-decision effect
+
   useEffect(() => {
     if (game?.game_type !== 'holm-game') return;
     if (game?.status !== 'in_progress') return;
