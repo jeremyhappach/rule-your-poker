@@ -776,25 +776,38 @@ export function useHandHistoryData({
           const multiplier = cribbageSkunkLevel === 2 ? 3 : cribbageSkunkLevel === 1 ? 2 : 1;
           const stakes = ante * multiplier;
           
-          // Find which player is the viewer and whether they won
+          // Find which player is the viewer and who won (reached pointsToWin first)
           const entries = Object.entries(cribbageFinalScores);
-          const maxScore = Math.max(...entries.map(([, s]) => s));
           
-          let viewerScore: number | null = null;
-          let viewerIsWinner = false;
-          
+          // Determine the actual winner: whoever reached pointsToWin
+          // If no one reached it, fall back to max score
+          let actualWinnerPlayerId: string | null = null;
           for (const [playerId, score] of entries) {
-            if (isViewerPlayer(playerId)) {
-              viewerScore = score;
-              viewerIsWinner = score === maxScore;
+            if (score >= pointsToWin) {
+              actualWinnerPlayerId = playerId;
               break;
             }
           }
-          
-          if (viewerScore !== null) {
-            // If viewer won, they gain stakes; if lost, they lose stakes
-            totalChipChange = viewerIsWinner ? stakes : -stakes;
+          // Fallback if somehow no one reached the target
+          if (!actualWinnerPlayerId) {
+            const maxScore = Math.max(...entries.map(([, s]) => s));
+            actualWinnerPlayerId = entries.find(([, s]) => s === maxScore)?.[0] || null;
           }
+          
+          // Check if the viewer is the winner
+          const viewerIsWinner = actualWinnerPlayerId ? isViewerPlayer(actualWinnerPlayerId) : false;
+          
+          // Also update winnerPlayerId for the isWinner calculation below
+          if (actualWinnerPlayerId && !winnerPlayerId) {
+            winnerPlayerId = actualWinnerPlayerId;
+            // Update resolvedWinner name if not set
+            if (!resolvedWinner) {
+              resolvedWinner = playerNames.get(actualWinnerPlayerId) || "Winner";
+            }
+          }
+          
+          // Calculate chip change: winner gains stakes, loser loses stakes
+          totalChipChange = viewerIsWinner ? stakes : -stakes;
         }
       }
 
