@@ -19,7 +19,7 @@ import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
-import { MusicToggleButton } from "./MusicToggleButton";
+
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
 import { NoQualifyAnimation } from "./NoQualifyAnimation";
@@ -56,7 +56,7 @@ import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
-import { RoundHandDebugOverlay } from "./RoundHandDebugOverlay";
+
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
 // otherwise resets state and reintroduces the pot flash).
@@ -5845,15 +5845,5 @@ export const MobileGameTable = ({
           </div>
         )}
       </div>
-      
-      {/* Music toggle button - fixed bottom right (for card games only, dice games have it in action bar) */}
-      {gameType !== 'horses' && gameType !== 'ship-captain-crew' && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <MusicToggleButton variant="compact" />
-        </div>
-      )}
-      
-      {/* Inline Round/Hand Debug - fixed position overlay */}
-      <RoundHandDebugOverlay gameId={gameId} inline />
     </div>;
 };
