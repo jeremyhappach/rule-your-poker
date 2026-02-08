@@ -43,11 +43,19 @@ export interface PlayerCardRecord {
   playerId: string;
   cards: CardData[];
   visibleToUserIds: string[] | null;
+  isPublic?: boolean;
 }
 
 export interface CardData {
   rank: string;
   suit: string;
+}
+
+// Player action (stay/fold decision) - public info
+export interface PlayerActionRecord {
+  playerId: string;
+  actionType: 'stay' | 'fold';
+  createdAt: string;
 }
 
 // Grouped data structures for display
@@ -67,6 +75,8 @@ export interface RoundGroup {
   diceResults?: PlayerDiceResult[];
   cribbageEvents?: CribbageEventRecord[];
   cribbagePointsToWin?: number;
+  // Stay/fold decisions - public info visible to all
+  playerDecisions?: PlayerActionRecord[];
 }
 
 export interface HandGroup {

@@ -787,10 +787,11 @@ export async function endHolmRound(gameId: string) {
     try {
       if (stayedPlayers.length >= 2) {
         // Fire-and-forget: Ensure visibility is correct (idempotent)
+        // Also set is_public = true since cards are tabled (exposed to everyone)
         const seatedUserIds = (players || []).map((p: any) => p.user_id);
         supabase
           .from('player_cards')
-          .update({ visible_to_user_ids: seatedUserIds })
+          .update({ visible_to_user_ids: seatedUserIds, is_public: true })
           .eq('round_id', round.id);
 
         const roundPot = round.pot || game.pot || 0;
@@ -1180,12 +1181,13 @@ export async function endHolmRound(gameId: string) {
       .eq('id', capturedRoundId);
 
     // VISIBILITY: At Holm showdown, ALL seated players can see ALL cards
+    // Also set is_public = true for solo play vs Chucky
     // Fire-and-forget: visibility update is for history only
     const seatedUserIds = players.map(p => p.user_id);
-    console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
+    console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length, 'and is_public=true');
     supabase
       .from('player_cards')
-      .update({ visible_to_user_ids: seatedUserIds })
+      .update({ visible_to_user_ids: seatedUserIds, is_public: true })
       .eq('round_id', capturedRoundId);
 
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
@@ -1294,12 +1296,13 @@ export async function endHolmRound(gameId: string) {
     .eq('id', capturedRoundId);
   
   // VISIBILITY: At Holm multi-player showdown, ALL seated players can see ALL cards
+  // Also set is_public = true since cards are tabled/exposed to everyone
   // Fire-and-forget: visibility update is for history only
   const seatedUserIds = players.map(p => p.user_id);
-  console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length);
+  console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length, 'and is_public=true');
   supabase
     .from('player_cards')
-    .update({ visible_to_user_ids: seatedUserIds })
+    .update({ visible_to_user_ids: seatedUserIds, is_public: true })
     .eq('round_id', capturedRoundId);
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards

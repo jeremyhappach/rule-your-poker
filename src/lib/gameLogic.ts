@@ -1766,11 +1766,16 @@ export async function endRound(gameId: string) {
       if (currentRound === 3 || revealAtShowdown) {
         // Round 3 or reveal enabled: set visibility for hand history
         const visibleTo = currentRound === 3 ? seatedUserIds : showdownUserIds;
-        console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users for', stayedPlayerIds.length, 'players');
+        // Round 3 = cards are publicly tabled (visible to everyone, even non-participants)
+        const isPubliclyTabled = currentRound === 3;
+        console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users for', stayedPlayerIds.length, 'players, isPublic:', isPubliclyTabled);
         // Fire-and-forget: visibility update is for history only - but must actually execute!
         supabase
           .from('player_cards')
-          .update({ visible_to_user_ids: visibleTo })
+          .update({ 
+            visible_to_user_ids: visibleTo,
+            is_public: isPubliclyTabled 
+          })
           .eq('round_id', round.id)
           .in('player_id', stayedPlayerIds)
           .then(({ error }) => {

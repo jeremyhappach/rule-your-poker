@@ -892,6 +892,7 @@ export type Database = {
           cards: Json
           created_at: string
           id: string
+          is_public: boolean
           player_id: string
           round_id: string
           visible_to_user_ids: string[] | null
@@ -900,6 +901,7 @@ export type Database = {
           cards?: Json
           created_at?: string
           id?: string
+          is_public?: boolean
           player_id: string
           round_id: string
           visible_to_user_ids?: string[] | null
@@ -908,6 +910,7 @@ export type Database = {
           cards?: Json
           created_at?: string
           id?: string
+          is_public?: boolean
           player_id?: string
           round_id?: string
           visible_to_user_ids?: string[] | null

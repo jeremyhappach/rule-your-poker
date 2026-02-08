@@ -43,10 +43,15 @@ export function useHandHistoryData({
   
   // Card data maps
   const [playerCardsByRound, setPlayerCardsByRound] = useState<
-    Map<string, Map<string, { cards: CardData[]; visibleToUserIds: string[] | null }>>
+    Map<string, Map<string, { cards: CardData[]; visibleToUserIds: string[] | null; isPublic: boolean }>>
   >(new Map());
   const [roundCardData, setRoundCardData] = useState<
     Map<string, { communityCards: CardData[]; chuckyCards: CardData[] }>
+  >(new Map());
+  
+  // Player actions (stay/fold decisions) by round
+  const [playerActionsByRound, setPlayerActionsByRound] = useState<
+    Map<string, Array<{ playerId: string; actionType: string; createdAt: string }>>
   >(new Map());
   
   // Cribbage events by round
@@ -278,18 +283,18 @@ export function useHandHistoryData({
     setUserIdToName(userIdMap);
     setViewerPlayerIds(viewerIds);
 
-    // Fetch player cards
+    // Fetch player cards (including is_public for publicly exposed cards)
     if (roundsData.length > 0) {
       const roundIds = roundsData.map((r) => r.id);
       const { data: allCardsData } = await supabase
         .from("player_cards")
-        .select("round_id, player_id, cards, visible_to_user_ids")
+        .select("round_id, player_id, cards, visible_to_user_ids, is_public")
         .in("round_id", roundIds);
 
       if (allCardsData) {
         const allCardsMap = new Map<
           string,
-          Map<string, { cards: CardData[]; visibleToUserIds: string[] | null }>
+          Map<string, { cards: CardData[]; visibleToUserIds: string[] | null; isPublic: boolean }>
         >();
 
         allCardsData.forEach((pc: any) => {
@@ -300,11 +305,36 @@ export function useHandHistoryData({
             allCardsMap.get(pc.round_id)!.set(pc.player_id, {
               cards: pc.cards,
               visibleToUserIds: pc.visible_to_user_ids || null,
+              isPublic: pc.is_public === true,
             });
           }
         });
 
         setPlayerCardsByRound(allCardsMap);
+      }
+      
+      // Fetch player actions (stay/fold decisions) - public info
+      const { data: actionsData } = await supabase
+        .from("player_actions")
+        .select("player_id, action_type, created_at, round_id")
+        .in("round_id", roundIds)
+        .order("created_at", { ascending: true });
+      
+      if (actionsData) {
+        const actionsMap = new Map<string, Array<{ playerId: string; actionType: string; createdAt: string }>>();
+        
+        actionsData.forEach((action: any) => {
+          if (!actionsMap.has(action.round_id)) {
+            actionsMap.set(action.round_id, []);
+          }
+          actionsMap.get(action.round_id)!.push({
+            playerId: action.player_id,
+            actionType: action.action_type,
+            createdAt: action.created_at,
+          });
+        });
+        
+        setPlayerActionsByRound(actionsMap);
       }
     }
   };
@@ -371,8 +401,11 @@ export function useHandHistoryData({
   const canSeeCards = (
     playerId: string,
     visibleToUserIds: string[] | null,
+    isPublic: boolean = false,
     gameType?: string | null
   ): boolean => {
+    // If cards are publicly exposed (tabled at showdown), everyone can see them
+    if (isPublic) return true;
     if (isViewerPlayer(playerId)) return true;
     // For 3-5-7, cards are visible if they were revealed during showdown
     // The visible_to_user_ids array contains all users who saw the reveal
@@ -580,7 +613,8 @@ export function useHandHistoryData({
               // For 3-5-7 with showdown + reveal enabled, show all player cards
               // This captures the showdown reveal that happened during the game
               const canSeeFromShowdown = is357Game && hasShowdown && revealAtShowdown;
-              const canSee = isMe || canSeeFromShowdown || canSeeCards(playerId, data.visibleToUserIds);
+              // Also check is_public for cards that were explicitly exposed (Holm multi-player showdown)
+              const canSee = isMe || data.isPublic || canSeeFromShowdown || canSeeCards(playerId, data.visibleToUserIds, data.isPublic);
               
               if (canSee) {
                 visiblePlayerCards.push({
@@ -595,6 +629,14 @@ export function useHandHistoryData({
 
           // Sort so current player first
           visiblePlayerCards.sort((a, b) => (b.isCurrentPlayer ? 1 : 0) - (a.isCurrentPlayer ? 1 : 0));
+          
+          // Get player decisions (stay/fold) for this round - public info
+          const roundActions = playerActionsByRound.get(round.id) || [];
+          const playerDecisions = roundActions.map(action => ({
+            playerId: action.playerId,
+            actionType: action.actionType as 'stay' | 'fold',
+            createdAt: action.createdAt,
+          }));
 
           // Dice results for dice games
           let diceResults: PlayerDiceResult[] | undefined;
@@ -664,6 +706,7 @@ export function useHandHistoryData({
             diceResults,
             cribbageEvents,
             cribbagePointsToWin,
+            playerDecisions: playerDecisions.length > 0 ? playerDecisions : undefined,
           });
         });
 
