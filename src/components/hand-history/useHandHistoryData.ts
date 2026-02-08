@@ -675,7 +675,7 @@ export function useHandHistoryData({
 
       // Calculate totals for the dealer game
       const allEvents = hands.flatMap((h) => h.rounds.flatMap((r) => r.events));
-      const totalChipChange = allEvents.reduce(
+      let totalChipChange = allEvents.reduce(
         (sum, e) => sum + getViewerChipChange(e.player_chip_changes),
         0
       );
@@ -766,6 +766,34 @@ export function useHandHistoryData({
             } else {
               cribbageSkunkLevel = 0;
             }
+          }
+        }
+        
+        // Calculate chip change for cribbage based on final scores
+        // Cribbage uses ante × multiplier (1x normal, 2x skunk, 3x double skunk)
+        if (cribbageFinalScores && Object.keys(cribbageFinalScores).length >= 2) {
+          const ante = Number(cfg.ante ?? cfg.ante_amount ?? 1);
+          const multiplier = cribbageSkunkLevel === 2 ? 3 : cribbageSkunkLevel === 1 ? 2 : 1;
+          const stakes = ante * multiplier;
+          
+          // Find which player is the viewer and whether they won
+          const entries = Object.entries(cribbageFinalScores);
+          const maxScore = Math.max(...entries.map(([, s]) => s));
+          
+          let viewerScore: number | null = null;
+          let viewerIsWinner = false;
+          
+          for (const [playerId, score] of entries) {
+            if (isViewerPlayer(playerId)) {
+              viewerScore = score;
+              viewerIsWinner = score === maxScore;
+              break;
+            }
+          }
+          
+          if (viewerScore !== null) {
+            // If viewer won, they gain stakes; if lost, they lose stakes
+            totalChipChange = viewerIsWinner ? stakes : -stakes;
           }
         }
       }
