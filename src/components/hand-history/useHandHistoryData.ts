@@ -375,9 +375,12 @@ export function useHandHistoryData({
 
   const canSeeCards = (
     playerId: string,
-    visibleToUserIds: string[] | null
+    visibleToUserIds: string[] | null,
+    gameType?: string | null
   ): boolean => {
     if (isViewerPlayer(playerId)) return true;
+    // For 3-5-7, cards are visible if they were revealed during showdown
+    // The visible_to_user_ids array contains all users who saw the reveal
     if (!visibleToUserIds || visibleToUserIds.length === 0) return false;
     return currentUserId ? visibleToUserIds.includes(currentUserId) : false;
   };
@@ -560,12 +563,28 @@ export function useHandHistoryData({
             }
           }
 
+          // Check if this round has a showdown event (non-system, non-ante event)
+          // If so, all player cards that were in play should be visible
+          const hasShowdown = events.some(e => 
+            !isSystemEvent(e) && 
+            e.winner_username !== "Ante" &&
+            e.winner_username !== "Leg Purchase"
+          );
+          
+          // For 3-5-7, also check if reveal_at_showdown is enabled in dealer game config
+          const is357Game = gameType === "357" || gameType === "3-5-7";
+          const revealAtShowdown = is357Game && dealerGame?.config?.reveal_at_showdown !== false;
+
           // Visible player cards
           const visiblePlayerCards: RoundGroup["visiblePlayerCards"] = [];
           if (roundCards) {
             roundCards.forEach((data, playerId) => {
               const isMe = isViewerPlayer(playerId);
-              const canSee = isMe || canSeeCards(playerId, data.visibleToUserIds);
+              
+              // For 3-5-7 with showdown + reveal enabled, show all player cards
+              // This captures the showdown reveal that happened during the game
+              const canSeeFromShowdown = is357Game && hasShowdown && revealAtShowdown;
+              const canSee = isMe || canSeeFromShowdown || canSeeCards(playerId, data.visibleToUserIds);
               
               if (canSee) {
                 visiblePlayerCards.push({
