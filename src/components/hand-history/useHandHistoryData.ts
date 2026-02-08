@@ -340,16 +340,11 @@ export function useHandHistoryData({
 
   // Helper to check if a player ID belongs to the current viewer
   const isViewerPlayer = (playerId: string): boolean => {
-    // Prefer the snapshot-derived list when available (works for ended sessions and avoids
-    // accidentally treating an opponent "currentPlayerId" as the viewer).
-    if (viewerPlayerIds.length > 0) {
-      return viewerPlayerIds.includes(playerId);
-    }
-
-    // Fallback for cases where we don't have snapshots yet.
-    if (passedPlayerId) return playerId === passedPlayerId;
-
-    return false;
+    // ONLY use snapshot-derived viewerPlayerIds which are validated to belong to this session
+    // The passedPlayerId might be from a different session entirely (e.g., current active session
+    // vs historical session being viewed), so we must NOT use it as a fallback.
+    // This fixes the bug where cards showed as "You:" in games the viewer wasn't part of.
+    return viewerPlayerIds.includes(playerId);
   };
   
   // Helper to get chip change for viewer from an event (sums all viewer's player IDs)
