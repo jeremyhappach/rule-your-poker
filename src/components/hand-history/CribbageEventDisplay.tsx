@@ -418,6 +418,8 @@ function groupScoringByPlayer(
   // First, get all hand_scoring events grouped by player
   const handScoringByPlayer = new Map<string, CribbageEventRecord[]>();
   const cribScoringEvents: CribbageEventRecord[] = [];
+  let cribRevealCards: CardData[] | null = null;
+  let cribDealerId: string | null = null;
 
   for (const event of events) {
     if (event.event_type === "hand_scoring" || event.event_type === "his_heels") {
@@ -425,8 +427,15 @@ function groupScoringByPlayer(
         handScoringByPlayer.set(event.player_id, []);
       }
       handScoringByPlayer.get(event.player_id)!.push(event);
+    } else if (event.event_type === "crib_reveal") {
+      // crib_reveal contains the full 4-card crib
+      cribRevealCards = event.cards_involved || [];
+      cribDealerId = event.player_id;
     } else if (event.event_type === "crib_scoring") {
       cribScoringEvents.push(event);
+      if (!cribDealerId) {
+        cribDealerId = event.player_id;
+      }
     }
   }
 
@@ -446,17 +455,18 @@ function groupScoringByPlayer(
   }
 
   // Add crib scoring (dealer's crib)
-  if (cribScoringEvents.length > 0) {
-    const dealerId = cribScoringEvents[0].player_id;
+  // Use crib_reveal cards if available, otherwise fall back to first crib_scoring's cards_involved
+  if (cribScoringEvents.length > 0 || cribRevealCards) {
+    const dealerId = cribDealerId || (cribScoringEvents[0]?.player_id ?? "");
     const dealerName = playerNames.get(dealerId) || "Dealer";
     
-    // Crib cards are in cards_involved for crib_scoring events
-    const cribCards = cribScoringEvents[0].cards_involved || [];
+    // Prefer full crib from crib_reveal, fall back to scoring combo cards
+    const cribCards = cribRevealCards || (cribScoringEvents[0]?.cards_involved ?? []);
     
     result.push({
       playerId: dealerId,
       username: dealerName,
-      hand: cribCards, // Show crib cards
+      hand: cribCards,
       cutCard,
       events: cribScoringEvents,
       isCrib: true,

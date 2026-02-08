@@ -12,6 +12,7 @@ export type CribbageEventType =
   | 'pegging'
   | 'hand_scoring'
   | 'crib_scoring'
+  | 'crib_reveal'
   | 'his_heels'
   | 'go'
   | 'cut_card';
@@ -252,6 +253,36 @@ export function logHandScoringCombo(
     cardsOnTable: null,
     runningCount: null,
     points,
+    scoresAfter,
+    sequenceNumber,
+  });
+}
+
+/**
+ * Log crib reveal - all 4 crib cards before scoring starts.
+ * This provides the full crib hand for history display.
+ */
+export function logCribReveal(
+  roundId: string,
+  dealerGameId: string | null,
+  handNumber: number,
+  playerId: string, // Always the dealer
+  cribCards: CribbageCard[],
+  scoresAfter: Record<string, number>,
+  sequenceNumber?: number
+): void {
+  logCribbageEvent({
+    roundId,
+    dealerGameId,
+    handNumber,
+    playerId,
+    eventType: 'crib_reveal',
+    eventSubtype: null,
+    cardPlayed: null,
+    cardsInvolved: cribCards,
+    cardsOnTable: null,
+    runningCount: null,
+    points: 0,
     scoresAfter,
     sequenceNumber,
   });

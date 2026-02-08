@@ -32,6 +32,13 @@ export function seqHandScoring(playerOrderIndex: number, comboIndex: number): nu
   return 10_000 + Math.max(0, playerOrderIndex) * 100 + Math.max(0, comboIndex);
 }
 
+/**
+ * Crib reveal sequence number - logged once before crib scoring combos.
+ */
+export function seqCribReveal(): number {
+  return 19_999;
+}
+
 export function seqCribScoring(comboIndex: number): number {
   return 20_000 + Math.max(0, comboIndex);
 }
