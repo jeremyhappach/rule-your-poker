@@ -254,7 +254,8 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex, scoresAft
       break;
     case "hand_scoring":
     case "crib_scoring":
-      description = `${username}: ${subtype || "scoring"}`;
+      // Just show the combo type - cards will be displayed separately
+      description = subtype || "scoring";
       break;
     case "cut_card":
       description = "Cut card revealed";
@@ -262,6 +263,11 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex, scoresAft
     default:
       description = username;
   }
+  
+  // For hand/crib scoring, show the cards involved in the combo
+  const showScoringCards = (event.event_type === "hand_scoring" || event.event_type === "crib_scoring") 
+    && event.cards_involved 
+    && event.cards_involved.length > 0;
 
   // For pegging events, show only cards in current sequence (after reset)
   const showCardsOnTable = event.event_type === "pegging";
@@ -280,6 +286,14 @@ function CribbageEventRow({ event, playerNames, allEvents, eventIndex, scoresAft
           <span className="text-xs text-foreground truncate">{description}</span>
           {event.card_played && (
             <MiniPlayingCard card={event.card_played as CardData} className="flex-shrink-0" />
+          )}
+          {/* Show scoring combo cards inline for hand/crib scoring */}
+          {showScoringCards && (
+            <div className="flex gap-0.5 flex-shrink-0">
+              {event.cards_involved.map((card, i) => (
+                <MiniPlayingCard key={i} card={card} className="w-4 h-5" />
+              ))}
+            </div>
           )}
         </div>
         {event.points > 0 && (
