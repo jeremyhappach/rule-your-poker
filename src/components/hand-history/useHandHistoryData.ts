@@ -346,12 +346,33 @@ export function useHandHistoryData({
   
   // Helper to get chip change for viewer from an event (sums all viewer's player IDs)
   const getViewerChipChange = (chipChanges: Record<string, number>): number => {
+    // Defensive: ensure chipChanges is actually an object with entries
+    if (!chipChanges || typeof chipChanges !== 'object') {
+      console.warn('[HAND_HISTORY] chipChanges is not an object:', chipChanges);
+      return 0;
+    }
+    
     let total = 0;
     for (const [playerId, change] of Object.entries(chipChanges)) {
       if (isViewerPlayer(playerId)) {
-        total += change;
+        // Ensure change is a number
+        const numChange = typeof change === 'number' ? change : Number(change);
+        if (!Number.isNaN(numChange)) {
+          total += numChange;
+        }
       }
     }
+    
+    // Debug logging for cribbage chip change issues
+    if (total === 0 && Object.keys(chipChanges).length > 0) {
+      console.log('[HAND_HISTORY] Zero chip change despite having entries:', {
+        chipChanges,
+        viewerPlayerIds,
+        passedPlayerId,
+        currentUserId,
+      });
+    }
+    
     return total;
   };
 
