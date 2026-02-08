@@ -1016,14 +1016,34 @@ async function checkAllDecisionsIn(gameId: string) {
   // First check if decisions are already marked as in
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('all_decisions_in, current_round, total_hands, status, current_game_uuid')
+    .select('all_decisions_in, current_round, total_hands, status, current_game_uuid, game_type, is_paused')
     .eq('id', gameId)
     .single();
-  
-  console.log(`[CHECK_ALL_DECISIONS] Game state: all_decisions_in=${game?.all_decisions_in} current_round=${game?.current_round} status=${game?.status}`);
-  
+
+  console.log(
+    `[CHECK_ALL_DECISIONS] Game state: all_decisions_in=${game?.all_decisions_in} current_round=${game?.current_round} status=${game?.status}`,
+  );
+
+  // RECOVERY: It's possible for all_decisions_in to be set true but endRound never ran
+  // (e.g. client crash / refresh right after the atomic flag update). In that case the game
+  // would be permanently stuck because this function would "skip" forever.
+  // endRound is idempotent and has its own atomic round lock, so it's safe to call here.
   if (game?.all_decisions_in) {
-    console.log(`[CHECK_ALL_DECISIONS] Already set, skipping. game=${shortGameId}`);
+    console.warn(`[CHECK_ALL_DECISIONS] all_decisions_in already true - attempting recovery endRound`, {
+      gameId: shortGameId,
+      status: game.status,
+      isPaused: game.is_paused,
+      gameType: game.game_type,
+    });
+
+    if (!game.is_paused && game.status === 'in_progress') {
+      try {
+        await endRound(gameId);
+      } catch (err) {
+        console.error('[CHECK_ALL_DECISIONS] Recovery endRound failed:', err);
+      }
+    }
+
     return;
   }
 
