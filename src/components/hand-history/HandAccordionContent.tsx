@@ -214,11 +214,49 @@ export function HandAccordionContent({
 }: HandAccordionContentProps) {
   const is357 = group.gameType === "357" || group.gameType === "3-5-7";
   const isHolm = group.gameType === "holm-game";
+  const isCribbage = group.gameType === "cribbage";
   const hasMultipleHands = group.hands.length > 1;
 
   // For dice games with rollovers, check if we have multiple rounds
   const isDiceWithRollovers =
     group.isDiceGame && group.hands.some((h) => h.rounds.length > 1);
+
+  // For Cribbage, collect ALL events from all hands/rounds and render once
+  // CribbageEventDisplay handles hand separation internally via hand_number
+  if (isCribbage && playerNames) {
+    const allCribbageEvents: CribbageEventRecord[] = [];
+    let pointsToWin = 121;
+    
+    for (const hand of group.hands) {
+      for (const round of hand.rounds) {
+        if (round.cribbageEvents && round.cribbageEvents.length > 0) {
+          allCribbageEvents.push(...round.cribbageEvents);
+          if (round.cribbagePointsToWin) {
+            pointsToWin = round.cribbagePointsToWin;
+          }
+        }
+      }
+    }
+
+    if (allCribbageEvents.length > 0) {
+      return (
+        <div className="space-y-2 pt-2">
+          <CribbageEventDisplay
+            events={allCribbageEvents}
+            playerNames={playerNames}
+            pointsToWin={pointsToWin}
+          />
+        </div>
+      );
+    }
+    
+    // No cribbage events - show empty state
+    return (
+      <div className="space-y-2 pt-2">
+        <div className="text-xs text-muted-foreground">No events recorded</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2 pt-2">
