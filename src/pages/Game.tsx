@@ -27,7 +27,7 @@ import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
 // useBotDecisionEnforcer was removed - it was a band-aid that caused race conditions
 import { useWakeLock } from "@/hooks/useWakeLock";
 
-import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer } from "@/lib/gameLogic";
+import { startRound, makeDecision, autoFoldUndecided, proceedToNextRound, getLastKnownChips, snapshotDepartingPlayer, endRound } from "@/lib/gameLogic";
 import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundComplete } from "@/lib/holmGameLogic";
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
@@ -2970,6 +2970,48 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // For 3-5-7, auto-fold immediately when round starts if player has auto_fold=true
   const instantAutoFoldKeyRef = useRef<string | null>(null);
   const instant357AutoFoldKeyRef = useRef<string | null>(null);
+  const recover357EndRoundKeyRef = useRef<string | null>(null);
+
+  // 3-5-7 RECOVERY: If the atomic all_decisions_in flag is already true but the round is still
+  // stuck in "betting", a previous client likely set the flag but crashed/refreshed before
+  // calling endRound(). This must be idempotent and race-safe.
+  useEffect(() => {
+    const is357Game =
+      game?.game_type === "3-5-7" || game?.game_type === "3-5-7-game" || game?.game_type === "357";
+    if (!is357Game) return;
+    if (game?.status !== "in_progress") return;
+    if (game?.is_paused) return;
+    if (game?.awaiting_next_round) return;
+    if (!game?.all_decisions_in) return;
+    if (!gameId) return;
+    if (!currentRound || currentRound.status !== "betting") return;
+
+    const key = `${currentRound.id}:recoverEndRound`;
+    if (recover357EndRoundKeyRef.current === key) return;
+    recover357EndRoundKeyRef.current = key;
+
+    console.warn("[357 RECOVERY] all_decisions_in=true but round still betting - calling endRound()", {
+      gameId,
+      roundId: currentRound.id,
+      handNumber: game?.total_hands,
+      roundNumber: game?.current_round,
+    });
+
+    void endRound(gameId).catch((err) => {
+      console.error("[357 RECOVERY] endRound failed:", err);
+    });
+  }, [
+    game?.game_type,
+    game?.status,
+    game?.is_paused,
+    game?.awaiting_next_round,
+    game?.all_decisions_in,
+    currentRound?.id,
+    currentRound?.status,
+    game?.total_hands,
+    game?.current_round,
+    gameId,
+  ]);
   
   // 3-5-7 instant auto-fold: fold immediately when round starts if auto_fold=true
   // CRITICAL: This is ONLY for 3-5-7 games. In dice games (horses, SCC), auto_fold means "auto-roll",
