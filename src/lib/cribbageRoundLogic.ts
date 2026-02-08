@@ -2,6 +2,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { initializeCribbageGame, startNewHand } from './cribbageGameLogic';
+import { snapshotPlayerChips } from './gameLogic';
 import { getBotAlias } from './botAlias';
 import type { CribbageState } from './cribbageTypes';
 
@@ -552,38 +553,12 @@ export async function endCribbageGame(
       console.log('[CRIBBAGE] Game result recorded successfully');
     }
 
-    // Record session_player_snapshots for each player with their final chip totals
-    // This is critical for SessionResults to show correct balances
-    const { data: allPlayers } = await supabase
-      .from('players')
-      .select('id, user_id, chips, is_bot, profiles(username)')
-      .eq('game_id', gameId);
-
-    if (allPlayers) {
-      for (const player of allPlayers) {
-        const chipChange = chipChanges[player.id] || 0;
-        // Use bot alias for bots
-        const displayName = player.is_bot
-          ? getBotAlias(allPlayers, player.user_id)
-          : ((player.profiles as any)?.username || 'Player');
-        
-        supabase
-          .from('session_player_snapshots')
-          .insert({
-            game_id: gameId,
-            player_id: player.id,
-            user_id: player.user_id,
-            username: displayName,
-            chips: chipChange, // Use the chip change, not absolute chips
-            hand_number: handNumber,
-            is_bot: player.is_bot,
-          })
-          .then(({ error }) => {
-            if (error) console.error('[CRIBBAGE] Failed to record snapshot for player:', player.id, error);
-          });
-      }
-      console.log('[CRIBBAGE] Session snapshots recorded for', allPlayers.length, 'players');
-    }
+    // Fire-and-forget: Snapshot final player chip totals for accurate session results.
+    // IMPORTANT: Snapshots should store the player's CURRENT chips balance (running session total),
+    // not the per-hand delta. Using snapshotPlayerChips keeps this consistent across game types.
+    void snapshotPlayerChips(gameId, handNumber).catch((err) => {
+      console.error('[CRIBBAGE] Failed to snapshot player chips:', err);
+    });
 
     console.log('[CRIBBAGE] Game ended successfully - chip transfers and records complete');
     return true;

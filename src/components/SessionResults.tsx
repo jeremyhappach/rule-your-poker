@@ -89,39 +89,39 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     }
 
     if (!snapshotsError && snapshots && snapshots.length > 0) {
-      // Use snapshots - SUM all chips changes per participant (not just latest!)
-      // Each snapshot represents a single game's chip change, not cumulative total.
+      // Use snapshots - take the FINAL snapshot per participant (latest created_at)
+      // Snapshots store the participant's running chip balance across the session.
       // Humans: group by user_id (in case they re-joined and got a new player_id)
       // Bots: group by player_id (bots may share user_id)
-      const aggregatedByKey = new Map<string, { 
-        player_id: string; 
-        username: string; 
-        is_bot: boolean; 
-        totalChips: number;
-      }>();
-      
-      snapshots.forEach((snap) => {
-        const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
-        const existing = aggregatedByKey.get(key);
-        if (existing) {
-          // Sum the chip changes
-          existing.totalChips += snap.chips;
-        } else {
-          aggregatedByKey.set(key, {
-            player_id: snap.player_id,
-            username: snap.username,
-            is_bot: snap.is_bot ?? false,
-            totalChips: snap.chips,
-          });
+      const latestByKey = new Map<
+        string,
+        {
+          player_id: string;
+          username: string;
+          is_bot: boolean;
+          chips: number;
         }
-      });
+      >();
 
-      const results: PlayerResult[] = Array.from(aggregatedByKey.values()).map((agg) => ({
-        id: agg.player_id,
-        username: agg.username,
-        chips: agg.totalChips,
+      // snapshots are ordered by created_at DESC; first one we see per key is the final value
+      for (const snap of snapshots as any[]) {
+        const key = (snap.is_bot ?? false) ? `bot:${snap.player_id}` : `user:${snap.user_id}`;
+        if (latestByKey.has(key)) continue;
+
+        latestByKey.set(key, {
+          player_id: snap.player_id,
+          username: snap.username,
+          is_bot: snap.is_bot ?? false,
+          chips: snap.chips,
+        });
+      }
+
+      const results: PlayerResult[] = Array.from(latestByKey.values()).map((latest) => ({
+        id: latest.player_id,
+        username: latest.username,
+        chips: latest.chips,
         legs: 0,
-        is_bot: agg.is_bot,
+        is_bot: latest.is_bot,
       }));
 
       if (results.length > 0) {
