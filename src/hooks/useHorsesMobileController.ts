@@ -1196,6 +1196,7 @@ export function useHorsesMobileController({
 
   const handleRoll = useCallback(async () => {
     if (!enabled) return;
+    if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
     const rollStartTime = Date.now();
@@ -1288,6 +1289,7 @@ export function useHorsesMobileController({
     }, animationDuration);
   }, [
     enabled,
+    isPaused,
     isMyTurn,
     localHand,
     saveMyState,
@@ -1300,6 +1302,7 @@ export function useHorsesMobileController({
   const handleToggleHold = useCallback(
     (index: number) => {
       if (!enabled) return;
+      if (isPaused) return; // Block all actions when game is paused
       if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3 || localHand.rollsRemaining <= 0) return;
 
       // For SCC: Ship/Captain/Crew are auto-locked and cannot be toggled
@@ -1344,11 +1347,12 @@ export function useHorsesMobileController({
       // don't get reset by realtime hold toggles between rolls.
       void saveMyState(nextHand, false, undefined, heldMaskAtLastRollStartRef.current ?? undefined);
     },
-    [enabled, isMyTurn, localHand, saveMyState, isSCC],
+    [enabled, isPaused, isMyTurn, localHand, saveMyState, isSCC],
   );
 
   const handleLockIn = useCallback(async () => {
     if (!enabled) return;
+    if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
 
     // Freeze layout to what it was at the START of the most recent roll.
@@ -1385,7 +1389,7 @@ export function useHorsesMobileController({
     setTimeout(() => {
       advanceToNextTurn(myPlayer?.id ?? null);
     }, HORSES_POST_TURN_PAUSE_MS);
-  }, [enabled, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
+  }, [enabled, isPaused, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
 
   // Bot auto-play with visible animation (mobile)
   // CRITICAL: This effect should ONLY re-run when the turn identity changes (round + bot/auto-roll player),
@@ -1393,6 +1397,7 @@ export function useHorsesMobileController({
   // This also handles HUMAN players with auto_fold=true (auto-roll mode in dice games)
   useEffect(() => {
     if (!enabled) return;
+    if (isPaused) return; // Block bot auto-play when game is paused
     if (gamePhase !== "playing") return;
     if (!currentRoundId) return;
     if (!currentUserId) return;
@@ -1704,6 +1709,7 @@ export function useHorsesMobileController({
     };
   }, [
     enabled,
+    isPaused,
     gamePhase,
     currentRoundId,
     currentUserId,
