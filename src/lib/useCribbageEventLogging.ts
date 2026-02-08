@@ -10,6 +10,7 @@ import {
   logGoPoint,
   logHisHeels,
   logHandScoringCombo,
+  logCribReveal,
   logCribScoringCombo,
   logCutCardReveal,
   buildScoresAfter,
@@ -18,6 +19,7 @@ import {
 import { getHandScoringCombos } from './cribbageScoringDetails';
 import { getCardPointValue } from './cribbageScoring';
 import {
+  seqCribReveal,
   seqCribScoring,
   seqCutCard,
   seqGoAfterPlay,
@@ -337,6 +339,19 @@ export function logCountingScoringEvents(
   }
 
   // Crib scoring (dealer only)
+  // First, log the full crib reveal for hand history display
+  if (state.crib && state.crib.length > 0) {
+    logCribReveal(
+      ctx.roundId,
+      ctx.dealerGameId,
+      ctx.handNumber,
+      state.dealerPlayerId,
+      state.crib,
+      { ...runningScores },
+      seqCribReveal()
+    );
+  }
+
   const cribCombos = getHandScoringCombos(state.crib, state.cutCard, true);
 
   for (let comboIndex = 0; comboIndex < cribCombos.length; comboIndex++) {
